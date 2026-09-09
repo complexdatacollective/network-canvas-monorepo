@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { receiveCollaboratorStageEdit } from '../../../testing/collaboratorStageEdit.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -891,6 +892,125 @@ const CODEBOOK_CONTROLS = [
  * which proved nothing. Losing the lease mid-prompt is the case that can tell
  * the two apart.
  */
+/**
+ * A collaborator repoints the stage while a codebook editor is open inside a
+ * prompt.
+ *
+ * The prompts are thrown away with the old type, but the row dialog the
+ * researcher is writing in is NOT: `DialogArrayField` keeps the detached row
+ * editor on screen with its draft. What must not survive the repoint is the
+ * editor's TARGET. The attribute it is about is named by a record key that
+ * belongs to one type alone — `CodebookSchema` refuses a codebook that reuses
+ * one across types — so an editor retargeted at the live subject would create
+ * the attribute on the type the stage moved to, and leave that codebook
+ * mutation behind although the detached prompt can no longer commit; an update
+ * or a rules editor would look its attribute up in a document it was never in.
+ *
+ * The rule is `AttributeCodebookControls`': an open editor reads the section
+ * it was OPENED against until it closes, is refused rather than torn down, and
+ * only the launch controls follow the live subject.
+ */
+describe('a codebook editor open in a prompt when the stage is repointed', () => {
+  /**
+   * The prompts move with the subject, in the same edit, because they have to:
+   * the host validates the whole protocol, and a bin prompt naming an
+   * attribute the new type does not have is not a stage it will accept.
+   */
+  const repointTheStage = (harness: StageEditorHarness) => {
+    receiveCollaboratorStageEdit(harness, {
+      description: 'Bin family members instead, from another session',
+      commands: [
+        {
+          op: 'set',
+          key: 'subject',
+          value: { entity: 'node', type: 'family_member' },
+        },
+        {
+          op: 'set',
+          key: 'prompts',
+          value: [
+            {
+              id: 'prompt-a',
+              text: 'Which of these are they?',
+              variable: 'biologicalSex',
+            },
+          ],
+        },
+      ],
+    });
+  };
+
+  /** Every attribute name the two node types carry at the host. */
+  const attributeNames = (harness: StageEditorHarness, typeId: string) =>
+    Object.values(harness.hostCodebook().node?.[typeId]?.variables ?? {}).map(
+      (variable) => variable.name,
+    );
+
+  /**
+   * The follow-up bin's attribute, which is TEXT: a name is all the schema
+   * needs, so the save this test presses is one that would otherwise land.
+   * (The bins' own attribute is categorical, and its editor refuses a draft
+   * with fewer than two values before any of this is reached.)
+   */
+  it('keeps the create editor on the type it opened on, and writes nothing', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create a new text attribute' }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+      'Closeness',
+    );
+
+    repointTheStage(harness);
+    // Watched from here, so what is counted is what the EDITOR asked for
+    // rather than the collaborator's own edit above.
+    const submit = vi.spyOn(harness.host, 'submit');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    // The attribute was being invented for a person, and it is a person's
+    // codebook it would have been written into — so nothing is written at all,
+    // rather than an attribute landing on the type the stage moved to.
+    expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
+      'Closeness',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    ).toBeDisabled();
+    expect(submit).not.toHaveBeenCalled();
+    expect(attributeNames(harness, 'family_member')).not.toContain('Closeness');
+    expect(attributeNames(harness, 'person')).not.toContain('Closeness');
+  });
+
+  it('keeps the rules editor on the attribute it opened on, and refuses the save', async () => {
+    const harness = renderStageEditor(openWithFollowUpBin());
+
+    await openFollowUpBin(harness);
+    await harness.user.click(
+      screen.getByRole('button', {
+        name: 'Set rules for what the participant types',
+      }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required' }),
+    );
+
+    repointTheStage(harness);
+
+    // Still the person attribute's own rules, rather than the sentence an
+    // editor shows in place of them once the document it was handed has no
+    // such attribute.
+    expect(screen.getByRole('checkbox', { name: 'Required' })).toBeChecked();
+    expect(
+      screen.getByRole('button', { name: 'Save validation' }),
+    ).toBeDisabled();
+  });
+});
+
 describe('a bin prompt open when editing is taken away', () => {
   it('takes every codebook control out of it', async () => {
     const harness = renderStageEditor(openWithFollowUpBin());

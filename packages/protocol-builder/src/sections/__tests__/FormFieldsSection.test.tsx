@@ -14,6 +14,7 @@ import { draftAdditionalAttributeVariableIds } from '../../codebook/variableVali
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolContextFromSections } from '../../protocol-context.ts';
+import { receiveCollaboratorStageEdit } from '../../testing/collaboratorStageEdit.ts';
 import { FIXTURE_SESSION_OWNER } from '../../testing/fixtureSession.ts';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
@@ -2635,73 +2636,22 @@ describe('a codebook editor open over a row when the stage is repointed', () => 
    * so no codebook arrival could say this.
    */
   const repointTheStage = (harness: ReturnType<typeof renderStageEditor>) => {
-    const stageSection = sectionId({
-      kind: 'stage',
-      stageId: harness.seeded.id,
-    });
-    const sections = harness.host.getSnapshot().protocolSections;
-    const result = harness.host.submit({
-      id: 'collaborator-repoint',
+    receiveCollaboratorStageEdit(harness, {
       description: 'Collect about family members instead, from another session',
-      edits: [
+      commands: [
         {
-          kind: 'update',
-          sectionId: stageSection,
-          expectedContentHash: contentHash(sections[stageSection] ?? {}),
-          commands: [
-            {
-              op: 'set',
-              key: 'subject',
-              value: { entity: 'node', type: 'family_member' },
-            },
-            {
-              op: 'set',
-              key: 'form',
-              value: {
-                fields: [
-                  { variable: 'fm_notes', prompt: 'Anything else to add?' },
-                ],
-              },
-            },
-          ],
+          op: 'set',
+          key: 'subject',
+          value: { entity: 'node', type: 'family_member' },
+        },
+        {
+          op: 'set',
+          key: 'form',
+          value: {
+            fields: [{ variable: 'fm_notes', prompt: 'Anything else to add?' }],
+          },
         },
       ],
-      authority: {
-        sectionId: stageSection,
-        leaseOwner: FIXTURE_SESSION_OWNER,
-        leaseEpoch: 1n,
-      },
-    });
-    if (result.status !== 'applied') {
-      throw new Error(
-        `the collaborator’s repoint did not apply: ${JSON.stringify(result)}`,
-      );
-    }
-    // And then told to this session, under the revision the host issued for
-    // it: an authoritative replacement of the stage being edited, which is
-    // what `reseedStageForm` writes into the controls on screen. By hand,
-    // because the harness's own arrival helper is for CODEBOOK changes and
-    // deliberately keeps the session's copy of the edited stage — the one
-    // section this arrival is about.
-    const { protocolSections, manifestRevision } = harness.host.getSnapshot();
-    const stageDocument = asRecord(protocolSections[stageSection]);
-    act(() => {
-      harness.session.receiveAuthoritativeUpdate({
-        protocolSections,
-        manifestRevision,
-      });
-      harness.session.acknowledge({
-        // Which stage this is belongs to the session, not to a draft.
-        fields: Object.fromEntries(
-          Object.entries(stageDocument).filter(
-            ([key]) => key !== 'id' && key !== 'type',
-          ),
-        ),
-        // Nothing of this session's is in it: the researcher has saved
-        // nothing, and what they are writing is a row dialog's own draft.
-        throughBatchId: 0,
-        manifestRevision,
-      });
     });
   };
 

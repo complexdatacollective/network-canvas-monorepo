@@ -9,9 +9,13 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import VariableEditor from '../../codebook/components/VariableEditor.tsx';
-import type { CodebookVariableDraft } from '../../codebook/editing.ts';
+import {
+  type CodebookVariableDraft,
+  sectionIdForCodebookSubject,
+} from '../../codebook/editing.ts';
 import { useCodebookSectionDocument } from '../../codebook/useCodebookVariableEdits.ts';
 import CodebookVariableValidationEditor from '../../codebook/validation/CodebookVariableValidationEditor.tsx';
 import type { WriterClass } from '../../codebook/variableRoles.ts';
@@ -50,6 +54,26 @@ const optionCountOf = (variable: unknown): number =>
   isRecord(variable) && Array.isArray(variable.options)
     ? variable.options.length
     : 0;
+
+/**
+ * A nested codebook editor, pinned to what it opened on.
+ *
+ * `key` is the identity of this opening, `variableId` the attribute it is
+ * about, `subject` whose codebook that id is in — the two are one fact, since
+ * a record key belongs to exactly one type — and `openedDocument` that
+ * subject's section as it stood when the editor opened, for the renders after
+ * the section itself has gone.
+ */
+type OpenedCodebookEdit = Readonly<{
+  key: string;
+  variableId: string;
+  subject: CodebookSubject;
+  openedDocument: SectionDoc;
+}>;
+
+/** The attribute editor, which is also opened in one of two modes. */
+type OpenedVariableEdit = OpenedCodebookEdit &
+  Readonly<{ mode: 'create' | 'update' }>;
 
 export type PromptAttributeFieldProps = Readonly<{
   /** The prompt key this pick is held at. */
@@ -188,11 +212,7 @@ export default function PromptAttributeField({
   });
   const codebookDocument = useCodebookSectionDocument(subject);
   const lockedOptions = useLockedOptions(subject, picked);
-  const [editing, setEditing] = useState<{
-    key: string;
-    mode: 'create' | 'update';
-    variableId: string;
-  } | null>(null);
+  const [editing, setEditing] = useState<OpenedVariableEdit | null>(null);
   /**
    * The words on the control that opened the dialog, read live rather than
    * captured into `editing` at the moment it opened: a label formatted then
@@ -202,10 +222,55 @@ export default function PromptAttributeField({
   const editingTitle =
     editing?.mode === 'create' ? createLabel : (editLabel ?? createLabel);
   /** The validation surface for the pick, open on the key it was opened at. */
-  const [validating, setValidating] = useState<{
-    key: string;
-    variableId: string;
-  } | null>(null);
+  const [validating, setValidating] = useState<OpenedCodebookEdit | null>(null);
+  /**
+   * The section an editor already open reads: the one it was OPENED against,
+   * resolved live FOR THAT SUBJECT so a collaborator's changes to it still
+   * reach the editor, and falling back to the copy taken when it opened for
+   * the renders after the section itself has gone.
+   *
+   * The same rule `AttributeCodebookControls` follows over a row. Never the
+   * subject the stage points at NOW: the attribute being edited is named by a
+   * record key that belongs to one type alone — `CodebookSchema` refuses a
+   * codebook that reuses one across types — so a stage a collaborator repoints
+   * mid-edit would otherwise leave this editor creating the attribute on the
+   * type the stage moved to, or looking an existing one up in a document it
+   * was never in.
+   */
+  const editingDocument = useCodebookSectionDocument(editing?.subject);
+  const openEditor =
+    editing === null
+      ? null
+      : { ...editing, document: editingDocument ?? editing.openedDocument };
+  const validatingDocument = useCodebookSectionDocument(validating?.subject);
+  const openValidating =
+    validating === null
+      ? null
+      : {
+          ...validating,
+          document: validatingDocument ?? validating.openedDocument,
+        };
+  /**
+   * Whether what is open may be WRITTEN, which is three questions.
+   *
+   * A lease taken back says this researcher may write nothing. A section that
+   * has gone — the type deleted under them — is a section nothing can be
+   * written into. And a stage repointed at another type says it a third way:
+   * the prompt this editor was opened from is a prompt about something else
+   * now, and the row holding it cannot commit, so an attribute created here
+   * would be left behind in a codebook nothing points at. The draft is kept
+   * and shown in all three, refused rather than thrown away, exactly as the
+   * row dialog around it is kept.
+   */
+  const writable = (
+    opened: CodebookSubject,
+    live: SectionDoc | null,
+  ): boolean =>
+    !readOnly &&
+    live !== null &&
+    subject !== undefined &&
+    sectionIdForCodebookSubject(subject) ===
+      sectionIdForCodebookSubject(opened);
   /**
    * Whether a codebook edit is in flight, which is a fact this host has for
    * itself: an editor owns its draft and this owns request execution, so every
@@ -317,6 +382,8 @@ export default function PromptAttributeField({
                 key: uuid(),
                 mode: 'create',
                 variableId: uuid(),
+                subject,
+                openedDocument: codebookDocument,
               })
             }
           >
@@ -333,6 +400,8 @@ export default function PromptAttributeField({
                   key: uuid(),
                   mode: 'update',
                   variableId: valuesEditor.variableId,
+                  subject,
+                  openedDocument: codebookDocument,
                 })
               }
             >
@@ -349,6 +418,8 @@ export default function PromptAttributeField({
                 setValidating({
                   key: uuid(),
                   variableId: validationEditor.variableId,
+                  subject,
+                  openedDocument: codebookDocument,
                 })
               }
             >
@@ -374,91 +445,86 @@ export default function PromptAttributeField({
           session, and unmounting it would throw away work to say something
           `readOnly` says for itself, with the save disabled. The same rule the
           row editors follow (`AttributeCodebookControls`, `SubjectSection`). */}
-      {editing !== null &&
-        codebookDocument !== null &&
-        subject !== undefined && (
-          <Dialog
-            open
-            title={editingTitle}
-            size="readable"
-            dismissible={!submitting}
-            closeDialog={requestCloseEditor}
-            finalFocus={() =>
-              editing.mode === 'create'
-                ? createTrigger.current
-                : editTrigger.current
-            }
-          >
-            {editing.mode === 'create' ? (
-              <VariableEditor
-                mode="create"
-                openId={editing.key}
-                subject={subject}
-                protocolContext={controller.snapshot.protocolContext}
-                authoritativeDocument={codebookDocument}
-                variableId={editing.variableId}
-                initialDraft={newVariableDraft(createType)}
-                allowedVariableTypes={types}
-                readOnly={readOnly}
-                description={createLabel}
-                title={createLabel}
-                createRequestId={() => uuid()}
-                onSubmitRequest={submitEdit}
-                onComplete={(variableId) => {
-                  setFieldValue(name, variableId);
-                  closeEditor();
-                }}
-              />
-            ) : (
-              <VariableEditor
-                mode="update"
-                openId={editing.key}
-                subject={subject}
-                authoritativeDocument={codebookDocument}
-                variableId={editing.variableId}
-                initialDraft={existingVariableDraft(
-                  variablesIn(codebookDocument)[editing.variableId],
-                  createType,
-                )}
-                allowedVariableTypes={types}
-                readOnly={readOnly}
-                description={editingTitle}
-                title={editingTitle}
-                createRequestId={() => uuid()}
-                onSubmitRequest={submitEdit}
-                onComplete={closeEditor}
-              />
-            )}
-          </Dialog>
-        )}
-      {validating !== null &&
-        validationLabel !== undefined &&
-        codebookDocument !== null &&
-        subject !== undefined && (
-          <Dialog
-            open
-            title={validationLabel}
-            size="readable"
-            dismissible={!submitting}
-            closeDialog={requestCloseValidating}
-            finalFocus={() => validationTrigger.current}
-          >
-            <CodebookVariableValidationEditor
-              openId={validating.key}
-              subject={subject}
-              variableId={validating.variableId}
-              authoritativeEntityDocument={codebookDocument}
-              allSubjectVariables={variablesIn(codebookDocument)}
-              requestMetadata={{
-                createId: () => uuid(),
-                description: validationLabel,
-              }}
-              readOnly={readOnly}
+      {openEditor !== null && (
+        <Dialog
+          open
+          title={editingTitle}
+          size="readable"
+          dismissible={!submitting}
+          closeDialog={requestCloseEditor}
+          finalFocus={() =>
+            openEditor.mode === 'create'
+              ? createTrigger.current
+              : editTrigger.current
+          }
+        >
+          {openEditor.mode === 'create' ? (
+            <VariableEditor
+              mode="create"
+              openId={openEditor.key}
+              subject={openEditor.subject}
+              protocolContext={controller.snapshot.protocolContext}
+              authoritativeDocument={openEditor.document}
+              variableId={openEditor.variableId}
+              initialDraft={newVariableDraft(createType)}
+              allowedVariableTypes={types}
+              readOnly={!writable(openEditor.subject, editingDocument)}
+              description={createLabel}
+              title={createLabel}
+              createRequestId={() => uuid()}
               onSubmitRequest={submitEdit}
-              onComplete={() => setValidating(null)}
+              onComplete={(variableId) => {
+                setFieldValue(name, variableId);
+                closeEditor();
+              }}
             />
-          </Dialog>
-        )}
+          ) : (
+            <VariableEditor
+              mode="update"
+              openId={openEditor.key}
+              subject={openEditor.subject}
+              authoritativeDocument={openEditor.document}
+              variableId={openEditor.variableId}
+              initialDraft={existingVariableDraft(
+                variablesIn(openEditor.document)[openEditor.variableId],
+                createType,
+              )}
+              allowedVariableTypes={types}
+              readOnly={!writable(openEditor.subject, editingDocument)}
+              description={editingTitle}
+              title={editingTitle}
+              createRequestId={() => uuid()}
+              onSubmitRequest={submitEdit}
+              onComplete={closeEditor}
+            />
+          )}
+        </Dialog>
+      )}
+      {openValidating !== null && validationLabel !== undefined && (
+        <Dialog
+          open
+          title={validationLabel}
+          size="readable"
+          dismissible={!submitting}
+          closeDialog={requestCloseValidating}
+          finalFocus={() => validationTrigger.current}
+        >
+          <CodebookVariableValidationEditor
+            openId={openValidating.key}
+            subject={openValidating.subject}
+            variableId={openValidating.variableId}
+            authoritativeEntityDocument={openValidating.document}
+            allSubjectVariables={variablesIn(openValidating.document)}
+            requestMetadata={{
+              createId: () => uuid(),
+              description: validationLabel,
+            }}
+            readOnly={!writable(openValidating.subject, validatingDocument)}
+            onSubmitRequest={submitEdit}
+            onComplete={() => setValidating(null)}
+          />
+        </Dialog>
+      )}
     </>
   );
 
