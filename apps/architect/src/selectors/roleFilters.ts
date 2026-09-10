@@ -113,22 +113,6 @@ export const excludeUnvalidatedUses = <T extends Option>(
   );
 };
 
-/** Options safe to offer an UNVALIDATED writer picker (bins, highlight, census, etc.). */
-export const excludeValidatedUses = <T extends Option>(
-  state: RootState,
-  subject: Subject,
-  options: T[],
-  currentValue?: string | readonly string[],
-  excludedStageIndex?: number,
-): T[] => {
-  const map = getVariableRoleMapOutsideStage(state, excludedStageIndex);
-  const escaped = escapeSet(currentValue);
-  return options.filter(
-    (option) =>
-      escaped.has(option.value) || !hasValidatedUse(map, subject, option.value),
-  );
-};
-
 /**
  * Options safe to offer a picker that is NOT an interface's own structural
  * slot. A Family Pedigree derives its ego marker, relationship and edge

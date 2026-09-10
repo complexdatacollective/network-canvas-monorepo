@@ -1,10 +1,4 @@
-import { BackgroundImage } from '../../Assets';
-import type { FileInputProps } from './File';
-import File from './File';
-
-type ImageInputProps = Omit<FileInputProps, 'children' | 'type'> & {
-  canvasBackgroundPreview?: boolean;
-};
+import BackgroundImage from '../../Assets/BackgroundImage';
 
 export const ImagePreview = ({
   id,
@@ -34,16 +28,3 @@ export const ImagePreview = ({
     />
   </div>
 );
-
-const ImageInput = ({
-  canvasBackgroundPreview = false,
-  ...props
-}: ImageInputProps) => (
-  <File type="image" {...props}>
-    {(id: string) => (
-      <ImagePreview id={id} canvasBackground={canvasBackgroundPreview} />
-    )}
-  </File>
-);
-
-export default ImageInput;

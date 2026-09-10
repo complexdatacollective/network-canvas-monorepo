@@ -38,33 +38,3 @@ export const arrayItemMessages = defineMessages({
       'Singular item name used in array-editor controls and whole confirmation sentences. Does not change stored field identifiers.',
   },
 });
-
-export const arrayValidationMessages = defineMessages({
-  required: {
-    id: 'architect.arrayValidation.required',
-    defaultMessage: 'You must create at least one item.',
-    description:
-      'Whole actionable refusal for a researcher editing an array. Stored as a message descriptor so failed forms update when the language changes.',
-  },
-  duplicateAttribute: {
-    id: 'architect.arrayValidation.duplicateAttribute',
-    defaultMessage:
-      'This attribute is already collected by another attribute in this list. Choose a different attribute, or edit the existing attribute instead.',
-    description:
-      'Whole actionable refusal for a researcher editing an array. Stored as a message descriptor so failed forms update when the language changes.',
-  },
-  duplicateField: {
-    id: 'architect.arrayValidation.duplicateField',
-    defaultMessage:
-      'This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.',
-    description:
-      'Whole actionable refusal for a researcher editing an array. Stored as a message descriptor so failed forms update when the language changes.',
-  },
-  duplicateDisease: {
-    id: 'architect.arrayValidation.duplicateDisease',
-    defaultMessage:
-      'This attribute is already mapped by another disease. Choose a different attribute, or edit the existing disease instead.',
-    description:
-      'Whole actionable refusal for a researcher editing an array. Stored as a message descriptor so failed forms update when the language changes.',
-  },
-});

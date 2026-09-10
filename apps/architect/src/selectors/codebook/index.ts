@@ -81,7 +81,7 @@ export const getType = (state: RootState, subject: Subject) =>
 // the returned reference (e.g. makeFieldEditorValidate's useMemo). Callers
 // guarding an invalid subject should also return this same reference rather
 // than an inline `{}`.
-export const EMPTY_VARIABLES: Variables = Object.freeze({});
+const EMPTY_VARIABLES: Variables = Object.freeze({});
 
 // Memoized selector for getting variables for a subject
 export const getVariablesForSubjectSelector = createSelector(
@@ -301,26 +301,3 @@ export const getVariableOptionsForSubject = (
   state: RootState,
   subject: Subject,
 ): VariableOption[] => getVariableOptionsForSubjectSelector(state, subject);
-
-// Internal memoized selector for getting options for a specific variable (used by getOptionsForVariable below)
-const getOptionsForVariableSelector = createSelector(
-  [
-    getVariablesForSubjectSelector,
-    (_state: RootState, _subject: Subject, variable: string) => variable,
-  ],
-  (variables, variable): unknown[] => {
-    return get(variables, [variable, 'options'], []);
-  },
-);
-
-// Get options for a specific variable
-export const getOptionsForVariable = (
-  state: RootState,
-  {
-    entity,
-    type,
-    variable,
-  }: { entity: 'node' | 'edge' | 'ego'; type?: string; variable: string },
-): unknown[] => {
-  return getOptionsForVariableSelector(state, { entity, type }, variable);
-};

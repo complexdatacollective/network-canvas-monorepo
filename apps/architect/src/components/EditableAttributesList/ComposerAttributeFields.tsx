@@ -76,7 +76,7 @@ const asString = (value: unknown): string | undefined =>
  * contradictory edit would save straight back to the codebook. This field
  * holds no value; it exists to carry the error and render it.
  */
-export const COMPOSER_CONTRADICTION_FIELD = '_contradiction';
+const COMPOSER_CONTRADICTION_FIELD = '_contradiction';
 
 /**
  * Registers the contradiction field and renders its message as a whole-editor

@@ -20,6 +20,7 @@ import {
 } from '~/components/StageEditor/stageDraftBeacon';
 import StageDraftConflictDialog from '~/components/StageEditor/StageDraftConflictDialog';
 import StageEditorChrome from '~/components/StageEditor/StageEditorChrome';
+import { STAGE_FORM_ID } from '~/components/StageEditor/stageFormId';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/store';
 import {
@@ -310,14 +311,5 @@ const StageEditorPage = () => {
     </div>
   );
 };
-
-/**
- * The DOM id of the stage form.
- *
- * Named rather than generated, because the toolbar's save control lives outside
- * the form and reaches it by id, and because every dialog the editor opens
- * derives its own form id from this one.
- */
-const STAGE_FORM_ID = 'edit-stage';
 
 export default StageEditorPage;

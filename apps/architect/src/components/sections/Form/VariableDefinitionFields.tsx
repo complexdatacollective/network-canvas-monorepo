@@ -244,7 +244,7 @@ export const VariablePickerSection = ({
  * that remain (section headings, the picker's hint, what each editor adds
  * around this) are props and surrounding markup, not a second implementation.
  */
-export const InputControlFields = ({ item, fields }: SharedProps) => {
+const InputControlFields = ({ item, fields }: SharedProps) => {
   const intl = useAppIntl();
   const { variable, variableType, isNewVariable, componentOptions } = fields;
 
@@ -316,7 +316,7 @@ export const InputControlFields = ({ item, fields }: SharedProps) => {
   );
 };
 
-export const VariableConfigurationFields = ({ item, fields }: SharedProps) => {
+const VariableConfigurationFields = ({ item, fields }: SharedProps) => {
   const intl = useAppIntl();
   const {
     variable,

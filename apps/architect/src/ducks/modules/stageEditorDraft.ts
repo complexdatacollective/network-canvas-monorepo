@@ -50,7 +50,7 @@ export const draftSnapshot = createAction<Stage>('stageEditorDraft/snapshot');
  * exists), and carrying the working copy would launder a real codebook edit
  * into "unchanged". Touching only the stage is the answer to both.
  */
-export const rebaselineDraftStage = createAction<Stage>(
+const rebaselineDraftStage = createAction<Stage>(
   'stageEditorDraft/rebaselineStage',
 );
 

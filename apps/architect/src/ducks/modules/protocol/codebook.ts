@@ -283,7 +283,7 @@ export const createVariableAsync = createAppAsyncThunk(
   },
 );
 
-export const updateVariableAsync = createAppAsyncThunk(
+const updateVariableAsync = createAppAsyncThunk(
   'codebook/updateVariableAsync',
   async (
     {

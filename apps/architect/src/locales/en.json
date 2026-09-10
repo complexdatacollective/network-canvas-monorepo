@@ -203,22 +203,6 @@
     "defaultMessage": "Every row needs a value in each column.",
     "description": "Validation error for an incomplete row of display or sorting properties."
   },
-  "architect.arrayValidation.duplicateAttribute": {
-    "defaultMessage": "This attribute is already collected by another attribute in this list. Choose a different attribute, or edit the existing attribute instead.",
-    "description": "Whole actionable refusal for a researcher editing an array. Stored as a message descriptor so failed forms update when the language changes."
-  },
-  "architect.arrayValidation.duplicateDisease": {
-    "defaultMessage": "This attribute is already mapped by another disease. Choose a different attribute, or edit the existing disease instead.",
-    "description": "Whole actionable refusal for a researcher editing an array. Stored as a message descriptor so failed forms update when the language changes."
-  },
-  "architect.arrayValidation.duplicateField": {
-    "defaultMessage": "This attribute is already collected by another field in this form. Choose a different attribute, or edit the existing field instead.",
-    "description": "Whole actionable refusal for a researcher editing an array. Stored as a message descriptor so failed forms update when the language changes."
-  },
-  "architect.arrayValidation.required": {
-    "defaultMessage": "You must create at least one item.",
-    "description": "Whole actionable refusal for a researcher editing an array. Stored as a message descriptor so failed forms update when the language changes."
-  },
   "architect.assetBrowser.assetBrowser.addANewResourceToThis": {
     "defaultMessage": "Add a new resource to this protocol.",
     "description": "The description text in components / AssetBrowser / AssetBrowser."
@@ -1422,14 +1406,6 @@
   "architect.final.components.VariablePill.required": {
     "defaultMessage": "You must enter an attribute name",
     "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.final.components.sections.Form.FieldEditorPreview.attribute": {
-    "defaultMessage": "Attribute label",
-    "description": "Built-in inline-preview fallback when no authored attribute label or name is available; authored labels are always preserved."
-  },
-  "architect.final.components.sections.Form.FieldEditorPreview.question": {
-    "defaultMessage": "Your question will appear here.",
-    "description": "Built-in inline-preview fallback when no authored question is available; authored questions are always preserved."
   },
   "architect.final.lib.ProtocolSummary.components.Stage.Anonymisation.maximumPassphrase": {
     "defaultMessage": "Maximum passphrase length",
@@ -3495,26 +3471,6 @@
     "defaultMessage": "{value1, select, true {Node} other {Edge}} type options",
     "description": "The aria-label text in components / sections / fields / EntitySelectField / EntitySelectField."
   },
-  "architect.sections.form.fieldEditorPreview.checkResponse": {
-    "defaultMessage": "Check response",
-    "description": "Visible text in components / sections / Form / FieldEditorPreview."
-  },
-  "architect.sections.form.fieldEditorPreview.interactivePreview": {
-    "defaultMessage": "Interactive preview",
-    "description": "Visible text in components / sections / Form / FieldEditorPreview."
-  },
-  "architect.sections.form.fieldEditorPreview.selectAnAttributeAndInputControl": {
-    "defaultMessage": "Select an attribute and input control to preview this field.",
-    "description": "Visible text in components / sections / Form / FieldEditorPreview."
-  },
-  "architect.sections.form.fieldEditorPreview.tryTheFieldAsAParticipant": {
-    "defaultMessage": "Try the field as a participant. Use Check response to test its current validation rules.",
-    "description": "Visible text in components / sections / Form / FieldEditorPreview."
-  },
-  "architect.sections.form.fieldEditorPreview.whenSelectingAnExistingAttributeChanges": {
-    "defaultMessage": "When selecting an existing attribute, changes you make to the input control or validation options will also change other uses of this attribute.",
-    "description": "Visible text in components / sections / Form / FieldEditorPreview."
-  },
   "architect.sections.form.variableDefinitionFields.aPreExistingAttributeIsCurrentlySelected": {
     "defaultMessage": "A pre-existing attribute is currently selected. You cannot change an attribute type after it has been created, so only <strong>{variableType}</strong> compatible input controls can be selected above. If you would like to use a different input control type, you will need to create a new attribute.",
     "description": "Visible text in components / sections / Form / VariableDefinitionFields."
@@ -4393,10 +4349,6 @@
   },
   "architect.validation.contradiction.thisAttribute": {
     "defaultMessage": "this attribute",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.validation.crossClass.draftUnvalidatedElsewhereMessage": {
-    "defaultMessage": "\"{variableName}\" is assigned without validation by a prompt in this stage, so it cannot be used as a form field",
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.validation.crossClass.draftValidatedElsewhereMessage": {
