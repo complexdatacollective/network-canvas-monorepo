@@ -13,7 +13,6 @@ import {
   revokeLargeObjectPrivilegesSql,
 } from '@codaco/studio-sync/role-bootstrap';
 
-import { renderSchemaStatements } from '../../../scripts/apply.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import {
   createMaintenancePool,
@@ -22,6 +21,7 @@ import {
 } from '../../db/pool.ts';
 import { stampFingerprint } from '../../db/schema.ts';
 import { type DbEnv, isLocalDatabase, readEnv } from '../../env.ts';
+import { scratchSchemaDdl } from './schema-ddl.ts';
 
 const PROBE_TIMEOUT_MS = 3000;
 
@@ -136,10 +136,14 @@ export async function createScratchSchema(db: DbEnv): Promise<ScratchSchema> {
  * itself cannot target a scratch schema (it introspects `public`), so the
  * push path is exercised by the scratch-database suite instead. Takes the
  * owner pool: the statements are DDL.
+ *
+ * The statements arrive through `scratchSchemaDdl()`, which serves them from
+ * a fingerprint-addressed cache rather than re-rendering them — identical
+ * bytes, without drizzle-kit in this file's module graph.
  */
 export async function provisionScratchSchema(pool: pg.Pool): Promise<void> {
   await pool.query(runtimeRolesSql(Object.values(TENANT_ROLES)));
-  await pool.query((await renderSchemaStatements()).join('\n'));
+  await pool.query(await scratchSchemaDdl());
   await stampFingerprint(pool, SCHEMA_FINGERPRINT);
 }
 

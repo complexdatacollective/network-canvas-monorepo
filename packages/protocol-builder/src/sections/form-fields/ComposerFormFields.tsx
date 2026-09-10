@@ -8,10 +8,7 @@ import {
   useRef,
 } from 'react';
 
-import {
-  createMessageError,
-  type MessageDescriptor,
-} from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -204,7 +201,7 @@ export function ComposerFormFieldsControl({
   const { readOnly } = useStageEditorForm();
 
   return (
-    <ComposerFormRows {...props} rows={value}>
+    <ComposerFormRows {...props} name={name} rows={value}>
       <UnconnectedField<typeof ArrayField<RowValues>>
         name={name}
         component={ArrayField}
@@ -242,13 +239,13 @@ function ComposerFormRows({
 }: ComposerFormFieldsProps &
   Readonly<{
     /**
-     * Where the stage document holds this list, for a control inside the row
-     * dialog asking what a save would leave — see `RowListConfig.name`. Given
-     * by the connected mounting, whose list is a field of the stage form;
-     * absent from the unconnected one, whose rows are reached through a
-     * position in `edges` rather than through a key.
+     * What the list is mounted under, which the row dialog hands on as the
+     * path a save would write this row to. The node form's is its place in the
+     * stage document; a connection form has none — it is reached through an
+     * entry's position in `edges` — so its mounting name is the control's own,
+     * which is what the dialog then reports.
      */
-    name?: string;
+    name: string;
     rows: readonly RowValues[];
     children: ReactNode;
   }>) {
@@ -277,11 +274,15 @@ function ComposerFormRows({
    *
    * The picker offers neither an attribute a sibling field already records nor
    * one this stage writes around the codebook's rules, and that is not enough
-   * on its own: the codebook and the draft are both read live, so a
-   * collaborator's change or a pick made elsewhere on the stage can make a
-   * choice illegal while the dialog is holding it — and the schema's own
+   * on its own: the PROTOCOL is read live, so a collaborator can make a choice
+   * illegal while the dialog is holding it — and the schema's own
    * role-conflict rule would then refuse the whole stage, against a path
    * rather than against the control the researcher has to fix.
+   *
+   * Only a collaborator, which is why the refusal is worded for a conflict
+   * elsewhere in the protocol and never for one on this stage: this stage's
+   * own unvalidated picks are the researcher's draft, and the dialog holding
+   * this row is what stops them changing it while the row is open.
    */
   const beforeSave = useCallback(
     (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
@@ -310,24 +311,55 @@ function ComposerFormRows({
         // conflicting is never refused for a conflict this edit did not make.
         originalVariableId: asText(context.openedOn[VARIABLE_FIELD]) ?? '',
         hasConflictingUse: (candidate) =>
-          draftUnvalidated.has(candidate) ||
           hasUnvalidatedUse(roleMap, subject, candidate),
         allVariables: variables,
-        // Where the other writer IS decides what the researcher is told, and
-        // it is the only thing they can act on: a control on this stage is
-        // behind the dialog, and a stage elsewhere in the protocol is not.
-        message: draftUnvalidated.has(variable)
-          ? (variableName: string) =>
-              createMessageError(messages.unvalidatedOnThisStageRefusal, {
-                variableName,
-              })
-          : unvalidatedElsewhereMessage,
+        message: unvalidatedElsewhereMessage,
       });
-      return issue === undefined
-        ? { row }
-        : { refused: { fieldErrors: { [VARIABLE_FIELD]: issue } } };
+      if (issue !== undefined) {
+        return { refused: { fieldErrors: { [VARIABLE_FIELD]: issue } } };
+      }
+
+      /**
+       * The pairing, judged against the attribute's CURRENT type.
+       *
+       * The control follows the attribute, but only while the researcher is
+       * the one moving it: the effect that re-pairs them watches the row's own
+       * pick, and a collaborator retyping the attribute underneath the open
+       * row does not move that. The control list re-derives, the select is
+       * left showing its placeholder, and the row goes on holding a control
+       * that cannot ask for the attribute — a pairing
+       * `validateComposerFieldComponents` refuses, reported against a path in
+       * the saved protocol rather than against the control to change.
+       *
+       * Refused unconditionally rather than only for a pairing this edit
+       * broke, which is the opposite of the rule above it: the offending value
+       * is IN this dialog, so the researcher can act on it here. Skipped for
+       * an attribute the codebook no longer defines, which the schema skips
+       * too — the reference pass owns that error, and this row cannot resolve
+       * it.
+       */
+      const attribute = variables[variable];
+      const component = asText(row[COMPONENT_FIELD]);
+      const unpaired =
+        attribute !== undefined &&
+        component !== undefined &&
+        !controlsForType(attribute.type).some(
+          ({ value }) => value === component,
+        );
+      return unpaired
+        ? {
+            refused: {
+              fieldErrors: {
+                [COMPONENT_FIELD]: intl.formatMessage(
+                  messages.staleControlRefusal,
+                  { attributeName: attribute.name },
+                ),
+              },
+            },
+          }
+        : { row };
     },
-    [draftUnvalidated, intl, roleMap, rows, subject, variables],
+    [intl, roleMap, rows, subject, variables],
   );
 
   const rowList = useMemo<RowListConfig>(
@@ -337,7 +369,7 @@ function ComposerFormRows({
       addTitle,
       editTitle,
       formId,
-      ...(name === undefined ? {} : { name }),
+      name,
       beforeSave,
       normalize: normalizeComposerField,
     }),

@@ -145,7 +145,7 @@ export function sourceStageNodeType(
 /**
  * The attributes the source pedigree actually RECORDS about a family member.
  *
- * A disease mapping only reads: it colours the family tree from an attribute
+ * A disease mapping only reads: it marks the family tree from an attribute
  * the interview has already written. The Family Pedigree writes a boolean onto
  * a family member in exactly one place — a nomination prompt, where the
  * participant is asked who the question applies to and everyone they pick is

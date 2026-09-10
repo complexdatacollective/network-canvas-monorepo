@@ -1,6 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { unvalidatedElsewhereMessage } from '../../../codebook/variableValidation.ts';
+import { readMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   addPersonVariable,
@@ -8,8 +10,10 @@ import {
   composerHolding,
   edgeFormFieldsOf,
   edgesOf,
+  highlightInASociogram,
   nodeFormFieldsOf,
   openRow,
+  retypePersonVariable,
 } from './composerFixtures.tsx';
 
 const KNOWS_ENTRY = {
@@ -118,12 +122,15 @@ describe('what a network composer lets the participant build', () => {
     );
 
     const saved = await harness.submit();
-    const entries = edgesOf(saved?.stageDocument ?? {});
-    expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({
-      subject: { entity: 'edge', type: 'knows' },
-    });
-    expect(typeof entries[0]?.id).toBe('string');
+    // Read whole rather than matched: a form key on an entry nobody has asked
+    // a question of yet is a configured form holding nothing, which is not
+    // what "the participant may draw this" means.
+    expect(edgesOf(saved?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        subject: { entity: 'edge', type: 'knows' },
+      },
+    ]);
   });
 
   /**
@@ -146,6 +153,32 @@ describe('what a network composer lets the participant build', () => {
     // The dialog stays open holding the draft, so the researcher can change it
     // rather than losing what they entered.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * A row the researcher opens and leaves alone saves on the first Save.
+   *
+   * The dialog seeds every field from the row document, so a field restating
+   * what the document already holds has nothing to add — and one restating it
+   * as a fresh object re-registers itself on every render, which marks the
+   * untouched row dirty and drops the submission the researcher just made.
+   */
+  it('closes on the first Save when an existing connection type is unchanged', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ edges: [KNOWS_ENTRY] }),
+    );
+
+    const dialog = await openRow(harness, 'Edit connection type');
+    // The row opens on what it holds, which is the whole of what a save
+    // unchanged has to put back.
+    expect(dialog.getByRole('radio', { name: 'knows' })).toBeChecked();
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const saved = await harness.submit();
+    expect(edgesOf(saved?.stageDocument ?? {})).toEqual([KNOWS_ENTRY]);
   });
 
   /**
@@ -186,21 +219,17 @@ describe('what a network composer lets the participant build', () => {
     );
     // The question names what is going, in the list's own noun.
     expect(
-      await screen.findByRole('dialog', {
-        name: 'Delete this connection type?',
-      }),
+      await screen.findByText('Delete this connection type?'),
     ).toBeInTheDocument();
     await harness.user.click(
       await screen.findByRole('button', { name: 'Cancel' }),
     );
 
-    // The confirmation is what has to be named here: the row's own control and
-    // the dialog's confirm button both read "Delete connection type", so the
-    // dialog going is the only thing a button query could not tell apart from
-    // the row surviving — which is the other half of the answer.
+    // The row's own control and the confirmation's read the same now, so it is
+    // the question that says the confirmation went — the row survives it.
     await waitFor(() =>
       expect(
-        screen.queryByRole('dialog', { name: 'Delete this connection type?' }),
+        screen.queryByText('Delete this connection type?'),
       ).not.toBeInTheDocument(),
     );
     expect(
@@ -322,11 +351,17 @@ describe('what a network composer lets the participant build', () => {
     );
 
     const saved = await harness.submit();
-    expect(nodeFormFieldsOf(saved?.stageDocument ?? {})[0]).toMatchObject({
-      variable: 'composerName',
-      component: 'TextArea',
-      label: 'Who?',
-    });
+    // Read whole: a hint switch the researcher never touched is written by its
+    // absence, and a field carrying `showValidationHints: false` says nothing
+    // its absence did not already say.
+    expect(nodeFormFieldsOf(saved?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: 'composerName',
+        component: 'TextArea',
+        label: 'Who?',
+      },
+    ]);
     // And the codebook is untouched: the same attribute goes on being a single
     // line box wherever else the protocol asks for it.
     expect(
@@ -355,6 +390,50 @@ describe('what a network composer lets the participant build', () => {
     ).not.toBeInTheDocument();
     // And something nothing on this stage claims still is, so the case is
     // about the grouping rather than about an empty list.
+    expect(dialog.getByRole('option', { name: 'age' })).toBeInTheDocument();
+  });
+
+  /**
+   * And the grouping picked in THIS edit, which nothing has saved yet: the
+   * row's picker reads the stage form as well as the protocol, so an attribute
+   * the researcher chose as the grouping a moment ago is already out of the
+   * list a form field is chosen from — before either half of the conflict
+   * reaches the protocol for the schema to refuse.
+   */
+  it('stops offering a grouping attribute chosen in this edit', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ nodeForm: { fields: [] } }),
+    );
+    // An attribute NO stage in the protocol claims, so the only thing that can
+    // take it out of the form's list is the pick made here. The fixture's two
+    // categorical attributes are each claimed by a bin stage already, which
+    // would leave the case passing whether the grouping was picked or not.
+    addPersonVariable(harness, 'circle', {
+      name: 'circle',
+      type: 'categorical',
+      options: [
+        { label: 'Inner', value: 'inner' },
+        { label: 'Outer', value: 'outer' },
+      ],
+    });
+
+    const grouping = await screen.findByRole('combobox', {
+      name: 'Grouping attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(grouping).getByRole('option', { name: 'circle' }),
+      ).toBeInTheDocument(),
+    );
+    await harness.user.selectOptions(grouping, 'circle');
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute field');
+    expect(
+      dialog.queryByRole('option', { name: 'circle' }),
+    ).not.toBeInTheDocument();
+    // And something nothing on this stage claims still is, so the case is
+    // about the pick rather than about an empty list.
     expect(dialog.getByRole('option', { name: 'age' })).toBeInTheDocument();
   });
 
@@ -466,6 +545,283 @@ describe('what a network composer lets the participant build', () => {
       ).toHaveProperty('selected', true),
     );
   });
+
+  /**
+   * A composer's list is the only place a researcher meets connection types
+   * while building one, so a protocol with none — or none of the kind this
+   * study needs — would otherwise send them to the codebook and back with the
+   * stage half-configured. Architect's own composer has always offered this.
+   */
+  it('creates a connection type without leaving the stage, and draws it', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create a new connection type',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      'livesWith',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    // In the codebook, because that is where a type lives — under the id the
+    // HOST minted, which is the id the stage then has to be naming.
+    const created = Object.entries(harness.hostCodebook().edge ?? {}).find(
+      ([, definition]) => definition.name === 'livesWith',
+    );
+    expect(created).toBeDefined();
+    // ...and drawable here, because that is what the researcher asked for:
+    // finding it in a list that has just grown is not the answer.
+    const saved = await harness.submit();
+    expect(edgesOf(saved?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        subject: { entity: 'edge', type: created?.[0] },
+      },
+    ]);
+  });
+
+  /**
+   * Node and edge types share one namespace, so a connection judged against
+   * the edge names alone could be given a node type's name — and the refusal
+   * would arrive from the protocol schema after the researcher had finished
+   * the dialog, with no name field for it to sit under.
+   */
+  it('refuses a connection-type name a node type already uses', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Create a new connection type',
+      }),
+    );
+    await harness.user.type(
+      await screen.findByRole('textbox', { name: 'Edge type name' }),
+      'Person',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save entity' }),
+    );
+
+    expect(
+      await screen.findByText('A type named "Person" already exists.'),
+    ).toBeInTheDocument();
+    expect(
+      Object.values(harness.hostCodebook().edge ?? {}).map(({ name }) => name),
+    ).toEqual(['family_edge', 'knows']);
+  });
+});
+
+/**
+ * A form field collects its answer through the codebook's own rules, so it may
+ * not record an attribute something else writes around them.
+ *
+ * The row's picker enforces that by never offering such an attribute, and the
+ * protocol is read live: a collaborator turning the attribute into an
+ * unvalidated write while the dialog is open drops it from the option list and
+ * leaves the pick sitting in the row. Nothing then refused it, so Save
+ * committed a field the protocol reports as a writer conflict.
+ */
+describe('an attribute another stage starts writing mid-edit', () => {
+  it('refuses the field rather than closing on the conflict', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute field');
+    const attribute = dialog.getByRole('combobox', { name: 'Attribute' });
+    // The fixture's marking prompt already claims `highlighted`, so the picker
+    // is not offering it — which is what makes the same picker offering it a
+    // moment later the collaborator's change ARRIVING rather than a guess.
+    expect(
+      within(attribute).queryByRole('option', { name: 'highlighted' }),
+    ).toBeNull();
+    await harness.user.selectOptions(attribute, 'flagged');
+
+    highlightInASociogram(harness, 'flagged');
+    // Waited for rather than assumed: a save clicked before the change lands
+    // is refused by nothing, which is the defect this test exists for. The
+    // picker goes on offering `flagged` throughout — a picker that dropped the
+    // value the row is holding would blank the control and write the blank
+    // over the reference the researcher has to resolve — so the row's own gate
+    // is the only thing left that can refuse it.
+    await within(attribute).findByRole('option', { name: 'highlighted' });
+    expect(
+      within(attribute).getByRole('option', { name: 'flagged' }),
+    ).toBeInTheDocument();
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    // The dialog staying open IS the refusal, and the reason is the one the
+    // codebook editor gives for the same conflict — read back through the same
+    // decode the render site uses, because it travels encoded on a
+    // plain-string contract.
+    await dialog.findByText(
+      readMessage(unvalidatedElsewhereMessage('flagged')),
+    );
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * And the row that ARRIVED on such an attribute saves again untouched.
+   *
+   * The gate judges the pick this edit made against the pick the row opened
+   * on, so a conflict the researcher did not make here is reported against the
+   * protocol rather than trapped in this dialog. Refused, a field authored
+   * before another stage claimed its attribute could never have anything else
+   * about it changed — the researcher would have to delete it to edit it.
+   */
+  it('saves a field that arrived on such an attribute, untouched', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            { id: 'field-1', variable: 'highlighted', component: 'Boolean' },
+          ],
+        },
+      }),
+    );
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const saved = await harness.submit();
+    expect(nodeFormFieldsOf(saved?.stageDocument ?? {})[0]).toEqual({
+      id: 'field-1',
+      variable: 'highlighted',
+      component: 'Boolean',
+    });
+  });
+});
+
+/**
+ * The pairing a composer field carries is judged against the attribute as the
+ * protocol holds it NOW.
+ *
+ * The control follows the attribute, but only while the researcher is the one
+ * changing it: the effect that re-pairs them watches the row's own pick, and a
+ * collaborator retyping the attribute underneath the open row does not move
+ * it. The control list re-derives and the row goes on holding a control that
+ * cannot ask for the attribute — a pairing `validateComposerFieldComponents`
+ * refuses, reported against a path in the saved protocol rather than against
+ * the control the researcher has to change.
+ */
+describe('an attribute a collaborator retypes mid-edit', () => {
+  it('refuses a control that can no longer ask for it', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      'age',
+    );
+    const control = dialog.getByRole('combobox', { name: 'Input control' });
+    // A number attribute arrives paired with the one control that can ask for
+    // a number, which is what makes the pairing below the collaborator's doing.
+    await waitFor(() => expect(control).toHaveValue('Number'));
+
+    retypePersonVariable(harness, 'age', 'text');
+    // Waited for rather than assumed: a save clicked before the change lands
+    // is refused by nothing, which is the defect this test exists for. What
+    // arrives is the list of controls a text attribute may be asked with — the
+    // row's own `Number` is not among them, so the select has nothing to show.
+    await within(control).findByRole('option', { name: 'Text input' });
+    expect(
+      within(control).queryByRole('option', { name: 'Number input' }),
+    ).toBeNull();
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    // On the control rather than above the fields: it is the control the
+    // researcher has to change, and a refusal that named no control would
+    // leave them looking for it.
+    await waitFor(() =>
+      expect(control).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(
+      dialog.getByText(/cannot be asked for with this input control/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    // Changed to a control the attribute CAN be asked with, the field saves —
+    // and what reaches the stage is that control rather than the stale one.
+    await harness.user.selectOptions(control, 'Text');
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = await harness.submit();
+    expect(nodeFormFieldsOf(saved?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: 'age',
+        component: 'Text',
+      },
+    ]);
+  });
+});
+
+/**
+ * What a valid answer looks like, shown to the participant beneath the field.
+ *
+ * Off is the schema's own default, so it is written by the key's absence: a
+ * field stamped `showValidationHints: false` says nothing its absence did not
+ * already say, and every field of every form would carry it.
+ */
+describe('validation hints on a composer form field', () => {
+  const fieldOn = (variable: string) =>
+    composerHolding({
+      nodeForm: {
+        fields: [{ id: 'field-1', variable, component: 'Number' }],
+      },
+    });
+
+  it('records them being switched on, and takes the key away again', async () => {
+    const harness = renderStageEditor(fieldOn('age'));
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(
+      dialog.getByRole('switch', { name: 'Show validation hints' }),
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const on = await harness.submit();
+    expect(nodeFormFieldsOf(on?.stageDocument ?? {})[0]).toEqual({
+      id: 'field-1',
+      variable: 'age',
+      component: 'Number',
+      showValidationHints: true,
+    });
+
+    const back = await openRow(harness, 'Edit form field');
+    await harness.user.click(
+      back.getByRole('switch', { name: 'Show validation hints' }),
+    );
+    await harness.user.click(back.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const off = await harness.submit();
+    expect(nodeFormFieldsOf(off?.stageDocument ?? {})[0]).toEqual({
+      id: 'field-1',
+      variable: 'age',
+      component: 'Number',
+    });
+  });
 });
 
 describe('what a composer field’s control accepts', () => {
@@ -516,6 +872,38 @@ describe('what a composer field’s control accepts', () => {
     expect(
       harness.hostCodebook().node?.person?.variables?.[DATE_ATTRIBUTE],
     ).toMatchObject({ parameters: { type: 'full' } });
+  });
+
+  /**
+   * A window with no dates in it is a control the participant can answer
+   * nothing with, and the protocol schema refuses it — so the field says so
+   * where it was written rather than letting the row close on it.
+   *
+   * Against the date that ENDS the window, which is the control the researcher
+   * has to change, and in this package's own words: the schema's sentence
+   * names a control and two keys, none of them on screen, and is hard-coded
+   * English no catalog translates.
+   */
+  it('refuses a window that ends before it starts, against the date that ends it', async () => {
+    const harness = openWithADate();
+    await screen.findByText(DATE_ATTRIBUTE);
+
+    const dialog = await openRow(harness, 'Edit form field');
+    fireEvent.change(dialog.getByLabelText('Latest date'), {
+      target: { value: '2019-01-01' },
+    });
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    const latest = dialog
+      .getByLabelText('Latest date')
+      .closest('[data-field-name]') as HTMLElement;
+    expect(
+      await within(latest).findByText(
+        'The latest date cannot be earlier than the earliest date.',
+      ),
+    ).toBeVisible();
+    // The row is still on screen holding the draft, rather than committed.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   /**

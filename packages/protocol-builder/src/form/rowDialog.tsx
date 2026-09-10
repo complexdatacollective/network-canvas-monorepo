@@ -178,16 +178,8 @@ export type RowListConfig = Readonly<{
    * The name the list is mounted under, for a control inside the dialog asking
    * what the stage would hold if this row were saved — see
    * {@link EditedRowScope}.
-   *
-   * Left out by a list whose place in the stage document is reached through a
-   * POSITION rather than a key: a network composer's connection forms live at
-   * `edges.<n>.fields`, and the section mounts each of them as an unconnected
-   * control writing back through the one field `edges` owns, precisely so that
-   * a removed entry's questions cannot be replayed out of a value parked at its
-   * old index. There is no stable path to give, and `safeKeyPath` would refuse
-   * an index-bearing one anyway — so the scope is absent rather than wrong.
    */
-  name?: string;
+  name: string;
   /**
    * Opens the row on controls its saved shape does not name.
    *
@@ -460,7 +452,7 @@ export function RowDialog({
       style={{ borderRadius: 'var(--radius)' }}
     >
       <RowFields
-        {...(name === undefined ? {} : { name })}
+        name={name}
         row={session.row}
         {...(session.editIndex === undefined
           ? {}
@@ -486,7 +478,7 @@ function RowFields({
   formId,
   Editor,
 }: Readonly<{
-  name?: string;
+  name: string;
   row: RowValues;
   editIndex?: number;
   formId: string;
@@ -508,7 +500,7 @@ function RowFields({
    * uses it. See {@link EditedRowScope}.
    */
   const editedRow = useMemo<EditedRowScope | null>(() => {
-    if (name === undefined || storeApi === undefined) return null;
+    if (storeApi === undefined) return null;
     const listPath = safeKeyPath(name);
     if (listPath === undefined) return null;
     return {

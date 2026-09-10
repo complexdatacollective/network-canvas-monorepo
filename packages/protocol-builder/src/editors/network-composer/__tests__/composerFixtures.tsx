@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -32,6 +32,8 @@ const composerSections = (
 );
 
 const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
+
+const SOCIOGRAM_SECTION = sectionId({ kind: 'stage', stageId: 'sociogram-1' });
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -133,5 +135,86 @@ export const addPersonVariable = (
         variables: { ...variables, [variableId]: variable },
       },
     },
+  });
+};
+
+/**
+ * One of this type's attributes given a different kind of answer, put there by
+ * a collaborator while this editor is open.
+ *
+ * The protocol is read live, so the attribute a row is recording into can stop
+ * being the kind the control that row names knows how to ask for — which is a
+ * pairing the protocol schema refuses outright.
+ */
+export const retypePersonVariable = (
+  harness: StageEditorHarness,
+  variableId: string,
+  type: string,
+): void => {
+  const section = harness.protocolSections()[PERSON_SECTION];
+  if (section === undefined) {
+    throw new Error('the fixture protocol has no person node type');
+  }
+  const variables = isRecord(section.variables) ? section.variables : {};
+  const held = variables[variableId];
+  if (!isRecord(held)) {
+    throw new Error(`"person" has no "${variableId}" attribute to retype.`);
+  }
+  if (held.type === type) {
+    throw new Error(
+      `"person"’s "${variableId}" is already a "${type}" attribute, so retyping it proves nothing.`,
+    );
+  }
+  harness.receiveCodebookUpdate({
+    node: {
+      person: {
+        ...section,
+        variables: { ...variables, [variableId]: { ...held, type } },
+      },
+    },
+  });
+};
+
+/**
+ * Another stage in the protocol starting to WRITE one of this type's
+ * attributes without the codebook's rules running, put there by a
+ * collaborator while this editor is open.
+ *
+ * A sociogram prompt that allows highlighting stamps its attribute onto every
+ * node the participant taps, which is the opposite writer class from a form
+ * field — so the composer's role map has to see it arrive. Written as a
+ * collaborator's edit because that is what it is: the protocol is read live,
+ * and this is the only way the conflict can appear while a row dialog is
+ * holding a pick the picker offered a moment ago.
+ */
+export const highlightInASociogram = (
+  harness: StageEditorHarness,
+  variableId: string,
+): void => {
+  const stage = harness.protocolSections()[SOCIOGRAM_SECTION];
+  if (stage === undefined) throw new Error('the fixture has no sociogram');
+  const prompts = Array.isArray(stage.prompts) ? stage.prompts : [];
+  // The fixture's own marking prompt, repointed rather than a new prompt
+  // appended: what makes this a conflict is the attribute, and the prompt
+  // around it stays a prompt the schema already accepts.
+  const marking = prompts.findIndex(
+    (prompt) =>
+      isRecord(prompt) &&
+      isRecord(prompt.highlight) &&
+      prompt.highlight.allowHighlighting === true,
+  );
+  const held = prompts[marking];
+  if (!isRecord(held)) {
+    throw new Error('the fixture sociogram has no marking prompt');
+  }
+  const updated: SectionDoc = {
+    ...stage,
+    prompts: prompts.with(marking, {
+      ...held,
+      highlight: { allowHighlighting: true, variable: variableId },
+    }),
+  };
+  act(() => {
+    harness.host.store.applyAsCollaborator(SOCIOGRAM_SECTION, updated);
   });
 };

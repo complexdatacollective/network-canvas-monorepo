@@ -28,20 +28,22 @@ export type NodeLayoutSectionProps = Readonly<{
    */
   manualDescription?: MessageDescriptor;
   /**
-   * The sentence under the automatic-mode card, on the same terms.
+   * The same, for the automatic-mode card.
    *
-   * The force simulation is one implementation, but what it promises differs
-   * by interface. It runs over the nodes the interface hands it, and a
-   * narrative stage hands it only the nodes the preset's attribute holds a
-   * position for — `Narrative.tsx` simulates `nodesWithLayout` in either mode,
-   * where `Sociogram.tsx` switches to `allNodes` in automatic mode and draws
-   * the unplaced ones in. Moving a node by hand is unconditional on a
-   * sociogram, while a narrative stage passes `behaviours.allowRepositioning`
-   * down to the canvas, so the "Allow moving nodes" switch withdraws it in
-   * both modes. And a network composer treats automatic layout as where the
-   * stage STARTS rather than as how it arranges nodes: the participant
-   * switches it off and on for themselves, which the shared sentence — a
-   * simulation the stage runs when it opens — does not say.
+   * The force simulation is one implementation, but two things about it differ
+   * by interface, and both are things the card promises. It runs over the
+   * nodes the interface hands it, and a narrative stage hands it only the
+   * nodes the preset's attribute holds a position for — `Narrative.tsx`
+   * simulates `nodesWithLayout` in either mode, where `Sociogram.tsx` switches
+   * to `allNodes` in automatic mode and draws the unplaced ones in. And moving
+   * a node by hand is unconditional on a sociogram, while a narrative stage
+   * passes `behaviours.allowRepositioning` down to the canvas, so the "Allow
+   * moving nodes" switch withdraws it in both modes.
+   *
+   * A network composer needs one for a different reason: there, automatic
+   * layout is where the stage STARTS and the participant switches it off and
+   * on for themselves, which the shared sentence — a simulation the stage runs
+   * when it opens — does not say.
    */
   automaticDescription?: MessageDescriptor;
 }>;

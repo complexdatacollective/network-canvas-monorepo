@@ -383,7 +383,10 @@ function StageEditorFormBody({
   // tells it when either changes: a component reordering its sections, or
   // revealing a field, re-renders itself and not the outline beside it.
   // Watching the form's own subtree is what closes that gap — text included,
-  // because a field's label is what the outline calls it in a problem.
+  // because a field's label is what the outline calls it in a problem, and
+  // `aria-invalid`, because a control that decides its own validity against
+  // the rest of the protocol can flip it without anything else on the page
+  // moving.
   useEffect(() => {
     const form = formRef.current;
     if (form === null) return;
@@ -392,6 +395,8 @@ function StageEditorFormBody({
       childList: true,
       subtree: true,
       characterData: true,
+      attributes: true,
+      attributeFilter: ['aria-invalid'],
     });
     return () => observer.disconnect();
   }, [outline]);

@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
 
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import {
+  formatMessageError,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -24,6 +27,7 @@ import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import {
+  diseaseRowIssue,
   diseaseVariableOptions,
   useDiseaseVariableIndexes,
 } from './diseaseVariables.ts';
@@ -248,41 +252,73 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
 /**
  * How one disease reads in the list when its dialog is closed.
  *
- * A row whose attribute the source pedigree does not record carries the
- * problem beside its name. The list's own validation is what REFUSES the save;
- * this is what says which row is at fault — the refusal names them, but the
- * researcher acts on the row, and the badge is there the moment a collaborator
- * removes the nomination prompt rather than at the next submit.
+ * Two things can be wrong with a row that nobody is currently editing, and the
+ * row is where both are said.
+ *
+ * The source pedigree no longer recording the attribute is a badge beside the
+ * name: the list's own validation REFUSES that save and names the diseases, so
+ * what the row adds is which one to act on, the moment a collaborator removes
+ * the nomination prompt rather than at the next submit.
+ *
+ * The attribute being GONE, re-typed, or claimed by one of the pedigree's own
+ * slots is reported in full here and nowhere else. Those are the codebook's
+ * facts rather than this stage's, so they are reported and the stage still
+ * saves — see {@link diseaseRowIssue}. The row is marked invalid as well as
+ * described, so it does not read as an acceptable mapping while carrying the
+ * sentence that says it is not.
  */
 export function DiseasePreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
+  const { roleMap, slotMap } = useDiseaseVariableIndexes();
+  const subject = useDiseaseSubject();
   const sourceStageId = useStageValue(SOURCE_FIELD);
   const marksNobody = diseaseMarksNobody(
     item,
     sourceStageRecordedVariables(protocolContext, sourceStageId),
   );
+  // Encoded where it is decided and decoded where it is read, like every other
+  // message error: the rule is shared with the dialog, which states it outside
+  // React where there is no formatter to reach.
+  const issue = diseaseRowIssue({
+    context: protocolContext,
+    roleMap,
+    slotMap,
+    subject,
+    sourceStageId,
+    variableId: item.variable,
+  });
   // Narrowed against the palette rather than cast: a stored colour the theme
   // no longer defines loses its swatch, and the row still reads.
   const color = NodeColorSequence.find((candidate) => candidate === item.color);
 
   return (
-    <div className="flex items-center gap-2.5 py-2.5">
-      {color !== undefined && (
-        <span
-          className="inline-block size-4 shrink-0 rounded-full"
-          style={{ background: resolveSwatchColor(color) }}
-          aria-hidden="true"
-        />
-      )}
-      <span>
-        {asString(item.label) ??
-          intl.formatMessage(narrativePedigreeMessages.diseaseUnnamed)}
-      </span>
-      {marksNobody && (
-        <Badge variant="destructive">
-          {intl.formatMessage(narrativePedigreeMessages.diseaseMarksNobody)}
-        </Badge>
+    <div
+      className="flex flex-col gap-1 py-2.5"
+      aria-invalid={issue === undefined ? undefined : true}
+    >
+      <div className="flex items-center gap-2.5">
+        {color !== undefined && (
+          <span
+            className="inline-block size-4 shrink-0 rounded-full"
+            style={{ background: resolveSwatchColor(color) }}
+            aria-hidden="true"
+          />
+        )}
+        <span>
+          {asString(item.label) ??
+            intl.formatMessage(narrativePedigreeMessages.diseaseUnnamed)}
+        </span>
+        {marksNobody && (
+          <Badge variant="destructive">
+            {intl.formatMessage(narrativePedigreeMessages.diseaseMarksNobody)}
+          </Badge>
+        )}
+      </div>
+      {issue !== undefined && (
+        <p className="text-destructive text-sm">
+          {formatMessageError(issue, intl) ?? issue}
+        </p>
       )}
     </div>
   );
