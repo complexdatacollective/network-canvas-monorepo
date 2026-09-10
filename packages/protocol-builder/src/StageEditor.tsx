@@ -63,6 +63,12 @@ export type StageEditorProps = Readonly<{
   actions?: StageEditorActions;
   /** The DOM id of the stage form, when the host wants to name it. */
   formId?: string;
+  /**
+   * Which edit this is, when the host wants to name it. One is minted for
+   * every editor otherwise, which is what keeps a second editor open in the
+   * same session from reaching this one's imported files.
+   */
+  editId?: string;
   /** Told which section the stage landed in, once a save has been accepted. */
   onSaved?: (sectionId: ProtocolSectionId) => void;
 }>;
@@ -79,10 +85,23 @@ export default function StageEditor({
   registry,
   actions,
   formId,
+  editId,
   onSaved,
 }: StageEditorProps) {
   return (
-    <ResourceClientProvider>
+    // Keyed by which stage this is, because a host changes `target` on the
+    // element it already has: Studio selects another screen in its outline
+    // and React keeps this provider, its edit id and everything staged under
+    // it. The files the researcher imported while writing the FIRST stage
+    // would then be promoted by the second stage's save — committed into the
+    // protocol's manifest with nothing referring to them — and the discard
+    // that ends an edit, which only runs on unmount, would never run for the
+    // stage they were imported for. Remounting is what ends that edit: its
+    // staging is discarded and the next stage opens with nothing staged.
+    <ResourceClientProvider
+      key={editKey(target)}
+      {...(editId === undefined ? {} : { editId })}
+    >
       <StageEditSession
         target={target}
         {...(formId === undefined ? {} : { formId })}
@@ -95,6 +114,19 @@ export default function StageEditor({
       </StageEditSession>
     </ResourceClientProvider>
   );
+}
+
+/**
+ * Which stage an edit is of, for as long as the host keeps it open.
+ *
+ * Read out of the target's own values rather than taken from its identity: a
+ * host writes the target inline, so the object is a different one on every
+ * render and would remount the edit continuously. A stage being ADDED is
+ * keyed by its interface alone — its position may move while the researcher
+ * composes it, and moving it is not opening a different edit.
+ */
+function editKey(target: StageEditTarget): string {
+  return 'sectionId' in target ? target.sectionId : `new:${target.stageType}`;
 }
 
 function OpenStageEditor({

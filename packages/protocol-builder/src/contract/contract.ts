@@ -8,6 +8,7 @@ import {
   promotionErrors,
   protocolErrors,
   refactorErrors,
+  referenceErrors,
   shapeErrors,
 } from './errors.ts';
 import {
@@ -90,16 +91,22 @@ export const contract = {
    * Writes the whole section as one revision, with the staged resources it
    * names promoted into the same one.
    *
-   * Three refusals: the caller does not hold the lock, the document is not
-   * shaped like this section, and the resources it asked to promote cannot be
-   * committed. None of them writes anything — a section and the bytes it
-   * points at are committed together or not at all. A draft that is invalid
-   * across sections — a stage naming a variable a collaborator has just
-   * deleted — is written, because drafts tolerate transient invalidity and
-   * validity is enforced at publication.
+   * Four refusals: the caller does not hold the lock, the document is not
+   * shaped like this section, the resources it asked to promote cannot be
+   * committed, and — for a submit that promotes — an editor holds the asset
+   * manifest the promotion writes. None of them writes anything: a section and
+   * the bytes it points at are committed together or not at all. A draft that
+   * is invalid across sections — a stage naming a variable a collaborator has
+   * just deleted — is written, because drafts tolerate transient invalidity
+   * and validity is enforced at publication.
+   *
+   * The write is made once for its `requestId`: a retry after a lost answer is
+   * told what that attempt wrote — the revision and what it promoted — rather
+   * than writing again.
    */
   submit: base
     .errors(lockErrors)
+    .errors(lockedSectionErrors)
     .errors(shapeErrors)
     .errors(promotionErrors)
     .input(SubmitInputSchema)
@@ -108,12 +115,27 @@ export const contract = {
   /**
    * Creates a section and registers its pointer — a stage's place in the stage
    * order — in the same revision. The host mints the id and serialises the
-   * call, so it needs no lock. A singleton the protocol already has —
-   * `codebookEgo` — is refused rather than overwritten.
+   * call, so it needs no lock of its own, and refuses while an editor holds
+   * the pointer section, whose whole-section draft would take the new pointer
+   * straight back out. A singleton the protocol already has — `codebookEgo` —
+   * is refused rather than overwritten.
+   *
+   * It takes `promote` on the same terms as `submit`, and for the reason a
+   * submit cannot cover: a stage being ADDED can carry a file the researcher
+   * imported while composing it, and there is no earlier revision of that
+   * stage to have promoted it with. The section, its pointer and the manifest
+   * entries are one revision, so a promotion that cannot be committed refuses
+   * the create outright and writes nothing.
+   *
+   * A create is made once for its `requestId`, whether or not it promotes
+   * anything: it mints an id, so a retry that was not recognised would leave
+   * the protocol holding the stage twice and tell the client about only one.
    */
   create: base
     .errors(shapeErrors)
     .errors(existenceErrors)
+    .errors(lockedSectionErrors)
+    .errors(promotionErrors)
     .input(CreateInputSchema)
     .output(CreateResultSchema),
 
@@ -126,9 +148,17 @@ export const contract = {
    * assembled. It takes no lock of its own and refuses while any editor holds
    * either section, including one in this session whose draft would put the
    * stage back.
+   *
+   * A stage other stages depend on is refused naming them, not swept: a skip
+   * destination or the pedigree a narrative describes is a decision made about
+   * that other stage, and the refactors strip references only where a codebook
+   * dialog is the researcher deciding the thing is gone. The order pointer is
+   * not such a dependency — it is how the protocol holds the stage, and this
+   * call rewrites it.
    */
   delete: base
     .errors(lockedSectionErrors)
+    .errors(referenceErrors)
     .input(DeleteSectionInputSchema)
     .output(SectionChangeResultSchema),
 
@@ -166,6 +196,11 @@ export const contract = {
    * separate procedure would make reachable. Secret material never comes back
    * out: staging one yields the asset id a field references and an opaque
    * handle the submit's promotion resolves.
+   *
+   * Every one of them names the edit it is made for, and reaches no other
+   * edit's staging — a session with a codebook dialog open over a stage editor
+   * is two edits, and either cancel would otherwise discard what the other was
+   * about to submit.
    */
   resources: {
     list: base

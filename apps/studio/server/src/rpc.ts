@@ -5,6 +5,7 @@ import { AUDIT_FACET_LIMIT, contract } from '@codaco/studio-rpc';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { updateUserLocale } from './account/commands.ts';
+import type { AssetStore } from './assets.ts';
 import {
   acknowledgeAuditAlert,
   AuditAlertError,
@@ -51,15 +52,15 @@ import {
   correlateAuthorizedTeam,
   logOperational,
 } from './observability/logger.ts';
+import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
+import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import {
   addAuditedInformationStage,
-  commitAuditedProtocolSection,
   createAuditedProtocol,
   moveAuditedProtocolStage,
   ProtocolCommandAuthorizationError,
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
-import { createProtocolSyncServer } from './protocol/sync.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
 import { readStudyCounts } from './study/counts.ts';
 import { StudyStore } from './study/store.ts';
@@ -79,6 +80,19 @@ import { roleGrantsTeamAdministration } from './team/roles.ts';
 export type RpcContext = {
   principal: Principal | null;
   requestId: string;
+  /**
+   * The WebSocket this call arrived on, when it arrived on one. This is the
+   * protocol-builder host's presence identity: a colleague's cursor belongs to
+   * a connection and goes when the connection does.
+   */
+  connectionId?: string;
+  /**
+   * The browser tab behind this call, when it named one — see
+   * `@codaco/studio-rpc/client-session`. A protocol-builder lock belongs to
+   * this rather than to the connection, so two tabs of one researcher are two
+   * lock owners and one tab's reconnection is not a third.
+   */
+  clientSessionId?: string;
 };
 
 const os = implement(contract).$context<RpcContext>();
@@ -337,6 +351,8 @@ export function createRpcRouter(
     invitationDeliveryAvailable: boolean;
     bootstrapToken?: string;
     pool?: pg.Pool;
+    protocolBuilder: ProtocolBuilderRuntime;
+    assetStore?: AssetStore;
   },
 ) {
   const {
@@ -625,6 +641,12 @@ export function createRpcRouter(
     // exactly as `studies.get` refuses the study in front of them. Creating a
     // line answers to the same rule from the other side — a line no study owns
     // is reachable only by an Admin or Owner, so only they may make one.
+    protocolBuilder: createProtocolBuilderRouter({
+      auth,
+      runtime: deps.protocolBuilder,
+      ...(pool === undefined ? {} : { pool }),
+      ...(deps.assetStore === undefined ? {} : { assetStore: deps.assetStore }),
+    }),
     protocols: {
       create: os.protocols.create
         .use(requireTeamAdministration)
@@ -663,91 +685,6 @@ export function createRpcRouter(
             },
             sections: draft.sections,
           };
-        }),
-      acquireSection: os.protocols.acquireSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          const syncServer = createProtocolSyncServer(context.tenantDb);
-          const owner = `${context.principal.userId}:${input.clientId}`;
-          const lease = await syncServer.acquire(
-            input.draftId,
-            input.sectionId,
-            owner,
-          );
-          if (!lease) return { mode: 'readOnly' as const };
-
-          let resume: Awaited<ReturnType<typeof syncServer.resume>>;
-          try {
-            resume = await syncServer.resume(input.draftId, owner);
-          } catch (error) {
-            // Acquisition and resume are separate transactions. If the
-            // sequence lookup fails after the lease commits, expire the exact
-            // epoch so a client that never received it cannot block editors.
-            await syncServer
-              .release(input.draftId, input.sectionId, owner, lease.epoch)
-              .catch(() => undefined);
-            throw error;
-          }
-          const lastApplied = resume.lastApplied[input.sectionId];
-          const nextClientSequence =
-            lastApplied?.epoch === lease.epoch
-              ? lastApplied.clientSeq + 1n
-              : 1n;
-          return {
-            mode: 'editable' as const,
-            leaseEpoch: String(lease.epoch),
-            nextClientSequence: String(nextClientSequence),
-          };
-        }),
-      commitSection: os.protocols.commitSection
-        .use(requireProtocol)
-        .handler(({ context, input }) =>
-          handleAuditedProtocolCommand(() =>
-            commitAuditedProtocolSection(
-              {
-                tenantDb: context.tenantDb,
-                principal: context.principal,
-                requestId: context.requestId,
-              },
-              input,
-            ),
-          ),
-        ),
-      renewSection: os.protocols.renewSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          return {
-            renewed: Boolean(
-              await createProtocolSyncServer(context.tenantDb).renew(
-                input.draftId,
-                input.sectionId,
-                `${context.principal.userId}:${input.clientId}`,
-                BigInt(input.leaseEpoch),
-              ),
-            ),
-          };
-        }),
-      releaseSection: os.protocols.releaseSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          await createProtocolSyncServer(context.tenantDb).release(
-            input.draftId,
-            input.sectionId,
-            `${context.principal.userId}:${input.clientId}`,
-            BigInt(input.leaseEpoch),
-          );
         }),
       addInformationStage: os.protocols.addInformationStage
         .use(requireProtocol)

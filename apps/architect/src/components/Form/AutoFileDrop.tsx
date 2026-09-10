@@ -255,7 +255,7 @@ const AutoFileDrop = ({
       const ids: string[] = [];
       for (const file of files) {
         try {
-          const result = await dispatch(importAssetAsync(file)).unwrap();
+          const result = await dispatch(importAssetAsync({ file })).unwrap();
           ids.push(result.id);
           if (result.duplicateCount > 0) {
             void openDialog({

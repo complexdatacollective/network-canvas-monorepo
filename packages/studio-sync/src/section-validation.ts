@@ -93,6 +93,24 @@ export function validateSection(
   };
 }
 
+/**
+ * Everything wrong with a section document on its own: its schema, and for a
+ * stage the id it carries. What a host reports when it refuses a write.
+ */
+export function sectionShapeIssues(
+  id: string,
+  doc: SectionDoc,
+): SectionIssue[] {
+  const result = validateSection(id, doc);
+  const issues = result.success ? [] : [...result.issues];
+  const ref = parseSectionId(id);
+  if (ref.kind === 'stage') {
+    const identity = validateStageSectionIdentity(ref.stageId, doc);
+    if (!identity.success) issues.push(...identity.issues);
+  }
+  return issues;
+}
+
 function validateStageOrderMembership(
   doc: SectionDoc,
   sectionIds: string[],

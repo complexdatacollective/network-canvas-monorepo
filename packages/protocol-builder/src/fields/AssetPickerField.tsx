@@ -12,7 +12,10 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useResourceClient } from '../resources/client.tsx';
-import { downloadResourceContent } from '../resources/components/downloadResourceContent.ts';
+import {
+  downloadResourceContent,
+  resourceDownloadName,
+} from '../resources/components/downloadResourceContent.ts';
 import ResourceBrowserDialog from '../resources/components/ResourceBrowserDialog.tsx';
 import ResourceFailureNotice from '../resources/components/ResourceFailureNotice.tsx';
 import {
@@ -323,17 +326,14 @@ export default function AssetPickerField({
   // renders from, so saving a copy is that URL handed to a link the page
   // clicks. A researcher who asks for the file therefore waits for the same
   // call an image on the card already made, and gets a file named the way the
-  // protocol names the resource.
+  // protocol names the resource — see `resourceDownloadName`.
   const handleDownload = () => {
     if (selectedId === undefined || descriptor === undefined) return;
     setDiscarding(false);
     action.run(
       () => resources.resolvePreview(selectedId),
       (resolved) => {
-        downloadResourceContent(
-          resolved.url,
-          descriptor.source ?? descriptor.name,
-        );
+        downloadResourceContent(resolved.url, resourceDownloadName(descriptor));
         setStatus(
           createMessageError(messages.downloadedAnnouncement, {
             name: descriptor.name,
