@@ -71,18 +71,36 @@ describe('the sections of an anonymisation stage', () => {
   it('refuses passphrase rules whose shortest allowed length exceeds its longest', async () => {
     const harness = openEditor();
 
+    const minimum = await screen.findByRole('spinbutton', {
+      name: /minimum length/i,
+    });
+    await harness.user.clear(minimum);
+    await harness.user.type(minimum, '40');
     const maximum = await screen.findByRole('spinbutton', {
       name: /maximum length/i,
     });
     await harness.user.clear(maximum);
-    await harness.user.type(maximum, '2');
+    await harness.user.type(maximum, '5');
 
     expect(await harness.submit()).toBeNull();
-    expect(
-      await screen.findByText(
-        'The shortest passphrase you allow cannot be longer than the longest one.',
-      ),
-    ).toBeInTheDocument();
+    const refusal =
+      'The shortest passphrase you allow cannot be longer than the longest one.';
+    expect(await screen.findByText(refusal)).toBeInTheDocument();
+    // One sentence, and the translated one. The rule editor's own verdict for
+    // this map is the contradiction analyser's untranslated wording
+    // (`minLength (40) is greater than maxLength (5)`), so it stands down for
+    // the refusal the field is stating rather than adding a second sentence.
+    expect(screen.getAllByText(refusal)).toHaveLength(1);
+    expect(screen.queryByText(/is greater than maxLength/)).toBeNull();
+    // And the control the field marks invalid describes that sentence: the
+    // editor's root carries the field's `aria-invalid`, so dropping the
+    // field's `aria-describedby` left the only refused element on screen
+    // describing nothing at all.
+    const refused = document.querySelector(
+      '[data-field-name="validation"] [aria-invalid="true"]',
+    );
+    expect(refused).not.toBeNull();
+    expect(refused).toHaveAccessibleDescription(new RegExp(refusal));
   });
 
   /**
@@ -139,13 +157,18 @@ describe('the sections of an anonymisation stage', () => {
     expect(
       harness.outline().find((section) => section.title === 'Passphrase rules'),
     ).toEqual({ title: 'Passphrase rules', state: 'Has a problem' });
-    // Twice on screen: the rule editor's own alert at the control, and the
-    // field's error region, which is the one this section writes.
+    // Once on screen. The rule editor states a verdict for itself where it has
+    // no host to state it, but here the field's error region — an `aria-live`
+    // region, beside the control the editor marks invalid — is already saying
+    // this one, so the editor's own alert stands down rather than repeating it.
     expect(
       await screen.findAllByText(
         'Enter a value for "Minimum length", or switch the rule off.',
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum length' }),
+    ).toHaveAttribute('aria-invalid', 'true');
   });
 
   /**

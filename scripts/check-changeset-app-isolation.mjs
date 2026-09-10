@@ -6,7 +6,9 @@
 //
 // It also enforces the bundled-runtime rule: a changeset releasing
 // `@codaco/interview` must release every app that bundles it, because a
-// runtime release no app release carries never reaches participants.
+// runtime release no app release carries never reaches participants — and
+// refuses a changeset naming a workspace with no release path at all, which
+// `changeset version` would happily bump and write a CHANGELOG for.
 import { join } from 'node:path';
 
 import {
@@ -15,6 +17,7 @@ import {
   isMultiProductLaneChangeset,
   missingBundlingApps,
   readChangesets,
+  unreleasedReleases,
 } from './changeset-app-utils.mjs';
 
 const changesets = readChangesets(join(process.cwd(), '.changeset'));
@@ -25,11 +28,15 @@ const multiLaneOffenders = changesets.filter((cs) =>
 const bundlingOffenders = changesets
   .map((cs) => ({ cs, missing: missingBundlingApps(cs) }))
   .filter(({ missing }) => missing.length > 0);
+const unreleasedOffenders = changesets
+  .map((cs) => ({ cs, named: unreleasedReleases(cs) }))
+  .filter(({ named }) => named.length > 0);
 
 if (
   mixedOffenders.length === 0 &&
   multiLaneOffenders.length === 0 &&
-  bundlingOffenders.length === 0
+  bundlingOffenders.length === 0 &&
+  unreleasedOffenders.length === 0
 ) {
   process.exit(0);
 }
@@ -90,6 +97,21 @@ if (bundlingOffenders.length > 0) {
   }
   console.error(
     '\nAdd an entry for each missing app to the listed changeset (usually the same bump type).',
+  );
+}
+
+if (unreleasedOffenders.length > 0) {
+  console.error(
+    'Changesets naming a workspace that is never released — these are not published, not deployed and\n' +
+      'in no gated lane, so versioning one announces a release nobody can install:\n',
+  );
+  for (const { cs, named } of unreleasedOffenders) {
+    console.error(`  .changeset/${cs.id}.md`);
+    console.error(`    never released: ${named.map((r) => r.name).join(', ')}`);
+  }
+  console.error(
+    '\nRemove those entries. A change to one of these packages reaches users through the app or\n' +
+      'package that consumes it, so name that instead when the change is user-visible.',
   );
 }
 

@@ -50,6 +50,17 @@ job uses its matching `CHROMATIC_PROJECT_TOKEN_FRESCO_UI`,
 `CHROMATIC_PROJECT_TOKEN_INTERVIEW`, or
 `CHROMATIC_PROJECT_TOKEN_INTERVIEWER` repository secret.
 
+`build-storybook` therefore runs in CI for those three as Chromatic's upload
+input, and for `@codaco/protocol-builder` — which has no Chromatic project — as
+its own `quality-support` step. Without that step nothing in CI builds that
+Storybook at all: `turbo run build --filter='./packages/*'` skips a package with
+no `build` script, and `test:storybook` serves stories through Vite's dev server
+rather than producing the static bundle. Nor does `test:storybook` read the
+generated docs entries — a CSF file with `tags: ['autodocs']` and no story
+exports is reported as a skipped file and contributes no test — so a Storybook
+whose docs cannot be built is green there. A workspace that gains a Storybook
+and no Chromatic project needs a step too.
+
 Each project's `build-storybook` script must emit `preview-stats.json` with
 Storybook's `--stats-json` option. Its `chromatic` script uploads the prebuilt
 `storybook-static` directory with `--only-changed` and the correct

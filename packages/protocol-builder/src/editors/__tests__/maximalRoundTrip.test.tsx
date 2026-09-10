@@ -4,13 +4,13 @@ import { describe, expect, it, vi } from 'vitest';
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
+import { stageEditorRegistry } from '../../stageEditorRegistry.ts';
+import {
+  loadFixtureStage,
+  type FixtureStageId,
+} from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { alterEdgeFormStageEditor } from '../alter-edge-form/AlterEdgeFormStageEditor.ts';
-import { alterFormStageEditor } from '../alter-form/AlterFormStageEditor.ts';
-import { egoFormStageEditor } from '../ego-form/EgoFormStageEditor.ts';
-import { informationStageEditor } from '../information/InformationStageEditor.ts';
-import { nameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEditor.ts';
+import { schemaKeysFor } from './schemaKeys.ts';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
 vi.mock('../../fields/RichTextField.tsx', () => ({
@@ -66,20 +66,51 @@ type MaximalStage = Readonly<{
   /** Names the case, and is what a failure reports. */
   interfaceName: string;
   type: StageType;
-  registry: Partial<StageEditorRegistry>;
   /** Every key this interface's schema offers, filled in. */
   fields: SectionDoc;
-  /** Something to wait for, so the editor has finished mounting. */
-  settle: () => Promise<unknown>;
+  /**
+   * Something to wait for, so the editor has finished mounting.
+   *
+   * Left out, the stage name control is waited for instead: it is the one
+   * control every interface's editor has, and the outline wait in the body
+   * covers the sections that come after it.
+   */
+  settle?: () => Promise<unknown>;
 }>;
 
 const stageName = () => screen.findByRole('textbox', { name: 'Stage name' });
+
+/**
+ * A maximal stage built from the fixture's own stage of that interface, with
+ * the keys the fixture leaves out filled in here.
+ *
+ * The cases written out in full below came first and are kept that way: they
+ * seed corners the fixture does not have at all. But writing nineteen of them
+ * by hand would be nineteen more configurations to keep true, and the fixture
+ * already holds one plausible configuration per interface that Architect's own
+ * end-to-end suites drive. So the rest start from it and add only what it is
+ * missing — which is a much shorter thing to read, and a much shorter thing to
+ * be wrong about. `hasEverySchemaKey` below holds the result to the schema
+ * either way, so a key added to an interface fails both kinds of case.
+ */
+const fixtureMaximal = (
+  stageId: FixtureStageId,
+  missingFromTheFixture: SectionDoc,
+): SectionDoc => ({
+  ...loadFixtureStage(stageId).fields,
+  ...missingFromTheFixture,
+});
+
+/** What every stage may carry, and no fixture stage does. */
+const EVERY_STAGE = {
+  interviewScript: 'Read this to the participant before you begin.',
+  skipLogic,
+};
 
 const MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'Information',
     type: 'Information',
-    registry: informationStageEditor,
     fields: {
       label: 'Information',
       title: 'Welcome',
@@ -106,7 +137,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'EgoForm',
     type: 'EgoForm',
-    registry: egoFormStageEditor,
     fields: {
       label: 'Ego Form',
       interviewScript: 'Ask about them.',
@@ -129,7 +159,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'AlterForm',
     type: 'AlterForm',
-    registry: alterFormStageEditor,
     fields: {
       label: 'Alter Form',
       interviewScript: 'Ask about each person.',
@@ -154,7 +183,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'AlterEdgeForm',
     type: 'AlterEdgeForm',
-    registry: alterEdgeFormStageEditor,
     fields: {
       label: 'Alter Edge Form',
       interviewScript: 'Ask about each relationship.',
@@ -179,7 +207,6 @@ const MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'NameGenerator',
     type: 'NameGenerator',
-    registry: nameGeneratorStageEditor,
     fields: {
       label: 'Name Generator',
       interviewScript: 'Guidance.',
@@ -220,6 +247,169 @@ const MAXIMAL_STAGES: MaximalStage[] = [
 ];
 
 /**
+ * The other fourteen, from the fixture's own stages plus what they are
+ * missing.
+ *
+ * The gaps are not evenly spread. `filter` is absent from ten of the nineteen
+ * fixture stages and `interviewScript`/`skipLogic` from all of them, so those
+ * three are most of what is added here — and they are exactly the keys a
+ * shared section owns, which is to say the keys an editor is most likely to
+ * leave off its own section list and never notice.
+ */
+const FIXTURE_MAXIMAL_STAGES: MaximalStage[] = [
+  {
+    interfaceName: 'NameGeneratorQuickAdd',
+    type: 'NameGeneratorQuickAdd',
+    fields: fixtureMaximal('name-generator-quick-add-1', {
+      ...EVERY_STAGE,
+      panels: [
+        {
+          id: 'quick-add-panel-1',
+          title: 'People you named earlier',
+          dataSource: 'existing',
+          filter: nodeFilter,
+        },
+      ],
+      behaviours: { minNodes: 1, maxNodes: 6 },
+    }),
+  },
+  {
+    interfaceName: 'NameGeneratorRoster',
+    type: 'NameGeneratorRoster',
+    fields: fixtureMaximal('name-generator-roster-1', EVERY_STAGE),
+  },
+  {
+    interfaceName: 'Sociogram',
+    type: 'Sociogram',
+    fields: fixtureMaximal('sociogram-1', {
+      ...EVERY_STAGE,
+      filter: nodeFilter,
+    }),
+  },
+  {
+    interfaceName: 'NetworkComposer',
+    type: 'NetworkComposer',
+    fields: fixtureMaximal('network-composer-1', {
+      ...EVERY_STAGE,
+      nodeForm: {
+        fields: [
+          {
+            id: 'composer-field-1',
+            variable: 'relationship_to_ego',
+            component: 'Text',
+            label: 'How you know them',
+            hint: 'In a word or two.',
+            showValidationHints: true,
+          },
+        ],
+      },
+      convexHullVariable: 'contactType',
+      behaviours: { automaticLayout: true },
+      edges: [
+        {
+          id: 'composer-edge-1',
+          subject: { entity: 'edge', type: 'knows' },
+          form: {
+            fields: [
+              {
+                id: 'composer-edge-field-1',
+                variable: 'closeness',
+                component: 'LikertScale',
+              },
+            ],
+          },
+        },
+      ],
+    }),
+  },
+  {
+    interfaceName: 'DyadCensus',
+    type: 'DyadCensus',
+    fields: fixtureMaximal('dyad-census-1', {
+      ...EVERY_STAGE,
+      filter: nodeFilter,
+    }),
+  },
+  {
+    interfaceName: 'TieStrengthCensus',
+    type: 'TieStrengthCensus',
+    fields: fixtureMaximal('tie-strength-census-1', {
+      ...EVERY_STAGE,
+      filter: nodeFilter,
+    }),
+  },
+  {
+    interfaceName: 'OneToManyDyadCensus',
+    type: 'OneToManyDyadCensus',
+    fields: fixtureMaximal('one-to-many-dyad-census-1', {
+      ...EVERY_STAGE,
+      filter: nodeFilter,
+    }),
+  },
+  {
+    interfaceName: 'OrdinalBin',
+    type: 'OrdinalBin',
+    fields: fixtureMaximal('ordinal-bin-1', {
+      ...EVERY_STAGE,
+      filter: nodeFilter,
+    }),
+  },
+  {
+    interfaceName: 'CategoricalBin',
+    type: 'CategoricalBin',
+    fields: fixtureMaximal('categorical-bin-1', {
+      ...EVERY_STAGE,
+      filter: nodeFilter,
+    }),
+  },
+  {
+    interfaceName: 'Narrative',
+    type: 'Narrative',
+    fields: fixtureMaximal('narrative-1', {
+      ...EVERY_STAGE,
+      filter: nodeFilter,
+    }),
+  },
+  {
+    interfaceName: 'Geospatial',
+    type: 'Geospatial',
+    fields: fixtureMaximal('geospatial-1', {
+      ...EVERY_STAGE,
+      filter: nodeFilter,
+    }),
+  },
+  {
+    interfaceName: 'FamilyPedigree',
+    type: 'FamilyPedigree',
+    fields: fixtureMaximal('family-pedigree-1', {
+      ...EVERY_STAGE,
+      introScreen: {
+        items: [
+          {
+            id: 'pedigree-intro-1',
+            type: 'text',
+            content: 'We are going to draw your family.',
+          },
+        ],
+      },
+    }),
+  },
+  {
+    interfaceName: 'NarrativePedigree',
+    type: 'NarrativePedigree',
+    fields: fixtureMaximal('narrative-pedigree-1', {
+      ...EVERY_STAGE,
+      showAtRiskStatuses: true,
+    }),
+  },
+  {
+    interfaceName: 'Anonymisation',
+    type: 'Anonymisation',
+    fields: fixtureMaximal('anonymisation-1', EVERY_STAGE),
+  },
+];
+
+/**
  * Every key each interface's schema offers, opened in the real editor and
  * saved without a single edit.
  *
@@ -236,15 +426,51 @@ const MAXIMAL_STAGES: MaximalStage[] = [
  * stages — including its reach into nested keys, which is where a maximal
  * stage has most of its content.
  */
+/** Both kinds of case, as one list: nothing below cares which it is. */
+const EVERY_MAXIMAL_STAGE: MaximalStage[] = [
+  ...MAXIMAL_STAGES,
+  ...FIXTURE_MAXIMAL_STAGES,
+];
+
 describe('a maximal stage of each interface', () => {
-  it.each(MAXIMAL_STAGES)(
+  /**
+   * The list is every interface the package registers, read off the registry.
+   *
+   * Without this the file is a list agreeing with itself: five cases passing,
+   * fourteen interfaces with no maximal stage at all, and nothing saying so.
+   * Derived from `stageEditorRegistry` rather than counted, so the interface a
+   * later schema adds arrives here as a failure rather than as a gap.
+   */
+  it('covers every interface the package registers', () => {
+    expect(EVERY_MAXIMAL_STAGE.map(({ type }) => type).toSorted()).toEqual(
+      Object.keys(stageEditorRegistry).toSorted(),
+    );
+  });
+
+  /**
+   * And each case really is maximal, asked of the schema rather than of the
+   * author.
+   *
+   * A case is only worth running if it carries every key the interface has: a
+   * stage missing one is a stage that proves nothing about it, and the round
+   * trip below would pass exactly as happily. Asserted before the mount so a
+   * key added to an interface names itself here rather than surfacing as a
+   * section blamed for losing something it was never given.
+   */
+  it.each(EVERY_MAXIMAL_STAGE)(
+    '$interfaceName: carries every key its schema declares',
+    ({ type, fields }) => {
+      expect(Object.keys(fields).toSorted()).toEqual(schemaKeysFor(type));
+    },
+  );
+
+  it.each(EVERY_MAXIMAL_STAGE)(
     '$interfaceName: is fully editable, and saves every key unchanged',
-    async ({ type, registry, fields, settle }) => {
-      const harness = renderStageEditor({
-        stage: { type, fields },
-        registry,
-      });
-      await settle();
+    async ({ type, fields, settle }) => {
+      // No registry passed: every interface is claimed by the package's own,
+      // so the dispatcher finding the editor is part of what the case shows.
+      const harness = renderStageEditor({ stage: { type, fields } });
+      await (settle ?? stageName)();
       // Every section registers its fields on mount, and the outline is built
       // from what is registered — so a mount that has not filled the outline
       // has not finished registering.

@@ -95,3 +95,75 @@ test('fails and names the file when a changeset mixes product lanes', () => {
   assert.match(res.stderr, /independent release PR/);
   assert.match(res.stderr, /different lanes/);
 });
+
+test('fails when a changeset names a workspace that is never released', () => {
+  // `changeset version` accepts this one: `privatePackages.version` is true and
+  // the package is not in the config `ignore` list, so it would be bumped and
+  // given a CHANGELOG in the normal Version Packages PR — announcing a release
+  // of something nobody can install.
+  const cwd = fixture({
+    'private-package.md': `---\n"@codaco/protocol-builder": patch\n---\n\nprivate package`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /private-package\.md/);
+  assert.match(res.stderr, /never released: @codaco\/protocol-builder/);
+});
+
+test('fails when a never-released package rides along with a normal-lane app', () => {
+  // The realistic shape: the package is added beside the app that consumes it,
+  // where nothing else in the guard has an opinion about it.
+  const cwd = fixture({
+    'ride-along.md': `---\n"@codaco/architect": minor\n"@codaco/protocol-builder": minor\n---\n\nadoption`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /ride-along\.md/);
+  assert.match(res.stderr, /never released: @codaco\/protocol-builder/);
+});
+
+test('fails when a changeset names the never-released core half', () => {
+  // The half #1842 split out. It arrived with no CHANGELOG, no publishConfig
+  // and no lane, exactly like the package it came from, so a changeset naming
+  // it is the same announcement of a release nobody can install — but it
+  // inherited none of the protection, and a list naming only the original
+  // would have let this one through.
+  //
+  // Anchored at the end of the line because `@codaco/protocol-builder` is a
+  // prefix of this name: an unanchored match would be satisfied by the guard
+  // reporting the other half instead.
+  const cwd = fixture({
+    'core-package.md': `---\n"@codaco/protocol-builder-core": patch\n---\n\ncore package`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /core-package\.md/);
+  assert.match(res.stderr, /never released: @codaco\/protocol-builder-core$/m);
+});
+
+test('fails when a changeset names a tooling workspace nothing releases', () => {
+  // Nothing about `@codaco/protocol-builder` is special here: every workspace
+  // that is private, unpublished, carries no CHANGELOG and sits in no gated
+  // lane is refused, because `changeset version` would bump every one of them
+  // the same way. A hand-written list of names would have let this through.
+  const cwd = fixture({
+    'tooling.md': `---\n"@codaco/tsconfig": patch\n---\n\nshared tsconfig`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /tooling\.md/);
+  assert.match(res.stderr, /never released: @codaco\/tsconfig$/m);
+});
+
+test('names both halves when one changeset releases the pair', () => {
+  const cwd = fixture({
+    'both-halves.md': `---\n"@codaco/protocol-builder": minor\n"@codaco/protocol-builder-core": minor\n---\n\nsplit`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /both-halves\.md/);
+  assert.match(
+    res.stderr,
+    /never released: @codaco\/protocol-builder, @codaco\/protocol-builder-core$/m,
+  );
+});

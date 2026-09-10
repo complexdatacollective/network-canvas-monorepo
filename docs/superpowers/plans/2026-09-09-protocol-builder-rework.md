@@ -2,10 +2,10 @@
 
 **Date:** 2026-09-09
 **Last updated:** 2026-09-10
-**Status:** In progress — PR 1 landed as #1795, #1807, #1809 (+ #1812
-follow-ups) and PR 2 as #1796, #1811, #1813, #1815, #1816 (2026-09-10); PR 3 is
-landing as this base PR, then the census/bin and canvas family PRs, then the
-proof-host/gates PR; PRs 4 and 5 are implemented and reviewed on branches
+**Status:** PRs 1, 2 and 3 landed — the package's contract, state, form layer,
+section lists and all nineteen stage editors, with the proof-host stories and
+the package's release gates. PRs 4 (#1491, Architect adopts the package) and 5
+(#1492, Architect's app-local editors are removed) remain.
 **Scope:** the `@codaco/protocol-builder` package: its host contract, state
 and subscriptions, form primitives, and the nineteen named stage editors; the
 Studio proof host; the Architect and Studio hosts as far as the contract

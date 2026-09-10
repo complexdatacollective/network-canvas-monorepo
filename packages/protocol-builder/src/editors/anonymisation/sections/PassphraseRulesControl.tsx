@@ -48,7 +48,17 @@ export default function PassphraseRulesControl({
   // field refusal, and a control that does not carry it leaves the refusal
   // invisible to the outline and to `focusFirstError`.
   'aria-invalid': ariaInvalid,
+  // Likewise: it names the field's error region, which is where the sentence a
+  // researcher reads is. Dropping it left the one element carrying
+  // `aria-invalid` describing nothing.
+  'aria-describedby': ariaDescribedBy,
 }: PassphraseRulesControlProps) {
+  // The refusal the field is stating, rather than the bare fact that it is
+  // refusing: the field shows its error region exactly when `aria-invalid`
+  // holds, and this is the message in it.
+  const fieldIssue =
+    ariaInvalid === true ? passphraseRulesIssue(value) : undefined;
+
   return (
     <VariableValidationEditor
       entity={ENTITY}
@@ -62,6 +72,10 @@ export default function PassphraseRulesControl({
       }}
       readOnly={disabled || readOnly}
       aria-invalid={ariaInvalid}
+      {...(ariaDescribedBy === undefined
+        ? {}
+        : { 'aria-describedby': ariaDescribedBy })}
+      {...(fieldIssue === undefined ? {} : { fieldIssue })}
       {...(className === undefined ? {} : { className })}
     />
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { type StageType, stageSchema } from '@codaco/protocol-validation';
+import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
@@ -10,32 +10,9 @@ import {
   shimMarkdownEditorMeasurement,
 } from '../family-pedigree/__tests__/editorFixtures.ts';
 import { addFamilyMemberVariable } from '../family-pedigree/sections/__tests__/pedigreeFixtures.tsx';
+import { schemaKeysFor } from './schemaKeys.ts';
 
 shimMarkdownEditorMeasurement();
-
-/** The two keys the editing session owns, which are never a section's. */
-const IDENTITY_KEYS: readonly string[] = Object.freeze(['id', 'type']);
-
-/**
- * Every key the protocol schema declares for one interface, asked of the
- * schema itself.
- *
- * Read rather than listed, because a list would be a second copy of the
- * schema: a key added to an interface in a later release has to fail this
- * test, and a list written out here would go on passing while the editor
- * silently discarded it.
- */
-function schemaKeysFor(stageType: StageType): string[] {
-  const option = stageSchema.options.find(
-    (candidate) => candidate.shape.type.value === stageType,
-  );
-  if (option === undefined) {
-    throw new Error(`The protocol schema has no "${stageType}" stage.`);
-  }
-  return Object.keys(option.shape)
-    .filter((key) => !IDENTITY_KEYS.includes(key))
-    .toSorted();
-}
 
 const INTERVIEW_SCRIPT = 'Read this to the participant before you begin.';
 

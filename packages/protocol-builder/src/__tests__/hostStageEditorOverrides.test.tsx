@@ -13,13 +13,13 @@ import {
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
 
 /**
- * The package registry, standing in for one that has families in it.
+ * The package registry, mocked down to two interfaces.
  *
- * No family has landed on this branch, so `stageEditorRegistry` is empty — and
- * a host registry replacing an empty registry is indistinguishable from one
- * merged over it. Every claim below is about what happens once it is NOT
- * empty, so the module is mocked to the state this is really about rather than
- * left until a family arrives to break it in a host.
+ * Every interface the schema declares now has an editor, so the real registry
+ * leaves no stage type that neither the package nor a host registers — and the
+ * control below needs one, because it is what says the merge is not simply
+ * making everything renderable. Two package editors and a third interface
+ * nothing claims is the smallest registry that reaches every claim here.
  *
  * Only the composed registry is replaced; everything else the module exports
  * (`stageEditorsWithHostOverrides` included) is the real one, so what is under

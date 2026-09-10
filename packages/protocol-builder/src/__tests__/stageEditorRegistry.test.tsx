@@ -84,6 +84,20 @@ describe('composing the registry from family parts', () => {
   });
 
   /**
+   * The state PR 3 reaches, asserted rather than inferred from the pair above.
+   *
+   * Those two hold the runtime list, the type-level list and the schema to each
+   * other — which they would go on doing if a merge dropped an editor and its
+   * stage type reappeared in `AWAITING_STAGE_EDITORS` together. This says the
+   * only thing that pair cannot: there is nothing in either list.
+   */
+  it('leaves no interface without an editor', () => {
+    expect([...AWAITING_STAGE_EDITORS]).toEqual([]);
+    expect(missingStageEditors(stageEditorRegistry)).toEqual([]);
+    expect(Object.keys(stageEditorRegistry)).toHaveLength(STAGE_TYPES.length);
+  });
+
+  /**
    * Nothing chooses between two families that both think they own an
    * interface: whichever won would edit stages the other family's researchers
    * are looking at, and the disagreement would never surface.

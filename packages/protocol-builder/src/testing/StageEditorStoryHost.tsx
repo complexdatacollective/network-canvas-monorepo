@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react';
 
+import Button from '@codaco/fresco-ui/Button';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -62,6 +63,28 @@ export type StageEditorStoryHostProps = Readonly<{
    * would make the page differ from itself in every visual comparison.
    */
   createResourceId?: () => string;
+  /**
+   * A revision another editor makes to the open protocol, behind a control.
+   *
+   * The revision arrives the way every other one does — written into the
+   * protocol, published on the channel, delivered to whatever is subscribed —
+   * so the editor follows it without being told, and a story can put a draft on
+   * screen first and watch what survives. `store.applyAsCollaborator` is the
+   * seam `renderStageEditor.receiveCodebookUpdate` uses for the same reason:
+   * `submit` wants the lock, and a collaborator's edit is not this editor's to
+   * make.
+   *
+   * Behind a control rather than a timer, because the story is about the moment
+   * it lands: a play decides when that is, and a reader can press it.
+   */
+  collaboratorRevision?: Readonly<{
+    /** What the control is called, so a play can name it. */
+    controlLabel: string;
+    /** The section they revise. */
+    section: ProtocolSectionId;
+    /** What they leave in it; left out, they remove the section. */
+    document?: SectionDoc;
+  }>;
 }>;
 
 /**
@@ -86,6 +109,7 @@ export function StageEditorStoryHost({
   readOnly = false,
   assets,
   createResourceId,
+  collaboratorRevision,
 }: StageEditorStoryHostProps) {
   const [saved, setSaved] = useState<SectionDoc | null>(null);
   const [host] = useState(() => {
@@ -125,6 +149,24 @@ export function StageEditorStoryHost({
               ? 'Nothing saved yet.'
               : `Saved “${stageLabel(saved)}”.`}
           </Paragraph>
+          {collaboratorRevision !== undefined && (
+            // Outside the editor's form, so pressing it is not a submit and
+            // the draft the researcher has staged is not touched by it.
+            <div>
+              <Button
+                type="button"
+                color="secondary"
+                onClick={() => {
+                  host.store.applyAsCollaborator(
+                    collaboratorRevision.section,
+                    collaboratorRevision.document,
+                  );
+                }}
+              >
+                {collaboratorRevision.controlLabel}
+              </Button>
+            </div>
+          )}
           {saved !== null && (
             // A named region rather than a heading, so a document whose real
             // headings are the editor's own sections keeps its outline — and

@@ -394,10 +394,10 @@ describe('a disease the source pedigree stopped recording', () => {
   /**
    * The dialog lets the row be saved, and the LIST is what refuses the stage.
    * A mapping a collaborator invalidated is not the researcher's mistake to
-   * be trapped by: they may still be renaming it, or recolouring it, on their
-   * way to adding the nomination prompt that repairs it. The row's own
-   * committed attribute is what escapes the dialog's rule — everything the
-   * researcher picks anew is still judged by it.
+   * be trapped by: they may still be renaming it, or changing the colour it is
+   * marked in, on their way to adding the nomination prompt that repairs it.
+   * The row's own committed attribute is what escapes the dialog's rule —
+   * everything the researcher picks anew is still judged by it.
    */
   it('lets a row the pedigree stopped recording be saved, and refuses the stage', async () => {
     const harness = openFixture();
