@@ -371,6 +371,41 @@ describe('a save the protocol refuses because the lock has gone', () => {
       ),
     ).toBeInTheDocument();
   });
+
+  /**
+   * And it does not name this researcher when the refusal names nobody.
+   *
+   * A lease that runs out with no one taking the section publishes no lock
+   * event — an acquire that TAKES one publishes its own, and an expiry has
+   * nothing to announce — so what this editor's cache still holds is the
+   * presence its OWN acquire put there. Left alone, the read-only form the
+   * lost lock puts back tells the researcher that they are editing the stage
+   * they were just refused, and offers no account of why they cannot write it.
+   */
+  it('does not name this researcher as the holder when nobody is', async () => {
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: nameSection,
+    });
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Never saved');
+
+    harness.host.store.expireLease(STAGE_SECTION);
+    expect(await harness.submit()).toBeNull();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('textbox', { name: 'Stage name' }),
+      ).toBeDisabled();
+    });
+    expect(
+      screen.getByText(
+        'Somebody else is editing this stage, so you can read it but not change it.',
+      ),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('a save the protocol did not take', () => {

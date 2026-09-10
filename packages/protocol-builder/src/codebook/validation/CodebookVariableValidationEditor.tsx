@@ -163,12 +163,26 @@ export type CodebookVariableValidationEditorProps = Readonly<{
    * A refusal already written for the researcher — one naming the rule and the
    * values that cannot both hold — is shown as it arrived rather than replaced
    * by this package's copy for a save that did not happen.
+   *
+   * `ownedProperties` names what this submit set — the rules and nothing else —
+   * for a caller that lays the result back over the section as the host holds
+   * it (`documentWithRebasedVariable`). The rest of the attribute is written
+   * from other surfaces, and a collaborator may be on one of them right now.
    */
-  onSubmitDocument(document: SectionDoc): Promise<CodebookWriteOutcome>;
+  onSubmitDocument(
+    document: SectionDoc,
+    ownedProperties?: readonly string[],
+  ): Promise<CodebookWriteOutcome>;
   onComplete?(
     outcome: Extract<CodebookWriteOutcome, { status: 'applied' }>,
   ): void;
 }>;
+
+/**
+ * The whole of the attribute this editor writes — the same list it clears
+ * before writing, and the one it declares to a caller rebasing its save.
+ */
+const OWNED_PROPERTIES = ['validation'];
 
 /** Dedicated surface for one existing variable's validation rules. */
 export default function CodebookVariableValidationEditor({
@@ -278,7 +292,7 @@ export default function CodebookVariableValidationEditor({
         authoritativeDocument: authoritativeEntityDocument,
         variableId,
         draft: { validation: Object.fromEntries(Object.entries(validation)) },
-        replaceProperties: ['validation'],
+        replaceProperties: OWNED_PROPERTIES,
       });
     } catch {
       setFailure({
@@ -290,7 +304,7 @@ export default function CodebookVariableValidationEditor({
 
     setBusy(true);
     try {
-      const outcome = await onSubmitDocument(document);
+      const outcome = await onSubmitDocument(document, OWNED_PROPERTIES);
       if (outcome.status === 'applied') {
         onComplete?.(outcome);
         return;

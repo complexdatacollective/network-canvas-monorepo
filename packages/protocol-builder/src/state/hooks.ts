@@ -336,14 +336,23 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         // another round of work — the same loss, over and over, with the
         // editor still saying it may write.
         setAccess('readOnly');
-        if (definedError.data.holder !== undefined) {
-          // The refusal already names the holder, so the read-only editor can
-          // say whose section it is without waiting for a lock event — and a
-          // host whose locks are always granted never sends one.
-          queryClient.setQueryData<LockState>(lockQueryKey(protocolId, id), {
-            holder: definedError.data.holder,
-          });
-        }
+        // The refusal already names the holder, so the read-only editor can
+        // say whose section it is without waiting for a lock event — and a
+        // host whose locks are always granted never sends one.
+        //
+        // Naming NOBODY is an answer as well, and the cache has to take it:
+        // that is a lease that ran out with no one taking the section, which
+        // publishes no lock event at all (the acquire that TAKES one publishes
+        // its own). What the cache still holds is this editor's own presence,
+        // from the event its own acquire published — so left alone, the
+        // read-only form it puts back tells the researcher that they are the
+        // one editing the stage they have just been refused.
+        queryClient.setQueryData<LockState>(
+          lockQueryKey(protocolId, id),
+          definedError.data.holder === undefined
+            ? {}
+            : { holder: definedError.data.holder },
+        );
         return {
           status: 'notLockHolder',
           ...(definedError.data.holder === undefined

@@ -11,3 +11,7 @@ reconnect, could not be reached at all. The socket also outlived sign-out,
 which matters because the server reads the account once, when the socket is
 opened, and attributes every later message to it: signing in as somebody else
 in the same tab would have edited and been audited as the previous researcher.
+Signing out now ends the tab's editor session rather than only closing the
+socket, because the link reconnects on its own schedule: a reconnection already
+scheduled when the researcher signed out would otherwise open a replacement
+while their session was still valid, and nothing was left to close it.

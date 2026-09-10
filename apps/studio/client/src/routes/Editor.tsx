@@ -84,6 +84,26 @@ export function hostSocketUrl(): string {
 let hostSocket: WebSocket | undefined;
 
 /**
+ * Whether this tab has an editor session to reach the host through at all.
+ *
+ * Closing the socket is not on its own enough to end one. The transport's
+ * reconnection runs on its OWN schedule: a call that was in flight when the
+ * researcher signed out is parked inside `getConnectedPeer`, waiting on a
+ * socket that is still connecting or on the two seconds before the next
+ * attempt, and it wakes up after the closer has finished and before
+ * `authClient.signOut()` has cleared the cookie (`shell/useSignOut.ts` runs
+ * them in that order, so the editor's lease is released while the session is
+ * still valid). The socket that attempt opens is upgraded as the researcher
+ * who just left, is the one `hostSocket` then names, and nothing is left to
+ * close it — the very hole closing the socket exists to shut.
+ *
+ * So the session, rather than the socket, is what ends: no reconnection may
+ * open anything until the editor is opened again, by whoever is signed in
+ * then.
+ */
+let hostSessionEnded = false;
+
+/**
  * How the host client's transport opens and reopens this tab's socket.
  *
  * Reconnection is the whole of what makes a dropped socket survivable, and it
@@ -99,11 +119,33 @@ let hostSocket: WebSocket | undefined;
  */
 export const hostSocketLinkOptions = {
   connect: (): WebSocket => {
+    // Refused rather than opened: a handshake is what authenticates, so a
+    // socket opened here after the session ended is already the researcher who
+    // left. The transport swallows this and tries again later, which is what
+    // makes the refusal outlast every attempt the parked call has queued.
+    if (hostSessionEnded) {
+      throw new Error('This tab’s editor session has ended.');
+    }
     hostSocket = new WebSocket(hostSocketUrl());
     return hostSocket;
   },
   reconnect: { enabled: true },
 };
+
+/**
+ * Opening a session for whoever is signed in NOW, which is opening the editor.
+ *
+ * Called from the route rather than from where the socket is used, because it
+ * has to be the first thing this screen does: the host is reached only from
+ * `ProtocolBuilder` below, which is not mounted until the draft has arrived
+ * over `/rpc`, so a mount effect here runs renders before anything can ask for
+ * a socket.
+ *
+ * Exported so the suite drives the same lifecycle the application runs on.
+ */
+export function beginHostSocketSession(): void {
+  hostSessionEnded = false;
+}
 
 const hostClient: StudioHostClient = createORPCClient(
   new RPCLink(hostSocketLinkOptions),
@@ -124,6 +166,7 @@ const hostClient: StudioHostClient = createORPCClient(
  * carries whatever cookie the browser holds then.
  */
 registerStudioEditorSession(async () => {
+  hostSessionEnded = true;
   hostSocket?.close();
   hostSocket = undefined;
 });
@@ -517,6 +560,10 @@ export default function Editor() {
   const intl = useAppIntl();
   const { studyId } = route.useParams();
   const target = useEditorTarget(studyId);
+
+  // A session ended by a sign-out stays ended until an editor is opened again,
+  // and this is that moment.
+  useEffect(beginHostSocketSession, []);
 
   if (target.status === 'pending') {
     return (

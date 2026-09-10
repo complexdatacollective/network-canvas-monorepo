@@ -271,6 +271,7 @@ beforeEach(() => {
   // Nothing in jsdom serves `/ws`, and the socket tests below are about which
   // sockets the transport opens rather than about what a host answers.
   FakeSocket.opened = [];
+  FakeSocket.openImmediately = true;
   vi.stubGlobal('WebSocket', FakeSocket);
 });
 
@@ -766,7 +767,8 @@ describe('the socket the editor opens', () => {
    * through, under the previous researcher's name.
    */
   it('is closed when the editor sessions end, so the next account opens its own', async () => {
-    const { hostSocketLinkOptions } = await import('../Editor.tsx');
+    const { hostSocketLinkOptions, beginHostSocketSession } =
+      await import('../Editor.tsx');
     const { closeStudioEditorSessions } =
       await import('../../editor/sessionLifecycle.ts');
     const transport = new WebSocketLinkTransport(hostSocketLinkOptions);
@@ -777,10 +779,47 @@ describe('the socket the editor opens', () => {
     await closeStudioEditorSessions();
 
     expect(signedIn.readyState).toBe(FakeSocket.CLOSED);
-    // The next call opens a socket of its own, whose handshake carries
-    // whatever cookie the browser holds by then.
+    // The next account opens a socket of its own, whose handshake carries
+    // whatever cookie the browser holds by then — from the moment they open
+    // the editor, which is what begins a session again.
+    beginHostSocketSession();
     ask(transport);
     await socketNumber(2);
+  });
+
+  /**
+   * And the reconnection is what has to stop, not just the socket.
+   *
+   * A call in flight when the researcher signs out is parked inside the
+   * transport's own reconnect loop — on a socket that is still connecting, or
+   * on the two seconds before the next attempt — and it wakes up after the
+   * closer has finished and before `authClient.signOut()` has cleared the
+   * cookie, because `shell/useSignOut.ts` releases the editor's lease while
+   * the session is still valid. The socket that attempt opens is upgraded as
+   * the researcher who just left, and there is no closer left to close it.
+   */
+  it('opens nothing more once the sessions have ended, with the cookie still valid', async () => {
+    const { hostSocketLinkOptions, beginHostSocketSession: beginAgain } =
+      await import('../Editor.tsx');
+    const { closeStudioEditorSessions } =
+      await import('../../editor/sessionLifecycle.ts');
+    const transport = new WebSocketLinkTransport(hostSocketLinkOptions);
+
+    // A real socket is CONNECTING for a round trip, and a call made in that
+    // window is parked inside the transport waiting on it.
+    FakeSocket.openImmediately = false;
+    ask(transport);
+    const opening = await socketNumber(1);
+    expect(opening.readyState).toBe(FakeSocket.CONNECTING);
+
+    await closeStudioEditorSessions();
+
+    await new Promise((resolve) => setTimeout(resolve, PAST_RECONNECT_DELAY));
+    expect(opening.readyState).toBe(FakeSocket.CLOSED);
+    expect(FakeSocket.opened).toHaveLength(1);
+
+    // The session is module state, so it is left as the next test finds it.
+    beginAgain();
   });
 });
 
@@ -791,6 +830,14 @@ describe('the socket the editor opens', () => {
  * so the promise is abandoned rather than awaited, and its rejection when the
  * socket closes is swallowed here so it is not reported as an unhandled one.
  */
+/**
+ * Long enough for the transport's next reconnection attempt to have happened.
+ *
+ * `@orpc/client` waits two seconds before every attempt after the first, so a
+ * shorter wait would answer "nothing reconnected" before anything could have.
+ */
+const PAST_RECONNECT_DELAY = 2500;
+
 function ask(transport: WebSocketLinkTransport<Record<never, never>>): void {
   void transport
     .send(
@@ -820,9 +867,20 @@ async function socketNumber(count: number): Promise<FakeSocket> {
  * what these tests watch: which sockets it opens, and when.
  */
 class FakeSocket {
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
   static readonly CLOSED = 3;
+  /**
+   * Whether a socket is open the moment it is constructed.
+   *
+   * A real one is not — it is CONNECTING for a round trip, which is the window
+   * the transport parks a call inside.
+   */
+  static openImmediately = true;
   static opened: FakeSocket[] = [];
-  readyState = 1;
+  readyState = FakeSocket.openImmediately
+    ? FakeSocket.OPEN
+    : FakeSocket.CONNECTING;
   readonly #listeners = new Map<string, Set<(event: unknown) => void>>();
 
   constructor() {
