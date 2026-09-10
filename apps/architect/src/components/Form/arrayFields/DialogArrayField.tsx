@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
   type ComponentType,
+  type ContextType,
   type RefObject,
 } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
@@ -51,10 +52,16 @@ import type { FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
  */
 import DialogForm from '~/components/DialogForm/DialogForm';
 import type { FormLevelValidate } from '~/components/DialogForm/formLevelValidate';
-import { STAGE_FORM_ID } from '~/components/StageEditor/StageForm';
-import type { StageFormStoreApi } from '~/components/StageEditor/stageFormContext';
+import { STAGE_FORM_ID } from '~/components/StageEditor/stageFormId';
 import type { RootState } from '~/ducks/modules/root';
 import { submissionMessages, toSubmissionError } from '~/i18n/submissionErrors';
+
+/**
+ * The zustand store api behind a Fresco form (`subscribe`, `getState`).
+ * fresco-ui does not publish the type on its own subpath, so it is recovered
+ * from the context that carries it.
+ */
+type StageFormStoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
 const defaultMessages = defineMessages({
   emptyStateMessage: {

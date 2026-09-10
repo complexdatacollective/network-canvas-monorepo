@@ -46,6 +46,7 @@
     "./resources/references": "./src/resources/references.ts",
     "./rules/ruleDescription": "./src/rules/ruleDescription.ts",
     "./stage-editor-contract": "./src/stage-editor-contract.ts",
+    "./stage-types": "./src/stage-types.ts",
     "./stageDocument": "./src/stageDocument.ts",
     "./stageEdit": "./src/stageEdit.tsx",
     "./StageEditor": "./src/StageEditor.tsx",

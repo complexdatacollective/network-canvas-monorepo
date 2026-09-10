@@ -14,7 +14,6 @@ import {
 
 import { candidateIdsFor, flattenIssues, getFieldId } from '../utils/issues';
 import scrollTo from '../utils/scrollTo';
-import { useStageFormContext } from './StageEditor/stageFormContext';
 const messages = defineMessages({
   issueDetail: {
     id: 'architect.presentation.issueDetail',
@@ -47,11 +46,14 @@ const resolveTarget = (field: string): HTMLElement | null => {
 
 export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
   const intl = useAppIntl();
-  // The stage form's field errors are already flat and keyed by field name;
-  // `submitFailed` is tracked by the stage form bridge because the panel only
-  // surfaces issues once a save has been attempted.
+  // The stage form's field errors are already flat and keyed by field name.
+  // The panel only surfaces them once a save has been ATTEMPTED, which the form
+  // itself records: `errorFocusRequest` ticks once per submission the form
+  // refused, whether its own field validation refused it or the host's submit
+  // answered with errors. A successful save clears the errors, so the control
+  // goes with them.
   const fieldErrors = useFormStore((state) => state.errors.fieldErrors);
-  const { submitFailed } = useStageFormContext();
+  const submitFailed = useFormStore((state) => state.errorFocusRequest > 0);
   const flatIssues = useMemo(() => flattenIssues(fieldErrors), [fieldErrors]);
   const hasIssues = flatIssues.length > 0;
   const issueCount = flatIssues.length;

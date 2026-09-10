@@ -16,7 +16,6 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
-import { renderStageForm } from '~/components/StageEditor/__tests__/stageFormTestHarness';
 import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 import ArchitectArrayField from '../../ArchitectArrayField';
@@ -909,37 +908,6 @@ describe('DialogArrayField', () => {
     expect(captured.getState().getFieldState('items')?.value).toEqual([
       expect.objectContaining({ label: 'Slow addition' }),
     ]);
-  });
-});
-
-describe('DialogArrayField in the stage form', () => {
-  const renderInStageForm = (children: ReactNode) =>
-    renderStageForm({
-      committedStage: null,
-      children,
-    });
-
-  it('round-trips an added row through the draft timeline', async () => {
-    const { snapshots, getHistory, getFormValues } = renderInStageForm(
-      arrayField(NO_ITEMS, {}),
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Create new item' }));
-    fireEvent.change(editorInput(), { target: { value: 'Undo me' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-
-    await waitFor(() =>
-      expect(getFormValues().items as Item[]).toHaveLength(1),
-    );
-    // Adding a row is one logical change: it snapshots immediately rather than
-    // waiting out the leaf-edit debounce.
-    expect(snapshots.at(-1)).toMatchObject({
-      items: [expect.objectContaining({ label: 'Undo me' })],
-    });
-
-    act(() => getHistory().undo());
-
-    expect(getFormValues().items as Item[]).toHaveLength(0);
   });
 });
 

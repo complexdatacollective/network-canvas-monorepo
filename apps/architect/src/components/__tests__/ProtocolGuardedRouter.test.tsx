@@ -6,20 +6,23 @@ import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 const openDialogSpy = globalThis.__architectDialogMocks.openDialog;
 
-const flushStageLiveValues = vi.fn();
-vi.mock('~/components/StageEditor/StageFormBridge', () => ({
-  flushStageLiveValues: () => flushStageLiveValues(),
-}));
-
 let stageDraftDirty = false;
-// Partial: `~/selectors/protocol` derives `getProtocol` from this module's
-// `getStageEditorDraftCodebook` (#1382's codebook transaction), and
-// `getLeavePersistence` reaches it on every guarded navigation. Replacing the
-// module wholesale would take that selector out with it.
-vi.mock('~/selectors/stageEditorDraft', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('~/selectors/stageEditorDraft')>()),
-  getLiveStageDraftDirty: () => stageDraftDirty,
-}));
+// Partial: the beacon is a module singleton the editor publishes to, and this
+// guard reads it imperatively. Only the reading is replaced, so subscribing
+// and closing still behave as they do in the app.
+vi.mock(
+  '~/components/StageEditor/stageDraftBeacon',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('~/components/StageEditor/stageDraftBeacon')
+    >()),
+    readStageDraft: () => ({
+      open: stageDraftDirty,
+      dirty: stageDraftDirty,
+      stage: undefined,
+    }),
+  }),
+);
 
 let nestedDraftDirty = false;
 vi.mock('~/components/DialogForm/nestedDraftRegistry', () => ({
@@ -91,8 +94,8 @@ describe('ProtocolGuardedRouter', () => {
   });
 
   it('treats a dirty nested editor as unsaved work, even with a pristine stage form', async () => {
-    // The stage form's Redux mirror is the only thing the guard used to read,
-    // and a nested editor never writes to it before save — so leaving with a
+    // The stage editor's own draft is the only thing the guard used to read,
+    // and a nested editor never reaches it before save — so leaving with a
     // half-typed field editor open showed the reassuring "saved automatically"
     // dialog over a draft that was about to be discarded.
     nestedDraftDirty = true;
@@ -110,7 +113,7 @@ describe('ProtocolGuardedRouter', () => {
     expect(promptLeaveEditor.mock.calls[0]![3]).toBe(false);
   });
 
-  it('still reports a dirty stage form on its own', async () => {
+  it('still reports a dirty stage editor on its own', async () => {
     stageDraftDirty = true;
 
     leaveProtocol();

@@ -289,6 +289,12 @@ export const getVariableOptionsForSubjectSelector = createSelector(
       ...option,
       isUsed: isUsed[option.value] ?? false,
     })),
+  // No memo on the ARGUMENTS, for the reason `getIsUsed` has none: the stage
+  // the editor is holding is not in the state this is handed, and it changes
+  // without anything being dispatched. The inputs are memoised and both hand
+  // back their previous result unchanged, so the identity guard above still
+  // holds.
+  { argsMemoize: (selector) => selector },
 );
 
 export const getVariableOptionsForSubject = (

@@ -17,13 +17,14 @@ import app, {
 } from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
-import stageEditorDraft, {
-  draftTimelineActions,
-  setLiveValues,
-} from '~/ducks/modules/stageEditorDraft';
-import { getStageEditorDraftOpen } from '~/selectors/stageEditorDraft';
+import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
+import {
+  closeStageDraft,
+  publishStageDraft,
+  readStageDraft,
+} from '../stageDraftBeacon';
 import StageDraftConflictDialog from '../StageDraftConflictDialog';
 
 const { mockSetLocation } = vi.hoisted(() => ({
@@ -43,18 +44,10 @@ vi.mock('~/utils/downloadActiveProtocol', () => ({
 const openDialogMock = globalThis.__architectDialogMocks.openDialog;
 const closeDialogMock = globalThis.__architectDialogMocks.closeDialog;
 
-// The codebook as the OTHER tab left it on disk, and the one this editor has
-// been building on top of its own snapshot. Different objects, so a commit here
-// would visibly overwrite theirs.
+// The codebook as this tab holds it. Codebook edits commit as they are made
+// now, so there is no second copy to weigh against it: what a rescue copy
+// carries is this protocol plus the stage the editor is still holding.
 const savedCodebook = { node: { person: { name: 'Person', variables: {} } } };
-const draftCodebook = {
-  node: {
-    person: {
-      name: 'Person',
-      variables: { 'var-1': { name: 'nickname', type: 'text' } },
-    },
-  },
-};
 
 const protocol = {
   name: 'Test Protocol',
@@ -63,7 +56,6 @@ const protocol = {
   codebook: savedCodebook,
 } as unknown as CurrentProtocol;
 
-const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
 const editedStage = {
   id: 'stage-1',
   type: 'Information',
@@ -83,31 +75,16 @@ const createTestStore = () =>
 
 type TestStore = ReturnType<typeof createTestStore>;
 
-// A stage editor that has been typed into AND has created a codebook variable,
-// exactly the pair that cannot be reconciled with the other tab's saved copy.
-const openDirtyStageDraft = (store: TestStore) => {
-  store.dispatch(
-    draftTimelineActions.reset({ stage, codebook: draftCodebook }),
-  );
-  store.dispatch(setLiveValues(editedStage));
+// A stage editor that has been typed into: what the researcher would lose,
+// published exactly as the editor's own chrome publishes it.
+const openDirtyStageDraft = () => {
+  publishStageDraft(editedStage, { label: 'A' }, { label: 'A, edited' });
 };
-
-// `withStageIdentity` in the real editor: neither key is owned by a field, so
-// the committed identity is authoritative and the form's values cannot carry it.
-const withStageIdentity = (values: Stage): Stage =>
-  ({
-    ...values,
-    id: 'stage-1',
-    type: 'Information',
-  }) as Stage;
 
 const renderDialog = (store: TestStore) =>
   render(
     <Provider store={store}>
-      <StageDraftConflictDialog
-        stageId="stage-1"
-        withStageIdentity={withStageIdentity}
-      />
+      <StageDraftConflictDialog stageId="stage-1" />
     </Provider>,
   );
 
@@ -124,10 +101,7 @@ const renderBothReclaimDialogs = (store: TestStore, nestedDirty: boolean) =>
   render(
     <Provider store={store}>
       <NestedEditor dirty={nestedDirty} />
-      <StageDraftConflictDialog
-        stageId="stage-1"
-        withStageIdentity={withStageIdentity}
-      />
+      <StageDraftConflictDialog stageId="stage-1" />
       <NestedDraftReclaimDialog />
     </Provider>,
   );
@@ -152,6 +126,7 @@ describe('StageDraftConflictDialog', () => {
   let store: TestStore;
 
   beforeEach(() => {
+    closeStageDraft();
     store = createTestStore();
     store.dispatch(setActiveProtocol(protocol));
     openDialogMock.mockReset();
@@ -162,7 +137,7 @@ describe('StageDraftConflictDialog', () => {
   });
 
   it('asks nothing while this tab owns the saved copy', () => {
-    openDirtyStageDraft(store);
+    openDirtyStageDraft();
 
     renderDialog(store);
 
@@ -170,7 +145,7 @@ describe('StageDraftConflictDialog', () => {
   });
 
   it('asks nothing while the other tab still holds the protocol', () => {
-    openDirtyStageDraft(store);
+    openDirtyStageDraft();
     store.dispatch(setProtocolLockState('open-elsewhere'));
 
     renderDialog(store);
@@ -179,7 +154,7 @@ describe('StageDraftConflictDialog', () => {
   });
 
   it('asks the researcher, offering both keeping and giving up the work', async () => {
-    openDirtyStageDraft(store);
+    openDirtyStageDraft();
     store.dispatch(setProtocolLockState('reclaim-blocked'));
     openDialogMock.mockReturnValue(new Promise(() => undefined));
 
@@ -195,10 +170,7 @@ describe('StageDraftConflictDialog', () => {
       /cannot be combined|no safe way/i,
     );
     expect(renderQueuedMessage(dialog.description)).toMatch(
-      /discards your changes to this stage/i,
-    );
-    expect(renderQueuedMessage(dialog.description)).toMatch(
-      /attributes you added or edited/i,
+      /discards your unsaved changes to this stage/i,
     );
     // …and honest about what the rescue copy does NOT contain: it is built from
     // this tab's pre-demotion buffer, so the other tab's saved work is missing
@@ -214,7 +186,7 @@ describe('StageDraftConflictDialog', () => {
   });
 
   it('discards nothing while the question is unanswered', async () => {
-    openDirtyStageDraft(store);
+    openDirtyStageDraft();
     store.dispatch(setProtocolLockState('reclaim-blocked'));
     openDialogMock.mockReturnValue(new Promise(() => undefined));
 
@@ -223,12 +195,12 @@ describe('StageDraftConflictDialog', () => {
     await waitFor(() => {
       expect(openDialogMock).toHaveBeenCalled();
     });
-    expect(getStageEditorDraftOpen(store.getState())).toBe(true);
+    expect(readStageDraft().dirty).toBe(true);
     expect(mockSetLocation).not.toHaveBeenCalled();
   });
 
   it('discards nothing when the researcher dismisses the dialog', async () => {
-    openDirtyStageDraft(store);
+    openDirtyStageDraft();
     store.dispatch(setProtocolLockState('reclaim-blocked'));
     openDialogMock.mockResolvedValue(null);
 
@@ -237,12 +209,12 @@ describe('StageDraftConflictDialog', () => {
     await waitFor(() => {
       expect(openDialogMock).toHaveBeenCalledTimes(1);
     });
-    expect(getStageEditorDraftOpen(store.getState())).toBe(true);
+    expect(readStageDraft().dirty).toBe(true);
     expect(downloadActiveProtocol).not.toHaveBeenCalled();
   });
 
   it('downloads a copy carrying the stage edits and the draft codebook', async () => {
-    openDirtyStageDraft(store);
+    openDirtyStageDraft();
     store.dispatch(setProtocolLockState('reclaim-blocked'));
     openDialogMock
       .mockResolvedValueOnce('download')
@@ -257,14 +229,17 @@ describe('StageDraftConflictDialog', () => {
       | CurrentProtocol
       | undefined;
     expect(downloaded?.stages[0]).toMatchObject({ label: 'A, edited' });
-    expect(downloaded?.codebook).toEqual(draftCodebook);
+    // The codebook comes from the protocol rather than from a draft copy of
+    // it: an edit made to the codebook while this stage was open was committed
+    // when it was made, so it is already here.
+    expect(downloaded?.codebook).toEqual(savedCodebook);
 
     // Downloading keeps the work but does not answer the question, so it is
     // asked again — and nothing has been discarded.
     await waitFor(() => {
       expect(openDialogMock).toHaveBeenCalledTimes(2);
     });
-    expect(getStageEditorDraftOpen(store.getState())).toBe(true);
+    expect(readStageDraft().dirty).toBe(true);
     expect(renderQueuedMessage(lastChoiceDialog().description)).toMatch(
       /has been downloaded/i,
     );
@@ -274,18 +249,17 @@ describe('StageDraftConflictDialog', () => {
   });
 
   it('discards the draft and leaves the editor only when asked to', async () => {
-    openDirtyStageDraft(store);
+    openDirtyStageDraft();
     store.dispatch(setProtocolLockState('reclaim-blocked'));
     openDialogMock.mockResolvedValue('discard');
 
     renderDialog(store);
 
+    // Leaving IS the discard: the draft lives in the editor's own form, so
+    // navigating away from the route is the whole of it.
     await waitFor(() => {
-      expect(getStageEditorDraftOpen(store.getState())).toBe(false);
+      expect(mockSetLocation).toHaveBeenCalledWith('/protocol');
     });
-    // Leaving matters as much as clearing: a form left over a closed
-    // transaction can never be saved again.
-    expect(mockSetLocation).toHaveBeenCalledWith('/protocol');
     // Nothing was written to the protocol on the way out.
     expect(store.getState().activeProtocol?.present?.codebook).toEqual(
       savedCodebook,
@@ -295,7 +269,7 @@ describe('StageDraftConflictDialog', () => {
   // Dismissing is safe but must not be a dead end: the banner can raise the
   // question again, and with it the download that keeps the work.
   it('asks again when the researcher asks to see the choice', async () => {
-    openDirtyStageDraft(store);
+    openDirtyStageDraft();
     store.dispatch(setProtocolLockState('reclaim-blocked'));
     openDialogMock.mockResolvedValueOnce(null);
 
@@ -324,7 +298,7 @@ describe('StageDraftConflictDialog', () => {
     { dirty: true, label: 'holding unsaved values' },
   ])('while a nested editor is open $label', ({ dirty }) => {
     it('leaves the reclaim question to NestedDraftReclaimDialog alone', async () => {
-      openDirtyStageDraft(store);
+      openDirtyStageDraft();
       store.dispatch(setProtocolLockState('reclaim-blocked'));
       openDialogMock.mockReturnValue(new Promise(() => undefined));
 
@@ -348,7 +322,7 @@ describe('StageDraftConflictDialog', () => {
   // …and the deferral has to end: once the inner editor is gone, the stage
   // choice is the right question and nothing else will ask it.
   it('asks the stage question once the nested editor closes', async () => {
-    openDirtyStageDraft(store);
+    openDirtyStageDraft();
     store.dispatch(setProtocolLockState('reclaim-blocked'));
     openDialogMock.mockReturnValue(new Promise(() => undefined));
 
@@ -359,10 +333,7 @@ describe('StageDraftConflictDialog', () => {
 
     view.rerender(
       <Provider store={store}>
-        <StageDraftConflictDialog
-          stageId="stage-1"
-          withStageIdentity={withStageIdentity}
-        />
+        <StageDraftConflictDialog stageId="stage-1" />
         <NestedDraftReclaimDialog />
       </Provider>,
     );
@@ -384,7 +355,7 @@ describe('StageDraftConflictDialog', () => {
   });
 
   it('takes the question away when the other tab re-claims the protocol', async () => {
-    openDirtyStageDraft(store);
+    openDirtyStageDraft();
     store.dispatch(setProtocolLockState('reclaim-blocked'));
     openDialogMock.mockReturnValue(new Promise(() => undefined));
 

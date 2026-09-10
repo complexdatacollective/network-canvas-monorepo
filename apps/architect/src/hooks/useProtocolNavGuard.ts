@@ -10,7 +10,7 @@ import { AppMessage } from '@codaco/app-i18n/react';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
-import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
+import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import { useAppDispatch } from '~/ducks/hooks';
 import { clearActiveProtocol } from '~/ducks/modules/activeProtocol';
 import {
@@ -21,7 +21,6 @@ import type { RootState } from '~/ducks/modules/root';
 import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import { type AppDispatch, store } from '~/ducks/store';
 import { getProtocol } from '~/selectors/protocol';
-import { getLiveStageDraftDirty } from '~/selectors/stageEditorDraft';
 import { downloadActiveProtocol } from '~/utils/downloadActiveProtocol';
 const utilityMessages = defineMessages({
   returnToStartScreen: {
@@ -619,15 +618,13 @@ export const useProtocolNavGuard = () => {
       // overview) with uncommitted edits: intra-/protocol nav that the
       // leavingProtocol check misses. Only prompt when the draft is actually
       // dirty, so ordinary Back from a pristine editor navigates freely.
-      // The mirror of the stage form's values is debounced, so an edit made
-      // in the last moment before Back is not in Redux yet. Without this the
-      // guard reads a pristine draft and discards that edit silently.
-      flushStageLiveValues();
+      // The editor publishes its draft as it changes, so this reading includes
+      // the edit made in the moment before Back.
       const leavingDirtyStageEditor =
         !leavingProtocol &&
         isStageEditorPath(oldPath) &&
         !isStageEditorPath(newPath) &&
-        getLiveStageDraftDirty(store.getState());
+        readStageDraft().dirty;
 
       // A dirty nested editor is unsaved work wherever it is open, and any pop
       // unmounts it. Deliberately NOT gated on the stage-editor path: the
@@ -671,8 +668,7 @@ export const useProtocolNavGuard = () => {
         // takes this branch, but the uncommitted (unpersisted) draft would still
         // be lost — so surface it and reset the draft on confirm.
         const draftDirty =
-          (isStageEditorPath(oldPath) &&
-            getLiveStageDraftDirty(store.getState())) ||
+          (isStageEditorPath(oldPath) && readStageDraft().dirty) ||
           hasDirtyNestedDraft();
         void promptLeaveEditor(
           dispatch,

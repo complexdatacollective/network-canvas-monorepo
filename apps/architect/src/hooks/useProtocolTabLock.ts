@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useLocation } from 'wouter';
 import { navigate } from 'wouter/use-browser-location';
 
@@ -6,20 +6,18 @@ import {
   hasOpenNestedEditor,
   useNestedEditorOpen,
 } from '~/components/DialogForm/nestedDraftRegistry';
-import { flushStageLiveValues } from '~/components/StageEditor/StageFormBridge';
+import {
+  readStageDraft,
+  subscribeToStageDraft,
+} from '~/components/StageEditor/stageDraftBeacon';
 import { useAppDispatch, useAppSelector, useAppStore } from '~/ducks/hooks';
 import {
   getActiveProtocolId,
   getProtocolLockState,
   setProtocolLockState,
 } from '~/ducks/modules/app';
-import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import { restoreActiveProtocolFromLibrary } from '~/ducks/restoreActiveProtocol';
 import { getCanonicalProtocol } from '~/selectors/protocol';
-import {
-  getLiveStageDraftDirty,
-  getStageEditorDraftOpen,
-} from '~/selectors/stageEditorDraft';
 import {
   createProtocolTabLock,
   type ProtocolTabLock,
@@ -91,10 +89,11 @@ export const useProtocolTabLock = (
   // this does not raise the leave-editor confirmation over a move the
   // researcher never asked for.
   const closeEditorAndReclaim = useCallback(() => {
-    dispatch(resetDraft(null));
+    // Leaving the editor is what discards its draft: the document lives in that
+    // form and nowhere else, so unmounting the route is the whole of it.
     navigate('/protocol', { replace: true });
     void finishReclaim();
-  }, [dispatch, finishReclaim]);
+  }, [finishReclaim]);
 
   // One lock (one BroadcastChannel) per tab, created on mount and closed on
   // unmount. lockFactory is stable; this runs once.
@@ -103,12 +102,6 @@ export const useProtocolTabLock = (
       onExclusivityChange: (exclusive) => {
         lockEpoch.current += 1;
         if (!exclusive) {
-          // Losing exclusivity mid-session (a bfcache restore reclaiming a
-          // protocol a peer has taken over) decides, in the very next render,
-          // whether the stage editor is torn down. The stage form's mirror into
-          // Redux is debounced, so flush it first rather than reading a stale
-          // "pristine" and taking the last few seconds of typing with it.
-          flushStageLiveValues();
           dispatch(setProtocolLockState('open-elsewhere'));
           return;
         }
@@ -133,13 +126,8 @@ export const useProtocolTabLock = (
         // canonical row BEFORE editing is re-enabled, so the first commit here
         // cannot overwrite work this tab never saw.
         //
-        // That re-read replaces the whole editing buffer, which closes any
-        // stage editor transaction taken from the previous one (#1382) — so it
-        // is not something that can be done quietly over a draft. The mirror is
-        // debounced, so flush before asking whether there is one.
-        flushStageLiveValues();
-        const state = store.getState();
-
+        // That re-read replaces the whole editing buffer, so it is not
+        // something that can be done quietly over an unsaved stage draft.
         // A nested editor (a variable, an entity type, an array row, a rule)
         // keeps its half-typed values in its own form store: they are in
         // neither the editing buffer nor the stage draft, and the editor is
@@ -166,17 +154,16 @@ export const useProtocolTabLock = (
           return;
         }
 
-        if (!getStageEditorDraftOpen(state)) {
+        if (!readStageDraft().open) {
           void finishReclaim();
           return;
         }
 
-        if (getLiveStageDraftDirty(state)) {
+        if (readStageDraft().dirty) {
           // In-progress work that exists nowhere else, and no honest way to
-          // combine it with what the other tab saved: the draft carries a whole
-          // replacement codebook snapshotted before those edits. Stop here and
-          // let the researcher decide (StageDraftConflictDialog). Nothing is
-          // written, reloaded or discarded until they do.
+          // combine it with what the other tab saved. Stop here and let the
+          // researcher decide (StageDraftConflictDialog). Nothing is written,
+          // reloaded or discarded until they do.
           dispatch(setProtocolLockState('reclaim-blocked'));
           return;
         }
@@ -192,8 +179,17 @@ export const useProtocolTabLock = (
   }, [lockFactory, dispatch, store, finishReclaim, closeEditorAndReclaim]);
 
   const lockState = useAppSelector(getProtocolLockState);
-  const draftOpen = useAppSelector(getStageEditorDraftOpen);
-  const draftDirty = useAppSelector(getLiveStageDraftDirty);
+  // Followed rather than read: a draft undone by hand back to the values the
+  // editor opened on releases a blocked reclaim, and nothing dispatches when
+  // that happens.
+  const draftOpen = useSyncExternalStore(
+    subscribeToStageDraft,
+    () => readStageDraft().open,
+  );
+  const draftDirty = useSyncExternalStore(
+    subscribeToStageDraft,
+    () => readStageDraft().dirty,
+  );
   // Re-read whenever a nested editor opens or closes — the two transitions that
   // can answer the question this blocks on.
   const nestedEditorOpen = useNestedEditorOpen();
