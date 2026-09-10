@@ -70,7 +70,7 @@ catalog:
   '@orpc/zod': 2.0.0-beta.34
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
-  '@playwright/test': ^1.62.1
+  '@playwright/test': ^1.63.0
   '@posthog/cli': ^0.7.34
   '@posthog/nextjs-config': ^1.9.68
   '@posthog/plugin-utils': ^1.2.0
@@ -146,7 +146,7 @@ catalog:
   oxfmt: ^0.66.0
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
-  playwright: ^1.62.1
+  playwright: ^1.63.0
   postcss: ^8.5.26
   posthog-js: ^1.413.2
   react: ^19.2.8

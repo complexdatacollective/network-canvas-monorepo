@@ -324,17 +324,17 @@ describe('a connection type this protocol does not define', () => {
 });
 
 /**
- * A prompt that COLOURS its nodes by an attribute without letting the
+ * A prompt that HIGHLIGHTS its nodes by an attribute without letting the
  * participant change it.
  *
  * `highlight.variable` alone is display-only by the schema's own reading —
  * `entity-attribute-reference` tags the site `usageRequiresSibling:
  * 'allowHighlighting'`, and the interview gates its tap-to-toggle branch on
- * the flag while reading `variable` for the colour regardless. So the
+ * the flag while reading `variable` for the highlight regardless. So the
  * attribute is one this stage READS, and nothing the participant does here
  * writes it.
  */
-describe('a prompt that only colours its nodes', () => {
+describe('a prompt that only highlights its nodes', () => {
   const DISPLAY_ONLY_PROMPT = {
     id: 'sociogram-prompt-1',
     text: 'Place the people who know each other close together',
@@ -355,7 +355,7 @@ describe('a prompt that only colours its nodes', () => {
 
     const prompt = await openPrompt(harness);
     // Tapping does nothing, which is exactly what this prompt says: the
-    // colours are drawn from an attribute the participant cannot toggle.
+    // highlighting is drawn from an attribute the participant cannot toggle.
     expect(prompt.getByRole('option', { name: /Nothing/ })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -372,15 +372,15 @@ describe('a prompt that only colours its nodes', () => {
   });
 
   /**
-   * And choosing what tapping does leaves the colouring alone.
+   * And choosing what tapping does leaves the highlighting alone.
    *
    * The chooser owns the two things a TAP can do, so it clears the side it is
    * leaving and nothing else. Clearing both of the other two on every change
    * threw away a `highlight.variable` that had never been on screen — the
    * researcher was answering a question about tapping, and the answer took the
-   * prompt's colours with it.
+   * prompt's highlighting with it.
    */
-  it('keeps the colouring when the researcher says what tapping does', async () => {
+  it('keeps the highlighting when the researcher says what tapping does', async () => {
     const harness = renderStageEditor(sociogramHolding(DISPLAY_ONLY_PROMPT));
 
     const prompt = await openPrompt(harness);
@@ -489,17 +489,17 @@ describe('a prompt that draws a connection it does not show', () => {
  * What tapping a node does, and what the prompt saves for it.
  *
  * `highlight.allowHighlighting` is the flag the interview gates tap-to-mark
- * on, and `highlight.variable` is read for the node's COLOUR whatever the flag
- * holds. So the two are different configurations, and one rule decides both
+ * on, and `highlight.variable` is what shows a node HIGHLIGHTED whatever the
+ * flag holds. So the two are different configurations, and one rule decides both
  * halves of this family: the FLAG says whether the prompt writes the
  * attribute, and the attribute alone never does.
  *
  * Enumerated rather than asserted case by case, because each of the three tap
  * choices has to be right against each of the three committed prompts — no
- * highlight at all, one that only colours, one that already marks — and the
+ * highlight at all, one that only highlights, one that already marks — and the
  * two failures this replaces were each one cell of that table. A prompt sent
  * to "mark the node" and back kept the `true` written on the way in beside an
- * attribute the chooser had just cleared; and a colouring prompt switched to
+ * attribute the chooser had just cleared; and a highlighting prompt switched to
  * marking escaped the writer-conflict check as an unchanged pick, because the
  * check read the attribute and not the flag.
  */
@@ -549,17 +549,70 @@ describe('what tapping a node does, against what the prompt already said', () =>
       draws: 'family_edge',
       expected: undefined,
     },
-    'a colouring prompt, opened and saved': {
+    'a highlighting prompt, opened and saved': {
       committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
       taps: [],
       expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
     },
-    'a colouring prompt whose attribute a form collects, switched to marking': {
+    /**
+     * Visiting the marking option and changing your mind is not a decision
+     * about the attribute this prompt highlights by.
+     *
+     * The picker mounts already showing that attribute, so there is nothing
+     * on screen to say the prompt is about to lose it — and leaving the
+     * marking side cleared it, taking the highlighting with it. Leaving puts
+     * back exactly what the row opened with, the pick and the flag beside it,
+     * and both destinations that keep an attribute meaningful say the same
+     * thing.
+     */
+    'a highlighting prompt visited on marking and left alone again': {
+      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+      taps: [MARK, NOTHING],
+      expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+    },
+    /**
+     * And a prompt that never wrote the flag at all goes on not writing it.
+     *
+     * The row above arrived saying `false`, so putting back what it opened
+     * with and writing `false` are the same edit, and every other cell of this
+     * table says `false` too — which leaves the difference between the flag a
+     * prompt HOLDS and the flag it is treated as holding untested. This prompt
+     * holds no `allowHighlighting` key, and visiting the marking option and
+     * leaving again must not add one: `false` is the interview's answer to
+     * "does tapping mark this node", and a protocol that never answered it
+     * still has not.
+     */
+    'a highlighting prompt with no flag at all, visited on marking and left alone again':
+      {
+        committed: { variable: HIGHLIGHT_ATTRIBUTE },
+        taps: [MARK, NOTHING],
+        expected: { variable: HIGHLIGHT_ATTRIBUTE },
+      },
+    'a highlighting prompt visited on marking and set to draw instead': {
+      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+      taps: [MARK, CREATE_EDGE],
+      draws: 'family_edge',
+      expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+    },
+    /**
+     * The prompt READS the attribute, so a form collecting it is not a
+     * conflict at all — and there is no marking picker on screen for a
+     * refusal to land on. Refused anyway, this row could not be saved and
+     * could not say why: the dialog simply stayed open.
+     */
+    'a highlighting prompt whose attribute a form collects, opened and saved': {
       committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
       collected: true,
-      taps: [MARK],
-      expected: 'refused',
+      taps: [],
+      expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
     },
+    'a highlighting prompt whose attribute a form collects, switched to marking':
+      {
+        committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+        collected: true,
+        taps: [MARK],
+        expected: 'refused',
+      },
     'a marking prompt whose attribute a form already collects, opened and saved':
       {
         committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: true },
@@ -621,6 +674,12 @@ describe('what tapping a node does, against what the prompt already said', () =>
       return;
     }
     expect(saved?.highlight).toEqual(scenario.expected);
+    // `toEqual` reads a key holding `undefined` as one that is not there, and
+    // the rows above turn on which keys a saved prompt HAS: a flag written as
+    // `false` and a flag never written are different protocols.
+    expect(Object.keys(saved?.highlight ?? {}).sort()).toEqual(
+      Object.keys(scenario.expected).sort(),
+    );
   });
 });
 
