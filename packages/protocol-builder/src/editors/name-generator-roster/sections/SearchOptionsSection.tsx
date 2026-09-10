@@ -18,6 +18,7 @@ import BuilderSection, {
 } from '../../../sections/BuilderSection.tsx';
 import {
   DATA_SOURCE,
+  useColumnSectionShell,
   useOrphanedColumnChoices,
   useRosterColumns,
 } from './rosterColumns.ts';
@@ -266,6 +267,12 @@ export default function SearchOptionsSection() {
     [columns.names, orphans.options],
   );
 
+  const shell = useColumnSectionShell(
+    columns,
+    messages.description,
+    messages.waitingDescription,
+  );
+
   // Read live rather than from the committed draft: the extra position has to
   // go the moment the researcher moves to a named setting, or the value they
   // just left would stay choosable.
@@ -294,10 +301,8 @@ export default function SearchOptionsSection() {
   return (
     <BuilderSection
       title={intl.formatMessage(messages.title)}
-      description={intl.formatMessage(
-        columns.waiting ? messages.waitingDescription : messages.description,
-      )}
-      disabled={columns.waiting}
+      description={shell.description}
+      disabled={shell.disabled}
       // Everything below names a column of the data file, so a different file
       // makes every one of these a reference to something that may not be
       // there. See `CardDisplaySection`, which resets on the same path for the

@@ -682,7 +682,7 @@ export function SettingsDialog({
           timeout: 0,
         });
       } else {
-        console.error('Synthetic data generation failed', error);
+        analytics.captureException(error, { feature: 'synthetic-data' });
         toast.add({
           title: createElement(AppMessage, {
             message: messages.generationFailed,
@@ -705,6 +705,7 @@ export function SettingsDialog({
     toast,
     reloadSyntheticWithFeedback,
     onDataChange,
+    analytics,
   ]);
 
   const handleDeleteSynthetic = useCallback(async () => {

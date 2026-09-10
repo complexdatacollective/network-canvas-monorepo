@@ -2903,6 +2903,10 @@
     "defaultMessage": "Automatic mode",
     "description": "Name of the choice where the stage arranges the nodes itself before the participant touches them. Offered as one of two cards; the sentence under it is layoutModeAutomaticDescription."
   },
+  "protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription": {
+    "defaultMessage": "Arranges the nodes by simulating physical forces such as attraction and repulsion. Only the nodes the attribute the preset positions by holds a position for are arranged; the rest are left off the canvas, as in manual mode. The participant can pause and resume the simulation, and can move nodes by hand only if “Allow moving nodes” is switched on.",
+    "description": "Says what the participant sees in automatic layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the two wordings of one control together. “Allow moving nodes” is the switch named by repositioningLabel, and is quoted because it is being named as a control the researcher can go and find."
+  },
   "protocolBuilder.networkCanvas.layoutModeHint": {
     "defaultMessage": "How the stage arranges nodes before the participant moves any of them.",
     "description": "Guidance under the layout-mode control."
@@ -3016,8 +3020,8 @@
     "description": "Description of the preset highlighted-nodes group."
   },
   "protocolBuilder.networkCanvas.presetHighlightHint": {
-    "defaultMessage": "A node is highlighted while any of these attributes is true of it.",
-    "description": "Guidance under the preset highlight-attributes tick list."
+    "defaultMessage": "The interviewer picks one of these attributes at a time, and the nodes it is true of are shown highlighted.",
+    "description": "Guidance under the preset highlight-attributes tick list. It says what the interview does with the list, because ticking several attributes does not highlight by all of them at once: the interview offers the ticked attributes as a set of radio buttons and highlights by the one chosen."
   },
   "protocolBuilder.networkCanvas.presetHighlightLabel": {
     "defaultMessage": "Highlight attributes",
@@ -4910,6 +4914,10 @@
   "protocolBuilder.rosterColumns.missingSearchColumnRefusal": {
     "defaultMessage": "This search matches an attribute that is not in the data file. Uncheck it and choose another.",
     "description": "Shown above the roster-search checkboxes when a checked column is not in the chosen data file. Names the one way out — unchecking — because a checkbox has no row to delete and no cell to repoint."
+  },
+  "protocolBuilder.rosterColumns.unreadableDescription": {
+    "defaultMessage": "The chosen data file could not be read, so there is nothing to choose from. The settings this stage already holds are kept.",
+    "description": "Shown in place of a roster section’s description when the chosen data file could not be read, so its attributes are not known. Says both why the section offers nothing and that what the stage holds is not lost, because the section is showing empty controls over settings that are still there. The reason the file could not be read is shown by the roster-source section, in the host’s own words."
   },
   "protocolBuilder.ruleCodebook.operatorNoLongerOffered": {
     "defaultMessage": "{operator} (no longer offered)",

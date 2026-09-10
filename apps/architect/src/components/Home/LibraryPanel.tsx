@@ -471,7 +471,6 @@ const PanelRow = ({
       void Promise.resolve()
         .then(() => action(resolveFocus))
         .catch((error: unknown) => {
-          console.error('LibraryPanel action failed', error);
           reportError(error);
         });
     };

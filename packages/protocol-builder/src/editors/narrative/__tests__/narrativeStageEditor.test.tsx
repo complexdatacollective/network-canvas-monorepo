@@ -157,6 +157,36 @@ describe('the narrative stage editor', () => {
   });
 
   /**
+   * Automatic layout is the same force simulation, given different nodes and
+   * different permissions. `Narrative.tsx` simulates `nodesWithLayout` in
+   * either mode, where `Sociogram.tsx` switches to `allNodes` and draws the
+   * unplaced ones in; and it passes `behaviours.allowRepositioning` to the
+   * canvas, so the shared sentence's unconditional "reposition nodes by hand"
+   * is the "Allow moving nodes" switch's to grant.
+   */
+  it('describes automatic layout as a narrative stage performs it', async () => {
+    const harness = openFixture();
+    await waitFor(() => expect(harness.outline()).toHaveLength(9));
+
+    expect(
+      screen.getByText(/the rest are left off the canvas, as in manual mode/, {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/only if “Allow moving nodes” is switched on/, {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+    // The shared sentence promises repositioning outright.
+    expect(
+      screen.queryByText(/reposition nodes by hand while it is paused/, {
+        exact: false,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
    * The refusal has to be attributable: a researcher looking at the outline
    * has to be told which section is holding the save up, not only that
    * something is.

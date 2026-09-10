@@ -238,8 +238,9 @@ export const narrativePresetMessages = defineMessages({
   presetHighlightHint: {
     id: 'protocolBuilder.networkCanvas.presetHighlightHint',
     defaultMessage:
-      'A node is highlighted while any of these attributes is true of it.',
-    description: 'Guidance under the preset highlight-attributes tick list.',
+      'The interviewer picks one of these attributes at a time, and the nodes it is true of are shown highlighted.',
+    description:
+      'Guidance under the preset highlight-attributes tick list. It says what the interview does with the list, because ticking several attributes does not highlight by all of them at once: the interview offers the ticked attributes as a set of radio buttons and highlights by the one chosen.',
   },
   presetUnavailableHighlightAttribute: {
     id: 'protocolBuilder.networkCanvas.presetUnavailableHighlightAttribute',

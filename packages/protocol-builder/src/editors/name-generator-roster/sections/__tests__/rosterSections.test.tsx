@@ -176,6 +176,85 @@ describe("a roster stage's data file", () => {
     expect(request?.stageDocument.sortOptions).toBeUndefined();
     expect(request?.stageDocument.searchOptions).toBeUndefined();
   });
+
+  /**
+   * A file the host cannot read — an imported protocol whose manifest names an
+   * asset whose bytes are broken or gone, which the host answers `inspect`
+   * about with a refusal.
+   *
+   * The columns are unknown, exactly as they are while no file has been chosen
+   * and while one is still being read, so nothing can be offered and nothing
+   * can be judged: `useOrphanedColumns` deliberately calls no row dangling on
+   * the strength of a question nobody has answered. Left at that, the three
+   * sections stand OPEN under their ordinary descriptions over empty controls —
+   * a required Attribute cell asking for a choice among nothing, a search
+   * section inviting the researcher to pick the attributes people would search
+   * for when none are offered — while the stage still holds the settings the
+   * unreadable file is merely hiding, and the only affordance left on a
+   * stranded row is Remove, which destroys them.
+   */
+  it('shuts the sections chosen from a data file that could not be read', async () => {
+    const harness = renderStageEditor({
+      assets: {
+        broken_roster: {
+          name: 'Broken Roster',
+          type: 'network',
+          source: 'broken.json',
+        },
+      },
+      stage: rosterWith({
+        dataSource: 'broken_roster',
+        cardOptions: {
+          additionalProperties: [{ variable: 'age', label: 'Age' }],
+        },
+        sortOptions: {
+          sortOrder: [{ property: 'age', direction: 'asc' }],
+          sortableProperties: [{ variable: 'age', label: 'Age' }],
+        },
+        searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
+      }),
+      sections: (
+        <>
+          <CardDisplaySection />
+          <SortOptionsSection />
+          <SearchOptionsSection />
+        </>
+      ),
+    });
+
+    // Said by each of the three, because each is asking the same question of
+    // the same file and each has to answer it the same way.
+    await waitFor(() =>
+      expect(
+        screen.getAllByText(
+          'The chosen data file could not be read, so there is nothing to choose from. The settings this stage already holds are kept.',
+        ),
+      ).toHaveLength(3),
+    );
+
+    // Nothing is offered, so nothing is editable either: an empty required
+    // cell over a value the researcher cannot see is the state the message
+    // above is there to explain.
+    expect(attributeCellIn(/Attributes shown on a card/)).toBeDisabled();
+    expect(
+      attributeCellIn(/Attributes the participant may sort by/),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('group', { name: /Attributes a search matches/ }),
+    ).toBeDisabled();
+
+    // And nothing is lost. The file is unreadable, not the configuration: the
+    // stage saves exactly what it arrived holding, so a researcher who fixes
+    // the file finds their settings where they left them.
+    const request = await harness.submit();
+    expect(request?.stageDocument.searchOptions).toEqual({
+      fuzziness: 0.5,
+      matchProperties: ['name'],
+    });
+    expect(request?.stageDocument.cardOptions).toEqual({
+      additionalProperties: [{ variable: 'age', label: 'Age' }],
+    });
+  });
 });
 
 describe("what a roster's cards show", () => {
@@ -649,6 +728,40 @@ describe('how a participant searches a roster', () => {
         'This search matches an attribute that is not in the data file. Uncheck it and choose another.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * Unchecking is the one way out the refusal names, and taking it destroys the
+   * control that was clicked: the orphan is offered only while it is still
+   * checked, so the click removes the checkbox in the same commit and the
+   * refusal that named the problem goes with it. Focus then falls to `<body>`,
+   * and a researcher working from the keyboard or a screen reader is returned
+   * to the top of the document with nothing said about what they just did.
+   */
+  it('keeps focus in the search after unchecking an attribute the file does not have', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: {
+          fuzziness: 0.5,
+          matchProperties: ['name', 'nickname'],
+        },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    const orphan = await screen.findByRole('checkbox', {
+      name: 'nickname — this attribute is not in the data file',
+    });
+    await harness.user.click(orphan);
+
+    // Gone for good, which is what keeps a lost column from being chosen
+    // afresh — and is why focus had nowhere of its own to return to.
+    expect(orphan).not.toBeInTheDocument();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(
+      screen.getByRole('group', { name: /Attributes a search matches/ }),
+    ).toContainElement(document.activeElement as HTMLElement);
   });
 
   /**
