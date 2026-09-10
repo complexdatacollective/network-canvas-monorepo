@@ -25,6 +25,7 @@ import { readMigrations } from '../../db/migrations/artifact.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createPool } from '../../db/pool.ts';
 import { readEnv } from '../../env.ts';
+import { createProtocolBuilderRuntime } from '../../protocol-builder/runtime.ts';
 import { createRpcRouter } from '../../rpc.ts';
 import { completeSetup, getSetupStatus } from '../bootstrap.ts';
 
@@ -93,6 +94,7 @@ function rpc(
         pool,
         bootstrapToken,
         invitationDeliveryAvailable: false,
+        protocolBuilder: createProtocolBuilderRuntime(),
       },
     ),
     { context: { principal: null, requestId: randomUUID() } },

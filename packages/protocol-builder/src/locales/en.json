@@ -2679,6 +2679,38 @@
     "defaultMessage": "That resource is being discarded, so it cannot be used here. Choose a different one.",
     "description": "Refusal shown when a researcher picks a resource another field is in the middle of discarding."
   },
+  "protocolBuilder.resourceFailure.rosterAttributeNameUnusable": {
+    "defaultMessage": "the \"{name}\" attribute cannot be used as a variable name: names may hold only letters, digits, and the characters . _ - :",
+    "description": "Refusal shown when an imported roster carries a column or attribute name a protocol variable cannot take — a spreadsheet heading such as \"home address\". name is that heading, left exactly as the researcher wrote it. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterEmpty": {
+    "defaultMessage": "the selected file has no records in it, so a stage using it would have nobody to show",
+    "description": "Refusal shown when an imported roster parsed correctly but holds no entries. \"Stage\" is one step of an interview. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterNodeAttributesNotObject": {
+    "defaultMessage": "the attributes of node {position} are not an object",
+    "description": "Names the entry at fault in an imported roster whose attributes are malformed. \"Node\" is one person or entity in network data; position is its one-based place in the file. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterNodeNotObject": {
+    "defaultMessage": "node {position} is not an object",
+    "description": "Names the entry at fault in an imported roster. \"Node\" is the network-research term for one person or entity in the data; position is its one-based place in the file. Appears after a clause of its own, so it is lower case and has no full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterUnreadable": {
+    "defaultMessage": "the selected file is not a readable network",
+    "description": "Refusal shown when an imported roster (participant data an interview reads) cannot be parsed as network data. \"Network\" is the network-research sense: people and the ties between them. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterUnreadableDetail": {
+    "defaultMessage": "the selected file is not a readable network: {detail}",
+    "description": "The same refusal as rosterUnreadable, with the specific fault named. detail is one of the roster* messages below, already localized. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterValueUnusableInNode": {
+    "defaultMessage": "the \"{name}\" attribute of node {position} is not a value a variable can hold",
+    "description": "Names the attribute at fault in an imported JSON roster. name is the researcher’s own attribute name; \"node\" is one person or entity in network data and position is its one-based place in the file. Lower case and without a full stop."
+  },
+  "protocolBuilder.resourceFailure.rosterValueUnusableInRow": {
+    "defaultMessage": "the \"{name}\" attribute of row {row} is not a value a variable can hold",
+    "description": "Names the cell at fault in an imported spreadsheet roster. name is the researcher’s own column heading; row is its one-based line in the file. \"Attribute\" and \"variable\" are the data fields a protocol records. Lower case and without a full stop."
+  },
   "protocolBuilder.resourceFailure.unreachable": {
     "defaultMessage": "The resource could not be reached. Try again in a moment.",
     "description": "Shown to a researcher when the host storing protocol resources (images, audio, rosters, API keys) threw instead of answering. Deliberately says nothing about the host."
@@ -3017,7 +3049,7 @@
   },
   "protocolBuilder.resourceSummary.fileTerm": {
     "defaultMessage": "File",
-    "description": "Label beside the original filename of a resource a researcher imported into their protocol."
+    "description": "Label beside the original filename of a file a researcher has just imported into their protocol and not yet saved."
   },
   "protocolBuilder.resourceSummary.nodesTerm": {
     "defaultMessage": "Nodes",
@@ -3919,9 +3951,17 @@
     "defaultMessage": "This stage could not be added. Wait a moment and try again.",
     "description": "Shown above a stage editor’s fields when adding a new stage failed for a reason that carried no explanation of its own. A stage is one step of an interview."
   },
-  "protocolBuilder.stageEdit.importBeforeAdd": {
-    "defaultMessage": "A file imported here cannot be saved with a stage that is being added for the first time. Discard the import and add the stage, then reopen it to import the file.",
-    "description": "Shown above a stage editor’s fields when the researcher imported a file while adding a brand new stage, which the protocol cannot yet take in one step. A stage is one step of an interview."
+  "protocolBuilder.stageEdit.blockedBy": {
+    "defaultMessage": "{holder} is editing another part of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.",
+    "description": "Shown above a stage editor’s fields when the save was refused because a named collaborator is editing another part of the protocol the save has to write. holder is that person’s display name, which the host supplies. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.blockedBySeveral": {
+    "defaultMessage": "{holders} are editing other parts of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.",
+    "description": "Shown above a stage editor’s fields when the save was refused because several named collaborators are between them editing the other parts of the protocol the save has to write. holders is their display names, which the host supplies, joined as a list. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": {
+    "defaultMessage": "Another part of the protocol that this save needs is being edited, so nothing was saved and your changes are still here. Try saving again in a moment.",
+    "description": "Shown above a stage editor’s fields when the save was refused because somebody the host would not name is editing another part of the protocol the save has to write. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
   },
   "protocolBuilder.stageEdit.invalidShape": {
     "defaultMessage": "This stage is not something the protocol can hold, so nothing was saved and your unsaved changes have been discarded.",

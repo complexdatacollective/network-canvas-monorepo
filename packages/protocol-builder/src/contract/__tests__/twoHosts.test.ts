@@ -10,6 +10,7 @@ import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { streamProtocolEvents } from '../../state/channel.ts';
+import { committedSource } from '../../testing/host/__tests__/committedSource.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
@@ -18,6 +19,13 @@ import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts
 import { createWebSocketHost } from '../../testing/host/websocketHost.ts';
 import type { ProtocolBuilderClient } from '../contract.ts';
 import type { ProtocolEvent } from '../schemas.ts';
+
+/** The edit these calls are made from: one editor, open throughout. */
+const EDIT = 'edit-1';
+
+/** A fresh idempotency key: every write below is its own intent. */
+let writes = 0;
+const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
@@ -100,6 +108,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     const { definedError, isSuccess } = await safe(
       client.submit({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...before.document, label: 'Renamed without the lock' },
         revision: before.revision,
@@ -143,6 +152,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
 
     const created = await client.create({
       protocolId: host.protocolId,
+      requestId: nextRequestId(),
       kind: 'stage',
       document: withoutId,
       position: 0,
@@ -172,6 +182,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     });
     await writer.submit({
       protocolId: host.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Written before anyone watched' },
       revision: held.revision,
@@ -244,6 +255,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
 
     const staged = await client.resources.stage({
       protocolId: host.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
@@ -266,6 +278,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
 
     const inspected = await client.resources.inspect({
       protocolId: host.protocolId,
+      editId: EDIT,
       resourceId,
     });
     expect(inspected.status === 'ok' && inspected.data.descriptor.name).toBe(
@@ -280,10 +293,11 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     });
     const written = await client.submit({
       protocolId: host.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: held.document,
       revision: held.revision,
-      promote: { promotionId: 'promotion-1', resourceIds: [resourceId] },
+      promote: { editId: EDIT, resourceIds: [resourceId] },
     });
     expect(written.promoted).toHaveLength(1);
     expect(written.revision.sequence).toBeGreaterThan(0n);
@@ -293,12 +307,16 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     // The manifest records a name, a type and a source; what the researcher
     // imported it as is the host's to keep, and a committed image a media
     // element is handed as `application/octet-stream` can be refused.
+    // The manifest names the bytes by their content, not by the filename the
+    // researcher picked: two imports called `nook.png` are two assets, and a
+    // protocol that carried both under one name could only export one of them.
+    const committed = await committedSource(bytes, 'nook.png');
     expect(listed.data.resources).toContainEqual(
       expect.objectContaining({
         id: resourceId,
         name: 'Nook',
         status: 'committed',
-        source: 'nook.png',
+        source: committed,
         contentType: 'image/png',
         byteLength: bytes.size,
       }),
@@ -310,7 +328,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     expect(manifest.document[resourceId]).toMatchObject({
       name: 'Nook',
       type: 'image',
-      source: 'nook.png',
+      source: committed,
     });
     expect(manifest.revision.sequence).toBe(written.revision.sequence);
 
@@ -318,6 +336,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     // the bytes the host committed, having crossed a real socket.
     const preview = await client.resources.preview({
       protocolId: host.protocolId,
+      editId: EDIT,
       resourceId,
     });
     if (preview.status !== 'ok') throw new Error(preview.failure.message);
@@ -325,10 +344,76 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     expect(preview.data.url.startsWith('data:image/png;base64,')).toBe(true);
   });
 
+  it('promotes a staged file with the stage being created, not a later submit', async () => {
+    const { host, client } = await open();
+    const bytes = new Blob([new Uint8Array([137, 80, 78, 71])], {
+      type: 'image/png',
+    });
+    const staged = await client.resources.stage({
+      protocolId: host.protocolId,
+      editId: EDIT,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Nook',
+        source: 'nook.png',
+        contentType: 'image/png',
+        bytes,
+      },
+    });
+    if (staged.status !== 'ok') throw new Error(staged.failure.message);
+    const resourceId = staged.data.descriptor.id;
+
+    // A stage being ADDED has no revision to submit, so the create is the only
+    // place its imported file can become part of the protocol.
+    const created = await client.create({
+      protocolId: host.protocolId,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: {
+        type: 'Information',
+        label: 'Information',
+        title: 'Welcome',
+        items: [{ id: 'item-1', type: 'asset', content: resourceId }],
+      },
+      promote: { editId: EDIT, resourceIds: [resourceId] },
+    });
+    expect(created.promoted).toEqual([
+      expect.objectContaining({ id: resourceId, status: 'committed' }),
+    ]);
+
+    const manifest = await client.getSection({
+      protocolId: host.protocolId,
+      sectionId: ASSETS,
+    });
+    expect(manifest.document[resourceId]).toMatchObject({
+      name: 'Nook',
+      type: 'image',
+      source: await committedSource(bytes, 'nook.png'),
+    });
+    expect(manifest.revision.sequence).toBe(created.revision.sequence);
+
+    const section = await client.getSection({
+      protocolId: host.protocolId,
+      sectionId: created.sectionId,
+    });
+    expect(section.revision.sequence).toBe(created.revision.sequence);
+
+    const preview = await client.resources.preview({
+      protocolId: host.protocolId,
+      editId: EDIT,
+      resourceId,
+    });
+    if (preview.status !== 'ok') throw new Error(preview.failure.message);
+    expect(preview.data.url.endsWith(await base64Of(bytes))).toBe(true);
+  });
+
   it('forgets a staged resource that is discarded', async () => {
     const { host, client } = await open();
     const staged = await client.resources.stage({
       protocolId: host.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
@@ -344,6 +429,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
 
     const discarded = await client.resources.discard({
       protocolId: host.protocolId,
+      editId: EDIT,
       resourceId,
     });
     // The whole answer is the status: a `data` key whose only value is
@@ -353,6 +439,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
 
     const again = await client.resources.discard({
       protocolId: host.protocolId,
+      editId: EDIT,
       resourceId,
     });
     expect(again).toStrictEqual({
@@ -367,11 +454,13 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
 
     const listed = await client.resources.list({
       protocolId: host.protocolId,
+      editId: EDIT,
       status: 'staged',
     });
     expect(listed.status === 'ok' && listed.data.resources).toEqual([]);
     const inspected = await client.resources.inspect({
       protocolId: host.protocolId,
+      editId: EDIT,
       resourceId,
     });
     expect(inspected.status === 'failed' && inspected.failure.reason).toBe(
@@ -385,6 +474,7 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
 
     const staged = await client.resources.stage({
       protocolId: host.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: { kind: 'secret', name: 'Mapbox token', value },
     });
@@ -398,11 +488,12 @@ describe.each(hosts)('one contract, served $name', ({ serve }) => {
     });
     const promoted = await client.submit({
       protocolId: host.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: held.document,
       revision: held.revision,
       promote: {
-        promotionId: 'promotion-1',
+        editId: EDIT,
         resourceIds: [staged.data.descriptor.id],
         ...(staged.data.handle === undefined
           ? {}

@@ -471,6 +471,95 @@ export function documentWithCreatedVariable(
   return entityDocumentWithVariables(input, variables);
 }
 
+/**
+ * One editor's finished document, laid back over the section as the host holds
+ * it NOW.
+ *
+ * A nested codebook editor assembles the whole section — the authoritative
+ * document it was rendered from, with its one attribute written into it — and
+ * the write that carries it takes the section's lock only at that moment. A
+ * collaborator who wrote between the editor's last render and that acquire is
+ * in the document the lock hands back and NOT in the one the editor built, so
+ * submitting the editor's copy whole deletes their attribute without either
+ * researcher seeing anything happen.
+ *
+ * So only what the editor owns comes across: `ownedProperties` are the
+ * attribute's properties this submit set, and everything else — the
+ * attribute's other properties, the other attributes, and the entity's own
+ * properties — is whatever the host holds. An attribute is one record edited
+ * through several surfaces, so carrying the whole of it would undo a
+ * collaborator's rename on a save of the rules and their rules on a save of
+ * the values, in each case from a surface that offers no control for what it
+ * overwrote. Absent only from a CREATE, which authors the whole attribute.
+ *
+ * The name is re-checked against the authoritative attributes for the same
+ * reason: the collaborator may have used it while this editor was open, and
+ * the check the editor made was against a codebook that no longer exists.
+ */
+export function documentWithRebasedVariable(
+  input: VariableEditInput &
+    Readonly<{
+      submittedDocument: SectionDoc;
+      /** Absent where the submit creates the attribute, and so owns all of it. */
+      ownedProperties?: readonly string[];
+    }>,
+): SectionDoc {
+  assertNonEmpty(input.variableId, 'variable record id');
+  const submitted = variablesFromDocument(input.submittedDocument)[
+    input.variableId
+  ];
+  // Absent — or not an attribute at all — is the editor handing back a
+  // document that does not hold what it was opened on, which is the same
+  // nothing-to-write-to that a deleted attribute is.
+  if (!isRecord(submitted)) throw new MissingVariableError(input.variableId);
+  const variables = variablesFromDocument(input.authoritativeDocument);
+  const variable = validateVariableDraft(
+    input.ownedProperties === undefined
+      ? submitted
+      : variableWithOwnedProperties(
+          variables,
+          input.variableId,
+          submitted,
+          input.ownedProperties,
+        ),
+  );
+  assertVariableNameAvailable(variables, variable, input.variableId);
+  defineOwn(variables, input.variableId, cloneValue(variable));
+  return entityDocumentWithVariables(input, variables);
+}
+
+/**
+ * The attribute as the host holds it, with one editor's own properties taken
+ * across from what it submitted.
+ *
+ * A property the submit left off is one the editor cleared — the same
+ * delete-then-write `documentWithUpdatedVariable` performs against
+ * `replaceProperties` — so an owned property absent from the submitted record
+ * is removed rather than kept.
+ *
+ * An attribute that is no longer there is one a collaborator deleted inside
+ * this round trip. Writing it back would recreate it under them, so the save
+ * is refused with the sentence `MissingVariableError` already carries.
+ */
+const variableWithOwnedProperties = (
+  variables: Record<string, unknown>,
+  variableId: string,
+  submitted: Record<string, unknown>,
+  ownedProperties: readonly string[],
+): SectionDoc => {
+  const current = variables[variableId];
+  if (!Object.hasOwn(variables, variableId) || !isRecord(current)) {
+    throw new MissingVariableError(variableId);
+  }
+  const next = cloneDocument(current);
+  for (const property of ownedProperties) {
+    if (Object.hasOwn(submitted, property)) {
+      defineOwn(next, property, cloneValue(submitted[property]));
+    } else delete next[property];
+  }
+  return next;
+};
+
 /** The authoritative section with the draft laid over one of its attributes. */
 export function documentWithUpdatedVariable(
   input: UpdateVariableEditInput,

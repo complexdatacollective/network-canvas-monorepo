@@ -202,6 +202,7 @@ function racedByACollaborator(host: InMemoryHost): ProtocolBuilderClient {
     if (!host.store.has(EGO)) {
       await host.asCollaborator(ANA).create({
         protocolId: host.protocolId,
+        requestId: 'ana-adds-the-first-attribute',
         kind: 'codebookEgo',
         document: {
           variables: { pronouns: { name: 'pronouns', type: 'text' } },
