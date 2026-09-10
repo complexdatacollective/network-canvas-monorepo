@@ -42,6 +42,14 @@ export default defineConfig({
     // adding workers. What the third worker does buy is real but smaller
     // than the arithmetic suggests — 493s to 420-468s — because part of the
     // gain is given straight back as contention.
+    //
+    // One ceiling moved with it: a scratch schema holds three pools of `max`
+    // 20, so the theoretical peak goes from 120 connections to 180 against
+    // the service container's default `max_connections` of 100. It was
+    // already nominally over at two workers and has never bitten, because pg
+    // pools open connections on demand rather than reserving `max` — but if
+    // `too many clients already` ever appears, this is the arithmetic behind
+    // it, and the fix is the pool sizes rather than the worker count.
     maxWorkers: 3,
     // The protocol suites validate whole fixture protocols and build a
     // fourteen-table schema per file.
