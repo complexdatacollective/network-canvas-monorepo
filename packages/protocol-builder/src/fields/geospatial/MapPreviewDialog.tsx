@@ -18,6 +18,7 @@ import {
   type MapCenter,
   resolveCenter,
   resolveZoom,
+  wrapLongitude,
 } from './mapView.ts';
 
 export type MapPreviewDialogProps = Readonly<{
@@ -105,7 +106,14 @@ export default function MapPreviewDialog({
       map.on('move', () => {
         if (map === null || disposed) return;
         const moved = map.getCenter();
-        setViewCenter([moved.lng, moved.lat]);
+        // Taken as a place rather than as the map's running count of how far
+        // the researcher has panned: see `wrapLongitude`. Wrapped where the
+        // map is READ, so the comparison below judges the view the researcher
+        // is looking at against the one the stage holds in the same terms — a
+        // map panned all the way around to where it started offers nothing to
+        // accept, and what "Use this view" writes is a centre the stage can
+        // save.
+        setViewCenter([wrapLongitude(moved.lng), moved.lat]);
         setViewZoom(map.getZoom());
       });
     } catch {

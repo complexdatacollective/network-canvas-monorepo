@@ -64,6 +64,39 @@ const LONGITUDE_RANGE = 180;
 const LATITUDE_RANGE = 90;
 
 /**
+ * The same meridian, named inside the world the stage can hold.
+ *
+ * A map drawing copies of the world — Mapbox's default, and the preview's —
+ * counts longitude as the researcher keeps panning: `Transform._constrain`
+ * neither wraps nor clamps `lng` while `renderWorldCopies` is on and no
+ * `maxBounds` is set, so a pan east across the antimeridian leaves
+ * `getCenter()` answering 286.0251 for the place -73.9749 names. Written
+ * through as it came, that view is one `centerIssue` and the protocol schema
+ * both refuse, so the dialog would hand the researcher a starting view their
+ * stage cannot save.
+ *
+ * `LngLat#wrap`'s own arithmetic, spelled here rather than called through the
+ * map: a value this package writes is checked by this package's own tests, and
+ * asking the SDK object to wrap it would leave the assertion resting on
+ * whatever the test's stand-in map happened to implement.
+ *
+ * A longitude that is already a place is handed back UNTOUCHED, which the
+ * arithmetic alone does not do: `((-0.12 + 180) % 360 + 360) % 360 - 180` is
+ * -0.12000000000000455, so wrapping unconditionally would write a fraction of
+ * a millimetre of drift into every ordinary view a researcher accepts. Only a
+ * longitude that has left the world is recomputed — including the one case
+ * where the wrap lands exactly on the antimeridian, which is one meridian with
+ * two names and is answered, as the SDK answers it, as 180.
+ */
+export function wrapLongitude(longitude: number): number {
+  if (Math.abs(longitude) <= LONGITUDE_RANGE) return longitude;
+  const span = LONGITUDE_RANGE * 2;
+  const wrapped =
+    ((((longitude + LONGITUDE_RANGE) % span) + span) % span) - LONGITUDE_RANGE;
+  return wrapped === -LONGITUDE_RANGE ? LONGITUDE_RANGE : wrapped;
+}
+
+/**
  * What is wrong with a stored starting zoom, in the researcher's words.
  *
  * The schema enforces the same range, but it does so against a path after the

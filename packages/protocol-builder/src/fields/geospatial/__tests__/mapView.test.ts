@@ -9,6 +9,7 @@ import {
   MIN_ZOOM,
   resolveCenter,
   resolveZoom,
+  wrapLongitude,
   zoomIssue,
 } from '../mapView.ts';
 
@@ -126,6 +127,40 @@ describe('the view a geospatial stage opens on', () => {
       expect(read(zoomIssue, '10')).toBe(
         'Starting zoom must be between 0 and 22.',
       );
+    });
+  });
+
+  /**
+   * A map that draws copies of the world reports longitude as a running
+   * count, so a view taken from one has to be named as a place before the
+   * stage can hold it. Mapbox's own `LngLat#wrap` documents the first pair.
+   */
+  describe('bringing a panned longitude back into the world', () => {
+    it('names the same meridian inside the range the stage accepts', () => {
+      expect(wrapLongitude(286.0251)).toBeCloseTo(-73.9749, 10);
+      expect(wrapLongitude(-190)).toBeCloseTo(170, 10);
+      expect(wrapLongitude(900)).toBeCloseTo(180, 10);
+      expect(centerIssue([wrapLongitude(286.0251), 40.7736])).toBeUndefined();
+    });
+
+    /**
+     * Exactly, not nearly. The arithmetic on its own answers
+     * -0.12000000000000455 for -0.12, and every ordinary view a researcher
+     * accepts would then be saved a fraction of a millimetre from the one
+     * they were looking at.
+     */
+    it('leaves a longitude already inside the world exactly as it is', () => {
+      expect(wrapLongitude(-0.12)).toBe(-0.12);
+      expect(wrapLongitude(-73.9749)).toBe(-73.9749);
+      expect(wrapLongitude(0)).toBe(0);
+      expect(wrapLongitude(180)).toBe(180);
+      expect(wrapLongitude(-180)).toBe(-180);
+    });
+
+    /** One meridian with two names, which the SDK answers with as 180. */
+    it('answers 180 when the wrap lands on the antimeridian', () => {
+      expect(wrapLongitude(540)).toBe(180);
+      expect(wrapLongitude(-540)).toBe(180);
     });
   });
 
