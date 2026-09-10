@@ -61,6 +61,17 @@ export type StageEditorFormContextValue = Readonly<{
    */
   committedFields: StageFormDraft;
   /**
+   * The document right now: what the controls are holding, over what has been
+   * written structurally.
+   *
+   * Read rather than subscribed — it is what the form's store says at the
+   * moment it is called — so a caller that has to follow it subscribes to
+   * `storeApi` and reads this from the listener. A host previewing the stage
+   * the researcher is looking at, rather than the one they last saved, is what
+   * this is for.
+   */
+  liveDraft(): StageFormDraft;
+  /**
    * Issues commands on the form's own behalf, and answers with the draft they
    * produced.
    *
