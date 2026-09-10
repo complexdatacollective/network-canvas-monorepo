@@ -354,10 +354,9 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
 /**
  * The questions a Categorical Bin asks, each with the bins it is answered by.
  *
- * Ported from Architect's `CategoricalBinPrompts`. One move: the attribute's
- * values are edited through the codebook rather than through a
- * `variableOptions` key on the prompt, which the protocol schema has never
- * accepted and which Architect had to strip on the way out.
+ * The attribute's values are edited through the codebook rather than through a
+ * `variableOptions` key on the prompt: the protocol schema has never accepted
+ * one, and Architect has to strip its own on the way out.
  */
 export default function CategoricalBinPromptsSection() {
   const { identity } = useStageEditorForm();

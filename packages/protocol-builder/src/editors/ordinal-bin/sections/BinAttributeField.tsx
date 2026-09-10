@@ -164,9 +164,10 @@ export type BinAttributeFieldProps = Readonly<{
  * Three controls, in the order a researcher meets them: pick one of the
  * attributes this slot can bind, invent one if none fits, and change what the
  * one they picked holds. The third is `AttributeCodebookControls`, which is
- * where Architect's inline option editor and its validation section both went:
- * an attribute lives in a different protocol section from the stage, so
- * editing it takes that section's own lock and commits on its own.
+ * where Architect's inline option editor went — and, for the follow-up answer
+ * alone, its validation section: an attribute lives in a different protocol
+ * section from the stage, so editing it takes that section's own lock and
+ * commits on its own.
  *
  * Shared by the two bins and by the follow-up answer a categorical bin
  * collects, which are the same question asked of different kinds of answer.
@@ -278,6 +279,13 @@ export default function BinAttributeField({
           variableField={slot.name}
           committedVariable={committed}
           componentField={NO_ROW_COMPONENT}
+          // The bins themselves are filled by dragging, and the interview
+          // reads no rules on their way in — the schema says so by declaring
+          // this reference `unvalidatedAttribute`, and its own writer
+          // exclusivity then keeps a form from collecting the same attribute
+          // anywhere else. Only the follow-up answer is typed, so only the
+          // follow-up is offered rules to check it against.
+          offerRules={slot.writerClass === 'validated'}
         />
       ) : (
         <LockedOptions options={locked} />

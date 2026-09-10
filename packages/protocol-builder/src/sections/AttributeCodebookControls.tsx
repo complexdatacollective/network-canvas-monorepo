@@ -205,6 +205,17 @@ export type AttributeCodebookControlsProps = Readonly<{
    * exactly that pairing.
    */
   offerParameters?: boolean;
+  /**
+   * Whether the answer this row collects is checked against the attribute's
+   * rules at all.
+   *
+   * FALSE where the interview writes the attribute without asking the
+   * participant anything a form could check — a bin filled by dragging, whose
+   * schema reference says so with `usage: 'unvalidatedAttribute'`. Rules
+   * authored there would never run, and the button offering them says "for
+   * this answer" about a value nobody types.
+   */
+  offerRules?: boolean;
 }>;
 
 /**
@@ -239,6 +250,7 @@ export default function AttributeCodebookControls({
   componentField,
   inventingType,
   offerParameters = true,
+  offerRules = true,
 }: AttributeCodebookControlsProps) {
   const intl = useAppIntl();
   const { readOnly } = useStageEditorForm();
@@ -424,7 +436,7 @@ export default function AttributeCodebookControls({
     offerParameters &&
     picked !== undefined &&
     parameterShapeFor(pickedType, pickedComponent) !== null;
-  const canEditRules = picked !== undefined;
+  const canEditRules = offerRules && picked !== undefined;
   const canCreate =
     inventingType !== undefined && isCollectableType(inventingType);
   /**

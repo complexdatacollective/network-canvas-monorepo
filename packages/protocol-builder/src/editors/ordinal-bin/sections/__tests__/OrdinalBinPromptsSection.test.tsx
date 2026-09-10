@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
@@ -38,6 +38,31 @@ describe('the questions an ordinal bin asks', () => {
     expect(picker).toHaveValue('contactFreq');
     // `ord-color-seq-1` is the first swatch of the schema's own sequence.
     expect(screen.getByRole('radio', { name: 'Sea Green' })).toBeChecked();
+  });
+
+  /**
+   * The scale is filled by dragging, and the interview checks nothing on the
+   * way in: the schema declares this reference `unvalidatedAttribute`, and its
+   * writer exclusivity keeps a form elsewhere from collecting the same
+   * attribute. So no rules control is offered for it — Architect offers none
+   * either — while the values it will draw as bins stay editable.
+   */
+  it('offers the scale’s values but no rules for them', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+
+    expect(
+      await dialog.findByRole('button', {
+        name: 'Change this attribute’s values',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      dialog.queryByRole('button', { name: 'Set rules for this answer' }),
+    ).toBeNull();
   });
 
   /**
