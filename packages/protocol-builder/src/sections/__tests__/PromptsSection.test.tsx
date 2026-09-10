@@ -97,7 +97,7 @@ describe('the prompt list a stage owns', () => {
     await screen.findByText('And who else?');
 
     const [firstRemove] = screen.getAllByRole('button', {
-      name: 'Remove prompt',
+      name: 'Delete prompt',
     });
     await harness.user.click(firstRemove as HTMLElement);
     await harness.user.click(
@@ -162,7 +162,7 @@ describe('the prompt list a stage owns', () => {
     const harness = renderStageEditor(openEditor());
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Remove prompt' }),
+      screen.getByRole('button', { name: 'Delete prompt' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Delete prompt' }),

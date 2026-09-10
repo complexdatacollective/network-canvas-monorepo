@@ -4,10 +4,21 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
+import {
+  RowDialog,
+  RowList,
+  RowListItem,
+  rowId,
+  rowTemplate,
+  type RowListConfig,
+  type RowPreviewProps,
+  type RowValues,
+} from '../../../form/rowDialog.tsx';
 import { useStageResourceUsage } from '../useStageResourceUsage.ts';
 import { flushPendingWork } from './asyncControls.ts';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
@@ -254,5 +265,110 @@ describe('counting the resource references a stage holds', () => {
 
     await waitFor(async () => expect(await staged()).toEqual([]));
     expect(within(first).queryByRole('alert')).toBeNull();
+  });
+});
+
+/** One block of the page, edited in a dialog of its own. */
+function BlockEditor() {
+  return (
+    <>
+      <Field
+        name="type"
+        label="Block type"
+        component={InputField}
+        initialValue="asset"
+      />
+      <Field
+        name="content"
+        label="Block image"
+        component={AssetPickerField}
+        kind="image"
+      />
+    </>
+  );
+}
+
+function BlockPreview({ item }: RowPreviewProps) {
+  return (
+    <span>{typeof item.content === 'string' ? item.content : 'No image'}</span>
+  );
+}
+
+const BLOCKS: RowListConfig = {
+  Preview: BlockPreview,
+  Editor: BlockEditor,
+  addTitle: { id: 'test.addBlock', defaultMessage: 'Add a block' },
+  editTitle: { id: 'test.editBlock', defaultMessage: 'Edit a block' },
+  formId: 'block-editor',
+  name: 'items',
+};
+
+function BlockList() {
+  return (
+    <RowList config={BLOCKS}>
+      <Field<typeof ArrayField<RowValues>>
+        name="items"
+        label="Blocks"
+        component={ArrayField}
+        getId={rowId}
+        addButtonLabel="Add a block"
+        itemLabel={{ id: 'test.blockNoun', defaultMessage: 'block' }}
+        itemComponent={RowListItem}
+        editorComponent={RowDialog}
+        itemTemplate={rowTemplate()}
+      />
+    </RowList>
+  );
+}
+
+/**
+ * A row a dialog is still editing is not in the stage form — that is what a row
+ * dialog is — so a picker inside one is asking about a stage that does not hold
+ * its own answer. Counted that way, the single reference a SIBLING row holds
+ * reads as "only this field uses it", and the discard deletes bytes the saved
+ * stage goes on to name.
+ */
+describe('counting the row a dialog is still editing', () => {
+  it('refuses a discard the sibling row would be left dangling by', async () => {
+    const user = userEvent.setup();
+    const { staged } = renderResourceEditor({
+      fields: { title: 'Welcome', items: [] },
+      children: <BlockList />,
+    });
+
+    // The first block imports the file and is saved, so the stage form holds
+    // the only committed reference to it.
+    await user.click(
+      await screen.findByRole('button', { name: 'Add a block' }),
+    );
+    const first = within(await screen.findByRole('dialog'));
+    await user.click(first.getByRole('button', { name: 'Select an image' }));
+    await user.upload(
+      await screen.findByLabelText('Choose a file from your computer'),
+      new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+    );
+    await first.findByRole('button', { name: 'Discard this resource' });
+    await user.click(first.getByRole('button', { name: 'Add' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).toBeNull();
+    });
+
+    // The second block points at the same import, in a dialog that is still
+    // open: nothing it holds has reached the stage.
+    await user.click(screen.getByRole('button', { name: 'Add a block' }));
+    const second = within(await screen.findByRole('dialog'));
+    await user.click(second.getByRole('button', { name: 'Select an image' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'skyline.png' }),
+    );
+    await act(flushPendingWork);
+
+    await user.click(
+      second.getByRole('button', { name: 'Discard this resource' }),
+    );
+    await act(flushPendingWork);
+
+    expect(second.getByRole('alert')).toHaveTextContent(STILL_IN_USE);
+    expect(await staged()).not.toEqual([]);
   });
 });
