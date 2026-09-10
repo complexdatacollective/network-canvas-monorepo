@@ -6,8 +6,9 @@ import { defineMessages } from '@codaco/app-i18n/messages';
  * One file for the whole area rather than descriptors beside each section's
  * markup, because a good half of what this family says is rendered somewhere
  * ELSE — in `BuilderSection`'s confirmation, in a row's own affordances and
- * the confirmation a removal raises, in the shared form-fields section, and in a field error that
- * travelled to the form's error region as an encoded string. A translator
+ * the confirmation a removal raises, in the shared form-fields section, and in
+ * a field error that travelled to the form's error region as an encoded
+ * string. A translator
  * reading this file sees the whole of a pedigree at once, including the parts
  * no pedigree component renders.
  *
@@ -48,7 +49,7 @@ export const pedigreeMessages = defineMessages({
     id: 'protocolBuilder.pedigree.nominationPromptNoun',
     defaultMessage: 'nomination prompt',
     description:
-      'What one row of the nomination prompt list is called inside things said ABOUT it — "Edit nomination prompt", "Remove this nomination prompt?" — so it is lower case and singular. Qualified rather than plain "prompt" because a pedigree editor shows a census prompt beside it.',
+      'What one row of the nomination prompt list is called inside things said ABOUT it — "Edit nomination prompt", "Delete this nomination prompt?" — so it is lower case and singular. Qualified rather than plain "prompt" because a pedigree editor shows a census prompt beside it.',
   },
   memberFormClearTitle: {
     id: 'protocolBuilder.pedigree.memberFormClearTitle',

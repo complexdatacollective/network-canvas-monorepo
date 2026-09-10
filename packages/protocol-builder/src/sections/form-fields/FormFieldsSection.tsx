@@ -244,7 +244,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.formFields.itemNoun',
     defaultMessage: 'field',
     description:
-      'What one row of a form’s list of questions is called inside things said ABOUT it — "Edit field", "Remove this field?" — so it is lower case and singular.',
+      'What one row of a form’s list of questions is called inside things said ABOUT it — "Edit field", "Delete this field?" — so it is lower case and singular.',
   },
   emptyState: {
     id: 'protocolBuilder.formFields.emptyState',
@@ -590,14 +590,10 @@ type FormFieldsScope = Readonly<{
    */
   answeredFor: string | undefined;
   /**
-   * The attribute the row being edited COLLECTS, as the list holds it now.
+   * The attribute the row being edited COLLECTS, as its picker names it now.
    *
-   * Not what the dialog is showing: the row on screen is a draft, and the row
-   * the save commits is that draft re-seated on whatever has arrived for it
-   * (`reseatEditedRow`) — so a field the researcher never touched is the
-   * list's, however long the dialog has been open. That is the attribute every
-   * codebook write this row makes is ABOUT, and the one
-   * `useWhereTheAnswerLands` reads when the write comes back.
+   * That is the attribute every codebook write this row makes is ABOUT, and
+   * the one `useWhereTheAnswerLands` reads when the write comes back.
    *
    * A ref, and one for the whole section rather than one per row, because the
    * save gate belongs to the LIST — it is the list's `beforeSave`, made once
@@ -989,9 +985,9 @@ function useCommitFormField(
   const createVariable = useCreateCodebookVariable(codebookSubject);
   const setComponent = useSetVariableComponent(codebookSubject);
   // Both writes below are round trips, and both are ABOUT the attribute the
-  // row's picker names — which is the attribute the row commits, because
-  // `useAttributeThatFollowsTheRow` keeps it so. One reading for both, and the
-  // same one the codebook editors' own create uses.
+  // row's picker names, which is the attribute the row commits: the dialog is
+  // the only thing that can change a row of a stage this editor holds. One
+  // reading for both, and the same one the codebook editors' own create uses.
   const whereTheAnswerLands = useWhereTheAnswerLands(
     codebookSubject,
     () => rowUnderEdit.current?.variable,
@@ -1376,13 +1372,6 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   // control invented in the codebook editor is back on screen, and what the
   // control is an answer about has to be remembered across that gap.
   const control = useAttributeControl(item);
-  // Before the control, because the control is an answer ABOUT the attribute:
-  // a row that follows an arrival to another attribute has to be showing that
-  // attribute before anything is derived from it.
-  useAttributeThatFollowsTheRow(
-    asString(item.variable) ?? '',
-    asString(useRowValue('variable')),
-  );
   useControlThatFollowsTheAttribute(
     control.binding,
     control.seeded,
@@ -1594,63 +1583,6 @@ function InputControlField({
       initialValue={seeded}
     />
   );
-}
-
-/**
- * Keeps the picker saying what the ROW collects, until the researcher answers
- * it themselves.
- *
- * The dialog holds a draft of one row, and the row it commits is that draft
- * re-seated on whatever arrived for the row while it was open
- * (`reseatEditedRow`): a field the researcher never touched is the list's, not
- * the dialog's. The attribute is the one field of a form-field row where a
- * dialog that goes on showing the old answer is not merely stale — everything
- * else in the dialog is an answer ABOUT it. The kind of answer offered, which
- * input controls exist, which codebook editors are on offer, and above all
- * WHICH ATTRIBUTE this row's save writes a control onto are all derived from
- * what the picker says, so a picker left behind by a collaborator's rebind
- * turns a save into a change to an attribute the researcher never looked at,
- * recorded against a field that collects a different one.
- *
- * `initialValue` cannot follow it, for the reason
- * `useControlThatFollowsTheAttribute` gives below: a field keeps its value
- * across a change of initial value by design, and keeps it across an unmount
- * as well. So the arrival is written through the store, exactly as the
- * codebook's own answer is.
- *
- * Answered ONCE and it is theirs: a researcher who has chosen an attribute —
- * or asked for one to be invented — has answered the question the row asks,
- * and their answer wins the re-seat as any contested leaf does. This is the
- * same rule `reseedStageForm` states for the stage's own controls, said for a
- * row: a key the arrival moved is written, a key it left alone is the
- * researcher's. The first render records what it found without writing
- * anything, because the picker has just registered from the same value.
- *
- * A row still being written has no committed attribute at all (`committed` is
- * empty), and nothing arrives for it: a new row is in no list yet.
- */
-function useAttributeThatFollowsTheRow(
-  committed: string,
-  live: string | undefined,
-): void {
-  const setFieldValue = useFormStore((state) => state.setFieldValue);
-  const shown = useRef({ committed, answered: false });
-
-  useEffect(() => {
-    const previous = shown.current;
-    // Nothing is registered yet, so there is nothing anyone can have answered
-    // and nothing to write over.
-    if (live === undefined) return;
-    const answered = previous.answered || live !== previous.committed;
-    shown.current = { committed, answered };
-    // An empty arrival is not an answer: the schema refuses a field that
-    // collects nothing, and blanking the picker would take away the very
-    // reference the researcher has to resolve.
-    if (answered || committed === '' || committed === previous.committed) {
-      return;
-    }
-    setFieldValue('variable', committed);
-  }, [committed, live, setFieldValue]);
 }
 
 /**
