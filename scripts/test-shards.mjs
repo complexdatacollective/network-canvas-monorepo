@@ -36,27 +36,29 @@
 //
 // HOW THE BUCKETS WERE DERIVED
 //
-// From per-package wall time in the four longest full-cascade `test` jobs on
-// record (runs 34457797127, 34439598092, 34452953003, 34453233041 — 24m00s to
-// 25m56s of turbo run time each). Turbo buffers a task's whole output and
-// flushes it as one group when the task ends, so a package's elapsed time is
-// the gap between its group and the next one's; that matched vitest's own
-// `Duration` line plus 2-5s of process startup for every package
-// cross-checked. Run-to-run spread was small (protocol-builder 405-436s,
-// architect 327-348s), so these are weights, not noise.
+// The packing came from per-package wall time in the four longest
+// full-cascade `test` jobs on record (runs 34457797127, 34439598092,
+// 34452953003, 34453233041). The `seconds` below were then RE-MEASURED cold
+// on the sharded job itself, run 34484836350, which ran every one of the 23
+// packages with the cache forced off — so unlike the historical runs it has a
+// real number for the five that are almost always a cache hit (the two
+// Classic apps deliberately depend on published protocol-validation rather
+// than the workspace copy, so nothing else invalidates them; app-i18n,
+// interface-images and the ingress worker are tiny and stable).
 //
-// The `seconds` below are from the widest of those runs. Five packages were a
-// cache hit in all four — the two Classic apps deliberately depend on
-// published protocol-validation rather than the workspace copy, so nothing
-// else invalidates them, and app-i18n, interface-images and the ingress
-// worker are tiny and stable. Their weights are extrapolated from a local
-// `--force --summarize` run scaled by the CI/local ratio the other sixteen
-// packages showed (median 2.4), and are the only estimated numbers here.
+// Turbo buffers a task's whole output and flushes it as one group when the
+// task ends, so a package's elapsed time is the gap between its group and the
+// next one's. Summed per shard that reproduces turbo's own reported run time
+// to within a second (shard 1: 540.0 measured vs 539.3 reported; shard 5:
+// 274.1 vs 273.4), which is what makes these numbers trustworthy.
 //
-// The packing is longest-processing-time-first, which lands:
+//     shard 1  540.0s      shard 2  260.3s      shard 3  353.0s
+//     shard 4  313.0s      shard 5  274.1s      total  1740.4s
 //
-//     shard 1  430.6s      shard 2  346.0s      shard 3  314.6s
-//     shard 4  290.1s      shard 5  271.5s
+// Treat them as a scale, not a stopwatch: the same suite varies by up to ~30%
+// between runners (architect 260s here against 327-348s historically,
+// protocol-builder 540s against 405-436s), so the packing is built for the
+// ordering, not the decimals.
 //
 // Two hand placements override the packing:
 //
@@ -67,15 +69,16 @@
 //     --with-deps chromium` before its (tiny) suite, so it is weighted by that
 //     install rather than by its tests.
 //
-// Five shards rather than four because the job cannot finish sooner than its
-// largest single package however many runners it gets, and protocol-builder is
-// that package at 430.6s. Four shards would have packed the rest into buckets
-// of ~380-430s, leaving no margin: a shard that drifted past protocol-builder
-// would become the critical path. Five leaves the rest at ~270-350s, so
-// protocol-builder is the sole constraint on both the affected and the
-// full-suite path, and the extra runner is free on a public repository. Going
-// below 430s needs the protocol-builder suite itself split, which is a
-// different change: turbo's unit of work is the package.
+// Five shards rather than four, even though four would give the same wall
+// time today. The job cannot finish sooner than its largest single package
+// however many runners it gets, and protocol-builder is that package at 540s;
+// four shards would pack the remaining 1200s into ~400s buckets, which is only
+// 26% under protocol-builder and so inside the ~30% runner-to-runner variance
+// measured above — a shard would sometimes become the critical path instead.
+// Five leaves the rest at 260-353s, comfortably clear, and the extra runner is
+// free on a public repository. Going below 540s needs the protocol-builder
+// suite itself split, which is a different change: turbo's unit of work is the
+// package.
 //
 // TO REBALANCE: take a recent full-suite `test` shard log, read each package's
 // elapsed time, and re-pack. The weights are documentation, not inputs — only
@@ -111,47 +114,47 @@ export const TEST_SHARDS = [
   // whole workspace. Everything else is packed to sit under it.
   {
     shard: 1,
-    packages: [{ name: '@codaco/protocol-builder', seconds: 430.6 }],
+    packages: [{ name: '@codaco/protocol-builder', seconds: 540 }],
   },
   {
     shard: 2,
-    packages: [{ name: '@codaco/architect', seconds: 346.0 }],
+    packages: [{ name: '@codaco/architect', seconds: 260.3 }],
   },
   {
     shard: 3,
     postgres: true,
     packages: [
-      { name: '@codaco/interview', seconds: 190.2 },
-      { name: '@codaco/interviewer-classic', seconds: 56 },
-      { name: '@codaco/protocol-validation', seconds: 43.0 },
-      { name: '@codaco/studio-sync', seconds: 20.9 },
+      { name: '@codaco/interview', seconds: 189.5 },
+      { name: '@codaco/interviewer-classic', seconds: 96.8 },
+      { name: '@codaco/protocol-validation', seconds: 41.7 },
+      { name: '@codaco/studio-sync', seconds: 20.5 },
       { name: '@codaco/network-exporters', seconds: 4.5 },
     ],
   },
   {
     shard: 4,
     packages: [
-      { name: '@codaco/fresco-ui', seconds: 149.8 },
-      { name: '@codaco/architect-classic', seconds: 31 },
-      { name: '@codaco/protocol-utilities', seconds: 54.2 },
-      { name: 'networkcanvas.com', seconds: 34.4 },
-      { name: '@codaco/background-creator', seconds: 16.4 },
-      { name: '@codaco/network-query', seconds: 2.6 },
-      { name: '@codaco/shared-consts', seconds: 1.7 },
+      { name: '@codaco/fresco-ui', seconds: 144.2 },
+      { name: '@codaco/architect-classic', seconds: 62.4 },
+      { name: '@codaco/protocol-utilities', seconds: 52.7 },
+      { name: 'networkcanvas.com', seconds: 33.3 },
+      { name: '@codaco/background-creator', seconds: 15.5 },
+      { name: '@codaco/network-query', seconds: 2.4 },
+      { name: '@codaco/shared-consts', seconds: 2.5 },
     ],
   },
   {
     shard: 5,
     packages: [
       { name: '@codaco/interviewer', seconds: 100.9 },
-      { name: 'fresco', seconds: 66.5 },
-      { name: '@codaco/studio-client', seconds: 47.4 },
-      { name: '@codaco/site-navigation-element', seconds: 27.6 },
-      { name: '@codaco/art', seconds: 10.5 },
-      { name: '@codaco/documentation', seconds: 8.1 },
-      { name: '@codaco/app-i18n', seconds: 5 },
-      { name: '@codaco/interface-images', seconds: 4 },
-      { name: 'studio-managed-ingress-worker', seconds: 1.5 },
+      { name: 'fresco', seconds: 66.9 },
+      { name: '@codaco/studio-client', seconds: 48.8 },
+      { name: '@codaco/site-navigation-element', seconds: 27.7 },
+      { name: '@codaco/art', seconds: 10.3 },
+      { name: '@codaco/documentation', seconds: 7.9 },
+      { name: '@codaco/app-i18n', seconds: 3.7 },
+      { name: '@codaco/interface-images', seconds: 6.1 },
+      { name: 'studio-managed-ingress-worker', seconds: 1.8 },
     ],
   },
 ];
