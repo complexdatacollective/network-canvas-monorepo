@@ -7,7 +7,10 @@ import type { VariableOption, VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import VariableEditor from '../../../codebook/components/VariableEditor.tsx';
-import { sectionIdForCodebookSubject } from '../../../codebook/editing.ts';
+import {
+  documentWithRebasedVariable,
+  sectionIdForCodebookSubject,
+} from '../../../codebook/editing.ts';
 import { useCodebookSectionWrite } from '../../../codebook/writes.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
@@ -185,12 +188,25 @@ export default function CreateVariableButton({
    * to an attribute the researcher watched no editor finish. The same act as
    * `AttributeCodebookControls`' three nested editors, which withhold every
    * way out for exactly this.
+   *
+   * Only the attribute being created crosses into the write, for the reason
+   * `documentWithRebasedVariable` gives: the section the lock hands back may
+   * already hold a collaborator's own change, and this editor's copy of it
+   * does not.
    */
   const submitEdit =
-    (target: CodebookSubject) => async (document: SectionDoc) => {
+    (target: CodebookSubject, variableId: string) =>
+    async (document: SectionDoc) => {
       setSubmitting(true);
       try {
-        return await writeCodebookSection(target, () => document);
+        return await writeCodebookSection(target, (authoritative) =>
+          documentWithRebasedVariable({
+            subject: target,
+            authoritativeDocument: authoritative,
+            variableId,
+            submittedDocument: document,
+          }),
+        );
       } finally {
         setSubmitting(false);
       }
@@ -243,7 +259,7 @@ export default function CreateVariableButton({
             allowedVariableTypes={[variableType]}
             lockedOptions={lockedOptions ?? null}
             protocolContext={protocolContext}
-            onSubmitDocument={submitEdit(session.subject)}
+            onSubmitDocument={submitEdit(session.subject, session.variableId)}
             onComplete={(variableId) => {
               // Bound only while the slot still names attributes of the type
               // the attribute was created on. An answer that arrives after the
