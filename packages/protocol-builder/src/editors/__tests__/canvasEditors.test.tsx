@@ -6,6 +6,7 @@ import type { FixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
 import { narrativeStageEditor } from '../narrative/NarrativeStageEditor.ts';
+import { networkComposerStageEditor } from '../network-composer/NetworkComposerStageEditor.ts';
 import { sociogramStageEditor } from '../sociogram/SociogramStageEditor.ts';
 
 shimMarkdownEditorMeasurement();
@@ -66,6 +67,32 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Interviewer guidance',
     ],
     ownedKeys: ['background', 'behaviours', 'label', 'presets', 'subject'],
+  },
+  {
+    interfaceName: 'NetworkComposer',
+    stageId: 'network-composer-1',
+    editor: networkComposerStageEditor,
+    sections: [
+      'Stage name',
+      'Node type',
+      'Adding and arranging nodes',
+      'Node attributes',
+      'Connections',
+      'Background',
+      'Node layout',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: [
+      'background',
+      'behaviours',
+      'convexHullVariable',
+      'edges',
+      'label',
+      'layoutVariable',
+      'quickAdd',
+      'subject',
+    ],
   },
 ];
 

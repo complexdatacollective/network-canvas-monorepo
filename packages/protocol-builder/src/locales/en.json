@@ -1431,6 +1431,222 @@
     "defaultMessage": "Canvas interaction",
     "description": "Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology."
   },
+  "protocolBuilder.networkCanvas.composerCreateLayoutLabel": {
+    "defaultMessage": "Create a new position attribute",
+    "description": "Button that creates an attribute holding a position in the codebook and uses it for this stage."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeAddLabel": {
+    "defaultMessage": "Add a connection type",
+    "description": "Button that adds a kind of connection to those a network composer lets the participant draw."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeAddTitle": {
+    "defaultMessage": "Add a connection type",
+    "description": "Title of the dialog a researcher fills in to let a network composer draw a NEW kind of connection."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeDescription": {
+    "defaultMessage": "Choose the kinds of connection the participant can draw between nodes on this canvas.",
+    "description": "Description of the connections section of a network composer. A connection is a relationship between two members of the network."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeDuplicateRefusal": {
+    "defaultMessage": "This canvas already draws this kind of connection. Edit the existing one instead.",
+    "description": "Refusal shown when two rows of a network composer’s connection list would name the same kind of connection."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeEditTitle": {
+    "defaultMessage": "Edit connection type",
+    "description": "Title of the dialog a researcher fills in when changing a kind of connection a network composer already draws."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeEmpty": {
+    "defaultMessage": "The participant cannot draw connections on this canvas yet. Add a connection type to let them.",
+    "description": "Shown in place of the list of connection types while a network composer allows none."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeFieldHint": {
+    "defaultMessage": "The participant can draw a connection of any kind listed here. Leave the list empty to build a network of nodes alone.",
+    "description": "Guidance under the list of connection types a network composer lets the participant draw."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeFieldLabel": {
+    "defaultMessage": "Connection types",
+    "description": "Label of the list holding the kinds of connection a network composer lets the participant draw."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeNoun": {
+    "defaultMessage": "connection type",
+    "description": "What one row of a network composer’s connection list is called, used in the accessible names of its edit, delete and reorder controls and in the confirmation that deletes it."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeTitle": {
+    "defaultMessage": "Connections",
+    "description": "Heading of the section deciding which kinds of connection a participant may draw between nodes on a composer canvas. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeTypeHint": {
+    "defaultMessage": "The kind of connection the participant draws. Its name and color come from the codebook.",
+    "description": "Guidance under the connection-type control of a network composer. The codebook is where a protocol defines the kinds of connection its network holds."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeTypeLabel": {
+    "defaultMessage": "Connection type",
+    "description": "Label of the control choosing which kind of connection one row of a network composer’s connection list stands for."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeTypeRequired": {
+    "defaultMessage": "Choose the kind of connection this draws.",
+    "description": "Refusal shown when a row of a network composer’s connection list is saved without naming a connection type."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeUnnamedPreview": {
+    "defaultMessage": "No connection type chosen",
+    "description": "How a row of a network composer’s connection list reads before a kind of connection has been chosen for it."
+  },
+  "protocolBuilder.networkCanvas.composerLayoutEmpty": {
+    "defaultMessage": "This type has no position attributes yet. Create one to store where the participant puts each node.",
+    "description": "Shown in place of the position-attribute list when the node type this stage builds has no attribute that can hold a position."
+  },
+  "protocolBuilder.networkCanvas.composerLayoutHint": {
+    "defaultMessage": "The attribute that stores each node’s position. Stages sharing an attribute carry the participant’s placements between them.",
+    "description": "Guidance under the position-attribute control of a network composer. A stage is one step of an interview."
+  },
+  "protocolBuilder.networkCanvas.composerLayoutLabel": {
+    "defaultMessage": "Position attribute",
+    "description": "Label of the control choosing which codebook attribute stores where each node sits on a composer canvas."
+  },
+  "protocolBuilder.networkCanvas.composerNodeDescription": {
+    "defaultMessage": "How the participant adds nodes to the canvas, where those nodes sit, and how they group them.",
+    "description": "Description of the node section of a network composer. A node is one member of the network the participant is building."
+  },
+  "protocolBuilder.networkCanvas.composerNodeTitle": {
+    "defaultMessage": "Adding and arranging nodes",
+    "description": "Heading of the section deciding how a participant adds members to the network on a composer canvas, where those members are remembered, and how they are grouped. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.composerNodeWaitingDescription": {
+    "defaultMessage": "Choose what this stage works with before configuring how its nodes behave.",
+    "description": "Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.networkCanvas.composerUnvalidatedOnThisStageRefusal": {
+    "defaultMessage": "“{variableName}” is written directly by another control on this stage, so a question here would check values that control does not.",
+    "description": "Refusal shown when the quick-add box or a form field on a network composer picks an attribute the same stage’s position or grouping control writes straight onto the node. The shared refusal names another STAGE or a prompt; this one names a control on the stage the researcher is looking at, which is the thing they can act on. variableName is the researcher’s own name for the attribute."
+  },
+  "protocolBuilder.networkCanvas.createHullLabel": {
+    "defaultMessage": "Create a new grouping attribute",
+    "description": "Button that creates an attribute with a fixed set of values in the codebook and groups nodes by it."
+  },
+  "protocolBuilder.networkCanvas.createQuickAddLabel": {
+    "defaultMessage": "Create a new attribute to fill in",
+    "description": "Button that creates a text attribute in the codebook and uses it as the one filled in when a node is added."
+  },
+  "protocolBuilder.networkCanvas.duplicateVariableRefusal": {
+    "defaultMessage": "Another field on this form already records this attribute. Choose a different one, or edit the existing field instead.",
+    "description": "Refusal shown when two fields of one network composer form would record their answers in the same attribute."
+  },
+  "protocolBuilder.networkCanvas.edgeFormAddLabel": {
+    "defaultMessage": "Create new attribute field for “{typeName}” connections",
+    "description": "Button that adds a question to the form shown for one kind of connection. typeName is the researcher-facing name of that connection type."
+  },
+  "protocolBuilder.networkCanvas.edgeFormEmptyState": {
+    "defaultMessage": "No attributes yet for this connection type. Create one to ask the participant something about each connection they draw.",
+    "description": "Shown in place of the list of questions about one kind of connection while it holds none."
+  },
+  "protocolBuilder.networkCanvas.edgeFormFieldsHint": {
+    "defaultMessage": "The participant answers these in the panel that opens when they select a connection of this kind. Drag to reorder them.",
+    "description": "Guidance under the list of questions asked about one kind of connection."
+  },
+  "protocolBuilder.networkCanvas.edgeFormHeading": {
+    "defaultMessage": "Attributes for “{typeName}” connections",
+    "description": "Label of the list of questions asked about one kind of connection. typeName is the researcher-facing name of that connection type."
+  },
+  "protocolBuilder.networkCanvas.edgeFormsDescription": {
+    "defaultMessage": "Optionally ask the participant more about each connection they draw. Each kind of connection is asked about separately, because each records its own attributes.",
+    "description": "Description of the connection-attributes section of a network composer."
+  },
+  "protocolBuilder.networkCanvas.edgeFormsTitle": {
+    "defaultMessage": "Connection attributes",
+    "description": "Heading of the section holding the questions a network composer asks about each connection the participant draws. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.fieldParametersHint": {
+    "defaultMessage": "These settings belong to this field rather than to the attribute, so the same attribute can be asked for differently on another stage.",
+    "description": "Guidance under the settings group of a network composer form field. A stage is one step of an interview."
+  },
+  "protocolBuilder.networkCanvas.fieldParametersInherited": {
+    "defaultMessage": "These come from the “{attributeName}” attribute, and this field follows them. Change any of them and this field keeps a set of its own.",
+    "description": "Said above the settings group when this field has none of its own and is showing the codebook attribute’s. attributeName is the researcher-facing name of that attribute."
+  },
+  "protocolBuilder.networkCanvas.fieldParametersLabel": {
+    "defaultMessage": "What this field accepts",
+    "description": "Label of the group of settings the chosen input control takes — the two ends of a scale, the window a date must fall in."
+  },
+  "protocolBuilder.networkCanvas.formFieldAddTitle": {
+    "defaultMessage": "Add a form field",
+    "description": "Title of the dialog a researcher fills in for a NEW field of a network composer form."
+  },
+  "protocolBuilder.networkCanvas.formFieldControlHint": {
+    "defaultMessage": "How the participant answers. Only controls that can render this attribute are listed, and the choice belongs to this field alone — the same attribute can be asked for differently on another stage.",
+    "description": "Guidance under the input-control chooser of a network composer form field. A stage is one step of an interview. Says both which controls are offered and that the choice is not written back to the codebook, which is what makes this interface different from every other form in the protocol."
+  },
+  "protocolBuilder.networkCanvas.formFieldControlLabel": {
+    "defaultMessage": "Input control",
+    "description": "Label of the control choosing how the participant answers one field of a network composer form — a text box, a slider, a set of buttons."
+  },
+  "protocolBuilder.networkCanvas.formFieldControlRequired": {
+    "defaultMessage": "Choose how the participant answers this field.",
+    "description": "Refusal shown when a network composer form field is saved without an input control."
+  },
+  "protocolBuilder.networkCanvas.formFieldEditTitle": {
+    "defaultMessage": "Edit form field",
+    "description": "Title of the dialog a researcher fills in when changing an existing field of a network composer form."
+  },
+  "protocolBuilder.networkCanvas.formFieldEmptyPreview": {
+    "defaultMessage": "Empty field",
+    "description": "How a network composer form field with no question and no attribute reads in the list when its dialog is closed."
+  },
+  "protocolBuilder.networkCanvas.formFieldHelpHint": {
+    "defaultMessage": "Shown under the question, for anything the participant might need explained. Optional.",
+    "description": "Guidance under the help-text box of a network composer form field."
+  },
+  "protocolBuilder.networkCanvas.formFieldHelpLabel": {
+    "defaultMessage": "Help text",
+    "description": "Label of the box holding the explanation shown under one field of a network composer form."
+  },
+  "protocolBuilder.networkCanvas.formFieldHelpPlaceholder": {
+    "defaultMessage": "Enter help text…",
+    "description": "Placeholder inside the empty help-text box of a network composer form field."
+  },
+  "protocolBuilder.networkCanvas.formFieldNoun": {
+    "defaultMessage": "form field",
+    "description": "What one row of a network composer’s form list is called, used in the accessible names of its edit, delete and reorder controls and in the confirmation that deletes it."
+  },
+  "protocolBuilder.networkCanvas.formFieldQuestionHint": {
+    "defaultMessage": "What the participant is asked. Leave it empty to use the attribute’s own name.",
+    "description": "Guidance under the question box of a network composer form field. The attribute’s name is the researcher-facing name the codebook records it under."
+  },
+  "protocolBuilder.networkCanvas.formFieldQuestionLabel": {
+    "defaultMessage": "Question",
+    "description": "Label of the box holding what the participant is asked for one field of a network composer form."
+  },
+  "protocolBuilder.networkCanvas.formFieldQuestionPlaceholder": {
+    "defaultMessage": "Enter your question…",
+    "description": "Placeholder inside the empty question box of a network composer form field."
+  },
+  "protocolBuilder.networkCanvas.formFieldRecordsAttribute": {
+    "defaultMessage": "Records the attribute “{attributeName}”",
+    "description": "Badge under one network composer form field in the list, naming what its answer is recorded in. attributeName is the researcher-facing name of the codebook attribute."
+  },
+  "protocolBuilder.networkCanvas.formFieldValidationHintsHint": {
+    "defaultMessage": "Tells the participant what a valid answer looks like, derived from the attribute’s own rules.",
+    "description": "Guidance under the validation-hints switch of a network composer form field. The rules belong to the codebook attribute rather than to this field."
+  },
+  "protocolBuilder.networkCanvas.formFieldValidationHintsLabel": {
+    "defaultMessage": "Show validation hints",
+    "description": "Label of the switch that tells the participant what a valid answer to one field of a network composer form looks like."
+  },
+  "protocolBuilder.networkCanvas.formFieldVariableEmpty": {
+    "defaultMessage": "This type has no attributes a form can collect yet. Create one in the codebook to continue.",
+    "description": "Shown in place of the attribute list when the type this form is about has nothing a form could ask for. The codebook is where a protocol defines the kinds of member its network holds and the attributes recorded about each."
+  },
+  "protocolBuilder.networkCanvas.formFieldVariableHint": {
+    "defaultMessage": "The attribute each answer is recorded in. Only attributes a form can collect are listed: a position or a location is written by the canvas rather than answered.",
+    "description": "Guidance under the attribute control of a network composer form field. A position is where a node sits on the canvas; a location is a point on a map. Both are written by the participant moving something rather than by answering a question, so no control can collect them."
+  },
+  "protocolBuilder.networkCanvas.formFieldVariableLabel": {
+    "defaultMessage": "Attribute",
+    "description": "Label of the control choosing which codebook attribute one field of a network composer form records the answer in. An attribute is one piece of information recorded about a member of the network."
+  },
+  "protocolBuilder.networkCanvas.formFieldVariableRequired": {
+    "defaultMessage": "Choose the attribute this field records.",
+    "description": "Refusal shown when a network composer form field is saved without naming the attribute its answer is recorded in."
+  },
   "protocolBuilder.networkCanvas.freeDrawHint": {
     "defaultMessage": "The participant can draw freehand annotations over the canvas, and erase them again.",
     "description": "Guidance under the drawing switch."
@@ -1438,6 +1654,22 @@
   "protocolBuilder.networkCanvas.freeDrawLabel": {
     "defaultMessage": "Allow drawing on the canvas",
     "description": "Label of the switch letting the participant draw on the canvas."
+  },
+  "protocolBuilder.networkCanvas.hullEmpty": {
+    "defaultMessage": "This type has no attributes with a fixed set of values, so there is nothing to group nodes by.",
+    "description": "Shown in place of the grouping-attribute list when the node type this stage builds has no categorical attribute this stage may take."
+  },
+  "protocolBuilder.networkCanvas.hullHint": {
+    "defaultMessage": "Nodes sharing a value of this attribute are drawn inside a shaded outline. The participant sets those values on the canvas, so they are written without being checked against the attribute’s rules.",
+    "description": "Guidance under the grouping-attribute control of a network composer. The shaded outline is drawn around every node that shares a value; the participant assigns those values by lassoing or tapping nodes, which does not run the codebook’s validation."
+  },
+  "protocolBuilder.networkCanvas.hullLabel": {
+    "defaultMessage": "Grouping attribute",
+    "description": "Label of the control choosing which codebook attribute the participant groups nodes by on a composer canvas."
+  },
+  "protocolBuilder.networkCanvas.layoutModeAutomaticComposerDescription": {
+    "defaultMessage": "Starts the stage with the simulation running. The participant can switch it off and on as they work, and the stage reopens the way they left it.",
+    "description": "Says what the participant sees in automatic layout mode on a network composer stage, where the setting decides only how the stage starts because the participant has a switch of their own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the wordings of one control together."
   },
   "protocolBuilder.networkCanvas.layoutModeAutomaticDescription": {
     "defaultMessage": "Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.",
@@ -1455,6 +1687,10 @@
     "defaultMessage": "Layout mode",
     "description": "Label of the control choosing between manual and automatic node layout."
   },
+  "protocolBuilder.networkCanvas.layoutModeManualComposerDescription": {
+    "defaultMessage": "Places each node where there is room for it as the participant adds it, leaving them to drag it wherever they want.",
+    "description": "Says what the participant sees in manual layout mode on a network composer stage, where they add the nodes themselves rather than being given a set of them to place. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the wordings of one control together."
+  },
   "protocolBuilder.networkCanvas.layoutModeManualDescription": {
     "defaultMessage": "Places all nodes in a \"bucket\" at the bottom of the screen, from which the participant drags each one to where they want it.",
     "description": "Says what the participant sees in manual layout mode. The \"bucket\" is the holding area at the foot of the canvas that unplaced nodes wait in; the quotation marks are in the English because it is a nickname for that area rather than a formal name."
@@ -1466,6 +1702,42 @@
   "protocolBuilder.networkCanvas.layoutModeManualNarrativeDescription": {
     "defaultMessage": "Shows every node at the position already stored in the attribute the preset positions by. A node that attribute holds no position for is left off the canvas.",
     "description": "Says what the participant sees in manual layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the two wordings of one control together."
+  },
+  "protocolBuilder.networkCanvas.nodeFormAddLabel": {
+    "defaultMessage": "Create new node attribute field",
+    "description": "Button that adds a question to the form a network composer shows for a selected node."
+  },
+  "protocolBuilder.networkCanvas.nodeFormClearConfirm": {
+    "defaultMessage": "Delete the form",
+    "description": "Button that confirms switching off the form a network composer shows for a selected node."
+  },
+  "protocolBuilder.networkCanvas.nodeFormClearDescription": {
+    "defaultMessage": "Every field you have added to it will be removed, and the panel that opens when a participant selects a node will have nothing in it.",
+    "description": "Description of the confirmation shown before switching off the form a network composer shows for a selected node."
+  },
+  "protocolBuilder.networkCanvas.nodeFormClearTitle": {
+    "defaultMessage": "This will delete the node form",
+    "description": "Title of the confirmation shown before switching off the form a network composer shows for a selected node."
+  },
+  "protocolBuilder.networkCanvas.nodeFormDescription": {
+    "defaultMessage": "Optionally let the participant fill in more about each node after they have added it.",
+    "description": "Description of the node-attributes section of a network composer."
+  },
+  "protocolBuilder.networkCanvas.nodeFormEmptyState": {
+    "defaultMessage": "No node attributes yet. Create one to ask the participant something about each node.",
+    "description": "Shown in place of the list of questions about each node while it holds none."
+  },
+  "protocolBuilder.networkCanvas.nodeFormFieldsHint": {
+    "defaultMessage": "The participant answers these in the panel that opens when they select a node. Drag to reorder them.",
+    "description": "Guidance under the list of questions asked about each node of a network composer."
+  },
+  "protocolBuilder.networkCanvas.nodeFormFieldsLabel": {
+    "defaultMessage": "Form fields",
+    "description": "Label of the list holding the questions asked about each node of a network composer."
+  },
+  "protocolBuilder.networkCanvas.nodeFormTitle": {
+    "defaultMessage": "Node attributes",
+    "description": "Heading of the section holding the questions a network composer asks about each node the participant has added. Also names the section in the editor outline and to assistive technology."
   },
   "protocolBuilder.networkCanvas.nodeLayoutDescription": {
     "defaultMessage": "Choose how nodes are arranged when this stage opens.",
@@ -1762,6 +2034,18 @@
   "protocolBuilder.networkCanvas.promptTextTitle": {
     "defaultMessage": "Participant prompt",
     "description": "Heading of the group inside the sociogram prompt dialog holding the words the participant reads. A prompt is one task the participant is set."
+  },
+  "protocolBuilder.networkCanvas.quickAddEmpty": {
+    "defaultMessage": "This type has no free-text attributes available, so there is nothing for the quick-add box to fill in.",
+    "description": "Shown in place of the quick-add attribute list when the node type this stage builds has no text attribute this stage may take."
+  },
+  "protocolBuilder.networkCanvas.quickAddHint": {
+    "defaultMessage": "The participant types one thing to add a node — usually a name. It is stored in this attribute, and checked against that attribute’s own rules.",
+    "description": "Guidance under the quick-add attribute control of a network composer. The rules are the validation the codebook records for the attribute."
+  },
+  "protocolBuilder.networkCanvas.quickAddLabel": {
+    "defaultMessage": "Attribute filled in when a node is added",
+    "description": "Label of the control choosing which codebook attribute the participant fills in as they add a member to the network — usually a name."
   },
   "protocolBuilder.networkCanvas.repositioningHint": {
     "defaultMessage": "The participant can drag nodes around while they talk. Nothing is recorded: the attribute the preset positions by is left as it is, and the nodes are back where the preset put them the next time the stage is opened.",
