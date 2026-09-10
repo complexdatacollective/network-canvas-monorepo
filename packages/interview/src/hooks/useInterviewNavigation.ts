@@ -76,13 +76,12 @@ export default function useInterviewNavigation(
   // data reaches it. Without this, the still-mounted old stage's components
   // would receive the new context value mid-exit and re-render with the
   // wrong stage data, often crashing.
-  const [showStage, setShowStage] = useState(true);
-
-  useEffect(() => {
-    if (currentStep !== displayedStep) {
-      setShowStage(false);
-    }
-  }, [currentStep, displayedStep]);
+  //
+  // A transition is exactly the window in which the two steps disagree:
+  // `setCurrentStep` opens it, and `commitDisplayedStep` (called from
+  // AnimatePresence's `onExitComplete`, see `handleExitComplete` below) closes
+  // it. So this is derived rather than an effect-driven flag.
+  const showStage = currentStep === displayedStep;
 
   // Selectors
   const stage = useStageSelector(getCurrentStage);
@@ -110,15 +109,30 @@ export default function useInterviewNavigation(
       : null,
   );
 
-  const [progress, setProgress] = useState(
-    calculateProgress(currentStep, stageCount, promptIndex, promptCount),
+  // Progress has two sources: the session's own position (below), and the
+  // optimistic value a navigation handler publishes for the step it is moving
+  // to, before the session state has caught up. The session's value wins
+  // whenever it changes — compared during render rather than reapplied by an
+  // effect, which would paint the superseded figure for a frame first.
+  const sessionProgress = calculateProgress(
+    currentStep,
+    stageCount,
+    promptIndex,
+    promptCount,
   );
-
-  useEffect(() => {
-    setProgress(
-      calculateProgress(currentStep, stageCount, promptIndex, promptCount),
-    );
-  }, [currentStep, stageCount, promptIndex, promptCount]);
+  const [progress, setProgress] = useState(sessionProgress);
+  const [appliedSessionProgress, setAppliedSessionProgress] =
+    useState(sessionProgress);
+  // `Object.is`, not `!==`: a stage carrying an empty `prompts` array makes
+  // `calculateProgress` return NaN, and `NaN !== NaN` is always true, so a
+  // plain inequality would never converge and React would throw "Too many
+  // re-renders" — taking the whole interview down over a cosmetic value. A
+  // validated protocol cannot produce that, but an unvalidated one handed in
+  // by a host (Architect's live preview) can.
+  if (!Object.is(appliedSessionProgress, sessionProgress)) {
+    setAppliedSessionProgress(sessionProgress);
+    setProgress(sessionProgress);
+  }
 
   // beforeNext registration (multiple keyed handlers)
   const beforeNextHandlers = useRef(new Map<string, BeforeNextFunction>());
@@ -371,8 +385,29 @@ export default function useInterviewNavigation(
     setBeforeNextHandlerCount(0);
     setReviewBoundaryReached(false);
     setHasAttemptedStageNavigation(false);
-    setShowStage(true);
   }, [commitDisplayedStep, dispatch]);
+
+  // The current stage has left the active route and is not the one-stage
+  // manual/preview override.
+  const hasLeftActiveRoute =
+    !currentNavigation.isCurrentStepValid && currentStep !== forcedStep;
+  // In review mode there is nothing past the last authored stage to recover
+  // to, so the participant stays where they are and the stage is pinned as an
+  // override. That is an adjustment to this hook's own state rather than a
+  // navigation, so it is made during render; the effect below is left with the
+  // case it exists for — actually moving the participant.
+  if (
+    hasLeftActiveRoute &&
+    reviewMode &&
+    resolveRecoveryStep({
+      currentStep,
+      currentAvailability: currentNavigation.currentAvailability,
+      previousValidStageIndex: currentNavigation.previousValidStageIndex,
+      nextValidStageIndex: currentNavigation.nextValidStageIndex,
+    }) >= protocolStages.length
+  ) {
+    setForcedStep(currentStep);
+  }
 
   // If the current stage leaves the active route, recover without rendering
   // it. A one-stage manual/preview override is the only exception.
@@ -385,7 +420,7 @@ export default function useInterviewNavigation(
         nextValidStageIndex: currentNavigation.nextValidStageIndex,
       });
       if (reviewMode && recoveryStep >= protocolStages.length) {
-        setForcedStep(currentStep);
+        // Already pinned during render; nowhere to recover to.
         return;
       }
       setStep(recoveryStep, getInterviewProgress(protocolStages, recoveryStep));
