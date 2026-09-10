@@ -119,6 +119,24 @@ export const getEncryptableVariableOptions = (
       value: variableId,
       label: variable.name,
     }));
+
+const buildClearEncryptionConfirmOptions = (nodeTypeName: string) => ({
+  title: createElement(AppMessage, {
+    message: messages.thisWillClearSelectedAttributes,
+  }),
+  description: createElement(AppMessage, {
+    message: messages.thisWillDeselectAllEncryptedAttributes,
+    values: { value1: nodeTypeName },
+  }),
+  confirmLabel: createElement(AppMessage, {
+    message: messages.clearEncryptedAttributes,
+  }),
+  cancelLabel: createElement(AppMessage, {
+    message: commonMessages.cancel,
+  }),
+  intent: 'warning' as const,
+  onConfirm: () => {},
+});
 const EncryptedVariables = (_props: StageEditorSectionProps) => {
   const intl = useAppIntl();
   const dispatch = useDispatch<AppDispatch>();
@@ -146,23 +164,7 @@ const EncryptedVariables = (_props: StageEditorSectionProps) => {
         hasEncryptedVariable,
         nextOpen: newState,
         confirmClear: () =>
-          confirm({
-            title: createElement(AppMessage, {
-              message: messages.thisWillClearSelectedAttributes,
-            }),
-            description: createElement(AppMessage, {
-              message: messages.thisWillDeselectAllEncryptedAttributes,
-              values: { value1: nodeType.name },
-            }),
-            confirmLabel: createElement(AppMessage, {
-              message: messages.clearEncryptedAttributes,
-            }),
-            cancelLabel: createElement(AppMessage, {
-              message: commonMessages.cancel,
-            }),
-            intent: 'warning',
-            onConfirm: () => {},
-          }),
+          confirm(buildClearEncryptionConfirmOptions(nodeType.name)),
         clearSelections: () => {
           Object.entries(nodeType.variables || {}).forEach(
             ([variableId, variable]) => {

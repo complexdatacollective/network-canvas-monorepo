@@ -288,11 +288,17 @@ export const VariablePill = ({
     }
   }, [editing]);
 
-  useEffect(() => {
+  // While the editor is closed the draft simply follows the committed label,
+  // so a cancelled edit is discarded and a rename made elsewhere is picked up.
+  // Both are values this render already has, so they are compared here rather
+  // than synchronised from an effect.
+  const [nameBaseline, setNameBaseline] = useState({ editing, label });
+  if (nameBaseline.editing !== editing || nameBaseline.label !== label) {
+    setNameBaseline({ editing, label });
     if (!editing) {
       setNewName(label);
     }
-  }, [editing, label]);
+  }
 
   const handleStartEditing = () => {
     const trigger = triggerRef.current;

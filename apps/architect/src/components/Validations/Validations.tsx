@@ -201,24 +201,35 @@ const RuleList = ({
    */
   const [revealedIncomplete, setRevealedIncomplete] =
     useState<ReadonlySet<string>>(EMPTY_KEYS);
-  const committedRef = useRef(committed);
-  committedRef.current = committed;
-
-  useEffect(() => {
+  /**
+   * A save objects by handing down a NEW `fieldErrorToken`, and withdraws the
+   * objection by handing down none; the token itself carries no information
+   * beyond that. So it is the token CHANGING that reveals whichever rules are
+   * unanswered at that moment, and it is compared during render — a prop
+   * change is not an external system to synchronise with, and revealing from
+   * an effect showed the row's silent state for a frame first. The seed is
+   * `null` rather than the first token so that a list mounted under a standing
+   * objection still reveals, as the effect this replaced did on mount.
+   */
+  const [seenErrorToken, setSeenErrorToken] = useState<{
+    value: string | undefined;
+  } | null>(null);
+  if (seenErrorToken === null || seenErrorToken.value !== fieldErrorToken) {
+    setSeenErrorToken({ value: fieldErrorToken });
     if (fieldErrorToken === undefined) {
       setRevealedIncomplete((current) =>
         current.size === 0 ? current : EMPTY_KEYS,
       );
-      return;
+    } else {
+      setRevealedIncomplete((current) => {
+        const next = new Set(current);
+        for (const [ruleKey, value] of Object.entries(committed)) {
+          if (!isRuleValueComplete(ruleKey, value)) next.add(ruleKey);
+        }
+        return next.size === current.size ? current : next;
+      });
     }
-    setRevealedIncomplete((current) => {
-      const next = new Set(current);
-      for (const [ruleKey, value] of Object.entries(committedRef.current)) {
-        if (!isRuleValueComplete(ruleKey, value)) next.add(ruleKey);
-      }
-      return next.size === current.size ? current : next;
-    });
-  }, [fieldErrorToken]);
+  }
 
   const isOn = (ruleKey: string) => holdsRule(committed, ruleKey);
 
