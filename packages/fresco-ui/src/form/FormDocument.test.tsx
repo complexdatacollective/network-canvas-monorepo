@@ -176,6 +176,57 @@ describe('a form that is handed the document it edits', () => {
     );
   });
 
+  it('keeps an edit made inside a container the document does not have yet', async () => {
+    const user = userEvent.setup();
+    const onSubmit = submitted();
+
+    function OptionalCapability() {
+      const [revealed, setRevealed] = useState(false);
+      const [collapsed, setCollapsed] = useState(false);
+      return (
+        // The document holds no `limits` at all — an optional capability the
+        // researcher is filling in for the first time.
+        <Form onSubmit={onSubmit} initialValues={{ title: 'Household' }}>
+          <Field name="title" label="Title" component={InputField} />
+          {!collapsed && (
+            <Field name="limits.min" label="Minimum" component={InputField} />
+          )}
+          <button type="button" onClick={() => setRevealed(true)}>
+            reveal
+          </button>
+          <button type="button" onClick={() => setCollapsed(true)}>
+            collapse
+          </button>
+          {revealed && (
+            <Field name="limits" label="Limits" component={ShowsValue} />
+          )}
+          <SubmitButton>Save</SubmitButton>
+        </Form>
+      );
+    }
+
+    render(<OptionalCapability />);
+    await user.type(screen.getByRole('textbox', { name: 'Minimum' }), '9');
+    await user.click(screen.getByRole('button', { name: 'reveal' }));
+
+    expect(await screen.findByTestId('shown-value')).toHaveTextContent(
+      '{"min":"9"}',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'collapse' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    // A document saying nothing at a path is not the same as saying there is
+    // nothing there. Started on that absence, the container answers for
+    // `limits` with an emptiness, and takes the edit down with it the moment
+    // the leaf that made it collapses and leaves it the only field there.
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      title: 'Household',
+      limits: { min: '9' },
+    });
+  });
+
   it('gives a container nothing when there is no document to give it', async () => {
     const user = userEvent.setup();
     const onSubmit = submitted();

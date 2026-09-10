@@ -618,6 +618,15 @@ export const createFormStore = (
    * subtree, so every sibling key the document holds and no field renders is
    * dropped from the moment it mounts, and a form that never showed those
    * keys saves them away.
+   *
+   * A document holding nothing at the path is not a shortcut past rule 2. It
+   * says only that the document has nothing to contribute, and the fields
+   * mounted inside still do — an optional container the researcher has just
+   * filled in for the first time is exactly the case, and a compound control
+   * that started on the absence would answer for the path with an emptiness
+   * and take their edit down with it when the leaf that made it went. With
+   * nothing mounted inside, absence is all there is, and the field starts out
+   * holding nothing.
    */
   const seedValueAt = (
     fieldPath: ObjectPath,
@@ -639,7 +648,6 @@ export const createFormStore = (
     if (document === undefined) return undefined;
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const documented = readObjectPath(document, fieldPath) as FieldValue;
-    if (documented === undefined) return undefined;
     return documentWithMountedDescendants(fieldPath, documented);
   };
 
@@ -656,7 +664,10 @@ export const createFormStore = (
    *
    * Nothing reachable from the document is written to: the writer copies
    * every container it traverses that it does not already own, and it owns
-   * only the wrapper made here.
+   * only the wrapper made here — which is also what turns a `documented` of
+   * `undefined` into the container the descendants are written into, so an
+   * absent subtree needs no special case. With no descendants, `documented`
+   * is handed straight back, absence included.
    */
   const documentWithMountedDescendants = (
     containerPath: ObjectPath,
