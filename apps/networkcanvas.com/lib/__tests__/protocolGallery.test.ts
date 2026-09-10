@@ -60,7 +60,7 @@ describe('loadProtocolGallery', () => {
       sandboxUrl: undefined,
       usesRosters: true,
       fields: ['Social work', 'Aging'],
-      edgeGeneration: ['sociogram'],
+      edgeGeneration: ['Sociogram'],
       supplementaryMaterials: [
         {
           filename: 'SNAAPS_v1.0 Sample Interview Screenshots.pdf',
@@ -163,7 +163,7 @@ describe('loadProtocolGallery', () => {
 
     await expect(
       loadProtocolGallery(
-        await patchedDataset('"sociogram, tie-strength dyad census"', '",,"'),
+        await patchedDataset('"Sociogram, Tie-strength dyad census"', '",,"'),
       ),
     ).rejects.toThrow(
       'protocol-gallery.csv: row 4: Edge Generation Methodology: must list at least one value',

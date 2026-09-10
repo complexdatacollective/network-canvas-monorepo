@@ -100,7 +100,7 @@ study almost always changes the stage list.
 
 Facet values are matched as exact strings, so a new spelling silently creates a
 second facet beside the one it meant to join. Reuse an existing value verbatim —
-`Field(s)` are Sentence case, `Edge Generation Methodology` values lowercase.
+both `Field(s)` and `Edge Generation Methodology` values are Sentence case.
 Enumerate what is already in use before writing the row:
 
 ```sh
