@@ -19,13 +19,12 @@ import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers
 import Section from '@codaco/fresco-ui/Section';
 import type { Asset } from '@codaco/protocol-validation';
 
+import AssetPickerField from '../fields/AssetPickerField.tsx';
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
-import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useStagedResources } from '../resources/client.tsx';
 import { acceptsResourceKind } from '../resources/components/resourceKinds.ts';
-import ResourcePickerControl from '../resources/components/ResourcePickerControl.tsx';
-import type { ResourceDescriptor, ResourceKind } from '../resources/gateway.ts';
+import type { ResourceDescriptor, ResourceKind } from '../resources/types.ts';
 import {
   ruleSetRules,
   ruleSetTargets,
@@ -34,6 +33,7 @@ import {
   type RuleSetVariant,
 } from '../rules/ruleSet.ts';
 import { FilterRuleSetField } from '../rules/RuleSetField.tsx';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import { useRowValue } from './AttributeCodebookControls.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 import {
@@ -351,7 +351,7 @@ const INCOMPLETE_PANEL = createMessageError(messages.incompletePanel);
  */
 const TOO_MANY_PANELS = createMessageError(messages.tooManyPanels);
 
-const ResourcePicker = ResourcePickerControl as ComponentType<
+const ResourcePicker = AssetPickerField as ComponentType<
   Record<string, unknown>
 >;
 
@@ -379,15 +379,14 @@ const panelRuleSetVariant = (dataSource: string): PanelRuleSetVariant =>
  * What one resource a panel may name is, wherever the editor holds it.
  *
  * Both places a resource this panel may legally name exists are consulted. A
- * network imported in this session is not in the manifest yet — it is promoted
- * with the stage at finish — so a manifest-only lookup would call a file the
- * researcher had just imported and saved one this protocol does not have.
- * `undefined` is for an id in NEITHER: a resource a collaborator deleted, or
- * one discarded here, which the session reports as the dangling reference it
- * is rather than as anything about its kind.
+ * network imported in this edit is not in the manifest yet — it is promoted
+ * with the stage's save — so a manifest-only lookup would call a file the
+ * researcher had just imported one this protocol does not have. `undefined` is
+ * for an id in NEITHER: a resource a collaborator deleted, or one discarded
+ * here.
  *
- * Both shapes are the gateway's own answer about a resource — the manifest
- * entry it promotes and the descriptor it hands out for a staged one — so this
+ * Both shapes are the host's own answer about a resource — the manifest entry
+ * it promotes and the descriptor it hands out for a staged one — so this
  * reads the kind and the name off whichever of them holds this id.
  */
 type PanelSource = Readonly<{ name: string; kind: ResourceKind }>;
@@ -428,16 +427,13 @@ const panelSource = (
  * offered.
  */
 function usePanelsValidation() {
-  const { controller, protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
+  const { staged } = useStagedResources();
   const resolve = useRef<(dataSource: string) => PanelSource | undefined>(
     () => undefined,
   );
   resolve.current = (dataSource) =>
-    panelSource(
-      dataSource,
-      protocolContext.assets,
-      controller.snapshot.stagedResources,
-    );
+    panelSource(dataSource, protocolContext.assets, staged);
 
   return useMemo(
     () => ({
@@ -517,7 +513,7 @@ export default function NodePanelsSection() {
       disabled={waiting}
       capability={PANELS_CAPABILITY}
     >
-      <ProtocolArrayField<typeof DialogArrayField>
+      <Field<typeof DialogArrayField>
         name={PANELS}
         label={intl.formatMessage(messages.fieldLabel)}
         hint={intl.formatMessage(messages.fieldHint)}
@@ -804,7 +800,7 @@ function withoutUnanswerableRules(filter: unknown): unknown {
  * the interview's own network is not fine over an imported file.
  */
 function usePanelFilterValidation(variant: PanelRuleSetVariant) {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const codebook = useRef(protocolContext.codebook);
   codebook.current = protocolContext.codebook;
   const currentVariant = useRef(variant);
@@ -830,7 +826,8 @@ function usePanelFilterValidation(variant: PanelRuleSetVariant) {
 /** How one panel reads in the list when its dialog is closed. */
 function PanelPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const { controller, protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
+  const { staged } = useStagedResources();
   const dataSource = asString(item.dataSource) ?? INTERVIEW_NETWORK;
   const rules = ruleSetRules(item.filter).length;
   // The imported file's own name, which the researcher gave it, or one of two
@@ -841,11 +838,8 @@ function PanelPreview({ item }: RowPreviewProps) {
   const source =
     dataSource === INTERVIEW_NETWORK
       ? intl.formatMessage(messages.interviewSource)
-      : (panelSource(
-          dataSource,
-          protocolContext.assets,
-          controller.snapshot.stagedResources,
-        )?.name ?? intl.formatMessage(messages.missingSource));
+      : (panelSource(dataSource, protocolContext.assets, staged)?.name ??
+        intl.formatMessage(messages.missingSource));
 
   return (
     <div className="flex flex-col gap-2">

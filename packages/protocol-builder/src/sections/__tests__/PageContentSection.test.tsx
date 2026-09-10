@@ -352,10 +352,17 @@ describe('a block whose active slot the researcher emptied', () => {
     // The block the researcher is looking at is empty…
     expect(await screen.findByText('Empty block')).toBeInTheDocument();
     expect(screen.queryByText('Read this.')).not.toBeInTheDocument();
-    // …and so is the block the stage holds, which is what a save would carry.
-    expect(harness.session.getSnapshot().editedSection.fields.items).toEqual([
-      { id: 'block-text', type: 'text' },
-    ]);
+
+    // …and so is the block the editor is holding. A page whose only block has
+    // no content is not a page the schema accepts, so the save being refused
+    // is what proves the prose is really gone: had `content` survived the
+    // collapse, the stage would have saved.
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'This stage is not finished, so it was not saved. The sections below say what is missing.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 
@@ -364,11 +371,11 @@ describe('a block whose active slot the researcher emptied', () => {
  * what says so.
  *
  * A family that declared the expand half alone used to compile. Its row edits
- * then reached the session — and a live-applying host — carrying an
- * editor-only key and the pre-edit `content`, and the researcher was held at
- * the save by an error naming a key that is in no protocol schema and nowhere
- * on their screen. Nothing but the types can catch that: both halves are
- * plain functions, and the collapse's absence is invisible until a save.
+ * then carried an editor-only key and the pre-edit `content` into the saved
+ * stage, and the researcher was held at the save by an error naming a key that
+ * is in no protocol schema and nowhere on their screen. Nothing but the types
+ * can catch that: both halves are plain functions, and the collapse's absence
+ * is invisible until a save.
  */
 describe('the expand and collapse halves of a block', () => {
   it('cannot be declared one at a time', () => {
@@ -389,11 +396,11 @@ describe('the expand and collapse halves of a block', () => {
   });
 
   /**
-   * The other half of the same proof, at run time and against a host that
-   * applies what it is sent: the pair the types now insist on is the pair that
-   * strips the slot before the batch leaves.
+   * The other half of the same proof, at run time and against the protocol
+   * itself: the pair the types now insist on is the pair that strips the
+   * editor's own slot before the row is saved.
    */
-  it('send the host a row the protocol schema accepts', async () => {
+  it('saves a row the protocol schema accepts', async () => {
     const harness = renderStageEditor({
       stage: {
         id: 'information-live',
@@ -411,7 +418,6 @@ describe('the expand and collapse halves of a block', () => {
           slots={mediaItemSlots}
         />
       ),
-      applyLive: true,
     });
 
     await harness.user.click(
@@ -425,15 +431,11 @@ describe('the expand and collapse halves of a block', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
-    expect(harness.liveCommands()).toEqual([
-      {
-        op: 'set',
-        key: 'items',
-        value: [
-          { id: 'block-text', type: 'text', content: 'Read this instead.' },
-        ],
-      },
+    const written = await harness.submit();
+    // The row exactly, key for key: an editor-only slot left on it would be a
+    // key the protocol schema has never heard of.
+    expect(written?.stageDocument.items).toEqual([
+      { id: 'block-text', type: 'text', content: 'Read this instead.' },
     ]);
-    expect(await harness.submit()).not.toBeNull();
   });
 });

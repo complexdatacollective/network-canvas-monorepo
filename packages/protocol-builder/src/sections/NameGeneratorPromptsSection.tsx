@@ -17,17 +17,17 @@ import {
 } from '../codebook/variableRoles.ts';
 import { draftFormFieldVariableIds } from '../codebook/variableValidation.ts';
 import RichTextField from '../fields/RichTextField.tsx';
+import VariablePickerField from '../fields/VariablePickerField.tsx';
 import AssignAttributes, {
   committedAttributeVariableIds,
   makeAssignAttributesValidation,
   type AttributeValue,
   type VariableOption,
 } from '../form/arrayFields/AssignAttributes.tsx';
-import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { variablesForSubject } from '../protocol-context.ts';
-import { CreatableVariablePickerControl } from './CreatableVariablePicker.tsx';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import PromptsSection from './PromptsSection.tsx';
 import type { RowEditorProps, RowPreviewProps } from './rowRenderers.tsx';
 import { useStageSubject } from './useStageSubject.ts';
@@ -42,7 +42,7 @@ const NO_VARIABLES: ReadonlySet<string> = new Set();
 
 // The picker is handed to the rows as an open-record renderer, because a row
 // knows nothing about what any control takes. Adapted once, here.
-const VariablePicker = CreatableVariablePickerControl as ComponentType<
+const VariablePicker = VariablePickerField as ComponentType<
   Record<string, unknown>
 >;
 
@@ -197,7 +197,8 @@ function AdditionalAttributes({
   item,
 }: Readonly<{ item: RowEditorProps['item'] }>) {
   const intl = useAppIntl();
-  const { protocolContext, identity } = useStageEditorForm();
+  const { identity } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const subject = useStageSubject('node');
   const committed = useMemo(
     () => asAttributes(item.additionalAttributes),
@@ -327,14 +328,13 @@ function AdditionalAttributes({
       description={intl.formatMessage(messages.attributesGroupDescription)}
     >
       {/*
-        A `ProtocolArrayField` rather than a plain one, even inside a dialog:
-        it is what tells this list it is NOT bound to a document key. The
-        prompt list around it is, and its binding reaches here through React
-        context — so a plain field would commit "add a row" straight into the
-        stage's `prompts` array while the researcher is still editing one
-        prompt of it.
+        Nested inside a row dialog, so `ListBinding` tells this list it is
+        NOT bound to a document key. The prompt list around it is, and its
+        binding reaches here through React context — so a list that took that
+        binding would commit "add a row" straight into the stage's `prompts`
+        array while the researcher is still editing one prompt of it.
       */}
-      <ProtocolArrayField<typeof AssignAttributes>
+      <Field<typeof AssignAttributes>
         name="additionalAttributes"
         component={AssignAttributes}
         label={intl.formatMessage(messages.assignmentsLabel)}

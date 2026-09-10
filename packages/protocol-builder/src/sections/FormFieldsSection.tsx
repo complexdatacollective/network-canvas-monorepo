@@ -40,19 +40,18 @@ import {
   variableDisplayName,
 } from '../codebook/variableValidation.ts';
 import RichTextField from '../fields/RichTextField.tsx';
-import {
-  VariablePickerControl,
+import VariablePickerField, {
   type VariablePickerOption,
-} from '../fields/VariablePicker.tsx';
+  createdUnassigned,
+} from '../fields/VariablePickerField.tsx';
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
 import { useDialogFormSubmissionBlock } from '../form/DialogForm.tsx';
-import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { variablesForSubject } from '../protocol-context.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import AttributeCodebookControls, {
   useRowValue,
 } from './AttributeCodebookControls.tsx';
@@ -64,7 +63,6 @@ import {
   needsCodebookEditorToCreate,
   TYPE_OPTIONS,
 } from './collectableTypes.ts';
-import { createdUnassigned } from './CreatableVariablePicker.tsx';
 import {
   type RowEditorProps,
   type RowPreviewProps,
@@ -159,13 +157,6 @@ const messages = defineMessages({
       'Create this attribute and what it accepts before adding the field that collects it.',
     description:
       'The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means.',
-  },
-  scopeMissing: {
-    id: 'protocolBuilder.formFields.scopeMissing',
-    defaultMessage:
-      'Choose what this stage works with before adding fields to its form.',
-    description:
-      'Shown inside the field editor when the researcher has not yet chosen which node or edge type the stage (one step of an interview) is about, so there is no codebook to draw attributes from.',
   },
   title: {
     id: 'protocolBuilder.formFields.title',
@@ -467,7 +458,7 @@ const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
 /** Stable identity: `options` is a memo dependency of the picker below. */
 const NO_OPTIONS: VariablePickerOption[] = [];
 
-const VariablePicker = VariablePickerControl as ComponentType<
+const VariablePicker = VariablePickerField as ComponentType<
   Record<string, unknown>
 >;
 const SelectControl = NativeSelectField as ComponentType<
@@ -895,7 +886,7 @@ export default function FormFieldsSection({
       {...(capability === undefined ? {} : { capability })}
     >
       {hasTitle && (
-        <ProtocolField<typeof InputField>
+        <Field<typeof InputField>
           name={TITLE}
           component={InputField}
           label={intl.formatMessage(messages.formTitleLabel)}
@@ -905,7 +896,7 @@ export default function FormFieldsSection({
         />
       )}
       <FormFieldsScopeContext value={scope}>
-        <ProtocolArrayField<typeof DialogArrayField>
+        <Field<typeof DialogArrayField>
           name={fieldsPath}
           label={intl.formatMessage(fieldLabel)}
           hint={intl.formatMessage(fieldHint)}
@@ -959,8 +950,8 @@ function normalizeFormField(value: unknown): unknown {
  * committed.
  *
  * Ordered this way on purpose: the codebook write is the one that can be
- * refused — a lost lease, a name a collaborator has just taken, a stage whose
- * own list edits are unsaved — and a row committed first would reference an
+ * refused — a collaborator holding that codebook section, a name they have
+ * just taken — and a row committed first would reference an
  * attribute that was never written, or promise a control the interview cannot
  * render. Returning the refusal keeps the dialog open with the reason on the
  * control that caused it.
@@ -970,7 +961,7 @@ function useCommitFormField(
   rowUnderEdit: RefObject<RowUnderEdit | undefined>,
   intl: IntlShape,
 ): (value: unknown) => Promise<unknown> {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const createVariable = useCreateCodebookVariable(codebookSubject);
   const setComponent = useSetVariableComponent(codebookSubject);
   // Both writes below are round trips, and both are ABOUT the attribute the
@@ -1169,7 +1160,7 @@ function useFormFieldValidate(
   answeredFor: string | undefined,
   intl: IntlShape,
 ) {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const fields = useStageValue(fieldsPath);
 
   const allVariables = useMemo(
@@ -1300,7 +1291,7 @@ function useFormFieldValidate(
  * protocol that arrives already conflicting stays editable.
  */
 function useUnvalidatedWriterMap(answeredFor: string | undefined) {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   return useMemo(
     () => buildVariableRoleMap(protocolContext, answeredFor),
     [answeredFor, protocolContext],
@@ -1430,11 +1421,6 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
           componentField={INPUT_CONTROL}
           {...(inventingInTheEditor ? { inventingType: newType } : {})}
         />
-        {subject === undefined && (
-          <p className="text-sm text-current/70">
-            {intl.formatMessage(messages.scopeMissing)}
-          </p>
-        )}
       </Section>
       <Section
         title={intl.formatMessage(messages.questionSectionTitle)}
@@ -1511,7 +1497,7 @@ type AttributeControl = Readonly<{
  */
 function useAttributeControl(item: RowEditorProps['item']): AttributeControl {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { subject } = useFormFieldsScope();
   const chosen = asString(useRowValue('variable') ?? item.variable) ?? '';
   const newType = asString(useRowValue(NEW_VARIABLE_TYPE)) ?? '';
@@ -1764,7 +1750,7 @@ function AttributePicker({
   editIndex,
 }: Readonly<{ item: RowEditorProps['item']; editIndex?: number }>) {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { fieldsPath, subject, draftUnvalidated, reserved, answeredFor } =
     useFormFieldsScope();
   const fields = useStageValue(fieldsPath);
@@ -1775,10 +1761,10 @@ function AttributePicker({
   const options = useMemo(() => {
     // The ONLY way to an empty list: every other path appends the
     // create-a-new-one sentinel, so a pool with nothing in it still has one
-    // option. That is why the picker is left to say what an empty list means —
-    // a message written here would describe a state that only exists when the
-    // stage has no subject, where the sentence beneath the section
-    // (`scopeMissing`) is the one that is true.
+    // option. It is unreachable from the researcher's side — the section is
+    // disabled without a subject, so no row dialog can be opened — and the
+    // picker is left to say what an empty list means rather than a second
+    // sentence being written for a state nothing can render.
     if (subject === undefined) return NO_OPTIONS;
     const siblings = new Set(
       rowsOf(fields)
@@ -1843,7 +1829,7 @@ function AttributePicker({
 /** How one field reads in the list when its dialog is closed. */
 function FormFieldPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { subject } = useFormFieldsScope();
   const variableId = asString(item.variable) ?? '';
   const variable =

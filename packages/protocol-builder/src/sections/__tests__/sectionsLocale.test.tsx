@@ -1,24 +1,10 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { commonCatalogs } from '@codaco/app-i18n/common';
-import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
-import { AppI18nProvider } from '@codaco/app-i18n/react';
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
-import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
-import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
-import type { Codebook } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { useStageEditorController } from '../../controller.ts';
-import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
-import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-} from '../../session.ts';
 import {
   expectNoLocaleLeaks,
   protocolStrings,
@@ -38,121 +24,55 @@ import SkipLogicSection from '../SkipLogicSection.tsx';
  *
  * The rest of this directory's suite mounts no provider, so each section
  * renders its English `defaultMessage` and the existing English assertions
- * stand unchanged. This is the one test that mounts one, and it is what proves
+ * stand unchanged. These are the tests that mount one, and they are what proves
  * the wiring: a section still holding an English literal, or one whose ids
  * never reached `src/locales/es.json`, shows up here as an English string
- * where a Spanish one was asked for.
+ * where a Spanish one was asked for. The harness merges the three catalogs a
+ * host merges, in the order a host merges them, so a section that takes its
+ * confirmation's cancel verb from `common.*` is read here over the layer a host
+ * would actually serve it from.
  *
  * The words are asserted as literals rather than by re-formatting the same
  * descriptor the section read. `intl.formatMessage(messages.title)` would pass
  * whatever the catalog said, including nothing at all.
  */
-const settingsSection = sectionId({ kind: 'settings' });
-const stageOrderSection = sectionId({ kind: 'stageOrder' });
-const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
-
-const personVariables = {
-  age: { name: 'Age', type: 'number', component: 'Number' },
-} as const;
-
-const protocolSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Localised editing', schemaVersion: 8 },
-  [stageOrderSection]: { stages: ['stage-1'] },
-  [personSection]: {
-    name: 'Person',
-    color: 'node-color-seq-2',
-    shape: { default: 'square' },
-    variables: personVariables,
-  },
-};
-
-const codebook: Codebook = {
-  node: {
-    person: {
-      name: 'Person',
-      color: 'node-color-seq-2',
-      shape: { default: 'square' },
-      variables: personVariables,
-    },
-  },
-};
-
-const alterFormFields: SectionDoc = {
-  label: 'Detalles',
-  subject: { entity: 'node', type: 'person' },
-  form: { fields: [{ variable: 'age', prompt: '¿Qué edad tiene?' }] },
-  introductionPanel: { title: 'Sobre la persona', text: 'Unas preguntas.' },
-};
-
-const createSession = () =>
-  new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('AlterForm', () => 'stage-1'),
-    fields: alterFormFields,
-    protocolSections,
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Localised editing',
-      schemaVersion: 8,
-      codebook,
-      stages: [stageDocument],
-    }),
-  });
-
-function Editor({ session }: { session: ProtocolBuilderSessionStore }) {
-  const controller = useStageEditorController(session, 'stage-form');
-
-  return (
-    <StageEditorShell
-      controller={controller}
-      actions={({ formId }) => (
-        <SubmitButton form={formId}>Terminar</SubmitButton>
-      )}
-    >
-      <NetworkFilterSection subject="node" />
-      <SkipLogicSection />
-      <InterviewerGuidanceSection />
-    </StageEditorShell>
-  );
-}
-
-/**
- * The catalog a real host serves: common verbs, then Fresco's own chrome, then
- * this package's copy — the merge order every host uses. Assembled here rather
- * than passing this package's catalog alone, because a section hands words to
- * Fresco controls and takes its confirmation's cancel verb from `common.*`,
- * and a merge that dropped either layer is exactly the kind of wiring this
- * test exists to catch.
- */
-const hostCatalog = mergeCatalogs(
-  commonCatalogs.es ?? {},
-  frescoUiCatalogs.es ?? {},
-  protocolBuilderCatalogs.es ?? {},
-);
 
 /**
  * Everything on screen that belongs to the researcher rather than to this
- * package: the protocol's own sections, the stage's fields, and the codebook
- * the sections read type and attribute names out of.
+ * package: the whole protocol the harness is mounted over, the stage's own
+ * seeded fields, and the codebook the sections read type and attribute names
+ * out of.
  *
- * Read out of the same documents the harness mounts, so a fixture that gains an
- * attribute cannot quietly widen the sweep's blind spot — or start failing it.
+ * Read out of the documents the harness mounts rather than listed by hand, so a
+ * fixture that gains a stage or an attribute cannot quietly widen the sweep's
+ * blind spot — or start failing it.
  */
-const researcherWords = () =>
-  protocolStrings(protocolSections, alterFormFields, codebook);
-
-const renderInSpanish = () =>
-  render(
-    <AppI18nProvider
-      locale="es"
-      locales={ecosystemLocales}
-      messages={hostCatalog}
-    >
-      <DialogProvider>
-        <Editor session={createSession()} />
-      </DialogProvider>
-    </AppI18nProvider>,
+const researcherWords = (harness: StageEditorHarness) =>
+  protocolStrings(
+    harness.protocolSections(),
+    harness.seeded.fields,
+    harness.hostCodebook(),
   );
+
+/**
+ * The fixture's alter form with the three shared sections on it.
+ *
+ * That stage holds no filter, no skip logic and no guidance, so each of the
+ * three opens from the closed state a researcher meets it in — which is what
+ * the tests below drive.
+ */
+const renderInSpanish = () =>
+  renderStageEditor({
+    stageId: 'alter-form-1',
+    locale: 'es',
+    sections: (
+      <>
+        <NetworkFilterSection subject="node" />
+        <SkipLogicSection />
+        <InterviewerGuidanceSection />
+      </>
+    ),
+  });
 
 describe('the shared stage-editor sections in Spanish', () => {
   it('ships Spanish for the ids these sections declare', () => {
@@ -185,7 +105,7 @@ describe('the shared stage-editor sections in Spanish', () => {
   });
 
   it('describes each section in Spanish', () => {
-    renderInSpanish();
+    const harness = renderInSpanish();
 
     expect(
       screen.getByText(
@@ -205,14 +125,15 @@ describe('the shared stage-editor sections in Spanish', () => {
     // The assertions above name what these sections are supposed to say; the
     // sweep reports whatever else they said — including a sentence rebuilt out
     // of an English pattern, which matches no whole message.
-    expectNoLocaleLeaks('the closed sections', researcherWords());
+    expectNoLocaleLeaks('the closed sections', researcherWords(harness));
   });
 
   it('labels the controls inside a section in Spanish', async () => {
-    const user = userEvent.setup();
-    renderInSpanish();
+    const harness = renderInSpanish();
 
-    await user.click(screen.getByRole('switch', { name: 'Lógica de salto' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Lógica de salto' }),
+    );
 
     // The section's own words, and the destination field's, which the section
     // hands to a field this directory does not own — so an English label here
@@ -225,23 +146,25 @@ describe('the shared stage-editor sections in Spanish', () => {
         'Elige dónde debe continuar la entrevista. Solo se pueden seleccionar etapas posteriores.',
       ),
     ).toBeInTheDocument();
-    expectNoLocaleLeaks('the open skip-logic section', researcherWords());
+    expectNoLocaleLeaks(
+      'the open skip-logic section',
+      researcherWords(harness),
+    );
   });
 
   it('asks in Spanish before throwing a capability’s content away', async () => {
-    const user = userEvent.setup();
-    renderInSpanish();
+    const harness = renderInSpanish();
 
     const guidance = screen.getByRole('switch', {
       name: 'Guía para quien realiza la entrevista',
     });
-    await user.click(guidance);
+    await harness.user.click(guidance);
     const field = await screen.findByRole('textbox', {
       name: 'Texto del guion de la entrevista',
     });
-    await user.click(field);
-    await user.keyboard('Pregunta con calma.');
-    await user.click(guidance);
+    await harness.user.click(field);
+    await harness.user.keyboard('Pregunta con calma.');
+    await harness.user.click(guidance);
 
     // The confirmation is the capability's own words, formatted by
     // BuilderSection out of the descriptors the section handed it — a string
@@ -258,17 +181,16 @@ describe('the shared stage-editor sections in Spanish', () => {
     expect(
       screen.getByRole('button', { name: 'Cancelar' }),
     ).toBeInTheDocument();
-    expectNoLocaleLeaks('the discard confirmation', researcherWords());
+    expectNoLocaleLeaks('the discard confirmation', researcherWords(harness));
   });
 });
 
 /**
  * The form-fields section read in Spanish.
  *
- * The shared sections split 6 landed are swept in
- * `stageSectionsLocale.test.tsx`; this is the one this split adds, and it is
- * the only surface in the package that splices a researcher's own attribute
- * name into a sentence.
+ * The other shared sections are swept in `stageSectionsLocale.test.tsx`. This
+ * one is here because it is the only surface in the package that splices a
+ * researcher's own attribute name into a sentence.
  *
  * The words are asserted as literals rather than by re-formatting the same
  * descriptor the component read: `esIntl.formatMessage(messages.x)` would pass
@@ -290,51 +212,6 @@ describe('the form-fields section, read in Spanish', () => {
     // fails here rather than rendering as `{name}`.
     expect(
       await screen.findByText('Recoge «relationship_to_ego» como text.'),
-    ).toBeInTheDocument();
-  });
-
-  /**
-   * The sentence a researcher reads when the stage stops saying what it works
-   * with while they are looking at a field.
-   *
-   * Only reachable from here: the section is disabled without a subject, so
-   * the add button cannot open a dialog — but a collaborator (or an undo) can
-   * take the subject away with one already open. The picker then has nothing
-   * to offer, and this is the sentence that says why. It used to be preceded
-   * by a second one saying every attribute of this type was already taken,
-   * which was the opposite of the truth in the only state that could show it;
-   * that message is retired, and the picker's own "nothing to choose from"
-   * stands with the sentence that explains it.
-   */
-  it('says what is missing when the stage loses its subject under an open dialog', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      locale: 'es',
-      sections: <FormFieldsSection subject="node" hasTitle />,
-    });
-
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Crear nuevo campo de formulario',
-      }),
-    );
-    await screen.findByRole('dialog');
-
-    act(() => {
-      harness.session.acknowledge({
-        fields: { ...harness.seeded.fields, subject: undefined },
-        throughBatchId: 0,
-        manifestRevision: { sequence: 9n, hash: 'revision-9' },
-      });
-    });
-
-    expect(
-      await screen.findByText(
-        'Elige con qué trabaja esta etapa antes de añadir campos a su formulario.',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText('No hay atributos entre los que elegir.'),
     ).toBeInTheDocument();
   });
 
@@ -446,10 +323,7 @@ describe('the form-fields section, read in Spanish', () => {
         parameters: { minLabel: 'Nada cerca', maxLabel: 'Muy cerca' },
       },
     });
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Atributo' }),
-      'closeness',
-    );
+    await chooseAttribute(harness, dialog, 'closeness');
     const scaleControls = await dialog.findByRole('combobox', {
       name: 'Control de entrada',
     });
@@ -461,6 +335,7 @@ describe('the form-fields section, read in Spanish', () => {
     ).toEqual(['Escala analógica visual']);
   });
 });
+
 /**
  * The rest of the form-fields surface, read in Spanish: the row dialog, the
  * codebook doors it opens, and every sentence that only appears when something
@@ -476,17 +351,11 @@ describe('the form-fields section, read in Spanish', () => {
  * descriptor the component read, for the reason given above: a formatted
  * assertion passes over an empty catalog.
  *
- * One of this section's sentences is deliberately absent, because nothing can
- * put it on screen in any language: `formFields.scopeMissing` is shown inside
- * the row dialog when the stage has no subject — and the section is `disabled`
- * on exactly that condition, so its whole body sits in a disabled `fieldset`
- * and the dialog cannot be opened. The last test in this file pins that.
- *
- * Two others used to be listed here as unreachable and are not:
+ * Two sentences used to be listed here as unreachable and are not:
  * `formFields.componentRequired` is what the dialog says when the attribute a
  * field collects has no input control to offer — read below — and
  * `codebookEditing.unsupportedControl` is read in
- * `CreatableVariablePicker.test.tsx`, where a host asks the codebook for an
+ * `fields/__tests__/VariablePickerField.test.tsx`, where a host asks the codebook for an
  * attribute its control cannot collect.
  */
 const PERSON_TYPE_SECTION = sectionId({
@@ -526,8 +395,7 @@ const seedPersonVariables = (
   harness: StageEditorHarness,
   variables: Readonly<Record<string, SectionDoc>>,
 ) => {
-  const person =
-    harness.host.getSnapshot().protocolSections[PERSON_TYPE_SECTION];
+  const person = harness.protocolSections()[PERSON_TYPE_SECTION];
   if (person === undefined) throw new Error('the person type is gone');
   const existing = person.variables;
   harness.receiveCodebookUpdate({
@@ -543,6 +411,23 @@ const seedPersonVariables = (
       },
     },
   });
+};
+
+/**
+ * Chooses the attribute a field collects, once the picker is offering it.
+ *
+ * A codebook change reaches a subscribed component on a microtask, so an
+ * attribute seeded a line above is not on the picker the moment the seeding
+ * call returns.
+ */
+const chooseAttribute = async (
+  harness: StageEditorHarness,
+  dialog: ReturnType<typeof within>,
+  name: string,
+) => {
+  const picker = dialog.getByRole('combobox', { name: 'Atributo' });
+  await within(picker).findByRole('option', { name });
+  await harness.user.selectOptions(picker, name);
 };
 
 /**
@@ -778,10 +663,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
       harness,
       'Crear nuevo campo de formulario',
     );
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Atributo' }),
-      'met_on',
-    );
+    await chooseAttribute(harness, dialog, 'met_on');
 
     // A date is not chosen from a list, so what there is to set is the window
     // it accepts rather than any values.
@@ -869,15 +751,16 @@ describe('a codebook write a Spanish form field needs, refused', () => {
 
   it('says the type it would be added to has gone', async () => {
     const harness = alterFormInSpanish();
-    // The type this stage collects about, deleted by a collaborator while the
-    // researcher was writing the field.
+    // The type this stage collects about, deleted by a collaborator. A
+    // codebook section has a lock of its own, so holding this stage does not
+    // hold that off.
     harness.receiveCodebookUpdate({ node: { person: null } });
 
     const dialog = await inventAttribute(harness, 'apodo');
 
     expect(
       await dialog.findByText(
-        'Este tipo ya no está en el libro de códigos, así que no se le puede añadir un atributo.',
+        'Esta etapa trabaja con algo que el libro de códigos ya no contiene, así que no se ha guardado nada. Elige de nuevo con qué trabaja.',
       ),
     ).toBeInTheDocument();
   });
@@ -909,10 +792,7 @@ describe('a codebook write a Spanish form field needs, refused', () => {
       harness,
       'Crear nuevo campo de formulario',
     );
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Atributo' }),
-      'lugar_de_contacto',
-    );
+    await chooseAttribute(harness, dialog, 'lugar_de_contacto');
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Control de entrada' }),
       'ToggleButtonGroup',
@@ -1060,11 +940,7 @@ describe('a form a Spanish researcher cannot save', () => {
  * A form on a stage that has not been told what it is about yet.
  *
  * There is nothing to draw attributes from, so the section says what is
- * missing in place of its own description and closes: everything inside a
- * disabled `Section` is inside a disabled `fieldset`, which is why
- * `protocolBuilder.formFields.scopeMissing` — the same sentence said inside
- * the row dialog — has no test here. The dialog cannot be opened while the
- * subject is missing, and the subject is the only thing that hides it.
+ * missing in place of its own description and closes.
  */
 describe('a Spanish form-fields section waiting on a subject', () => {
   it('says what has to be chosen first', async () => {

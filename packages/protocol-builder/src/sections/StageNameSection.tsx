@@ -3,17 +3,15 @@ import { createElement, useId } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { useEnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import StageNameInput from '../fields/StageNameInput.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
-import {
-  SectionScopeContext,
-  useStageEditorForm,
-} from '../form/stageEditorContext.ts';
+import { REQUIRED } from '../form/requiredField.ts';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
 import { interfaceDisplayName } from '../interfaces/interfaceNames.ts';
 import {
@@ -58,7 +56,7 @@ export type StageNameSectionProps = Readonly<{
   /**
    * Whether the name field takes focus when the editor opens.
    *
-   * The session's answer by default, for the same reason `autoName` reads it:
+   * The edit's own answer by default, for the same reason `autoName` reads it:
    * naming the stage is the first thing there is to do in a stage that does
    * not exist yet, and an existing stage was opened to be looked at rather
    * than renamed. An editor with a reason to differ overrides it either way.
@@ -67,7 +65,7 @@ export type StageNameSectionProps = Readonly<{
   /**
    * What a proposed name is derived from, and whether to propose one at all.
    *
-   * Whether to propose is the session's answer by default — only a stage being
+   * Whether to propose is the edit's own answer by default — only a stage being
    * created is named automatically, and an existing stage's name is already the
    * researcher's — so an editor that serves both cases leaves `propose` out and
    * gets the right behaviour in each. `propose` overrides that answer, in
@@ -153,22 +151,20 @@ export default function StageNameSection({
           })}
         </Paragraph>
       )}
-      <SectionScopeContext value={sectionId}>
-        <ProtocolField<typeof StageNameInput>
-          name="label"
-          component={StageNameInput}
-          // The hero input is the visible heading, so the label exists for
-          // assistive technology — but it still has to exist, because it is
-          // what the outline and a host's problem panel call this field.
-          label={stageNameLabel}
-          labelHidden
-          placeholder={intl.formatMessage(messages.placeholder)}
-          characterLimit={STAGE_NAME_LIMIT}
-          required
-          autoFocus={autoFocus ?? isNewStage}
-          onFieldBlur={onLabelBlur}
-        />
-      </SectionScopeContext>
+      <Field<typeof StageNameInput>
+        name="label"
+        component={StageNameInput}
+        // The hero input is the visible heading, so the label exists for
+        // assistive technology — but it still has to exist, because it is
+        // what the outline and a host's problem panel call this field.
+        label={stageNameLabel}
+        labelHidden
+        placeholder={intl.formatMessage(messages.placeholder)}
+        characterLimit={STAGE_NAME_LIMIT}
+        required={REQUIRED}
+        autoFocus={autoFocus ?? isNewStage}
+        onFieldBlur={onLabelBlur}
+      />
       <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
         <Badge color="neon-coral">{interfaceName}</Badge>
         {documentationUrl !== undefined && (

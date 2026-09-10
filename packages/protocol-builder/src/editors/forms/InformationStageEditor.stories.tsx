@@ -14,12 +14,8 @@ const meta = {
     stageId: 'information-1',
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this family claims the interface its stage is of.
-    renderEditor: ({ controller, actions }) => (
-      <StageEditor
-        controller={controller}
-        registry={formStageEditors}
-        actions={actions}
-      />
+    renderEditor: ({ actions, ...editor }) => (
+      <StageEditor {...editor} registry={formStageEditors} actions={actions} />
     ),
   },
   parameters: {

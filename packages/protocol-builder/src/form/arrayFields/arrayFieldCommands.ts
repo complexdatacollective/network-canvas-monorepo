@@ -28,9 +28,9 @@ const isRecord = (value: unknown): value is ArrayRow =>
  *
  * `id` and nothing else: it is what a list editor mints when a row is added,
  * what the protocol schema tolerates on a form field or a prompt for exactly
- * this reason, and the only thing about a row that survives being edited,
- * moved, and merged with somebody else's copy of the same list. A list whose
- * rows are identified some other way says so with its own `getId`.
+ * this reason, and the only thing about a row that survives being edited and
+ * moved. A list whose rows are identified some other way says so with its own
+ * `getId`.
  */
 export const rowIdentity = (row: unknown): string | undefined => {
   if (!isRecord(row)) return undefined;
@@ -56,7 +56,7 @@ const NO_ROWS: readonly never[] = [];
  * the empty list for it — so the answer here is the empty list too, and asking
  * it for `.every` would take the editor down out of an ordinary Add click
  * instead. It is the rendered-side twin of `readArray`'s rule in
- * `useArrayFieldCommands`, which answers for the SESSION's value at the same
+ * `useArrayFieldCommands`, which answers for the DOCUMENT's value at the same
  * key; both exist because neither side of a list write may throw on a shape
  * the editor was willing to render.
  *
@@ -125,13 +125,13 @@ function renderedRows<T extends ArrayRow>(rendered: unknown): readonly T[] {
 }
 
 /**
- * Where a row the editor was showing lives in the array the session holds NOW.
+ * Where a row the editor was showing lives in the array the document holds NOW.
  *
  * The whole point of this module. An `ArrayFieldOperation` addresses rows by
- * position in the value the list RENDERED, and that value is a revision behind
- * the moment anything else moves the array — a collaborator inserting a row, an
- * undo, a save that outlived its dialog. Replaying the rendered index onto the
- * current array is what relabels a different row.
+ * position in the value the list RENDERED, and that value is behind the
+ * document the moment anything moves the array — a save that outlived its
+ * dialog, a reset that rewrote the stage from somewhere else on it. Replaying
+ * the rendered index onto the current array is what relabels a different row.
  *
  * Resolution, in order:
  *
@@ -209,34 +209,19 @@ export function resolveRowIndex<T extends ArrayRow>(
  *
  * A list may hold one id TWICE — a roster imported a second time, a row
  * copy-pasted — and two rows carrying one id are two rows the id cannot tell
- * apart, so they are paired off in order like any other copies. Order alone is
- * not enough once the copies DIFFER in content: each side deleting a different
- * copy leaves each holding one row that looks like the ancestor's OTHER one,
- * and in-order pairing reads the survivor as the copy the researcher kept —
- * which refuses their deletion as already applied and keeps the row they
- * deleted. So a copy that differs from its twin and is still exactly itself
- * over there is paired with itself first, and occurrence answers for the copies
- * left over. Content deciding before position is what the id-less rows already
- * do; this says it for a row whose id cannot tell it from its twin either.
+ * apart. A copy that differs from its twin and is still exactly itself in
+ * `list` is paired with itself first; identical copies have nothing to pair on
+ * but their occurrence, k-th with k-th, so they are held out of that pass.
  *
- * Content decides only among copies content can TELL APART, though. Two copies
- * that are the same row said twice are copies content has nothing to say about,
- * and pairing on it anyway answers with whichever of them a collaborator has
- * not since rewritten: the search walks past the rewritten copy, the first copy
- * here takes the untouched one there, and the second — the one the researcher
- * deleted — is left paired with the rewrite, which their deletion then takes
- * away. So identical copies are paired off by occurrence, k-th with k-th, and
- * the content pass is asked only about the copies that were already distinct.
- *
- * In order, and never by absolute position, because this correspondence is
- * drawn against lists that have moved relative to one another, and both
- * drawings of it have to agree by construction. It is what tells apart the two
- * questions this module is asked about a row: which row an edit is written
- * INTO — where a guess writes over content nobody meant to touch, so
- * `resolveRowIndex` refuses instead — and which OCCURRENCE of a row a position
- * names, where the copies are interchangeable but their places are not.
+ * In order, and never by absolute position, because the two lists are numbered
+ * differently — that is the reason to draw a correspondence at all. It is what
+ * tells apart the two questions this module is asked about a row: which row an
+ * edit is written INTO — where a guess writes over content nobody meant to
+ * touch, so `resolveRowIndex` refuses instead — and which OCCURRENCE of a row a
+ * position names, where the copies are interchangeable but their places are
+ * not.
  */
-export function matchRows(
+function matchRows(
   before: readonly unknown[],
   list: readonly unknown[],
   getId: (row: unknown) => string | undefined = rowIdentity,
@@ -261,9 +246,7 @@ export function matchRows(
   // Which ancestor rows content cannot tell from a row carrying the same id:
   // the copies that are the same row said twice, whose only distinguishing
   // fact is their occurrence. They are held out of the content pass below,
-  // because a search for "the row that is still exactly itself" answers for
-  // whichever copy a collaborator has not rewritten, and that is a fact about
-  // the arrival rather than about which copy is which.
+  // which can only answer for copies content tells apart.
   const twin = (ancestor: number) =>
     JSON.stringify([getId(before[ancestor]), canonicalize(before[ancestor])]);
   const twins = identified.reduce<Map<string, number>>(
@@ -272,11 +255,10 @@ export function matchRows(
     new Map(),
   );
 
-  // The distinct copies neither side touched, taken first: a row that is still
-  // exactly itself over there is that row, whatever position its twin has moved
-  // to. What is left over is every row whose content one side or the other
-  // changed, and every row its own twin is identical to, and those are paired
-  // off by occurrence below.
+  // The distinct copies still exactly themselves in `list`, taken first: such a
+  // row is that row, whatever position its twin has moved to. What is left over
+  // is every row whose content changed and every row its own twin is identical
+  // to, and those are paired off by occurrence below.
   const changed = identified.filter((ancestor) => {
     if ((twins.get(twin(ancestor)) ?? 0) > 1) return true;
     const id = getId(before[ancestor]);
@@ -318,10 +300,10 @@ export function matchRows(
  * A move is the one operation whose two positions are not read off the same
  * list. `ArrayField` takes a pointer drag's `from` when the pointer goes down
  * and its `to` when it comes up, and re-syncs its rows from the value in
- * between — so a row arriving from elsewhere during the seconds a drag lasts
- * leaves `from` numbering a list that no longer exists, while `to` numbers the
- * one on screen. Resolving `from` as a position then picks up whichever row has
- * since taken that place, and the wrong row is the one that moves.
+ * between — so a list that moves during the seconds a drag lasts leaves `from`
+ * numbering a list that no longer exists, while `to` numbers the one on screen.
+ * Resolving `from` as a position then picks up whichever row has since taken
+ * that place, and the wrong row is the one that moves.
  *
  * So a move is resolved from the ROW the operation carries (see
  * `ArrayFieldOperation` in fresco-ui, which carries it for exactly this),
@@ -364,7 +346,7 @@ export const movedRowIndex = <T extends ArrayRow>(
   drawnRowIndex(renderedRows<T>(value), row, from, getId);
 
 /**
- * Where a new row goes in the array the session holds now.
+ * Where a new row goes in the array the document holds now.
  *
  * Unlike the other operations this one can never be refused — the row does not
  * exist yet, so there is no wrong row to land on — but it still has to land in
@@ -412,45 +394,29 @@ export function resolveInsertIndex<T extends ArrayRow>(
 }
 
 /**
- * The move, expressed against the array the session holds now.
+ * The move, expressed against the array the document holds now.
  *
  * The destination is anchored on the row the moved one will FOLLOW, rather
  * than on a number, because a number means something different in a list that
  * has since gained or lost rows — and on the nearest such row that SURVIVED,
- * because the arrival may have deleted the one it was written beside. A move
- * says where a row goes relative to the rows the researcher could see, and
- * every one of those that is still here says it. `undefined` refuses the move,
- * which is the answer when none of them is.
+ * because the row it was written beside may be gone. A move says where a row
+ * goes relative to the rows the researcher could see, and every one of those
+ * that is still here says it. `undefined` refuses the move, which is the answer
+ * when none of them is.
  *
- * The rows the drag actually took it PAST are more than an anchor, though, and
- * they bound the answer: the moved row lands after every surviving row it was
- * moved past, and before every surviving row it was moved ahead of. A nearest
- * neighbour is the same row whichever order the arrival left the others in, so
- * anchoring on one alone is right only while the arrival left that order alone
- * — and two people reordering different rows of one list is ordinary. From
- * `[a, b, c]` the researcher drags `a` to the bottom while a collaborator
- * drags `b` there; the row `a` was dropped behind is `c`, which now sits ABOVE
- * `b`, and landing after it gave `[c, a, b]` — `a` back in front of a row the
- * researcher had explicitly dragged it past. `[c, b, a]` is both of their
- * edits.
- *
- * Which is also the answer where the two disagree. The rows the drag did not
- * cross say where the moved row goes among them, and the arrival may have
- * moved one of those to the far side of a row it did cross; the rows it
- * crossed win, because those are the ones the researcher placed it against.
- * The rest decide only what is left — where in the window the crossed rows
- * leave it lands, which is still its nearest surviving neighbour.
+ * The rows the drag actually took it PAST bound the answer as well: the moved
+ * row lands after every surviving row it was moved past, and before every
+ * surviving row it was moved ahead of. Those are the places in the order the
+ * researcher DECIDED, so they win where the nearest neighbour would put it
+ * somewhere else.
  *
  * The row being PICKED UP and the rows it is anchored on are read off ONE
  * drawing of the correspondence between the two lists, so the two cannot
- * disagree about which row is which. `resolveRowIndex` answered for the moved
- * row on its own, and its id search takes the FIRST row carrying that id — so
+ * disagree about which row is which. `resolveRowIndex` answers for the moved
+ * row on its own and its id search takes the FIRST row carrying that id, which
  * for a list holding one id twice (a roster imported a second time, a row
- * copy-pasted) it answered with the wrong copy whenever the researcher dragged
- * the later one, and then anchored the destination on a list that copy had not
- * been taken out of. Two rows sharing an id are two rows nothing tells apart,
- * which is what `matchRows` already says of two rows sharing content: the
- * copies are paired off in order, one apiece, and a position names the k-th of
+ * copy-pasted) is the wrong copy whenever the later one is dragged. `matchRows`
+ * pairs such copies off in order, one apiece, so a position names the k-th of
  * them at both ends.
  */
 export function resolveMove<T extends ArrayRow>(
@@ -474,10 +440,9 @@ export function resolveMove<T extends ArrayRow>(
     isRecord(row) ? getId?.(row as T) : undefined,
   );
   const currentFrom = paired[from];
-  // The row the researcher was dragging is not in the list any more — either
-  // it has gone, or the arrival has taken away the copy this position named.
-  // Landing the move on whatever the id still finds would move a row they
-  // never picked up, and the merge has already decided that copy is gone.
+  // The row the researcher was dragging is not in the list any more. Landing
+  // the move on whatever the id still finds would move a row they never picked
+  // up, and the pairing has already decided that copy is gone.
   if (currentFrom === undefined || currentFrom === -1) return undefined;
 
   // The rows the drag moved PAST, in the order the drop left them: the rendered
@@ -498,16 +463,15 @@ export function resolveMove<T extends ArrayRow>(
   // The row the moved one will FOLLOW says where it goes; when it is moving to
   // the very top of the rows the editor could see, the row it will PRECEDE
   // says instead. Anchoring on a neighbour rather than on a number is what
-  // keeps "put this at the top of my list" from meaning "above a row that
-  // arrived from somewhere else and that I never saw".
+  // keeps "put this at the top of my list" from meaning "above a row I never
+  // saw".
   //
   // Its immediate neighbour is the first answer and usually the only one
-  // needed, but the arrival may have deleted that row — and the rows further
-  // out still say where this one belongs, exactly as they do for a row being
-  // inserted. Refusing the move the moment the nearest neighbour was gone
-  // threw the researcher's reorder away over a row they had not touched:
-  // `[a, b, c]` with `a` dragged to the bottom, rebased onto an arrival that
-  // deleted `c`, said nothing rather than `[b, a]`.
+  // needed, but that row may be gone — and the rows further out still say where
+  // this one belongs, exactly as they do for a row being inserted. Refusing the
+  // move the moment the nearest neighbour was gone threw the researcher's
+  // reorder away over a row they had not touched: `[a, b, c]` with `a` dragged
+  // to the bottom said nothing rather than `[b, a]` once `c` had gone.
   const nearestAnchor = (): number | undefined => {
     for (let earlier = to - 1; earlier >= 0; earlier -= 1) {
       const predecessor = anchorIndex(earlier);
@@ -517,18 +481,15 @@ export function resolveMove<T extends ArrayRow>(
       const successor = anchorIndex(later);
       if (successor !== undefined) return successor;
     }
-    // No row the editor drew survives to say where this one goes. A list
-    // holding only rows that arrived from elsewhere is not one the
-    // researcher's move says anything about, so it is refused rather than
-    // landed on a guess.
+    // No row the editor drew survives to say where this one goes, so the move
+    // is refused rather than landed on a guess.
     return remainingRows === 0 ? 0 : undefined;
   };
   const landed = nearestAnchor();
   if (landed === undefined) return undefined;
 
-  // And the rows the drag actually took it past, every one of them: those are
-  // the places in the order the researcher DECIDED, so they bound where the
-  // nearest neighbour may put it. Dragging down the list, they are the rows
+  // The rows the drag actually took it past, every one of them, bound where
+  // the nearest neighbour may put it. Dragging down the list, they are the rows
   // between the pick-up and the drop that end up above it, so the answer is at
   // least one past the furthest of them; dragging up, the same rows end up
   // below it, and the answer is at most the nearest of those. They are all on
@@ -553,41 +514,33 @@ export function resolveMove<T extends ArrayRow>(
 /**
  * The edit a commit is making, re-seated on the row as it stands NOW.
  *
- * Rebuilding the replacement array from what the session holds is what lets a
- * row that arrived from elsewhere survive the write — but only as a ROW.
- * Dropping the edited row in whole discards an arrival that reached a
- * different property of that same row, because the values the edit was built
- * from are a revision behind: a list editor composes its replacement from the
- * row the form rendered, and a dialog composes its own before its pre-save
- * work has even run.
+ * The values an edit was built from can be behind the row it is being written
+ * to: a list editor composes its replacement from the row the form rendered,
+ * and a dialog composes its own before its pre-save work has even run. Dropping
+ * the edited row in whole would write those stale values back over a change
+ * that reached a different property of the same row meanwhile.
  *
- * So only what the edit actually DECIDED is applied over the row the session
- * holds: a key it left as it found it keeps whatever the row holds now, a key
- * it changed is changed, and a key it removed is removed. `base` is the row
- * the edit was computed from, which is the only thing that tells "left alone"
- * apart from "deliberately set back to what it was".
+ * So only what the edit actually DECIDED is applied over the row as it stands:
+ * a key it left as it found it keeps whatever the row holds now, a key it
+ * changed is changed, and a key it removed is removed. `base` is the row the
+ * edit was computed from, which is the only thing that tells "left alone" apart
+ * from "deliberately set back to what it was".
  *
  * The question is asked LEAF by leaf, not key by key. A dialog that edits one
  * leaf of a nested key — `edges.create` — makes the whole `edges` object
  * differ from the one it started with, so a key-level comparison reads the
- * untouched sibling `edges.display` as decided too, and writes the value the
- * dialog opened with straight back over whatever reached it meanwhile. Nesting
- * is where that arrives from in the first place: a stage document holds
- * capabilities as objects, and two collaborators can be inside the same one.
+ * untouched sibling `edges.display` as decided too.
  *
  * A list is a leaf. Its rows have no identity here, so merging two versions of
  * one index by index would combine rows that are not the same row; a list the
  * edit changed is the edit's, and one it left alone is the row's.
  *
- * And a container the schema allows only ONE shape of is a leaf too. Leaf by
- * leaf is what makes a hybrid there: the researcher switches a sociogram
- * prompt's highlighting on while a collaborator clears the attribute it names,
- * and each of those is a leaf neither side contests, so the merge answers with
- * highlighting on and nothing to write — a prompt the schema refuses and
- * neither of them asked for. The variant is the unit the two sides are
- * deciding between, so the whole of it travels and the side that touched it
- * wins it entire. It is the rule the draft diff already follows at an object
- * path, said for the rows a diff cannot reach into.
+ * And a container the schema allows only ONE shape of is a leaf too, because
+ * leaf by leaf is what makes a hybrid there: highlighting switched on beside a
+ * cleared attribute is two uncontested leaves and a prompt the schema refuses.
+ * The variant is the unit being decided, so the whole of it travels — the rule
+ * the draft diff already follows at an object path, said for the rows a diff
+ * cannot reach into.
  *
  * A container whose members merely CONSTRAIN one another is not a variant and
  * is not written whole. It is assembled leaf by leaf like any other and then
@@ -608,7 +561,7 @@ export function reseatEditedRow(
   rowPath: readonly string[] | undefined,
 ): unknown {
   if (!isRecord(base) || !isRecord(edited) || !isRecord(latest)) return edited;
-  // Nothing reached the row while the edit was being made, so the edit already
+  // The row has not moved since the edit was composed, so the edit already
   // describes the whole row and re-seating it could only lose information.
   if (isEqual(base, latest)) return edited;
   // The ROW is the variant: a categorical bin prompt offering an 'other'
@@ -624,28 +577,21 @@ export function reseatEditedRow(
 /**
  * The leaf merge, and then the one question it cannot answer on its own.
  *
- * Leaf by leaf is right wherever the members of a container are independent —
- * which is nearly everywhere, and is what lets two people configure different
- * parts of one capability and both keep their work. It is not right where the
- * schema says something about the members TOGETHER. A sociogram prompt's
- * `edges` says which edges to draw and which the participant may create, and
- * an `edges` holding neither has no effect, so the schema refuses it: the
- * researcher clears `create` while a collaborator empties `display`, each of
- * those is a leaf the other never contests, and the merge answers with
- * `{ display: [] }` — a prompt NEITHER of them held.
+ * Leaf by leaf is right wherever the members of a container are independent,
+ * which is nearly everywhere. It is not right where the schema says something
+ * about the members TOGETHER: a sociogram prompt's `edges` says which edges to
+ * draw and which the participant may create, and an `edges` holding neither has
+ * no effect, so a merge that clears one leaf and empties the other assembles a
+ * container the schema refuses and nobody authored.
  *
- * The exclusive-variant answer does not fit: `create` and `display` are not
- * rival shapes, and keeping both people's work on them is the whole reason
- * this goes leaf by leaf. So the container is assembled exactly as before and
- * then put TO the schema, and only a refusal changes the answer — to the
- * researcher's own container, whole, which is the rule a contested leaf
- * already follows said one container up.
+ * The exclusive-variant answer does not fit — `create` and `display` are not
+ * rival shapes — so the container is assembled exactly as before and then put
+ * TO the schema, and only a refusal changes the answer: to the edit's own
+ * container, whole.
  *
- * A container the researcher's own side does not validate either is left as
- * the leaf merge made it. Its refusal is not something the merge invented, and
- * writing the researcher's invalid container over a collaborator's work would
- * throw that work away to keep a draft that is refused regardless. The draft's
- * own validation is what puts it in front of them.
+ * A container the edit's own side does not validate either is left as the leaf
+ * merge made it: its refusal is not something the merge invented, and the
+ * draft's own validation is what puts it in front of the researcher.
  *
  * `schemaRefusesContainer` answers `false` for every path whose members do not
  * constrain one another, so all of this costs a map lookup anywhere else.
@@ -711,12 +657,12 @@ export const rowPathFor = (key: CommandTarget): readonly string[] => [
  *
  * A replace is a whole-list `set` rather than a remove-then-insert pair,
  * because the command vocabulary addresses a place in the document and cannot
- * reach INSIDE a row: two commands would be two history entries for one edit,
- * and a list that briefly did not contain the row being edited. The replacement
- * array is rebuilt from what the session holds now, and the replaced row is
- * re-seated on what the session holds for THAT row (see `reseatEditedRow`), so
- * a change that arrived from elsewhere survives the write whether it arrived
- * as a new row or as a new property of the row being replaced.
+ * reach INSIDE a row: the pair would leave a list that briefly did not contain
+ * the row being edited. The replacement array is rebuilt from what the document
+ * holds now, and the replaced row is re-seated on what it holds for THAT row
+ * (see `reseatEditedRow`), so a change made since the edit was composed
+ * survives the write whether it was a new row or a new property of the row
+ * being replaced.
  *
  * `value` is what the list field was HANDED — any shape at all, including one
  * that is not a list — which is not always what it drew: the one place the
@@ -767,7 +713,7 @@ export function commandsForOperation<T extends ArrayRow>(
 
 /**
  * Commits a row addressed by its OWN id rather than by a position — the save
- * that outlived the editing session it was made in.
+ * that outlived the list's editing state.
  *
  * Returns no commands when that row has left the array: there is then nothing
  * to commit the edit to, and appending it would add a row the researcher
@@ -775,8 +721,7 @@ export function commandsForOperation<T extends ArrayRow>(
  * array to begin with.
  *
  * `base` is the row the edit was computed from, and the edit is re-seated on
- * it exactly as a replace is — a save that outlived its editing session is the
- * longest window of all for something to have reached the row meanwhile.
+ * it exactly as a replace is.
  */
 export function commandsForDetachedRow<T extends ArrayRow>(
   key: CommandTarget,

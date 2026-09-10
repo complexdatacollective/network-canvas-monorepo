@@ -17,10 +17,19 @@ const B = { id: 'b', text: 'Bravo' };
 const C = { id: 'c', text: 'Charlie' };
 const REMOTE = { id: 'x', text: 'Remote' };
 
+/**
+ * Every function here takes the list the DOCUMENT holds and the rows the
+ * EDITOR drew, and the two diverge in ordinary use: a list holding an entry
+ * that is not a row at all draws none of it, `ArrayField` renders each
+ * mutation out of its own state before the document has taken it, and a drag
+ * measures its two ends against whatever the list held at each. `REMOTE` below
+ * is a row the document holds and the editor never drew.
+ */
+
 describe('resolveRowIndex', () => {
   it('follows a row by its own id after the list has moved beneath it', () => {
-    // The editor drew [A, B, C] and is acting on B at index 1. A row arrived
-    // from elsewhere since, so B is at index 2 now.
+    // The editor drew [A, B, C] and is acting on B at index 1. The document
+    // holds a row in front of them, so B is at index 2 there.
     expect(resolveRowIndex([REMOTE, A, B, C], [A, B, C], 1, byId)).toBe(2);
   });
 
@@ -50,10 +59,11 @@ describe('resolveRowIndex', () => {
   });
 
   it('finds a row nothing but its id could still name', () => {
-    // B was retitled elsewhere while this editor was still showing "Bravo",
-    // and a row arrived at the front. Position is untrustworthy because the
-    // lists have diverged, and the content the editor drew no longer exists
-    // anywhere in the list — the id is the only thing left that names B.
+    // B was retitled while this editor was still showing "Bravo", and the
+    // document holds a row in front of them. Position is untrustworthy because
+    // the lists have diverged, and the content the editor drew no longer
+    // exists anywhere in the list — the id is the only thing left that names
+    // B.
     const current = [REMOTE, A, { id: 'b', text: 'Bravo, revised' }];
     expect(resolveRowIndex(current, [A, B], 1, byId)).toBe(2);
   });
@@ -78,8 +88,8 @@ describe('resolveMove', () => {
   });
 
   it('anchors the destination on the row the moved one will follow', () => {
-    // Rendered [A, B, C]; C is dragged to the top. A row arrived at the front
-    // since, so "the top of the rows I can see" is index 1, not 0.
+    // Rendered [A, B, C]; C is dragged to the top. The document holds a row in
+    // front of them, so "the top of the rows I can see" is index 1, not 0.
     expect(resolveMove([REMOTE, A, B, C], [A, B, C], 2, 0, byId)).toEqual({
       from: 3,
       to: 1,
@@ -87,9 +97,10 @@ describe('resolveMove', () => {
   });
 
   it('anchors a move to the bottom on the row the moved one will follow', () => {
-    // Rendered [A, B, C]; A is dragged to the bottom, and a row arrived at the
-    // front since. Nothing follows A there, so the row it will FOLLOW — C — is
-    // the only anchor left, and the destination is the place after it.
+    // Rendered [A, B, C]; A is dragged to the bottom, and the document holds a
+    // row in front of them. Nothing follows A there, so the row it will
+    // FOLLOW — C — is the only anchor left, and the destination is the place
+    // after it.
     expect(resolveMove([REMOTE, A, B, C], [A, B, C], 0, 2, byId)).toEqual({
       from: 1,
       to: 3,
@@ -122,7 +133,7 @@ describe('resolveMove', () => {
 
   it('refuses a move no row the editor could see still anchors', () => {
     // Rendered [A, B, C]; A is dragged to the bottom. Both rows it was to move
-    // past have gone, and the row that arrived in their place is one the
+    // past have gone, and the row standing in their place is one the
     // researcher never saw — nothing they did says where A belongs beside it.
     expect(resolveMove([REMOTE, A], [A, B, C], 0, 2, byId)).toBeUndefined();
   });
@@ -134,14 +145,14 @@ describe('commandsForOperation', () => {
    *
    * `ArrayField` takes a pointer drag's `from` when the pointer goes DOWN and
    * its `to` when it comes up, and re-syncs its rows from the value in
-   * between — so an insertion arriving mid-drag leaves `from` numbering a list
-   * that no longer exists. Reading it as a position in the list as it stands
-   * now picks up whichever row has since taken that place.
+   * between — so a list that gains a row mid-drag leaves `from` numbering a
+   * list that no longer exists. Reading it as a position in the list as it
+   * stands now picks up whichever row has since taken that place.
    */
   it('moves the row the drag picked up, not the one now at its old index', () => {
     // The researcher took hold of A at the top of [A, B, C] and dropped it
-    // below B. A collaborator's row arrived at the front while the pointer was
-    // down, so the drop was measured against [X, A, B, C] — where A is index 2.
+    // below B. A row appeared at the front while the pointer was down, so the
+    // drop was measured against [X, A, B, C] — where A is index 2.
     expect(
       commandsForOperation(
         'prompts',
@@ -205,7 +216,7 @@ describe('commandsForOperation', () => {
     ).toEqual([]);
   });
 
-  it('rebuilds a replacement from the list the session holds now', () => {
+  it('rebuilds a replacement from the list the document holds now', () => {
     const edited = { id: 'b', text: 'Bravo edited' };
     expect(
       commandsForOperation(
@@ -218,7 +229,7 @@ describe('commandsForOperation', () => {
     ).toEqual([{ op: 'set', key: 'prompts', value: [REMOTE, A, edited] }]);
   });
 
-  it('inserts at the end of the list the session holds now', () => {
+  it('inserts at the end of the list the document holds now', () => {
     const added = { id: 'n', text: 'New' };
     expect(
       commandsForOperation(
@@ -266,23 +277,23 @@ describe('commandsForOperation', () => {
 });
 
 /**
- * The row-level twin of "rebuilt from what the session holds now". Rebuilding
- * the ARRAY keeps a row that arrived from elsewhere; dropping the edited row in
- * whole still discards an arrival that reached another property of that row.
+ * The row-level twin of "rebuilt from what the document holds now". Rebuilding
+ * the ARRAY keeps a row the editor never drew; dropping the edited row in whole
+ * still discards a change that reached another property of that row.
  */
 describe('a row that moved while its edit was being composed', () => {
-  // The editor drew this prompt and changed its text. Something else changed a
-  // property the editor never rendered on the same row meanwhile — a
-  // collaborator's edit, an undo, an acknowledgement.
+  // The editor drew this prompt and changed its text. A property the editor
+  // never rendered moved on the same row meanwhile — another control on the
+  // page owning it, or a repair the list made on its way to the write.
   const drawn = { id: 'b', text: 'Bravo', note: 'as drawn' };
-  const arrived = { id: 'b', text: 'Bravo', note: 'from elsewhere' };
+  const moved = { id: 'b', text: 'Bravo', note: 'moved since' };
   const edited = { id: 'b', text: 'Bravo edited', note: 'as drawn' };
 
-  it('keeps the arrival when a replace commits', () => {
+  it('keeps that change when a replace commits', () => {
     expect(
       commandsForOperation(
         'prompts',
-        [A, arrived],
+        [A, moved],
         [A, drawn],
         { type: 'replace', index: 1, item: edited },
         byId,
@@ -291,16 +302,16 @@ describe('a row that moved while its edit was being composed', () => {
       {
         op: 'set',
         key: 'prompts',
-        value: [A, { id: 'b', text: 'Bravo edited', note: 'from elsewhere' }],
+        value: [A, { id: 'b', text: 'Bravo edited', note: 'moved since' }],
       },
     ]);
   });
 
-  it('keeps the arrival when a save that outlived its editor commits', () => {
+  it('keeps that change when a save that outlived its editor commits', () => {
     expect(
       commandsForDetachedRow(
         'prompts',
-        [A, arrived],
+        [A, moved],
         edited,
         'b',
         false,
@@ -311,26 +322,26 @@ describe('a row that moved while its edit was being composed', () => {
       {
         op: 'set',
         key: 'prompts',
-        value: [A, { id: 'b', text: 'Bravo edited', note: 'from elsewhere' }],
+        value: [A, { id: 'b', text: 'Bravo edited', note: 'moved since' }],
       },
     ]);
   });
 
-  it('keeps an arrival on a SIBLING LEAF of the key the edit changed', () => {
-    // A stage document holds a capability as one object, and two people can be
-    // inside the same one: this edit set `edges.create` while `edges.display`
-    // arrived from elsewhere. Compared key by key, `edges` differs — so the
+  it('keeps a change to a SIBLING LEAF of the key the edit changed', () => {
+    // A stage document holds a capability as one object, and two controls can
+    // be inside the same one: this edit set `edges.create` while
+    // `edges.display` moved elsewhere on the page. Compared key by key, `edges` differs — so the
     // whole object the dialog opened with would be written back, taking
-    // `display` with it and undoing a change the editor never rendered.
+    // `display` with it and discarding a change the editor never rendered.
     const drawnEdges = {
       id: 'b',
       text: 'Bravo',
       edges: { create: 'knows', display: 'as drawn' },
     };
-    const arrivedEdges = {
+    const movedEdges = {
       id: 'b',
       text: 'Bravo',
-      edges: { create: 'knows', display: 'from elsewhere' },
+      edges: { create: 'knows', display: 'moved since' },
     };
     const editedEdges = {
       id: 'b',
@@ -341,7 +352,7 @@ describe('a row that moved while its edit was being composed', () => {
     expect(
       commandsForOperation(
         'prompts',
-        [A, arrivedEdges],
+        [A, movedEdges],
         [A, drawnEdges],
         { type: 'replace', index: 1, item: editedEdges },
         byId,
@@ -355,7 +366,7 @@ describe('a row that moved while its edit was being composed', () => {
           {
             id: 'b',
             text: 'Bravo',
-            edges: { create: 'friends', display: 'from elsewhere' },
+            edges: { create: 'friends', display: 'moved since' },
           },
         ],
       },
@@ -367,7 +378,7 @@ describe('a row that moved while its edit was being composed', () => {
     // it index by index would combine rows that are not the same row. The edit
     // changed it, so the edit's list is the one that is written.
     const drawnRules = { id: 'b', rules: [{ property: 'name' }] };
-    const arrivedRules = { id: 'b', rules: [{ property: 'age' }] };
+    const movedRules = { id: 'b', rules: [{ property: 'age' }] };
     const editedRules = {
       id: 'b',
       rules: [{ property: 'name' }, { property: 'label' }],
@@ -376,7 +387,7 @@ describe('a row that moved while its edit was being composed', () => {
     expect(
       commandsForOperation(
         'prompts',
-        [A, arrivedRules],
+        [A, movedRules],
         [A, drawnRules],
         { type: 'replace', index: 1, item: editedRules },
         byId,
@@ -385,12 +396,13 @@ describe('a row that moved while its edit was being composed', () => {
   });
 
   it('still removes a property the edit itself cleared', () => {
-    // Surviving an arrival must not mean ignoring the edit: a key the
-    // researcher emptied is emptied, even though the row moved beneath them.
+    // Surviving the row's other movement must not mean ignoring the edit: a
+    // key the researcher emptied is emptied, even though the row moved
+    // beneath them.
     expect(
       commandsForOperation(
         'prompts',
-        [A, arrived],
+        [A, moved],
         [A, drawn],
         { type: 'replace', index: 1, item: { id: 'b', text: 'Bravo' } },
         byId,

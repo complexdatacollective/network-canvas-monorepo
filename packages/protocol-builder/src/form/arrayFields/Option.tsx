@@ -415,10 +415,9 @@ export default function Option({
             ),
           );
           // The editor emits a change as it mounts; committing that would
-          // rewrite the whole array — dirtying the stage and adding a draft
-          // timeline entry — merely by opening a row. The comparison is
-          // canonical too, so opening a row whose stored label predates this
-          // normalization is not mistaken for an edit.
+          // rewrite the whole array, and dirty the stage, merely by opening a
+          // row. The comparison is canonical too, so opening a row whose stored
+          // label predates this normalization is not mistaken for an edit.
           if (label === toCanonicalText(item.label ?? '')) return;
           onUpdate?.({ label } as Partial<OptionValue>);
         }}

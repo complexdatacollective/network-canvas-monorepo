@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import type { StageType } from '@codaco/protocol-validation';
@@ -10,8 +11,7 @@ import type { StageType } from '@codaco/protocol-validation';
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import type { DialogArrayItemSelector } from '../form/arrayFields/DialogArrayField.tsx';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
-import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
+import { REQUIRED } from '../form/requiredField.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 import {
@@ -419,16 +419,16 @@ export default function PageContentSection({
       {...(capability === undefined ? {} : { capability })}
     >
       {placement.titleField !== undefined && (
-        <ProtocolField<typeof InputField>
+        <Field<typeof InputField>
           name={placement.titleField}
           component={InputField}
           label={intl.formatMessage(messages.headingLabel)}
           hint={intl.formatMessage(messages.headingHint)}
           placeholder={intl.formatMessage(messages.headingPlaceholder)}
-          required
+          required={REQUIRED}
         />
       )}
-      <ProtocolArrayField<typeof DialogArrayField>
+      <Field<typeof DialogArrayField>
         name={placement.itemsField}
         label={intl.formatMessage(words.itemsLabel)}
         hint={intl.formatMessage(words.itemsHint)}

@@ -5,23 +5,16 @@ import { defineMessage, defineMessages } from '@codaco/app-i18n/messages';
  *
  * A message id may be declared in exactly one file — `extractMessages` throws
  * on a second declaration — so a sentence two of these modules both say lives
- * here rather than in either of them. All four groups below are genuinely
- * shared, and each is one message read twice rather than two that can drift:
+ * here rather than in either of them:
  *
  * - "Saving…" is the same submit button mid-flight in the entity editor and
  *   the validation editor;
- * - the stale-authority alert title is the same warning in both;
  * - the missing-comparison refusal is written once by the validation editor
  *   and again by the surface that mounts it, and the two must not disagree
  *   about what is wrong.
  *
- * The submit copy is filed under `codebookEditing`, which owns the vocabulary
- * of applying a codebook change; the comparison refusal stays under
- * `variableValidation`, whose rules it is about.
- *
- * A blocked save is NOT here: what every auxiliary codebook surface says about
- * a refused change — blocked included — is `codebook/compoundFailureCopy.ts`,
- * which is one reading of the refusal rather than one sentence per editor.
+ * What every codebook surface says about a refused save is
+ * `codebook/compoundFailureCopy.ts` rather than one sentence per editor.
  */
 export const codebookEditingMessages = defineMessages({
   saving: {
@@ -29,12 +22,6 @@ export const codebookEditingMessages = defineMessages({
     defaultMessage: 'Saving…',
     description:
       'The submit button of a codebook editor while the change is in flight, replacing its usual wording.',
-  },
-  staleAuthoritativeTitle: {
-    id: 'protocolBuilder.codebookEditing.staleAuthoritativeTitle',
-    defaultMessage: 'Newer codebook data is available',
-    description:
-      'Heading of the warning shown when the protocol’s codebook changed elsewhere while the researcher had this editor open. The codebook is the protocol’s definition of its entity types and their attributes.',
   },
 });
 

@@ -43,7 +43,7 @@ import { dateResolutionMessages, ruleSubjectMessages } from './ruleMessages.ts';
  * The formatter used when a caller has none of its own.
  *
  * `describeRule` is the package's one public rule export, and a host reaches
- * it with a validated protocol and no editing session — the printable protocol
+ * it with a validated protocol and nothing else — the printable protocol
  * summary, an archive job, a server. Those get English; every display surface
  * inside the builder threads the reader's own `intl` in.
  */
@@ -178,7 +178,7 @@ export type RuleProblem = Readonly<{
  * already resolved.
  *
  * This is the package's one public rule export. It is pure — no React, no
- * session, no editing — because the printable protocol summary needs the same
+ * form, no editing — because the printable protocol summary needs the same
  * semantics the editor's own preview does, and duplicating the resolution is
  * how the two came to disagree: the summary's attribute chip lost the text
  * saying what kind of attribute it was, leaving a coloured pill with nothing
@@ -257,8 +257,8 @@ export type DescribeRuleInput = Readonly<{
    * problem reported beside it.
    *
    * Optional because this module is the package's one public rule export and a
-   * host reaches it without an editing session — the printable protocol
-   * summary has a validated protocol and nothing else. Omitted, the rule reads
+   * host reaches it outside a stage editor — the printable protocol summary
+   * has a validated protocol and nothing else. Omitted, the rule reads
    * in English; the builder's own list, field and dialog thread the researcher's
    * formatter in, so what the row says and what the editor says agree.
    */
@@ -564,8 +564,8 @@ const operandItems = (
  * Reads a stored rule back as a sentence.
  *
  * Everything it needs is in the arguments: the rule as stored and the codebook
- * its ids point into. A host with a validated protocol has both, and needs no
- * editing session to print a rule.
+ * its ids point into. A host with a validated protocol has both, and needs
+ * nothing of the builder to print a rule.
  */
 export function describeRule({
   rule,
@@ -863,9 +863,9 @@ export function describeRule({
   // holds something that is not a string — is refused when the STAGE is saved,
   // by an issue naming a position in an array rather than the row the
   // researcher can act on. The editor mints one for every rule it commits, so
-  // this arrives from a protocol authored elsewhere or merged from a
-  // collaborator's edit; reported last because it is the only problem here the
-  // researcher repairs simply by opening the rule and finishing it again.
+  // this arrives from a protocol authored elsewhere; reported last because it
+  // is the only problem here the researcher repairs simply by opening the rule
+  // and finishing it again.
   if (typeof rule.id !== 'string') {
     problems.push({
       code: 'missingId',

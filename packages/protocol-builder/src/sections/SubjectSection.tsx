@@ -6,19 +6,22 @@ import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
 import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
 import type { CodebookEntityDraft } from '../codebook/editing.ts';
+import { useCreateCodebookEntity } from '../codebook/writes.ts';
 import {
+  type EntitySubject,
+  EntitySubjectPickerField,
   type EntityTypeChangeConfirmation,
   useConfirmEntityTypeChange,
-} from '../fields/EntitySelectField.tsx';
-import SubjectSelectField, {
-  type EntitySubject,
-} from '../fields/SubjectSelectField.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
+} from '../fields/EntityTypePickerField.tsx';
+import { REQUIRED } from '../form/requiredField.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useAskStageHasAnyValue } from '../form/stageFormHooks.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import BuilderSection from './BuilderSection.tsx';
 import NetworkFilterSection from './NetworkFilterSection.tsx';
 import {
@@ -98,12 +101,6 @@ const messages = defineMessages({
     description:
       'Button that goes ahead with choosing the first kind of network member a stage works with, throwing away the configuration entered before it.',
   },
-  nodeCreateDescription: {
-    id: 'protocolBuilder.subjectSection.nodeCreateDescription',
-    defaultMessage: 'Create a node type and use it on this stage',
-    description:
-      'Description shown inside the dialog for inventing a kind of network member, and what the change is called in the record a host keeps of protocol edits.',
-  },
   edgeTitle: {
     id: 'protocolBuilder.subjectSection.edgeTitle',
     defaultMessage: 'Edge type',
@@ -172,12 +169,6 @@ const messages = defineMessages({
     description:
       'Button that goes ahead with choosing the first kind of relationship a stage works with, throwing away the configuration entered before it.',
   },
-  edgeCreateDescription: {
-    id: 'protocolBuilder.subjectSection.edgeCreateDescription',
-    defaultMessage: 'Create an edge type and use it on this stage',
-    description:
-      'Description shown inside the dialog for inventing a kind of relationship, and what the change is called in the record a host keeps of protocol edits.',
-  },
 });
 
 /**
@@ -201,7 +192,6 @@ type SubjectWords = Readonly<{
   fieldLabel: MessageDescriptor;
   fieldHint: MessageDescriptor;
   createLabel: MessageDescriptor;
-  createDescription: MessageDescriptor;
   /** What the researcher is asked before a change that costs them the stage. */
   changeTitle: MessageDescriptor;
   changeDescription: MessageDescriptor;
@@ -225,7 +215,6 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     fieldLabel: messages.nodeFieldLabel,
     fieldHint: messages.nodeFieldHint,
     createLabel: messages.nodeCreateLabel,
-    createDescription: messages.nodeCreateDescription,
     changeTitle: messages.nodeChangeTitle,
     changeDescription: messages.nodeChangeDescription,
     changeConfirm: messages.nodeChangeConfirm,
@@ -239,7 +228,6 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     fieldLabel: messages.edgeFieldLabel,
     fieldHint: messages.edgeFieldHint,
     createLabel: messages.edgeCreateLabel,
-    createDescription: messages.edgeCreateDescription,
     changeTitle: messages.edgeChangeTitle,
     changeDescription: messages.edgeChangeDescription,
     changeConfirm: messages.edgeChangeConfirm,
@@ -359,14 +347,14 @@ export default function SubjectSection({
         title={intl.formatMessage(words.title)}
         description={intl.formatMessage(words.description)}
       >
-        <ProtocolField<typeof SubjectSelectField>
+        <Field<typeof EntitySubjectPickerField>
           name="subject"
-          component={SubjectSelectField}
+          component={EntitySubjectPickerField}
           entityType={entity}
           confirmChange={confirmChange}
           label={intl.formatMessage(words.fieldLabel)}
           hint={intl.formatMessage(words.fieldHint)}
-          required
+          required={REQUIRED}
         />
         <CreateSubjectType
           entity={entity}
@@ -383,9 +371,9 @@ export default function SubjectSection({
 /**
  * Creates a codebook type and selects it on this stage.
  *
- * The type is created through the session's compound-edit path, which is what
- * puts a new section into the protocol atomically and reports the specific
- * lock holder when it cannot. Selecting it afterwards is an ordinary form
+ * The type is created through the host's own atomic create, which is what
+ * puts a new section into the protocol and mints its id. Selecting it
+ * afterwards is an ordinary form
  * change rather than part of that edit, and deliberately so: a host keeps the
  * stored protocol valid, and a stage that has just been pointed at a brand-new
  * type has no prompts, no form and no panels for it — an invalid stage, which
@@ -413,8 +401,9 @@ function CreateSubjectType({
   /** The picker's own question, asked before this selects the new type. */
   confirmChange: () => EntityTypeChangeConfirmation | undefined;
 }>) {
-  const { controller, readOnly, storeApi } = useStageEditorForm();
-  const codebook = controller.snapshot.protocolContext.codebook;
+  const { readOnly, storeApi } = useStageEditorForm();
+  const codebook = useProtocolContext().codebook;
+  const createEntity = useCreateCodebookEntity();
   const [session, setSession] = useState<{
     key: string;
     typeId: string;
@@ -509,7 +498,7 @@ function CreateSubjectType({
         the trigger would throw the name they were typing away without a word.
         `CodebookEntityEditor` takes `readOnly` for exactly this — interaction
         stops, the draft does not — and it is the rule the row dialogs follow
-        after a lease is lost.
+        when the stage becomes read-only.
       */}
       {!readOnly && (
         <Button
@@ -546,8 +535,6 @@ function CreateSubjectType({
           <CodebookEntityEditor
             mode="create"
             sessionKey={session.key}
-            createRequestId={() => uuid()}
-            description={intl.formatMessage(words.createDescription)}
             subject={
               entity === 'node'
                 ? { entity: 'node', type: session.typeId }
@@ -556,15 +543,22 @@ function CreateSubjectType({
             initialDraft={NEW_ENTITY_DRAFT[entity]}
             readOnly={readOnly}
             existingEntityNames={existingEntityNames}
-            onSubmit={async (request) => {
+            onSubmit={async (document) => {
               setSubmitting(true);
               try {
-                return await controller.requestCompoundEdit(request);
+                return await createEntity(entity, document);
               } finally {
                 setSubmitting(false);
               }
             }}
-            onApplied={() => selectCreatedType(session.typeId)}
+            onApplied={(outcome) => {
+              // The id the HOST minted, read off the write: it is the host's to
+              // issue, and the stage has to name the type it actually created.
+              const ref = parseSectionId(outcome.sectionId);
+              if (ref.kind === 'codebookNode' || ref.kind === 'codebookEdge') {
+                selectCreatedType(ref.typeId);
+              }
+            }}
             onCancel={() => setSession(null)}
           />
         </Dialog>

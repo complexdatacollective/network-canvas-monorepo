@@ -8,11 +8,11 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 
 import RichTextField from '../../fields/RichTextField.tsx';
-import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
-import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
 import CreateVariableButton from './CreateVariableButton.tsx';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
@@ -65,7 +65,7 @@ const asString = (value: unknown): string | undefined =>
  */
 export function NominationPromptEditor({ item }: RowEditorProps) {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const subject = useNominationSubject();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
@@ -123,7 +123,7 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
       />
       <Field
         name={VARIABLE_FIELD}
-        component={VariablePickerControl}
+        component={VariablePickerField}
         label={intl.formatMessage(pedigreeMessages.nominationVariableLabel)}
         hint={intl.formatMessage(pedigreeMessages.nominationVariableHint)}
         initialValue={asString(item.variable)}
@@ -139,9 +139,6 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
         subject={subject}
         variableType="boolean"
         label={intl.formatMessage(pedigreeMessages.nominationCreateLabel)}
-        description={intl.formatMessage(
-          pedigreeMessages.nominationCreateDescription,
-        )}
         onCreated={(variableId) => setFieldValue(VARIABLE_FIELD, variableId)}
       />
     </>
@@ -151,7 +148,7 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
 /** How one nomination prompt reads in the list when its dialog is closed. */
 export function NominationPromptPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const subject = useNominationSubject();
   const variableId = asString(item.variable);
   const attribute =

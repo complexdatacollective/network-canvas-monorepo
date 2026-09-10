@@ -6,7 +6,6 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { v4 as uuid } from 'uuid';
 import type { z } from 'zod';
 
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
@@ -30,6 +29,7 @@ import {
   useProtocolBuilderContext,
   type LockState,
 } from './context.ts';
+import { useKeptRequestId } from './requestKey.ts';
 
 export type SectionAtRevision = Readonly<{
   document: SectionDoc;
@@ -66,6 +66,8 @@ export type EntityTypeSummary = Readonly<{
   id: string;
   name: string;
   color?: string;
+  /** How a node of this type is drawn. Node types only; edges have no shape. */
+  shape?: string;
 }>;
 
 /** Every node or edge type in the codebook, for a picker's options. */
@@ -175,8 +177,9 @@ export type SectionMutation = Readonly<{
  *
  * Takes the lock on mount and gives it back on unmount. There is no renewal
  * and no re-acquire: a submit the host refuses comes back as a
- * `notLockHolder` result for the editor to report, and the draft is the
- * editor's to discard.
+ * `notLockHolder` result for the editor to report, the draft is the editor's
+ * to discard, and this editor is read-only from that moment on — it does not
+ * hold the section any more, and nothing here is going to ask for it again.
  */
 export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   const { client, protocolId, utils } = useProtocolBuilderContext();
@@ -198,19 +201,13 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   // editor still wants.
   const wanted = useRef<ProtocolSectionId | undefined>(undefined);
   const released = useRef(false);
-  // The save the current request id was minted for, kept while its answer is
-  // uncertain. A transport that drops after the host committed leaves this
-  // client unable to tell a write that happened from one that did not, and an
-  // oRPC link rejects the calls that were in flight rather than resending
-  // them: only a retry carrying the same id makes the host replay what the
-  // first attempt wrote instead of writing again — or, for a promotion,
-  // refusing it because that attempt already consumed the staged files.
-  //
-  // Keyed by the document, so a save of NEW work is never answered with the
-  // revision the earlier one wrote.
-  const pendingSave = useRef<
-    Readonly<{ requestId: string; document: string }> | undefined
-  >(undefined);
+  // The id this editor's save carries while its answer is uncertain — see
+  // `useKeptRequestId`. Asked for by the document, so a save of NEW work is
+  // never answered with the revision the earlier one wrote, and a retry after
+  // a dropped socket makes the host replay what the first attempt wrote
+  // instead of writing again — or, for a promotion, refusing it because that
+  // attempt already consumed the staged files.
+  const saveKey = useKeptRequestId();
   const section = useSection(id);
   const { data: lock } = useQuery<LockState>({
     queryKey: lockQueryKey(protocolId, id),
@@ -220,11 +217,15 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     initialData: {},
   });
 
+  // Giving a lock back is best effort, which is why every one of them goes
+  // through `safe`: a host that will not take it — the section has gone, the
+  // socket dropped — leaves the editor nothing to do and the researcher nothing
+  // to act on, and a bare promise would make it an unhandled rejection instead.
   useEffect(() => {
     const mine = (acquisition.current += 1);
     wanted.current = id;
     // The save an id was kept for was of the section this editor is leaving.
-    pendingSave.current = undefined;
+    saveKey.forget();
     // Nothing has been answered for this section yet, whatever the last one
     // this editor was pointed at said.
     setAccess('pending');
@@ -238,14 +239,14 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           // cleanup's release went out before the host granted this one, so
           // nothing else will ever give it back.
           if (wanted.current !== id && result.lock === 'held') {
-            void client.releaseLock({ protocolId, sectionId: id });
+            void safe(client.releaseLock({ protocolId, sectionId: id }));
           }
           return;
         }
         if (released.current) {
           // Acquired after unmount: hand it straight back rather than holding a
           // lock no editor is behind.
-          void client.releaseLock({ protocolId, sectionId: id });
+          void safe(client.releaseLock({ protocolId, sectionId: id }));
           return;
         }
         try {
@@ -293,9 +294,9 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     released.current = false;
     return () => {
       released.current = true;
-      void client.releaseLock({ protocolId, sectionId: id });
+      void safe(client.releaseLock({ protocolId, sectionId: id }));
     };
-  }, [client, protocolId, id, queryClient, utils]);
+  }, [client, protocolId, id, queryClient, saveKey, utils]);
 
   const submit = useCallback(
     async (
@@ -310,12 +311,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       // written again. Per save rather than per edit: the next save is a
       // different document, and an id shared with the last one would be
       // answered with the revision that one wrote.
-      const fingerprint = contentHash(document);
-      const requestId =
-        pendingSave.current?.document === fingerprint
-          ? pendingSave.current.requestId
-          : uuid();
-      pendingSave.current = { requestId, document: fingerprint };
+      const requestId = saveKey.forAsk(contentHash(document));
       const { data, definedError, isSuccess } = await safe(
         client.submit({
           protocolId,
@@ -326,13 +322,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           ...(promote === undefined ? {} : { promote }),
         }),
       );
-      // The host answered — with the revision it wrote, or with a refusal it
-      // decided on — so this save is settled and the next one is a new
-      // operation. Anything else is an answer that may or may not exist, and
-      // the id is kept for the retry.
-      if (isSuccess || definedError !== null) {
-        pendingSave.current = undefined;
-      }
+      if (isSuccess || definedError !== null) saveKey.settled(requestId);
       if (isSuccess) {
         return {
           status: 'written',
@@ -341,6 +331,30 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         };
       }
       if (definedError?.code === 'NOT_LOCK_HOLDER') {
+        // The section is somebody else's now, and nothing here re-acquires it:
+        // the editor above discards the draft it could not write, and this is
+        // what stops the form it puts back from being editable. Left
+        // `editing`, every later save is refused the same way and discards
+        // another round of work — the same loss, over and over, with the
+        // editor still saying it may write.
+        setAccess('readOnly');
+        // The refusal already names the holder, so the read-only editor can
+        // say whose section it is without waiting for a lock event — and a
+        // host whose locks are always granted never sends one.
+        //
+        // Naming NOBODY is an answer as well, and the cache has to take it:
+        // that is a lease that ran out with no one taking the section, which
+        // publishes no lock event at all (the acquire that TAKES one publishes
+        // its own). What the cache still holds is this editor's own presence,
+        // from the event its own acquire published — so left alone, the
+        // read-only form it puts back tells the researcher that they are the
+        // one editing the stage they have just been refused.
+        queryClient.setQueryData<LockState>(
+          lockQueryKey(protocolId, id),
+          definedError.data.holder === undefined
+            ? {}
+            : { holder: definedError.data.holder },
+        );
         return {
           status: 'notLockHolder',
           ...(definedError.data.holder === undefined
@@ -362,11 +376,11 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       }
       throw definedError ?? new Error(`submit of ${id} failed`);
     },
-    [client, protocolId, id, section],
+    [client, protocolId, id, queryClient, saveKey, section],
   );
 
   const release = useCallback(() => {
-    void client.releaseLock({ protocolId, sectionId: id });
+    void safe(client.releaseLock({ protocolId, sectionId: id }));
   }, [client, protocolId, id]);
 
   if (handlerFault !== undefined) throw handlerFault.error;
@@ -390,10 +404,16 @@ function entityTypeSummary(
     ref.kind === 'codebookNode' || ref.kind === 'codebookEdge'
       ? ref.typeId
       : id;
+  const shape = document.shape;
+  const defaultShape =
+    shape !== null && typeof shape === 'object' && 'default' in shape
+      ? shape.default
+      : undefined;
   return {
     id: typeId,
     name: typeof document.name === 'string' ? document.name : typeId,
     ...(typeof document.color === 'string' ? { color: document.color } : {}),
+    ...(typeof defaultShape === 'string' ? { shape: defaultShape } : {}),
   };
 }
 

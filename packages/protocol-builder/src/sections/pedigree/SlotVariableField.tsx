@@ -3,6 +3,7 @@ import { useMemo, useRef } from 'react';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import type {
   InterfaceOwnedOption,
@@ -11,12 +12,13 @@ import type {
 } from '@codaco/protocol-validation';
 
 import type { WriterClass } from '../../codebook/variableRoles.ts';
-import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
-import ProtocolField from '../../form/ProtocolField.tsx';
+import VariablePickerField from '../../fields/VariablePickerField.tsx';
+import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import CreateVariableButton from './CreateVariableButton.tsx';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
@@ -82,7 +84,6 @@ export type SlotVariableFieldProps = Readonly<{
   lockedOptions?: readonly InterfaceOwnedOption[];
   /** Visible text and accessible name of the create control. */
   createLabel: MessageDescriptor;
-  createDescription: MessageDescriptor;
   /** Said in place of the list when the codebook offers nothing usable. */
   emptyMessage: MessageDescriptor;
 }>;
@@ -109,11 +110,11 @@ export default function SlotVariableField({
   variableType,
   lockedOptions,
   createLabel,
-  createDescription,
   emptyMessage,
 }: SlotVariableFieldProps) {
   const intl = useAppIntl();
-  const { committedFields, protocolContext, storeApi } = useStageEditorForm();
+  const { committedFields, storeApi } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const draftValue = useStageValue(name);
   const currentValue = typeof draftValue === 'string' ? draftValue : undefined;
@@ -244,12 +245,12 @@ export default function SlotVariableField({
 
   return (
     <>
-      <ProtocolField<typeof VariablePickerControl>
+      <Field<typeof VariablePickerField>
         name={name}
-        component={VariablePickerControl}
+        component={VariablePickerField}
         label={intl.formatMessage(label)}
         hint={intl.formatMessage(hint)}
-        required
+        required={REQUIRED}
         options={pickerOptions}
         emptyMessage={intl.formatMessage(emptyMessage)}
         custom={crossClassValidation}
@@ -259,7 +260,6 @@ export default function SlotVariableField({
         variableType={variableType}
         {...(lockedOptions === undefined ? {} : { lockedOptions })}
         label={intl.formatMessage(createLabel)}
-        description={intl.formatMessage(createDescription)}
         onCreated={(variableId) =>
           storeApi.getState().setFieldValue(name, variableId)
         }

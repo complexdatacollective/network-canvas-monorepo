@@ -76,9 +76,15 @@ export function FormWithoutProvider(props: FormProps) {
  * (e.g., in a dialog footer), use FormWithoutProvider with a manual
  * FormStoreProvider wrapper.
  */
-export default function Form(props: FormProps) {
+export default function Form({
+  initialValues,
+  ...props
+}: FormProps & {
+  /** The document being edited; see `FormStoreProvider`. */
+  initialValues?: Record<string, unknown>;
+}) {
   return (
-    <FormStoreProvider>
+    <FormStoreProvider initialValues={initialValues}>
       <FormWithoutProvider {...props} />
     </FormStoreProvider>
   );

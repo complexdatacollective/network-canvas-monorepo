@@ -85,37 +85,36 @@ after the fact is marked in place.
 | `ruleDescription`           | `rules/ruleDescription.ts`, `rules/ruleMessages.ts`                                                                                                                                           | i18n-1a   |
 | `ruleCodebook`              | `rules/ruleCodebook.ts`                                                                                                                                                                       | i18n-1a   |
 | `resourceKinds`             | `resources/components/resourceKinds.ts`                                                                                                                                                       | i18n-1b   |
-| `resourcePicker`            | `resources/components/ResourcePickerControl.tsx`                                                                                                                                              | i18n-1b   |
+| `resourcePicker`            | `fields/AssetPickerField.tsx`                                                                                                                                                                 | i18n-1b   |
 | `resourceBrowser`           | `resources/components/ResourceBrowserDialog.tsx`                                                                                                                                              | i18n-1b   |
 | `resourceUpload`            | `resources/components/ResourceUploadControl.tsx`                                                                                                                                              | i18n-1b   |
 | `resourceSecret`            | `resources/components/ResourceSecretControl.tsx`                                                                                                                                              | i18n-1b   |
 | `resourcePreview`           | `resources/components/ResourcePreview.tsx`                                                                                                                                                    | i18n-1b   |
 | `resourceSummary`           | `resources/components/ResourceSummary.tsx`                                                                                                                                                    | i18n-1b   |
-| `resourceFailure`           | `resources/resourceMessages.ts` (declared), produced by `resources/gateway*.ts`, `lifecycle.ts`, `references.ts`, `InMemoryResourceGateway.ts`                                                | i18n-1b   |
-| `session`                   | `session.ts`                                                                                                                                                                                  | i18n-1b   |
+| `resourceFailure`           | `resources/resourceMessages.ts` (declared), produced by `resources/client.tsx` and `resources/components/useResourceAttempt.ts`                                                               | i18n-1b   |
 | `protocolContext`           | `protocol-context.ts`                                                                                                                                                                         | i18n-1b   |
-| `compoundEdit`              | `compound-edit/InMemoryCompoundHost.ts`, `compound-edit/compoundRequestMessages.ts`                                                                                                           | i18n-1b   |
 | `codebookEntity`            | `codebook/components/CodebookSurface.tsx`, `codebook/components/CodebookEntityEditor.tsx`                                                                                                     | i18n-2a   |
 | `codebookVariable`          | `codebook/variableTypeLabels.ts`, `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`, `codebook/variableOptions.ts`, `codebook/components/VariableBooleanAnswerFields.tsx` | i18n-2a   |
 | `variableValidation`        | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts`              | i18n-2a   |
 | `codebookEditing`           | `codebook/editing.ts`, `codebook/codebookMessages.ts`, `codebook/useCodebookVariableEdits.ts` (added by `sections`)                                                                           | i18n-2a   |
 | `shell`                     | `form/StageEditorShell.tsx`, `form/readOnlyRefusal.ts`, `editors/saveStageAction.tsx`                                                                                                         | i18n-2b   |
+| `field`                     | `form/requiredField.ts`                                                                                                                                                                       | i18n-2b   |
 | `outline`                   | `form/SectionOutline.tsx`                                                                                                                                                                     | i18n-2b   |
 | `dialogForm`                | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                                            | i18n-2b   |
-| `protocolField`             | `form/ProtocolField.tsx`                                                                                                                                                                      | i18n-2b   |
 | `arrayField`                | `form/arrayFields/DialogArrayField.tsx`, `rowValidators.ts`, `arrayWriteRefusal.ts`, `useConfirmRowRemoval.ts`, `arrayFields/arrayMessages.ts`, `RowEditorBoundary.tsx`                       | i18n-2b   |
 | `assignAttributes`          | `form/arrayFields/AssignAttributes.tsx`, `form/arrayFields/Attribute.tsx`                                                                                                                     | i18n-2b   |
 | `multiSelect`               | `form/arrayFields/MultiSelect.tsx`                                                                                                                                                            | i18n-2b   |
 | `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                                 | i18n-2b   |
-| `entitySelect`              | `fields/EntitySelectField.tsx`                                                                                                                                                                | i18n-2b   |
-| `variablePicker`            | `fields/VariablePicker.tsx`, `sections/CreatableVariablePicker.tsx` (added by `sections`; see below)                                                                                          | i18n-2b   |
-| `skipLogicDestination`      | `fields/skipLogicDestination.ts`                                                                                                                                                              | i18n-2b   |
+| `entitySelect`              | `fields/EntityTypePickerField.tsx`                                                                                                                                                            | i18n-2b   |
+| `variablePicker`            | `fields/VariablePickerField.tsx`                                                                                                                                                              | i18n-2b   |
+| `skipLogicDestination`      | `fields/stageDestination.ts`                                                                                                                                                                  | i18n-2b   |
 | `networkFilter`             | `sections/NetworkFilterSection.tsx`                                                                                                                                                           | i18n-2b   |
 | `skipLogic`                 | `sections/SkipLogicSection.tsx`                                                                                                                                                               | i18n-2b   |
 | `interviewerGuidance`       | `sections/InterviewerGuidanceSection.tsx`                                                                                                                                                     | i18n-2b   |
 | `schemaProblem`             | `form/schemaProblems.ts`                                                                                                                                                                      | sections  |
 | `variableParameters`        | `codebook/variableParameters.ts`, `codebook/components/VariableParameterFields.tsx`                                                                                                           | sections  |
 | `compoundFailure`           | `codebook/compoundFailureCopy.ts`                                                                                                                                                             | sections  |
+| `stageEdit`                 | `stageEdit.tsx`                                                                                                                                                                               | rework    |
 | `sortOrder`                 | `fields/sortOrderOptions.ts`, `sections/prompts/SortOrderRows.tsx`                                                                                                                            | sections  |
 | `formFields`                | `sections/FormFieldsSection.tsx`, `sections/collectableTypes.ts`                                                                                                                              | sections  |
 | `attributeCodebookControls` | `sections/AttributeCodebookControls.tsx`                                                                                                                                                      | sections  |
@@ -144,9 +143,9 @@ the shell's action slot standing in for a host that rendered none, so its words
 are the shell's chrome like the refusals already declared there. It covers
 `form/readOnlyRefusal.ts` for the reason the `*Messages.ts` rule below gives:
 the read-only refusal is decided in more than one place — the shell, for a save
-or a structural write the session declines, and a control that finds the lease
-gone when the researcher answers a question about a change — and a shared
-sentence has exactly one declaration.
+or a structural write it declines, and a control that finds the stage read-only
+when the researcher answers a question about a change — and a shared sentence
+has exactly one declaration.
 
 The `*Messages.ts` files are the homes for copy more than one module renders —
 `extractMessages` throws when the same id is declared twice, so a shared string
@@ -157,18 +156,15 @@ has to have exactly one:
   and `RulePreview.tsx`), and `ruleEditor.required` (`RuleEditorDialog.tsx` and
   `RuleValueField.tsx`).
 - `resources/resourceMessages.ts` — every `resourceFailure.*` descriptor, so a
-  gateway adapter author and a translator each read one list. The copy is
-  produced by the gateway, its contract, `lifecycle.ts` and `references.ts`,
-  and rendered by the pickers.
-- `compound-edit/compoundRequestMessages.ts` — the refusals the session writes
-  before sending a compound edit and a host writes again on receiving one,
-  which is why `compoundEdit.request*` lives in neither module.
+  host adapter author and a translator each read one list. The copy is produced
+  by `resources/client.tsx` and rendered by the pickers.
 - `codebook/codebookMessages.ts` — the saving copy the entity editor and the
   validation editor both show, and the missing-comparison refusal both
   validation editors produce. It declares ids in two areas, which is allowed:
   an area names the copy's subject, and a file is only obliged to be the single
-  home of each id. A blocked save is NOT here: every refused codebook change,
-  blocked included, is read once by `codebook/compoundFailureCopy.ts`.
+  home of each id. A refused save is NOT here: every refused codebook change,
+  one held by a collaborator included, is read once by
+  `codebook/compoundFailureCopy.ts`.
 - `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
   sentence is built around.
 - `sections/pedigree/pedigreeMessages.ts` — one file per interface family,
@@ -182,9 +178,6 @@ has to have exactly one:
   conversion moved every one of those ids beside the section that owns it, so the
   file is gone; the ids are unchanged, because a renamed id is a translation
   silently orphaned.
-
-`controller.ts` renders no copy of its own, so the `session` area covers
-`session.ts` alone until it does.
 
 Two areas own the same sentence in two modules, and the sentence is declared
 once: `form/arrayFields/crossClassPick.ts` re-exports the cross-class refusals
@@ -319,14 +312,14 @@ for something else or reopens a decision that has been made:
 - **`builderSection`** — `sections/BuilderSection.tsx` renders only the words
   its section hands it, as `MessageDescriptor`s on `SectionCapability`, plus
   `commonMessages.cancel`.
-- **`subjectSelect`** — `fields/SubjectSelectField.tsx` exists now and holds no
-  copy of its own: it bridges the schema's `{entity, type}` subject to the bare
-  type ids `EntitySelectField` speaks, and every word around it — the label,
+- **`subjectSelect`** — the subject bridge in `fields/EntityTypePickerField.tsx`
+  holds no copy of its own: it turns the schema's `{entity, type}` subject into
+  the bare type ids the picker speaks, and every word around it — the label,
   the hint, the empty state — belongs to the section that mounts it
-  (`subjectSection`) or to the control it wraps (`entitySelect`). The name
-  stays reserved rather than being reused for something else.
+  (`subjectSection`) or to the picker itself (`entitySelect`). The name stays
+  reserved rather than being reused for something else.
 - **`variablePicker`'s five `create*` ids are not on any screen yet.**
-  `sections/CreatableVariablePicker.tsx` pairs a picker over what exists with a
+  `fields/VariablePickerField.tsx` pairs a picker over what exists with a
   name box that creates an attribute under that name and selects it. Nothing in
   the product mounts it: `FormFieldsSection` answers the same question through
   the `#create-new-attribute` sentinel in its own picker, and the control is

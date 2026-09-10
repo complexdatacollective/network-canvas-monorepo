@@ -334,7 +334,7 @@ describe('an attribute a pedigree control can no longer use', () => {
 
   /**
    * Named by its stored id, because there is no definition left to take a name
-   * from — the same treatment a deleted type gets in `EntitySelectField`.
+   * from — the same treatment a deleted type gets in `EntityTypePickerField`.
    */
   it('names an attribute that has left the codebook', () => {
     const issue = unusableVariableIssue(

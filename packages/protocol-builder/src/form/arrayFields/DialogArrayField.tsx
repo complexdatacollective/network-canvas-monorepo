@@ -40,6 +40,7 @@ import {
 } from '@codaco/fresco-ui/form/utils/objectPath';
 
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import DialogForm, {
   type DialogFormErrors,
   type DialogFormValidate,
@@ -60,6 +61,7 @@ import {
   writeRefusalMessage,
 } from './arrayWriteRefusal.ts';
 import { EditedRowContext, type EditedRowScope } from './editedRow.ts';
+import { ListBinding } from './ListBinding.tsx';
 import RowEditorBoundary from './RowEditorBoundary.tsx';
 import {
   ArrayFieldBindingContext,
@@ -74,13 +76,13 @@ import {
 
 /**
  * COMPOSITION: this is a *field component*, rendered as
- * `<ProtocolArrayField name="prompts" component={DialogArrayField} … />`.
+ * `<Field name="prompts" component={DialogArrayField} … />`.
  * It receives the whole array as one `value`/`onChange` pair and never
  * registers per-index leaves, which is the governing rule for every array in
  * the stage form: a deleted row's dormant value must not be able to resurrect
  * itself in the submitted values. Making it a field component rather than a
- * self-contained `name`-taking section keeps ONE owner of the field name, the
- * validation adapter and the problem-panel anchor (`ProtocolArrayField`).
+ * self-contained `name`-taking section keeps ONE owner of the field name and
+ * of the validation adapter.
  */
 
 type ArrayItem = Record<string, unknown>;
@@ -245,11 +247,11 @@ function DialogStoreCapture({
  * the dialog OPENED on, which is what its fields registered against. What the
  * row holds NOW belongs to the re-seat that follows this, not here: judged
  * against a newer row, an untouched field reads as a deliberate edit and is
- * written back over whatever reached the row meanwhile. That carry-over alone
- * would also resurrect a value the
- * researcher explicitly cleared this session, because clearing a field in a
- * section that then collapses leaves the field unregistered, and so absent
- * from the submitted values rather than present-and-empty.
+ * written straight back over the newer value. That carry-over alone would also
+ * resurrect a value the researcher explicitly cleared while the dialog was
+ * open, because clearing a field in a section that then collapses leaves the
+ * field unregistered, and so absent from the submitted values rather than
+ * present-and-empty.
  *
  * The store's dormant entries are the record of what became of those unmounted
  * fields. An entry whose value has diverged from the value its field
@@ -402,9 +404,9 @@ const itemLabelValue = (itemLabel: MessageDescriptor) => ({
  * Said when the LIST stopped accepting changes while the editor was open —
  * a section whose prerequisite is no longer chosen, a list disabled by
  * something else on the stage. `ArrayField` withdraws its own save handler
- * then, so calling it commits nothing at all, and the stage's own lease is
- * untouched: the researcher's next move is to restore whatever the list
- * depends on, not to take editing back.
+ * then, so calling it commits nothing at all. The stage itself is still
+ * editable: the researcher's next move is to restore whatever the list depends
+ * on.
  */
 const listDisabledMessage = (itemLabel: MessageDescriptor) =>
   createMessageError(messages.listDisabled, itemLabelValue(itemLabel));
@@ -442,15 +444,15 @@ const refusalFrom = (
 type DialogArrayContextValue = {
   addTitle: string;
   /**
-   * Commits a row the list has already moved on from — the editor's session
-   * was replaced, or the editor unmounted, while `onBeforeSave` was in flight.
-   * The row is addressed by its OWN id rather than by whichever row the list
-   * is editing now, so index drift (a reorder, an insertion, an undo) can
-   * never land the edit on a different row. Answers with a refusal and its
-   * reason when that row is no longer in the committed array: there is then
-   * nothing to commit to.
+   * Commits a row the list has already moved on from — the editing session was
+   * replaced, or the editor unmounted, while `onBeforeSave` was in flight. The
+   * row is addressed by its OWN id rather than by whichever row the list is
+   * editing now, so index drift (a reorder, an insertion) can never land the
+   * edit on a different row. Answers with a refusal and its reason when that
+   * row is no longer in the committed array: there is then nothing to commit
+   * to.
    *
-   * `base` is the row the edit was computed from, so an arrival that reached
+   * `base` is the row the edit was computed from, so a change that reached
    * another property of the same row while the save was in flight is kept
    * rather than written back out — see `reseatEditedRow`.
    */
@@ -599,8 +601,7 @@ type EditorSession = {
   /**
    * `ArrayField`'s own identity for the row this session is editing. It is
    * what makes a session survive the list moving beneath it: the list rebuilds
-   * every row object whenever its value changes — an undo, a rollback after a
-   * lost lease, a collaborator's insertion — and starting a new session for
+   * every row object whenever its value changes, and starting a new session for
    * each of those would throw away the draft in the dialog.
    */
   rowId: string | undefined;
@@ -639,7 +640,8 @@ function DialogEditor({
     writeThrough,
   } = useDialogArrayContext();
   const intl = useAppIntl();
-  const { protocolContext, readOnly } = useStageEditorForm();
+  const { readOnly } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   /**
    * Where the rows of the list this dialog edits live in the stage document.
    *
@@ -704,8 +706,8 @@ function DialogEditor({
           // The same row, in a new object: the list rebuilt its rows because
           // its value moved. The draft on screen belongs to this session and
           // stays; only the committed values a save will be merged over are
-          // refreshed, so an authoritative change to a key the editor does not
-          // render is not written back out of existence.
+          // refreshed, so a change to a key the editor does not render is not
+          // written back out of existence.
           return previous.item === item && previous.index === index
             ? previous
             : { ...previous, item, index };
@@ -722,9 +724,8 @@ function DialogEditor({
       return;
     }
 
-    // The list has stopped editing a row: it left the array — removed by a
-    // collaborator, rolled back with a lease — or a commit cleared the
-    // editing state.
+    // The list has stopped editing a row: it left the array, or a commit
+    // cleared the editing state.
     //
     // A save owns the dialog through all of that. Closing here would take the
     // editor down over an answer the researcher has not read: the refusal that
@@ -780,15 +781,14 @@ function DialogEditor({
    *
    * Not the row as it stands now. The list refreshes `itemValues` whenever the
    * row's committed values move — which is right, so a save is re-seated on
-   * what arrived — but the dialog's own store deliberately keeps the draft the
+   * them — but the dialog's own store deliberately keeps the draft the
    * researcher is looking at. Judged against the newer row, every untouched
-   * field the arrival touched reads as a deliberate edit and is written
-   * straight back over it. The store cannot answer this on its own either: a
-   * field re-registers when its `initialValue` changes, so the arrival marks
-   * untouched fields dirty, and "left alone" and "typed back to what it was"
-   * are the same state by then. Both resolve toward keeping the arrival, which
-   * is the direction that loses nobody's work: the researcher's draft is still
-   * on screen.
+   * field it moved reads as a deliberate edit and is written straight back over
+   * it. The store cannot answer this on its own either: a field re-registers
+   * when its `initialValue` changes, so the newer row marks untouched fields
+   * dirty, and "left alone" and "typed back to what it was" are the same state
+   * by then. Both resolve toward keeping the newer value, which is the
+   * direction that loses no work: the researcher's draft is still on screen.
    */
   const sessionBaseRef = useRef<ArrayItem>(itemValues);
   const sessionBaseIdRef = useRef<number | null>(null);
@@ -811,9 +811,9 @@ function DialogEditor({
    * The row THIS SESSION is editing, which outlives the list's editing state.
    *
    * A refused commit clears that state — `ArrayField` has already handed the
-   * row over by the time the session declines the write — while this dialog
-   * stays open over the draft it refused. The retry the researcher then makes
-   * has a row to commit to; the list simply is not the one that can name it.
+   * row over by the time the write is declined — while this dialog stays open
+   * over the draft it refused. The retry the researcher then makes has a row to
+   * commit to; the list simply is not the one that can name it.
    */
   const sessionItemRef = useRef<ArrayItem | undefined>(undefined);
   sessionItemRef.current = session?.item;
@@ -821,17 +821,13 @@ function DialogEditor({
   isNewItemRef.current = session?.isNewItem ?? false;
   const itemValuesRef = useRef(itemValues);
   itemValuesRef.current = itemValues;
-  /**
-   * Read as a getter rather than closed over, because access can be revoked
-   * while the editor sits open — and again while a save is in flight.
-   */
   const readOnlyRef = useRef(readOnly);
   readOnlyRef.current = readOnly;
   /**
-   * The list's own save handler, which `ArrayField` WITHDRAWS while the list
-   * is not accepting changes. Read as a getter for the same reason as the
-   * lease: a list can stop accepting changes while the editor sits open, and
-   * again while a save is in flight.
+   * The list's own save handler, which `ArrayField` WITHDRAWS while the list is
+   * not accepting changes. Read as a getter rather than closed over: a list can
+   * stop accepting changes while the editor sits open, and again while a save
+   * is in flight.
    */
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
@@ -861,15 +857,15 @@ function DialogEditor({
       const baseValues = sessionBaseRef.current;
 
       /**
-       * A stage or a list that has stopped accepting writes must not take a
-       * save and look like it worked. Every commit route below is silent about
-       * it: `ArrayField` withholds its own save handler entirely while the
-       * list is disabled or read-only, and the structural commit answers that
-       * it wrote when the form declined to issue the commands. Both leave the
-       * dialog closing over an edit that reached nothing.
+       * A stage or a list that will not take writes must not take a save and
+       * look like it worked. Every commit route below is silent about it:
+       * `ArrayField` withholds its own save handler entirely while the list is
+       * disabled or read-only, so calling it leaves the dialog closing over an
+       * edit that reached nothing.
        *
        * The two are asked separately because they ask the researcher for
-       * different things: a lease is taken back, a disabled list is waited on.
+       * different things: a read-only stage is somebody else's, a disabled list
+       * is waited on.
        */
       const refusal = (): DialogFormErrors | undefined => {
         if (readOnlyRef.current) {
@@ -908,7 +904,7 @@ function DialogEditor({
        * `itemValuesRef` describes THAT one, and re-seating this edit on it
        * would write one row's values onto another. Falling back to the values
        * the save was composed from makes the re-seat a no-op, which is exactly
-       * what "nothing is known to have arrived" should mean.
+       * what "nothing is known to have moved" should mean.
        */
       const latestValues =
         rowIdAtSaveStart !== undefined &&
@@ -931,15 +927,14 @@ function DialogEditor({
       // one that did — which closes the dialog over the researcher's draft.
       //
       // A row, and not a row OBJECT. The list rebuilds every one of them
-      // whenever its value moves — an undo, a rollback, a collaborator's
-      // edit — while keeping each row's identity, which is exactly what lets
-      // this editing session survive an arrival (see the effect that keeps it).
-      // Asked by object alone, any arrival at all during a save sent a commit
-      // that could have gone the ordinary way down the detached route below
-      // instead, where a list whose rows carry no id of their own can address
-      // nothing — and a save the researcher had every right to make came back
-      // as "this field was removed while your changes were being saved" about
-      // a field sitting in the list in front of them.
+      // whenever its value moves, while keeping each row's identity, which is
+      // exactly what lets this editing session survive that (see the effect
+      // that keeps it). Asked by object alone, any movement at all during a
+      // save sent a commit that could have gone the ordinary way down the
+      // detached route below instead, where a list whose rows carry no id of
+      // their own can address nothing — and a save the researcher had every
+      // right to make came back as "this field was removed while your changes
+      // were being saved" about a field sitting in the list in front of them.
       const stillEditingThisRow =
         listItemAtSaveStart !== undefined &&
         (activeItemRef.current === listItemAtSaveStart ||
@@ -949,10 +944,9 @@ function DialogEditor({
         // `ArrayField`'s save handler answers nothing, so what it did is read
         // from the write it caused rather than from its silence. Two different
         // things can go wrong inside it and neither is visible from here: the
-        // session can refuse the write it dispatches (a lease taken back after
-        // the checks above read what this render built), and the commands it
-        // dispatches can resolve against the array the session holds to no row
-        // at all — a row removed, or one that cannot be told apart from the
+        // form can decline the write it dispatches (a read-only stage), and the
+        // commands it dispatches can resolve against the document's array to no
+        // row at all — a row removed, or one that cannot be told apart from the
         // list as it now stands. Returning nothing for either would report it
         // as a save and close the dialog over the draft, leaving the reason on
         // a form the researcher can no longer see the editor in front of.
@@ -975,9 +969,9 @@ function DialogEditor({
       // a success, which is what silently closes the dialog over a discarded
       // edit — so a commit that wrote nothing hands back its own reason, and
       // the dialog keeps the draft on screen with that reason above it. The
-      // reasons ask the researcher for different things: a refused write asks
-      // them to take editing back, a vanished row says there is nothing left
-      // to save to.
+      // reasons ask the researcher for different things: a refused write says
+      // the stage is not theirs to change, a vanished row says there is nothing
+      // left to save to.
       if (itemAtSaveStart) {
         const outcome = commitDetachedRow(
           itemAtSaveStart,
@@ -1065,10 +1059,10 @@ function DialogEditor({
           // The row this session OPENED on, for the same reason a save is
           // composed against it. An unchanged-pick escape asks whether the
           // researcher chose this value, and only what was on screen when they
-          // submitted can answer that. Judged against the row as it stands
-          // now, a value that arrived from elsewhere while the dialog was open
-          // reads as their choice — and the pick they actually made, and never
-          // touched, stops reading as one and is refused.
+          // submitted can answer that. Judged against the row as it stands now,
+          // a value written to it while the dialog was open reads as their
+          // choice — and the pick they actually made, and never touched, stops
+          // reading as one and is refused.
           initialValues: sessionBaseRef.current,
         }),
       );
@@ -1137,12 +1131,11 @@ function DialogEditor({
        * half of what "has the researcher changed anything?" is asked of — the
        * other half being the value on screen — and `DialogForm` asks it before
        * every dismissal, to decide whether closing has anything to lose. Moved
-       * by an arrival, it re-registers the field: the value on screen is the
-       * draft, which is kept (that is the arrival contract this editor keeps
-       * throughout), and the starting value it is compared against is now the
-       * arrival's. A field the researcher never touched then reads as changed,
-       * and Cancel, Escape or a click outside asks them to discard work they
-       * never did.
+       * by a write to the row underneath, it re-registers the field: the value
+       * on screen is the draft, which is kept, and the starting value it is
+       * compared against is now the newer one. A field the researcher never
+       * touched then reads as changed, and Cancel, Escape or a click outside
+       * asks them to discard work they never did.
        *
        * The same reading `validate` and the save take, and for the same
        * reason: only what was on screen when this session opened can answer a
@@ -1187,8 +1180,8 @@ function DialogEditor({
           would commit its own insertions and reorderings against: adding a
           sort rule would insert a row into the array of prompts. It also must
           not commit anything at all until the dialog saves, which is the same
-          rule `ProtocolArrayField` states for a list that finds itself in a
-          nested form store.
+          rule `ListBinding` states for a list that finds itself in a nested
+          form store.
         */}
         <ArrayFieldBindingContext value={NESTED_IN_A_ROW}>
           <EditedRowContext value={editedRow}>
@@ -1213,7 +1206,20 @@ function DialogEditor({
  * stage document as the operation it actually was — addressed by the row's own
  * id, never by the index this render happened to draw it at.
  */
-export default function DialogArrayField<T extends ArrayItem>({
+export default function DialogArrayField<T extends ArrayItem>(
+  props: DialogArrayFieldProps<T>,
+) {
+  // Above the list rather than inside it: the commands the list issues are
+  // resolved against this binding, and a hook cannot read a context its own
+  // component provides.
+  return (
+    <ListBinding name={props.name ?? ''}>
+      <DialogArrayFieldList<T> {...props} />
+    </ListBinding>
+  );
+}
+
+function DialogArrayFieldList<T extends ArrayItem>({
   value,
   onChange,
   name = '',

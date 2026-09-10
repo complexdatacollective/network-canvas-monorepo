@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import ProtocolField from '../ProtocolField.tsx';
+import { createStageDraftProbe } from './stageDraftProbe.tsx';
 
 /**
  * What a control that has been emptied leaves in the stage.
@@ -33,7 +35,7 @@ describe('a control the researcher emptied', () => {
         <>
           <StageNameSection />
           <BuilderSection title="Interviewer guidance">
-            <ProtocolField
+            <Field
               name="interviewScript"
               label="Interviewer script text"
               component={InputField}
@@ -59,18 +61,20 @@ describe('a control the researcher emptied', () => {
   });
 
   it('takes the container it emptied with it', async () => {
+    const { probe, draft } = createStageDraftProbe();
     const harness = renderStageEditor({
       stageId: 'ego-form-1',
       sections: (
         <>
           <StageNameSection />
           <BuilderSection title="Introduction panel">
-            <ProtocolField
+            {probe}
+            <Field
               name="introductionPanel.title"
               label="Panel heading"
               component={InputField}
             />
-            <ProtocolField
+            <Field
               name="introductionPanel.text"
               label="Panel text"
               component={InputField}
@@ -94,8 +98,7 @@ describe('a control the researcher emptied', () => {
     // simply not being there.
     expect(await harness.submit()).toBeNull();
 
-    const { fields } = harness.session.getSnapshot().editedSection;
-    expect(Object.hasOwn(fields, 'introductionPanel')).toBe(false);
+    expect(Object.hasOwn(draft(), 'introductionPanel')).toBe(false);
   });
 
   it('is refused rather than dropped when the field is required', async () => {
@@ -112,7 +115,7 @@ describe('a control the researcher emptied', () => {
         <>
           <StageNameSection />
           <BuilderSection title="Page content">
-            <ProtocolField
+            <Field
               name="title"
               label="Page heading"
               component={InputField}
@@ -128,11 +131,17 @@ describe('a control the researcher emptied', () => {
 
     expect(await harness.submit()).toBeNull();
     expect(title).toHaveAttribute('aria-invalid', 'true');
-    // The submit never ran, so nothing was written — least of all the removal
-    // that emptying an OPTIONAL field earns.
-    expect(harness.session.getSnapshot().editedSection.fields.title).toBe(
-      'Welcome',
-    );
+    // The submit never ran, so nothing reached the protocol — least of all the
+    // removal that emptying an OPTIONAL field earns.
+    expect(
+      harness.protocolSections()[
+        sectionId({ kind: 'stage', stageId: harness.seeded.id })
+      ],
+    ).toEqual({
+      id: harness.seeded.id,
+      type: 'Information',
+      ...harness.seeded.fields,
+    });
   });
 
   it('is reported missing by the schema when nothing on screen requires it', async () => {
@@ -149,11 +158,7 @@ describe('a control the researcher emptied', () => {
         <>
           <StageNameSection />
           <BuilderSection title="Page content">
-            <ProtocolField
-              name="title"
-              label="Page heading"
-              component={InputField}
-            />
+            <Field name="title" label="Page heading" component={InputField} />
           </BuilderSection>
         </>
       ),
@@ -164,13 +169,13 @@ describe('a control the researcher emptied', () => {
     );
 
     // Dropping an empty value must not turn a key the schema requires into a
-    // key nobody notices is gone.
+    // key nobody notices is gone: no control on the page asks for it, so the
+    // section beside it is the only place the researcher is told.
     expect(await harness.submit()).toBeNull();
-    const { validation } = harness.session.getSnapshot();
-    expect(validation.status).toBe('invalid');
-    expect(
-      validation.status === 'invalid' &&
-        validation.issues.some((issue) => issue.path.at(-1) === 'title'),
-    ).toBe(true);
+    expect(harness.outline()).toContainEqual({
+      title: 'Page content',
+      state:
+        'Has a problem. Page heading has no value, and this stage needs one.',
+    });
   });
 });

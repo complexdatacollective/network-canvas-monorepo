@@ -1,6 +1,8 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import AlterLimitsSection from '../AlterLimitsSection.tsx';
 
@@ -111,7 +113,17 @@ describe('the nomination limits a name generator may set', () => {
     await screen.findByRole('spinbutton', { name: /Fewest people/ });
 
     expect(await harness.submit()).toBeNull();
-    expect(harness.pendingCommands()).toHaveLength(0);
+    // And the refusal reached the protocol as nothing at all: the stage it
+    // holds is still the one the editor opened on.
+    expect(
+      harness.protocolSections()[
+        sectionId({ kind: 'stage', stageId: harness.seeded.id })
+      ],
+    ).toEqual({
+      id: harness.seeded.id,
+      type: harness.seeded.type,
+      ...harness.seeded.fields,
+    });
     expect(
       await screen.findByText(
         'Set the fewest people, the most people, or both. Switch these limits off if this stage has no limit.',

@@ -3,12 +3,13 @@ import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { FRAMING_IDS, type FramingId } from '@codaco/protocol-validation';
 
-import ProtocolField from '../../form/ProtocolField.tsx';
+import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
   useDiscardStageValues,
@@ -29,7 +30,7 @@ const DEFAULT_FRAMING: FramingId = 'gamete';
  * Descriptors rather than words, so the pair a researcher reads is resolved
  * beside the control instead of at module load — a label resolved here would
  * be whatever language happened to be current when this file was first
- * imported, for the rest of the session.
+ * imported, and would never change again.
  */
 const FRAMING_MODE_LABELS: Readonly<Record<string, MessageDescriptor>> =
   Object.freeze({
@@ -62,15 +63,11 @@ const boldTerm = (chunks: ReactNode) => <strong>{chunks}</strong>;
  * and a parked value is written back on save, putting a key into the stage
  * that the union's `participantChoice` branch has no room for.
  *
- * Thrown away out of the SESSION, and in the same batch as the mode that
- * caused it. The draft is the single notion of what a path holds: it is what
- * every field is seeded from as it mounts, so a clear that lived only in the
- * form would hand the old terminology back the moment the researcher returned
- * to a fixed framing. And the mode has to travel with it, because a mode is an
- * ordinary field that waits for the submit that flushes it — sent alone, the
- * clear would reach a live-applying host as a pedigree still claiming a fixed
- * framing with no terminology to fix it to, which is a stage nobody authored
- * and one the union refuses.
+ * Thrown away out of the DOCUMENT, and in the same write as the mode that
+ * caused it. The document is the single notion of what a path holds: it is
+ * what every field is seeded from as it mounts, so a clear that lived only in
+ * the form would hand the old terminology back the moment the researcher
+ * returned to a fixed framing.
  */
 export default function FramingConfigSection() {
   const intl = useAppIntl();
@@ -89,13 +86,11 @@ export default function FramingConfigSection() {
     const leaving = wasFixed.current && !isFixed;
     wasFixed.current = isFixed;
     // Only the researcher LEAVING the fixed branch throws anything away. The
-    // first render is a stage being opened on what it was saved with, and an
-    // arrival that brings a participant choice with it — an undo, a redo, a
-    // collaborator's change — has already left the terminology behind, so
-    // there is nothing there for this to find.
+    // first render is a stage being opened on what it was saved with, which
+    // already has whatever terminology belongs to its own framing.
     if (!leaving) return;
-    // The mode in front of the terminology it cost, in one batch, so an undo
-    // brings back a framing the union accepts rather than half of one.
+    // The mode in front of the terminology it cost, in one write, so the
+    // document never holds half a framing.
     discardStageValues([VALUE_FIELD], {
       path: MODE_FIELD,
       value: chosenMode,
@@ -145,7 +140,7 @@ export default function FramingConfigSection() {
       <Paragraph className="mb-5">
         {intl.formatMessage(pedigreeMessages.framingSharedWording)}
       </Paragraph>
-      <ProtocolField<typeof RadioGroupField>
+      <Field<typeof RadioGroupField>
         name={MODE_FIELD}
         component={RadioGroupField}
         label={intl.formatMessage(pedigreeMessages.framingModeLabel)}
@@ -153,10 +148,10 @@ export default function FramingConfigSection() {
           typeof committedMode === 'string' ? committedMode : 'fixed'
         }
         options={modeOptions}
-        required
+        required={REQUIRED}
       />
       {isFixed && (
-        <ProtocolField<typeof NativeSelectField>
+        <Field<typeof NativeSelectField>
           name={VALUE_FIELD}
           component={NativeSelectField}
           label={intl.formatMessage(pedigreeMessages.framingValueLabel)}
@@ -168,7 +163,7 @@ export default function FramingConfigSection() {
               : DEFAULT_FRAMING
           }
           options={framingOptions}
-          required
+          required={REQUIRED}
         />
       )}
     </BuilderSection>

@@ -1,18 +1,16 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { type ComponentType, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { Button } from '@codaco/fresco-ui/Button';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
-import SubjectSelectField from '../../fields/SubjectSelectField.tsx';
+import { EntitySubjectPickerField } from '../../fields/EntityTypePickerField.tsx';
 import MultiSelect from '../../form/arrayFields/MultiSelect.tsx';
-import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
-import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { fixtureMessage } from '../../testing/i18n.ts';
-import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
@@ -37,7 +35,7 @@ const RadioGroup = RadioGroupField as ComponentType<Record<string, unknown>>;
 function RosterSource() {
   return (
     <BuilderSection title="Roster source">
-      <ProtocolField<typeof RadioGroup>
+      <Field<typeof RadioGroup>
         name="dataSource"
         label="Roster data file"
         component={RadioGroup}
@@ -64,7 +62,7 @@ function SearchOptions() {
         capability={SEARCH}
         resetOn="dataSource"
       >
-        <ProtocolField
+        <Field
           name="searchOptions.fuzziness"
           label="Fuzziness"
           component={InputField}
@@ -84,22 +82,22 @@ function SearchOptionsAgainstASubject() {
   return (
     <>
       <BuilderSection title="Node type">
-        <ProtocolField<typeof SubjectSelectField>
+        <Field<typeof EntitySubjectPickerField>
           name="subject"
           label="Node type"
-          component={SubjectSelectField}
+          component={EntitySubjectPickerField}
           entityType="node"
         />
       </BuilderSection>
       <BuilderSection title="Stage name">
-        <ProtocolField name="label" label="Stage name" component={InputField} />
+        <Field name="label" label="Stage name" component={InputField} />
       </BuilderSection>
       <BuilderSection
         title="Search options"
         capability={SEARCH}
         resetOn="subject"
       >
-        <ProtocolField
+        <Field
           name="searchOptions.fuzziness"
           label="Fuzziness"
           component={InputField}
@@ -169,7 +167,7 @@ function CardDetails() {
         resetOn="dataSource"
       >
         {showAttributes ? (
-          <ProtocolArrayField<typeof MultiSelect>
+          <Field<typeof MultiSelect>
             name="cardOptions.additionalProperties"
             label="Attributes shown on a card"
             component={MultiSelect}
@@ -376,115 +374,6 @@ describe('a capability that only means anything against something else', () => {
     expect(saved).not.toBeNull();
     expect(saved?.stageDocument).not.toHaveProperty('cardOptions');
   });
-
-  /**
-   * The other direction, which the clear has to leave alone.
-   *
-   * Once the clear has reached the protocol, it says nothing about content that
-   * arrives after it. A collaborator writing at the path is authoritative, and
-   * the editor has to show what they wrote rather than the blank this session
-   * decided on — the researcher can always switch the capability off again, and
-   * cannot act on something they cannot see.
-   */
-  it('shows what a collaborator writes once the clear has landed', async () => {
-    const harness = renderStageEditor(openListSection());
-    expect(
-      await screen.findByRole('switch', { name: 'Card details' }),
-    ).toBeChecked();
-
-    await chooseAnotherRoster(harness);
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Card details' }),
-      ).not.toBeChecked(),
-    );
-
-    // Acknowledged THROUGH the clear's own batch, which is what a host that has
-    // applied it answers with. The collaborator's row was written onto a stage
-    // that already had the capability switched off.
-    const cleared = harness.pendingCommands().at(-1);
-    // The file the researcher chose travels WITH the clear it caused, so what
-    // the host applied is the whole change rather than half of it.
-    expect(cleared?.commands).toEqual([
-      { op: 'set', key: 'dataSource', value: 'another_roster' },
-      { op: 'unset', key: 'cardOptions' },
-    ]);
-    act(() => {
-      harness.session.acknowledge({
-        fields: {
-          ...harness.seeded.fields,
-          dataSource: 'another_roster',
-          cardOptions: {
-            additionalProperties: [{ variable: 'city', label: 'City' }],
-          },
-        },
-        throughBatchId: cleared?.id ?? 0,
-        manifestRevision: { sequence: 9n, hash: 'revision-9' },
-      });
-    });
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Card details' }),
-      ).toBeChecked(),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Choose the attributes' }),
-    );
-    expect(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
-    ).toHaveValue('city');
-  });
-
-  /**
-   * And the same arrival while the clear is still on its way.
-   *
-   * A switched-off capability is an edit like any other, so a batch the host
-   * has not applied yet is replayed onto whatever it does send back — an
-   * `unset` says what it says wherever it lands (`rebaseCommand`). The
-   * researcher's decision therefore stands over a write made against the stage
-   * they made it on, exactly as any other pending local edit would.
-   *
-   * The alternative is worse than it looks: letting the arrival win would put
-   * the capability back on and save content under a switch the researcher had
-   * already turned off, and they would have to notice it to turn it off again.
-   */
-  it('keeps the clear over an arrival the host has not seen it yet', async () => {
-    const harness = renderStageEditor(openListSection());
-    expect(
-      await screen.findByRole('switch', { name: 'Card details' }),
-    ).toBeChecked();
-
-    await chooseAnotherRoster(harness);
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Card details' }),
-      ).not.toBeChecked(),
-    );
-
-    act(() => {
-      harness.session.acknowledge({
-        fields: {
-          ...harness.seeded.fields,
-          cardOptions: {
-            additionalProperties: [{ variable: 'city', label: 'City' }],
-          },
-        },
-        // Nothing acknowledged, so the clear is still pending.
-        throughBatchId: 0,
-        manifestRevision: { sequence: 9n, hash: 'revision-9' },
-      });
-    });
-
-    await waitFor(() =>
-      expect(
-        harness.session.getSnapshot().editedSection.fields,
-      ).not.toHaveProperty('cardOptions'),
-    );
-    expect(
-      screen.getByRole('switch', { name: 'Card details' }),
-    ).not.toBeChecked();
-  });
 });
 
 /**
@@ -495,11 +384,10 @@ describe('a capability the researcher switches off', () => {
   /**
    * The first row added after switching it back on.
    *
-   * A bound list resolves every insertion against the draft the SESSION holds,
-   * never against the rows it is rendering — that is what keeps a row dialog's
-   * save from landing on whichever row has since moved into its position. So
-   * "the list is empty now" has to be true there: a switch-off recorded only in
-   * the form left the old rows in the draft, and the researcher's first Add was
+   * A bound list resolves an insertion against the document the editor is
+   * holding rather than against the rows it is rendering, so "the list is
+   * empty now" has to be true there: a switch-off recorded only in the form
+   * left the old rows in the document, and the researcher's first Add was
    * placed after them.
    *
    * The container shape, which is the one a capability really owns: the switch
@@ -542,46 +430,6 @@ describe('a capability the researcher switches off', () => {
     expect(saved?.stageDocument.cardOptions).toEqual({
       additionalProperties: [{ variable: 'name', label: 'Name' }],
     });
-  });
-
-  /**
-   * Undo, which is the researcher's way back from a switch they did not mean.
-   *
-   * A decision that only emptied the form would have nothing in the session's
-   * history to undo — the rows would be gone until the editor was closed
-   * without saving, and every keystroke since would go with them.
-   */
-  it('comes back whole when the session undoes the switch-off', async () => {
-    const harness = renderStageEditor(openListSection());
-    await harness.user.click(
-      await screen.findByRole('switch', { name: 'Card details' }),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Clear card details' }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Card details' }),
-      ).not.toBeChecked(),
-    );
-
-    act(() => {
-      harness.session.undo();
-    });
-
-    // The switch follows the values: holding a value is what "switched on"
-    // means, so nothing has to remember that the researcher turned it off.
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Card details' }),
-      ).toBeChecked(),
-    );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Choose the attributes' }),
-    );
-    expect(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
-    ).toHaveValue('age');
   });
 });
 
@@ -628,93 +476,5 @@ describe('a capability that resets on a value with structure', () => {
         screen.getByRole('switch', { name: 'Search options' }),
       ).not.toBeChecked(),
     );
-  });
-});
-
-/**
- * A path is read the same way wherever it is read.
- *
- * Telling a researcher's change from an arrival is a comparison of two reads of
- * ONE path: what the form holds there, and what the agreed draft holds there.
- * Resolve the path differently in the two and they are reads of two different
- * values, which move independently — so an arrival that moves one of them and
- * not the other reads as a choice the researcher made, and the section throws
- * away the capability the arrival was bringing back.
- *
- * The stage below holds both readings of `presentation.theme` at once — a route
- * through a container, and a key that happens to contain a dot — because that
- * is what a general-purpose `get` decides between by looking at the document.
- */
-describe('a capability resetting on a path the stage could read two ways', () => {
-  const ambiguousStage = () => {
-    const roster = loadFixtureStage('name-generator-roster-1');
-    return {
-      stage: {
-        id: roster.id,
-        type: roster.type,
-        fields: {
-          ...roster.fields,
-          'presentation': { theme: 'plain' },
-          'presentation.theme': 'a key of its own',
-        },
-      },
-      sections: (
-        <>
-          <BuilderSection title="Presentation">
-            <ProtocolField<typeof RadioGroup>
-              name="presentation.theme"
-              label="Theme"
-              component={RadioGroup}
-              options={[
-                { value: 'plain', label: 'Plain' },
-                { value: 'bold', label: 'Bold' },
-              ]}
-            />
-          </BuilderSection>
-          <BuilderSection
-            title="Search options"
-            capability={SEARCH}
-            resetOn="presentation.theme"
-          >
-            <ProtocolField
-              name="searchOptions.fuzziness"
-              label="Fuzziness"
-              component={InputField}
-            />
-          </BuilderSection>
-        </>
-      ),
-    };
-  };
-
-  it('does not reset again when the session undoes the reset', async () => {
-    const harness = renderStageEditor(ambiguousStage());
-    await screen.findByRole('textbox', { name: 'Fuzziness' });
-
-    // The researcher's own change, which does reset the capability.
-    await harness.user.click(
-      await screen.findByRole('radio', { name: 'Bold' }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Search options' }),
-      ).not.toBeChecked(),
-    );
-
-    act(() => {
-      harness.session.undo();
-    });
-
-    // The undo is an arrival, and it brings the theme and the settings that
-    // described it back together. Resetting on it would take away the half of
-    // the change the researcher was reaching for, on the spot.
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Search options' }),
-      ).toBeChecked(),
-    );
-    expect(harness.session.getSnapshot().editedSection.fields).toMatchObject({
-      searchOptions: { fuzziness: 0.4 },
-    });
   });
 });

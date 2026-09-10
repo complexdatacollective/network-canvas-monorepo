@@ -198,8 +198,8 @@ export function useDialogFormId(): string | null {
 /**
  * A field inside a `DialogForm`, seeded from the dialog's `initialValues`.
  *
- * The stage editor's own `ProtocolField` reads its starting value from the
- * stage document, which a dialog editing a rule or a single row is not part
+ * The stage editor's own form is handed the stage document and seeds its
+ * fields from it, which a dialog editing a rule or a single row is not part
  * of — so this is the same idea against the values the dialog was opened with.
  * A field may still state its own `initialValue`, which wins.
  */

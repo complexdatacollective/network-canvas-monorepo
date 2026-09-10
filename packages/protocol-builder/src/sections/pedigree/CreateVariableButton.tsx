@@ -7,9 +7,17 @@ import type { VariableOption, VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import VariableEditor from '../../codebook/components/VariableEditor.tsx';
-import { sectionIdForCodebookSubject } from '../../codebook/editing.ts';
+import {
+  documentWithRebasedVariable,
+  sectionIdForCodebookSubject,
+} from '../../codebook/editing.ts';
+import { useCodebookSectionWrite } from '../../codebook/writes.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
+import {
+  useProtocolContext,
+  useProtocolSections,
+} from '../../state/protocolContext.ts';
 
 export type CreateVariableButtonProps = Readonly<{
   /** The type the attribute is created on. `null` while none is chosen. */
@@ -39,8 +47,6 @@ export type CreateVariableButtonProps = Readonly<{
    * for, and the extraction guard sees the caller's declaration either way.
    */
   label: string;
-  /** Says what the created attribute is for, inside the dialog. */
-  description: string;
   onCreated(variableId: string): void;
 }>;
 
@@ -48,7 +54,7 @@ export type CreateVariableButtonProps = Readonly<{
  * Creates a codebook attribute and hands its id back to the slot that asked
  * for it.
  *
- * The attribute is created through the session's compound-edit path, which is
+ * The attribute is created under the codebook section's own lock, which is
  * what puts it into the protocol atomically and reports the specific lock
  * holder when it cannot. Binding it to the slot afterwards is an ordinary form
  * change rather than part of that edit, and deliberately so: an attribute in
@@ -61,10 +67,12 @@ export default function CreateVariableButton({
   variableType,
   lockedOptions,
   label,
-  description,
   onCreated,
 }: CreateVariableButtonProps) {
-  const { controller, readOnly } = useStageEditorForm();
+  const { readOnly } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
+  const protocolSections = useProtocolSections();
+  const writeCodebookSection = useCodebookSectionWrite();
   const [session, setSession] = useState<{
     key: string;
     variableId: string;
@@ -73,7 +81,7 @@ export default function CreateVariableButton({
      * rather than read live.
      *
      * The draft inside belongs to that type: a stage repointed at another one
-     * while the editor is open — by this researcher, by an undo, by a
+     * while the editor is open — by this researcher, by a
      * collaborator — would otherwise leave the editor authoring an attribute
      * of a type nobody asked it to. `editorReadOnly` below is what says so,
      * and the draft is kept rather than thrown away.
@@ -102,7 +110,7 @@ export default function CreateVariableButton({
    * `onComplete` it captured before the await, so the completion below is a
    * closure from an earlier render. Read from that closure, `editorReadOnly`
    * says what was true when the researcher pressed Create — and a slot
-   * repointed at another type in the meantime, by this researcher, by an undo
+   * repointed at another type in the meantime, by this researcher
    * or by a collaborator, would be bound to an attribute of the type the
    * editor opened against: a cross-type reference nothing on screen explains
    * and the stage save then refuses. The ref is the same seam
@@ -114,20 +122,18 @@ export default function CreateVariableButton({
   const authoritativeDocument =
     subject === null
       ? undefined
-      : controller.snapshot.protocolSections[
-          sectionIdForCodebookSubject(subject)
-        ];
+      : protocolSections[sectionIdForCodebookSubject(subject)];
 
   /**
    * What opening an editor from here would open it ON, or `undefined` while
    * there is nothing to open one against.
    *
-   * Nothing to add an attribute to yet, or a lease a collaborator has taken
-   * back, makes this undefined and takes the control away: rendering a
-   * disabled one instead would offer an action whose only explanation is a
-   * choice made in a different field. It carries the two values the session
-   * captures rather than being a bare boolean, so the capture cannot read them
-   * again — and cannot read a different answer — a moment later.
+   * Nothing to add an attribute to yet, or a stage somebody else is editing,
+   * makes this undefined and takes the control away: rendering a disabled one
+   * instead would offer an action whose only explanation is a choice made in a
+   * different field. It carries the two values the open editor captures rather
+   * than being a bare boolean, so the capture cannot read them again — and
+   * cannot read a different answer — a moment later.
    */
   const launchable =
     readOnly || subject === null || authoritativeDocument === undefined
@@ -137,8 +143,8 @@ export default function CreateVariableButton({
   /*
     An editor ALREADY OPEN is a different question, and the answer is that it
     stays. The draft inside it — the name the researcher is typing, the values
-    they are entering — exists nowhere else, and unmounting it to say the lease
-    has gone would throw that away to report something the editor says for
+    they are entering — exists nowhere else, and unmounting it to say the stage
+    is read-only would throw that away to report something the editor says for
     itself with its own save refused. The same rule the row dialog around
     `AttributeCodebookControls` follows when the same thing happens.
   */
@@ -152,14 +158,12 @@ export default function CreateVariableButton({
   const openedSection =
     session === null
       ? undefined
-      : controller.snapshot.protocolSections[
-          sectionIdForCodebookSubject(session.subject)
-        ];
+      : protocolSections[sectionIdForCodebookSubject(session.subject)];
 
   /**
    * Whether what is open may be WRITTEN, which is three questions.
    *
-   * A lease taken back says this researcher may write nothing. A section that
+   * A read-only stage says this researcher may write nothing. A section that
    * has gone is a section nothing can be written into. And a slot pointed at
    * another type is a slot this attribute is no longer for: an attribute
    * created on the type the editor opened against would be bound to a slot
@@ -175,26 +179,38 @@ export default function CreateVariableButton({
   writable.current = !editorReadOnly;
 
   /**
-   * The compound edit the editor submits, with the dialog held shut while it
+   * The codebook write the editor asks for, with the dialog held shut while it
    * is in flight.
    *
-   * The request outlives the dialog: dismissed mid-flight, the editor is
+   * The write outlives the dialog: dismissed mid-flight, the editor is
    * unmounted but the handler awaiting the host is still alive, so a refusal
    * is shown to nobody and a success still runs `onComplete` — binding a slot
    * to an attribute the researcher watched no editor finish. The same act as
    * `AttributeCodebookControls`' three nested editors, which withhold every
    * way out for exactly this.
+   *
+   * Only the attribute being created crosses into the write, for the reason
+   * `documentWithRebasedVariable` gives: the section the lock hands back may
+   * already hold a collaborator's own change, and this editor's copy of it
+   * does not.
    */
-  const submitEdit = async (
-    request: Parameters<typeof controller.requestCompoundEdit>[0],
-  ) => {
-    setSubmitting(true);
-    try {
-      return await controller.requestCompoundEdit(request);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const submitEdit =
+    (target: CodebookSubject, variableId: string) =>
+    async (document: SectionDoc) => {
+      setSubmitting(true);
+      try {
+        return await writeCodebookSection(target, (authoritative) =>
+          documentWithRebasedVariable({
+            subject: target,
+            authoritativeDocument: authoritative,
+            variableId,
+            submittedDocument: document,
+          }),
+        );
+      } finally {
+        setSubmitting(false);
+      }
+    };
 
   /**
    * Every way out of the editor, which is one handler.
@@ -242,10 +258,8 @@ export default function CreateVariableButton({
             initialDraft={{ name: '', type: variableType }}
             allowedVariableTypes={[variableType]}
             lockedOptions={lockedOptions ?? null}
-            description={description}
-            protocolContext={controller.snapshot.protocolContext}
-            createRequestId={() => uuid()}
-            onSubmitRequest={submitEdit}
+            protocolContext={protocolContext}
+            onSubmitDocument={submitEdit(session.subject, session.variableId)}
             onComplete={(variableId) => {
               // Bound only while the slot still names attributes of the type
               // the attribute was created on. An answer that arrives after the

@@ -10,15 +10,11 @@ import { createElement, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as DialogModule from '@codaco/fresco-ui/dialogs/Dialog';
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
-import { useStageEditorController } from '../../controller.ts';
-import ProtocolField from '../../form/ProtocolField.tsx';
-import StageEditorShell from '../../form/StageEditorShell.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import type { ProtocolBuilderSessionStore } from '../../session.ts';
 import type { RuleDraft } from '../rule.ts';
 import {
   describeRule,
@@ -32,7 +28,8 @@ import RuleEditorDialog, {
 import { type RuleSetValue, ruleSetTargets } from '../ruleSet.ts';
 import { QueryRuleSetField } from '../RuleSetField.tsx';
 import { RULE_VALUE_FIELD } from '../RuleValueField.tsx';
-import { createSession, nodeRule, testCodebook } from './fixtures.ts';
+import { nodeRule, ruleSections, testCodebook } from './fixtures.ts';
+import { RuleEditorHost } from './ruleEditorHost.tsx';
 
 /**
  * `layoutId` is a Motion prop, so it leaves no trace in the DOM: what the rule
@@ -102,33 +99,23 @@ const probedRuleSet = (): RuleSetValue | null => {
  * the editor. Everything the editor does about saving, cancelling and morphing
  * is a conversation with the list, so it is tested through the list.
  */
-function ListEditor({ session }: { session: ProtocolBuilderSessionStore }) {
-  const controller = useStageEditorController(session, 'stage-form');
-
-  return (
-    <StageEditorShell
-      controller={controller}
+function renderRuleList(rules?: readonly RuleDraft[]) {
+  render(
+    <RuleEditorHost
+      sections={ruleSections(rules)}
       actions={({ formId }) => (
         <SubmitButton form={formId}>Finished editing</SubmitButton>
       )}
     >
       <BuilderSection title="Skip logic">
-        <ProtocolField
+        <Field
           name={RULE_SET_FIELD}
           label="Rules"
           component={QueryRuleSetField}
         />
         <RuleSetProbe />
       </BuilderSection>
-    </StageEditorShell>
-  );
-}
-
-function renderRuleList(rules?: readonly RuleDraft[]) {
-  render(
-    <DialogProvider>
-      <ListEditor session={createSession(rules)} />
-    </DialogProvider>,
+    </RuleEditorHost>,
   );
 }
 
@@ -137,12 +124,10 @@ function renderRuleList(rules?: readonly RuleDraft[]) {
  * for the shared-element identity, which no list row can state a value for.
  */
 function StandaloneEditor({ layoutId }: { layoutId?: string }) {
-  const [session] = useState(() => createSession());
-  const controller = useStageEditorController(session, 'stage-form');
   const [open, setOpen] = useState(true);
 
   return (
-    <StageEditorShell controller={controller}>
+    <RuleEditorHost sections={ruleSections()}>
       <RuleEditorDialog
         open={open}
         seed={{ type: '' }}
@@ -152,15 +137,13 @@ function StandaloneEditor({ layoutId }: { layoutId?: string }) {
         onCancel={() => setOpen(false)}
         {...(layoutId === undefined ? {} : { layoutId })}
       />
-    </StageEditorShell>
+    </RuleEditorHost>
   );
 }
 
 function renderStandaloneEditor(layoutId?: string) {
   render(
-    <DialogProvider>
-      <StandaloneEditor {...(layoutId === undefined ? {} : { layoutId })} />
-    </DialogProvider>,
+    <StandaloneEditor {...(layoutId === undefined ? {} : { layoutId })} />,
   );
 }
 
@@ -180,12 +163,10 @@ function SpiedEditor({
   onSave: (rule: RuleDraft) => void;
   onCancel: () => void;
 }) {
-  const [session] = useState(() => createSession());
-  const controller = useStageEditorController(session, 'stage-form');
   const [open, setOpen] = useState(true);
 
   return (
-    <StageEditorShell controller={controller}>
+    <RuleEditorHost sections={ruleSections()}>
       <RuleEditorDialog
         open={open}
         seed={seed}
@@ -200,18 +181,14 @@ function SpiedEditor({
           setOpen(false);
         }}
       />
-    </StageEditorShell>
+    </RuleEditorHost>
   );
 }
 
 const renderSpiedEditor = (seed: RuleDraft = { type: '' }) => {
   const onSave = vi.fn<(rule: RuleDraft) => void>();
   const onCancel = vi.fn<() => void>();
-  render(
-    <DialogProvider>
-      <SpiedEditor seed={seed} onSave={onSave} onCancel={onCancel} />
-    </DialogProvider>,
-  );
+  render(<SpiedEditor seed={seed} onSave={onSave} onCancel={onCancel} />);
   return { onSave, onCancel };
 };
 

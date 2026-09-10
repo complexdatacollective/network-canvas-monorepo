@@ -2,7 +2,6 @@ import type { ComponentType, ReactNode } from 'react';
 
 import type { StageType } from '@codaco/protocol-validation';
 
-import type { StageEditorController } from './controller.ts';
 import { STAGE_TYPES } from './stage-types.ts';
 
 /**
@@ -17,7 +16,6 @@ import { STAGE_TYPES } from './stage-types.ts';
  * a host can read without dragging a component tree into its own program.
  */
 export type StageEditorActionContext = Readonly<{
-  controller: StageEditorController;
   formId: string;
   readOnly: boolean;
 }>;
@@ -27,7 +25,6 @@ export type StageEditorActions = (
 ) => ReactNode;
 
 export type StageEditorProps<T extends StageType = StageType> = {
-  controller: StageEditorController;
   stageType: T;
   /**
    * The host's action chrome, which the editor passes straight through to the
@@ -82,7 +79,7 @@ export type StageEditorRegistryPart = Partial<StageEditorRegistry>;
  * registry imports every part: a family reaching back into it for this helper
  * would close a cycle, and `REGISTRY_PARTS` would read a part binding that is
  * not initialised yet whenever a program loads the family module first. This
- * contract imports nothing but the controller and the stage types, so a part
+ * contract imports nothing but the stage types, so a part
  * can always import it.
  *
  * `type-tests/` compiles the failures this prevents, `partFromRegistry.ts`
@@ -94,13 +91,6 @@ export function defineStageEditorPart<
 >(part: Part): Part {
   return part;
 }
-
-export type StageEditorDispatcherProps = {
-  controller: StageEditorController;
-  registry: StageEditorRegistry;
-  /** Handed on to whichever editor the registry names. See `StageEditor`. */
-  actions?: StageEditorActions;
-};
 
 export function defineStageEditorRegistry<T extends StageEditorRegistry>(
   registry: T,

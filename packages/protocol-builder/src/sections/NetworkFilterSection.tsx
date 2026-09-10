@@ -4,13 +4,13 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import {
   collectEntityTypeReferencesFromSchema,
   stageSchema,
   type StageType,
 } from '@codaco/protocol-validation';
 
-import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { type RuleDraftOptions, ruleDraftOptions } from '../rules/rule.ts';
@@ -195,7 +195,7 @@ export default function NetworkFilterSection({
         never written — leaving the section switched off again next time it
         was opened, with nothing having said so.
       */}
-      <ProtocolField<typeof FilterRuleSetField>
+      <Field<typeof FilterRuleSetField>
         name={FILTER_FIELD}
         label={intl.formatMessage(messages.rulesLabel)}
         hint={intl.formatMessage(SUBJECT_RULE_HINTS[subject])}

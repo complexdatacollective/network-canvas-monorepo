@@ -15,7 +15,7 @@ import {
   useClearStageValue,
 } from '../form/stageFormHooks.ts';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
-import type { StageFormDraft } from '../session.ts';
+import type { StageFormDraft } from '../stageDocument.ts';
 import { useOnResearcherChange } from './researcherChange.ts';
 import {
   SUBJECT_INDEPENDENT_FIELDS,
@@ -99,7 +99,7 @@ const heldStageKeys = (
 /**
  * Whether changing the subject would actually cost the researcher anything.
  *
- * Asked before the change rather than after it — see `SubjectSelectField`,
+ * Asked before the change rather than after it — see `EntityTypePickerField`,
  * which holds the pick back until it is answered — so it reads what the stage
  * is carrying NOW rather than what a reset would write. A key the template
  * supplies and the stage does not is no loss, which is why this is not the
@@ -131,25 +131,21 @@ export function useSubjectChangeDiscards(): () => boolean {
  * subject changes.
  *
  * The hard part is telling the researcher picking a different type apart from
- * the draft being replaced beneath the form, which also moves the subject: an
- * undo, a redo, a collaborator's change, or the atomic edit that creates a
- * type and selects it. That is `useOnResearcherChange`, which is the one place
- * the distinction is made and the one place it can drift from.
+ * the subject moving for some other reason — the create dialog selecting the
+ * type it has just made, this hook putting a refused pick back. That is
+ * `useOnResearcherChange`, which is the one place the distinction is made.
  *
- * The reset reaches the SESSION as well as the form, as one batch. Ordinary
+ * The reset reaches the DOCUMENT as well as the form, as one batch. Ordinary
  * typing waits for the submit that flushes it, but a bound list does not: it
- * resolves every insertion, removal and reorder against the draft the session
- * holds right now (`applyOwnCommands([])`). A reset that lived only in the form
- * store would therefore be undone by the next row a researcher adds — the list
- * would rebuild itself from the old subject's rows and save them. One batch
- * rather than a command per key, so an undo brings the whole stage back at
- * once, subject included: an undo that restored the configuration without the
- * type it describes would leave the stage in a state no researcher chose.
+ * resolves every insertion, removal and reorder against the document as it
+ * stands (`applyOwnCommands([])`). A reset that lived only in the form store
+ * would therefore be undone by the next row a researcher adds — the list would
+ * rebuild itself from the old subject's rows and save them.
  *
  * The same rule a capability's switch-off follows (`useDiscardStageValues`),
  * for the same reason. It is spelled out here rather than shared with it
  * because this reset also writes the new subject and the interface template's
- * defaults, which have to be in the batch the undo brings back.
+ * defaults.
  */
 export function useResetStageOnSubjectChange(): void {
   const { storeApi, committedFields, identity, applyOwnCommands } =
@@ -183,11 +179,9 @@ export function useResetStageOnSubjectChange(): void {
       template,
     );
 
-    // The session first, and in one batch. Everything below writes into the
-    // form store, which a bound list never reads: it asks the session for the
-    // draft it is editing. `applyOwnCommands` also marks the write as this
-    // form's own, so the draft moving here does not re-seed the controls the
-    // loop below is about to set.
+    // The document first, and in one batch. Everything below writes into the
+    // form store, which a bound list never reads on its own: it asks for the
+    // document it is editing.
     const { draft, refused } = applyOwnCommands([
       subject === undefined
         ? { op: 'unset', key: 'subject' }
@@ -200,30 +194,24 @@ export function useResetStageOnSubjectChange(): void {
     ]);
     // A refusal means nothing was thrown away, so nothing may be emptied
     // either — the rule `useDiscardStageValues` follows, for the same reason.
-    // Editing can be taken away between the render that observed the
-    // researcher's choice and this effect, and the session then refuses the
-    // whole batch: the configuration it holds is the only copy of itself, and
-    // a form emptied here would leave the stage looking unconfigured with
-    // nothing left to fill it back in — and the next save writing that
-    // emptiness into a stage the session never agreed to. `applyOwnCommands`
-    // has already said so on screen.
+    // A form emptied here would leave the stage looking unconfigured with
+    // nothing left to fill it back in, and the next save would write that
+    // emptiness. `applyOwnCommands` has already said so on screen.
     //
     // The PICK goes back too. The refusal is of the whole batch, subject
-    // included, so the session still holds the old type and everything left
-    // standing here still describes it; a picker left showing the new one is
-    // the only part of the stage saying otherwise. Left there it would be a
-    // choice the researcher could not make again — the control already shows
-    // it, so re-picking it moves nothing and no reset could follow — while
-    // picking the type the stage actually has would read as a fresh change and
-    // throw away the configuration that belongs to it. The session is the
-    // account of what this stage is about, and this is the form catching up
-    // with it.
+    // included, so the document still holds the old type and everything left
+    // standing here still describes it; a picker showing the new one is the
+    // only part of the stage saying otherwise. Left there it would be a choice
+    // the researcher could not make again — the control already shows it, so
+    // re-picking it moves nothing and no reset could follow — while picking the
+    // type the stage actually has would read as a fresh change and throw away
+    // the configuration that belongs to it.
     if (refused) {
       const agreed = stageDraftValue(draft, 'subject');
       putBack.current = { value: agreed };
       // A subject the picker cannot show — a stage being filled in for the
-      // first time, which the session holds none for, or a draft whose
-      // `subject` is not the object one is — puts it back to holding nothing.
+      // first time, which holds none, or a document whose `subject` is not the
+      // object one is — puts it back to holding nothing.
       // Cleared rather than set to `undefined`, for the reason the reset loop
       // below gives: a tombstone would outlive the refusal and delete the key
       // again on the next save.

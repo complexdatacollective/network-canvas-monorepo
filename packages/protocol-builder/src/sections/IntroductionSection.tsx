@@ -1,9 +1,10 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import RichTextField from '../fields/RichTextField.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
+import { REQUIRED } from '../form/requiredField.ts';
 import BuilderSection from './BuilderSection.tsx';
 
 /** The schema keeps a stage's introduction in one object with two parts. */
@@ -88,22 +89,22 @@ export default function IntroductionSection() {
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(messages.description)}
     >
-      <ProtocolField<typeof InputField>
+      <Field<typeof InputField>
         name={TITLE_FIELD}
         component={InputField}
         label={intl.formatMessage(messages.headingLabel)}
         hint={intl.formatMessage(messages.headingHint)}
         placeholder={intl.formatMessage(messages.headingPlaceholder)}
-        required
+        required={REQUIRED}
         maxLength={TITLE_LIMIT}
       />
-      <ProtocolField<typeof RichTextField>
+      <Field<typeof RichTextField>
         name={TEXT_FIELD}
         component={RichTextField}
         label={intl.formatMessage(messages.textLabel)}
         hint={intl.formatMessage(messages.textHint)}
         placeholder={intl.formatMessage(messages.textPlaceholder)}
-        required
+        required={REQUIRED}
       />
     </BuilderSection>
   );

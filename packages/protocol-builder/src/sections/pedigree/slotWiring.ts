@@ -20,7 +20,7 @@ import {
   variableRoleKey,
   type WriterClass,
 } from '../../codebook/variableRoles.ts';
-import type { VariablePickerOption } from '../../fields/VariablePicker.tsx';
+import type { VariablePickerOption } from '../../fields/VariablePickerField.tsx';
 import {
   crossClassPickIssue,
   validatedElsewhereMessage,

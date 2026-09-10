@@ -3,33 +3,33 @@ import { useState } from 'react';
 import { expect, within } from 'storybook/test';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { useStageEditorController } from '../controller.ts';
 import { interfaceDocumentationUrl } from '../interfaces/documentation.ts';
+import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
+import { ResourceClientProvider } from '../resources/client.tsx';
 import BuilderSection from '../sections/BuilderSection.tsx';
 import InterviewerGuidanceSection from '../sections/InterviewerGuidanceSection.tsx';
 import StageNameSection from '../sections/StageNameSection.tsx';
-import {
-  createStageIdentity,
-  type ProtocolBuilderAccess,
-  ProtocolBuilderSessionStore,
-} from '../session.ts';
-import ProtocolField from './ProtocolField.tsx';
+import { StageEditSession } from '../stageEdit.tsx';
+import { createInMemoryHost } from '../testing/host/createInMemoryHost.ts';
+import { SeedProtocolCache } from '../testing/seedProtocolCache.tsx';
+import { REQUIRED } from './requiredField.ts';
 import StageEditorShell from './StageEditorShell.tsx';
 
-const EDITABLE: ProtocolBuilderAccess = {
-  mode: 'editable',
-  leaseOwner: 'storybook',
-  leaseEpoch: 1n,
-};
+const STAGE_ID = 'welcome-screen';
+const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
 
-const SPECTATOR: ProtocolBuilderAccess = {
-  mode: 'readOnly',
-  reason: 'spectator',
+/** The other tab, so a spectator's editor can name who has the stage. */
+const COLLABORATOR = {
+  sessionId: 'collaborator-tab',
+  userId: 'collaborator',
+  displayName: 'Robin',
 };
 
 const CONFIGURED: SectionDoc = {
@@ -40,65 +40,71 @@ const CONFIGURED: SectionDoc = {
 };
 
 /**
- * A host with no Redux, no router and no store of its own: it opens a session,
- * renders the editor, and puts its own button in the action slot.
+ * A host with no Redux, no router and no store of its own: it serves the
+ * protocol over the package's own contract, renders the editor, and puts its
+ * own button in the action slot.
  */
 function StageEditorHost({
-  access,
+  readOnly,
   fields,
 }: {
-  access: ProtocolBuilderAccess;
+  readOnly: boolean;
   fields: SectionDoc;
 }) {
-  const [session] = useState(
-    () =>
-      new ProtocolBuilderSessionStore({
-        identity: createStageIdentity('Information', () => 'welcome-screen'),
-        fields,
-        protocolSections: {},
-        manifestRevision: { sequence: 0n, hash: 'storybook' },
-        access,
-        buildCandidate: ({ stageDocument }) => ({
+  const [host] = useState(() => {
+    const built = createInMemoryHost({
+      sections: {
+        [sectionId({ kind: 'settings' })]: {
           name: 'Protocol builder proof host',
           schemaVersion: 8,
-          codebook: {},
-          stages: [stageDocument],
-        }),
-      }),
-  );
-  const controller = useStageEditorController(session);
+        },
+        [sectionId({ kind: 'stageOrder' })]: { stages: [STAGE_ID] },
+        [sectionId({ kind: 'assets' })]: {},
+        [STAGE_SECTION]: { id: STAGE_ID, type: 'Information', ...fields },
+      },
+    });
+    if (readOnly) built.store.acquire(STAGE_SECTION, COLLABORATOR);
+    return built;
+  });
 
   return (
     <DialogProvider>
-      <main className="mx-auto max-w-6xl p-6">
-        <StageEditorShell
-          controller={controller}
-          actions={({ formId, readOnly }) => (
-            <div className="flex justify-end">
-              <SubmitButton form={formId} disabled={readOnly}>
-                Finished editing
-              </SubmitButton>
-            </div>
-          )}
-        >
-          <StageNameSection
-            position={{ index: 1, total: 4 }}
-            documentationUrl={interfaceDocumentationUrl('information')}
-          />
-          <BuilderSection
-            title="Page content"
-            description="What this screen shows the participant."
-          >
-            <ProtocolField
-              name="title"
-              label="Page heading"
-              component={InputField}
-              required
-            />
-          </BuilderSection>
-          <InterviewerGuidanceSection />
-        </StageEditorShell>
-      </main>
+      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+        <SeedProtocolCache store={host.store}>
+          <ResourceClientProvider>
+            <StageEditSession target={{ sectionId: STAGE_SECTION }}>
+              <main className="mx-auto max-w-6xl p-6">
+                <StageEditorShell
+                  actions={({ formId, readOnly: locked }) => (
+                    <div className="flex justify-end">
+                      <SubmitButton form={formId} disabled={locked}>
+                        Finished editing
+                      </SubmitButton>
+                    </div>
+                  )}
+                >
+                  <StageNameSection
+                    position={{ index: 1, total: 4 }}
+                    documentationUrl={interfaceDocumentationUrl('information')}
+                  />
+                  <BuilderSection
+                    title="Page content"
+                    description="What this screen shows the participant."
+                  >
+                    <Field
+                      name="title"
+                      label="Page heading"
+                      component={InputField}
+                      required={REQUIRED}
+                    />
+                  </BuilderSection>
+                  <InterviewerGuidanceSection />
+                </StageEditorShell>
+              </main>
+            </StageEditSession>
+          </ResourceClientProvider>
+        </SeedProtocolCache>
+      </ProtocolBuilder>
     </DialogProvider>
   );
 }
@@ -111,7 +117,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The one form every stage editor is built inside. It owns the form store, the section outline, and the submit that flushes the form into the session; the host supplies only the action chrome and reads the form id from the slot. The outline lists the sections actually mounted, states each one as finished, unfinished, having a problem or switched off, and moves focus to a section when it is chosen.',
+          'The one form every stage editor is built inside. It owns the form store, the section outline, and the submit that hands the whole section back; the host supplies only the action chrome and reads the form id from the slot. The outline lists the sections actually mounted, states each one as finished, unfinished, having a problem or switched off, and moves focus to a section when it is chosen.',
       },
     },
   },
@@ -123,26 +129,26 @@ type Story = StoryObj<typeof meta>;
 
 export const Editing: Story = {
   args: {
-    access: EDITABLE,
+    readOnly: false,
     fields: { label: 'Welcome', title: '', items: [] },
   },
 };
 
 /** A stage that already has its optional interviewer guidance switched on. */
 export const AlreadyConfigured: Story = {
-  args: { access: EDITABLE, fields: CONFIGURED },
+  args: { readOnly: false, fields: CONFIGURED },
 };
 
-/** Someone else holds the lease: every control is inert and saving is refused. */
+/** Someone else holds the lock: every control is inert and saving is refused. */
 export const Spectating: Story = {
-  args: { access: SPECTATOR, fields: CONFIGURED },
+  args: { readOnly: true, fields: CONFIGURED },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
     // The interviewer script is the one field here with a toolbar, and its
     // buttons used to be the only controls on the page that still looked and
-    // read as available while the lease was held elsewhere.
+    // read as available while the lock was held elsewhere.
     //
     // Each button's own state is read and compared rather than asserted with
     // `toBeDisabled`, which reports a pass here on a button that is not

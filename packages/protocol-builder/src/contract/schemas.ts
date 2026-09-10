@@ -229,8 +229,14 @@ const EditIdSchema = z.string().min(1);
 /**
  * An idempotency key: stable across an uncertain retry, so a host makes the
  * write once and tells a client whose answer was lost what that attempt wrote.
+ *
+ * Bounded because a host files the key: Studio's `protocol_write_receipts`
+ * holds it in a column checked `BETWEEN 1 AND 512`, so a longer one would
+ * reach the database and come back as a server fault rather than as the bad
+ * request it is. The bound belongs here, where every host inherits it, rather
+ * than in the one host that happens to have a column.
  */
-const RequestIdSchema = z.string().min(1);
+const RequestIdSchema = z.string().min(1).max(512);
 
 /**
  * The staged resources a submit commits along with the section naming them.

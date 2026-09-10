@@ -36,14 +36,10 @@ const DOCUMENTATION_URL = interfaceDocumentationUrl('family-pedigree');
  * asks for an attribute and a question exactly as every other form does.
  */
 export function FamilyPedigreeStageEditor({
-  controller,
   actions,
 }: StageEditorProps<'FamilyPedigree'>) {
   return (
-    <StageEditorShell
-      controller={controller}
-      {...(actions === undefined ? {} : { actions })}
-    >
+    <StageEditorShell {...(actions === undefined ? {} : { actions })}>
       <StageHeading documentationUrl={DOCUMENTATION_URL} />
       <FramingConfigSection />
       <BoundaryOptionsSection />

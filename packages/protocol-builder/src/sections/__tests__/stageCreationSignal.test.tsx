@@ -1,6 +1,8 @@
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { parseSectionId } from '@codaco/studio-sync/taxonomy';
+
 import { fixtureStageIds } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import SkipLogicSection from '../SkipLogicSection.tsx';
@@ -87,10 +89,13 @@ describe('the creation signal a new stage carries', () => {
 
     // Back to the proposal, and still not a name the interview already uses.
     expect((name as HTMLInputElement).value).toBe(proposed);
-    expect(
-      harness.session
-        .getSnapshot()
-        .protocolContext.orderedStages.map((stage) => stage.label),
-    ).not.toContain(proposed);
+    expect(stageLabels(harness)).not.toContain(proposed);
   });
 });
+
+/** Every stage name the protocol holds, read the way a proposal avoids them. */
+function stageLabels(harness: ReturnType<typeof renderStageEditor>): unknown[] {
+  return Object.entries(harness.protocolSections())
+    .filter(([id]) => parseSectionId(id).kind === 'stage')
+    .map(([, document]) => document.label);
+}

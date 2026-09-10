@@ -3,12 +3,14 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import StageEditorShell from '../../form/StageEditorShell.tsx';
+import { ResourceClientProvider } from '../../resources/client.tsx';
 import ContentBlockEditor from '../../sections/contentBlocks/ContentBlockEditor.tsx';
 import ContentBlockPreview from '../../sections/contentBlocks/ContentBlockPreview.tsx';
 import { contentBlockSlots } from '../../sections/contentBlocks/contentBlockTypes.ts';
 import PageContentSection from '../../sections/PageContentSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import { STAGE_TYPES } from '../../stage-types.ts';
+import { StageEditSession } from '../../stageEdit.tsx';
 import { fixtureStageIds, loadFixtureStage } from '../protocolFixture.ts';
 import { StageEditorStoryHost } from '../StageEditorStoryHost.tsx';
 
@@ -24,10 +26,14 @@ const renderHost = (stageId: string, readOnly = false) =>
     <StageEditorStoryHost
       stageId={stageId}
       readOnly={readOnly}
-      renderEditor={({ controller, actions }) => (
-        <StageEditorShell controller={controller} actions={actions}>
-          <StageNameSection />
-        </StageEditorShell>
+      renderEditor={({ target, formId, onSaved, actions }) => (
+        <ResourceClientProvider>
+          <StageEditSession target={target} formId={formId} onSaved={onSaved}>
+            <StageEditorShell actions={actions}>
+              <StageNameSection />
+            </StageEditorShell>
+          </StageEditSession>
+        </ResourceClientProvider>
       )}
     />,
   );
@@ -47,14 +53,16 @@ describe('the host every stage editor’s stories run in', () => {
     expect([...new Set(types)].toSorted()).toEqual([...STAGE_TYPES].toSorted());
   });
 
-  it.each(fixtureStageIds())('mounts an editor over %s', (stageId) => {
+  it.each(fixtureStageIds())('mounts an editor over %s', async (stageId) => {
     renderHost(stageId);
 
     expect(
       screen.getByRole('status', { name: 'Save status' }),
     ).toHaveTextContent('Nothing saved yet.');
+    // The host answers the acquire over a promise, however near it is, so the
+    // form is drawn a turn after the story mounts.
     expect(
-      screen.getByRole('textbox', { name: 'Stage name' }),
+      await screen.findByRole('textbox', { name: 'Stage name' }),
     ).toBeInTheDocument();
   });
 
@@ -66,7 +74,7 @@ describe('the host every stage editor’s stories run in', () => {
     const user = userEvent.setup();
     renderHost('information-1');
 
-    const name = screen.getByRole('textbox', { name: 'Stage name' });
+    const name = await screen.findByRole('textbox', { name: 'Stage name' });
     await user.clear(name);
     await user.type(name, 'Renamed by the researcher');
     await user.click(screen.getByRole('button', { name: 'Save stage' }));
@@ -88,10 +96,12 @@ describe('the host every stage editor’s stories run in', () => {
   });
 
   /** A spectator's chrome says so rather than offering a save that is refused. */
-  it('disables the host’s save control for a spectator', () => {
+  it('disables the host’s save control for a spectator', async () => {
     renderHost('information-1', true);
 
-    expect(screen.getByRole('button', { name: 'Save stage' })).toBeDisabled();
+    expect(
+      await screen.findByRole('button', { name: 'Save stage' }),
+    ).toBeDisabled();
   });
 });
 
@@ -99,13 +109,13 @@ describe('the host every stage editor’s stories run in', () => {
  * The two options a family's story needs from the host, and the two nothing
  * else in this package passes yet.
  *
- * Both are spreads into the session the host opens, so a typo in either would
+ * Both are spreads into the protocol the host serves, so a typo in either would
  * be invisible here and would surface in a family PR as a story that renders
  * the wrong thing. `assets` has to reach BOTH the protocol's manifest and the
- * gateway — a stage pointing at an entry only one of them holds is a stage a
- * host would refuse — and `createResourceId` has to reach the gateway, because
- * a fresh uuid on every run would make a story's page differ from itself in
- * every visual comparison.
+ * host's own files — a stage pointing at an entry only one of them holds is a
+ * stage a host would refuse — and `createResourceId` has to reach the host's
+ * resource store, because a fresh uuid on every run would make a story's page
+ * differ from itself in every visual comparison.
  */
 describe('what a family’s story tells the host', () => {
   const renderPageHost = () =>
@@ -120,15 +130,19 @@ describe('what a family’s story tells the host', () => {
           },
         }}
         createResourceId={() => 'story-resource-1'}
-        renderEditor={({ controller, actions }) => (
-          <StageEditorShell controller={controller} actions={actions}>
-            <StageNameSection />
-            <PageContentSection
-              ItemEditor={ContentBlockEditor}
-              ItemPreview={ContentBlockPreview}
-              slots={contentBlockSlots}
-            />
-          </StageEditorShell>
+        renderEditor={({ target, formId, onSaved, actions }) => (
+          <ResourceClientProvider>
+            <StageEditSession target={target} formId={formId} onSaved={onSaved}>
+              <StageEditorShell actions={actions}>
+                <StageNameSection />
+                <PageContentSection
+                  ItemEditor={ContentBlockEditor}
+                  ItemPreview={ContentBlockPreview}
+                  slots={contentBlockSlots}
+                />
+              </StageEditorShell>
+            </StageEditSession>
+          </ResourceClientProvider>
         )}
       />,
     );
@@ -149,7 +163,7 @@ describe('what a family’s story tells the host', () => {
     );
     expect(await screen.findByText('Extra photo')).toBeInTheDocument();
 
-    // The gateway half: a file imported here is staged under the id the story
+    // The resource half: a file imported here is staged under the id the story
     // named, and that id is what the saved block points at.
     await user.upload(
       await screen.findByLabelText('Choose a file from your computer'),

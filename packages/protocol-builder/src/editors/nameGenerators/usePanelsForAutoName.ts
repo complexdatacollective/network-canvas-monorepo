@@ -39,9 +39,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * the two builders hold them differently. Architect registers per-index leaves
  * (`panels[0].dataSource`, …) and has to assemble the list from a fixed number
  * of slots, working around a dormant sentinel parked on the container path.
- * Here the whole list is ONE registered field value — see
- * `ProtocolArrayField`, which never registers per-index leaves so a deleted
- * row cannot resurrect itself — so the container path IS the panels, and
+ * Here the whole list is ONE registered field value — the list is a field
+ * component, and never registers per-index leaves, so a deleted row cannot
+ * resurrect itself — so the container path IS the panels, and
  * switching the section off parks `undefined` at exactly the path this reads.
  */
 export function usePanelsForAutoName():

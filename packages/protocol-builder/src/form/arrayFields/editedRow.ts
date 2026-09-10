@@ -15,12 +15,12 @@ import { createContext } from 'react';
  * differently about the same draft.
  *
  * Where in the list the row sits is deliberately NOT here. A dialog outlives
- * its row leaving the list — a collaborator's removal leaves the draft on
- * screen until the researcher answers for it — so the position it opened at
- * can name a different row by the time anything reads it, and a reader that
- * wrote this row over that position replaced a surviving row's answers with
- * this one's. A reader adds the row instead: what a save would leave and what
- * a cancel would leave are both futures the stage still has.
+ * its row leaving the list — the draft stays on screen until the researcher
+ * answers for it — so the position it opened at can name a different row by the
+ * time anything reads it, and a reader that wrote this row over that position
+ * replaced a surviving row's answers with this one's. A reader adds the row
+ * instead: what a save would leave and what a cancel would leave are both
+ * futures the stage still has.
  *
  * Absent outside a row dialog, and for a list that has no place in the stage
  * document of its own — a list nested inside another row, whose rows reach the

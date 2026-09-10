@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { resourceFailure, type ResourceResult } from '../../gateway.ts';
+import { resourceFailure, type ResourceResult } from '../../types.ts';
 import { useResourceAttempt } from '../useResourceAttempt.ts';
 import { deferred } from './asyncControls.ts';
 import {
@@ -109,7 +109,7 @@ async function checkCase(subject: AttemptCase): Promise<void> {
   const operation = (): Promise<ResourceResult<string>> => {
     calls += 1;
     if (!mounted) callsAfterUnmount += 1;
-    if (subject.outcome === 'throws') throw new Error('the host adapter threw');
+    if (subject.outcome === 'throws') throw new Error('the host threw');
     if (subject.outcome === 'never') return new Promise<never>(() => undefined);
     return answer.promise;
   };
@@ -248,9 +248,16 @@ async function checkCase(subject: AttemptCase): Promise<void> {
 }
 
 describe(`the resource attempt hook, over ${CASES.length} orderings (seed ${SEED})`, () => {
+  it('is enumerated over every axis', () => {
+    expect(CASES.length).toBe(
+      OUTCOMES.length * INTERRUPTIONS.length * KINDS.length * 2 * 2 * 2,
+    );
+  });
+
   it.each(batched(CASES, 10))(
     'holds its invariants for batch $index',
     async ({ cases }) => {
+      expect(cases.length).toBeGreaterThan(0);
       for (const subject of cases) await runNamedCase(subject, checkCase);
     },
   );

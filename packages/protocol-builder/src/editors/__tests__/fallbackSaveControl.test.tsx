@@ -26,7 +26,7 @@ vi.mock('../../fields/RichTextField.tsx', () => ({
 }));
 
 const READ_ONLY_REFUSAL =
-  'This stage is read-only, so your changes were not saved. Take over editing and try again.';
+  'This stage is read-only, so your change was not made. Somebody else is editing it.';
 
 const FAMILIES = [
   { family: 'form', stageId: 'information-1', settleLabel: 'Page heading' },
@@ -42,11 +42,10 @@ const FAMILIES = [
  * rather than going quiet on them.
  *
  * The two families used to disagree: the form family disabled the fallback
- * button while the session was read-only and the name generators deliberately
- * did not, so the same session read as "nothing to do here" in one editor and
+ * button while the editor was read-only and the name generators deliberately
+ * did not, so the same stage read as "nothing to do here" in one editor and
  * as a control that answers in the other. A disabled button explains nothing
- * to anybody — and it is not even the honest state, because access can be
- * taken away between the render that read it and the submit itself.
+ * to anybody.
  */
 describe('the save control an editor falls back to', () => {
   it.each(FAMILIES)(
@@ -54,10 +53,7 @@ describe('the save control an editor falls back to', () => {
     async ({ stageId, settleLabel }) => {
       // Through the package's own dispatcher, so each family's editor arrives
       // with whatever save control it actually falls back to.
-      const harness = renderStageEditor({ stageId });
-      await screen.findByRole('textbox', { name: settleLabel });
-
-      harness.setReadOnly();
+      const harness = renderStageEditor({ stageId, readOnly: true });
 
       const save = await screen.findByRole('button', { name: 'Save stage' });
       await waitFor(() =>

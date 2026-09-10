@@ -7,8 +7,8 @@ import { FamilyPedigreeStageEditor } from '../FamilyPedigreeStageEditor.tsx';
 /**
  * The host chrome these tests put in the editor's action slot.
  *
- * Deliberately NOT disabled while the session is read-only. A control the
- * researcher cannot press proves nothing about what happens when the session
+ * Deliberately NOT disabled while the editor is read-only. A control the
+ * researcher cannot press proves nothing about what happens when the shell
  * refuses a write, and the refusal is the behaviour under test: the editor has
  * to say the stage was not saved, not merely be impossible to submit.
  */
@@ -24,12 +24,8 @@ const saveActions = ({ formId }: StageEditorActionContext) => (
  * interface it edits — so each is wrapped with the type it claims and the
  * host chrome a host would supply.
  */
-export const familyPedigreeEditor: StageEditorComponent = ({ controller }) => (
-  <FamilyPedigreeStageEditor
-    controller={controller}
-    stageType="FamilyPedigree"
-    actions={saveActions}
-  />
+export const familyPedigreeEditor: StageEditorComponent = () => (
+  <FamilyPedigreeStageEditor stageType="FamilyPedigree" actions={saveActions} />
 );
 
 /**

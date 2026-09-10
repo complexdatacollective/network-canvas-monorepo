@@ -40,7 +40,7 @@ export const mountedAs = <T extends StageType>(
 /**
  * The stage's name control, as the input it is.
  *
- * A stage the session is CREATING opens with a name already proposed for it,
+ * A stage that is being CREATED opens with a name already proposed for it,
  * so a create-mode test asks what the value looks like rather than what it
  * equals — the proposal is deduplicated against the interview it is joining.
  */
@@ -97,6 +97,30 @@ export const removeRow = async (harness: Harness, itemLabel: string) => {
   await harness.user.click(confirmation);
 };
 
+/**
+ * The stage as the PROTOCOL holds it, which is the only place an edit can have
+ * reached: the draft lives in the form and nowhere else until a save hands the
+ * whole section back.
+ */
+const stageInProtocol = (harness: Harness): SectionDoc | undefined =>
+  harness.protocolSections()[
+    sectionId({ kind: 'stage', stageId: harness.seeded.id })
+  ];
+
+/**
+ * Nothing the researcher did reached the protocol.
+ *
+ * Compared against the seeded document rather than against a snapshot taken
+ * during the test, so a stage that was rewritten and put back would still fail.
+ */
+export const expectStageUntouched = (harness: Harness): void => {
+  expect(stageInProtocol(harness)).toEqual({
+    id: harness.seeded.id,
+    type: harness.seeded.type,
+    ...harness.seeded.fields,
+  });
+};
+
 /** The fields a saved stage collects, whatever else the document holds. */
 export const fieldsOf = (document: SectionDoc): Record<string, unknown>[] => {
   const form = document.form;
@@ -137,19 +161,16 @@ const asRecord = (value: unknown): Record<string, unknown> =>
     : {};
 
 /**
- * The attributes the host holds for one codebook subject.
+ * The attributes the protocol holds for one codebook subject.
  *
- * Read from the host rather than from the stage: an attribute a form field
+ * Read from the protocol rather than from the stage: an attribute a form field
  * collects belongs to the codebook, and a form editor writing it there — not
  * into its own stage document — is the whole claim these journeys make. Each
  * form editor asks about a different subject, which is why the section is a
  * parameter and not a constant.
  */
 const codebookVariables = (harness: Harness, subject: SectionRef) =>
-  asRecord(
-    asRecord(harness.host.getSnapshot().protocolSections[sectionId(subject)])
-      .variables,
-  );
+  asRecord(asRecord(harness.protocolSections()[sectionId(subject)]).variables);
 
 /** One attribute of that subject, by the name the researcher gave it. */
 const attributeNamed = (harness: Harness, subject: SectionRef, name: string) =>
@@ -220,10 +241,9 @@ const patchReplacing = (
  * ones at risk of the 20s timeout on a runner tens of times slower than a
  * developer's machine.
  *
- * Seeded through the host rather than written onto the fixture, so the
- * revision the session holds is one the host issued — see
- * `receiveCodebookUpdate` — and the compound edit that changes these values is
- * judged against a base the host recognises rather than refused as stale.
+ * Seeded through the protocol rather than written onto the fixture, so the
+ * revision reaches the pickers over the same channel a collaborator's change
+ * would — see `receiveCodebookUpdate`.
  *
  * Filed under an id no stage names, which is what makes it collectable: the
  * fixture's own categorical and ordinal attributes are written unvalidated by
@@ -233,9 +253,7 @@ const seedCategoricalAttribute = (
   harness: Harness,
   subject: SectionRef,
 ): string => {
-  const definition = asRecord(
-    harness.host.getSnapshot().protocolSections[sectionId(subject)],
-  );
+  const definition = asRecord(harness.protocolSections()[sectionId(subject)]);
   harness.receiveCodebookUpdate(
     patchReplacing(subject, {
       ...definition,

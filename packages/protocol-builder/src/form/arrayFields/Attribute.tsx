@@ -26,12 +26,13 @@ import {
   buildVariableRoleMap,
   hasValidatedUse,
 } from '../../codebook/variableRoles.ts';
-import type { CodebookSubject } from '../../protocol-context.ts';
-import { variablesForSubject } from '../../protocol-context.ts';
 // The contract the picker's `onCreateOption` prop is written in, taken from
 // where that prop is declared. A type, so nothing about which picker a host
 // injects is decided here — see `variablePickerComponent`.
-import type { CreateOptionOutcome } from '../../sections/CreatableVariablePicker.tsx';
+import type { CreateOptionOutcome } from '../../fields/VariablePickerField.tsx';
+import type { CodebookSubject } from '../../protocol-context.ts';
+import { variablesForSubject } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import { useStageEditorForm } from '../stageEditorContext.ts';
 import { readRows } from './arrayFieldCommands.ts';
 import {
@@ -181,10 +182,10 @@ const REQUIRED_ONLY: readonly RowValidator[] = [requiredRow()];
  *
  * `rowReplaced` is said when the row a new attribute was created from is no
  * longer that row. `listClosed` is said when the list stopped accepting
- * changes while the attribute was being created — a lost lease, a section
- * whose prerequisite stopped being chosen — which `ArrayField` reports only by
- * withdrawing the row’s update handler: an optional call assigns nothing and
- * says nothing, which reads as an assignment that worked. `rowGone` is said
+ * changes while the attribute was being created — a section whose prerequisite
+ * stopped being chosen — which `ArrayField` reports only by withdrawing the
+ * row’s update handler: an optional call assigns nothing and says nothing,
+ * which reads as an assignment that worked. `rowGone` is said
  * when the assignment reached no row at all, the one case re-checking this
  * control cannot see for itself: a row that has left the list stops being
  * rendered — `ArrayField` even keeps its editor mounted on frozen props while
@@ -216,9 +217,9 @@ const REQUIRED_ONLY: readonly RowValidator[] = [requiredRow()];
  *
  * The argument is whatever the stage document holds at the array's key, not
  * something a caller has already vetted — a host builds this from that value
- * inside its own `useMemo`, in its own render path. An import, a migration or
- * a mid-cascade reseed can leave a list holding an entry that is not a row at
- * all, and destructuring one throws out of that render, taking down the
+ * inside its own `useMemo`, in its own render path. An import or a migration
+ * can leave a list holding an entry that is not a row at all, and
+ * destructuring one throws out of that render, taking down the
  * editor before the render-tolerant control this whole package is built around
  * ever draws. So it reads its rows the way every other reader here does, with
  * `readRows` — see `renderedRows` in `arrayFieldCommands`, and fresco-ui's
@@ -309,7 +310,8 @@ export default function Attribute({
     forceShowErrors,
   } = useAssignAttributesContext();
   const intl = useAppIntl();
-  const { protocolContext, identity } = useStageEditorForm();
+  const { identity } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { openDialog } = useDialog();
   const booleanOptions = useMemo(
     () => [
@@ -385,14 +387,12 @@ export default function Attribute({
     ? async (variableName: string): Promise<CreateOptionOutcome> => {
         // The row this creation was started FROM, as it stands right now.
         // Creating a codebook variable is a round trip through the host, and
-        // the list carries on moving while it runs — a collaborator's
-        // insertion, an undo, a rollback after a lost lease. These rows carry
-        // no id of their own, so `onUpdate` is bound to an internal id
-        // `ArrayField` infers from the row's content when the value is
-        // replaced: a row that has itself been edited meanwhile — or one of
-        // two rows nothing can tell apart — leaves this handle naming a row
-        // the researcher never looked at, and the new variable is stamped onto
-        // that one's attribute.
+        // the list can move while it runs. These rows carry no id of their own,
+        // so `onUpdate` is bound to an internal id `ArrayField` infers from the
+        // row's content when the value is replaced: a row that has itself been
+        // edited meanwhile — or one of two rows nothing can tell apart — leaves
+        // this handle naming a row the researcher never looked at, and the new
+        // variable is stamped onto that one's attribute.
         //
         // Content is the only identity such a row has, and it is enough for
         // the same reason it is enough in `useConfirmRowRemoval`: two rows the

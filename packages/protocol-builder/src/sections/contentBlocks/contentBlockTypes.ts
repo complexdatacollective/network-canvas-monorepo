@@ -183,7 +183,9 @@ const sizeableKind = (kind: unknown): boolean =>
  * the shared sections do. That is what lets the same block editor be mounted
  * unchanged by a page and by a task's introduction screen.
  */
-const SIZEABLE_PAGE_STAGES: ReadonlySet<StageType> = new Set(['Information']);
+const SIZEABLE_PAGE_STAGES: ReadonlySet<StageType> = new Set<StageType>([
+  'Information',
+]);
 
 export const pageBlocksCarrySize = (stageType: StageType): boolean =>
   SIZEABLE_PAGE_STAGES.has(stageType);

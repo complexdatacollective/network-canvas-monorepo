@@ -1,6 +1,8 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
 import AlterLimitsSection from '../../sections/AlterLimitsSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 
@@ -38,6 +40,12 @@ const describedText = (control: HTMLElement): string =>
     .filter(Boolean)
     .map((id) => document.getElementById(id)?.textContent ?? '')
     .join(' ');
+
+/** What the stage the harness opened holds, as the protocol holds it. */
+const savedStage = (harness: ReturnType<typeof renderStageEditor>) =>
+  harness.protocolSections()[
+    sectionId({ kind: 'stage', stageId: harness.seeded.id })
+  ];
 
 const openLimits = async () => {
   const harness = renderStageEditor(unlimitedStage);
@@ -119,10 +127,10 @@ describe('a control that counts people', () => {
    * while the save goes through anyway is worse than no message: it says the
    * count was rejected, and the stage is saved without it.
    *
-   * Nothing reaching the session is the half that says WHOSE refusal it was.
+   * Nothing reaching the protocol is the half that says WHOSE refusal it was.
    * Text the section lets through is refused a step later by the schema —
-   * "expected number, received string", against a path — and by then the
-   * editor has already written it into the session and taken it back.
+   * "expected number, received string", against a path — and the researcher
+   * is told about a path rather than about the box they typed in.
    */
   it('refuses the save while it is holding text it could not read', async () => {
     const { harness, max } = await openLimits();
@@ -130,7 +138,7 @@ describe('a control that counts people', () => {
     await harness.user.type(max, '2.5');
 
     expect(await harness.submit()).toBeNull();
-    expect(harness.pendingCommands()).toHaveLength(0);
+    expect(savedStage(harness)).not.toHaveProperty('behaviours');
     expect(await screen.findByText(NOT_A_WHOLE_NUMBER)).toBeInTheDocument();
   });
 
@@ -155,7 +163,7 @@ describe('a control that counts people', () => {
     await harness.user.clear(max);
     await harness.user.type(max, '2.5');
     expect(await harness.submit()).toBeNull();
-    expect(harness.pendingCommands()).toHaveLength(0);
+    expect(savedStage(harness)?.behaviours).toEqual({ maxNodes: 25 });
 
     // Nothing was saved, so the researcher can still put back the count they
     // were editing.

@@ -7,7 +7,7 @@ import { fixtureStageIds } from '../../testing/protocolFixture.ts';
  * Where a host is inserting the stage it is creating: after the whole
  * interview.
  *
- * A real position rather than zero, because the session validates a stage
+ * A real position rather than zero, because the editor validates a stage
  * being created where it is about to live — a skip destination is judged
  * against the stages that would come after it — so a position no interview
  * would use makes every editor's create test a weaker one.
@@ -18,9 +18,9 @@ const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
 
 /**
- * What every named editor owes a stage the session is creating.
+ * What every named editor owes a stage that is being created.
  *
- * Two consequences of one signal. The host opened the session saying this
+ * Two consequences of one signal. The host opened the edit saying this
  * stage does not exist yet, and the shared sections read that from the
  * editor's own context — so an editor gets both without passing a prop, and a
  * family that forgot to pass one cannot be the reason a researcher sees the

@@ -9,10 +9,11 @@ import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 
+import AssetPickerField from '../../fields/AssetPickerField.tsx';
 import RichTextField from '../../fields/RichTextField.tsx';
 import { DialogFormField } from '../../form/DialogForm.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
-import ResourcePickerControl from '../../resources/components/ResourcePickerControl.tsx';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import type { RowEditorProps } from '../rowRenderers.tsx';
 import {
   CONTENT_BLOCK_SLOTS,
@@ -30,7 +31,7 @@ import {
  * The picker takes an open prop bag from the field wrapper, as every resource
  * field in the package does; `kind` is what says which resources it offers.
  */
-const ResourcePicker = ResourcePickerControl as ComponentType<
+const ResourcePicker = AssetPickerField as ComponentType<
   Record<string, unknown>
 >;
 
@@ -258,7 +259,8 @@ const asString = (value: unknown): string | undefined =>
  */
 export default function ContentBlockEditor({ item }: RowEditorProps) {
   const intl = useAppIntl();
-  const { identity, protocolContext } = useStageEditorForm();
+  const { identity } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   // The row's own kind until the control has registered, and the control's
   // afterwards: a field's value reaches the store in an effect, so reading only
   // the store would draw the wrong slot for one render, and an existing block

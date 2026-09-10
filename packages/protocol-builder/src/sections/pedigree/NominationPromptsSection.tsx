@@ -3,6 +3,7 @@ import { useCallback, useMemo } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
@@ -17,11 +18,11 @@ import {
   variableDisplayName,
 } from '../../form/arrayFields/crossClassPick.ts';
 import DialogArrayField from '../../form/arrayFields/DialogArrayField.tsx';
-import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import { useRowRenderers } from '../rowRenderers.tsx';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
@@ -65,8 +66,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * configuration's own reset already discards them, but nothing there can reach
  * this section's switch, so it would stand open over an empty list and the
  * outline would call an optional section nobody has filled in finished. The
- * two resets compose into one batch rather than costing two steps of undo —
- * see `NODE_TYPE_DEPENDENT_FIELDS`.
+ * two resets compose into one write — see `NODE_TYPE_DEPENDENT_FIELDS`.
  *
  * Each prompt writes its attribute through a per-person toggle the participant
  * operates, which makes it an UNVALIDATED writer. Two rules follow, and they
@@ -92,7 +92,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  */
 export default function NominationPromptsSection() {
   const intl = useAppIntl();
-  const { committedFields, protocolContext } = useStageEditorForm();
+  const { committedFields } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const nodeType = useStageValue(NODE_TYPE_FIELD);
   const formRows = useStageValue(FORM_FIELD);
@@ -236,7 +237,7 @@ export default function NominationPromptsSection() {
         },
       }}
     >
-      <ProtocolArrayField<typeof DialogArrayField>
+      <Field<typeof DialogArrayField>
         name={PROMPTS_FIELD}
         label={intl.formatMessage(pedigreeMessages.nominationFieldLabel)}
         hint={intl.formatMessage(pedigreeMessages.nominationFieldHint)}

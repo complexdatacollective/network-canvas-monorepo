@@ -146,34 +146,24 @@ describe('a page whose blocks are text and media', () => {
   /**
    * The protocol around this stage keeps changing while it is open, and a
    * resource a collaborator removes is the change a page feels: its block can
-   * no longer be shown. The editor has to say so — and must not turn their
-   * deletion into this session's own edit, which is what a command emitted
-   * here would do.
+   * no longer be shown. The manifest is a section of its own, so removing the
+   * file is a write this editor's lock does not cover, and the block has to
+   * follow it rather than go on showing a file the protocol no longer holds.
    */
-  it('follows a resource removed elsewhere without echoing it back', async () => {
+  it('follows a resource removed elsewhere', async () => {
     const harness = renderStageEditor(mediaPage());
-    // The block itself, shown from the gateway rather than described.
+    // The block itself, shown from the host's own bytes rather than described.
     expect(
       await screen.findByRole('img', { name: 'Welcome image' }),
     ).toBeInTheDocument();
 
-    const dispatch = vi.spyOn(harness.session, 'dispatch');
-    const sections = {
-      ...harness.session.getSnapshot().protocolSections,
-      [sectionId({ kind: 'assets' })]: {},
-    };
     act(() => {
-      harness.session.receiveAuthoritativeUpdate({
-        protocolSections: sections,
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
+      harness.host.store.applyAsCollaborator(sectionId({ kind: 'assets' }), {});
     });
 
     expect(
       await screen.findByText(/resource is not in this protocol/),
     ).toBeInTheDocument();
-    expect(dispatch).not.toHaveBeenCalled();
-    expect(harness.pendingCommands()).toHaveLength(0);
   });
 
   it('carries no editor slot into the saved block', async () => {
