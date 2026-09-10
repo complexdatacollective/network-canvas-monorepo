@@ -915,7 +915,7 @@ describe('a family member form the researcher edits', () => {
     // the same words. The second row is the one the move put there, so a move
     // that never happened takes the added field away instead.
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Remove field' }))[1]!,
+      (await screen.findAllByRole('button', { name: 'Delete field' }))[1]!,
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Delete field' }),

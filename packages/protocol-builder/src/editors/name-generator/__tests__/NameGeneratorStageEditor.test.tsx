@@ -281,7 +281,7 @@ describe('the name generator editor', () => {
     );
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Remove panel' }),
+      screen.getByRole('button', { name: 'Delete panel' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Delete panel' }),
