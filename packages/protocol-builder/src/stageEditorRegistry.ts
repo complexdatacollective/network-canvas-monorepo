@@ -34,11 +34,13 @@ import type { StageType } from '@codaco/protocol-validation';
 
 import { alterEdgeFormStageEditor } from './editors/alter-edge-form/AlterEdgeFormStageEditor.ts';
 import { alterFormStageEditor } from './editors/alter-form/AlterFormStageEditor.ts';
+import { anonymisationStageEditor } from './editors/anonymisation/AnonymisationStageEditor.ts';
 import { egoFormStageEditor } from './editors/ego-form/EgoFormStageEditor.ts';
 import { familyPedigreeStageEditor } from './editors/family-pedigree/FamilyPedigreeStageEditor.ts';
 import { geospatialStageEditor } from './editors/geospatial/GeospatialStageEditor.ts';
 import { informationStageEditor } from './editors/information/InformationStageEditor.ts';
 import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
+import { narrativePedigreeStageEditor } from './editors/narrative-pedigree/NarrativePedigreeStageEditor.ts';
 import { narrativeStageEditor } from './editors/narrative/NarrativeStageEditor.ts';
 import { networkComposerStageEditor } from './editors/network-composer/NetworkComposerStageEditor.ts';
 import { sociogramStageEditor } from './editors/sociogram/SociogramStageEditor.ts';
@@ -118,11 +120,13 @@ const REGISTRY_PARTS = [
   // One imported part per line, alphabetically, each with a trailing comma.
   alterEdgeFormStageEditor,
   alterFormStageEditor,
+  anonymisationStageEditor,
   egoFormStageEditor,
   familyPedigreeStageEditor,
   geospatialStageEditor,
   informationStageEditor,
   nameGeneratorStageEditor,
+  narrativePedigreeStageEditor,
   narrativeStageEditor,
   networkComposerStageEditor,
   sociogramStageEditor,
@@ -218,12 +222,10 @@ export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
  * editor exists for it.
  */
 export const AWAITING_STAGE_EDITORS = [
-  'Anonymisation',
   'CategoricalBin',
   'DyadCensus',
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
-  'NarrativePedigree',
   'OneToManyDyadCensus',
   'OrdinalBin',
   'TieStrengthCensus',

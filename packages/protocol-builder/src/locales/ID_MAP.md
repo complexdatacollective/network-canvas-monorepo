@@ -264,25 +264,26 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `censusPrompts`            | `sections/prompts/`                        | family E    |
 | `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection` | family E    |
 | `ordinalColor`             | `fields/OrdinalColorField`                 | family E    |
-| `narrativePedigree`        | `editors/narrative-pedigree/sections/`     | family F    |
-| `anonymisation`            | `sections/anonymisation/`                  | family F    |
 
 ### One file per family — the interface families
 
-| `<area>`        | Owns the copy in                                     | Declared in                                                     |
-| --------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
-| `pedigree`      | `editors/family-pedigree/sections/`                  | `editors/family-pedigree/sections/pedigreeMessages.ts`          |
-| `networkCanvas` | `sections/canvas/`                                   | `sections/canvas/canvasMessages.ts`                             |
-| `networkCanvas` | `sections/canvas-behaviours/`                        | `sections/canvas-behaviours/canvasBehavioursMessages.ts`        |
-| `networkCanvas` | `editors/sociogram/sections/prompts/`                | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts` |
-| `networkCanvas` | `editors/narrative/sections/presets/`                | `editors/narrative/sections/presets/narrativePresetMessages.ts` |
-| `networkCanvas` | `editors/network-composer/sections/`                 | `editors/network-composer/sections/composerMessages.ts`         |
-| `networkCanvas` | the composer's form-field list                       | `sections/form-fields/composerFormFieldMessages.ts`             |
-| `geospatial`    | `editors/geospatial/sections/`, `fields/geospatial/` | `fields/geospatial/geospatialMessages.ts`                       |
+| `<area>`            | Owns the copy in                                     | Declared in                                                        |
+| ------------------- | ---------------------------------------------------- | ------------------------------------------------------------------ |
+| `pedigree`          | `editors/family-pedigree/sections/`                  | `editors/family-pedigree/sections/pedigreeMessages.ts`             |
+| `networkCanvas`     | `sections/canvas/`                                   | `sections/canvas/canvasMessages.ts`                                |
+| `networkCanvas`     | `sections/canvas-behaviours/`                        | `sections/canvas-behaviours/canvasBehavioursMessages.ts`           |
+| `networkCanvas`     | `editors/sociogram/sections/prompts/`                | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts`    |
+| `networkCanvas`     | `editors/narrative/sections/presets/`                | `editors/narrative/sections/presets/narrativePresetMessages.ts`    |
+| `networkCanvas`     | `editors/network-composer/sections/`                 | `editors/network-composer/sections/composerMessages.ts`            |
+| `networkCanvas`     | the composer's form-field list                       | `sections/form-fields/composerFormFieldMessages.ts`                |
+| `geospatial`        | `editors/geospatial/sections/`, `fields/geospatial/` | `fields/geospatial/geospatialMessages.ts`                          |
+| `narrativePedigree` | `editors/narrative-pedigree/sections/`               | `editors/narrative-pedigree/sections/narrativePedigreeMessages.ts` |
+| `anonymisation`     | `editors/anonymisation/sections/`                    | `editors/anonymisation/sections/anonymisationMessages.ts`          |
 
-The remaining two families of the same series — `narrativePedigree` and
-`anonymisation` — keep their reserved names above and add a row here as each
-lands.
+`anonymisation` was reserved for `sections/anonymisation/`, and its copy is
+declared under `editors/anonymisation/sections/` instead: one directory per
+editor, and no editor but this one has an anonymisation section. The `<area>`
+segment is unchanged, so no id moved.
 
 `geospatial` declares its whole family in one file under `fields/` rather
 than beside the editor, which is where the other families keep theirs. Two
