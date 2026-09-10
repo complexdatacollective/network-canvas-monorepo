@@ -630,12 +630,14 @@ jobs:
           pnpm --filter=@codaco/studio-server build:netlify
       # Every other Storybook is built in CI as Chromatic's upload input
       # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
-      # Builder has no Chromatic project by design, so without this step
-      # nothing ever runs its static build. `test:storybook` is not a
-      # substitute: it serves stories through Vite dev, where a broken autodocs
-      # block, a docgen failure or an unresolvable MDX import stays green and
-      # only the static build fails. Cached through turbo like the other
-      # build tasks, so it replays on the PRs that do not touch the package.
+      # Builder has no Chromatic project by design, and the build step above
+      # skips it because a private, source-first package has no `build` script
+      # — so without this step nothing in CI runs its static build at all.
+      # `test:storybook` is not a substitute: it serves stories through Vite's
+      # dev server and never bundles, and it does not read the generated docs
+      # entries either (a CSF file with `autodocs` and no story exports is
+      # skipped). Cached through turbo like the other build tasks, so it
+      # replays on the PRs that do not touch the package.
       - name: Build the Protocol Builder Storybook
         id: protocol_builder_storybook
         continue-on-error: true
