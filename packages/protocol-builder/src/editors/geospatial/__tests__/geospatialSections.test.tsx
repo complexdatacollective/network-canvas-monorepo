@@ -1,5 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, type within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   expectMapboxMocked,
@@ -47,6 +49,46 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 
 const openEditor = () =>
   renderStageEditor({ stageId: 'geospatial-1', sections: geospatialSections });
+
+/** The stage this stage's own subject also appears on, as a form. */
+const ALTER_FORM = sectionId({ kind: 'stage', stageId: 'alter-form-1' });
+
+/** The node type both of them are about. */
+const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
+
+/**
+ * The attributes a prompt's dialog is offering, by id.
+ *
+ * Without the select's own "choose something" entry, which is presentation
+ * rather than an attribute the researcher may record an answer in.
+ */
+const offeredAttributes = (
+  dialog: ReturnType<typeof within>,
+): (string | undefined)[] =>
+  [
+    ...dialog
+      .getByRole('combobox', { name: 'Location attribute' })
+      .querySelectorAll('option'),
+  ]
+    .map((option) => option.value)
+    .filter((value) => value !== '');
+
+/**
+ * Rewrites one section of the protocol as somebody else's change.
+ *
+ * The whole document, because that is what a section write is; the caller
+ * reads what is there and hands back what it should be instead.
+ */
+const asCollaborator = (
+  harness: ReturnType<typeof openEditor>,
+  section: ReturnType<typeof sectionId>,
+  rewrite: (current: Record<string, unknown>) => Record<string, unknown>,
+): void => {
+  const current = harness.host.store.read(section).document;
+  act(() => {
+    harness.host.store.applyAsCollaborator(section, rewrite({ ...current }));
+  });
+};
 
 describe('the map a geospatial stage shows', () => {
   it('runs against a mocked Mapbox SDK, and builds no map by mounting', async () => {
@@ -279,6 +321,82 @@ describe('the places a geospatial stage asks about', () => {
       text: 'Work?',
       variable: 'location',
     });
+  });
+
+  /**
+   * Only an attribute that can hold a PLACE, whatever else the type carries.
+   *
+   * A geospatial answer is a point on a map. Offered a text attribute, a
+   * researcher could bind a prompt to one and the interview would have
+   * nowhere to put what the participant tapped — and the refusal, when it
+   * came, would be the schema's rather than this control's.
+   */
+  it('offers no attribute that cannot hold a place', async () => {
+    const harness = openEditor();
+    await harness.opened();
+
+    // Added by somebody else, so nothing in the protocol uses it: what keeps
+    // it out of the list is its TYPE and nothing else.
+    asCollaborator(harness, PERSON, (person) => ({
+      ...person,
+      variables: {
+        ...(typeof person.variables === 'object' && person.variables !== null
+          ? person.variables
+          : {}),
+        nickname: { name: 'nickname', type: 'text', component: 'Text' },
+      },
+    }));
+
+    const dialog = await openPrompt(harness, 'Create new prompt');
+    expect(offeredAttributes(dialog)).toEqual(['location']);
+  });
+
+  /**
+   * What the interview does with a geospatial answer: it writes the point the
+   * participant tapped straight into the attribute, around whatever validation
+   * the codebook holds for it.
+   *
+   * So an attribute a FORM collects — through those very rules — is not
+   * offered here, or an export would carry checked and unchecked answers under
+   * one name. The form is on another stage and a collaborator adds the field
+   * while this editor is open, which is the only way the claim can be reached:
+   * this stage's own use of the attribute is its own and is never counted
+   * against it.
+   */
+  it('stops offering a location attribute a form elsewhere collects', async () => {
+    const harness = openEditor();
+    await harness.opened();
+
+    const before = await openPrompt(harness, 'Create new prompt');
+    expect(offeredAttributes(before)).toEqual(['location']);
+    await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    asCollaborator(harness, ALTER_FORM, (stage) => ({
+      ...stage,
+      form: {
+        fields: [
+          ...(Array.isArray(
+            (stage.form as Record<string, unknown> | undefined)?.fields,
+          )
+            ? ((stage.form as Record<string, unknown>).fields as unknown[])
+            : []),
+          { variable: 'location', prompt: 'Where do they live?' },
+        ],
+      },
+    }));
+
+    const after = await openPrompt(harness, 'Create new prompt');
+    expect(
+      after.queryByRole('combobox', { name: 'Location attribute' }),
+    ).toBeNull();
+    expect(
+      after.getByText(
+        'This type has no location attributes yet. Create one to record where the participant chooses.',
+      ),
+    ).toBeInTheDocument();
   });
 
   /**
