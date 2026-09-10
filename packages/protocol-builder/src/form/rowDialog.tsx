@@ -35,15 +35,14 @@ import {
   mountedPathsOf,
 } from './documentFromSubmission.ts';
 import { EditedRowContext, type EditedRowScope } from './editedRow.ts';
-import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
 
 /** One row of a list a section owns, as the stage document holds it. */
 export type RowValues = Record<string, unknown>;
 
 const messages = defineMessages({
-  removeRow: {
-    id: 'protocolBuilder.arrayField.removeRow',
-    defaultMessage: 'Remove {itemLabel}',
+  deleteRow: {
+    id: 'protocolBuilder.arrayField.deleteRow',
+    defaultMessage: 'Delete {itemLabel}',
     description:
       'Action that deletes one row of a list — the accessible name of the button on the row. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
   },
@@ -110,7 +109,6 @@ export const rowTemplate =
 
 /** What the fields a section renders inside a row dialog are told. */
 export type RowEditorProps = Readonly<{
-  /** The row the dialog opened on, whole. */
   item: RowValues;
   /** Its index in the committed list; absent for a row being added. */
   editIndex?: number;
@@ -172,20 +170,16 @@ export type RowListConfig = Readonly<{
   Preview: RowPreviewComponent;
   /** The section's own fields, rendered inside the row dialog. */
   Editor: RowEditorComponent;
-  /** Dialog title for a row being added. */
   addTitle: MessageDescriptor;
-  /** Dialog title for a row that already exists. */
   editTitle: MessageDescriptor;
   /** Stable, human-readable stem for the dialog form's DOM id. */
   formId: string;
   /**
    * The name the list is mounted under, for a control inside the dialog asking
    * what the stage would hold if this row were saved — see
-   * {@link EditedRowScope}. Left out by a list with no place of its own in the
-   * stage document: a list nested inside another row, whose rows reach the
-   * stage through the dialog around IT.
+   * {@link EditedRowScope}.
    */
-  name?: string;
+  name: string;
   /**
    * Opens the row on controls its saved shape does not name.
    *
@@ -260,7 +254,6 @@ export function RowListItem({
 }: ArrayFieldItemProps<RowValues>) {
   const intl = useAppIntl();
   const { Preview } = useRowListConfig();
-  // Resolved once for the whole row: every affordance below says the same noun.
   const noun = intl.formatMessage(itemLabel ?? DEFAULT_ITEM_LABEL);
   const interactionDisabled = disabled || readOnly;
 
@@ -304,7 +297,7 @@ export function RowListItem({
       <IconButton
         ref={deleteTriggerRef}
         icon={<Trash2 />}
-        aria-label={intl.formatMessage(messages.removeRow, { itemLabel: noun })}
+        aria-label={intl.formatMessage(messages.deleteRow, { itemLabel: noun })}
         color="destructive"
         disabled={interactionDisabled}
         onClick={onDelete}
@@ -360,8 +353,6 @@ function useRowEditorSession(
       if (row === undefined) {
         return previous?.open ? { ...previous, open: false } : previous;
       }
-      // A new item is not in the committed array yet, so it has no index to
-      // report.
       const editIndex = !isNewItem && index !== null ? index : undefined;
       return {
         key: (previous?.key ?? 0) + 1,
@@ -414,7 +405,13 @@ export function RowDialog({
   } = useRowListConfig();
   const session = useRowEditorSession(item, index, isNewItem, expand);
 
-  if (session === null) return null;
+  // `ArrayField` withdraws its save handler while the list is not accepting
+  // changes, and there is no editor to render then: a disabled or read-only
+  // list offers neither Add nor Edit, and neither state can arrive while a
+  // dialog is open — the dialog is modal, so the stage controls that disable a
+  // list are out of reach, and a stage somebody else holds is read-only from
+  // the moment it opens.
+  if (session === null || onSave === undefined) return null;
 
   return (
     <DialogForm
@@ -429,14 +426,6 @@ export function RowDialog({
         session.isNewItem ? messages.addSubmit : commonMessages.save,
       )}
       onSubmit={async (_values, edited) => {
-        // `ArrayField` withdraws its own save handler while the list is not
-        // accepting changes, so calling it would leave the dialog closing over
-        // an edit that reached nothing. The stage being somebody else's is the
-        // only way that happens once a dialog is open: a list waiting on a
-        // choice elsewhere on the stage cannot be reached past a modal dialog,
-        // and one at capacity still saves the row it is editing.
-        if (onSave === undefined) return { formErrors: [READ_ONLY_MESSAGE] };
-
         const outcome = beforeSave
           ? await beforeSave(edited, {
               ...(session.editIndex === undefined
@@ -447,9 +436,6 @@ export function RowDialog({
           : { row: edited };
         if ('refused' in outcome) return outcome.refused;
 
-        // Asked again on the far side of the gate: the answer above is stale
-        // by the time an asynchronous one resolves.
-        if (onSave === undefined) return { formErrors: [READ_ONLY_MESSAGE] };
         onSave(normalize ? normalize(outcome.row) : outcome.row);
       }}
       /**
@@ -466,7 +452,7 @@ export function RowDialog({
       style={{ borderRadius: 'var(--radius)' }}
     >
       <RowFields
-        {...(name === undefined ? {} : { name })}
+        name={name}
         row={session.row}
         {...(session.editIndex === undefined
           ? {}
@@ -492,7 +478,7 @@ function RowFields({
   formId,
   Editor,
 }: Readonly<{
-  name?: string;
+  name: string;
   row: RowValues;
   editIndex?: number;
   formId: string;
@@ -514,9 +500,9 @@ function RowFields({
    * uses it. See {@link EditedRowScope}.
    */
   const editedRow = useMemo<EditedRowScope | null>(() => {
-    if (name === undefined || storeApi === undefined) return null;
+    if (storeApi === undefined) return null;
     const listPath = safeKeyPath(name);
-    if (listPath === null) return null;
+    if (listPath === undefined) return null;
     return {
       listPath,
       read: () =>
@@ -548,13 +534,13 @@ function RowFields({
  * collaborator inserting a row above it makes it address a different one, and
  * nothing reading this scope could tell.
  */
-function safeKeyPath(name: string): readonly string[] | null {
+function safeKeyPath(name: string): readonly string[] | undefined {
   try {
     const path = resolveFieldPath([], name);
     return path.every((segment) => typeof segment === 'string')
       ? (path as string[])
-      : null;
+      : undefined;
   } catch {
-    return null;
+    return undefined;
   }
 }

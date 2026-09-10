@@ -115,10 +115,10 @@ describe('the questions a dyad census asks about a pair', () => {
       sections: <DyadCensusPromptsSection />,
     });
 
-    const [firstRemove] = screen.getAllByRole('button', {
-      name: 'Remove prompt',
+    const [firstDelete] = screen.getAllByRole('button', {
+      name: 'Delete prompt',
     });
-    await harness.user.click(firstRemove as HTMLElement);
+    await harness.user.click(firstDelete as HTMLElement);
     await harness.user.click(
       await screen.findByRole('button', { name: 'Delete prompt' }),
     );
@@ -240,7 +240,7 @@ describe('a dyad census someone else is holding', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit prompt' })).toBeDisabled();
     expect(
-      screen.getByRole('button', { name: 'Remove prompt' }),
+      screen.getByRole('button', { name: 'Delete prompt' }),
     ).toBeDisabled();
     expect(
       screen.getByRole('button', { name: 'Create new prompt' }),
