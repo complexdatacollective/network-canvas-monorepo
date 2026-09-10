@@ -52,7 +52,6 @@
   },
   "devDependencies": {
     "@codaco/app-i18n": "workspace:^",
-    "@codaco/fresco-ui": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
     "typescript": "catalog:",
     "vite": "catalog:",
