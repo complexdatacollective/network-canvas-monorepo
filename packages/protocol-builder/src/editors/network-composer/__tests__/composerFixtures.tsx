@@ -94,12 +94,24 @@ export const openRow = async (
   return within(await screen.findByRole('dialog'));
 };
 
-/** Adds a row through the list's own add button and answers with its dialog. */
+/**
+ * Adds a row through the list's own add button and answers with its dialog.
+ *
+ * The button is waited for rather than read synchronously. A caller usually
+ * reaches it by turning a capability on first — `switchOnNodeForm` flips the
+ * "Node attributes" switch — and the list it adds to is rendered by the section
+ * that switch reveals, which is a render later. `getByRole` happened to find it
+ * on an unloaded machine and missed it under a full suite run, which is a
+ * failure of the helper rather than of the editor. `findByRole` still throws
+ * when the button never appears, so nothing is weakened by the wait.
+ */
 export const addRow = async (
   harness: StageEditorHarness,
   addLabel: string,
 ): Promise<ReturnType<typeof within>> => {
-  await harness.user.click(screen.getByRole('button', { name: addLabel }));
+  await harness.user.click(
+    await screen.findByRole('button', { name: addLabel }),
+  );
   return within(await screen.findByRole('dialog'));
 };
 

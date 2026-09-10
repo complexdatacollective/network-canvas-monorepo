@@ -95,7 +95,15 @@ export function missingBundlingApps(
 // none of the three. `changeset-app-utils.test.mjs` holds each entry to that
 // standard, so a package that gains a release path leaves the list rather than
 // being silently over-protected.
-export const UNRELEASED_PACKAGES = ['@codaco/protocol-builder'];
+//
+// Both protocol-builder halves are here. #1842 split the contract out into
+// `@codaco/protocol-builder-core`, and a split is exactly the moment a guard
+// like this goes quiet: the new package inherits none of the old one's
+// protection, and the first changeset naming it would have been versioned.
+export const UNRELEASED_PACKAGES = [
+  '@codaco/protocol-builder',
+  '@codaco/protocol-builder-core',
+];
 
 export function unreleasedReleases(cs, unreleased = UNRELEASED_PACKAGES) {
   const names = new Set(unreleased);
