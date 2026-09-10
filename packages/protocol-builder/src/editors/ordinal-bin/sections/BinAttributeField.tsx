@@ -46,10 +46,10 @@ const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
 /**
- * A bin prompt has no input control of its own: the participant drags, and the
- * value the bin stands for is written as it is. So the attribute's settings —
- * where it has any — are the codebook's alone, and the key named here is one
- * the row never holds.
+ * A bin prompt keeps no input control: the participant drags, and the value
+ * the bin stands for is written as it is. So the key named here is one the row
+ * never holds, and the codebook's own control is what the settings are keyed
+ * on.
  */
 const NO_ROW_COMPONENT = 'component';
 
@@ -58,9 +58,8 @@ const NO_ROW_COMPONENT = 'component';
  * from the row: the values belong to the attribute, so a collaborator adding
  * one changes what this stage draws.
  *
- * The literal type comparisons (rather than a type guard) are what narrow the
- * variable union far enough for `options` to exist on it, as
- * `lockedVariableOptions` does for the same reason.
+ * The literal type comparisons narrow the variable union far enough for
+ * `options` to exist on it, as `lockedVariableOptions` does.
  */
 const valueCount = (
   variables: Readonly<Variables>,
@@ -77,16 +76,13 @@ const valueCount = (
  * The values a bin will offer, shown rather than edited.
  *
  * An interface that both writes an attribute and branches on its exact values
- * owns that list however the attribute is reached, so a researcher binning
- * people by it may read the bins but not change them. Shown INSTEAD of the
- * control that would edit them, rather than beside it, which is how Architect
- * does it too.
+ * owns that list however the attribute is reached. Shown INSTEAD of the
+ * control that would edit them, as Architect does.
  *
- * The values as well as the labels: a researcher who can only read the labels
- * cannot tell what this prompt records, and the sentence alone says only that
- * the list is not theirs. It is the table's CAPTION, so the reason reaches a
- * screen reader as the table's own name rather than through the padlock and
- * the dimmed background alone.
+ * The values as well as the labels, because a researcher who reads only the
+ * labels cannot tell what this prompt records. The reason is the table's
+ * CAPTION, so it reaches a screen reader as the table's own name rather than
+ * through the padlock and the dimmed background alone.
  */
 function LockedOptions({ options }: Readonly<{ options: LockedOptionList }>) {
   const intl = useAppIntl();
@@ -128,12 +124,9 @@ export type BinAttributeSlot = Readonly<{
   variableType: VariableType;
   /**
    * Whether the participant's answer reaches this attribute through anything
-   * that could check it.
-   *
-   * `unvalidated` for the bins themselves — dropping someone into a bin writes
-   * the value with nothing to validate. `validated` for the follow-up answer a
-   * categorical bin collects, which is typed into an input honouring the
-   * attribute's own codebook rules.
+   * that could check it: `unvalidated` for the bins, where dropping someone in
+   * writes the value as it is, and `validated` for the follow-up answer, which
+   * is typed into an input honouring the attribute's own codebook rules.
    */
   writerClass: WriterClass;
   /** Said when the pick names an attribute this slot can no longer use. */
@@ -169,16 +162,14 @@ export type BinAttributeFieldProps = Readonly<{
  * attribute invites.
  *
  * Three controls, in the order a researcher meets them: pick one of the
- * attributes this slot can bind, invent one if none of them fits, and change
- * what the one they picked holds. The third is `AttributeCodebookControls`,
- * which is where Architect's inline option editor and its validation section
- * both went: an attribute lives in a different protocol section from the
- * stage, so editing it takes that section's own lock and commits on its own.
+ * attributes this slot can bind, invent one if none fits, and change what the
+ * one they picked holds. The third is `AttributeCodebookControls`, which is
+ * where Architect's inline option editor and its validation section both went:
+ * an attribute lives in a different protocol section from the stage, so
+ * editing it takes that section's own lock and commits on its own.
  *
  * Shared by the two bins and by the follow-up answer a categorical bin
- * collects, because all three are the same question — which attribute does
- * this part of the prompt write to — differing only in the kind of answer they
- * can bind and in what class of writer they are.
+ * collects, which are the same question asked of different kinds of answer.
  */
 export default function BinAttributeField({
   slot,
@@ -309,14 +300,13 @@ export default function BinAttributeField({
  * The refusal a bin prompt's attribute can earn that no control can raise for
  * itself, or `undefined` when the pick is sound.
  *
- * Three questions, asked in this order because each one is only meaningful
- * once the one before it has been answered. Is the attribute still there, and
- * still the kind of answer this slot draws? Is it claimed by a writer of the
- * opposite class somewhere else — with the escape a pick this edit did not
- * change is owed, since an imported protocol's own contradiction is not
- * something the researcher introduced here? And is it one another interface
- * derives, which has NO such escape, because re-saving would go on overwriting
- * the value that interface computes.
+ * Three questions, in an order where each is only meaningful once the one
+ * before it is answered. Is the attribute still there and still the kind of
+ * answer this slot draws? Is it claimed by a writer of the opposite class
+ * elsewhere — with the escape an unchanged pick is owed, because an imported
+ * protocol's own contradiction is not one the researcher introduced here? And
+ * is it one another interface derives, which has NO such escape, since
+ * re-saving would go on overwriting what that interface computes.
  *
  * A gate rather than a rule on the control: the second question needs the row
  * as the dialog OPENED on it, which only `beforeSave` is given.

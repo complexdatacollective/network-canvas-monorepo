@@ -252,10 +252,9 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
   /*
     The entity comes from the schema rather than from the draft: this
     interface's subject is a node subject, so only the TYPE is read from what
-    the stage holds. A draft whose stored subject says `edge` — which a tolerant
-    import or a half-written stage can hold — would otherwise send this
-    family's pickers and its codebook edits at the edge codebook, about an
-    interface the schema and the subject section both treat as node-based.
+    the stage holds. A draft saying `edge` — which a tolerant import can hold —
+    would otherwise point the pickers and their codebook edits at the edge
+    codebook.
   */
   const subject = useStageSubject('node');
   const { variable, otherVariable } = useFormValue([
@@ -311,11 +310,10 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
         defaultOpen={committedOther !== undefined}
       >
         {/*
-          The attribute's own rules are the control that matters here, and
-          `BinAttributeField` offers them: this bin is the one place in the
-          interface where the participant TYPES an answer, so those rules are
-          all that stand between them and an answer the study cannot use.
-          Architect mounts a validation section here for the same reason.
+          This bin is the one place in the interface where the participant
+          TYPES an answer, so the attribute's own rules are all that stand
+          between them and an answer the study cannot use. Architect mounts a
+          validation section here for the same reason.
         */}
         <BinAttributeField
           slot={OTHER_SLOT}

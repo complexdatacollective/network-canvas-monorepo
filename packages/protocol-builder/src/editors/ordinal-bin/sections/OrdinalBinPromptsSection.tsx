@@ -164,10 +164,9 @@ function OrdinalBinPromptEditor({ item }: RowEditorProps) {
   /*
     The entity comes from the schema rather than from the draft: this
     interface's subject is a node subject, so only the TYPE is read from what
-    the stage holds. A draft whose stored subject says `edge` — which a tolerant
-    import or a half-written stage can hold — would otherwise send this
-    family's picker and its codebook edits at the edge codebook, about an
-    interface the schema and the subject section both treat as node-based.
+    the stage holds. A draft saying `edge` — which a tolerant import can hold —
+    would otherwise point the picker and its codebook edits at the edge
+    codebook.
   */
   const subject = useStageSubject('node');
   const { variable } = useFormValue([SCALE_FIELD] as const);
@@ -259,20 +258,14 @@ export default function OrdinalBinPromptsSection() {
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
       /*
-        A new prompt arrives already shaded, as Architect's does
-        (`OrdinalBinPrompts.tsx`: `const template = () => ({ color:
-        'ord-color-seq-1' })`).
-
-        The gradient is required and there is no unset state to offer, so a
-        researcher who never forms an opinion about the colours would otherwise
-        have their prompt refused for a choice the interface is happy to make
-        for them. It is only a starting point: the control is right there, and
-        changing it is one click.
+        A new prompt arrives already shaded, as Architect's does. The gradient
+        is required and there is no unset state to offer, so a researcher who
+        never forms an opinion about the colours would otherwise have their
+        prompt refused for a choice the interface is happy to make for them.
 
         Seeded here rather than defaulted in the control, because it is a value
-        the saved prompt holds. A control that showed a swatch it had not
-        written would save a prompt with no colour while telling the researcher
-        it had one.
+        the saved prompt holds: a control showing a swatch it had not written
+        would save a prompt with no colour while saying it had one.
       */
       itemTemplate={() => ({ [COLOR_FIELD]: FIRST_ORDINAL_COLOR })}
       description={binMessages.binDescription}
