@@ -115,7 +115,7 @@ describe('the property a map selection is recorded as', () => {
    * Blanking a stale reference would hide the very mismatch the researcher has
    * to resolve, and would then save the blank over it.
    */
-  it('keeps a stored property this layer does not have, and says so', async () => {
+  it('keeps a stored property this layer does not have, and marks it', async () => {
     openWithMapOptions({ targetFeatureProperty: 'postcode' });
 
     const picker = await awaitLayerRead();
@@ -125,11 +125,79 @@ describe('the property a map selection is recorded as', () => {
         'postcode — this property is not in the chosen layer',
       ]),
     );
+  });
+
+  /**
+   * Both halves of the pairing are on this stage, so the mismatch is refused
+   * rather than reported: an interview run against a stage recording a
+   * property its layer does not carry stores nothing for every area the
+   * participant chooses, and nothing downstream reads the layer's bytes to
+   * say so.
+   *
+   * The layer is SWAPPED under a property the stage already records, which is
+   * the move that breaks the pair — and the researcher has both controls in
+   * front of them.
+   */
+  it('refuses to save a property the newly chosen layer does not carry', async () => {
+    const harness = openWithMapOptions({ targetFeatureProperty: 'name' });
+    await awaitLayerRead();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Change the map layer' }),
+    );
+    await harness.user.click(
+      await within(await screen.findByRole('dialog')).findByRole('button', {
+        name: 'Boroughs',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        offered(screen.getByRole('combobox', { name: 'Recorded property' })),
+      ).toEqual(['borough', 'name — this property is not in the chosen layer']),
+    );
+
+    expect(await harness.submit()).toBeNull();
     expect(
-      screen.getByText(
+      await screen.findByText(
         'This property is not in the chosen map layer. Choose one that is.',
       ),
     ).toBeInTheDocument();
+
+    // And the way out is the one the refusal names, in the same dialog.
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Recorded property' }),
+      'borough',
+    );
+
+    const request = await harness.submit();
+    expect(mapOptionsOf(request?.stageDocument ?? {})).toMatchObject({
+      dataSourceAssetId: 'boroughs_layer',
+      targetFeatureProperty: 'borough',
+    });
+  });
+
+  /**
+   * The one thing a gate over a file must not do: refuse on knowledge it does
+   * not have. A layer that could not be read says nothing about whether the
+   * property the stage records is in it, so the stage still saves — the same
+   * rule the roster editors keep for an inspection that will not come.
+   */
+  it('does not refuse a stored property when the layer cannot be read', async () => {
+    const harness = openWithMapOptions({
+      dataSourceAssetId: 'unreadable_layer',
+      targetFeatureProperty: 'postcode',
+    });
+
+    expect(
+      await screen.findByText(
+        'This layer could not be read as GeoJSON, so its properties cannot be listed.',
+      ),
+    ).toBeInTheDocument();
+
+    const request = await harness.submit();
+    expect(
+      mapOptionsOf(request?.stageDocument ?? {}).targetFeatureProperty,
+    ).toBe('postcode');
   });
 
   it('asks for a layer before a property', async () => {

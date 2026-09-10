@@ -113,7 +113,12 @@ describe('the geospatial sections, read in Spanish', () => {
   it('names the geospatial prompt’s own controls', async () => {
     const harness = openEditor();
 
-    const dialog = await openPrompt(harness, 'Crear nueva pregunta');
+    // The stage's own prompt rather than a new one: the fixture's type has a
+    // single location attribute and that prompt records it, so a new prompt
+    // would have nothing to choose and the picker would not be drawn at all.
+    // A row's own pick is always offered back, which is the state that has
+    // both controls on screen to be named.
+    const dialog = await openPrompt(harness, 'Editar pregunta');
 
     expect(
       dialog.getByRole('combobox', { name: 'Atributo de ubicación' }),

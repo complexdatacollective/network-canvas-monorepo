@@ -313,12 +313,19 @@ export const geospatialMessages = defineMessages({
     description:
       'Refusal shown under the location-attribute control when a researcher saves a geospatial prompt without saying where its answer goes.',
   },
+  promptVariableDuplicateRefusal: {
+    id: 'protocolBuilder.geospatial.promptVariableDuplicateRefusal',
+    defaultMessage:
+      'Another prompt on this stage already records this attribute, and the later answer would replace the earlier one. Choose a different attribute, or edit the existing prompt instead.',
+    description:
+      'Refusal shown under the location-attribute control when two prompts of one geospatial stage would store the participant’s chosen area in the same attribute. A prompt is one question a participant is asked; a stage is one step of an interview.',
+  },
   promptVariableEmptyState: {
     id: 'protocolBuilder.geospatial.promptVariableEmptyState',
     defaultMessage:
-      'This type has no location attributes yet. Create one to record where the participant chooses.',
+      'No location attribute is free for this prompt. Create one to record where the participant chooses.',
     description:
-      'Shown in place of the location-attribute control while the node or edge type this stage works with has no attribute that can hold a place. "Type" is the kind of network member the stage is about.',
+      'Shown in place of the location-attribute control when there is nothing for this prompt to choose: the node or edge type the stage works with has no attribute that can hold a place, or every one it has is already recorded by another prompt on this stage. "Type" is the kind of network member the stage is about.',
   },
   createAttributeLabel: {
     id: 'protocolBuilder.geospatial.createAttributeLabel',
