@@ -14,6 +14,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createInMemoryHost } from '@codaco/protocol-builder/testing/host/createInMemoryHost';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { rpcClient } from '../../lib/api.ts';
 import { authClient } from '../../lib/auth.ts';
@@ -56,10 +57,13 @@ const DRAFT = {
 /**
  * What the protocol-builder host holds, which is deliberately NOT what
  * Studio's own draft query answers: the first screen carries a different name
- * in each. The outline is drawn from the draft query and the editor's fields
- * are read over the host contract, so seeding the two apart is what tells them
- * apart — a field showing the outline's name would mean the editor never
- * reached the host at all.
+ * in each, and the draft query is two revisions ahead of the host.
+ *
+ * Seeding the two apart is what tells them apart. Everything the editor draws
+ * of the protocol — the stage's fields, the outline, the validation, the
+ * revision a reorder is fenced on — is the HOST's, so a screen named
+ * "Welcome" anywhere on this page would mean that part of it is still being
+ * drawn from a second reading nothing keeps current (#1810).
  */
 const HOST_SECTIONS: Readonly<Record<string, SectionDoc>> = {
   ...DRAFT.sections,
@@ -108,6 +112,84 @@ function studyDetail() {
 const protocolBuilderHost = vi.hoisted((): { client: unknown } => ({
   client: undefined,
 }));
+
+/** The host these tests seed, kept so a second caller can be made from it. */
+let host: ReturnType<typeof createInMemoryHost>;
+let writes = 0;
+const nextRequestId = (): string => `write-${(writes += 1)}`;
+
+/**
+ * A second connection to the same protocol, which is a second lock owner and a
+ * second editor: what a collaborator's screen, rename, deletion or reorder
+ * looks like from here.
+ */
+function collaborator() {
+  return host.asCollaborator({
+    sessionId: 'session-2',
+    userId: 'user-2',
+    displayName: 'Bo',
+  });
+}
+
+/** A screen a collaborator adds, through the contract's own `create`. */
+async function collaboratorAddsScreen(label: string): Promise<void> {
+  await collaborator().create({
+    protocolId: DRAFT.protocol.id,
+    requestId: nextRequestId(),
+    kind: 'stage',
+    document: { type: 'Information', label, title: label, items: [] },
+  });
+}
+
+/** A screen a collaborator renames, through the contract's own `submit`. */
+async function collaboratorRenamesScreen(
+  stageId: string,
+  label: string,
+): Promise<void> {
+  const client = collaborator();
+  const target = sectionId({ kind: 'stage', stageId });
+  const held = await client.acquireLock({
+    protocolId: DRAFT.protocol.id,
+    sectionId: target,
+  });
+  await client.submit({
+    protocolId: DRAFT.protocol.id,
+    requestId: nextRequestId(),
+    sectionId: target,
+    document: { ...held.document, label },
+    revision: held.revision,
+  });
+  await client.releaseLock({
+    protocolId: DRAFT.protocol.id,
+    sectionId: target,
+  });
+}
+
+/** The stage order, put back as it should be, by a collaborator's submit. */
+async function collaboratorRepairsStageOrder(): Promise<void> {
+  const client = collaborator();
+  const order = sectionId({ kind: 'stageOrder' });
+  const held = await client.acquireLock({
+    protocolId: DRAFT.protocol.id,
+    sectionId: order,
+  });
+  await client.submit({
+    protocolId: DRAFT.protocol.id,
+    requestId: nextRequestId(),
+    sectionId: order,
+    document: { stages: [STAGE_A, STAGE_B] },
+    revision: held.revision,
+  });
+  await client.releaseLock({ protocolId: DRAFT.protocol.id, sectionId: order });
+}
+
+/** A screen a collaborator removes, through the contract's own `delete`. */
+async function collaboratorDeletesScreen(stageId: string): Promise<void> {
+  await collaborator().delete({
+    protocolId: DRAFT.protocol.id,
+    sectionId: sectionId({ kind: 'stage', stageId }),
+  });
+}
 
 vi.mock('@orpc/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@orpc/client')>();
@@ -217,13 +299,13 @@ vi.mock('../../lib/api.ts', () => ({
     protocols: {
       draft: {
         // The address travels into the mock so a test can read which team the
-        // draft was asked for; the key stays flat, because `refreshDraft`
-        // invalidates by exactly this one.
+        // draft was asked for. No `key`: nothing invalidates this query any
+        // more, because nothing on the screen is drawn from it beyond the
+        // draft's existence and the protocol's name.
         queryOptions: ({ input }: { input: Record<string, string> }) => ({
           queryKey: ['draft'],
           queryFn: () => queryDraft(input),
         }),
-        key: () => ['draft'],
       },
     },
   },
@@ -241,10 +323,12 @@ beforeEach(() => {
   tenancy.teams = [TEAM_A, TEAM_B];
   tenancy.activeTeam = TEAM_A;
   tenancy.owner = TEAM_A.id;
-  protocolBuilderHost.client = createInMemoryHost({
+  writes = 0;
+  host = createInMemoryHost({
     protocolId: DRAFT.protocol.id,
     sections: HOST_SECTIONS,
-  }).client;
+  });
+  protocolBuilderHost.client = host.client;
   vi.mocked(authClient.getSession).mockReset();
   vi.mocked(authClient.getSession).mockResolvedValue({
     data: { user: {} },
@@ -390,13 +474,18 @@ describe('Studio editor shell', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText('Viewers')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Move Follow-up up' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Move Follow-up up' }),
+    );
+    // The seeded host is at revision 0 and the draft query says 2. The order
+    // this move was computed from is the one on screen, so the revision it is
+    // fenced on is the host's.
     await waitFor(() =>
       expect(rpcClient.protocols.moveStage).toHaveBeenCalledWith(
         expect.objectContaining({
           stageId: STAGE_B,
           toIndex: 0,
-          expectedRevision: DRAFT.revision.sequence,
+          expectedRevision: '0',
         }),
       ),
     );
@@ -405,12 +494,16 @@ describe('Studio editor shell', () => {
   it('edits the selected screen through the protocol-builder host contract', async () => {
     renderEditor();
 
-    // The stage's own fields, read over the contract: the name on screen is
-    // the HOST's copy, which is not the one Studio's outline is drawn from.
+    // The stage's own fields, and the outline entry beside them, are both the
+    // HOST's copy — one reading of one protocol. The draft query still calls
+    // this screen "Welcome".
     expect(await findStageNameField()).toHaveValue('Welcome, from the host');
     expect(
-      screen.getByRole('button', { name: 'WelcomeInformation' }),
+      screen.getByRole('button', { name: 'Welcome, from the hostInformation' }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'WelcomeInformation' }),
+    ).toBeNull();
 
     // Studio's own save control, rendered through the editor's action slot and
     // pointed at the form the package owns.
@@ -698,14 +791,16 @@ describe('Studio editor shell', () => {
     await waitFor(() => expect(add).toBeEnabled());
   });
 
-  it('blocks another reorder until an ambiguous refresh failure is reconciled', async () => {
+  it('blocks another reorder until an ambiguous failure is reconciled', async () => {
+    // Studio's reorder is a command of its own, outside the protocol
+    // contract, so a lost answer leaves the new order unknown to this tab.
+    vi.mocked(rpcClient.protocols.moveStage).mockRejectedValueOnce(
+      new Error('response lost'),
+    );
     renderEditor();
-    // The outline is drawn, so the first read has already been answered and
-    // the next one is the refresh the reorder asks for.
     const moveUp = await screen.findByRole('button', {
       name: 'Move Follow-up up',
     });
-    queryDraft.mockRejectedValueOnce(new Error('refresh failed'));
 
     fireEvent.click(moveUp);
 
@@ -718,6 +813,140 @@ describe('Studio editor shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh order' }));
     await waitFor(() => expect(moveUp).toBeEnabled());
+  });
+});
+
+/**
+ * What a collaborator does reaches this screen because the screen is drawn
+ * from the protocol the package holds, which one channel keeps current.
+ *
+ * Nothing in any of these tests touches the editor: no save, no add, no
+ * navigation, nothing that would refetch anything. That is the whole point —
+ * the outline, the labels and the reorder's fence used to sit on a second
+ * reading of the protocol that only a local action ever refreshed, so a
+ * collaborator's work was invisible here until something unrelated happened
+ * to ask for the draft again (#1810).
+ */
+describe('what a collaborator changes', () => {
+  it('adds their new screen to the outline', async () => {
+    renderEditor();
+    await findStageNameField();
+    expect(
+      screen.getAllByRole('button', { name: /Information$/ }),
+    ).toHaveLength(2);
+
+    await act(async () => {
+      await collaboratorAddsScreen('Consent');
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'ConsentInformation' }),
+    ).toBeInTheDocument();
+  });
+
+  it('renames the screen they renamed', async () => {
+    renderEditor();
+    await screen.findByRole('button', { name: 'Follow-upInformation' });
+
+    await act(async () => {
+      await collaboratorRenamesScreen(STAGE_B, 'Follow-up, renamed');
+    });
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'Follow-up, renamedInformation',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Follow-upInformation' }),
+    ).toBeNull();
+    // The control that moves it is named after it too, so a screen reader is
+    // not offering to move a screen by a name nobody can see any more.
+    expect(
+      screen.getByRole('button', { name: 'Move Follow-up, renamed up' }),
+    ).toBeInTheDocument();
+  });
+
+  it('takes the screen they deleted out of the outline', async () => {
+    renderEditor();
+    await screen.findByRole('button', { name: 'Follow-upInformation' });
+
+    await act(async () => {
+      await collaboratorDeletesScreen(STAGE_B);
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Follow-upInformation' }),
+      ).toBeNull(),
+    );
+    expect(
+      screen.getAllByRole('button', { name: /Information$/ }),
+    ).toHaveLength(1);
+  });
+
+  it('is what a reorder is then fenced on', async () => {
+    renderEditor();
+    await screen.findByRole('button', { name: 'Follow-upInformation' });
+
+    // Their save takes the protocol to revision 1. The draft query still says
+    // 2 and never hears about this at all, so quoting it would fence this
+    // reorder on a revision that never existed.
+    await act(async () => {
+      await collaboratorRenamesScreen(STAGE_B, 'Follow-up, renamed');
+    });
+    await screen.findByRole('button', {
+      name: 'Follow-up, renamedInformation',
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Move Follow-up, renamed up' }),
+    );
+
+    await waitFor(() =>
+      expect(rpcClient.protocols.moveStage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stageId: STAGE_B,
+          toIndex: 0,
+          expectedRevision: '1',
+        }),
+      ),
+    );
+  });
+
+  it('is what the validation panel is checking', async () => {
+    // A protocol whose stage order names a screen it does not have. Nothing is
+    // wrong with any one section of it, which is what the panel is there to
+    // catch — and Studio's draft query answers with a consistent protocol, so
+    // a panel drawn from that one reports nothing here at all.
+    host = createInMemoryHost({
+      protocolId: DRAFT.protocol.id,
+      sections: {
+        ...HOST_SECTIONS,
+        stageOrder: { stages: [STAGE_A, STAGE_B, 'no-such-stage'] },
+      },
+    });
+    protocolBuilderHost.client = host.client;
+    renderEditor();
+    await screen.findByRole('button', { name: 'Follow-upInformation' });
+
+    expect(
+      await screen.findByText('stageOrder names missing stage no-such-stage'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '1 validation problem' }),
+    ).toBeInTheDocument();
+
+    // And it is checked again against what the channel delivers, so the
+    // researcher is not left reading a problem a collaborator has fixed.
+    await act(async () => {
+      await collaboratorRepairsStageOrder();
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'Protocol valid' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('No validation problems.')).toBeInTheDocument();
   });
 });
 

@@ -2,14 +2,13 @@ import { createORPCClient, DynamicLink, ORPCError } from '@orpc/client';
 import type { ClientLink } from '@orpc/client';
 import { RPCLink } from '@orpc/client/websocket';
 import type { RouterContractClient } from '@orpc/contract';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useBlocker } from '@tanstack/react-router';
 import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -31,6 +30,13 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
 import StageEditor from '@codaco/protocol-builder/StageEditor';
+import {
+  useProtocolRevision,
+  useRereadProtocol,
+  useStageIndex,
+  type StageSummary,
+} from '@codaco/protocol-builder/state/hooks';
+import { useCompleteProtocolSections } from '@codaco/protocol-builder/state/protocolContext';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import type { contract } from '@codaco/studio-rpc';
 import { CLIENT_SESSION_PARAM } from '@codaco/studio-rpc/client-session';
@@ -493,22 +499,14 @@ const messages = defineMessages({
   },
 });
 
-function stageOrder(sections: Readonly<Record<string, SectionDoc>>): string[] {
-  const value = sections[sectionId({ kind: 'stageOrder' })]?.stages;
-  return Array.isArray(value) &&
-    value.every((entry) => typeof entry === 'string')
-    ? value
-    : [];
-}
-
 function stageLabel(
   intl: IntlShape,
-  document: SectionDoc | undefined,
+  stage: StageSummary,
   index: number,
 ): string {
-  return typeof document?.label === 'string' && document.label.trim() !== ''
-    ? document.label
-    : intl.formatMessage(messages.defaultScreenName, { number: index + 1 });
+  return stage.label.trim() === ''
+    ? intl.formatMessage(messages.defaultScreenName, { number: index + 1 })
+    : stage.label;
 }
 
 /**
@@ -612,11 +610,76 @@ export default function Editor() {
   return <ProtocolEditor address={target.address} />;
 }
 
+/**
+ * What has to be answered before the editor can be opened at all: that this
+ * researcher's draft is there, and what it is called.
+ *
+ * The one thing `protocols.draft` is still asked for. Everything the editor
+ * then draws — the screens, their names, the validation, which screen it opens
+ * on, the revision a reorder is fenced on — comes from the protocol the
+ * package holds, which one channel keeps current (#1810). Two readings of one
+ * protocol is what left a collaborator's work off this screen until something
+ * unrelated happened to refetch.
+ */
 function ProtocolEditor({ address }: { address: DraftAddress }) {
+  const intl = useAppIntl();
+  const draft = useQuery(orpc.protocols.draft.queryOptions({ input: address }));
+
+  if (draft.isPending) {
+    return (
+      // The `<main id="main-content">` is the area layout's (§5.3, §7.1):
+      // `AppFrame` renders the skip link and `AppArea` the landmark it
+      // targets. These three branches are mutually exclusive, but each one
+      // used to declare a second `<main>` with the same id inside the area's.
+      <div className="flex h-full items-center justify-center">
+        <Spinner />
+        <span className="sr-only">
+          {intl.formatMessage(messages.openingEditor)}
+        </span>
+      </div>
+    );
+  }
+  if (!draft.data) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          {intl.formatMessage(messages.draftUnavailable)}
+        </Alert>
+      </div>
+    );
+  }
+
+  return (
+    <ProtocolBuilder
+      client={hostClient.protocolBuilder}
+      protocolId={address.protocolId}
+    >
+      <EditorWorkspace
+        address={address}
+        protocolName={draft.data.protocol.name}
+      />
+    </ProtocolBuilder>
+  );
+}
+
+/**
+ * The editor itself, inside the protocol the package holds.
+ *
+ * Inside rather than around it because everything here reads that protocol:
+ * the package's hooks are observers on its cache, and the channel feeding it
+ * is what carries a collaborator's screen, rename, deletion or reorder onto
+ * this screen without anything here asking for it again.
+ */
+function EditorWorkspace({
+  address,
+  protocolName,
+}: {
+  address: DraftAddress;
+  protocolName: string;
+}) {
   const intl = useAppIntl();
   const params = address;
   const { confirm } = useDialog();
-  const queryClient = useQueryClient();
   const [selection, setSelection] = useState<Selection>({ kind: 'settings' });
   const [stageFormDirty, setStageFormDirty] = useState(false);
   const [reconcilingAdd, setReconcilingAdd] = useState(false);
@@ -625,23 +688,11 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
   const [moveRecoveryFailed, setMoveRecoveryFailed] = useState(false);
   const selectionInitialized = useRef(false);
   const discardRequestPending = useRef(false);
-  const draft = useQuery(orpc.protocols.draft.queryOptions({ input: params }));
-  const draftQueryKey = useMemo(
-    () =>
-      orpc.protocols.draft.key({
-        input: {
-          teamId: params.teamId,
-          protocolId: params.protocolId,
-          draftId: params.draftId,
-        },
-      }),
-    [params.draftId, params.protocolId, params.teamId],
-  );
-  const stages = useMemo(
-    () => (draft.data ? stageOrder(draft.data.sections) : []),
-    [draft.data],
-  );
-  const draftValidation = useDraftValidation(draft.data?.sections);
+  const stages = useStageIndex();
+  const sections = useCompleteProtocolSections();
+  const revision = useProtocolRevision();
+  const rereadProtocol = useRereadProtocol();
+  const draftValidation = useDraftValidation(sections);
 
   const confirmDiscardStageChanges = useCallback(
     // `confirm` takes plain strings, so the descriptors are formatted here
@@ -703,24 +754,19 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
     disabled: !stageFormDirty,
   });
 
+  // Once, and only once the whole protocol has been read: a protocol that has
+  // no screens when it is opened stays on its settings, and the screen a
+  // collaborator adds minutes later is theirs rather than something this
+  // editor is moved to. A reading still missing sections would open on
+  // whichever screen happened to arrive first.
   useEffect(() => {
-    if (draft.data && !selectionInitialized.current) {
-      selectionInitialized.current = true;
-      const firstStage = stages[0];
-      if (firstStage !== undefined) {
-        setSelection({ kind: 'stage', stageId: firstStage });
-      }
+    if (sections === undefined || selectionInitialized.current) return;
+    selectionInitialized.current = true;
+    const firstStage = stages[0];
+    if (firstStage !== undefined) {
+      setSelection({ kind: 'stage', stageId: firstStage.id });
     }
-  }, [draft.data, stages]);
-
-  const refreshDraft = useCallback(async () => {
-    await queryClient.invalidateQueries(
-      {
-        queryKey: draftQueryKey,
-      },
-      { throwOnError: true },
-    );
-  }, [draftQueryKey, queryClient]);
+  }, [sections, stages]);
 
   const selectedStageId = selection.kind === 'stage' ? selection.stageId : null;
 
@@ -731,27 +777,42 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
       return stageId;
     },
     onSuccess: async (stageId) => {
-      await refreshDraft();
+      await rereadProtocol();
       // Dirty changes were confirmed before the server mutation. Selecting
       // directly avoids asking again after the new screen already exists.
       setSelection({ kind: 'stage', stageId });
     },
   });
   const moveStage = useMutation({
-    mutationFn: async (input: { stageId: string; toIndex: number }) =>
+    mutationFn: async (input: {
+      stageId: string;
+      toIndex: number;
+      expectedRevision: bigint;
+    }) =>
       rpcClient.protocols.moveStage({
         ...params,
-        ...input,
-        expectedRevision: draft.data?.revision.sequence ?? '0',
+        stageId: input.stageId,
+        toIndex: input.toIndex,
+        expectedRevision: String(input.expectedRevision),
       }),
-    onSuccess: refreshDraft,
+    onSuccess: rereadProtocol,
   });
+
+  // The order this move is expressed against is the one on screen, so the
+  // revision it is fenced on has to be the one that drew it — the newest the
+  // channel has delivered. Quoting a revision from a reading of the draft made
+  // somewhere else is how a move computed from THIS order was accepted against
+  // another one.
+  const requestMoveStage = (stageId: string, toIndex: number) => {
+    if (revision === undefined) return;
+    moveStage.mutate({ stageId, toIndex, expectedRevision: revision });
+  };
 
   const reconcileAddStage = async () => {
     setReconcilingAdd(true);
     setAddRecoveryFailed(false);
     try {
-      await refreshDraft();
+      await rereadProtocol();
       addStage.reset();
     } catch {
       setAddRecoveryFailed(true);
@@ -764,7 +825,7 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
     setReconcilingMove(true);
     setMoveRecoveryFailed(false);
     try {
-      await refreshDraft();
+      await rereadProtocol();
       moveStage.reset();
     } catch {
       setMoveRecoveryFailed(true);
@@ -784,307 +845,265 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
     addStage.mutate();
   };
 
-  if (draft.isPending) {
-    return (
-      // The `<main id="main-content">` is the area layout's (§5.3, §7.1):
-      // `AppFrame` renders the skip link and `AppArea` the landmark it
-      // targets. These three branches are mutually exclusive, but each one
-      // used to declare a second `<main>` with the same id inside the area's.
-      <div className="flex h-full items-center justify-center">
-        <Spinner />
-        <span className="sr-only">
-          {intl.formatMessage(messages.openingEditor)}
-        </span>
-      </div>
-    );
-  }
-  if (!draft.data) {
-    return (
-      <div className="p-6">
-        <Alert variant="destructive">
-          {intl.formatMessage(messages.draftUnavailable)}
-        </Alert>
-      </div>
-    );
-  }
-
   return (
-    <ProtocolBuilder
-      client={hostClient.protocolBuilder}
-      protocolId={params.protocolId}
-    >
-      <div className="flex min-h-full flex-col">
-        <div className="border-surface-1 flex flex-wrap items-center justify-between gap-4 border-y px-4 py-3">
-          {/*
+    <div className="flex min-h-full flex-col">
+      <div className="border-surface-1 flex flex-wrap items-center justify-between gap-4 border-y px-4 py-3">
+        {/*
             No way-out control here: the area's outline owns "Back to study" and
             the header owns the team and study chips (§5.5). A second back
             affordance inside `<main>` would be a third answer to the same
             question, and the two would not even agree on where "back" is.
           */}
-          <div className="min-w-0">
-            <Heading
-              className="truncate"
-              level="h1"
-              margin="none"
-              {...routeFocusTargetProps}
-            >
-              {draft.data.protocol.name}
-            </Heading>
-            <Paragraph className="text-sm" margin="none">
-              {intl.formatMessage(messages.draftEditor)}
-            </Paragraph>
-          </div>
-          <ValidationButton validation={draftValidation} />
+        <div className="min-w-0">
+          <Heading
+            className="truncate"
+            level="h1"
+            margin="none"
+            {...routeFocusTargetProps}
+          >
+            {protocolName}
+          </Heading>
+          <Paragraph className="text-sm" margin="none">
+            {intl.formatMessage(messages.draftEditor)}
+          </Paragraph>
         </div>
+        <ValidationButton validation={draftValidation} />
+      </div>
 
-        <div className="laptop:grid-cols-[minmax(15rem,1fr)_minmax(24rem,2.5fr)_minmax(16rem,1fr)] grid min-h-0 flex-1 grid-cols-1 gap-4 p-4">
-          <aside aria-labelledby="outline-heading" className="min-h-0">
-            <Surface className="flex h-full min-h-0 flex-col" spacing="sm">
-              {/*
+      <div className="laptop:grid-cols-[minmax(15rem,1fr)_minmax(24rem,2.5fr)_minmax(16rem,1fr)] grid min-h-0 flex-1 grid-cols-1 gap-4 p-4">
+        <aside aria-labelledby="outline-heading" className="min-h-0">
+          <Surface className="flex h-full min-h-0 flex-col" spacing="sm">
+            {/*
                 "Protocol sections", not "Protocol outline": the area's sidebar
                 is the outline (§5.5), and two regions on one screen carrying
                 one name is two things a screen reader cannot tell apart. This
                 one is the editor's own section selector, inside `<main>`, and
                 #1272 is what eventually merges the two.
               */}
-              <Heading id="outline-heading" level="h2">
-                {intl.formatMessage(messages.protocolSections)}
-              </Heading>
-              <nav
-                aria-label={intl.formatMessage(messages.protocolSections)}
-                className="min-h-0 overflow-y-auto"
-              >
-                <ul className="m-0 flex list-none flex-col gap-2 p-0">
-                  <OutlineButton
-                    selected={selection.kind === 'settings'}
-                    onClick={() => void requestSelection({ kind: 'settings' })}
-                  >
-                    {intl.formatMessage(messages.settings)}
-                  </OutlineButton>
-                  <li>
-                    <div className="flex items-center justify-between gap-2 px-2 py-1">
-                      <span className="font-heading font-bold">
-                        {intl.formatMessage(messages.screens)}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="text"
-                        icon={<Plus aria-hidden="true" />}
-                        disabled={
-                          addStage.isPending ||
-                          addStage.isError ||
-                          reconcilingAdd
-                        }
-                        onClick={() => void requestAddStage()}
-                      >
-                        {intl.formatMessage(messages.addScreen)}
-                      </Button>
-                    </div>
-                    {addStage.isError && (
-                      <Alert className="mb-2" variant="destructive">
-                        <Paragraph margin="none">
-                          {intl.formatMessage(messages.addUnconfirmed)}
-                        </Paragraph>
-                        <Button
-                          className="mt-3"
-                          size="sm"
-                          variant="outline"
-                          disabled={reconcilingAdd}
-                          onClick={() => void reconcileAddStage()}
-                        >
-                          {intl.formatMessage(messages.refreshOutline)}
-                        </Button>
-                        {addRecoveryFailed && (
-                          <Paragraph className="mt-2" margin="none">
-                            {intl.formatMessage(
-                              messages.outlineRefreshFailedForAdd,
-                            )}
-                          </Paragraph>
-                        )}
-                      </Alert>
-                    )}
-                    {moveStage.isError && (
-                      <Alert className="mb-2" variant="destructive">
-                        <Paragraph margin="none">
-                          {intl.formatMessage(messages.moveUnconfirmed)}
-                        </Paragraph>
-                        <Button
-                          className="mt-3"
-                          size="sm"
-                          variant="outline"
-                          disabled={reconcilingMove}
-                          onClick={() => void reconcileMoveStage()}
-                        >
-                          {intl.formatMessage(messages.refreshOrder)}
-                        </Button>
-                        {moveRecoveryFailed && (
-                          <Paragraph className="mt-2" margin="none">
-                            {intl.formatMessage(
-                              messages.outlineRefreshFailedForMove,
-                            )}
-                          </Paragraph>
-                        )}
-                      </Alert>
-                    )}
-                    {stages.length === 0 ? (
-                      <Paragraph className="px-2 text-sm">
-                        {intl.formatMessage(messages.noScreens)}
+            <Heading id="outline-heading" level="h2">
+              {intl.formatMessage(messages.protocolSections)}
+            </Heading>
+            <nav
+              aria-label={intl.formatMessage(messages.protocolSections)}
+              className="min-h-0 overflow-y-auto"
+            >
+              <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                <OutlineButton
+                  selected={selection.kind === 'settings'}
+                  onClick={() => void requestSelection({ kind: 'settings' })}
+                >
+                  {intl.formatMessage(messages.settings)}
+                </OutlineButton>
+                <li>
+                  <div className="flex items-center justify-between gap-2 px-2 py-1">
+                    <span className="font-heading font-bold">
+                      {intl.formatMessage(messages.screens)}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="text"
+                      icon={<Plus aria-hidden="true" />}
+                      disabled={
+                        addStage.isPending || addStage.isError || reconcilingAdd
+                      }
+                      onClick={() => void requestAddStage()}
+                    >
+                      {intl.formatMessage(messages.addScreen)}
+                    </Button>
+                  </div>
+                  {addStage.isError && (
+                    <Alert className="mb-2" variant="destructive">
+                      <Paragraph margin="none">
+                        {intl.formatMessage(messages.addUnconfirmed)}
                       </Paragraph>
-                    ) : (
-                      <ol className="m-0 flex list-none flex-col gap-2 p-0 ps-3">
-                        {stages.map((stageId, index) => {
-                          const stage =
-                            draft.data.sections[
-                              sectionId({ kind: 'stage', stageId })
-                            ];
-                          return (
-                            <li
-                              key={stageId}
-                              className="flex min-w-0 items-center gap-1"
+                      <Button
+                        className="mt-3"
+                        size="sm"
+                        variant="outline"
+                        disabled={reconcilingAdd}
+                        onClick={() => void reconcileAddStage()}
+                      >
+                        {intl.formatMessage(messages.refreshOutline)}
+                      </Button>
+                      {addRecoveryFailed && (
+                        <Paragraph className="mt-2" margin="none">
+                          {intl.formatMessage(
+                            messages.outlineRefreshFailedForAdd,
+                          )}
+                        </Paragraph>
+                      )}
+                    </Alert>
+                  )}
+                  {moveStage.isError && (
+                    <Alert className="mb-2" variant="destructive">
+                      <Paragraph margin="none">
+                        {intl.formatMessage(messages.moveUnconfirmed)}
+                      </Paragraph>
+                      <Button
+                        className="mt-3"
+                        size="sm"
+                        variant="outline"
+                        disabled={reconcilingMove}
+                        onClick={() => void reconcileMoveStage()}
+                      >
+                        {intl.formatMessage(messages.refreshOrder)}
+                      </Button>
+                      {moveRecoveryFailed && (
+                        <Paragraph className="mt-2" margin="none">
+                          {intl.formatMessage(
+                            messages.outlineRefreshFailedForMove,
+                          )}
+                        </Paragraph>
+                      )}
+                    </Alert>
+                  )}
+                  {stages.length === 0 ? (
+                    <Paragraph className="px-2 text-sm">
+                      {intl.formatMessage(messages.noScreens)}
+                    </Paragraph>
+                  ) : (
+                    <ol className="m-0 flex list-none flex-col gap-2 p-0 ps-3">
+                      {stages.map((stage, index) => {
+                        return (
+                          <li
+                            key={stage.id}
+                            className="flex min-w-0 items-center gap-1"
+                          >
+                            <button
+                              type="button"
+                              className="focusable aria-current:bg-selected aria-current:text-selected-contrast min-w-0 flex-1 rounded px-3 py-2 text-start"
+                              aria-current={
+                                selectedStageId === stage.id
+                                  ? 'page'
+                                  : undefined
+                              }
+                              onClick={() =>
+                                void requestSelection({
+                                  kind: 'stage',
+                                  stageId: stage.id,
+                                })
+                              }
                             >
+                              <span className="block truncate">
+                                {stageLabel(intl, stage, index)}
+                              </span>
+                              <span className="block truncate text-xs opacity-70">
+                                {stage.type === ''
+                                  ? intl.formatMessage(
+                                      messages.unknownScreenType,
+                                    )
+                                  : stage.type}
+                              </span>
+                            </button>
+                            <div className="flex shrink-0 flex-col">
                               <button
                                 type="button"
-                                className="focusable aria-current:bg-selected aria-current:text-selected-contrast min-w-0 flex-1 rounded px-3 py-2 text-start"
-                                aria-current={
-                                  selectedStageId === stageId
-                                    ? 'page'
-                                    : undefined
+                                className="focusable rounded p-1 disabled:opacity-30"
+                                aria-label={intl.formatMessage(
+                                  messages.moveScreenUp,
+                                  { name: stageLabel(intl, stage, index) },
+                                )}
+                                disabled={
+                                  index === 0 ||
+                                  moveStage.isPending ||
+                                  moveStage.isError ||
+                                  reconcilingMove
                                 }
                                 onClick={() =>
-                                  void requestSelection({
-                                    kind: 'stage',
-                                    stageId,
-                                  })
+                                  requestMoveStage(stage.id, index - 1)
                                 }
                               >
-                                <span className="block truncate">
-                                  {stageLabel(intl, stage, index)}
-                                </span>
-                                <span className="block truncate text-xs opacity-70">
-                                  {typeof stage?.type === 'string'
-                                    ? stage.type
-                                    : intl.formatMessage(
-                                        messages.unknownScreenType,
-                                      )}
-                                </span>
+                                <ArrowUp aria-hidden="true" size={16} />
                               </button>
-                              <div className="flex shrink-0 flex-col">
-                                <button
-                                  type="button"
-                                  className="focusable rounded p-1 disabled:opacity-30"
-                                  aria-label={intl.formatMessage(
-                                    messages.moveScreenUp,
-                                    { name: stageLabel(intl, stage, index) },
-                                  )}
-                                  disabled={
-                                    index === 0 ||
-                                    moveStage.isPending ||
-                                    moveStage.isError ||
-                                    reconcilingMove
-                                  }
-                                  onClick={() =>
-                                    moveStage.mutate({
-                                      stageId,
-                                      toIndex: index - 1,
-                                    })
-                                  }
-                                >
-                                  <ArrowUp aria-hidden="true" size={16} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="focusable rounded p-1 disabled:opacity-30"
-                                  aria-label={intl.formatMessage(
-                                    messages.moveScreenDown,
-                                    { name: stageLabel(intl, stage, index) },
-                                  )}
-                                  disabled={
-                                    index === stages.length - 1 ||
-                                    moveStage.isPending ||
-                                    moveStage.isError ||
-                                    reconcilingMove
-                                  }
-                                  onClick={() =>
-                                    moveStage.mutate({
-                                      stageId,
-                                      toIndex: index + 1,
-                                    })
-                                  }
-                                >
-                                  <ArrowDown aria-hidden="true" size={16} />
-                                </button>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    )}
-                  </li>
-                  <OutlineButton
-                    selected={selection.kind === 'codebook'}
-                    onClick={() => void requestSelection({ kind: 'codebook' })}
-                  >
-                    {intl.formatMessage(messages.codebook)}
-                  </OutlineButton>
-                  <OutlineButton
-                    selected={selection.kind === 'assets'}
-                    onClick={() => void requestSelection({ kind: 'assets' })}
-                  >
-                    {intl.formatMessage(messages.assets)}
-                  </OutlineButton>
-                  <OutlineButton
-                    selected={selection.kind === 'translations'}
-                    onClick={() =>
-                      void requestSelection({ kind: 'translations' })
-                    }
-                  >
-                    {intl.formatMessage(messages.translations)}
-                  </OutlineButton>
-                </ul>
-              </nav>
-            </Surface>
-          </aside>
-
-          <div className="min-h-[24rem]">
-            <Surface className="h-full" spacing="lg">
-              {selection.kind === 'stage' ? (
-                <StageEditor
-                  target={{
-                    sectionId: sectionId({
-                      kind: 'stage',
-                      stageId: selection.stageId,
-                    }),
-                  }}
-                  actions={(context) => (
-                    <StageActions
-                      context={context}
-                      onDirtyChange={setStageFormDirty}
-                    />
+                              <button
+                                type="button"
+                                className="focusable rounded p-1 disabled:opacity-30"
+                                aria-label={intl.formatMessage(
+                                  messages.moveScreenDown,
+                                  { name: stageLabel(intl, stage, index) },
+                                )}
+                                disabled={
+                                  index === stages.length - 1 ||
+                                  moveStage.isPending ||
+                                  moveStage.isError ||
+                                  reconcilingMove
+                                }
+                                onClick={() =>
+                                  requestMoveStage(stage.id, index + 1)
+                                }
+                              >
+                                <ArrowDown aria-hidden="true" size={16} />
+                              </button>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ol>
                   )}
-                  onSaved={() => void refreshDraft()}
-                />
-              ) : (
-                <SectionPlaceholder kind={selection.kind} />
-              )}
-            </Surface>
-          </div>
+                </li>
+                <OutlineButton
+                  selected={selection.kind === 'codebook'}
+                  onClick={() => void requestSelection({ kind: 'codebook' })}
+                >
+                  {intl.formatMessage(messages.codebook)}
+                </OutlineButton>
+                <OutlineButton
+                  selected={selection.kind === 'assets'}
+                  onClick={() => void requestSelection({ kind: 'assets' })}
+                >
+                  {intl.formatMessage(messages.assets)}
+                </OutlineButton>
+                <OutlineButton
+                  selected={selection.kind === 'translations'}
+                  onClick={() =>
+                    void requestSelection({ kind: 'translations' })
+                  }
+                >
+                  {intl.formatMessage(messages.translations)}
+                </OutlineButton>
+              </ul>
+            </nav>
+          </Surface>
+        </aside>
 
-          <aside
-            id="protocol-problems"
-            aria-labelledby="inspector-heading"
-            tabIndex={-1}
-            className="min-h-0"
-          >
-            <Surface className="h-full" spacing="sm">
-              <Heading id="inspector-heading" level="h2">
-                {intl.formatMessage(messages.inspector)}
-              </Heading>
-              <ProtocolProblems validation={draftValidation} />
-            </Surface>
-          </aside>
+        <div className="min-h-[24rem]">
+          <Surface className="h-full" spacing="lg">
+            {selection.kind === 'stage' ? (
+              <StageEditor
+                target={{
+                  sectionId: sectionId({
+                    kind: 'stage',
+                    stageId: selection.stageId,
+                  }),
+                }}
+                actions={(context) => (
+                  <StageActions
+                    context={context}
+                    onDirtyChange={setStageFormDirty}
+                  />
+                )}
+              />
+            ) : (
+              <SectionPlaceholder kind={selection.kind} />
+            )}
+          </Surface>
         </div>
+
+        <aside
+          id="protocol-problems"
+          aria-labelledby="inspector-heading"
+          tabIndex={-1}
+          className="min-h-0"
+        >
+          <Surface className="h-full" spacing="sm">
+            <Heading id="inspector-heading" level="h2">
+              {intl.formatMessage(messages.inspector)}
+            </Heading>
+            <ProtocolProblems validation={draftValidation} />
+          </Surface>
+        </aside>
       </div>
-    </ProtocolBuilder>
+    </div>
   );
 }
 
