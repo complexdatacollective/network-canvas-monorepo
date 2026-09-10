@@ -203,6 +203,226 @@
     "defaultMessage": "Change this attribute’s values",
     "description": "Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens."
   },
+  "protocolBuilder.censusPrompts.affirmativeRequired": {
+    "defaultMessage": "Choose the type of connection an affirmative answer creates.",
+    "description": "Refusal shown when a researcher saves a census prompt without saying what a yes from the participant records."
+  },
+  "protocolBuilder.censusPrompts.affirmativeTitle": {
+    "defaultMessage": "Affirmative answer",
+    "description": "Heading of the group that says what a yes from the participant records between the people the prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.dyadEdgeDescription": {
+    "defaultMessage": "Choose the kind of connection an affirmative answer records between the pair.",
+    "description": "Description of the group that says what a yes from the participant records between the two people a Dyad Census prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.dyadEdgeHint": {
+    "defaultMessage": "A connection of this type is created between the two people whenever the participant answers yes.",
+    "description": "Guidance under the control that picks what a yes from the participant records between the two people a Dyad Census prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.dyadGuidance": {
+    "defaultMessage": "The participant sees two people side by side and answers yes or no, so write the question about the pair in front of them — “these two people” rather than a name — and phrase it so that yes and no are both sensible answers.",
+    "description": "Guidance shown above the box where a researcher writes a Dyad Census prompt, saying what the participant is looking at while they answer it. The quoted phrase is an example of how to refer to the pair."
+  },
+  "protocolBuilder.censusPrompts.dyadPlaceholder": {
+    "defaultMessage": "Do these two people know each other?",
+    "description": "Example question in the empty box where a researcher writes a Dyad Census prompt."
+  },
+  "protocolBuilder.censusPrompts.edgeCreateLabel": {
+    "defaultMessage": "Create a new connection type",
+    "description": "Button that opens the codebook editor for inventing a kind of connection this prompt can record. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.censusPrompts.edgeGoneRefusal": {
+    "defaultMessage": "The connection type this prompt records is no longer in the codebook. Choose another one.",
+    "description": "Refusal shown on the connection-type control when a researcher saves a census prompt whose connection type has been deleted from the protocol’s codebook. The codebook is the protocol’s definition of the node types, edge types and attributes a study records."
+  },
+  "protocolBuilder.censusPrompts.edgeLabel": {
+    "defaultMessage": "Connection created",
+    "description": "Label of the control that picks which kind of connection between two people this prompt records. A connection is what the protocol schema calls an edge; the researcher never sees that word."
+  },
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderAddLabel": {
+    "defaultMessage": "Add a rule for the order people are asked about",
+    "description": "Button that appends one sort rule to the list ordering the people the participant is asked about."
+  },
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderDescription": {
+    "defaultMessage": "Choose the order the participant is asked about each person in.",
+    "description": "Description of the group holding the rules that order the people the participant is asked about, one at a time."
+  },
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderEmptyState": {
+    "defaultMessage": "No rules yet, so people are asked about in the order they were added.",
+    "description": "Shown in place of the sort rules ordering the people the participant is asked about, when the researcher has written none."
+  },
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderLabel": {
+    "defaultMessage": "Rules for the order people are asked about",
+    "description": "Label of the list of sort rules that order the people the participant is asked about, one at a time."
+  },
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderTitle": {
+    "defaultMessage": "Order of the people asked about",
+    "description": "Heading of the optional group holding the rules that order the people the participant is asked about, one at a time."
+  },
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderAddLabel": {
+    "defaultMessage": "Add a rule for the order people are shown in",
+    "description": "Button that appends one sort rule to the list ordering the people the participant picks from."
+  },
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderDescription": {
+    "defaultMessage": "Choose the order the people the participant selects from are shown in.",
+    "description": "Description of the group holding the rules that order the people the participant picks from for whoever they were asked about."
+  },
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderEmptyState": {
+    "defaultMessage": "No rules yet, so people are shown in the order they were added.",
+    "description": "Shown in place of the sort rules ordering the people the participant picks from, when the researcher has written none."
+  },
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderLabel": {
+    "defaultMessage": "Rules for the order people are shown in",
+    "description": "Label of the list of sort rules that order the people the participant picks from."
+  },
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderTitle": {
+    "defaultMessage": "Order of the people to choose from",
+    "description": "Heading of the optional group holding the rules that order the people the participant picks from for whoever they were asked about."
+  },
+  "protocolBuilder.censusPrompts.oneToManyDescription": {
+    "defaultMessage": "Write the questions this stage asks about one person and the group around them, and drag them into the order the participant answers them.",
+    "description": "Description of the prompts section in a stage that shows the participant one network member alongside all the others and asks which of the others the question applies to. A stage is one step of an interview; a prompt is one question the participant is asked."
+  },
+  "protocolBuilder.censusPrompts.oneToManyEdgeDescription": {
+    "defaultMessage": "Choose the kind of connection an affirmative answer records between the two people.",
+    "description": "Description of the group that says what selecting someone records between them and the person the prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.oneToManyEdgeHint": {
+    "defaultMessage": "A connection of this type is created from the person being asked about to everyone the participant selects.",
+    "description": "Guidance under the control that picks what selecting someone records between them and the person the prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.oneToManyFieldHint": {
+    "defaultMessage": "The participant is shown one person at a time and chooses who among the others the question applies to.",
+    "description": "Guidance under the list of prompts in a One-to-Many Dyad Census stage, where the participant selects any number of the remaining network members for the person in front of them."
+  },
+  "protocolBuilder.censusPrompts.oneToManyGuidance": {
+    "defaultMessage": "The participant sees one person alongside everyone else and selects whoever the question applies to, so write it as a question about that one person and the group — “which of these people does this person know?” rather than a question about a single pair.",
+    "description": "Guidance shown above the box where a researcher writes a One-to-Many Dyad Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question about one person and the group."
+  },
+  "protocolBuilder.censusPrompts.oneToManyPlaceholder": {
+    "defaultMessage": "Which of these people does this person know?",
+    "description": "Example question in the empty box where a researcher writes a One-to-Many Dyad Census prompt."
+  },
+  "protocolBuilder.censusPrompts.pairDescription": {
+    "defaultMessage": "Write the questions this stage asks about each pair, and drag them into the order the participant answers them.",
+    "description": "Description of the prompts section in a stage that shows the participant two network members side by side and asks about the two of them together. A stage is one step of an interview; a prompt is one question the participant is asked."
+  },
+  "protocolBuilder.censusPrompts.pairFieldHint": {
+    "defaultMessage": "The participant is shown one pair of people at a time and answers these questions about them, in this order.",
+    "description": "Guidance under the list of prompts in a stage that shows the participant two network members side by side and asks about the two of them together."
+  },
+  "protocolBuilder.censusPrompts.promptTextDescription": {
+    "defaultMessage": "Write the question or instruction the participant sees for this prompt.",
+    "description": "Description of the group holding the question one prompt shows the participant."
+  },
+  "protocolBuilder.censusPrompts.promptTextEmptyPreview": {
+    "defaultMessage": "This prompt has no question yet.",
+    "description": "Shown in place of a prompt’s own words in the list of prompts, when the researcher has written none."
+  },
+  "protocolBuilder.censusPrompts.promptTextLabel": {
+    "defaultMessage": "Prompt text",
+    "description": "Label of the box a researcher writes the question one prompt shows the participant into."
+  },
+  "protocolBuilder.censusPrompts.promptTextRequired": {
+    "defaultMessage": "Write the question or instruction this prompt shows the participant.",
+    "description": "Refusal shown when a researcher saves a prompt without writing anything for the participant to read."
+  },
+  "protocolBuilder.censusPrompts.promptTextTitle": {
+    "defaultMessage": "Participant prompt",
+    "description": "Heading of the group holding the question one prompt shows the participant. A prompt is one question the participant is asked during a stage, which is one step of an interview."
+  },
+  "protocolBuilder.censusPrompts.sortRulesAddedHint": {
+    "defaultMessage": "Rules are applied in order. Use the asterisk to keep the order the people were added in.",
+    "description": "Guidance under a list of sort rules whose fallback is the order the people were added to the network. The asterisk is the wildcard option offered in the rule’s own property picker."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineDescription": {
+    "defaultMessage": "Give the participant a way to say these two people are not connected at all.",
+    "description": "Description of the group holding the words the participant chooses to say the two people in front of them are not connected."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineHint": {
+    "defaultMessage": "Shown at the end of the scale. Choosing it records no connection between the pair.",
+    "description": "Guidance under the box a researcher writes the decline answer into, saying where the participant sees it and what choosing it does."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineLabel": {
+    "defaultMessage": "Decline answer",
+    "description": "Label of the box a researcher writes the words the participant chooses to say the two people are not connected into."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclinePlaceholder": {
+    "defaultMessage": "They don’t know each other",
+    "description": "Example wording in the empty box where a researcher writes the decline answer."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineRequired": {
+    "defaultMessage": "Write how the participant says there is no connection.",
+    "description": "Refusal shown when a researcher saves a Tie-Strength Census prompt without wording for the decline answer."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineTitle": {
+    "defaultMessage": "Answering that there is no connection",
+    "description": "Heading of the group holding the words the participant chooses to say the two people in front of them are not connected."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthEdgeDescription": {
+    "defaultMessage": "Choose the kind of connection an answer on the scale records between the pair.",
+    "description": "Description of the group that says what answering on the scale records between the two people a Tie-Strength Census prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthEdgeHint": {
+    "defaultMessage": "A connection of this type is created between the two people whenever the participant answers on the scale.",
+    "description": "Guidance under the control that picks what answering on the scale records between the two people a Tie-Strength Census prompt asked about."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthEdgeRequired": {
+    "defaultMessage": "Choose the type of connection this prompt creates.",
+    "description": "Refusal shown when a researcher saves a Tie-Strength Census prompt without saying what an answer on the scale records."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthEdgeTitle": {
+    "defaultMessage": "Connection rated",
+    "description": "Heading of the group that says which kind of connection the participant’s answer on the scale describes."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthGuidance": {
+    "defaultMessage": "The participant sees two people side by side and answers on a scale, so write the question about the pair in front of them — “how close are these two people?” rather than a name — and phrase it so that every point on the scale is a sensible answer.",
+    "description": "Guidance shown above the box where a researcher writes a Tie-Strength Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question a scale can answer."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthPlaceholder": {
+    "defaultMessage": "How close are these two people?",
+    "description": "Example question in the empty box where a researcher writes a Tie-Strength Census prompt."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleCreateLabel": {
+    "defaultMessage": "Create a new attribute",
+    "description": "Button that opens the codebook editor for inventing the attribute whose ordered values become the points of the scale. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleDescription": {
+    "defaultMessage": "Choose the attribute whose ordered values the participant answers on.",
+    "description": "Description of the group that picks the attribute whose ordered values are the points of the scale. The attribute belongs to the connection this prompt creates, not to either person."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleEmpty": {
+    "defaultMessage": "This connection type has no ordinal attributes yet. Create one to say what the scale is.",
+    "description": "Shown in place of the attribute picker’s options when the kind of connection this prompt creates has no attribute whose answers run in an order."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleGoneRefusal": {
+    "defaultMessage": "This attribute can no longer be the scale for this connection. Choose another one.",
+    "description": "Refusal shown on the attribute picker when a researcher saves a Tie-Strength Census prompt whose scale has been deleted from the codebook, moved to another kind of answer, or belongs to a different connection type."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleHint": {
+    "defaultMessage": "The participant taps one of this attribute’s values, and it is recorded on the connection.",
+    "description": "Guidance under the attribute picker in a Tie-Strength Census prompt, saying where the participant’s answer is stored."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleLabel": {
+    "defaultMessage": "Attribute",
+    "description": "Label of the control that picks which attribute of the connection holds the participant’s answer. An attribute is one thing an interview records."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleLimitDescription": {
+    "defaultMessage": "This interface is designed for up to five points on the scale, with the decline answer beside them. Beyond that they become hard to read and hard to tap, which costs data quality.",
+    "description": "Body of the warning shown when a Tie-Strength Census prompt would draw more points on its scale than its interview screen is designed for. The decline answer is the extra control the participant uses to say the two people are not connected."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleLimitTitle": {
+    "defaultMessage": "More answers than fit on one screen",
+    "description": "Heading of the warning shown when the attribute a Tie-Strength Census prompt uses offers more values than the interview screen can draw as points on its scale."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleRequired": {
+    "defaultMessage": "Choose the attribute the participant answers on.",
+    "description": "Refusal shown when a researcher saves a Tie-Strength Census prompt without saying which attribute holds the strength."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleTitle": {
+    "defaultMessage": "The scale",
+    "description": "Heading of the group that picks the attribute whose ordered values the participant answers on — the points running from least to most."
+  },
   "protocolBuilder.coarseDateBound.monthPart": {
     "defaultMessage": "Month",
     "description": "Names the month half of a bounding date that is written as a year and a month. Also the empty state of that dropdown."
@@ -2650,6 +2870,30 @@
   "protocolBuilder.protocolContext.variableIdReused": {
     "defaultMessage": "Attribute record key \"{variableId}\" is reused across entity types (first declared in {firstOwnerSectionId}).",
     "description": "Why part of the codebook could not be read: two entity types store an attribute under the same key. variableId is the key; firstOwnerSectionId identifies the part of the protocol that used it first."
+  },
+  "protocolBuilder.removeAfterConsideration.description": {
+    "defaultMessage": "Decide what happens to a person once the participant has finished considering them.",
+    "description": "Description of the section named above."
+  },
+  "protocolBuilder.removeAfterConsideration.fieldHint": {
+    "defaultMessage": "Removing them keeps the remaining choices short. Keeping them lets the participant revisit an answer.",
+    "description": "Guidance under that control, giving the reason to prefer each of its two answers."
+  },
+  "protocolBuilder.removeAfterConsideration.fieldLabel": {
+    "defaultMessage": "After a person has been considered",
+    "description": "Label of the two-answer control that decides what becomes of a person the participant has already been asked about."
+  },
+  "protocolBuilder.removeAfterConsideration.keepLabel": {
+    "defaultMessage": "Keep them in the list",
+    "description": "The answer that leaves a person in the list the participant chooses from after they have been asked about, so an answer can be revisited."
+  },
+  "protocolBuilder.removeAfterConsideration.removeLabel": {
+    "defaultMessage": "Remove them from the list",
+    "description": "The answer that takes a person out of the list the participant chooses from once they have been asked about."
+  },
+  "protocolBuilder.removeAfterConsideration.title": {
+    "defaultMessage": "Node availability",
+    "description": "Names this section of the stage editor, in the editor’s outline and to assistive technology. A node is one member of the network the participant is building; this section decides whether one they have already been asked about stays available to be asked about again."
   },
   "protocolBuilder.resourceBrowser.emptyState": {
     "defaultMessage": "There are no resources to choose from yet.",
