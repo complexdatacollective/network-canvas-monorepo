@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import type { Command, SectionDoc } from '@codaco/studio-sync/apply';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
@@ -50,6 +52,15 @@ function ItemsProbe() {
 const probedItems = (): unknown =>
   JSON.parse(screen.getByTestId('items').textContent ?? 'null');
 
+/**
+ * What Studio asks before letting a researcher leave a stage, read the way
+ * its editor reads it.
+ */
+function DirtyFlag() {
+  const dirty = useFormStore(selectIsFormDirty);
+  return <p data-testid="form-dirty">{dirty ? 'dirty' : 'clean'}</p>;
+}
+
 function renderEditor(readOnly = false) {
   const held: { apply?: ApplyOwnCommands } = {};
 
@@ -66,6 +77,7 @@ function renderEditor(readOnly = false) {
         <Probe />
         <Field name="title" label="Page heading" component={InputField} />
         <ItemsProbe />
+        <DirtyFlag />
       </BuilderSection>
     ),
   });
@@ -154,6 +166,32 @@ describe('the form’s own structural writes', () => {
       title: 'Half-written heading',
       items: [{ id: 'a', type: 'text', content: 'Who?' }],
     });
+  });
+
+  it('leaves the form dirty, because nothing about it was saved', async () => {
+    const { harness, apply } = renderEditor();
+
+    const control = await screen.findByRole('textbox', {
+      name: 'Page heading',
+    });
+    await harness.user.clear(control);
+    await harness.user.type(control, 'Half-written heading');
+
+    apply([
+      {
+        op: 'set',
+        key: 'items',
+        value: [{ id: 'a', type: 'text', content: 'Who?' }],
+      },
+    ]);
+
+    // The write moves the document the form is holding, out of the values on
+    // screen, and reaches no protocol at all. A form that read the move as a
+    // save would report itself clean with both halves still to write, and
+    // Studio would let the researcher leave without asking about either.
+    await waitFor(() =>
+      expect(screen.getByTestId('form-dirty')).toHaveTextContent('dirty'),
+    );
   });
 
   it('is visible to a section reading a path no control covers', async () => {

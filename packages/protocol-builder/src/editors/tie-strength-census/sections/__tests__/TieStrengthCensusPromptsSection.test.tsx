@@ -1,5 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   renderStageEditor,
@@ -352,6 +355,125 @@ describe('a tie-strength prompt whose scale has gone', () => {
     expect(
       await screen.findByText(
         'This attribute can no longer be the scale for this connection. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
+
+const PEDIGREE_SECTION = sectionId({
+  kind: 'stage',
+  stageId: 'family-pedigree-1',
+});
+const CENSUS_EDGE = 'knows';
+const CENSUS_EDGE_SECTION = sectionId({
+  kind: 'codebookEdge',
+  typeId: CENSUS_EDGE,
+});
+const PEDIGREE_EDGE_SECTION = sectionId({
+  kind: 'codebookEdge',
+  typeId: 'family_edge',
+});
+const SCALE_VARIABLE = 'closeness';
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const variablesOf = (section: Readonly<SectionDoc> | undefined): SectionDoc =>
+  isRecord(section?.variables) ? section.variables : {};
+
+/**
+ * The protocol's Family Pedigree, recording its relationships as the
+ * connection type this census asks about, and taking this prompt's scale as
+ * the attribute that says whether a relationship is current.
+ *
+ * A pedigree slot is claimed OUTRIGHT: the interface derives that attribute
+ * from the tree the participant draws, so a second writer would go on
+ * overwriting it. Nothing says what KIND of attribute a slot may claim —
+ * `edgeConfig.isActiveVariable` declares no `requireType` — so a protocol can
+ * hand an ordinal scale to the pedigree and leave a census prompt pointing at
+ * the same attribute.
+ *
+ * The pedigree's own attributes travel with it onto the connection type it now
+ * records, so the slots it keeps name attributes that exist.
+ */
+function pedigreeClaimsTheScale(harness: StageEditorHarness): void {
+  const sections = harness.protocolSections();
+  const pedigree = sections[PEDIGREE_SECTION];
+  const edgeConfig = isRecord(pedigree?.edgeConfig)
+    ? pedigree.edgeConfig
+    : undefined;
+  const censusEdge = sections[CENSUS_EDGE_SECTION];
+  if (pedigree === undefined || edgeConfig === undefined) {
+    throw new Error(
+      'the fixture protocol has no "family-pedigree-1" stage with an edge configuration, so nothing here can claim the scale.',
+    );
+  }
+  if (censusEdge === undefined) {
+    throw new Error(
+      `the fixture protocol has no "${CENSUS_EDGE}" edge type, which is the one this census's prompt asks about.`,
+    );
+  }
+  if (edgeConfig.type === CENSUS_EDGE) {
+    throw new Error(
+      `the fixture pedigree already records "${CENSUS_EDGE}" connections, so pointing it there proves nothing.`,
+    );
+  }
+
+  harness.receiveCodebookUpdate({
+    edge: {
+      [CENSUS_EDGE]: {
+        ...censusEdge,
+        variables: {
+          ...variablesOf(censusEdge),
+          ...variablesOf(sections[PEDIGREE_EDGE_SECTION]),
+        },
+      },
+    },
+  });
+  act(() => {
+    harness.host.store.applyAsCollaborator(PEDIGREE_SECTION, {
+      ...pedigree,
+      edgeConfig: {
+        ...edgeConfig,
+        type: CENSUS_EDGE,
+        isActiveVariable: SCALE_VARIABLE,
+      },
+    });
+  });
+}
+
+/**
+ * A prompt whose scale another interface sets for itself.
+ *
+ * The picker drops such an attribute, so it can never be chosen here — but a
+ * prompt saved before the claim existed still names it, and the picker keeps a
+ * stored pick on offer whatever becomes of it. So the save is the only thing
+ * that can refuse it, and it refuses even a pick this edit did not touch:
+ * saving the prompt again would go on overwriting the value the pedigree
+ * computes.
+ */
+describe('a tie-strength prompt whose scale a pedigree sets', () => {
+  it('refuses the save, and names the interface that sets it', async () => {
+    const harness = renderStageEditor(openSection());
+    await harness.opened();
+    pedigreeClaimsTheScale(harness);
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    // Still the prompt's own pick, and still on offer: blanking it would hide
+    // the reference the researcher has to repair.
+    expect(
+      await screen.findByRole('combobox', { name: 'Attribute' }),
+    ).toHaveValue(SCALE_VARIABLE);
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(
+        'This attribute is set by the Family Pedigree interface, which records whether a relationship is current, so it cannot be used here. Choose a different attribute.',
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();

@@ -12,11 +12,9 @@ import { defineStageEditor } from '../defineStageEditor.tsx';
  * relationship — and nothing to configure about how the participant answers,
  * because they are not being asked anything.
  *
- * Skip logic is composed even so. The schema allows it on every stage and the
+ * Skip logic is composed even so: the schema allows it on every stage and the
  * interview runtime honours it generically, so a researcher who wants a page
- * shown to only some participants has to be able to say so — and a section
- * left out would not merely hide the setting, it would let a save delete skip
- * logic somebody had already authored.
+ * shown to only some participants needs a way to say so.
  */
 export const informationStageEditor = defineStageEditor('Information', [
   stageHeading({ documentation: 'information' }),
