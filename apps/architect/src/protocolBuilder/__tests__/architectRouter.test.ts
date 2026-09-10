@@ -15,7 +15,7 @@ import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 import { timelineActions } from '~/ducks/middleware/timeline';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
-import { setActiveProtocolId } from '~/ducks/modules/app';
+import { setActiveProtocolId, setProtocolLockState } from '~/ducks/modules/app';
 import { rootReducer } from '~/ducks/modules/root';
 import { getAssetManifest, getCanonicalProtocol } from '~/selectors/protocol';
 
@@ -42,6 +42,9 @@ vi.mock('~/utils/assetUtils', async (importOriginal) => ({
 }));
 
 const PROTOCOL_ID = 'library-row-1';
+
+/** What an editor calls the tab holding the saved copy, when it is not this one. */
+const OTHER_TAB = 'Another tab';
 
 /**
  * The edit these calls are made from: one stage editor or codebook dialog,
@@ -78,7 +81,7 @@ const openProtocol = (
       options.withEgo === false ? { ...protocol, codebook } : protocol,
     ),
   );
-  return { store, client: createArchitectClient(store) };
+  return { store, client: createArchitectClient(store, OTHER_TAB) };
 };
 
 /** A file imported through the resource lifecycle, as an open edit's own. */
@@ -459,7 +462,7 @@ describe("Architect's in-process protocol-builder host", () => {
     store.dispatch(
       setActiveProtocol(CurrentProtocolSchema.parse(allInterfaces)),
     );
-    const router = createArchitectRouter(store);
+    const router = createArchitectRouter(store, OTHER_TAB);
     const reader: ProtocolBuilderClient = createRouterClient(router);
     const writer: ProtocolBuilderClient = createRouterClient(router);
 
@@ -478,7 +481,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(stageLabel(store, 'information-1')).toBe(
       'Written by the second client',
     );
-    const separate = createArchitectClient(store);
+    const separate = createArchitectClient(store, OTHER_TAB);
     const { definedError } = await safe(
       separate.submit({
         protocolId: PROTOCOL_ID,
@@ -1427,5 +1430,147 @@ describe("Architect's in-process protocol-builder host", () => {
 
     // Nothing reached the protocol that is open now.
     expect(getAssetManifest(store.getState())).toEqual(before);
+  });
+  /**
+   * Architect's saved copy is a library row one tab holds at a time. A tab that
+   * has been demoted may read the protocol and may not write it: a write taken
+   * here would look saved and be dropped, and — while a reclaim is blocked —
+   * would additionally replace the codebook from a snapshot taken before the
+   * other tab's edits.
+   *
+   * The lock table cannot answer for this on its own. It records the editors of
+   * THIS tab, and every one of these calls is made by an editor that either
+   * holds its own section or needs no lock at all, so each refusal below is
+   * about the protocol rather than about the section.
+   */
+  describe('a tab that no longer holds the saved copy', () => {
+    it('opens a stage read-only, naming the tab that has it', async () => {
+      const { store, client } = openProtocol();
+      store.dispatch(setProtocolLockState('open-elsewhere'));
+
+      const opened = await client.acquireLock({
+        protocolId: PROTOCOL_ID,
+        sectionId: INFORMATION,
+      });
+
+      expect(opened.lock).toBe('readOnly');
+      if (opened.lock !== 'readOnly') return;
+      expect(opened.holder.displayName).toBe(OTHER_TAB);
+      // The document still arrives: a demoted tab shows the researcher the
+      // stage, it just cannot write it.
+      expect(opened.document.id).toBe('information-1');
+    });
+
+    it('refuses a submit raised by an editor opened before the demotion', async () => {
+      const { store, client } = openProtocol();
+      const held = await client.acquireLock({
+        protocolId: PROTOCOL_ID,
+        sectionId: INFORMATION,
+      });
+      store.dispatch(setProtocolLockState('open-elsewhere'));
+
+      const { definedError, isSuccess } = await safe(
+        client.submit({
+          protocolId: PROTOCOL_ID,
+          requestId: nextRequestId(),
+          sectionId: INFORMATION,
+          document: { ...held.document, label: 'Saved by a demoted tab' },
+          revision: held.revision,
+        }),
+      );
+
+      expect(isSuccess).toBe(false);
+      expect(definedError?.code).toBe('NOT_LOCK_HOLDER');
+      expect(definedError?.data).toMatchObject({
+        holder: { displayName: OTHER_TAB },
+      });
+      expect(stageLabel(store, 'information-1')).not.toBe(
+        'Saved by a demoted tab',
+      );
+    });
+
+    it('refuses a create, so no stage is added the other tab would never see', async () => {
+      const { store, client } = openProtocol();
+      const before = stageIds(store);
+      const template = await client.getSection({
+        protocolId: PROTOCOL_ID,
+        sectionId: INFORMATION,
+      });
+      const { id: _id, ...withoutId } = template.document;
+      store.dispatch(setProtocolLockState('reclaim-blocked'));
+
+      const { definedError, isSuccess } = await safe(
+        client.create({
+          protocolId: PROTOCOL_ID,
+          requestId: nextRequestId(),
+          kind: 'stage',
+          document: { ...withoutId, label: 'Added by a demoted tab' },
+          position: 0,
+        }),
+      );
+
+      expect(isSuccess).toBe(false);
+      expect(definedError?.code).toBe('SECTIONS_LOCKED');
+      expect(definedError?.data).toMatchObject({
+        blocked: [{ holder: { displayName: OTHER_TAB } }],
+      });
+      expect(stageIds(store)).toEqual(before);
+    });
+
+    it('refuses a delete, so no stage is removed from a copy it cannot write', async () => {
+      const { store, client } = openProtocol();
+      store.dispatch(setProtocolLockState('open-elsewhere'));
+
+      const { definedError, isSuccess } = await safe(
+        client.delete({ protocolId: PROTOCOL_ID, sectionId: INFORMATION }),
+      );
+
+      expect(isSuccess).toBe(false);
+      expect(definedError?.code).toBe('SECTIONS_LOCKED');
+      expect(stageIds(store)).toContain('information-1');
+    });
+
+    it('refuses a refactor, so the codebook keeps what it had', async () => {
+      const { store, client } = openProtocol();
+      store.dispatch(setProtocolLockState('open-elsewhere'));
+
+      const { definedError, isSuccess } = await safe(
+        client.refactor.deleteVariable({
+          protocolId: PROTOCOL_ID,
+          subject: { entity: 'node', type: 'person' },
+          variableId: 'unused-by-any-stage',
+        }),
+      );
+
+      expect(isSuccess).toBe(false);
+      expect(definedError?.code).toBe('SECTIONS_LOCKED');
+      expect(personVariables(store).name).toBeDefined();
+    });
+
+    it('refuses an import, so no bytes are left behind for a save that cannot happen', async () => {
+      const { store, client } = openProtocol();
+      const before = getAssetManifest(store.getState());
+      store.dispatch(setProtocolLockState('open-elsewhere'));
+
+      const staged = await client.resources.stage({
+        protocolId: PROTOCOL_ID,
+        editId: EDIT,
+        requestId: 'import-while-demoted',
+        request: {
+          kind: 'content',
+          contentKind: 'image',
+          name: 'A photograph',
+          source: 'photo.png',
+          contentType: 'image/png',
+          bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+        },
+      });
+
+      expect(staged).toMatchObject({
+        status: 'failed',
+        failure: { reason: 'read-only', retryable: false },
+      });
+      expect(getAssetManifest(store.getState())).toEqual(before);
+    });
   });
 });

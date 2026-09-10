@@ -19,7 +19,8 @@ import {
   sectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
-import { getActiveProtocolId } from '~/ducks/modules/app';
+import { hasOpenNestedEditor } from '~/components/DialogForm/nestedDraftRegistry';
+import { getActiveProtocolId, getProtocolLockState } from '~/ducks/modules/app';
 import {
   deleteTypeAsync,
   deleteVariableAsync,
@@ -31,6 +32,10 @@ import {
   getVariableUsageHits,
 } from '~/selectors/indexes';
 import { getCanonicalProtocol } from '~/selectors/protocol';
+import {
+  assetImportSurface,
+  refusedCommitError,
+} from '~/utils/protocolLockMessages';
 
 import type { ArchitectStore } from './architectStore.ts';
 import { ProtocolRevisions } from './protocolRevisions.ts';
@@ -56,16 +61,44 @@ const os = implement(contract);
  * (`ProtocolRevisions`), so the store stays the single record of what the
  * protocol is.
  *
- * Locks are granted unconditionally — one researcher, one tab, one store — but
- * they are kept, because the contract makes holding one the precondition for a
- * submit and an editor that never acquired one has a bug the host should name.
+ * Locks are granted to the tab that owns the protocol — one researcher, one
+ * store — and they are kept, because the contract makes holding one the
+ * precondition for a submit and an editor that never acquired one has a bug
+ * the host should name.
+ *
+ * A tab that does NOT own the protocol is a reader. Architect's saved copy is
+ * a library row one tab holds at a time, so a write raised in a demoted tab
+ * would be taken into memory, look saved, and be dropped: the contract already
+ * describes that situation — a section somebody else is editing — so it is
+ * answered that way, and `otherTabName` is what an editor calls them.
  */
-export function createArchitectRouter(store: ArchitectStore) {
+export function createArchitectRouter(
+  store: ArchitectStore,
+  otherTabName: string,
+) {
   const revisions = new ProtocolRevisions(store);
   const resources = new ResourceBridge(store);
   const ledger = new WriteLedger();
   const isOpen = (protocolId: string) =>
     getActiveProtocolId(store.getState()) === protocolId;
+  /**
+   * The tab holding the saved copy, when it is not this one.
+   *
+   * `undefined` while this tab owns the protocol, which is what every write
+   * below asks: a value here IS the refusal, and the presence it carries is
+   * who the editor names.
+   */
+  const otherTab = (): Presence | undefined =>
+    getProtocolLockState(store.getState()) === 'owned'
+      ? undefined
+      : {
+          // Identity is the connection rather than the person, and the other
+          // tab is the only connection Architect can name.
+          sessionId: OTHER_TAB_SESSION,
+          userId: OTHER_TAB_SESSION,
+          displayName: otherTabName,
+          mode: 'editing' as const,
+        };
 
   return {
     acquireLock: os.acquireLock.handler(({ input, errors }) => {
@@ -74,6 +107,14 @@ export function createArchitectRouter(store: ArchitectStore) {
       }
       const state = revisions.read(input.sectionId);
       if (state === undefined) throw errors.SECTION_NOT_FOUND({ data: input });
+      const holder = otherTab();
+      // Read-only rather than refused outright: the researcher may still look
+      // at the stage, and the editor that opens says who has it and takes its
+      // fields out of reach — which is what stops a draft this tab could never
+      // save from being typed in the first place.
+      if (holder !== undefined) {
+        return { lock: 'readOnly' as const, ...state, holder };
+      }
       revisions.acquire(input.sectionId);
       return { lock: 'held' as const, ...state };
     }),
@@ -143,6 +184,12 @@ export function createArchitectRouter(store: ArchitectStore) {
       }
       const before = revisions.read(input.sectionId);
       if (before === undefined) throw errors.SECTION_NOT_FOUND({ data: input });
+      const holder = otherTab();
+      if (holder !== undefined) {
+        throw errors.NOT_LOCK_HOLDER({
+          data: { sectionId: input.sectionId, holder },
+        });
+      }
       const promotion = input.promote;
       if (revisions.holderOf(input.sectionId) === undefined) {
         throw errors.NOT_LOCK_HOLDER({ data: { sectionId: input.sectionId } });
@@ -248,6 +295,9 @@ export function createArchitectRouter(store: ArchitectStore) {
             : { promoted: [...already.promoted] }),
         };
       }
+      const blocked = protocolHeldElsewhere(otherTab(), STAGE_ORDER_SECTION);
+      if (blocked !== undefined)
+        throw errors.SECTIONS_LOCKED({ data: blocked });
       const promotion = input.promote;
       const held = heldSections(revisions, [
         ...(input.kind === 'stage' ? [STAGE_ORDER_SECTION] : []),
@@ -330,6 +380,9 @@ export function createArchitectRouter(store: ArchitectStore) {
       ) {
         throw errors.SECTION_NOT_FOUND({ data: input });
       }
+      const blocked = protocolHeldElsewhere(otherTab(), input.sectionId);
+      if (blocked !== undefined)
+        throw errors.SECTIONS_LOCKED({ data: blocked });
       const held = heldSections(revisions, [
         input.sectionId,
         STAGE_ORDER_SECTION,
@@ -391,6 +444,10 @@ export function createArchitectRouter(store: ArchitectStore) {
                       : 'codebookEdge',
                   typeId: input.subject.type,
                 });
+          const blocked = protocolHeldElsewhere(otherTab(), owner);
+          if (blocked !== undefined) {
+            throw errors.SECTIONS_LOCKED({ data: blocked });
+          }
           try {
             const { changed } = await revisions.write(() =>
               store
@@ -429,6 +486,10 @@ export function createArchitectRouter(store: ArchitectStore) {
             kind: input.entity === 'node' ? 'codebookNode' : 'codebookEdge',
             typeId: input.typeId,
           });
+          const blocked = protocolHeldElsewhere(otherTab(), owner);
+          if (blocked !== undefined) {
+            throw errors.SECTIONS_LOCKED({ data: blocked });
+          }
           try {
             const { changed } = await revisions.write(() =>
               store
@@ -472,6 +533,26 @@ export function createArchitectRouter(store: ArchitectStore) {
       stage: os.resources.stage.handler(async ({ input, errors }) => {
         if (!isOpen(input.protocolId)) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        }
+        // An import writes bytes into a store keyed by the protocol id and then
+        // names them in the manifest, so a demoted tab would leave a file
+        // behind that the manifest entry naming it can never be saved beside.
+        // The refusal is a failure of the gateway rather than a thrown error
+        // because that is what every other thing this procedure cannot do is,
+        // and the picker already has somewhere to say it.
+        const importRefusal = refusedCommitError(
+          getProtocolLockState(store.getState()),
+          assetImportSurface(hasOpenNestedEditor()),
+        );
+        if (importRefusal !== null) {
+          return {
+            status: 'failed' as const,
+            failure: {
+              reason: 'read-only' as const,
+              message: importRefusal,
+              retryable: false,
+            },
+          };
         }
         return (
           await revisions.write(() =>
@@ -521,10 +602,36 @@ function laterCursor(
   return Number(lastEventId) > Number(since) ? lastEventId : since;
 }
 
+/**
+ * The one connection Architect can name: whichever tab holds the saved copy.
+ *
+ * Constant because there is exactly one of them from this tab's point of view
+ * — the library row is held or it is not — and an editor that saw a new
+ * identity on every read would report the holder changing while nothing had.
+ */
+const OTHER_TAB_SESSION = 'protocol-held-in-another-tab';
+
 type SectionHolder = Readonly<{
   sectionId: ProtocolSectionId;
   holder?: Presence;
 }>;
+
+/**
+ * A change spanning sections, refused because this tab does not hold the saved
+ * copy of the protocol.
+ *
+ * `undefined` while it does. The section named is the one the caller was
+ * writing: a refusal has to point somewhere, and the nearest true thing is
+ * that this write's own section belongs to the other tab.
+ */
+function protocolHeldElsewhere(
+  holder: Presence | undefined,
+  writing: ProtocolSectionId,
+): Readonly<{ blocked: SectionHolder[] }> | undefined {
+  return holder === undefined
+    ? undefined
+    : { blocked: [{ sectionId: writing, holder }] };
+}
 
 /**
  * The sections of `ids` an editor holds that a write may not write through.
@@ -553,8 +660,9 @@ function heldSections(
 /** The client `<ProtocolBuilder>` is handed: the router, called in process. */
 export function createArchitectClient(
   store: ArchitectStore,
+  otherTabName: string,
 ): ProtocolBuilderClient {
-  return createRouterClient(createArchitectRouter(store));
+  return createRouterClient(createArchitectRouter(store, otherTabName));
 }
 
 /**
