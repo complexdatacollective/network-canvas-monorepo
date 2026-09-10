@@ -1773,7 +1773,7 @@
   },
   "protocolBuilder.narrativePedigree.diseaseNoun": {
     "defaultMessage": "disease",
-    "description": "What one row of the disease list is called inside things said ABOUT it — \"Edit disease\", \"Remove this disease?\" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree."
+    "description": "What one row of the disease list is called inside things said ABOUT it — \"Edit disease\", \"Delete this disease?\" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree."
   },
   "protocolBuilder.narrativePedigree.diseaseUnnamed": {
     "defaultMessage": "Unnamed disease",
