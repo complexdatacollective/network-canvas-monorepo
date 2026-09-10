@@ -937,6 +937,7 @@
   "protocolBuilder.rosterColumns.missingColumn": "{column} — este atributo no está en el archivo de datos",
   "protocolBuilder.rosterColumns.missingColumnRefusal": "Esta fila apunta a un atributo que no está en el archivo de datos. Elige otro o elimina la fila.",
   "protocolBuilder.rosterColumns.missingSearchColumnRefusal": "Esta búsqueda usa un atributo que no está en el archivo de datos. Desmárcalo y elige otro.",
+  "protocolBuilder.rosterColumns.unreadableDescription": "No se pudo leer el archivo de datos elegido, así que no hay nada que elegir. Se conservan los ajustes que esta etapa ya tiene.",
   "protocolBuilder.ruleCodebook.operatorNoLongerOffered": "{operator} (ya no está disponible)",
   "protocolBuilder.ruleCodebook.operatorNotValidHere": "{operator} (no es válido para este atributo)",
   "protocolBuilder.ruleCodebook.unusableValueBoolean": "un valor verdadero/falso",
