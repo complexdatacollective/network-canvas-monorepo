@@ -179,13 +179,13 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   const layoutOptions = useVariableChoices({
     subject,
     types: LAYOUT_TYPES,
-    unvalidatedWriter: true,
+    writerClass: 'unvalidated',
     ...(committedLayout === undefined ? {} : { currentValue: committedLayout }),
   });
   const highlightOptions = useVariableChoices({
     subject,
     types: BOOLEAN_TYPES,
-    unvalidatedWriter: true,
+    writerClass: 'unvalidated',
     ...(committedHighlight === undefined
       ? {}
       : { currentValue: committedHighlight }),

@@ -43,6 +43,7 @@ import { nameGeneratorQuickAddStageEditor } from './editors/name-generator-quick
 import { nameGeneratorRosterStageEditor } from './editors/name-generator-roster/NameGeneratorRosterStageEditor.ts';
 import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
 import { narrativeStageEditor } from './editors/narrative/NarrativeStageEditor.ts';
+import { networkComposerStageEditor } from './editors/network-composer/NetworkComposerStageEditor.ts';
 import { oneToManyDyadCensusStageEditor } from './editors/one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
 import { ordinalBinStageEditor } from './editors/ordinal-bin/OrdinalBinStageEditor.ts';
 import { sociogramStageEditor } from './editors/sociogram/SociogramStageEditor.ts';
@@ -132,6 +133,7 @@ const REGISTRY_PARTS = [
   nameGeneratorRosterStageEditor,
   nameGeneratorStageEditor,
   narrativeStageEditor,
+  networkComposerStageEditor,
   oneToManyDyadCensusStageEditor,
   ordinalBinStageEditor,
   sociogramStageEditor,
@@ -231,7 +233,6 @@ export const AWAITING_STAGE_EDITORS = [
   'Anonymisation',
   'Geospatial',
   'NarrativePedigree',
-  'NetworkComposer',
 ] as const satisfies readonly UnregisteredStageType[];
 
 export type Assert<T extends true> = T;
