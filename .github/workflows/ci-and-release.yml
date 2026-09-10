@@ -719,6 +719,10 @@ jobs:
         id: mapbox-tokens
         continue-on-error: true
         run: pnpm check:mapbox-tokens
+      - name: Check the hydration flag has one implementation
+        id: hydration-flag
+        continue-on-error: true
+        run: pnpm check:hydration-flag
       # Studio's ERD and README schema section are generated and committed. The
       # render is CPU-only — no database — so it belongs beside the other
       # artifact checks rather than in the server's vitest lane, where it
@@ -837,6 +841,7 @@ jobs:
           CHANGESETS_OUTCOME: ${{ steps.changesets.outcome }}
           COMPAT_PROTOCOLS_OUTCOME: ${{ steps.compat-protocols.outcome }}
           MAPBOX_TOKENS_OUTCOME: ${{ steps.mapbox-tokens.outcome }}
+          HYDRATION_FLAG_OUTCOME: ${{ steps.hydration-flag.outcome }}
           STUDIO_SCHEMA_DOCS_OUTCOME: ${{ steps.studio-schema-docs.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
@@ -852,6 +857,7 @@ jobs:
             "changesets=$CHANGESETS_OUTCOME" \
             "compat-protocols=$COMPAT_PROTOCOLS_OUTCOME" \
             "mapbox-tokens=$MAPBOX_TOKENS_OUTCOME" \
+            "hydration-flag=$HYDRATION_FLAG_OUTCOME" \
             "studio-schema-docs=$STUDIO_SCHEMA_DOCS_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \

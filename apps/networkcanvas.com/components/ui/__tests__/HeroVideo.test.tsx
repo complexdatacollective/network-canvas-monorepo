@@ -1,5 +1,7 @@
 import { render } from '@testing-library/react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { act } from 'react';
+import { hydrateRoot } from 'react-dom/client';
+import { renderToStaticMarkup, renderToString } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HeroVideo } from '../HeroVideo';
@@ -20,6 +22,31 @@ describe('HeroVideo', () => {
 
     expect(markup).not.toContain('<video');
     expect(markup).toContain('src="/images/hero-video-poster.jpg"');
+  });
+
+  it('hydrates the server-rendered poster without a mismatch before swapping in the video', async () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<HeroVideo />);
+    document.body.append(container);
+
+    expect(container.querySelector('video')).toBeNull();
+    expect(container.querySelector('img')).toHaveAttribute(
+      'src',
+      '/images/hero-video-poster.jpg',
+    );
+
+    const recoverableError = vi.fn();
+    const root = hydrateRoot(container, <HeroVideo />, {
+      onRecoverableError: recoverableError,
+    });
+    await act(async () => {});
+
+    expect(recoverableError).not.toHaveBeenCalled();
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('video')).not.toBeNull();
+
+    await act(async () => root.unmount());
+    container.remove();
   });
 
   it('autoplays the muted inline video after mounting for normal motion', () => {
