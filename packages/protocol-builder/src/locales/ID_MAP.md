@@ -283,30 +283,38 @@ wherever one reaches the screen.
 
 Named here so a later split takes the name rather than inventing a synonym.
 
-| `<area>`               | Will own the copy in                         | Expected in |
-| ---------------------- | -------------------------------------------- | ----------- |
-| `nodePanels`           | `sections/NodePanelsSection`                 | family D    |
-| `alterLimits`          | `sections/AlterLimitsSection`                | family D    |
-| `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection`       | family D    |
-| `narrativePedigree`    | `editors/narrative-pedigree/sections/`       | family F    |
-| `geospatial`           | `sections/geospatial/`, geospatial `fields/` | family F    |
-| `anonymisation`        | `sections/anonymisation/`                    | family F    |
+| `<area>`               | Will own the copy in                   | Expected in |
+| ---------------------- | -------------------------------------- | ----------- |
+| `nodePanels`           | `sections/NodePanelsSection`           | family D    |
+| `alterLimits`          | `sections/AlterLimitsSection`          | family D    |
+| `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection` | family D    |
+| `narrativePedigree`    | `editors/narrative-pedigree/sections/` | family F    |
+| `anonymisation`        | `sections/anonymisation/`              | family F    |
 
 ### One file per family — the interface families
 
-| `<area>`        | Owns the copy in                      | Declared in                                                     |
-| --------------- | ------------------------------------- | --------------------------------------------------------------- |
-| `pedigree`      | `editors/family-pedigree/sections/`   | `editors/family-pedigree/sections/pedigreeMessages.ts`          |
-| `networkCanvas` | `sections/canvas/`                    | `sections/canvas/canvasMessages.ts`                             |
-| `networkCanvas` | `sections/canvas-behaviours/`         | `sections/canvas-behaviours/canvasBehavioursMessages.ts`        |
-| `networkCanvas` | `editors/sociogram/sections/prompts/` | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts` |
-| `networkCanvas` | `editors/narrative/sections/presets/` | `editors/narrative/sections/presets/narrativePresetMessages.ts` |
-| `networkCanvas` | `editors/network-composer/sections/`  | `editors/network-composer/sections/composerMessages.ts`         |
-| `networkCanvas` | the composer's form-field list        | `sections/form-fields/composerFormFieldMessages.ts`             |
+| `<area>`        | Owns the copy in                                     | Declared in                                                     |
+| --------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
+| `pedigree`      | `editors/family-pedigree/sections/`                  | `editors/family-pedigree/sections/pedigreeMessages.ts`          |
+| `networkCanvas` | `sections/canvas/`                                   | `sections/canvas/canvasMessages.ts`                             |
+| `networkCanvas` | `sections/canvas-behaviours/`                        | `sections/canvas-behaviours/canvasBehavioursMessages.ts`        |
+| `networkCanvas` | `editors/sociogram/sections/prompts/`                | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts` |
+| `networkCanvas` | `editors/narrative/sections/presets/`                | `editors/narrative/sections/presets/narrativePresetMessages.ts` |
+| `networkCanvas` | `editors/network-composer/sections/`                 | `editors/network-composer/sections/composerMessages.ts`         |
+| `networkCanvas` | the composer's form-field list                       | `sections/form-fields/composerFormFieldMessages.ts`             |
+| `geospatial`    | `editors/geospatial/sections/`, `fields/geospatial/` | `fields/geospatial/geospatialMessages.ts`                       |
 
-The remaining three families of the same series — `narrativePedigree`,
-`geospatial` and `anonymisation` — keep their reserved names above and add a
-row here as each lands.
+The remaining two families of the same series — `narrativePedigree` and
+`anonymisation` — keep their reserved names above and add a row here as each
+lands.
+
+`geospatial` declares its whole family in one file under `fields/` rather
+than beside the editor, which is where the other families keep theirs. Two
+of its modules produce copy and render none — the basemap list and the centre
+and zoom validators — and the controls that DO render are fields the sections
+mount, so `fields/geospatial/` is the layer both halves already import. A
+message file beside the editor would have those fields importing an editor's
+directory, which nothing else in `fields/` does.
 
 `networkCanvas` takes six rows rather than one, and one of its modules
 (`sections/background/`) takes none. The area is one family — the canvas

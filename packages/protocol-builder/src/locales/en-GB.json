@@ -7,6 +7,10 @@
   "protocolBuilder.codebookEntity.colorRequired": "Choose a colour.",
   "protocolBuilder.codebookEntity.edgeColorOption": "Edge colour {index, number}",
   "protocolBuilder.codebookEntity.nodeColorOption": "Node colour {index, number}",
+  "protocolBuilder.geospatial.colorHint": "Selectable areas are outlined in this colour, and the area a participant chooses is filled with it.",
+  "protocolBuilder.geospatial.colorLabel": "Highlight colour",
+  "protocolBuilder.geospatial.colorOptionLabel": "Highlight colour {position}",
+  "protocolBuilder.geospatial.styleHint": "The map drawn beneath the selectable areas. Check that place names on it stay readable under the highlight colour.",
   "protocolBuilder.networkCanvas.composerEdgeTypeHint": "The kind of connection the participant draws. Its name and colour come from the codebook.",
   "protocolBuilder.networkCanvas.presetsTitle": "Visualisation presets",
   "protocolBuilder.pedigree.dependentStagesDescription": "These stages visualise this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have."

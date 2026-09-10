@@ -415,6 +415,12 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      */
     assets?: Readonly<Record<string, SectionDoc>>;
     /**
+     * The text this host serves for an asset `source`, for a file the protocol
+     * does not ship. A control that reads what is INSIDE a file has states
+     * only a file of that shape reaches.
+     */
+    assetBytes?: Readonly<Record<string, string>>;
+    /**
      * The host's action chrome, as a host would give it to the editor.
      *
      * Given, it is what gets rendered in the editor's slot, whichever of the
@@ -594,7 +600,7 @@ export function renderStageEditor<T extends StageType = StageType>(
 
   const host = createInMemoryHost({
     sections: seededSections(seeded, assetManifest),
-    assetContent: fixtureAssetContentFor(assetManifest),
+    assetContent: fixtureAssetContentFor(assetManifest, options.assetBytes),
     principal: HARNESS_PRINCIPAL,
   });
   const { protocolId, store } = host;

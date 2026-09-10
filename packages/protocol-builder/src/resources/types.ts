@@ -43,12 +43,6 @@ export type ResourceResult<T> =
  */
 export type StagedSecretHandle = string;
 
-export type StagedSecret = Readonly<{
-  /** Carries the asset id a stage field references; never the value. */
-  descriptor: ResourceDescriptor;
-  handle: StagedSecretHandle;
-}>;
-
 export type ResourceListOptions = Readonly<{
   kinds?: readonly ResourceKind[];
   status?: ResourceStatus;
