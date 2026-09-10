@@ -45,7 +45,6 @@ import {
   PromptTextPreview,
 } from '../../dyad-census/sections/PromptTextField.tsx';
 
-/** Where the prompt keeps the attribute the participant answers on. */
 const SCALE_FIELD = 'edgeVariable';
 const DECLINE_FIELD = 'negativeLabel';
 
@@ -53,13 +52,10 @@ const DECLINE_FIELD = 'negativeLabel';
 const SCALE_TYPE = 'ordinal' as const satisfies VariableType;
 
 /**
- * How many points the scale itself can carry.
- *
- * The decline answer is drawn beside them and is not counted, because it is
- * not one of the attribute's values: it is always there, whatever the
- * attribute holds, so counting it would only shift this number by one and make
- * the warning say something about a control it cannot see. Architect counts
- * the same way, though its wording claims otherwise.
+ * How many points the scale itself can carry. The decline answer is drawn
+ * beside them and is not counted: it is not one of the attribute's values, so
+ * counting it would make the warning speak about a control it cannot see.
+ * Architect counts the same way, though its wording claims otherwise.
  */
 const SCALE_LIMIT = 5;
 
@@ -230,23 +226,15 @@ function TieStrengthGuidance() {
  *
  * `edgeVariable` names an attribute OF `createEdge`, so a prompt keeping its
  * scale across a change of connection type names an attribute the new type
- * does not have. Nothing downstream can rescue that: the picker keeps a stored
- * pick on offer so reopening a prompt never loses it, and all it can say of a
- * stale one is that it is not available here — it cannot say the attribute is
- * sitting on the connection type the researcher just moved away from, which is
- * the one thing that would explain it. The save-time gate refuses the pick in
- * those same words, which stops the prompt being committed and explains it no
- * better.
+ * does not have. Nothing downstream can explain that: the picker can only say
+ * a stale pick is not available here, never that it belongs to the type the
+ * researcher just moved away from.
  *
- * The same rule the subject section applies one level up, where changing what
- * a stage is about throws away everything that described the old subject — and
- * an effect for the same reason: a caller's `onChange` on a Fresco field
- * REPLACES the store's own write rather than running beside it.
- *
- * The connection type ARRIVING is not a change of connection type. A prompt
- * opened on a saved row and a brand-new one both begin with nothing here, and
- * clearing on that first value would throw the saved scale away the moment the
- * researcher opened the prompt to read it.
+ * An effect rather than an `onChange`, because a caller's `onChange` on a
+ * Fresco field REPLACES the store's own write rather than running beside it.
+ * The connection type ARRIVING is not a change: a prompt opened on a saved row
+ * begins with nothing here, and clearing on that first value would throw the
+ * saved scale away the moment the researcher opened the prompt to read it.
  */
 function useClearScaleOnConnectionChange(createEdge: unknown): void {
   const clearValue = useFormStore((state) => state.clearValue);
@@ -266,11 +254,10 @@ function useClearScaleOnConnectionChange(createEdge: unknown): void {
  * The attribute of this connection type whose ordered values are the scale.
  *
  * An UNVALIDATED writer: the participant taps one of the values and it is
- * written straight onto the connection, with nothing to check the answer. So
- * the pool drops any attribute a form elsewhere already validates, and any one
- * an interface derives from the structure a participant builds. Re-offering
- * what this prompt already saved is never a new contradiction, which is what
- * the committed pick escapes.
+ * written straight onto the connection. So the pool drops any attribute a form
+ * elsewhere validates, and any one an interface derives for itself —
+ * re-offering what this prompt already saved is never a new contradiction,
+ * which is what the committed pick escapes.
  */
 function ScaleField({
   committed,
@@ -314,11 +301,8 @@ function ScaleField({
     );
   }, [allVariables, identity.id, picked, protocolContext, subject]);
 
-  /**
-   * How many values the scale would draw. Read from the codebook rather than
-   * from the row, because the values belong to the attribute rather than to
-   * this prompt — a collaborator adding a sixth changes what this stage shows.
-   */
+  // Read from the codebook rather than from the row: the values belong to the
+  // attribute, so a collaborator adding a sixth changes what this stage shows.
   const pickedVariable =
     picked === undefined ? undefined : allVariables[picked];
   const valueCount =
@@ -345,11 +329,9 @@ function ScaleField({
         required={intl.formatMessage(messages.scaleRequired)}
       />
       {/*
-        Creating one opens the codebook's own attribute editor rather than
-        asking for a name: an ordinal attribute IS its list of ordered values,
-        and the schema refuses one with fewer than two — so a name box would
-        send the researcher to the codebook and back to finish what they had
-        just started.
+        The codebook's own attribute editor rather than a name box: an ordinal
+        attribute IS its list of ordered values, and the schema refuses one
+        with fewer than two.
       */}
       <CreateVariableButton
         subject={subject}
@@ -418,25 +400,21 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
 /**
  * The questions a Tie-Strength Census asks about every pair of people.
  *
- * Two codebook picks per prompt, both of them the CONNECTION's rather than the
- * stage subject's: the type of connection the answer records, and the
- * attribute of that type whose ordered values the participant answers on. Both
- * can be invented from inside the prompt, and each lands in the codebook on
- * its own before the prompt is pointed at it.
+ * Two codebook picks per prompt, both the CONNECTION's rather than the stage
+ * subject's: the type of connection the answer records, and the attribute of
+ * that type whose ordered values the participant answers on.
  */
 export default function TieStrengthCensusPromptsSection() {
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
 
   /**
-   * The two refusals a Tie-Strength prompt can earn that no control can raise
-   * for itself, both of them about a pick that is on offer only because
-   * blanking it would hide the reference the researcher has to repair.
+   * The refusals a Tie-Strength prompt can earn that no control can raise for
+   * itself, all of them about a pick on offer only because blanking it would
+   * hide the reference the researcher has to repair.
    *
    * The connection type is asked about first: the scale hangs off it, so with
-   * the type gone there is no codebook to judge the attribute against — and a
-   * second sentence about an attribute that has nothing to belong to would say
-   * nothing true.
+   * the type gone there is no codebook to judge the attribute against.
    */
   const beforeSave = useCallback(
     (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
@@ -457,9 +435,7 @@ export default function TieStrengthCensusPromptsSection() {
       const allVariables = variablesForSubject(protocolContext, subject);
       // Deleted, or moved to a kind of answer the scale cannot draw. No escape
       // for a pick this edit did not change: the reference is unusable however
-      // it got there, and letting it through moves the refusal to the whole
-      // stage save, phrased by the schema about a codebook the researcher is no
-      // longer looking at.
+      // it got there.
       if (allVariables[variableId]?.type !== SCALE_TYPE) {
         return { refused: { fieldErrors: { [SCALE_FIELD]: [SCALE_GONE] } } };
       }
