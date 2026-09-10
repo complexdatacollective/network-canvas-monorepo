@@ -1887,6 +1887,10 @@
     "defaultMessage": "Recorded property",
     "description": "Label of the control that chooses which property of a selected area is stored as the participant’s answer. A property is one named field a GeoJSON feature carries."
   },
+  "protocolBuilder.geospatial.propertyLayerReading": {
+    "defaultMessage": "The map layer is still being read, so this property cannot be checked against it yet. Save again in a moment.",
+    "description": "Refusal shown under the recorded-property control when a researcher saves while the chosen map layer is still being read. Nothing is wrong with what they chose: the check simply cannot be made until the layer arrives, and saying so is what stops a property the layer may not have from being saved unchecked."
+  },
   "protocolBuilder.geospatial.propertyLoading": {
     "defaultMessage": "Reading the map layer.",
     "description": "Announced to screen readers only, while the chosen GeoJSON layer is being fetched and parsed to find out which properties it offers. Never shown on screen."

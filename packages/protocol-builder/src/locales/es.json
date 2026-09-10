@@ -471,6 +471,7 @@
   "protocolBuilder.geospatial.promptsWaitingDescription": "Elige el tipo con el que trabaja esta etapa antes de escribir sus preguntas.",
   "protocolBuilder.geospatial.propertyHint": "El valor de esta propiedad es lo que se guarda cuando un participante selecciona un área, así que elige una que esté rellena y sea única para cada entidad geográfica, como una sección censal, un código postal o el nombre de un barrio.",
   "protocolBuilder.geospatial.propertyLabel": "Propiedad registrada",
+  "protocolBuilder.geospatial.propertyLayerReading": "La capa del mapa todavía se está leyendo, así que esta propiedad aún no se puede comprobar con ella. Vuelve a guardar en un momento.",
   "protocolBuilder.geospatial.propertyLoading": "Leyendo la capa del mapa.",
   "protocolBuilder.geospatial.propertyMissingOptionLabel": "{property} — esta propiedad no está en la capa elegida",
   "protocolBuilder.geospatial.propertyMissingRefusal": "Esta propiedad no está en la capa del mapa elegida. Elige una que sí lo esté.",

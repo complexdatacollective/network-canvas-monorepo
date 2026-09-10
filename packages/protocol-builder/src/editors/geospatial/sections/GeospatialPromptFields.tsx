@@ -89,6 +89,10 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
       : { currentValue: committedVariable }),
   });
 
+  // ANOTHER prompt's: this row's own pick is skipped as the set is built, so
+  // the picker keeps offering it. One that dropped its own value would blank
+  // the control and write the blank over the reference the researcher has to
+  // resolve.
   const recordedByAnotherPrompt = useMemo(
     () =>
       new Set(
@@ -104,15 +108,8 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
 
   const options = useMemo(
     () =>
-      offered.filter(
-        // This row's own pick is always offered back, whatever the filter
-        // says: a picker that dropped its value would blank the control and
-        // write the blank over the reference the researcher has to resolve.
-        (option) =>
-          option.value === committedVariable ||
-          !recordedByAnotherPrompt.has(option.value),
-      ),
-    [committedVariable, offered, recordedByAnotherPrompt],
+      offered.filter((option) => !recordedByAnotherPrompt.has(option.value)),
+    [offered, recordedByAnotherPrompt],
   );
 
   return (

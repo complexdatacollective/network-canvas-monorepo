@@ -374,6 +374,13 @@ export const geospatialMessages = defineMessages({
     description:
       'Shown under the recorded-property control when the property the stage already records is not in the layer now chosen. The control looks answered and is not, so both the problem and the way out are named.',
   },
+  propertyLayerReading: {
+    id: 'protocolBuilder.geospatial.propertyLayerReading',
+    defaultMessage:
+      'The map layer is still being read, so this property cannot be checked against it yet. Save again in a moment.',
+    description:
+      'Refusal shown under the recorded-property control when a researcher saves while the chosen map layer is still being read. Nothing is wrong with what they chose: the check simply cannot be made until the layer arrives, and saying so is what stops a property the layer may not have from being saved unchecked.',
+  },
   propertyLoading: {
     id: 'protocolBuilder.geospatial.propertyLoading',
     defaultMessage: 'Reading the map layer.',
