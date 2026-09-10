@@ -16,8 +16,8 @@ import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
 import type { Codebook, VariableType } from '@codaco/protocol-validation';
 
-import { EntitySelectControl } from '../fields/EntitySelectField.tsx';
-import { VariablePickerControl } from '../fields/VariablePicker.tsx';
+import EntityTypePickerField from '../fields/EntityTypePickerField.tsx';
+import VariablePickerField from '../fields/VariablePickerField.tsx';
 import DialogForm, {
   type DialogFormErrors,
   type DialogFormProps,
@@ -1068,7 +1068,7 @@ function EgoRuleFields({
         name={ATTRIBUTE_FIELD}
         label={intl.formatMessage(messages.egoAttributeLabel)}
         hint={intl.formatMessage(messages.egoAttributeHint)}
-        component={VariablePickerControl}
+        component={VariablePickerField}
         options={variableOptions}
         emptyMessage={intl.formatMessage(messages.egoAttributeEmpty)}
         initialValue={seedString(seed, 'attribute')}
@@ -1170,7 +1170,7 @@ function EntityRuleFields({
                 : messages.edgeAttributeLabel,
             )}
             hint={intl.formatMessage(messages.attributeHint)}
-            component={VariablePickerControl}
+            component={VariablePickerField}
             options={variableOptions}
             emptyMessage={intl.formatMessage(
               isNode
@@ -1304,7 +1304,7 @@ function RuleEditorFields({
             hint={intl.formatMessage(
               target === 'node' ? messages.nodeTypeHint : messages.edgeTypeHint,
             )}
-            component={EntitySelectControl}
+            component={EntityTypePickerField}
             entityType={target}
             initialValue={seedString(seed, 'type')}
             required={intl.formatMessage(ruleEditorRequiredMessage)}

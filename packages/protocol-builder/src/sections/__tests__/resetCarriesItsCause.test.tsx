@@ -1,9 +1,9 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
-import ProtocolField from '../../form/ProtocolField.tsx';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
@@ -34,7 +34,7 @@ describe('a section resetting on a path a command cannot address', () => {
     return (
       <>
         <BuilderSection title="Prompts">
-          <ProtocolField
+          <Field
             name="prompts[0].text"
             label="Prompt text"
             component={InputField}
@@ -45,7 +45,7 @@ describe('a section resetting on a path a command cannot address', () => {
           capability={SORTING}
           resetOn="prompts[0].text"
         >
-          <ProtocolField
+          <Field
             name="sortOptions.sortOrder"
             label="Starting order"
             component={InputField}

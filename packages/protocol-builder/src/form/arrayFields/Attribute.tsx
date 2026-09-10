@@ -26,12 +26,12 @@ import {
   buildVariableRoleMap,
   hasValidatedUse,
 } from '../../codebook/variableRoles.ts';
-import type { CodebookSubject } from '../../protocol-context.ts';
-import { variablesForSubject } from '../../protocol-context.ts';
 // The contract the picker's `onCreateOption` prop is written in, taken from
 // where that prop is declared. A type, so nothing about which picker a host
 // injects is decided here — see `variablePickerComponent`.
-import type { CreateOptionOutcome } from '../../sections/CreatableVariablePicker.tsx';
+import type { CreateOptionOutcome } from '../../fields/VariablePickerField.tsx';
+import type { CodebookSubject } from '../../protocol-context.ts';
+import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import { useStageEditorForm } from '../stageEditorContext.ts';
 import { readRows } from './arrayFieldCommands.ts';

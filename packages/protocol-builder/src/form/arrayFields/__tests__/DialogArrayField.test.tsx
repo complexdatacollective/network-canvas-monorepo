@@ -10,6 +10,7 @@ import { createElement, useContext, useState, type ComponentType } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as DialogModule from '@codaco/fresco-ui/dialogs/Dialog';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -17,7 +18,6 @@ import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
 import { DialogFormField } from '../../DialogForm.tsx';
-import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import DialogArrayField, {
   type DialogArrayEditorValidate,
 } from '../DialogArrayField.tsx';
@@ -81,11 +81,11 @@ const NEW_RULE: Rule = { id: 'rule-1', label: 'New rule' };
 
 /**
  * A minimal stand-in for production's `MultiSelect`/`Options`: it calls
- * `useArrayFieldCommands` itself rather than being wrapped in its own
- * `ProtocolArrayField`, so it inherits whatever `ArrayFieldBindingContext` is
- * ambient at the point it renders. That is exactly how a real sort-rule list
- * reaches a prompt's row dialog (`DialogFormField` + `MultiSelect`, never
- * `ProtocolArrayField`), and exactly the route `DialogArrayField` has to bind
+ * `useArrayFieldCommands` itself rather than binding a list path of its own,
+ * so it inherits whatever `ArrayFieldBindingContext` is ambient at the point
+ * it renders. That is exactly how a real sort-rule list reaches a prompt's row
+ * dialog (`DialogFormField` + `MultiSelect`, never a bound list), and exactly
+ * the route `DialogArrayField` has to bind
  * for itself instead of leaving to whatever wraps it.
  */
 function RuleList({
@@ -114,9 +114,9 @@ function RuleList({
   );
 }
 
-/** The row editor for a prompt whose "rules" is a list reached by no
- * `ProtocolArrayField` of its own — matching `SortOrderRows`' real use of
- * `DialogFormField` + `MultiSelect`. */
+/** The row editor for a prompt whose "rules" is a list with no binding of
+ * its own — matching `SortOrderRows`' real use of `DialogFormField` +
+ * `MultiSelect`. */
 function PromptFieldsWithRuleList() {
   return (
     <>
@@ -155,7 +155,7 @@ function renderPromptList(
     return (
       <BuilderSection title="Prompts">
         {probe}
-        <ProtocolArrayField
+        <Field
           name="prompts"
           label="Prompts"
           component={DialogArrayField}
@@ -623,9 +623,9 @@ describe('a list key holding something that is not a list', () => {
  * Left inherited, that path is what the inner list would commit its own
  * insertions and reorderings against: adding a sort rule would insert a row
  * into the array of prompts. It also must not commit anything at all until the
- * dialog saves, which is the same rule `ProtocolArrayField` states for a list
- * that finds itself in a nested form store — this closes the same gap for one
- * that never goes through `ProtocolArrayField` at all.
+ * dialog saves, which is the same rule `ListBinding` states for a list that
+ * finds itself in a nested form store — this closes the same gap for one that
+ * never goes through `ListBinding` at all.
  */
 describe('a list nested inside a row dialog', () => {
   function ReportedBinding() {

@@ -2,13 +2,13 @@ import { screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { DialogFormField } from '../../form/DialogForm.tsx';
-import ProtocolField from '../../form/ProtocolField.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection from '../BuilderSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
@@ -27,7 +27,7 @@ import { changeSubjectTo } from './changeSubject.ts';
 function RemoveAfterConsiderationSection() {
   return (
     <BuilderSection title="Behaviours" description="How this task behaves.">
-      <ProtocolField<typeof ToggleField>
+      <Field<typeof ToggleField>
         name="behaviours.removeAfterConsideration"
         component={ToggleField}
         label="Remove alters after they have been considered"
@@ -266,7 +266,7 @@ describe('resetting a key the form is holding parked', () => {
           Toggle the field
         </button>
         {mounted && (
-          <ProtocolField<typeof FilterPicker>
+          <Field<typeof FilterPicker>
             name="filter"
             label="Only some people"
             component={FilterPicker}

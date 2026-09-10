@@ -85,7 +85,7 @@ after the fact is marked in place.
 | `ruleDescription`           | `rules/ruleDescription.ts`, `rules/ruleMessages.ts`                                                                                                                                           | i18n-1a   |
 | `ruleCodebook`              | `rules/ruleCodebook.ts`                                                                                                                                                                       | i18n-1a   |
 | `resourceKinds`             | `resources/components/resourceKinds.ts`                                                                                                                                                       | i18n-1b   |
-| `resourcePicker`            | `resources/components/ResourcePickerControl.tsx`                                                                                                                                              | i18n-1b   |
+| `resourcePicker`            | `fields/AssetPickerField.tsx`                                                                                                                                                                 | i18n-1b   |
 | `resourceBrowser`           | `resources/components/ResourceBrowserDialog.tsx`                                                                                                                                              | i18n-1b   |
 | `resourceUpload`            | `resources/components/ResourceUploadControl.tsx`                                                                                                                                              | i18n-1b   |
 | `resourceSecret`            | `resources/components/ResourceSecretControl.tsx`                                                                                                                                              | i18n-1b   |
@@ -98,16 +98,16 @@ after the fact is marked in place.
 | `variableValidation`        | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts`              | i18n-2a   |
 | `codebookEditing`           | `codebook/editing.ts`, `codebook/codebookMessages.ts`, `codebook/useCodebookVariableEdits.ts` (added by `sections`)                                                                           | i18n-2a   |
 | `shell`                     | `form/StageEditorShell.tsx`, `form/readOnlyRefusal.ts`, `editors/saveStageAction.tsx`                                                                                                         | i18n-2b   |
+| `field`                     | `form/requiredField.ts`                                                                                                                                                                       | i18n-2b   |
 | `outline`                   | `form/SectionOutline.tsx`                                                                                                                                                                     | i18n-2b   |
 | `dialogForm`                | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                                            | i18n-2b   |
-| `protocolField`             | `form/ProtocolField.tsx`                                                                                                                                                                      | i18n-2b   |
 | `arrayField`                | `form/arrayFields/DialogArrayField.tsx`, `rowValidators.ts`, `arrayWriteRefusal.ts`, `useConfirmRowRemoval.ts`, `arrayFields/arrayMessages.ts`, `RowEditorBoundary.tsx`                       | i18n-2b   |
 | `assignAttributes`          | `form/arrayFields/AssignAttributes.tsx`, `form/arrayFields/Attribute.tsx`                                                                                                                     | i18n-2b   |
 | `multiSelect`               | `form/arrayFields/MultiSelect.tsx`                                                                                                                                                            | i18n-2b   |
 | `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                                 | i18n-2b   |
-| `entitySelect`              | `fields/EntitySelectField.tsx`                                                                                                                                                                | i18n-2b   |
-| `variablePicker`            | `fields/VariablePicker.tsx`, `sections/CreatableVariablePicker.tsx` (added by `sections`; see below)                                                                                          | i18n-2b   |
-| `skipLogicDestination`      | `fields/skipLogicDestination.ts`                                                                                                                                                              | i18n-2b   |
+| `entitySelect`              | `fields/EntityTypePickerField.tsx`                                                                                                                                                            | i18n-2b   |
+| `variablePicker`            | `fields/VariablePickerField.tsx`                                                                                                                                                              | i18n-2b   |
+| `skipLogicDestination`      | `fields/stageDestination.ts`                                                                                                                                                                  | i18n-2b   |
 | `networkFilter`             | `sections/NetworkFilterSection.tsx`                                                                                                                                                           | i18n-2b   |
 | `skipLogic`                 | `sections/SkipLogicSection.tsx`                                                                                                                                                               | i18n-2b   |
 | `interviewerGuidance`       | `sections/InterviewerGuidanceSection.tsx`                                                                                                                                                     | i18n-2b   |
@@ -312,14 +312,14 @@ for something else or reopens a decision that has been made:
 - **`builderSection`** — `sections/BuilderSection.tsx` renders only the words
   its section hands it, as `MessageDescriptor`s on `SectionCapability`, plus
   `commonMessages.cancel`.
-- **`subjectSelect`** — `fields/SubjectSelectField.tsx` exists now and holds no
-  copy of its own: it bridges the schema's `{entity, type}` subject to the bare
-  type ids `EntitySelectField` speaks, and every word around it — the label,
+- **`subjectSelect`** — the subject bridge in `fields/EntityTypePickerField.tsx`
+  holds no copy of its own: it turns the schema's `{entity, type}` subject into
+  the bare type ids the picker speaks, and every word around it — the label,
   the hint, the empty state — belongs to the section that mounts it
-  (`subjectSection`) or to the control it wraps (`entitySelect`). The name
-  stays reserved rather than being reused for something else.
+  (`subjectSection`) or to the picker itself (`entitySelect`). The name stays
+  reserved rather than being reused for something else.
 - **`variablePicker`'s five `create*` ids are not on any screen yet.**
-  `sections/CreatableVariablePicker.tsx` pairs a picker over what exists with a
+  `fields/VariablePickerField.tsx` pairs a picker over what exists with a
   name box that creates an attribute under that name and selects it. Nothing in
   the product mounts it: `FormFieldsSection` answers the same question through
   the `#create-new-attribute` sentinel in its own picker, and the control is

@@ -81,6 +81,26 @@ const EMPTY_FORM: SectionFieldReader = {
   getFieldErrors: () => null,
 };
 
+/**
+ * The markup a connected field renders around its control, which is where the
+ * outline reads its fields from: the form's own path attribute, the element
+ * the control is named by, and the marker a field that must be answered wears.
+ */
+function fieldMarkup(name: string, required: boolean): HTMLElement {
+  const container = document.createElement('div');
+  container.dataset.fieldPath = name;
+  const label = document.createElement('label');
+  label.id = `${name}-label`;
+  label.textContent = name;
+  container.append(label);
+  if (required) {
+    const marker = document.createElement('span');
+    marker.id = `${name}-required`;
+    container.append(marker);
+  }
+  return container;
+}
+
 function storeWith(
   fields: Readonly<Record<string, readonly string[]>>,
   required = false,
@@ -90,9 +110,7 @@ function storeWith(
     const element = mountSection(sectionId);
     store.registerSection({ id: sectionId, title: sectionId });
     store.setSectionElement(sectionId, element);
-    for (const name of names) {
-      store.registerField(sectionId, { name, label: name, required });
-    }
+    for (const name of names) element.append(fieldMarkup(name, required));
   }
   return store;
 }

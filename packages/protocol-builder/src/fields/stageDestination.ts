@@ -5,7 +5,7 @@ import type { SkipLogicDestination } from '@codaco/protocol-validation';
 /**
  * The formatter used when a caller has none of its own.
  *
- * `SkipLogicDestinationField` threads the researcher's own formatter in. This
+ * `StageDestinationPickerField` threads the researcher's own formatter in. This
  * is the fallback for a caller reading the destinations or the verdict without
  * one — this package's own module tests, and a host asking what is wrong with
  * a stored protocol.
@@ -52,7 +52,7 @@ const STAGE_ROUTE_PREFIX = 'route:stage:';
 /**
  * The route a destination this editor cannot read is shown under.
  *
- * It matches no option the control offers, so `skipLogicDestinationOptions`
+ * It matches no option the control offers, so `stageDestinationOptions`
  * adds one for it and the select shows THAT rather than falling back to the
  * next-available route — which is what made an unreadable destination read as
  * a deliberate "continue at the next stage".
@@ -322,7 +322,7 @@ const stageOptionLabel = (
  * placeholder and read as though nothing had been chosen — hiding, rather
  * than showing, the thing the researcher has to fix.
  */
-export function skipLogicDestinationOptions(
+export function stageDestinationOptions(
   stages: readonly DestinationStage[],
   placement: StagePlacement,
   value?: unknown,
@@ -412,7 +412,7 @@ function unavailableDestinationLabel(
  * reporting them the same way would leave the researcher with a control that
  * looks answered and a save that is refused with no control to point at.
  */
-export function skipLogicDestinationProblem(
+export function stageDestinationProblem(
   value: unknown,
   stages: readonly DestinationStage[],
   placement: StagePlacement,

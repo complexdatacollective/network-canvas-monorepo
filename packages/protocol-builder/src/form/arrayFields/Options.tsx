@@ -8,6 +8,7 @@ import ArrayField, {
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import { normalizeForComparison } from '@codaco/shared-consts';
 
+import { ListBinding } from './ListBinding.tsx';
 import Option, { OptionsContext, type OptionValue } from './Option.tsx';
 import {
   isOptionComplete,
@@ -66,7 +67,7 @@ const messages = defineMessages({
 });
 
 /**
- * Array-level rules. They belong to the caller's `ProtocolArrayField`
+ * Array-level rules. They belong to the caller's `<Field>`
  * (spread as `{...optionsValidation}`), which hands the whole array to each
  * rule — rows are not registered fields and cannot carry them.
  */
@@ -168,7 +169,7 @@ const allowedOptionValues = (value: unknown) =>
 
 /**
  * Every array-level rule an options editor needs, as one object to SPREAD onto
- * the owning `ProtocolArrayField` (`{...optionsValidation}`) — Fresco reads
+ * the owning `<Field>` (`{...optionsValidation}`) — Fresco reads
  * validation from the field's own props. Passed whole rather than rule by rule
  * so a call site cannot silently keep some and drop others.
  *
@@ -220,12 +221,23 @@ export type OptionsProps = Omit<
  * The inline label/value option-list editor for ordinal and categorical
  * variables.
  *
- * Rendered as `<ProtocolArrayField component={Options} … />`, so the whole
+ * Rendered as `<Field component={Options} … />`, so the whole
  * list is ONE field value; rows validate locally (see RowField) rather than
  * registering `options[0].label` in the form store, which would let a deleted
  * option's dormant value reappear in the saved variable.
  */
-export default function Options({
+export default function Options(props: OptionsProps) {
+  // Above the list rather than inside it: the commands the list issues are
+  // resolved against this binding, and a hook cannot read a context its own
+  // component provides.
+  return (
+    <ListBinding name={props.name ?? ''}>
+      <OptionsList {...props} />
+    </ListBinding>
+  );
+}
+
+function OptionsList({
   value = EMPTY_OPTIONS,
   onChange,
   name = '',

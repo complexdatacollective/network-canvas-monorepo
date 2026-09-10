@@ -101,6 +101,50 @@ describe('CodebookEntityEditor', () => {
     });
   });
 
+  it('saves the palette position the researcher picked from the swatches', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderUpdateEditor(onSubmit);
+
+    expect(screen.getByRole('radio', { name: 'Node color 1' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Node color 4' }));
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      ...NODE_DOCUMENT,
+      color: 'node-color-seq-4',
+    });
+  });
+
+  it('shows a stored colour the palette does not offer rather than any of the ones it does', () => {
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    const document = { ...NODE_DOCUMENT, color: 'cat-color-seq-3' };
+    render(
+      <CodebookEntityEditor
+        mode="update"
+        sessionKey="outside-palette"
+        subject={NODE_SUBJECT}
+        initialDraft={document}
+        authoritativeDocument={document}
+        existingEntityNames={[]}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect(
+      screen.getByRole('radio', { name: 'Current color (cat-color-seq-3)' }),
+    ).toBeChecked();
+    // Nothing in the palette stands in for it: a swatch checked here would be
+    // a colour the researcher never chose, and touching any other swatch would
+    // write it over the one the type actually has.
+    expect(
+      screen
+        .getAllByRole('radio')
+        .filter((swatch) => swatch.getAttribute('aria-checked') === 'true'),
+    ).toHaveLength(1);
+  });
+
   it('accepts periods in a schema-valid entity name', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn<SubmitEntity>(async () => applied());

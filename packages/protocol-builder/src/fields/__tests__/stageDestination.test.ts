@@ -6,10 +6,10 @@ import {
   asSkipLogicDestination,
   destinationRoute,
   routeDestination,
-  skipLogicDestinationOptions,
-  skipLogicDestinationProblem,
+  stageDestinationOptions,
+  stageDestinationProblem,
   stagePlacement,
-} from '../skipLogicDestination.ts';
+} from '../stageDestination.ts';
 
 /**
  * The sentences the module used to export as constants.
@@ -138,7 +138,7 @@ describe('where the stage sits', () => {
 describe('the destinations on offer', () => {
   it('offers only stages after this one, numbered as they are today', () => {
     expect(
-      labels(skipLogicDestinationOptions(stages, { index: 0, isNew: false })),
+      labels(stageDestinationOptions(stages, { index: 0, isNew: false })),
     ).toEqual([
       'Next available stage',
       'Stage 2 — Middle',
@@ -150,7 +150,7 @@ describe('the destinations on offer', () => {
   it('numbers stages a new one is about to displace by where they will end up', () => {
     // Inserted at index 1, the stage currently second becomes the third.
     expect(
-      labels(skipLogicDestinationOptions(stages, { index: 1, isNew: true })),
+      labels(stageDestinationOptions(stages, { index: 1, isNew: true })),
     ).toEqual([
       'Next available stage',
       'Stage 3 — Middle',
@@ -160,7 +160,7 @@ describe('the destinations on offer', () => {
   });
 
   it('keeps a destination whose stage has been deleted on screen', () => {
-    const options = skipLogicDestinationOptions(
+    const options = stageDestinationOptions(
       stages,
       { index: 0, isNew: false },
       { type: 'stage', stageId: 'deleted' },
@@ -176,7 +176,7 @@ describe('the destinations on offer', () => {
   });
 
   it('names a destination that has moved to before this stage', () => {
-    const options = skipLogicDestinationOptions(
+    const options = stageDestinationOptions(
       stages,
       { index: 2, isNew: false },
       { type: 'stage', stageId: 'stage-1' },
@@ -195,13 +195,13 @@ describe('what is wrong with a destination', () => {
 
   it('has nothing to say about the routes that always work', () => {
     expect(
-      skipLogicDestinationProblem(undefined, stages, placement),
+      stageDestinationProblem(undefined, stages, placement),
     ).toBeUndefined();
     expect(
-      skipLogicDestinationProblem({ type: 'finish' }, stages, placement),
+      stageDestinationProblem({ type: 'finish' }, stages, placement),
     ).toBeUndefined();
     expect(
-      skipLogicDestinationProblem(
+      stageDestinationProblem(
         { type: 'stage', stageId: 'stage-2' },
         stages,
         placement,
@@ -211,7 +211,7 @@ describe('what is wrong with a destination', () => {
 
   it('reports a stage that is no longer in the interview', () => {
     expect(
-      skipLogicDestinationProblem(
+      stageDestinationProblem(
         { type: 'stage', stageId: 'deleted' },
         stages,
         placement,
@@ -221,11 +221,10 @@ describe('what is wrong with a destination', () => {
 
   it('reports a stage the interview now reaches before this one', () => {
     expect(
-      skipLogicDestinationProblem(
-        { type: 'stage', stageId: 'stage-1' },
-        stages,
-        { index: 2, isNew: false },
-      ),
+      stageDestinationProblem({ type: 'stage', stageId: 'stage-1' }, stages, {
+        index: 2,
+        isNew: false,
+      }),
     ).toBe(EARLIER_DESTINATION_PROBLEM);
   });
 
@@ -253,7 +252,7 @@ describe('what is wrong with a destination', () => {
       [],
       null,
     ]) {
-      expect(skipLogicDestinationProblem(value, stages, placement)).toBe(
+      expect(stageDestinationProblem(value, stages, placement)).toBe(
         UNREADABLE_DESTINATION_PROBLEM,
       );
     }
@@ -261,7 +260,7 @@ describe('what is wrong with a destination', () => {
 
   it('keeps saying nothing about a destination that is genuinely absent', () => {
     expect(
-      skipLogicDestinationProblem(undefined, stages, placement),
+      stageDestinationProblem(undefined, stages, placement),
     ).toBeUndefined();
   });
 });
@@ -279,7 +278,7 @@ describe('a destination the control cannot read', () => {
   });
 
   it('is shown as an option of its own rather than falling back', () => {
-    const options = skipLogicDestinationOptions(stages, placement, {
+    const options = stageDestinationOptions(stages, placement, {
       type: 'stage',
     });
 

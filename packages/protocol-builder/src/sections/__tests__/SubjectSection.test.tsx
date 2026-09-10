@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { ProtocolBuilderClient } from '../../contract/contract.ts';
@@ -139,7 +140,7 @@ describe('the section that says what a stage is about', () => {
   });
 
   /**
-   * The end of the same path `SubjectSelectField` bridges: a picked EDGE type
+   * The end of the same path `EntitySubjectPickerField` bridges: a picked EDGE type
    * reaches the stage as an edge subject. The two branches are written out
    * rather than computed from the entity, so the edge one has to be walked.
    *
@@ -317,9 +318,15 @@ describe('creating the type a stage needs without leaving it', () => {
     expect(
       await screen.findByRole('textbox', { name: 'Node type name' }),
     ).toHaveValue('');
+    // The palette names positions rather than colours, so the swatch the draft
+    // arrives with is the one standing at its reference's place in the node
+    // sequence.
+    const colorPosition =
+      NodeColorSequence.findIndex((reference) => reference === color) + 1;
+    expect(colorPosition).toBeGreaterThan(0);
     expect(
-      screen.getByRole('combobox', { name: 'Protocol color' }),
-    ).toHaveValue(color);
+      screen.getByRole('radio', { name: `Node color ${colorPosition}` }),
+    ).toBeChecked();
     expect(screen.getByRole('combobox', { name: 'Default shape' })).toHaveValue(
       shape,
     );

@@ -3,6 +3,7 @@ import { useCallback, useMemo } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
@@ -17,7 +18,6 @@ import {
   variableDisplayName,
 } from '../../form/arrayFields/crossClassPick.ts';
 import DialogArrayField from '../../form/arrayFields/DialogArrayField.tsx';
-import ProtocolArrayField from '../../form/ProtocolArrayField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
@@ -237,7 +237,7 @@ export default function NominationPromptsSection() {
         },
       }}
     >
-      <ProtocolArrayField<typeof DialogArrayField>
+      <Field<typeof DialogArrayField>
         name={PROMPTS_FIELD}
         label={intl.formatMessage(pedigreeMessages.nominationFieldLabel)}
         hint={intl.formatMessage(pedigreeMessages.nominationFieldHint)}

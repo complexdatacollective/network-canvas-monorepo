@@ -30,11 +30,11 @@ import CodebookVariableValidationEditor from '../codebook/validation/CodebookVar
 import { optionsShapeFor } from '../codebook/variableOptions.ts';
 import { parameterShapeFor } from '../codebook/variableParameters.ts';
 import { useCodebookSectionWrite } from '../codebook/writes.ts';
+import { createdUnassigned } from '../fields/VariablePickerField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { isCollectableType, isOptionType } from './collectableTypes.ts';
-import { createdUnassigned } from './CreatableVariablePicker.tsx';
 
 /** Where every row that binds an attribute keeps the attribute it binds. */
 const VARIABLE_FIELD = 'variable';
@@ -702,7 +702,7 @@ export default function AttributeCodebookControls({
           notice appears: a live region added to the page at the same moment as
           its own content is not reliably announced. The `Alert` inside it is
           presentational for the same reason its twin in
-          `CreatableVariablePicker` is — its `info` variant is a `role="status"`
+          `VariablePickerField` is — its `info` variant is a `role="status"`
           of its own, and a second polite region inserted into this one is the
           double announcement this wrapper exists to avoid. */}
       <div

@@ -3,6 +3,7 @@ import { useMemo, useRef } from 'react';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import type {
   InterfaceOwnedOption,
@@ -11,8 +12,8 @@ import type {
 } from '@codaco/protocol-validation';
 
 import type { WriterClass } from '../../codebook/variableRoles.ts';
-import { VariablePickerControl } from '../../fields/VariablePicker.tsx';
-import ProtocolField from '../../form/ProtocolField.tsx';
+import VariablePickerField from '../../fields/VariablePickerField.tsx';
+import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
@@ -244,12 +245,12 @@ export default function SlotVariableField({
 
   return (
     <>
-      <ProtocolField<typeof VariablePickerControl>
+      <Field<typeof VariablePickerField>
         name={name}
-        component={VariablePickerControl}
+        component={VariablePickerField}
         label={intl.formatMessage(label)}
         hint={intl.formatMessage(hint)}
-        required
+        required={REQUIRED}
         options={pickerOptions}
         emptyMessage={intl.formatMessage(emptyMessage)}
         custom={crossClassValidation}

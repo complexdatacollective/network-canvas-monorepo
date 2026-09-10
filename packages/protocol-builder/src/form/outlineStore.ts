@@ -1,3 +1,4 @@
+import { fieldElementIds } from '@codaco/fresco-ui/form/Field/fieldElements';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import type { FieldState } from '@codaco/fresco-ui/form/store/types';
 import type { ObjectPath } from '@codaco/fresco-ui/form/utils/objectPath';
@@ -10,7 +11,7 @@ import { type SchemaProblem, schemaProblemSentence } from './schemaProblems.ts';
  *
  * Availability is a property of the section itself, so it is decided before
  * any field is consulted. The other three are read off the fields the section
- * currently has registered, in that order of severity.
+ * currently has on screen, in that order of severity.
  */
 export type SectionOutlineStatus =
   | 'error'
@@ -89,6 +90,57 @@ type SectionRecord = {
 
 const EMPTY_SECTIONS: readonly OutlineSection[] = Object.freeze([]);
 const NO_ISSUES: readonly SectionValidationIssue[] = Object.freeze([]);
+const NO_FIELDS: readonly OutlineFieldRegistration[] = Object.freeze([]);
+
+/**
+ * The suffixes a field's own elements are named with, from the module that
+ * owns them, so the outline cannot end up looking for a name Fresco has
+ * stopped using.
+ */
+const FIELD_ELEMENT = fieldElementIds('');
+
+/**
+ * The fields a section has on screen, read off the section itself.
+ *
+ * The outline reports what the researcher can see and hear, so it asks the
+ * page rather than keeping a register every field has to remember to sign: a
+ * field's path, its name, and whether it must be answered are all already in
+ * the markup, because a screen reader needs them too. A field that renders
+ * nothing has nothing to report about, and this reports nothing about it.
+ *
+ * Connected fields only. `data-field-path` is written by the form, so a
+ * control standing outside it — a codebook dialog's own editor, mounted over
+ * the stage — belongs to no section here, which is right: the stage's own
+ * validation says nothing about it.
+ */
+function fieldsInside(
+  element: HTMLElement | null,
+): readonly OutlineFieldRegistration[] {
+  if (element === null) return NO_FIELDS;
+  const fields: OutlineFieldRegistration[] = [];
+  for (const container of element.querySelectorAll('[data-field-path]')) {
+    const name = container.getAttribute('data-field-path');
+    if (name === null || name === '') continue;
+    fields.push({
+      name,
+      label:
+        container.querySelector(`[id$="${FIELD_ELEMENT.label}"]`)
+          ?.textContent ?? '',
+      required:
+        container.querySelector(`[id$="${FIELD_ELEMENT.required}"]`) !== null,
+    });
+  }
+  return fields;
+}
+
+const sameField = (
+  field: OutlineFieldRegistration,
+  other: OutlineFieldRegistration | undefined,
+): boolean =>
+  other !== undefined &&
+  field.name === other.name &&
+  field.label === other.label &&
+  field.required === other.required;
 
 /**
  * A registered field's name, read back as the path it is filed under.
@@ -148,17 +200,8 @@ function sameIssues(
 export class SectionOutlineStore {
   private readonly listeners = new Set<() => void>();
   private readonly sections = new Map<string, SectionRecord>();
-  /**
-   * Kept apart from the sections, and keyed by section id, because a field
-   * registers BEFORE the section around it does: React runs a child's effects
-   * before its parent's. A field arriving early would otherwise have nowhere
-   * to go, and the outline would report every section as having no fields at
-   * all — which reads as "finished".
-   */
-  private readonly fieldsBySection = new Map<
-    string,
-    Map<string, OutlineFieldRegistration>
-  >();
+  /** The fields the last snapshot was built from, one list per section. */
+  private cachedFields: readonly (readonly OutlineFieldRegistration[])[] = [];
   /**
    * The schema's problems with the stage, as paths into its document.
    * Kept whole rather than filed under a section: a field registering later
@@ -178,25 +221,29 @@ export class SectionOutlineStore {
 
   getSnapshot = (): readonly OutlineSection[] => {
     const ordered = this.orderedRecords();
-    // Order is re-derived on every read, and only the SNAPSHOT is cached.
-    // Sections can be reordered without any of them registering, being
-    // renamed, or changing availability — nothing would bump the version — and
-    // a cache keyed on the version alone would keep serving an order the page
-    // no longer has.
-    if (this.cachedVersion === this.version && this.sameOrder(ordered)) {
+    const fields = ordered.map((record) => fieldsInside(record.element));
+    // Order and fields are re-derived on every read, and only the SNAPSHOT is
+    // cached. Sections can be reordered, and fields can come and go, without
+    // any section registering, being renamed, or changing availability —
+    // nothing would bump the version — and a cache keyed on the version alone
+    // would keep serving a page that has moved on.
+    if (
+      this.cachedVersion === this.version &&
+      this.sameOrder(ordered) &&
+      this.sameFields(fields)
+    ) {
       return this.cachedSnapshot;
     }
     this.cachedVersion = this.version;
-    const issuesBySection = this.attributeIssues(ordered);
+    this.cachedFields = fields;
+    const issuesBySection = this.attributeIssues(ordered, fields);
     this.cachedSnapshot = Object.freeze(
-      ordered.map((record) =>
+      ordered.map((record, index) =>
         Object.freeze({
           id: record.id,
           title: record.title,
           availability: record.availability,
-          fields: Object.freeze([
-            ...(this.fieldsBySection.get(record.id)?.values() ?? []),
-          ]),
+          fields: Object.freeze(fields[index] ?? []),
           issues: Object.freeze(issuesBySection.get(record.id) ?? []),
         }),
       ),
@@ -227,7 +274,6 @@ export class SectionOutlineStore {
     this.changed();
     return () => {
       this.sections.delete(section.id);
-      this.fieldsBySection.delete(section.id);
       this.changed();
     };
   }
@@ -240,8 +286,10 @@ export class SectionOutlineStore {
    * component re-renders, and a nested component reordering its own sections
    * does neither to the outline beside it.
    */
-  revalidateOrder(): void {
-    if (!this.sameOrder(this.orderedRecords())) this.changed();
+  revalidate(): void {
+    const ordered = this.orderedRecords();
+    const fields = ordered.map((record) => fieldsInside(record.element));
+    if (!this.sameOrder(ordered) || !this.sameFields(fields)) this.changed();
   }
 
   setSectionTitle(id: string, title: string): void {
@@ -277,28 +325,6 @@ export class SectionOutlineStore {
     if (sameIssues(this.validationIssues, next)) return;
     this.validationIssues = next;
     this.changed();
-  }
-
-  registerField(
-    sectionId: string,
-    field: OutlineFieldRegistration,
-  ): () => void {
-    let fields = this.fieldsBySection.get(sectionId);
-    if (fields === undefined) {
-      fields = new Map();
-      this.fieldsBySection.set(sectionId, fields);
-    }
-    fields.set(field.name, field);
-    this.changed();
-    return () => {
-      // Only drop the entry this registration owns. A field that remounts
-      // under the same name has already written its own entry by the time the
-      // previous cleanup runs.
-      if (fields.get(field.name) === field) {
-        fields.delete(field.name);
-        this.changed();
-      }
-    };
   }
 
   /**
@@ -346,17 +372,16 @@ export class SectionOutlineStore {
    */
   private attributeIssues(
     ordered: readonly SectionRecord[],
+    fieldsBySection: readonly (readonly OutlineFieldRegistration[])[],
   ): Map<string, OutlineSectionIssue[]> {
     const bySection = new Map<string, OutlineSectionIssue[]>();
     if (this.validationIssues.length === 0) return bySection;
 
-    const registered = ordered.flatMap((record) =>
-      [...(this.fieldsBySection.get(record.id)?.values() ?? [])].flatMap(
-        (field) => {
-          const path = fieldPath(field.name);
-          return path === null ? [] : [{ sectionId: record.id, path, field }];
-        },
-      ),
+    const registered = ordered.flatMap((record, index) =>
+      (fieldsBySection[index] ?? []).flatMap((field) => {
+        const path = fieldPath(field.name);
+        return path === null ? [] : [{ sectionId: record.id, path, field }];
+      }),
     );
 
     const saidByField = new Set<string>();
@@ -401,6 +426,21 @@ export class SectionOutlineStore {
       else claimed.push(problem);
     }
     return bySection;
+  }
+
+  private sameFields(
+    fields: readonly (readonly OutlineFieldRegistration[])[],
+  ): boolean {
+    return (
+      fields.length === this.cachedFields.length &&
+      fields.every((section, index) => {
+        const cached = this.cachedFields[index] ?? [];
+        return (
+          section.length === cached.length &&
+          section.every((field, position) => sameField(field, cached[position]))
+        );
+      })
+    );
   }
 
   private sameOrder(ordered: readonly SectionRecord[]): boolean {

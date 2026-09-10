@@ -8,6 +8,7 @@ import {
 import { useMemo, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -15,7 +16,6 @@ import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { fixtureMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
-import ProtocolArrayField from '../../ProtocolArrayField.tsx';
 import MultiSelect, {
   makeMultiSelectValidation,
   type PropertyField,
@@ -93,7 +93,7 @@ function renderList(
 }
 
 const optionList = (disabled: boolean) => (
-  <ProtocolArrayField
+  <Field
     name="options"
     label="Answer options"
     component={Options}
@@ -109,7 +109,7 @@ function SortRules({ disabled }: Readonly<{ disabled: boolean }>) {
     [],
   );
   return (
-    <ProtocolArrayField
+    <Field
       name="sortOrder"
       label="Sort order"
       component={MultiSelect}

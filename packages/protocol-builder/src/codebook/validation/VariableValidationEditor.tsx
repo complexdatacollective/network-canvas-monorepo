@@ -3,6 +3,7 @@ import { useId, useMemo } from 'react';
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import { missingComparisonTargetMessage } from '../codebookMessages.ts';
@@ -268,17 +269,21 @@ export default function VariableValidationEditor({
                   </p>
                 )}
                 {enabled && isValidationWithNumberValue(rule.value) && (
-                  <InputField
+                  <UnconnectedField
+                    name={`${ruleId}-value`}
+                    // The checkbox beside it already says which rule this is,
+                    // so the field is named for assistive technology only.
+                    label={rule.label}
+                    labelHidden
+                    component={InputField}
                     type="number"
                     value={formatCommitted(selected)}
                     disabled={readOnly}
-                    aria-label={rule.label}
                     aria-invalid={
                       selected === null || selected === undefined
                         ? true
                         : undefined
                     }
-                    aria-describedby={issueId}
                     onChange={(text) =>
                       onChange(
                         withRule(

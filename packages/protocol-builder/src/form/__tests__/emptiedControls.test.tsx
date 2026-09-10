@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import ProtocolField from '../ProtocolField.tsx';
 import { createStageDraftProbe } from './stageDraftProbe.tsx';
 
 /**
@@ -35,7 +35,7 @@ describe('a control the researcher emptied', () => {
         <>
           <StageNameSection />
           <BuilderSection title="Interviewer guidance">
-            <ProtocolField
+            <Field
               name="interviewScript"
               label="Interviewer script text"
               component={InputField}
@@ -69,12 +69,12 @@ describe('a control the researcher emptied', () => {
           <StageNameSection />
           <BuilderSection title="Introduction panel">
             {probe}
-            <ProtocolField
+            <Field
               name="introductionPanel.title"
               label="Panel heading"
               component={InputField}
             />
-            <ProtocolField
+            <Field
               name="introductionPanel.text"
               label="Panel text"
               component={InputField}
@@ -115,7 +115,7 @@ describe('a control the researcher emptied', () => {
         <>
           <StageNameSection />
           <BuilderSection title="Page content">
-            <ProtocolField
+            <Field
               name="title"
               label="Page heading"
               component={InputField}
@@ -158,11 +158,7 @@ describe('a control the researcher emptied', () => {
         <>
           <StageNameSection />
           <BuilderSection title="Page content">
-            <ProtocolField
-              name="title"
-              label="Page heading"
-              component={InputField}
-            />
+            <Field name="title" label="Page heading" component={InputField} />
           </BuilderSection>
         </>
       ),

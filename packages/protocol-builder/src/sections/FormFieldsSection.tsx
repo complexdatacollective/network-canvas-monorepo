@@ -40,15 +40,13 @@ import {
   variableDisplayName,
 } from '../codebook/variableValidation.ts';
 import RichTextField from '../fields/RichTextField.tsx';
-import {
-  VariablePickerControl,
+import VariablePickerField, {
   type VariablePickerOption,
-} from '../fields/VariablePicker.tsx';
+  createdUnassigned,
+} from '../fields/VariablePickerField.tsx';
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
 import { useDialogFormSubmissionBlock } from '../form/DialogForm.tsx';
-import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
@@ -65,7 +63,6 @@ import {
   needsCodebookEditorToCreate,
   TYPE_OPTIONS,
 } from './collectableTypes.ts';
-import { createdUnassigned } from './CreatableVariablePicker.tsx';
 import {
   type RowEditorProps,
   type RowPreviewProps,
@@ -461,7 +458,7 @@ const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
 /** Stable identity: `options` is a memo dependency of the picker below. */
 const NO_OPTIONS: VariablePickerOption[] = [];
 
-const VariablePicker = VariablePickerControl as ComponentType<
+const VariablePicker = VariablePickerField as ComponentType<
   Record<string, unknown>
 >;
 const SelectControl = NativeSelectField as ComponentType<
@@ -889,7 +886,7 @@ export default function FormFieldsSection({
       {...(capability === undefined ? {} : { capability })}
     >
       {hasTitle && (
-        <ProtocolField<typeof InputField>
+        <Field<typeof InputField>
           name={TITLE}
           component={InputField}
           label={intl.formatMessage(messages.formTitleLabel)}
@@ -899,7 +896,7 @@ export default function FormFieldsSection({
         />
       )}
       <FormFieldsScopeContext value={scope}>
-        <ProtocolArrayField<typeof DialogArrayField>
+        <Field<typeof DialogArrayField>
           name={fieldsPath}
           label={intl.formatMessage(fieldLabel)}
           hint={intl.formatMessage(fieldHint)}

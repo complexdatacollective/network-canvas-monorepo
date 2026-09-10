@@ -2,10 +2,11 @@ import { type ReactNode, useMemo } from 'react';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import ProtocolField from '../../form/ProtocolField.tsx';
+import { REQUIRED } from '../../form/requiredField.ts';
 import BuilderSection from '../BuilderSection.tsx';
 import { pedigreeMessages } from './pedigreeMessages.ts';
 
@@ -79,7 +80,7 @@ export default function BoundaryOptionsSection() {
           })}
         </li>
       </ul>
-      <ProtocolField<typeof NativeSelectField>
+      <Field<typeof NativeSelectField>
         name={GRANDPARENTS_FIELD}
         component={NativeSelectField}
         label={intl.formatMessage(pedigreeMessages.boundariesGrandparentsLabel)}
@@ -88,9 +89,9 @@ export default function BoundaryOptionsSection() {
         placeholder={intl.formatMessage(
           pedigreeMessages.boundariesSelectPlaceholder,
         )}
-        required
+        required={REQUIRED}
       />
-      <ProtocolField<typeof NativeSelectField>
+      <Field<typeof NativeSelectField>
         name={CHILDREN_CONTRIBUTORS_FIELD}
         component={NativeSelectField}
         label={intl.formatMessage(
@@ -103,7 +104,7 @@ export default function BoundaryOptionsSection() {
         placeholder={intl.formatMessage(
           pedigreeMessages.boundariesSelectPlaceholder,
         )}
-        required
+        required={REQUIRED}
       />
     </BuilderSection>
   );

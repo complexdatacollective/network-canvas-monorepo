@@ -6,19 +6,19 @@ import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
 import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
 import type { CodebookEntityDraft } from '../codebook/editing.ts';
 import { useCreateCodebookEntity } from '../codebook/writes.ts';
 import {
+  type EntitySubject,
+  EntitySubjectPickerField,
   type EntityTypeChangeConfirmation,
   useConfirmEntityTypeChange,
-} from '../fields/EntitySelectField.tsx';
-import SubjectSelectField, {
-  type EntitySubject,
-} from '../fields/SubjectSelectField.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
+} from '../fields/EntityTypePickerField.tsx';
+import { REQUIRED } from '../form/requiredField.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useAskStageHasAnyValue } from '../form/stageFormHooks.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
@@ -347,14 +347,14 @@ export default function SubjectSection({
         title={intl.formatMessage(words.title)}
         description={intl.formatMessage(words.description)}
       >
-        <ProtocolField<typeof SubjectSelectField>
+        <Field<typeof EntitySubjectPickerField>
           name="subject"
-          component={SubjectSelectField}
+          component={EntitySubjectPickerField}
           entityType={entity}
           confirmChange={confirmChange}
           label={intl.formatMessage(words.fieldLabel)}
           hint={intl.formatMessage(words.fieldHint)}
-          required
+          required={REQUIRED}
         />
         <CreateSubjectType
           entity={entity}

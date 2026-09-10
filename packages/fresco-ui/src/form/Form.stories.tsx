@@ -10,6 +10,7 @@ import InputField from './fields/InputField';
 import RadioGroupField from './fields/RadioGroup';
 import SelectField from './fields/Select/Native';
 import TextAreaField from './fields/TextArea';
+import { FieldsDisabled } from './FieldsDisabled';
 import Form from './Form';
 import FormErrors from './FormErrors';
 import useFormStore from './hooks/useFormStore';
@@ -666,6 +667,74 @@ export const ServerSideValidation: Story = {
       description: {
         story:
           "Demonstrates server-side validation. `onSubmit` returns `{ success: false }` with optional `fieldErrors` (keyed by field name) and `formErrors` (top-level array). Field errors render under the offending field; form errors render in a `FormErrorsList` at the top of the form. The shape mirrors Zod's `flattenError()` output so server validators that already speak Zod can return their result directly.",
+      },
+    },
+  },
+};
+
+/**
+ * A form editing a stored document says so once, and every field that names no
+ * starting value of its own opens on what the document holds at its own name.
+ */
+export const EditingADocument: Story = {
+  render: () => (
+    <Form
+      initialValues={{
+        name: 'Household survey',
+        contact: { email: 'ada@example.org' },
+      }}
+      onSubmit={(data) => {
+        action('form-submitted')(data);
+        return { success: true };
+      }}
+    >
+      <Field name="name" label="Name" component={InputField} />
+      <Field name="contact.email" label="Email" component={InputField} />
+      {/* A field that names its own starting value still decides for itself. */}
+      <Field
+        name="note"
+        label="Note"
+        component={InputField}
+        initialValue="Nothing recorded yet"
+      />
+      <SubmitButton>Submit</SubmitButton>
+    </Form>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '`initialValues` is the document the form is editing. Any field with no `initialValue` of its own starts out holding whatever the document has at the field’s own name, nested names included — so a form over a stored record says so once instead of every field being handed its own starting value. It is read when each field mounts, not when the form opens, so a control revealed later opens on the document as it stands then.',
+      },
+    },
+  },
+};
+
+/**
+ * A record somebody else is holding: the whole form is closed to editing, said
+ * once rather than remembered by each control.
+ */
+export const ClosedToEditing: Story = {
+  render: () => (
+    <Form
+      initialValues={{ name: 'Household survey', owner: 'Robin' }}
+      onSubmit={(data) => {
+        action('form-submitted')(data);
+        return { success: true };
+      }}
+    >
+      <FieldsDisabled disabled>
+        <Field name="name" label="Name" component={InputField} />
+        <Field name="owner" label="Held by" component={InputField} />
+      </FieldsDisabled>
+      <SubmitButton>Submit</SubmitButton>
+    </Form>
+  ),
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '`FieldsDisabled` marks every field beneath it unavailable. Being unable to edit is a property of the whole form — the record is somebody else’s to change, the account is read-only — rather than of one control, so it is said here instead of by every field remembering to ask. A field that disables itself still does; this only ever adds.',
       },
     },
   },

@@ -3,13 +3,13 @@ import { useMemo } from 'react';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import { withoutAbsentValues } from '../form/absentValues.ts';
 import DialogArrayField, {
   type DialogArrayEditorValidate,
 } from '../form/arrayFields/DialogArrayField.tsx';
-import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import BuilderSection from './BuilderSection.tsx';
 import {
@@ -275,7 +275,7 @@ export default function PromptsSection({
       )}
       disabled={waiting}
     >
-      <ProtocolArrayField<typeof DialogArrayField>
+      <Field<typeof DialogArrayField>
         name={PROMPTS_FIELD}
         label={intl.formatMessage(messages.fieldLabel)}
         hint={intl.formatMessage(fieldHint)}

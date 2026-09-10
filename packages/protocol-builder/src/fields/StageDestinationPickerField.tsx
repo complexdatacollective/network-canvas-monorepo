@@ -7,16 +7,16 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { SkipLogicDestination } from '@codaco/protocol-validation';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import { useProtocolContext } from '../state/protocolContext.ts';
+import { useStageIndex } from '../state/hooks.ts';
 import {
   destinationRoute,
   routeDestination,
-  skipLogicDestinationOptions,
-  skipLogicDestinationProblem,
+  stageDestinationOptions,
+  stageDestinationProblem,
   stagePlacement,
-} from './skipLogicDestination.ts';
+} from './stageDestination.ts';
 
-export type SkipLogicDestinationFieldProps = CreateFormFieldProps<
+export type StageDestinationPickerFieldProps = CreateFormFieldProps<
   SkipLogicDestination,
   'div',
   {
@@ -51,7 +51,7 @@ export type SkipLogicDestinationFieldProps = CreateFormFieldProps<
  * Labelling belongs to the surrounding field; pass `label`/`hint` to the
  * `Field` that renders this.
  */
-export default function SkipLogicDestinationField({
+export default function StageDestinationPickerField({
   id,
   name,
   value,
@@ -66,23 +66,25 @@ export default function SkipLogicDestinationField({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
-}: SkipLogicDestinationFieldProps) {
+}: StageDestinationPickerFieldProps) {
   const { identity, readOnly: sessionReadOnly } = useStageEditorForm();
-  const protocolContext = useProtocolContext();
   const intl = useAppIntl();
   const readOnly = readOnlyProp || sessionReadOnly;
   const problemId = useId();
-  const stages = protocolContext.orderedStages;
+  // The index rather than the whole protocol: this control needs each stage's
+  // place and name and nothing else, so an edit inside another stage is not a
+  // reason to redraw the list of destinations.
+  const stages = useStageIndex();
 
   const placement = useMemo(
     () => stagePlacement(stages, identity.id, position),
     [identity.id, position, stages],
   );
   const options = useMemo(
-    () => skipLogicDestinationOptions(stages, placement, value, intl),
+    () => stageDestinationOptions(stages, placement, value, intl),
     [intl, placement, stages, value],
   );
-  const problem = skipLogicDestinationProblem(value, stages, placement, intl);
+  const problem = stageDestinationProblem(value, stages, placement, intl);
 
   return (
     <div

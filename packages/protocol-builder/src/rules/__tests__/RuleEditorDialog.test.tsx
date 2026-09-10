@@ -10,10 +10,10 @@ import { createElement, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as DialogModule from '@codaco/fresco-ui/dialogs/Dialog';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
-import ProtocolField from '../../form/ProtocolField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import type { RuleDraft } from '../rule.ts';
 import {
@@ -108,7 +108,7 @@ function renderRuleList(rules?: readonly RuleDraft[]) {
       )}
     >
       <BuilderSection title="Skip logic">
-        <ProtocolField
+        <Field
           name={RULE_SET_FIELD}
           label="Rules"
           component={QueryRuleSetField}

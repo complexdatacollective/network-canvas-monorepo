@@ -3,17 +3,14 @@ import { useState, type ReactNode } from 'react';
 import { expect, screen, userEvent, within } from 'storybook/test';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import ProtocolField from '../../form/ProtocolField.tsx';
-import StageEditorShell from '../../form/StageEditorShell.tsx';
-import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
-import BuilderSection from '../../sections/BuilderSection.tsx';
-import { StageEditSession } from '../../stageEdit.tsx';
-import { ResourceClientProvider } from '../client.tsx';
-import ResourcePickerControl from './ResourcePickerControl.tsx';
+import StageEditorShell from '../form/StageEditorShell.tsx';
+import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
+import { ResourceClientProvider } from '../resources/client.tsx';
 import {
   createStoryHost,
   IMAGE_RESOURCE,
@@ -22,7 +19,10 @@ import {
   skylineImageFile,
   type StoryResource,
   type StoryStage,
-} from './storyFixtures.ts';
+} from '../resources/components/storyFixtures.ts';
+import BuilderSection from '../sections/BuilderSection.tsx';
+import { StageEditSession } from '../stageEdit.tsx';
+import AssetPickerField from './AssetPickerField.tsx';
 
 /** Which stage the picker under the researcher's cursor is a field of. */
 type StagePreset =
@@ -48,14 +48,14 @@ type StageScenario = Readonly<{ stage: StoryStage; children: ReactNode }>;
 function itemIdentityFields(index: number): ReactNode {
   return (
     <div className="hidden">
-      <ProtocolField
+      <Field
         component={InputField}
         name={`items[${index}].id`}
         nameMode="path"
         label={`Item ${index + 1} id`}
         labelHidden
       />
-      <ProtocolField
+      <Field
         component={InputField}
         name={`items[${index}].type`}
         nameMode="path"
@@ -68,8 +68,8 @@ function itemIdentityFields(index: number): ReactNode {
 
 function imageItemPicker(index: number, label: string): ReactNode {
   return (
-    <ProtocolField
-      component={ResourcePickerControl}
+    <Field
+      component={AssetPickerField}
       name={`items[${index}].content`}
       nameMode="path"
       label={label}
@@ -137,8 +137,8 @@ const STAGE_SCENARIOS: Readonly<
       },
     },
     children: (
-      <ProtocolField
-        component={ResourcePickerControl}
+      <Field
+        component={AssetPickerField}
         name="dataSource"
         label="Roster data file"
         kind="network"

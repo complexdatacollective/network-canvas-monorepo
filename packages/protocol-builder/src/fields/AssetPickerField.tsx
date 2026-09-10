@@ -11,26 +11,26 @@ import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import { useResourceClient } from '../client.tsx';
-import type { ResourceDescriptor } from '../types.ts';
+import { useResourceClient } from '../resources/client.tsx';
 import {
   downloadResourceContent,
   resourceDownloadName,
-} from './downloadResourceContent.ts';
-import ResourceBrowserDialog from './ResourceBrowserDialog.tsx';
-import ResourceFailureNotice from './ResourceFailureNotice.tsx';
+} from '../resources/components/downloadResourceContent.ts';
+import ResourceBrowserDialog from '../resources/components/ResourceBrowserDialog.tsx';
+import ResourceFailureNotice from '../resources/components/ResourceFailureNotice.tsx';
 import {
   acceptsResourceKind,
   isPreviewableKind,
   RESOURCE_PICKER_COPY,
   unsupportedResourceKindMessage,
   type ResourcePickerKind,
-} from './resourceKinds.ts';
-import ResourcePreview from './ResourcePreview.tsx';
-import ResourceSummary from './ResourceSummary.tsx';
-import { useResourceAttempt } from './useResourceAttempt.ts';
-import { useResourceInspection } from './useResourceInspection.ts';
-import { useStageResourceUsage } from './useStageResourceUsage.ts';
+} from '../resources/components/resourceKinds.ts';
+import ResourcePreview from '../resources/components/ResourcePreview.tsx';
+import ResourceSummary from '../resources/components/ResourceSummary.tsx';
+import { useResourceAttempt } from '../resources/components/useResourceAttempt.ts';
+import { useResourceInspection } from '../resources/components/useResourceInspection.ts';
+import { useStageResourceUsage } from '../resources/components/useStageResourceUsage.ts';
+import type { ResourceDescriptor } from '../resources/types.ts';
 
 /**
  * The value a network field holds when the stage reads the network the
@@ -156,7 +156,7 @@ const messages = defineMessages({
   },
 });
 
-export type ResourcePickerControlProps = CreateFormFieldProps<
+export type AssetPickerFieldProps = CreateFormFieldProps<
   string,
   'div',
   {
@@ -180,7 +180,7 @@ export type ResourcePickerControlProps = CreateFormFieldProps<
  * is no host store, no browser storage, and no URL of the host's in this
  * component or anything it renders.
  */
-export default function ResourcePickerControl({
+export default function AssetPickerField({
   id,
   name,
   value,
@@ -197,7 +197,7 @@ export default function ResourcePickerControl({
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
-}: ResourcePickerControlProps) {
+}: AssetPickerFieldProps) {
   const resources = useResourceClient();
   const intl = useAppIntl();
   const action = useResourceAttempt();

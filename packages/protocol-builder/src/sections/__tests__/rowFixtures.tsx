@@ -17,12 +17,10 @@ import type { RowEditorProps, RowPreviewProps } from '../rowRenderers.tsx';
  * the shared machinery and the family's own fields.
  *
  * The controls are `DialogFormField`s, because the row dialog mounts a form
- * store of its own and seeds it from the row it opened on. A `ProtocolField`
- * here would register the row's cells with the STAGE's outline, which is
+ * store of its own and seeds it from the row it opened on. A field bound to
+ * the stage's form would register the row's cells against the STAGE, which is
  * exactly what the array primitives exist to avoid: a deleted row's dormant
- * value resurrecting itself on save. A bare Fresco `Field` would be worse
- * still — nothing would hand it the row's value, so editing a prompt would
- * open on an empty box and save the emptiness back.
+ * value resurrecting itself on save.
  */
 export function TestPromptEditor({ item, editIndex, form }: RowEditorProps) {
   return (

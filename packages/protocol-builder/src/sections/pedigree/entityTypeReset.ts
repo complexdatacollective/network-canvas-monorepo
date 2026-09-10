@@ -9,7 +9,7 @@ import {
   type ExclusiveVariableSlotMap,
   type VariableRoleMap,
 } from '../../codebook/variableRoles.ts';
-import type { EntityTypeChangeConfirmation } from '../../fields/EntitySelectField.tsx';
+import type { EntityTypeChangeConfirmation } from '../../fields/EntityTypePickerField.tsx';
 import {
   useAskStageHasAnyValue,
   useDiscardStageValues,

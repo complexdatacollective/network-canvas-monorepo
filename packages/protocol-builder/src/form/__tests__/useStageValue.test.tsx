@@ -1,12 +1,12 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import ProtocolField from '../ProtocolField.tsx';
 import { useStageValue } from '../stageFormHooks.ts';
 
 /**
@@ -39,7 +39,7 @@ function renderEditor({
     sections: (
       <BuilderSection title="Page content">
         {fieldName !== undefined && (
-          <ProtocolField
+          <Field
             name={fieldName}
             nameMode="opaque"
             label="Page heading"

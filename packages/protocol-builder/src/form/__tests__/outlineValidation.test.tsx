@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import type { ComponentType } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
@@ -9,7 +10,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import ProtocolField from '../ProtocolField.tsx';
+import { REQUIRED } from '../requiredField.ts';
 
 const stateOf = (harness: StageEditorHarness, title: string): string =>
   harness.outline().find((section) => section.title === title)?.state ??
@@ -30,11 +31,7 @@ describe('a section that is not available yet', () => {
       },
       sections: (
         <BuilderSection title="Data source" disabled>
-          <ProtocolField
-            name="dataSource"
-            label="Data source"
-            component={InputField}
-          />
+          <Field name="dataSource" label="Data source" component={InputField} />
         </BuilderSection>
       ),
     });
@@ -58,11 +55,11 @@ describe('a required value the stage no longer holds', () => {
       stageId: 'family-pedigree-1',
       sections: (
         <BuilderSection title="Family member data">
-          <ProtocolField
+          <Field
             name="nodeConfig.egoVariable"
             label="Ego variable"
             component={InputField}
-            required
+            required={REQUIRED}
           />
         </BuilderSection>
       ),
@@ -103,7 +100,7 @@ describe('a value the schema refuses', () => {
   const zoomSections = (
     <>
       <BuilderSection title="Map">
-        <ProtocolField
+        <Field
           name="mapOptions.initialZoom"
           label="Starting zoom"
           component={SetZoom}
@@ -111,7 +108,7 @@ describe('a value the schema refuses', () => {
       </BuilderSection>
       {/* A second section, owning a value the problem is not about. */}
       <BuilderSection title="Stage name">
-        <ProtocolField name="label" label="Stage name" component={InputField} />
+        <Field name="label" label="Stage name" component={InputField} />
       </BuilderSection>
     </>
   );

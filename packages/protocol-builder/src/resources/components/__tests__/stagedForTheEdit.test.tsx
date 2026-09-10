@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
@@ -11,7 +12,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import ProtocolField from '../../../form/ProtocolField.tsx';
+import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import StageEditorShell from '../../../form/StageEditorShell.tsx';
 import { ProtocolBuilder } from '../../../ProtocolBuilder.tsx';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
@@ -25,7 +26,6 @@ import {
   type ResourceClient,
 } from '../../client.tsx';
 import type { ResourceDescriptor } from '../../types.ts';
-import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 import type { CommittedResource } from './resourceHost.ts';
 
@@ -39,8 +39,8 @@ const NEIGHBOURHOOD: CommittedResource = {
 
 function picker(name: string, label: string) {
   return (
-    <ProtocolField
-      component={ResourcePickerControl}
+    <Field
+      component={AssetPickerField}
       name={name}
       label={label}
       kind="image"
@@ -191,7 +191,7 @@ function EditProbe() {
 const NameAndProbe: StageEditorComponent = ({ actions }) => (
   <StageEditorShell {...(actions === undefined ? {} : { actions })}>
     <BuilderSection title="Stage name">
-      <ProtocolField name="label" label="Stage name" component={InputField} />
+      <Field name="label" label="Stage name" component={InputField} />
     </BuilderSection>
     <EditProbe />
   </StageEditorShell>

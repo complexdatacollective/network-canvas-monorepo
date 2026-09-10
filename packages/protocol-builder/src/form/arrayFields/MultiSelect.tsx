@@ -21,6 +21,7 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
+import { ListBinding } from './ListBinding.tsx';
 import RowField from './RowField.tsx';
 import { requiredRow } from './rowValidators.ts';
 import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
@@ -139,8 +140,8 @@ export type DanglingCells = Readonly<{
 const NO_DANGLING_CELLS: readonly DanglingCells[] = Object.freeze([]);
 
 /**
- * The array-level rule every MultiSelect owner must put on its
- * `ProtocolArrayField` — the counterpart of the `required` the cells carry,
+ * The array-level rule every MultiSelect owner must put on its own
+ * `<Field>` — the counterpart of the `required` the cells carry,
  * which is DISPLAY ONLY because a row is not a registered field (see
  * RowField).
  *
@@ -179,7 +180,7 @@ const completeRows =
 
 /**
  * Every array-level rule a MultiSelect owner needs, as one object to SPREAD
- * onto the owning `ProtocolArrayField` — the `Options.tsx` `optionsValidation`
+ * onto the owning `<Field>` — the `Options.tsx` `optionsValidation`
  * idiom, so a call site cannot keep some and drop others.
  *
  * A factory because the rule has to know the columns, and — where a column
@@ -391,7 +392,7 @@ export type MultiSelectProps = Omit<
 /**
  * A sortable list of always-editing rows, each a fixed set of selects/inputs.
  *
- * Rendered as `<ProtocolArrayField component={…} … />`, so the whole list
+ * Rendered as `<Field component={…} … />`, so the whole list
  * arrives as ONE `value`/`onChange` pair; no row is ever registered as a form
  * field. Every section reaches it through `OptionalList`, which is where the
  * decision an EMPTY list records lives: this component renders whatever it is
@@ -401,7 +402,18 @@ export type MultiSelectProps = Omit<
  * `validation={{ completeRows: completeRows(properties) }}`, the only rule
  * that can actually refuse a half-finished row.
  */
-export default function MultiSelect({
+export default function MultiSelect(props: MultiSelectProps) {
+  // Above the list rather than inside it: the commands the list issues are
+  // resolved against this binding, and a hook cannot read a context its own
+  // component provides.
+  return (
+    <ListBinding name={props.name ?? ''}>
+      <MultiSelectList {...props} />
+    </ListBinding>
+  );
+}
+
+function MultiSelectList({
   value = EMPTY_ITEMS,
   emptyStateMessage,
   onChange,

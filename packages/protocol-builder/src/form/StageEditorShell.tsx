@@ -1,6 +1,7 @@
 import { LayoutGroup } from 'motion/react';
 import {
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
   useEffect,
@@ -13,6 +14,7 @@ import {
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
+import { FieldsDisabled } from '@codaco/fresco-ui/form/FieldsDisabled';
 import FormErrorsList from '@codaco/fresco-ui/form/FormErrors';
 import { useForm } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -117,14 +119,64 @@ export default function StageEditorShell(props: StageEditorShellProps) {
   if (identity === undefined || committedFields === undefined) return null;
 
   return (
-    <FormStoreProvider key={`${identity.type}:${identity.id}:${discarded}`}>
-      <StageEditorFormBody
-        {...props}
-        identity={identity}
-        committedFields={committedFields}
-        lostMessage={lostMessage}
-        discardDraft={discardDraft}
-      />
+    <StageDocument
+      key={`${identity.type}:${identity.id}:${discarded}`}
+      committedFields={committedFields}
+    >
+      {(document, working, setDocument) => (
+        <StageEditorFormBody
+          {...props}
+          identity={identity}
+          document={document}
+          working={working}
+          setDocument={setDocument}
+          lostMessage={lostMessage}
+          discardDraft={discardDraft}
+        />
+      )}
+    </StageDocument>
+  );
+}
+
+/**
+ * The document the form is editing, held above the form store so the store can
+ * be handed it.
+ *
+ * A structural write — a row inserted, a capability switched off — reaches
+ * paths no control is registered at, and the form has nowhere to keep those.
+ * Seeded from what the lock handed over and advanced by every such write; a
+ * submit replays the form's own values over it. Every field with no starting
+ * value of its own is seeded from this, which is why the form store is given
+ * it rather than each field being handed its own.
+ *
+ * Held twice on purpose. The ref is what a write reads and writes, because a
+ * second write in the same turn has to see the first. The state is what
+ * everything under the form reads, because a control that mounts AFTER a write
+ * seeds itself from this document — a list revealed by a group being opened, a
+ * field inside a capability switched back on — and a value that had not moved
+ * would put back what the write threw away.
+ *
+ * Keyed by the caller, so opening a different stage — or starting again from
+ * the protocol's own version after a save the host refused — is a different
+ * document and a different form store, which Fresco has no reinitialise for.
+ */
+function StageDocument({
+  committedFields,
+  children,
+}: Readonly<{
+  committedFields: StageFormDraft;
+  children: (
+    document: StageFormDraft,
+    working: RefObject<StageFormDraft>,
+    setDocument: (fields: StageFormDraft) => void,
+  ) => ReactNode;
+}>) {
+  const working = useRef<StageFormDraft>(committedFields);
+  const [document, setDocument] = useState<StageFormDraft>(committedFields);
+
+  return (
+    <FormStoreProvider initialValues={document}>
+      {children(document, working, setDocument)}
     </FormStoreProvider>
   );
 }
@@ -134,13 +186,17 @@ function StageEditorFormBody({
   children,
   className,
   identity,
-  committedFields,
+  document,
+  working,
+  setDocument,
   lostMessage,
   discardDraft,
 }: StageEditorShellProps &
   Readonly<{
     identity: StageIdentity;
-    committedFields: StageFormDraft;
+    document: StageFormDraft;
+    working: RefObject<StageFormDraft>;
+    setDocument: (fields: StageFormDraft) => void;
     lostMessage: string | undefined;
     discardDraft: (message: string) => void;
   }>) {
@@ -157,24 +213,6 @@ function StageEditorFormBody({
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
   const outline = useMemo(() => new SectionOutlineStore(), []);
-
-  /**
-   * The document as the editor holds it, outside the form's own fields.
-   *
-   * A structural write — a row inserted, a capability switched off — reaches
-   * paths no control is registered at, and the form has nowhere to keep those.
-   * Seeded from what the lock handed over and advanced by every such write; a
-   * submit replays the form's own values over it.
-   *
-   * Held twice on purpose. The ref is what a write reads and writes, because a
-   * second write in the same turn has to see the first. The state is what
-   * everything under the form reads, because a control that mounts AFTER a
-   * write seeds itself from this document — a list revealed by a group being
-   * opened, a field inside a capability switched back on — and a value that
-   * had not moved would put back what the write threw away.
-   */
-  const working = useRef<StageFormDraft>(committedFields);
-  const [document, setDocument] = useState<StageFormDraft>(committedFields);
 
   const [refusedWrite, setRefusedWrite] = useState<string | undefined>(
     undefined,
@@ -341,15 +379,20 @@ function StageEditorFormBody({
     return [...(formErrors ?? []), ...extra];
   }, [formErrors, lostMessage, refusedWrite]);
 
-  // The outline lists the sections in the order they appear on the page, and
-  // nothing tells it when that order changes: a component reordering sections
-  // from its own state re-renders itself, not the outline beside it. Watching
-  // the form's own subtree is what closes that gap.
+  // The outline reads the sections and their fields off the page, and nothing
+  // tells it when either changes: a component reordering its sections, or
+  // revealing a field, re-renders itself and not the outline beside it.
+  // Watching the form's own subtree is what closes that gap — text included,
+  // because a field's label is what the outline calls it in a problem.
   useEffect(() => {
     const form = formRef.current;
     if (form === null) return;
-    const observer = new MutationObserver(() => outline.revalidateOrder());
-    observer.observe(form, { childList: true, subtree: true });
+    const observer = new MutationObserver(() => outline.revalidate());
+    observer.observe(form, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
     return () => observer.disconnect();
   }, [outline]);
 
@@ -426,7 +469,12 @@ function StageEditorFormBody({
                 {reportedErrors && (
                   <FormErrorsList key="form-errors" errors={reportedErrors} />
                 )}
-                {children}
+                {/*
+                  Said once by the form rather than by every control: being
+                  unable to write is a property of the edit, not of any one
+                  field, so no section has to remember to pass it down.
+                */}
+                <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
               </EnclosingHeadingLevel>
             </LayoutGroup>
           </form>

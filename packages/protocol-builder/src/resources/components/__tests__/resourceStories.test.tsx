@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import * as pickerStories from '../ResourcePickerControl.stories.tsx';
+import * as pickerStories from '../../../fields/AssetPickerField.stories.tsx';
 import * as previewStories from '../ResourcePreview.stories.tsx';
 import * as secretStories from '../ResourceSecretControl.stories.tsx';
 import * as uploadStories from '../ResourceUploadControl.stories.tsx';

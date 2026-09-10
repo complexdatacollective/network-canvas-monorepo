@@ -339,9 +339,9 @@
     "defaultMessage": "Protocol color",
     "description": "Label of the field choosing which position in the protocol’s palette this entity type is drawn in."
   },
-  "protocolBuilder.codebookEntity.colorPlaceholder": {
-    "defaultMessage": "Choose a color…",
-    "description": "Placeholder shown in the colour field of the entity editor before a choice is made."
+  "protocolBuilder.codebookEntity.colorOutsidePalette": {
+    "defaultMessage": "Current color ({color})",
+    "description": "Name of the extra swatch offered when the entity type is already stored with a colour this protocol’s palette does not contain, so the researcher can see and keep what it has. color is the stored reference."
   },
   "protocolBuilder.codebookEntity.colorRequired": {
     "defaultMessage": "Choose a color.",
@@ -954,6 +954,10 @@
   "protocolBuilder.entitySelect.nodeGroupLabel": {
     "defaultMessage": "Node type",
     "description": "Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place."
+  },
+  "protocolBuilder.field.required": {
+    "defaultMessage": "This field is required.",
+    "description": "Shown under any unanswered required control in a stage editor when the researcher tries to save the stage. Addresses the researcher authoring the protocol, not a participant answering it."
   },
   "protocolBuilder.formFields.addLabel": {
     "defaultMessage": "Create new form field",
@@ -2430,10 +2434,6 @@
   "protocolBuilder.protocolContext.variableIdReused": {
     "defaultMessage": "Attribute record key \"{variableId}\" is reused across entity types (first declared in {firstOwnerSectionId}).",
     "description": "Why part of the codebook could not be read: two entity types store an attribute under the same key. variableId is the key; firstOwnerSectionId identifies the part of the protocol that used it first."
-  },
-  "protocolBuilder.protocolField.required": {
-    "defaultMessage": "This field is required.",
-    "description": "Shown under any unanswered required control in a stage editor when the researcher tries to save the stage. Addresses the researcher authoring the protocol, not a participant answering it."
   },
   "protocolBuilder.resourceBrowser.emptyState": {
     "defaultMessage": "There are no resources to choose from yet.",

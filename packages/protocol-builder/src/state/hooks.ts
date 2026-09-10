@@ -66,6 +66,8 @@ export type EntityTypeSummary = Readonly<{
   id: string;
   name: string;
   color?: string;
+  /** How a node of this type is drawn. Node types only; edges have no shape. */
+  shape?: string;
 }>;
 
 /** Every node or edge type in the codebook, for a picker's options. */
@@ -402,10 +404,16 @@ function entityTypeSummary(
     ref.kind === 'codebookNode' || ref.kind === 'codebookEdge'
       ? ref.typeId
       : id;
+  const shape = document.shape;
+  const defaultShape =
+    shape !== null && typeof shape === 'object' && 'default' in shape
+      ? shape.default
+      : undefined;
   return {
     id: typeId,
     name: typeof document.name === 'string' ? document.name : typeId,
     ...(typeof document.color === 'string' ? { color: document.color } : {}),
+    ...(typeof defaultShape === 'string' ? { shape: defaultShape } : {}),
   };
 }
 

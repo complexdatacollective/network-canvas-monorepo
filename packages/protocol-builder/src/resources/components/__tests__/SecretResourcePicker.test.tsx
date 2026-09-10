@@ -3,12 +3,12 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import Button from '@codaco/fresco-ui/Button';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 
 import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
-import ProtocolField from '../../../form/ProtocolField.tsx';
+import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import type { ResourceDescriptor } from '../../types.ts';
-import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import ResourceSecretControl from '../ResourceSecretControl.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 import { renderInResourceContext, TEST_EDIT_ID } from './resourceContext.tsx';
@@ -62,8 +62,8 @@ async function submitKey(
 
 function keyField() {
   return (
-    <ProtocolField
-      component={ResourcePickerControl}
+    <Field
+      component={AssetPickerField}
       name="apiKey"
       label="Map provider API key"
       kind="apikey"

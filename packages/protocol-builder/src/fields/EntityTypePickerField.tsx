@@ -12,19 +12,26 @@ import Node, {
   type NodeColorSequence,
 } from '@codaco/fresco-ui/Node';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import type { ColorReference } from '@codaco/protocol-validation';
+import {
+  type ColorReference,
+  EdgeColorSequence,
+  NodeColorSequence as NodeColorReferences,
+  type NodeShape,
+  NodeShapes,
+  type StageSubject,
+} from '@codaco/protocol-validation';
 
 import { READ_ONLY_MESSAGE } from '../form/readOnlyRefusal.ts';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { protocolColor } from '../protocolColor.ts';
 import {
+  codebookLabel,
   DEFAULT_EDGE_COLOR,
   DEFAULT_NODE_COLOR,
   type RuleEntityTarget,
   type RuleEntityTypeOption,
-  ruleEntityTypeOptions,
 } from '../rules/ruleCodebook.ts';
-import { useProtocolContext } from '../state/protocolContext.ts';
+import { useEntityTypes, type EntityTypeSummary } from '../state/hooks.ts';
 
 /**
  * What the researcher is asked before a change that costs them something.
@@ -52,7 +59,7 @@ export type EntityTypeChangeTarget = Readonly<{
   typeId: string;
 }>;
 
-export type EntitySelectFieldProps = CreateFormFieldProps<
+export type EntityTypePickerFieldProps = CreateFormFieldProps<
   string,
   'div',
   {
@@ -83,6 +90,47 @@ export type EntitySelectFieldProps = CreateFormFieldProps<
 
 const asNodeColor = (color: ColorReference): NodeColorSequence =>
   NodeColors.find((candidate) => candidate === color) ?? 'node-color-seq-1';
+
+const asNodeShape = (shape: string | undefined): NodeShape | undefined =>
+  NodeShapes.find((candidate) => candidate === shape);
+
+/**
+ * The colour a chip is drawn in, from what the type is stored with.
+ *
+ * Narrowed against the sequence this kind of type may use, so a reference the
+ * palette does not hold draws the default rather than nothing at all — the
+ * chip is how the researcher recognises the type, and a chip with no colour is
+ * harder to read than one whose colour is wrong.
+ */
+const asEntityColor = (
+  color: string | undefined,
+  entityType: RuleEntityTarget,
+): ColorReference =>
+  entityType === 'edge'
+    ? (EdgeColorSequence.find((candidate) => candidate === color) ??
+      DEFAULT_EDGE_COLOR)
+    : (NodeColorReferences.find((candidate) => candidate === color) ??
+      DEFAULT_NODE_COLOR);
+
+/**
+ * One chip, from the state layer's reading of one codebook type.
+ *
+ * The colour and shape are the type's own, defaulted where the schema allows
+ * them to be absent: a chip is a drawing of the thing the researcher will see
+ * in an interview, so it is drawn even for a type that has not been given a
+ * look yet.
+ */
+const typeOption = (
+  summary: EntityTypeSummary,
+  entityType: RuleEntityTarget,
+): RuleEntityTypeOption => ({
+  value: summary.id,
+  label: codebookLabel(summary.name, summary.id),
+  color: asEntityColor(summary.color, entityType),
+  ...(entityType === 'edge'
+    ? {}
+    : { shape: asNodeShape(summary.shape) ?? 'circle' }),
+});
 
 /**
  * Empty-state copy, written out per entity kind.
@@ -206,7 +254,7 @@ const DELETED_TARGET_TITLES = defineMessages({
  *
  * `controlUneditable` is the caller's own reading of itself, for the one part
  * of this the form cannot see: a picker whose props have stopped accepting
- * input. Everything a control derives that from — `ProtocolField` disabling
+ * input. Everything a control derives that from — `FieldsDisabled` closing
  * every field of a read-only editor, the control's own `readOnly` — is a
  * render away from the closure that resumes, so it is read live.
  */
@@ -260,18 +308,20 @@ export function useConfirmEntityTypeChange(): (
 ) => Promise<boolean> {
   const { confirm, openDialog } = useDialog();
   const intl = useAppIntl();
-  const protocolContext = useProtocolContext();
+  const nodeTypes = useEntityTypes('node');
+  const edgeTypes = useEntityTypes('edge');
   const refuseUneditableChange = useRefuseUneditableChange();
   /**
-   * The codebook the answer is judged against, kept live.
+   * The types the answer is judged against, kept live.
    *
    * A ref rather than the render's own value, for the reason the recheck
    * exists at all: what resumes when the question is answered is a closure
    * from the render that put it. The same seam the picker's refusal is read
-   * through.
+   * through. Both kinds, because the target's kind is not known until the
+   * question is answered.
    */
-  const liveCodebook = useRef(protocolContext.codebook);
-  liveCodebook.current = protocolContext.codebook;
+  const liveTypes = useRef({ node: nodeTypes, edge: edgeTypes });
+  liveTypes.current = { node: nodeTypes, edge: edgeTypes };
 
   return useCallback(
     async (question, target) => {
@@ -291,10 +341,9 @@ export function useConfirmEntityTypeChange(): (
       // judge a target against.
       if (refuseUneditableChange()) return false;
 
-      const stillDefined = ruleEntityTypeOptions(
-        liveCodebook.current,
-        target.entityType,
-      ).some((option) => option.value === target.typeId);
+      const stillDefined = liveTypes.current[target.entityType].some(
+        (summary) => summary.id === target.typeId,
+      );
       if (stillDefined) return true;
 
       void openDialog({
@@ -428,10 +477,16 @@ function EntityOption({
  * There is deliberately no "create a new type" affordance: creating a codebook
  * entity is a write to the codebook, which the package's codebook editors own.
  *
+ * Whether a change may happen, and what it costs, are the SECTION's to decide:
+ * it passes `blockChangeReason` and `confirmChange`. What this control owns is
+ * when the question is put — before the value moves, so nothing has to be put
+ * back — and that the answer is re-judged against the protocol as it stands
+ * when it arrives.
+ *
  * Labelling belongs to the surrounding field; pass `label`/`hint` to the
  * `Field` that renders this.
  */
-export function EntitySelectControl({
+export default function EntityTypePickerField({
   id,
   name,
   entityType,
@@ -448,9 +503,8 @@ export function EntitySelectControl({
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
-}: EntitySelectFieldProps) {
+}: EntityTypePickerFieldProps) {
   const { readOnly: sessionReadOnly } = useStageEditorForm();
-  const protocolContext = useProtocolContext();
   const intl = useAppIntl();
   const { openDialog } = useDialog();
   const confirmEntityTypeChange = useConfirmEntityTypeChange();
@@ -488,7 +542,7 @@ export function EntitySelectControl({
    *
    * Whether this control accepts input at all is read the same way and for the
    * same reason. A field of a read-only editor arrives `disabled`
-   * (`ProtocolField` decides that for every field, so no section has to), and a
+   * (`FieldsDisabled` decides that for every field, so no section has to), and a
    * section can withdraw its own list while the question stands: the chips the
    * researcher is answering about are already out of reach behind the dialog,
    * and the closure resuming under them must not write what they can no longer
@@ -559,9 +613,13 @@ export function EntitySelectControl({
     })();
   };
 
+  // The types themselves rather than the whole protocol: this control needs
+  // each type's name and look and nothing else, so an edit inside a stage is
+  // not a reason to redraw the chips.
+  const summaries = useEntityTypes(entityType);
   const codebookOptions = useMemo(
-    () => ruleEntityTypeOptions(protocolContext.codebook, entityType),
-    [entityType, protocolContext.codebook],
+    () => summaries.map((summary) => typeOption(summary, entityType)),
+    [entityType, summaries],
   );
 
   const isMissing =
@@ -644,5 +702,70 @@ export function EntitySelectControl({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * The node and edge members of the subject union.
+ *
+ * An ego subject carries no type, so it has nothing for this control to pick;
+ * a stage whose subject is ego says so by having no subject section at all.
+ */
+export type EntitySubject = Extract<StageSubject, { type: string }>;
+
+/**
+ * The subject a picked type stands for, or nothing at all.
+ *
+ * Written out per entity rather than assembled from `entityType`: the subject
+ * union discriminates on `entity`, and a computed discriminant would only be a
+ * subject after a cast.
+ *
+ * A picker that hands back nothing leaves the stage with NO subject, never
+ * with a subject whose type is empty. The schema has one spelling for absent —
+ * the key is not there — and `{entity: 'node', type: ''}` is a configured
+ * subject pointing at a type that does not exist, which every section reading
+ * the subject would believe in.
+ */
+export function entitySubject(
+  entityType: EntitySubject['entity'],
+  typeId: string | undefined,
+): EntitySubject | undefined {
+  if (typeId === undefined || typeId === '') return undefined;
+  return entityType === 'node'
+    ? { entity: 'node', type: typeId }
+    : { entity: 'edge', type: typeId };
+}
+
+export type EntitySubjectPickerFieldProps = CreateFormFieldProps<
+  EntitySubject,
+  'div',
+  {
+    entityType: EntitySubject['entity'];
+    /** See `EntityTypePickerFieldProps`. */
+    confirmChange?: () => EntityTypeChangeConfirmation | undefined;
+  }
+>;
+
+/**
+ * A stage's `subject`, picked from the protocol's own codebook.
+ *
+ * The schema stores the subject as `{entity, type}` while the picker speaks
+ * bare type ids, and the Fresco form store has no `format`/`parse` seam of its
+ * own — so this is where the two are bridged, once, rather than in every
+ * section that owns a subject.
+ */
+export function EntitySubjectPickerField({
+  value,
+  onChange,
+  entityType,
+  ...props
+}: EntitySubjectPickerFieldProps) {
+  return (
+    <EntityTypePickerField
+      {...props}
+      entityType={entityType}
+      value={value?.type}
+      onChange={(nextType) => onChange?.(entitySubject(entityType, nextType))}
+    />
   );
 }

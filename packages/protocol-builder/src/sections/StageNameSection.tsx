@@ -3,17 +3,15 @@ import { createElement, useId } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { useEnclosingHeadingLevel } from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import { headingVariants } from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import StageNameInput from '../fields/StageNameInput.tsx';
-import ProtocolField from '../form/ProtocolField.tsx';
-import {
-  SectionScopeContext,
-  useStageEditorForm,
-} from '../form/stageEditorContext.ts';
+import { REQUIRED } from '../form/requiredField.ts';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useOutlineSection } from '../form/useOutlineSection.ts';
 import { interfaceDisplayName } from '../interfaces/interfaceNames.ts';
 import {
@@ -153,22 +151,20 @@ export default function StageNameSection({
           })}
         </Paragraph>
       )}
-      <SectionScopeContext value={sectionId}>
-        <ProtocolField<typeof StageNameInput>
-          name="label"
-          component={StageNameInput}
-          // The hero input is the visible heading, so the label exists for
-          // assistive technology — but it still has to exist, because it is
-          // what the outline and a host's problem panel call this field.
-          label={stageNameLabel}
-          labelHidden
-          placeholder={intl.formatMessage(messages.placeholder)}
-          characterLimit={STAGE_NAME_LIMIT}
-          required
-          autoFocus={autoFocus ?? isNewStage}
-          onFieldBlur={onLabelBlur}
-        />
-      </SectionScopeContext>
+      <Field<typeof StageNameInput>
+        name="label"
+        component={StageNameInput}
+        // The hero input is the visible heading, so the label exists for
+        // assistive technology — but it still has to exist, because it is
+        // what the outline and a host's problem panel call this field.
+        label={stageNameLabel}
+        labelHidden
+        placeholder={intl.formatMessage(messages.placeholder)}
+        characterLimit={STAGE_NAME_LIMIT}
+        required={REQUIRED}
+        autoFocus={autoFocus ?? isNewStage}
+        onFieldBlur={onLabelBlur}
+      />
       <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
         <Badge color="neon-coral">{interfaceName}</Badge>
         {documentationUrl !== undefined && (
