@@ -27,6 +27,7 @@ import { createAppRouter } from '../../router.tsx';
 
 const STAGE_A = '11111111-1111-4111-8111-111111111111';
 const STAGE_B = '22222222-2222-4222-8222-222222222222';
+const STAGE_C = '33333333-3333-4333-8333-333333333333';
 const queryDraft = vi.hoisted(() => vi.fn());
 const DRAFT = {
   protocol: {
@@ -138,15 +139,62 @@ const commandWrote = new Map<ProtocolSectionId, SectionDoc>();
 const COMMAND_REVISION = { sequence: 3n, contentHash: 'written-by-command' };
 
 /**
- * The seeded host, answering as though a Studio command had written to it.
+ * Sections this host will not answer for, and how it declines: `withheld` is a
+ * section still on its way, `rejected` one whose read has failed.
+ */
+const unreadableSections = new Map<
+  ProtocolSectionId,
+  'withheld' | 'rejected'
+>();
+
+/** The reads parked by `withheld`, waiting for the test to let them through. */
+const withheldReads: (() => void)[] = [];
+
+/** Lets every parked read through, as the host finally answering would. */
+function answerWithheldSections(): void {
+  unreadableSections.clear();
+  for (const release of withheldReads.splice(0)) release();
+}
+
+/**
+ * The seeded host with some of its procedures answered differently.
  *
  * A proxy rather than a copy: the contract client is itself a proxy, so
  * spreading it yields an object with none of the procedures on it.
  */
+function overriding(
+  client: HostClient,
+  overrides: Partial<HostClient>,
+): HostClient {
+  return new Proxy(client, {
+    get: (target, key, receiver) =>
+      Object.hasOwn(overrides, key)
+        ? overrides[key as keyof HostClient]
+        : Reflect.get(target, key, receiver),
+  });
+}
+
+/** A host that has not answered for every section it listed. */
+function hostRefusingSomeSections(client: HostClient): HostClient {
+  return overriding(client, {
+    getSection: async (...args: Parameters<HostClient['getSection']>) => {
+      const refusal = unreadableSections.get(
+        sectionId(parseSectionId(args[0].sectionId)),
+      );
+      if (refusal === 'rejected') throw new Error('the section is unreadable');
+      if (refusal === 'withheld') {
+        await new Promise<void>((resolve) => withheldReads.push(resolve));
+      }
+      return client.getSection(...args);
+    },
+  });
+}
+
 function commandWriteFor(id: string): SectionDoc | undefined {
   return commandWrote.get(sectionId(parseSectionId(id)));
 }
 
+/** A host Studio's own commands have written to, with no event to say so. */
 function hostAnsweringCommandWrites(client: HostClient): HostClient {
   const overrides: Partial<HostClient> = {
     getSection: async (...args: Parameters<HostClient['getSection']>) => {
@@ -173,13 +221,9 @@ function hostAnsweringCommandWrites(client: HostClient): HostClient {
       };
     },
   };
-  return new Proxy(client, {
-    get: (target, key, receiver) =>
-      Object.hasOwn(overrides, key)
-        ? overrides[key as keyof HostClient]
-        : Reflect.get(target, key, receiver),
-  });
+  return overriding(client, overrides);
 }
+
 let writes = 0;
 const nextRequestId = (): string => `write-${(writes += 1)}`;
 
@@ -390,11 +434,15 @@ beforeEach(() => {
   tenancy.owner = TEAM_A.id;
   writes = 0;
   commandWrote.clear();
+  unreadableSections.clear();
+  withheldReads.length = 0;
   host = createInMemoryHost({
     protocolId: DRAFT.protocol.id,
     sections: HOST_SECTIONS,
   });
-  protocolBuilderHost.client = hostAnsweringCommandWrites(host.client);
+  protocolBuilderHost.client = hostRefusingSomeSections(
+    hostAnsweringCommandWrites(host.client),
+  );
   vi.mocked(authClient.getSession).mockReset();
   vi.mocked(authClient.getSession).mockResolvedValue({
     data: { user: {} },
@@ -448,7 +496,7 @@ function renderEditor() {
 /** The interview screens the outline is showing, in the order it shows them. */
 function outlineScreens(): (string | null)[] {
   return screen
-    .getAllByRole('button', { name: /Information$/ })
+    .queryAllByRole('button', { name: /Information$/ })
     .map((entry) => entry.textContent);
 }
 
@@ -962,6 +1010,111 @@ describe('Studio editor shell', () => {
  * collaborator's work was invisible here until something unrelated happened
  * to ask for the draft again (#1810).
  */
+/**
+ * The outline, the position a reorder points at and the validation panel are
+ * readings of the protocol as a WHOLE, so a protocol that is not all here yet
+ * is not a smaller protocol: an index in a list with a hole in it is not an
+ * index in the interview, and an empty list is not a protocol with no screens.
+ */
+describe('a protocol that is not all here', () => {
+  /** The three-screen protocol these tests need, with one screen unanswered. */
+  function seedThreeScreens(missing: string, how: 'withheld' | 'rejected') {
+    host = createInMemoryHost({
+      protocolId: DRAFT.protocol.id,
+      sections: {
+        ...HOST_SECTIONS,
+        stageOrder: { stages: [STAGE_A, STAGE_B, STAGE_C] },
+        [`stage:${STAGE_C}`]: {
+          id: STAGE_C,
+          type: 'Information',
+          label: 'Closing',
+          title: 'Closing',
+          items: [],
+        },
+      },
+    });
+    unreadableSections.set(sectionId({ kind: 'stage', stageId: missing }), how);
+    protocolBuilderHost.client = hostRefusingSomeSections(
+      hostAnsweringCommandWrites(host.client),
+    );
+  }
+
+  it('draws no outline, and offers no move, until all of it is here', async () => {
+    // The FIRST screen is the one still on its way, so a list drawn from what
+    // has arrived would show Follow-up and Closing at positions 0 and 1 —
+    // "move Closing up" would ask for index 0, the front of the interview,
+    // when Closing's own place is 2 and one step up from it is 1.
+    seedThreeScreens(STAGE_A, 'withheld');
+    renderEditor();
+
+    expect(
+      await screen.findByText('Reading the protocol…'),
+    ).toBeInTheDocument();
+    expect(outlineScreens()).toEqual([]);
+    expect(screen.queryAllByRole('button', { name: /^Move / })).toEqual([]);
+    // Never this: the protocol has three screens in it.
+    expect(
+      screen.queryByText('Add a screen to begin the interview flow.'),
+    ).toBeNull();
+
+    // And once the last of it arrives, the position on screen is the position
+    // in the interview.
+    await act(async () => {
+      answerWithheldSections();
+    });
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Welcome, from the hostInformation',
+        'Follow-upInformation',
+        'ClosingInformation',
+      ]),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Move Closing up' }));
+    await waitFor(() =>
+      expect(rpcClient.protocols.moveStage).toHaveBeenCalledWith(
+        expect.objectContaining({ stageId: STAGE_C, toIndex: 1 }),
+      ),
+    );
+  }, 20_000);
+
+  it('says a section could not be read, rather than checking for ever', async () => {
+    seedThreeScreens(STAGE_B, 'rejected');
+    renderEditor();
+
+    // Past the query's own retries. Nothing asks again after them — the
+    // package's cache never refetches — so "still checking" here is a wait
+    // with no end rather than an answer on its way.
+    expect(
+      await screen.findByText(
+        'Part of this protocol could not be read, so its screens are not shown.',
+        {},
+        { timeout: 15_000 },
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Protocol not checked' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Part of this protocol could not be read, so it has not been checked.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Checking this protocol…')).toBeNull();
+    expect(outlineScreens()).toEqual([]);
+
+    // And the researcher can ask for it again.
+    unreadableSections.clear();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Welcome, from the hostInformation',
+        'Follow-upInformation',
+        'ClosingInformation',
+      ]),
+    );
+  }, 30_000);
+});
+
 describe('what a collaborator changes', () => {
   it('adds their new screen to the outline', async () => {
     renderEditor();
@@ -1061,7 +1214,9 @@ describe('what a collaborator changes', () => {
         stageOrder: { stages: [STAGE_A, STAGE_B, 'no-such-stage'] },
       },
     });
-    protocolBuilderHost.client = host.client;
+    protocolBuilderHost.client = hostRefusingSomeSections(
+      hostAnsweringCommandWrites(host.client),
+    );
     renderEditor();
     await screen.findByRole('button', { name: 'Follow-upInformation' });
 

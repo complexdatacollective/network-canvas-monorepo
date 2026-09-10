@@ -13,6 +13,7 @@ import {
   useState,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -36,11 +37,13 @@ import {
   useStageIndex,
   type StageSummary,
 } from '@codaco/protocol-builder/state/hooks';
-import { useCompleteProtocolSections } from '@codaco/protocol-builder/state/protocolContext';
+import {
+  useProtocolReading,
+  type ProtocolReading,
+} from '@codaco/protocol-builder/state/protocolContext';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
 import type { contract } from '@codaco/studio-rpc';
 import { CLIENT_SESSION_PARAM } from '@codaco/studio-rpc/client-session';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
@@ -219,6 +222,7 @@ type EditorTarget =
 
 type DraftValidation =
   | Readonly<{ status: 'pending'; issues: readonly [] }>
+  | Readonly<{ status: 'unreadable'; issues: readonly [] }>
   | Readonly<{ status: 'valid'; issues: readonly [] }>
   | Readonly<{
       status: 'invalid';
@@ -369,6 +373,32 @@ const messages = defineMessages({
       'The outline could not be refreshed. Reload this editor before moving another screen.',
     description:
       'Shown when re-reading the protocol after an unconfirmed screen reorder also failed.',
+  },
+  readingScreens: {
+    id: 'studio.editor.readingScreens',
+    defaultMessage: 'Reading the protocol…',
+    description:
+      'Shown in place of the list of interview screens while the protocol is still being read.',
+  },
+  screensUnreadable: {
+    id: 'studio.editor.screensUnreadable',
+    defaultMessage:
+      'Part of this protocol could not be read, so its screens are not shown.',
+    description:
+      'Shown in place of the list of interview screens when part of the protocol could not be read at all.',
+  },
+  protocolUnreadable: {
+    id: 'studio.editor.protocolUnreadable',
+    defaultMessage:
+      'Part of this protocol could not be read, so it has not been checked.',
+    description:
+      'Shown in the validation panel when part of the protocol could not be read at all.',
+  },
+  protocolNotChecked: {
+    id: 'studio.editor.protocolNotChecked',
+    defaultMessage: 'Protocol not checked',
+    description:
+      'Button reporting that the protocol could not be checked, because part of it could not be read.',
   },
   noScreens: {
     id: 'studio.editor.noScreens',
@@ -688,11 +718,18 @@ function EditorWorkspace({
   const [moveRecoveryFailed, setMoveRecoveryFailed] = useState(false);
   const selectionInitialized = useRef(false);
   const discardRequestPending = useRef(false);
+  // The outline, the position a reorder points at and the validation all read
+  // the protocol as a WHOLE, so all three wait for the whole of it. A stage
+  // whose section has not arrived is one `useStageIndex` leaves out, and an
+  // index in a list with a hole in it is not an index in the interview: a
+  // reorder computed from it moves the screen somewhere the researcher did not
+  // point at, and a list that is briefly empty is not a protocol with no
+  // screens in it.
+  const reading = useProtocolReading();
   const stages = useStageIndex();
-  const sections = useCompleteProtocolSections();
   const revision = useProtocolRevision();
   const rereadProtocol = useRereadProtocol();
-  const draftValidation = useDraftValidation(sections);
+  const draftValidation = useDraftValidation(reading);
 
   const confirmDiscardStageChanges = useCallback(
     // `confirm` takes plain strings, so the descriptors are formatted here
@@ -760,13 +797,13 @@ function EditorWorkspace({
   // editor is moved to. A reading still missing sections would open on
   // whichever screen happened to arrive first.
   useEffect(() => {
-    if (sections === undefined || selectionInitialized.current) return;
+    if (reading.status !== 'read' || selectionInitialized.current) return;
     selectionInitialized.current = true;
     const firstStage = stages[0];
     if (firstStage !== undefined) {
       setSelection({ kind: 'stage', stageId: firstStage.id });
     }
-  }, [sections, stages]);
+  }, [reading, stages]);
 
   const selectedStageId = selection.kind === 'stage' ? selection.stageId : null;
 
@@ -806,6 +843,12 @@ function EditorWorkspace({
   const requestMoveStage = (stageId: string, toIndex: number) => {
     if (revision === undefined) return;
     moveStage.mutate({ stageId, toIndex, expectedRevision: revision });
+  };
+
+  // The reading is what reports a failure, so a retry that fails again has
+  // nothing to add: it puts the same message back on screen.
+  const retryReadingProtocol = () => {
+    void rereadProtocol().catch(() => undefined);
   };
 
   const reconcileAddStage = async () => {
@@ -957,11 +1000,33 @@ function EditorWorkspace({
                       )}
                     </Alert>
                   )}
-                  {stages.length === 0 ? (
+                  {reading.status === 'reading' && (
+                    <Paragraph className="px-2 text-sm">
+                      {intl.formatMessage(messages.readingScreens)}
+                    </Paragraph>
+                  )}
+                  {reading.status === 'unreadable' && (
+                    <Alert className="mb-2" variant="destructive">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span>
+                          {intl.formatMessage(messages.screensUnreadable)}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={retryReadingProtocol}
+                        >
+                          {intl.formatMessage(commonMessages.retry)}
+                        </Button>
+                      </div>
+                    </Alert>
+                  )}
+                  {reading.status === 'read' && stages.length === 0 && (
                     <Paragraph className="px-2 text-sm">
                       {intl.formatMessage(messages.noScreens)}
                     </Paragraph>
-                  ) : (
+                  )}
+                  {reading.status === 'read' && stages.length > 0 && (
                     <ol className="m-0 flex list-none flex-col gap-2 p-0 ps-3">
                       {stages.map((stage, index) => {
                         return (
@@ -1168,22 +1233,21 @@ function ValidationButton(props: { validation: DraftValidation }) {
       variant="outline"
       onClick={() => document.getElementById('protocol-problems')?.focus()}
     >
-      {validation.status === 'invalid'
-        ? intl.formatMessage(messages.validationProblems, {
-            count: validation.issues.length,
-          })
-        : intl.formatMessage(
-            validation.status === 'valid'
-              ? messages.protocolValid
-              : messages.checkingProtocol,
-          )}
+      {validation.status === 'invalid' &&
+        intl.formatMessage(messages.validationProblems, {
+          count: validation.issues.length,
+        })}
+      {validation.status === 'valid' &&
+        intl.formatMessage(messages.protocolValid)}
+      {validation.status === 'unreadable' &&
+        intl.formatMessage(messages.protocolNotChecked)}
+      {validation.status === 'pending' &&
+        intl.formatMessage(messages.checkingProtocol)}
     </Button>
   );
 }
 
-function useDraftValidation(
-  sections: Readonly<Record<string, SectionDoc>> | undefined,
-): DraftValidation {
+function useDraftValidation(reading: ProtocolReading): DraftValidation {
   const intl = useAppIntl();
   const [validation, setValidation] = useState<DraftValidation>({
     status: 'pending',
@@ -1192,13 +1256,21 @@ function useDraftValidation(
 
   useEffect(() => {
     let active = true;
-    if (sections === undefined) {
-      setValidation({ status: 'pending', issues: [] });
+    if (reading.status !== 'read') {
+      // "Could not be read" and "not yet" are different things to leave on
+      // screen: the first is an answer, and reporting it as the second is a
+      // check that never finishes.
+      setValidation(
+        reading.status === 'unreadable'
+          ? { status: 'unreadable', issues: [] }
+          : { status: 'pending', issues: [] },
+      );
       return () => {
         active = false;
       };
     }
 
+    const { sections } = reading;
     setValidation({ status: 'pending', issues: [] });
     void (async () => {
       try {
@@ -1233,7 +1305,7 @@ function useDraftValidation(
     return () => {
       active = false;
     };
-  }, [intl, sections]);
+  }, [intl, reading]);
 
   return validation;
 }
@@ -1260,6 +1332,9 @@ function ProtocolProblems(props: { validation: DraftValidation }) {
         <Paragraph>
           {intl.formatMessage(messages.checkingThisProtocol)}
         </Paragraph>
+      )}
+      {props.validation.status === 'unreadable' && (
+        <Paragraph>{intl.formatMessage(messages.protocolUnreadable)}</Paragraph>
       )}
       {props.validation.status === 'valid' && (
         <Paragraph>
