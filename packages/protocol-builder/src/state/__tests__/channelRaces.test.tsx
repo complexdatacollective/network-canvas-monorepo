@@ -3,14 +3,14 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { render, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import {
   sectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import type { ProtocolBuilderClient } from '../../contract/contract.ts';
-import type { ProtocolEvent } from '../../contract/schemas.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import {
   createInMemoryHost,

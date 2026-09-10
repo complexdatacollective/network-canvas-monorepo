@@ -10,8 +10,8 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 
-import type { ProtocolBuilderClient } from '../contract/contract.ts';
 import { useProtocolBuilderContext } from '../state/context.ts';
 import type { ResourcePromotion } from '../state/hooks.ts';
 import { resourceFailureMessages } from './resourceMessages.ts';

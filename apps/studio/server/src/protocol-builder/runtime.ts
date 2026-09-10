@@ -4,7 +4,7 @@
 // The contract has no renew: an editor takes a section and holds it until it
 // releases. Studio's storage is a lease with a wall-clock expiry, so keeping
 // the two agreeing is the server's business — this is where that happens.
-import type { Presence } from '@codaco/protocol-builder/contract/schemas';
+import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
 import type { SyncServer } from '@codaco/studio-sync/server';
 
 import { logOperational } from '../observability/logger.ts';

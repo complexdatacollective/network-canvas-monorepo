@@ -1,6 +1,7 @@
 import { safe } from '@orpc/client';
 import { describe, expect, it } from 'vitest';
 
+import type { SectionReference } from '@codaco/protocol-builder-core/contract/schemas';
 import { declaredStageReferenceSites } from '@codaco/protocol-validation';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
@@ -9,7 +10,6 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import type { SectionReference } from '../../../contract/schemas.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,
