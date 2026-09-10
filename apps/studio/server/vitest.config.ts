@@ -26,14 +26,22 @@ export default defineConfig({
     // 833s), and at two workers that drained in 493s — the halving the model
     // predicts, which is what says the workers are the constraint.
     //
-    // Three, and not more, because a single file is the floor. The migration
-    // security invariants take ~330s in one file, and 91% of that is the real
+    // Three, and not more, because a single file is the floor, and the third
+    // worker is already spending against it. The migration security
+    // invariants are one file, and 91% of that file is the real
     // `migrateDatabase` those tests exist to exercise, so it cannot be
     // shortened without deleting coverage and it cannot be split across
-    // workers. Three workers drain the remaining work in about the time that
-    // file takes; a fourth would finish its share earlier and then wait on
-    // the same file, buying no wall time while adding contention to the
-    // budgets below.
+    // workers. It runs ~310s with two workers and 415-466s with three,
+    // because the extra worker contends for the same Postgres — and at three
+    // the suite lands within a couple of seconds of that file (420s against
+    // 415s, 468s against 466s). The suite is that file now.
+    //
+    // So a fourth worker buys nothing: the remaining work already drains
+    // before the floor does, and more concurrent migrations would only raise
+    // the floor further. Going below it means splitting that file, not
+    // adding workers. What the third worker does buy is real but smaller
+    // than the arithmetic suggests — 493s to 420-468s — because part of the
+    // gain is given straight back as contention.
     maxWorkers: 3,
     // The protocol suites validate whole fixture protocols and build a
     // fourteen-table schema per file.
