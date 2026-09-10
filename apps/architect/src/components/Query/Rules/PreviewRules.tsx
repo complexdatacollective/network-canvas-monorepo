@@ -1,5 +1,5 @@
 import { Pencil, Trash2 } from 'lucide-react';
-import { createContext, useContext, useEffect, useId, useState } from 'react';
+import { createContext, useContext, useId, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -164,27 +164,41 @@ const RuleListEditor = ({
   // gets its own session id, and so its own field store: fresco-ui has no
   // whole-form reinitialize, and a reused store would resurrect work the
   // researcher explicitly discarded.
-  useEffect(() => {
+  //
+  // Which row is being edited is a prop, not an external system, so the
+  // session it implies is worked out during render: the editor opens in the
+  // same commit that hands this component a row, rather than one frame later.
+  // The seed is `null` so a component mounted already editing a row still
+  // opens, as the effect this replaced did on mount.
+  const [editedRow, setEditedRow] = useState<{
+    item: EditableRule | undefined;
+    isNewItem: boolean;
+  } | null>(null);
+  if (
+    editedRow === null ||
+    editedRow.item !== item ||
+    editedRow.isNewItem !== isNewItem
+  ) {
+    setEditedRow({ item, isNewItem });
     if (!item) {
       setSession((previous) =>
         previous ? { ...previous, open: false } : previous,
       );
-      return;
+    } else {
+      setSession((previous) => {
+        if (previous?.open && previous.sourceId === item._internalId) {
+          return previous;
+        }
+        return {
+          id: (previous?.id ?? 0) + 1,
+          sourceId: item._internalId,
+          isNewItem,
+          seed: toRule(item),
+          open: true,
+        };
+      });
     }
-
-    setSession((previous) => {
-      if (previous?.open && previous.sourceId === item._internalId) {
-        return previous;
-      }
-      return {
-        id: (previous?.id ?? 0) + 1,
-        sourceId: item._internalId,
-        isNewItem,
-        seed: toRule(item),
-        open: true,
-      };
-    });
-  }, [isNewItem, item]);
+  }
 
   if (!session) return null;
 

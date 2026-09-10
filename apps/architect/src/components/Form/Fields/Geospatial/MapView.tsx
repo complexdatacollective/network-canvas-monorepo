@@ -137,10 +137,54 @@ const MapView = ({
     resolveCenter(mapOptions.center),
   );
   const [zoom, setZoom] = useState(() => resolveZoom(mapOptions.initialZoom));
-  const [mapStatus, setMapStatus] = useState<MapStatus>('loading');
-  const [mapError, setMapError] = useState<keyof typeof failureMessages | null>(
-    null,
-  );
+
+  // The map is built for one exact combination of container, key, style and
+  // starting view, and the effect below tears it down and builds another
+  // whenever that combination changes. Numbering those attempts is what lets
+  // the load outcome be stored against the attempt that reported it: an
+  // outcome from an attempt that has been superseded reads as "loading" during
+  // render, so the effect never has to clear the previous map's verdict with a
+  // setState of its own. Kept on the coordinates rather than the `center`
+  // array so a caller that rebuilds `mapOptions` each render cannot spin this.
+  const [initialLongitude, initialLatitude] = resolveCenter(mapOptions.center);
+  const initialZoom = resolveZoom(mapOptions.initialZoom);
+  const mapInputs: readonly unknown[] = [
+    mapContainer,
+    mapboxAPIKey,
+    style,
+    initialLongitude,
+    initialLatitude,
+    initialZoom,
+  ];
+  const [mapAttempt, setMapAttempt] = useState<{
+    id: number;
+    inputs: readonly unknown[];
+  }>(() => ({ id: 0, inputs: mapInputs }));
+  if (
+    mapAttempt.inputs.some(
+      (input, index) => !Object.is(input, mapInputs[index]),
+    )
+  ) {
+    setMapAttempt({ id: mapAttempt.id + 1, inputs: mapInputs });
+  }
+  const attemptId = mapAttempt.id;
+
+  const [mapLoad, setMapLoad] = useState<{
+    attempt: number;
+    state: 'ready' | 'error';
+  } | null>(null);
+  const loadState: MapStatus =
+    mapLoad?.attempt === attemptId ? mapLoad.state : 'loading';
+  // Without a key there is nothing to load and nothing to wait for, so that
+  // failure is read straight off the props rather than being written into
+  // state from inside the effect.
+  const mapStatus: MapStatus = mapboxAPIKey ? loadState : 'error';
+  const mapError: keyof typeof failureMessages | null = !mapboxAPIKey
+    ? 'unavailableKeyMessage'
+    : loadState === 'error'
+      ? 'mapLoadErrorMessage'
+      : null;
+
   const saveMapSelection = (newCenter: [number, number], newZoom: number) => {
     onChange({
       ...mapOptions,
@@ -151,18 +195,9 @@ const MapView = ({
   const isMapChanged = hasMapViewChanged(center, zoom, mapOptions);
 
   useEffect(() => {
-    if (!mapContainer || mapRef.current) {
+    if (!mapContainer || mapRef.current || !mapboxAPIKey) {
       return undefined;
     }
-
-    if (!mapboxAPIKey) {
-      setMapError('unavailableKeyMessage');
-      setMapStatus('error');
-      return undefined;
-    }
-
-    setMapError(null);
-    setMapStatus('loading');
 
     let disposed = false;
     let map: MapboxMap | null = null;
@@ -175,8 +210,8 @@ const MapView = ({
         map = new mapboxgl.Map({
           container: mapContainer,
           style: style || 'mapbox://styles/mapbox/streets-v12',
-          center: resolveCenter(mapOptions.center),
-          zoom: resolveZoom(mapOptions.initialZoom),
+          center: [initialLongitude, initialLatitude],
+          zoom: initialZoom,
           accessToken: mapboxAPIKey,
         });
         mapRef.current = map;
@@ -187,12 +222,17 @@ const MapView = ({
         );
         map.on('load', () => {
           if (disposed) return;
-          setMapStatus((status) => (status === 'error' ? status : 'ready'));
+          // An error already reported for THIS map stands: a load that
+          // finishes afterwards has not undone it.
+          setMapLoad((current) =>
+            current?.attempt === attemptId && current.state === 'error'
+              ? current
+              : { attempt: attemptId, state: 'ready' },
+          );
         });
         map.on('error', () => {
           if (disposed) return;
-          setMapError('mapLoadErrorMessage');
-          setMapStatus('error');
+          setMapLoad({ attempt: attemptId, state: 'error' });
         });
         map.on('move', () => {
           if (!map || disposed) {
@@ -208,8 +248,7 @@ const MapView = ({
         map = null;
         mapRef.current = null;
         if (!disposed) {
-          setMapError('mapLoadErrorMessage');
-          setMapStatus('error');
+          setMapLoad({ attempt: attemptId, state: 'error' });
         }
       }
     });
@@ -221,11 +260,13 @@ const MapView = ({
       mapRef.current = null;
     };
   }, [
+    attemptId,
     mapContainer,
     mapboxAPIKey,
     style,
-    mapOptions.center,
-    mapOptions.initialZoom,
+    initialLongitude,
+    initialLatitude,
+    initialZoom,
   ]);
   return (
     <Dialog

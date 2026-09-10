@@ -8,7 +8,7 @@ import type {
   ResourcePreviewSchema,
   ResourceSecretStorageSchema,
   StageResourceInputSchema,
-} from '@codaco/protocol-builder/contract/schemas';
+} from '@codaco/protocol-builder-core/contract/schemas';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import {
   addApiKeyAsset,

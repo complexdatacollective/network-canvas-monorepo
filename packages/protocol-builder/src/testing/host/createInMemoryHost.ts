@@ -6,11 +6,11 @@ import {
 } from '@orpc/server';
 import { v4 as uuid } from 'uuid';
 
+import { contract } from '@codaco/protocol-builder-core/contract';
+import type { ResourceDescriptor } from '@codaco/protocol-builder-core/contract/schemas';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { contract } from '../../contract/contract.ts';
-import type { ResourceDescriptor } from '../../contract/schemas.ts';
 import { OperationLedger } from './operationLedger.ts';
 import { InMemoryProtocolStore, type HostPrincipal } from './protocolStore.ts';
 import { InMemoryResourceStore, type EditScope } from './resourceStore.ts';

@@ -2,14 +2,17 @@ import { safe } from '@orpc/client';
 import { useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
 
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import type {
+  Presence,
+  SectionReference,
+} from '@codaco/protocol-builder-core/contract/schemas';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import type { ProtocolBuilderClient } from '../contract/contract.ts';
-import type { Presence, SectionReference } from '../contract/schemas.ts';
 import { useProtocolBuilderContext } from '../state/context.ts';
 import { useKeptRequestId, type KeptRequestId } from '../state/requestKey.ts';
 import {

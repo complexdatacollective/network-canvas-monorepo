@@ -12,7 +12,7 @@ import type pg from 'pg';
 import type {
   Presence,
   ProtocolEvent,
-} from '@codaco/protocol-builder/contract/schemas';
+} from '@codaco/protocol-builder-core/contract/schemas';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId as makeSectionId,

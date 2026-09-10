@@ -34,7 +34,11 @@ export function AnalyticsProvider({
   onTrackerChange,
   children,
 }: AnalyticsProviderProps) {
-  const [tracker, setTracker] = useState<Tracker>(NULL_TRACKER);
+  // Only the resolved tracker is state; whether analytics are disabled is a
+  // prop, so the tracker actually handed to consumers is derived during render
+  // rather than reset by an effect on the next pass.
+  const [resolvedTracker, setResolvedTracker] = useState<Tracker>(NULL_TRACKER);
+  const tracker = disableAnalytics ? NULL_TRACKER : resolvedTracker;
 
   const superProperties = useMemo(
     () => computeSuperProperties(analytics, payload),
@@ -74,7 +78,6 @@ export function AnalyticsProvider({
 
   useEffect(() => {
     if (disableAnalytics) {
-      setTracker(NULL_TRACKER);
       onTrackerChange?.(NULL_TRACKER);
       return;
     }
@@ -83,7 +86,7 @@ export function AnalyticsProvider({
       const client = await resolveClient({ disableAnalytics, posthogClient });
       if (cancelled) return;
       if (!client) {
-        setTracker(NULL_TRACKER);
+        setResolvedTracker(NULL_TRACKER);
         onTrackerChange?.(NULL_TRACKER);
         return;
       }
@@ -102,7 +105,7 @@ export function AnalyticsProvider({
         ownsInstance,
         pseudonymiseEntityId,
       });
-      setTracker(next);
+      setResolvedTracker(next);
       onTrackerChange?.(next);
     })();
     return () => {

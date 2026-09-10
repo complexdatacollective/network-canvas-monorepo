@@ -161,6 +161,16 @@ describe('an attribute something else already collects', () => {
     expect(
       preset.getByRole('checkbox', { name: 'highlighted' }),
     ).toBeInTheDocument();
+    // The list takes several attributes, but the interview highlights by ONE
+    // of them at a time: `Narrative.tsx` passes `highlight[highlightIndex]` as
+    // a single `highlightAttribute`, and `PresetSwitcher.tsx` offers the
+    // ticked attributes as radio buttons. The hint has to say so, or a
+    // researcher ticks three expecting all three to show at once.
+    expect(
+      preset.getByText(
+        /The interviewer picks one of these attributes at a time, and the nodes it is true of are shown highlighted\./,
+      ),
+    ).toBeInTheDocument();
   });
 });
 

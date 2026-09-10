@@ -1,8 +1,8 @@
 'use client';
 
 import { Trash2 } from 'lucide-react';
-import type { Dispatch, SetStateAction } from 'react';
-import { useEffect, useState } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -55,6 +55,8 @@ const messages = defineMessages({
   },
 });
 
+const renderStrongChunks = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 type DeleteProtocolsDialogProps = {
   open: boolean;
   setOpen: Dispatch<SetStateAction<boolean>>;
@@ -70,23 +72,14 @@ export const DeleteProtocolsDialog = ({
 
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const [protocolsInfo, setProtocolsInfo] = useState<{
-    hasInterviews: boolean;
-    hasUnexportedInterviews: boolean;
-  }>({
-    hasInterviews: false,
-    hasUnexportedInterviews: false,
-  });
-  useEffect(() => {
-    setProtocolsInfo({
-      hasInterviews: protocolsToDelete?.some(
-        (protocol) => protocol.interviews.length > 0,
-      ),
-      hasUnexportedInterviews: protocolsToDelete?.some((protocol) =>
-        protocol.interviews.some((interview) => !interview.exportTime),
-      ),
-    });
-  }, [protocolsToDelete]);
+  const protocolsInfo = {
+    hasInterviews: protocolsToDelete.some(
+      (protocol) => protocol.interviews.length > 0,
+    ),
+    hasUnexportedInterviews: protocolsToDelete.some((protocol) =>
+      protocol.interviews.some((interview) => !interview.exportTime),
+    ),
+  };
 
   const handleConfirm = async () => {
     setIsDeleting(true);
@@ -96,10 +89,6 @@ export const DeleteProtocolsDialog = ({
   };
 
   const handleCancelDialog = () => {
-    setProtocolsInfo({
-      hasInterviews: false,
-      hasUnexportedInterviews: false,
-    });
     setOpen(false);
   };
 
@@ -136,7 +125,7 @@ export const DeleteProtocolsDialog = ({
             <AlertDescription>
               {intl.formatMessage(messages.exported, {
                 count: protocolsToDelete.length,
-                strong: (chunks) => <strong>{chunks}</strong>,
+                strong: renderStrongChunks,
               })}
             </AlertDescription>
           </Alert>
@@ -147,7 +136,7 @@ export const DeleteProtocolsDialog = ({
           <AlertDescription>
             {intl.formatMessage(messages.unexported, {
               count: protocolsToDelete.length,
-              strong: (chunks) => <strong>{chunks}</strong>,
+              strong: renderStrongChunks,
             })}
           </AlertDescription>
         </Alert>

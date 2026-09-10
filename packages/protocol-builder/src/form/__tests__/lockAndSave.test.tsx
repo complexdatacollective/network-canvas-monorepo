@@ -5,9 +5,9 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import type { ProtocolBuilderClient } from '../../contract/contract.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import {
   ResourceClientProvider,

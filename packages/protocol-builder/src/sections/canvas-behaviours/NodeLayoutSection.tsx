@@ -18,23 +18,32 @@ export type NodeLayoutSectionProps = Readonly<{
    * across a seam like this is invisible to extraction, absent from the
    * catalogs and covered by no guard.
    *
-   * Only this one, because only this one says something the interfaces decide
-   * differently. Manual mode on a stage that COLLECTS positions leaves every
-   * node in a bucket at the foot of the canvas for the participant to place; a
-   * narrative stage collects nothing and shows the positions the preset's
-   * attribute already holds. Automatic mode is the same simulation on both.
+   * Manual mode on a stage that COLLECTS positions leaves every node in a
+   * bucket at the foot of the canvas for the participant to place; a narrative
+   * stage collects nothing and shows the positions the preset's attribute
+   * already holds.
    *
    * Absent means the shared wording, which the control itself supplies: the
    * default lives with the card it is written on and nowhere else.
    */
   manualDescription?: MessageDescriptor;
   /**
-   * The sentence under the automatic-mode card, on the same terms.
+   * The same, for the automatic-mode card.
    *
-   * Only a network composer needs one: there, automatic layout is where the
-   * stage STARTS and the participant switches it off and on for themselves,
-   * which the shared sentence — a simulation the stage runs when it opens —
-   * does not say.
+   * The force simulation is one implementation, but two things about it differ
+   * by interface, and both are things the card promises. It runs over the
+   * nodes the interface hands it, and a narrative stage hands it only the
+   * nodes the preset's attribute holds a position for — `Narrative.tsx`
+   * simulates `nodesWithLayout` in either mode, where `Sociogram.tsx` switches
+   * to `allNodes` in automatic mode and draws the unplaced ones in. And moving
+   * a node by hand is unconditional on a sociogram, while a narrative stage
+   * passes `behaviours.allowRepositioning` down to the canvas, so the "Allow
+   * moving nodes" switch withdraws it in both modes.
+   *
+   * A network composer needs one for a different reason: there, automatic
+   * layout is where the stage STARTS and the participant switches it off and
+   * on for themselves, which the shared sentence — a simulation the stage runs
+   * when it opens — does not say.
    */
   automaticDescription?: MessageDescriptor;
 }>;

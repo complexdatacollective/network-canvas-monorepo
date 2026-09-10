@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
@@ -54,6 +56,8 @@ const messages = defineMessages({
   },
 });
 
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 type PromptFieldsProps = {
   text?: string;
   createEdge?: string;
@@ -72,8 +76,8 @@ const PromptFields = ({ text, createEdge }: PromptFieldsProps) => {
         <AlertDescription className="space-y-4">
           <div>
             {intl.formatMessage(messages.rememberToWriteYourPromptText, {
-              strong: (chunks) => <strong>{chunks}</strong>,
-              strong2: (chunks) => <strong>{chunks}</strong>,
+              strong: renderStrong,
+              strong2: renderStrong,
             })}
           </div>
           <div>
