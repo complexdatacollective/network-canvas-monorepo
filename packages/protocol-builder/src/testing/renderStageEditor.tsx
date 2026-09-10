@@ -51,7 +51,7 @@ import {
 } from './host/createInMemoryHost.ts';
 import type { HostPrincipal } from './host/protocolStore.ts';
 import {
-  fixtureAssetContent,
+  fixtureAssetContentFor,
   fixtureAssetManifest,
   fixtureProtocolSections,
   type FixtureStageId,
@@ -461,13 +461,21 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
     }>[];
     /**
      * Wraps the seeded host's own client, the way `renderResourceEditor` does,
-     * for a test about a host that holds its answer.
+     * for a test about a host that holds its answer, or about a fact a real
+     * host KNOWS that this in-memory one does not work out for itself.
      *
      * Between the editor and the host rather than inside it: this host answers
      * in a microtask, so a request that is still in flight is something only
      * the transport can be. A stubbed store method would be answering for a
      * write the host decides, and would go on compiling after the host stopped
      * asking it the same question.
+     *
+     * The fact so far is what is inside an imported data file: `inspect`
+     * answers with the manifest entry, and a roster stage's card, sort and
+     * search sections are all chosen from that file's columns — so a test about
+     * one of them has to say what the file holds, exactly as
+     * `AssetPickerField.test.tsx` already does for the picker's own summary.
+     * Everything the wrapper does not override stays the real host's.
      */
     client?: (host: InMemoryHost) => ProtocolBuilderClient;
   }> &
@@ -586,7 +594,7 @@ export function renderStageEditor<T extends StageType = StageType>(
 
   const host = createInMemoryHost({
     sections: seededSections(seeded, assetManifest),
-    assetContent: assetContentFor(assetManifest),
+    assetContent: fixtureAssetContentFor(assetManifest),
     principal: HARNESS_PRINCIPAL,
   });
   const { protocolId, store } = host;
@@ -699,6 +707,23 @@ export function renderStageEditor<T extends StageType = StageType>(
     return form;
   };
 
+  /**
+   * Clicks the submit control and resolves once the form has SETTLED — not
+   * merely once a save landed. Returns the saved stage, or null if the
+   * submit was refused.
+   *
+   * The settling requirement means the stage form must still be mounted when
+   * the save resolves, on the success path as well as the refusal path. Every
+   * harness built on `StageEditorShell` satisfies that, because the shell
+   * keeps the form mounted and clears `aria-busy` after replaying the saved
+   * document over it. A host that unmounted the editor the moment `onSaved`
+   * fired — a dialog that closes on save, say — would instead turn an
+   * instant success into a `waitFor` timeout surfacing as the "found no
+   * form" error above. No current call site does that; if one ever needs to,
+   * it wants its own helper rather than a relaxation of this one, because
+   * the gap this closes is real: `onSaved` fires from inside `save()`,
+   * before the shell has reacted to it.
+   */
   const submit = async (): Promise<SavedStage | null> => {
     const before = saved.length;
     const button = within(view.container).getByRole('button', {
@@ -706,14 +731,24 @@ export function renderStageEditor<T extends StageType = StageType>(
     });
     await user.click(button);
     await waitFor(() => {
+      // Settled either way, read from the FORM rather than from the control
+      // that was clicked — a host may render a plain `<button form={formId}>`
+      // that says nothing about itself. Checked before the save is judged,
+      // on BOTH outcomes: `onSaved` fires from inside `save()`, before the
+      // shell has replayed the saved document over the form — the rebase
+      // that clears its own dirty flag — and before `useForm` clears
+      // `isSubmitting`. A caller that treated `saved.length` moving as
+      // "settled" could read the form in that gap, between the save landing
+      // and the shell finishing what it does about it; every caller of
+      // `submit()` waits for the same signal the form itself uses to say it
+      // is done, rather than each re-deriving its own guess at "done enough"
+      // with a `waitFor` of its own after the fact.
+      expect(submittingForm()).toHaveAttribute('aria-busy', 'false');
       if (saved.length > before) return;
       // A submit that did not save has settled and left its reason on screen:
       // the form's own errors, or a field marked invalid for `focusFirstError`
       // to reach. Asserting both is what stops a submit still in flight from
-      // being read as a refusal. Settling is read from the FORM, not from the
-      // control that was clicked, because a host may render a plain
-      // `<button form={formId}>` that says nothing about itself.
-      expect(submittingForm()).toHaveAttribute('aria-busy', 'false');
+      // being read as a refusal.
       expect(refusalOnScreen(view.container)).toBe(true);
     });
     return saved.length > before ? (saved.at(-1) ?? null) : null;
@@ -1119,32 +1154,6 @@ function stageOrderWith(
     ? order.filter((entry): entry is string => typeof entry === 'string')
     : [];
   return stages.includes(stageId) ? stages : [...stages, stageId];
-}
-
-/**
- * The bytes the host holds for the manifest's assets, keyed by the filename
- * the manifest names.
- *
- * An asset the fixture ships a file for is seeded with that file, because an
- * editor asks the host what is INSIDE a data file — a roster's columns are the
- * material its card, sort and search sections offer. Everything else gets a
- * placeholder body: those editors read only a resource's kind, name and size.
- */
-function assetContentFor(
-  manifest: Readonly<Record<string, unknown>>,
-): Record<string, Blob> {
-  const content: Record<string, Blob> = {};
-  for (const entry of Object.values(manifest)) {
-    if (typeof entry !== 'object' || entry === null) continue;
-    const source = Reflect.get(entry, 'source');
-    if (typeof source !== 'string') continue;
-    const bytes = fixtureAssetContent(source);
-    content[source] = new Blob(
-      [(bytes ?? new TextEncoder().encode('{}')) as BlobPart],
-      { type: 'application/json' },
-    );
-  }
-  return content;
 }
 
 /** What a round trip did to the stage, one path per difference. */

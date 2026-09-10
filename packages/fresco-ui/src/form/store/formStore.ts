@@ -494,6 +494,28 @@ type FormStoreState = {
   registerForm: (config: FormConfig) => void;
   notifyRestore: () => void;
   reset: () => void;
+  /**
+   * Take `document` as every field's baseline.
+   *
+   * A field reads the document it is seeded from when it registers and never
+   * again, so a form whose document has been STORED — the protocol taking the
+   * save — goes on measuring every field on screen against the reading it
+   * opened on, and reports itself dirty over work that is saved. A host
+   * guarding unsaved work then asks the researcher whether to discard changes
+   * they have just watched it save.
+   *
+   * Said by the host, and never inferred from the document it was handed
+   * moving. A working document also advances for writes nobody has saved — a
+   * row added to a list, a subject changed, a draft discarded — and those
+   * carry the values the researcher is still typing, so a baseline taking
+   * them would call the form clean with all of it still to save. Only the
+   * host knows which of the two it has just done.
+   *
+   * Only the baseline moves. What a field HOLDS is the researcher's, saved or
+   * not: an edit `document` does not have keeps its value and goes on saying
+   * it is unsaved.
+   */
+  rebaseToDocument: (document: Record<string, unknown>) => void;
 
   setErrors: (errors: FlattenedErrors | null) => void;
   requestErrorFocus: () => void;
@@ -817,6 +839,47 @@ export const createFormStore = (
           // Deliberately monotonic: rewinding the counter here would read as a
           // fresh request to the watching layout effect and focus a field the
           // person never tried to submit.
+        });
+      },
+
+      rebaseToDocument: (document) => {
+        // The document's OWN reading of each path, and never the seeding one:
+        // seeding writes what the fields inside a container hold over the
+        // document, so a baseline taking that overlay would carry the very
+        // edits it is there to measure.
+        const rebased = (
+          records: Map<string, FieldState>,
+        ): Map<string, FieldState> | undefined => {
+          const moved = new Map<string, FieldState>();
+          records.forEach((field, fieldName) => {
+            const path = resolveStoredFieldPath(fieldName, field);
+            // A caller's document is declared as a map of `FieldValue`, so
+            // every node within it is itself one.
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+            const documented = readObjectPath(document, path) as FieldValue;
+            if (isEqual(field.initialValue, documented)) return;
+            moved.set(fieldName, { ...field, initialValue: documented });
+          });
+
+          return moved.size === 0 ? undefined : moved;
+        };
+
+        const mounted = rebased(fieldRecords);
+        const parked = rebased(dormantRecords);
+        // A host may hand the form a fresh object on every render, so a
+        // document that has moved nothing writes no state: the fields map is
+        // rebuilt whole here, and every subscriber would be notified for it.
+        if (mounted === undefined && parked === undefined) return;
+
+        set((state) => {
+          mounted?.forEach((field, fieldName) => {
+            fieldRecords.set(fieldName, field);
+          });
+          parked?.forEach((field, fieldName) => {
+            dormantRecords.set(fieldName, field);
+          });
+          if (mounted) syncPublicFields(state.fields, fieldRecords);
+          if (parked) syncPublicFields(state.dormantValues, dormantRecords);
         });
       },
 

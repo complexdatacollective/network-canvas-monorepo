@@ -966,6 +966,48 @@ test('a suite needs BOTH of its halves green to be reusable', async () => {
     interviewer: true,
     architect: false,
   });
+
+  // A half may be sharded, and GitHub renders a matrix job as
+  // `<key> (<matrix values>)`. An exact-name lookup finds neither shard, so
+  // the suite would go permanently inconclusive and quietly stop reusing
+  // verdicts — no error, just a suite that always re-runs. Every shard must
+  // be found, and all of them must be green.
+  const shardedHalfGreen = fakeActionsApi({
+    runs: [fakeRun(1, validatedSha)],
+    jobsByRun: {
+      1: [
+        { name: 'interview-e2e', conclusion: 'success' },
+        { name: 'interview-e2e-native', conclusion: 'success' },
+        { name: 'interviewer-e2e', conclusion: 'success' },
+        { name: 'interviewer-e2e-native (1/2)', conclusion: 'success' },
+        { name: 'interviewer-e2e-native (2/2)', conclusion: 'success' },
+      ],
+    },
+  });
+  assert.deepEqual(await interviewerLaneCall(cwd, headSha, shardedHalfGreen), {
+    interview: true,
+    interviewer: true,
+    architect: false,
+  });
+
+  // One red shard fails the suite: a green sibling must not carry it.
+  const shardedHalfRed = fakeActionsApi({
+    runs: [fakeRun(1, validatedSha)],
+    jobsByRun: {
+      1: [
+        { name: 'interview-e2e', conclusion: 'success' },
+        { name: 'interview-e2e-native', conclusion: 'success' },
+        { name: 'interviewer-e2e', conclusion: 'success' },
+        { name: 'interviewer-e2e-native (1/2)', conclusion: 'success' },
+        { name: 'interviewer-e2e-native (2/2)', conclusion: 'failure' },
+      ],
+    },
+  });
+  assert.deepEqual(await interviewerLaneCall(cwd, headSha, shardedHalfRed), {
+    interview: true,
+    interviewer: false,
+    architect: false,
+  });
 });
 
 test('the newest conclusive verdict is authoritative', async () => {
