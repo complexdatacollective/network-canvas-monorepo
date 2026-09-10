@@ -1,6 +1,12 @@
 'use client';
 
-import { type Context, createContext, type ReactNode, useRef } from 'react';
+import {
+  type Context,
+  createContext,
+  type ReactNode,
+  useEffect,
+  useRef,
+} from 'react';
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -50,6 +56,19 @@ const FormStoreProvider = ({
     getIntl: () => intlRef.current,
     getInitialValues: () => initialValuesRef.current,
   });
+
+  // A field reads the document once, when it registers, so a document that
+  // advances while the form is open has to be said out loud: every field's
+  // baseline moves onto it, and a form holding what the document now says is
+  // no longer dirty. Not for the document the form opened on, which every
+  // field standing then already registered against — and which a field naming
+  // its own starting value deliberately did not.
+  const baselineDocument = useRef(initialValues);
+  useEffect(() => {
+    if (baselineDocument.current === initialValues) return;
+    baselineDocument.current = initialValues;
+    storeRef.current?.getState().rebaseToDocument();
+  }, [initialValues]);
 
   return (
     <FormStoreContext.Provider value={storeRef.current}>
