@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -101,9 +101,15 @@ const ResourcePicker = ({
 
   const [browserOpen, setBrowserOpen] = useState(Boolean(showBrowser));
 
-  useEffect(() => {
+  // `showBrowser` forces the browser open or closed from outside, but the
+  // researcher can also open it from the button below, so the prop is adopted
+  // only when it changes. Compared during render: it is a prop we already
+  // have, not an external system to synchronise with.
+  const [previousShowBrowser, setPreviousShowBrowser] = useState(showBrowser);
+  if (showBrowser !== previousShowBrowser) {
+    setPreviousShowBrowser(showBrowser);
     if (showBrowser !== undefined) setBrowserOpen(showBrowser);
-  }, [showBrowser]);
+  }
 
   const closeBrowser = () => {
     setBrowserOpen(false);

@@ -19,16 +19,15 @@ const withAssetUrl = <P extends WithAssetUrlProps>(
     props: Omit<P, keyof WithAssetUrlProps> & AssetUrlProps,
   ) => {
     const { id, ...restProps } = props;
-    const [url, setUrl] = useState<string | undefined>();
+    // Stored against the id it was read for, and matched against the current
+    // id below. That is what stops a changed id (or one that resolves to
+    // nothing) from rendering the old, now-wrong asset while the new one
+    // loads, without a clearing setState that races the read replacing it.
+    const [loaded, setLoaded] = useState<{ id: string; url: string }>();
 
     useEffect(() => {
       let isMounted = true;
       let currentUrl: string | null = null;
-
-      // Clear any previously-shown URL up front so a changed id (or one that
-      // resolves to nothing) can't keep rendering the old, now-wrong asset while
-      // the new one loads.
-      setUrl(undefined);
 
       const loadAsset = async () => {
         if (!id) return;
@@ -46,7 +45,7 @@ const withAssetUrl = <P extends WithAssetUrlProps>(
           }
 
           currentUrl = blobUrl;
-          setUrl(blobUrl);
+          setLoaded({ id, url: blobUrl });
         } catch (error) {
           // The asset can't be shown; report it rather than leaving a blank
           // image with no trace of why.
@@ -63,6 +62,8 @@ const withAssetUrl = <P extends WithAssetUrlProps>(
         }
       };
     }, [id]);
+
+    const url = loaded?.id === id ? loaded.url : undefined;
 
     return <WrappedComponent {...({ ...restProps, url } as unknown as P)} />;
   };

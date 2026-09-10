@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ComponentType } from 'react';
+import { useEffect, useRef, type ComponentType, type ReactNode } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -234,6 +234,8 @@ type PromptFieldsProps = {
 };
 
 /** Stable empty list: `initialValue` is a register-effect dependency. */
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 const NO_OPTIONS: SelectOption[] = [];
 
 const PromptFields = ({
@@ -430,7 +432,7 @@ const PromptFields = ({
                   <AlertDescription>
                     {intl.formatMessage(
                       messages.theOrdinalBinInterfaceIsDesigned,
-                      { strong: (chunks) => <strong>{chunks}</strong> },
+                      { strong: renderStrong },
                     )}
                   </AlertDescription>
                 </Alert>

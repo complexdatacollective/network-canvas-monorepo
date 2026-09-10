@@ -2,6 +2,7 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   type ColumnDef,
+  type HeaderContext,
   type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
@@ -32,6 +33,26 @@ type VariableListRow = {
   name: string;
 };
 
+/**
+ * TanStack instantiates a column's `header` as a React component
+ * (`flexRender` calls `createElement` with the header context as props), so
+ * this lives at module scope rather than inside the render body — a renderer
+ * redefined during render is a new component type on every render.
+ */
+const NameHeader = ({
+  column,
+  table,
+}: HeaderContext<VariableListRow, unknown>) => {
+  const intl = useAppIntl();
+  return (
+    <DataTableColumnHeader
+      column={column}
+      table={table}
+      title={intl.formatMessage(messages.name)}
+    />
+  );
+};
+
 const Variables = ({ variables = [] }: VariableListProps) => {
   const intl = useAppIntl();
   const [sorting, setSorting] = useState<SortingState>([
@@ -42,17 +63,11 @@ const Variables = ({ variables = [] }: VariableListProps) => {
     () => [
       {
         accessorKey: 'name',
-        header: ({ column, table }) => (
-          <DataTableColumnHeader
-            column={column}
-            table={table}
-            title={intl.formatMessage(messages.name)}
-          />
-        ),
+        header: NameHeader,
         cell: ({ row }) => row.original.name,
       },
     ],
-    [intl],
+    [],
   );
 
   const table = useReactTable({

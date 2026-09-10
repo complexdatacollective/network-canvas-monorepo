@@ -166,6 +166,12 @@ const messages = defineMessages({
   },
 });
 
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
+const renderInputControlsLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.inputControls}>{chunks}</ExternalLink>
+);
+
 /** Stable empty list: `initialValue` is a register-effect dependency. */
 const NO_OPTIONS: OptionValue[] = [];
 
@@ -260,11 +266,7 @@ export const InputControlFields = ({ item, fields }: SharedProps) => {
         hint={
           <>
             {intl.formatMessage(additionalMessages.howTheAnswerIsCollectedFor, {
-              ExternalLink: (chunks) => (
-                <ExternalLink href={documentationLinks.inputControls}>
-                  {chunks}
-                </ExternalLink>
-              ),
+              ExternalLink: renderInputControlsLink,
             })}
           </>
         }
@@ -291,7 +293,7 @@ export const InputControlFields = ({ item, fields }: SharedProps) => {
           <AlertDescription>
             {intl.formatMessage(messages.theSelectedInputControlWillCause, {
               variableType: getVariableTypeLabel(variableType, intl),
-              strong: (chunks) => <strong>{chunks}</strong>,
+              strong: renderStrong,
             })}
           </AlertDescription>
         </Alert>
@@ -306,7 +308,7 @@ export const InputControlFields = ({ item, fields }: SharedProps) => {
               messages.aPreExistingAttributeIsCurrentlySelected,
               {
                 variableType: getVariableTypeLabel(variableType, intl),
-                strong: (chunks) => <strong>{chunks}</strong>,
+                strong: renderStrong,
               },
             )}
           </AlertDescription>
