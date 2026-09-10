@@ -8,10 +8,7 @@ import {
   useRef,
 } from 'react';
 
-import {
-  createMessageError,
-  type MessageDescriptor,
-} from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -265,11 +262,15 @@ function ComposerFormRows({
    *
    * The picker offers neither an attribute a sibling field already records nor
    * one this stage writes around the codebook's rules, and that is not enough
-   * on its own: the codebook and the draft are both read live, so a
-   * collaborator's change or a pick made elsewhere on the stage can make a
-   * choice illegal while the dialog is holding it — and the schema's own
+   * on its own: the PROTOCOL is read live, so a collaborator can make a choice
+   * illegal while the dialog is holding it — and the schema's own
    * role-conflict rule would then refuse the whole stage, against a path
    * rather than against the control the researcher has to fix.
+   *
+   * Only a collaborator, which is why the refusal is worded for a conflict
+   * elsewhere in the protocol and never for one on this stage: this stage's
+   * own unvalidated picks are the researcher's draft, and the dialog holding
+   * this row is what stops them changing it while the row is open.
    */
   const beforeSave = useCallback(
     (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
@@ -298,24 +299,15 @@ function ComposerFormRows({
         // conflicting is never refused for a conflict this edit did not make.
         originalVariableId: asText(context.openedOn[VARIABLE_FIELD]) ?? '',
         hasConflictingUse: (candidate) =>
-          draftUnvalidated.has(candidate) ||
           hasUnvalidatedUse(roleMap, subject, candidate),
         allVariables: variables,
-        // Where the other writer IS decides what the researcher is told, and
-        // it is the only thing they can act on: a control on this stage is
-        // behind the dialog, and a stage elsewhere in the protocol is not.
-        message: draftUnvalidated.has(variable)
-          ? (variableName: string) =>
-              createMessageError(messages.unvalidatedOnThisStageRefusal, {
-                variableName,
-              })
-          : unvalidatedElsewhereMessage,
+        message: unvalidatedElsewhereMessage,
       });
       return issue === undefined
         ? { row }
         : { refused: { fieldErrors: { [VARIABLE_FIELD]: issue } } };
     },
-    [draftUnvalidated, intl, roleMap, rows, subject, variables],
+    [intl, roleMap, rows, subject, variables],
   );
 
   const rowList = useMemo<RowListConfig>(

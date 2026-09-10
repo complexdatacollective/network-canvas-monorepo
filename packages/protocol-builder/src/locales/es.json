@@ -379,7 +379,6 @@
   "protocolBuilder.networkCanvas.composerNodeDescription": "Cómo añade el participante nodos al lienzo, dónde se sitúan esos nodos y cómo los agrupa.",
   "protocolBuilder.networkCanvas.composerNodeTitle": "Añadir y organizar nodos",
   "protocolBuilder.networkCanvas.composerNodeWaitingDescription": "Elige con qué trabaja esta etapa antes de configurar cómo se comportan sus nodos.",
-  "protocolBuilder.networkCanvas.composerUnvalidatedOnThisStageRefusal": "«{variableName}» lo escribe directamente otro control de esta etapa, así que una pregunta aquí comprobaría valores que ese control no comprueba.",
   "protocolBuilder.networkCanvas.createHullLabel": "Crear un nuevo atributo de agrupación",
   "protocolBuilder.networkCanvas.createQuickAddLabel": "Crear un nuevo atributo que rellenar",
   "protocolBuilder.networkCanvas.duplicateVariableRefusal": "Otro campo de este formulario ya recoge este atributo. Elige otro, o edita ese campo en su lugar.",
