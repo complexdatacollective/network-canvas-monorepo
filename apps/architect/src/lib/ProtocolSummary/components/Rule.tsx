@@ -1,5 +1,5 @@
-import RuleText from '~/components/Query/Rules/PreviewText';
-import { getRuleDisplayOptions } from '~/components/Query/Rules/withDisplayOptions';
+import RuleText from './PreviewText';
+import { getRuleDisplayOptions } from './withDisplayOptions';
 
 type RuleProps = {
   type: string;

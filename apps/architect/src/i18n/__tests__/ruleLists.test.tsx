@@ -1,8 +1,8 @@
 import { act, cleanup, render, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
-import PreviewText from '~/components/Query/Rules/PreviewText';
-import { getRuleDisplayOptions } from '~/components/Query/Rules/withDisplayOptions';
+import PreviewText from '~/lib/ProtocolSummary/components/PreviewText';
+import { getRuleDisplayOptions } from '~/lib/ProtocolSummary/components/withDisplayOptions';
 
 import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
 import { ARCHITECT_LOCALE_KEY } from '../preference';

@@ -1,7 +1,6 @@
 import React, { useContext } from 'react';
 
-import { Join } from '~/components/Query/Rules/PreviewText';
-
+import { Join } from './PreviewText';
 import Rule from './Rule';
 import SummaryContext from './SummaryContext';
 
