@@ -225,10 +225,9 @@ function OrdinalBinPromptEditor({ item }: RowEditorProps) {
 /**
  * The questions an Ordinal Bin asks, each with the scale it is answered on.
  *
- * Ported from Architect's `OrdinalBinPrompts`, with one move: the attribute's
- * values are edited through the codebook rather than through a
- * `variableOptions` key on the prompt, which the protocol schema has never
- * accepted and which Architect had to strip on the way out.
+ * The attribute's values are edited through the codebook rather than through a
+ * `variableOptions` key on the prompt: the protocol schema has never accepted
+ * one, and Architect has to strip its own on the way out.
  */
 export default function OrdinalBinPromptsSection() {
   const { identity } = useStageEditorForm();

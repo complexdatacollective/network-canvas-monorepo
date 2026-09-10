@@ -31,8 +31,6 @@ import { tieStrengthCensusStageEditor } from '../tie-strength-census/TieStrength
  * optional keys is authored through a control of its own, and that a Spanish
  * researcher reads no English. What only one interface can be asked lives in
  * that editor's own test beside it.
- *
- * The bins join this table in the next step.
  */
 
 const SUBJECT = { entity: 'node', type: 'person' };

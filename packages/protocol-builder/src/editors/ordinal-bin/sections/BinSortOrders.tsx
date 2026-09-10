@@ -27,8 +27,7 @@ export type BinSortOrdersProps = Readonly<{
  * people already dropped into a bin.
  *
  * Shared by the two bins because both draw bins and both order them the same
- * way; ported from Architect's `BucketSortOrderSection` and
- * `BinSortOrderSection`, which the two interfaces mounted identically.
+ * way, and living here because the Ordinal Bin lands first.
  *
  * Both sort by the STAGE subject's attributes. A sort rule READS an attribute
  * rather than writing it, so it sits outside the writer-exclusivity rule

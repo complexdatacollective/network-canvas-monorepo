@@ -8,10 +8,8 @@ import { categoricalBinPrompts } from './sections/categoricalBinPrompts.tsx';
 /**
  * The stage a participant sorts every person into named bins in.
  *
- * The same composition as the Ordinal Bin, and for the same reason: both hand
- * the participant one person at a time to drag into one of the values an
- * attribute offers. They differ only in whether those values run in an order,
- * and in what becomes of a person none of them describe.
+ * No introduction screen, for the reason the Ordinal Bin has none: the
+ * protocol schema has no `introductionPanel` for one to be written into.
  */
 export const categoricalBinStageEditor = defineStageEditor('CategoricalBin', [
   stageHeading({ documentation: 'categorical-bin' }),
