@@ -47,7 +47,17 @@ export const EditingAPrompt: Story = {
 
     // The row dialog is portalled out of the canvas, so it is found on the
     // document rather than inside the editor that opened it.
-    const dialog = within(await screen.findByRole('dialog'));
+    const popup = await screen.findByRole('dialog');
+    // It fades in with CSS transitions, which the preview's `AnimationProvider`
+    // does not reach: that disables Motion and Base UI's bookkeeping, not raw
+    // CSS. The a11y check runs the moment this play returns, so without waiting
+    // the dialog is measured half-faded and its controls read as contrast
+    // failures at whatever opacity the run happened to reach.
+    await waitFor(() =>
+      expect(popup.getAnimations({ subtree: true })).toHaveLength(0),
+    );
+
+    const dialog = within(popup);
     await waitFor(async () => {
       await expect(dialog.getByRole('radio', { name: 'knows' })).toBeChecked();
     });

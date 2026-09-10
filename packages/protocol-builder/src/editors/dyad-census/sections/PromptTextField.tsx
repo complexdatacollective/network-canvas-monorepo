@@ -21,12 +21,10 @@ export type PromptTextFieldProps = Readonly<{
   /** The prompt as the dialog opened on it, for the field's initial value. */
   item: Record<string, unknown>;
   /**
-   * What the researcher has to know before writing this interface's question —
-   * that a Dyad Census shows two people at once, for instance. Above the box
-   * rather than under it, because it decides how the question is phrased.
+   * What the participant is looking at while they answer. Above the box rather
+   * than under it, because it decides how the question is phrased.
    */
   guidance: ReactNode;
-  /** An example question, in this family's own words. */
   placeholder: string;
 }>;
 
@@ -35,12 +33,8 @@ export type PromptTextFieldProps = Readonly<{
  *
  * An ordinary connected field of the DIALOG's form, so the question reaches
  * the stage when the prompt does and a cancelled prompt takes it with it.
- *
- * Shared by the three censuses because they ask for the same thing in the same
- * words: what the participant reads. What differs is the sentence above the
- * box and the example inside it, and both arrive as props — the guidance is
- * about what the participant is looking at while they answer, which is exactly
- * what each interface differs by.
+ * Shared by the three censuses, which differ only in the sentence above the
+ * box and the example inside it.
  */
 export function PromptTextField({
   item,

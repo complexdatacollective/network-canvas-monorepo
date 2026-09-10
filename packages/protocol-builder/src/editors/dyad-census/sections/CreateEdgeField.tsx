@@ -13,26 +13,20 @@ import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 import CodebookEntityEditor from '../../../codebook/components/CodebookEntityEditor.tsx';
 import { useCreateCodebookEntity } from '../../../codebook/writes.ts';
 import EntityTypePickerField from '../../../fields/EntityTypePickerField.tsx';
-import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { NEW_ENTITY_DRAFT } from '../../../sections/subject-picker/SubjectSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from './censusMessages.ts';
 
-/** Where every census prompt keeps the connection its answer records. */
 export const CREATE_EDGE_FIELD = 'createEdge';
 
 /**
  * The connection type a census prompt creates, as a codebook subject.
  *
  * The prompt's OWN type rather than the stage's subject: a census pairs up
- * nodes and records an EDGE between them, and which edge is chosen inside each
- * prompt. So the row holds a bare type id, and the entity it belongs to is
- * this family's knowledge rather than the draft's — the same reading
- * `useStageSubject` takes of a subject a stage holds.
- *
- * `undefined` until a connection type is chosen, which is a real state: a
- * brand-new prompt has none, and a control scoped to it has nothing to offer.
+ * nodes and records an EDGE between them, chosen inside each prompt. So the
+ * row holds a bare type id and the entity it belongs to is this family's
+ * knowledge. `undefined` until one is chosen, which a brand-new prompt is.
  */
 export const edgeSubjectOf = (typeId: unknown): CodebookSubject | undefined =>
   typeof typeId === 'string' && typeId !== ''
@@ -44,13 +38,12 @@ export const edgeSubjectOf = (typeId: unknown): CodebookSubject | undefined =>
  *
  * The picker keeps a deleted type on offer, labelled for what it is, so that
  * the reference the researcher has to repair is visible rather than blanked
- * and written back — which means nothing before a save can refuse it. The
- * required rule sees a value and lets the row close; the protocol schema then
- * refuses the whole stage, in its own words, about a codebook the researcher
- * is no longer looking at.
+ * and written back — which means nothing before a save can refuse it, and the
+ * protocol schema would otherwise refuse the whole stage in its own words
+ * about a codebook the researcher is no longer looking at.
  *
- * `undefined` for a prompt that names no connection at all: that is the
- * required rule's to refuse, and says nothing about the codebook.
+ * `undefined` for a prompt naming no connection at all: that is the required
+ * rule's to refuse, and says nothing about the codebook.
  */
 export const missingEdgeTypeIssue = (
   codebookEdges: Readonly<Record<string, unknown>>,
@@ -63,11 +56,9 @@ export const missingEdgeTypeIssue = (
     : undefined;
 
 export type CreateEdgeFieldProps = Readonly<{
-  /** Heading of the group this control sits in, in the family's own words. */
   title: string;
   /** What answering records between the people the prompt asked about. */
   description: string;
-  /** Guidance under the picker, in the family's own words. */
   hint: string;
   /** Shown when the prompt is saved without a connection type. */
   requiredMessage: string;
@@ -77,8 +68,7 @@ export type CreateEdgeFieldProps = Readonly<{
  * The connection an answer to this prompt creates, and a way to invent one.
  *
  * The types come from the editor's own protocol context, so one a collaborator
- * adds or deletes while the dialog is open appears or disappears here without
- * this component doing anything.
+ * adds or deletes while the dialog is open appears or disappears here.
  *
  * Creating one writes the CODEBOOK, under that section's own lock, and the
  * prompt is then pointed at it as an ordinary unsaved change — exactly as the
@@ -93,7 +83,6 @@ export default function CreateEdgeField({
   requiredMessage,
 }: CreateEdgeFieldProps) {
   const intl = useAppIntl();
-  const { readOnly } = useStageEditorForm();
   const codebook = useProtocolContext().codebook;
   const createEntity = useCreateCodebookEntity();
   // The row DIALOG's own store: the connection is the prompt's, and a type
@@ -103,11 +92,6 @@ export default function CreateEdgeField({
     key: string;
     typeId: string;
   }> | null>(null);
-  /**
-   * Whether a create is in flight, which is a fact this host has for itself:
-   * the editor owns the draft and this owns the write, so the request passes
-   * through here on its way out and its answer on the way back.
-   */
   const [submitting, setSubmitting] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
 
@@ -116,13 +100,9 @@ export default function CreateEdgeField({
    *
    * Node and edge types share one namespace — `CodebookSchema` refuses a
    * protocol that reuses a name across the two maps — so judged against the
-   * edge names alone a connection could be given a node type's name here: the
-   * editor would take it, and the refusal would arrive from the schema after
-   * the researcher had finished the dialog, with no name-field error to act on.
-   *
-   * Read map by map rather than through a computed key, because the two maps
-   * hold different definition types and one indexed by a union is a union of
-   * maps nothing can be read out of without narrowing it again.
+   * edge names alone a connection could be given a node type's name here, and
+   * the refusal would arrive from the schema with no name-field error to act
+   * on.
    */
   const existingEntityNames = useMemo(
     () =>
@@ -145,26 +125,17 @@ export default function CreateEdgeField({
         hint={hint}
         required={requiredMessage}
       />
-      {/*
-        The trigger goes when editing does, because a create nobody may start
-        is not on offer. An editor already OPEN stays: the name inside it is
-        the researcher's own work and exists nowhere else, and unmounting it
-        would throw that away to say something the editor's own disabled save
-        already says.
-      */}
-      {!readOnly && (
-        <div className="mt-4">
-          <Button
-            ref={trigger}
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setSession({ key: uuid(), typeId: uuid() })}
-          >
-            {createLabel}
-          </Button>
-        </div>
-      )}
+      <div className="mt-4">
+        <Button
+          ref={trigger}
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setSession({ key: uuid(), typeId: uuid() })}
+        >
+          {createLabel}
+        </Button>
+      </div>
       {session !== null && (
         <Dialog
           open
@@ -173,12 +144,10 @@ export default function CreateEdgeField({
           // A request in flight refuses every way out, because the dialog is
           // about to show what the host made of it. Escape, a press outside
           // and the close button all arrive at `closeDialog`, so refusing
-          // there covers all three — and `dismissible` takes the close button
+          // there covers all three, and `dismissible` takes the close button
           // away rather than leaving a control on screen that does nothing.
-          // Dismissed mid-flight, the handler awaiting the write stays alive
-          // and a success arriving afterwards still points the prompt at the
-          // new type: the researcher would watch the connection they had
-          // chosen be replaced by one they never saw arrive.
+          // Dismissed mid-flight, a success arriving afterwards would still
+          // point the prompt at a type the researcher never saw arrive.
           dismissible={!submitting}
           closeDialog={() => {
             if (submitting) return;
@@ -192,7 +161,6 @@ export default function CreateEdgeField({
             subject={{ entity: 'edge', type: session.typeId }}
             initialDraft={NEW_ENTITY_DRAFT.edge}
             existingEntityNames={existingEntityNames}
-            readOnly={readOnly}
             onSubmit={async (document) => {
               setSubmitting(true);
               try {
