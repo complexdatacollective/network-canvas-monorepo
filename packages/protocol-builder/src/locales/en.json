@@ -1883,6 +1883,10 @@
     "defaultMessage": "Automatic mode",
     "description": "Name of the choice where the stage arranges the nodes itself before the participant touches them. Offered as one of two cards; the sentence under it is layoutModeAutomaticDescription."
   },
+  "protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription": {
+    "defaultMessage": "Arranges the nodes by simulating physical forces such as attraction and repulsion. Only the nodes the attribute the preset positions by holds a position for are arranged; the rest are left off the canvas, as in manual mode. The participant can pause and resume the simulation, and can move nodes by hand only if “Allow moving nodes” is switched on.",
+    "description": "Says what the participant sees in automatic layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the two wordings of one control together. “Allow moving nodes” is the switch named by repositioningLabel, and is quoted because it is being named as a control the researcher can go and find."
+  },
   "protocolBuilder.networkCanvas.layoutModeHint": {
     "defaultMessage": "How the stage arranges nodes before the participant moves any of them.",
     "description": "Guidance under the layout-mode control."
@@ -1956,8 +1960,8 @@
     "description": "Description of the preset highlighted-nodes group."
   },
   "protocolBuilder.networkCanvas.presetHighlightHint": {
-    "defaultMessage": "A node is highlighted while any of these attributes is true of it.",
-    "description": "Guidance under the preset highlight-attributes tick list."
+    "defaultMessage": "The interviewer picks one of these attributes at a time, and the nodes it is true of are shown highlighted.",
+    "description": "Guidance under the preset highlight-attributes tick list. It says what the interview does with the list, because ticking several attributes does not highlight by all of them at once: the interview offers the ticked attributes as a set of radio buttons and highlights by the one chosen."
   },
   "protocolBuilder.networkCanvas.presetHighlightLabel": {
     "defaultMessage": "Highlight attributes",

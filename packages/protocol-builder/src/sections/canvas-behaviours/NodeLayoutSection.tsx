@@ -18,16 +18,29 @@ export type NodeLayoutSectionProps = Readonly<{
    * across a seam like this is invisible to extraction, absent from the
    * catalogs and covered by no guard.
    *
-   * Only this one, because only this one says something the interfaces decide
-   * differently. Manual mode on a stage that COLLECTS positions leaves every
-   * node in a bucket at the foot of the canvas for the participant to place; a
-   * narrative stage collects nothing and shows the positions the preset's
-   * attribute already holds. Automatic mode is the same simulation on both.
+   * Manual mode on a stage that COLLECTS positions leaves every node in a
+   * bucket at the foot of the canvas for the participant to place; a narrative
+   * stage collects nothing and shows the positions the preset's attribute
+   * already holds.
    *
    * Absent means the shared wording, which the control itself supplies: the
    * default lives with the card it is written on and nowhere else.
    */
   manualDescription?: MessageDescriptor;
+  /**
+   * The same, for the automatic-mode card.
+   *
+   * The force simulation is one implementation, but two things about it differ
+   * by interface, and both are things the card promises. It runs over the
+   * nodes the interface hands it, and a narrative stage hands it only the
+   * nodes the preset's attribute holds a position for — `Narrative.tsx`
+   * simulates `nodesWithLayout` in either mode, where `Sociogram.tsx` switches
+   * to `allNodes` in automatic mode and draws the unplaced ones in. And moving
+   * a node by hand is unconditional on a sociogram, while a narrative stage
+   * passes `behaviours.allowRepositioning` down to the canvas, so the "Allow
+   * moving nodes" switch withdraws it in both modes.
+   */
+  automaticDescription?: MessageDescriptor;
 }>;
 
 /**
@@ -39,6 +52,7 @@ export type NodeLayoutSectionProps = Readonly<{
  */
 export default function NodeLayoutSection({
   manualDescription,
+  automaticDescription,
 }: NodeLayoutSectionProps) {
   const intl = useAppIntl();
 
@@ -57,6 +71,9 @@ export default function NodeLayoutSection({
         {...(manualDescription === undefined
           ? {}
           : { manualDescription: intl.formatMessage(manualDescription) })}
+        {...(automaticDescription === undefined
+          ? {}
+          : { automaticDescription: intl.formatMessage(automaticDescription) })}
       />
     </BuilderSection>
   );

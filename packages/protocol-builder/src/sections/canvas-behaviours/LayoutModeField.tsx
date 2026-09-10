@@ -22,6 +22,8 @@ export type LayoutModeFieldProps = Omit<
      * that composes this field. Absent means the wording on the card below.
      */
     manualDescription?: string;
+    /** The same, for automatic mode. */
+    automaticDescription?: string;
   }>;
 
 /**
@@ -35,6 +37,7 @@ export default function LayoutModeField({
   value,
   onChange,
   manualDescription,
+  automaticDescription,
   ...props
 }: LayoutModeFieldProps) {
   const intl = useAppIntl();
@@ -59,12 +62,14 @@ export default function LayoutModeField({
         label: intl.formatMessage(
           canvasBehavioursMessages.layoutModeAutomaticLabel,
         ),
-        description: intl.formatMessage(
-          canvasBehavioursMessages.layoutModeAutomaticDescription,
-        ),
+        description:
+          automaticDescription ??
+          intl.formatMessage(
+            canvasBehavioursMessages.layoutModeAutomaticDescription,
+          ),
       },
     ],
-    [intl, manualDescription],
+    [intl, manualDescription, automaticDescription],
   );
 
   return (
