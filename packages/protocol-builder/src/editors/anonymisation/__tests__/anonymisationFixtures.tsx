@@ -4,7 +4,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 
-export const PERSON_SECTION = sectionId({
+const PERSON_SECTION = sectionId({
   kind: 'codebookNode',
   typeId: 'person',
 });

@@ -1,7 +1,10 @@
 import { act, screen, within } from '@testing-library/react';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
+import {
+  sectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
 
 import {
   fixtureProtocolSections,
@@ -14,8 +17,8 @@ export const SOURCE_STAGE_SECTION = sectionId({
   kind: 'stage',
   stageId: 'family-pedigree-1',
 });
-export const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
-export const FAMILY_MEMBER_SECTION = sectionId({
+const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
+const FAMILY_MEMBER_SECTION = sectionId({
   kind: 'codebookNode',
   typeId: 'family_member',
 });
@@ -80,18 +83,11 @@ export function sourcePedigreeDocument(): SectionDoc {
  */
 export function receiveSection(
   harness: StageEditorHarness,
-  id: string,
+  id: ProtocolSectionId,
   document: SectionDoc,
 ): void {
   act(() => {
-    harness.host.store.applyAsCollaborator(
-      sectionId(
-        id === STAGE_ORDER_SECTION
-          ? { kind: 'stageOrder' }
-          : { kind: 'stage', stageId: 'family-pedigree-1' },
-      ),
-      document,
-    );
+    harness.host.store.applyAsCollaborator(id, document);
   });
 }
 
