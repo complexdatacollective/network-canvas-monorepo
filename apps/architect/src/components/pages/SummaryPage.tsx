@@ -70,10 +70,12 @@ const SummaryPage = () => {
           {/* Cover is the first marker; an explicit page break here would be
             a no-op (CSS Fragmentation: forced breaks at the start of a
             fragment are discarded) so it's omitted. */}
+          {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- `page-break-marker` is the print stylesheet's hook (src/styles/protocol-summary.css) and an e2e selector (e2e/specs/codebook-and-summary.spec.ts), not a utility. */}
           <div className="page-break-marker flex flex-col gap-6">
             <Cover />
           </div>
 
+          {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- see above. */}
           <div className="page-break-marker flex break-before-page flex-col gap-6">
             <Contents />
           </div>

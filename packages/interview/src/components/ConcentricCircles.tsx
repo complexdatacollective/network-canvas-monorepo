@@ -45,6 +45,7 @@ export default function ConcentricCircles({
             cx="50"
             cy="50"
             r={radius}
+            // oxlint-disable-next-line tailwindcss/no-unknown-classes -- e2e locator hook (see e2e/fixtures/narrative-fixture.ts and the sociogram matrix), not a utility class.
             className="canvas-radar__range"
             style={{
               fill: `color-mix(in oklab, var(--scoped-bg) ${100 - colorPercent}%, currentColor)`,
