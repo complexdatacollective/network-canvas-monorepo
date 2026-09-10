@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Link from '~/components/Link';
@@ -22,6 +24,15 @@ const messages = defineMessages({
   },
 });
 
+const renderUpgradeDocsLinkChunks = (chunks: ReactNode[]) => (
+  <Link
+    href="https://documentation.networkcanvas.com/en/fresco/deployment/upgrading#uploadthing-variable-update"
+    target="_blank"
+  >
+    {chunks}
+  </Link>
+);
+
 export default async function UpdateUploadThingTokenAlert() {
   const intl = await getServerIntl();
 
@@ -39,14 +50,7 @@ export default async function UpdateUploadThingTokenAlert() {
       </AlertTitle>
       <AlertDescription>
         {intl.formatMessage(messages.youNeedToAddANewUploadThing, {
-          tag1: (chunks) => (
-            <Link
-              href="https://documentation.networkcanvas.com/en/fresco/deployment/upgrading#uploadthing-variable-update"
-              target="_blank"
-            >
-              {chunks}
-            </Link>
-          ),
+          tag1: renderUpgradeDocsLinkChunks,
         })}
       </AlertDescription>
     </Alert>
