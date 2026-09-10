@@ -121,7 +121,13 @@ export const TEST_SHARDS = [
   },
   {
     shard: 2,
-    packages: [{ name: '@codaco/architect', seconds: 260.3 }],
+    packages: [
+      { name: '@codaco/architect', seconds: 260.3 },
+      // Added when it landed on main, on the lightest bucket. Weight is a
+      // local measurement (one file, 0.5s) scaled for CI rather than read off
+      // a sharded run, because this shard had not run it yet.
+      { name: '@codaco/protocol-builder-core', seconds: 4 },
+    ],
   },
   {
     shard: 3,
