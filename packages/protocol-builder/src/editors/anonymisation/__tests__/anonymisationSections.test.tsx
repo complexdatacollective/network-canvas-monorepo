@@ -86,6 +86,39 @@ describe('the sections of an anonymisation stage', () => {
   });
 
   /**
+   * The interview asks every participant for a passphrase and refuses an empty
+   * one, so a maximum of zero is a length no passphrase can have: the stage
+   * would render, refuse everything the participant types, and the interview
+   * could never be finished. Both halves of that are this stage's own rules,
+   * so this stage is where it is refused.
+   */
+  it('refuses a longest passphrase of no characters at all', async () => {
+    const harness = openEditor();
+
+    // The minimum rule off, so this is about the maximum alone rather than
+    // about a minimum that now exceeds it.
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Minimum length' }),
+    );
+    const maximum = await screen.findByRole('spinbutton', {
+      name: /maximum length/i,
+    });
+    await harness.user.clear(maximum);
+    await harness.user.type(maximum, '0');
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'The longest passphrase you allow must be at least one character.',
+      ),
+    ).toBeInTheDocument();
+    // And reported where a researcher goes looking for what to correct.
+    expect(
+      harness.outline().find((section) => section.title === 'Passphrase rules'),
+    ).toEqual({ title: 'Passphrase rules', state: 'Has a problem' });
+  });
+
+  /**
    * A rule switched on and left empty is kept as `null` rather than quietly
    * dropped, so the researcher can go back and finish it — which means
    * something has to refuse the SAVE while it is there. The rule editor states
