@@ -312,17 +312,13 @@ function StageEditorFormBody({
 
       const outcome = await save(fields);
       if (outcome.status === 'saved') {
-        // The form's baseline moves HERE and nowhere else, which is why the
-        // two halves of it are said separately. `setDocument` advances the
-        // working document a field mounting later seeds from, and every write
-        // below does that; the rebase is what takes the form out of being
-        // dirty, and only a stage the protocol has stored may do it. A
-        // structural write carries values nobody has saved and a refused save
-        // carries a draft nobody took — a stage the schema would not take, a
-        // promotion that failed, a section somebody else is holding. Studio's
-        // discard prompt reads that dirty flag, and a researcher who left
-        // after either would be let go without being asked, losing work the
-        // editor was still showing them.
+        // A save is the only thing that may move the baselines the form's
+        // dirty flag is measured against, and Studio's discard prompt reads
+        // that flag. A structural write and a refused save both advance the
+        // working document out of values nobody has stored, so a baseline
+        // taking those would let a researcher leave without being asked,
+        // losing work the editor was still showing them. (A field remounting
+        // after one seeds itself from the working document, as ever.)
         setDocument(fields);
         storeApi.getState().rebaseToDocument(fields);
         clearRefusedWrite();
