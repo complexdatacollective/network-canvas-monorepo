@@ -134,6 +134,13 @@ export const composerFormFieldMessages = defineMessages({
     description:
       'Refusal shown when two fields of one network composer form would record their answers in the same attribute.',
   },
+  staleControlRefusal: {
+    id: 'protocolBuilder.networkCanvas.staleControlRefusal',
+    defaultMessage:
+      'The “{attributeName}” attribute cannot be asked for with this input control. Choose another control, or record this field in a different attribute.',
+    description:
+      'Refusal shown when a network composer form field is saved with an input control that cannot collect the kind of answer its attribute holds — because a collaborator changed that attribute while this field was open. attributeName is the researcher-facing name of the codebook attribute. Both ways out are offered because an attribute can be changed to a kind no control at all can ask for.',
+  },
   emptyPreview: {
     id: 'protocolBuilder.networkCanvas.formFieldEmptyPreview',
     defaultMessage: 'Empty field',
