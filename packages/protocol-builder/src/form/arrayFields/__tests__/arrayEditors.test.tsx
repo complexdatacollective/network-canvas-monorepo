@@ -163,6 +163,108 @@ describe('Options', () => {
     );
   });
 
+  /**
+   * What one cell of a row says about itself, and when.
+   *
+   * A row is not made of registered fields — the whole list is one field value
+   * — so a cell shows what it finds wrong through the field's own error slot
+   * rather than through the form store. These hold the researcher's side of
+   * that: silence until they have said something, and everything wrong with a
+   * cell at once when they have.
+   *
+   * Read out of the cell rather than off the page, because the LIST is a field
+   * too: it carries its own `required`, whose screen-reader marker is the word
+   * "Required" as well, and a page-wide search would answer with it whether or
+   * not any row had said anything.
+   */
+  const optionCell = (row: number, column: 'label' | 'value') => {
+    const cell = document.querySelector<HTMLElement>(
+      `[data-field-name="options[${row}].${column}"]`,
+    );
+    expect(cell).not.toBeNull();
+    return within(cell!);
+  };
+
+  it('says nothing about an option the researcher has not touched', async () => {
+    const { user } = renderOptions({
+      ...SAVEABLE_STAGE,
+      options: [{ label: 'Yes', value: 'yes' }],
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit option 1' }),
+    );
+    // Both cells are on screen, so the silence below is the rule and not a
+    // cell that was never rendered.
+    await screen.findByRole('textbox', { name: 'Value' });
+
+    expect(optionCell(0, 'label').queryByText('Required')).toBeNull();
+    expect(optionCell(0, 'value').queryByText('Required')).toBeNull();
+  });
+
+  it('says nothing about a fresh option nobody has typed in', async () => {
+    // The rich-text editor an option label is typed into announces its value
+    // as it mounts. Counting that as an edit would greet every new option with
+    // "Required" in a cell nobody has reached.
+    const { user } = renderOptions({ ...SAVEABLE_STAGE, options: [] });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+    await screen.findByRole('textbox', { name: 'Value' });
+
+    expect(optionCell(0, 'label').queryByText('Required')).toBeNull();
+    expect(optionCell(0, 'value').queryByText('Required')).toBeNull();
+  });
+
+  it('shows every problem with an option value at once, once it is edited', async () => {
+    const { user } = renderOptions({
+      ...SAVEABLE_STAGE,
+      options: [
+        { label: 'Alpha', value: 'yes' },
+        { label: 'Bravo', value: 'yes!' },
+      ],
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit option 1' }),
+    );
+    const valueCell = await screen.findByRole('textbox', { name: 'Value' });
+    expect(
+      optionCell(0, 'value').queryByText('Values must be unique'),
+    ).toBeNull();
+
+    // Now it exports as the same answer as Bravo, and `!` cannot appear in an
+    // export column name.
+    await user.type(valueCell, '!');
+
+    // Both, not just the first: a row is edited in place, so a cell that
+    // reported its problems one at a time would send the researcher back to
+    // the same box for each of them.
+    await optionCell(0, 'value').findByText('Values must be unique');
+    optionCell(0, 'value').getByText(/Not a valid option value/);
+  });
+
+  it('reveals a blank option’s problems when it refuses to collapse', async () => {
+    const { user } = renderOptions({ ...SAVEABLE_STAGE, options: [] });
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Create new option' }),
+    );
+    await screen.findByRole('textbox', { name: 'Value' });
+    expect(optionCell(0, 'value').queryByText('Required')).toBeNull();
+
+    // The one way a row nobody has typed in hears about itself: it will not
+    // collapse, and has to say why — in both cells, not just the one the
+    // researcher happens to be in.
+    await user.click(
+      screen.getByRole('button', { name: 'Finish editing option' }),
+    );
+
+    await optionCell(0, 'label').findByText('Required');
+    optionCell(0, 'value').getByText('Required');
+  });
+
   it('removes the option it confirmed when the list has not moved', async () => {
     const { user, draft } = renderOptions({
       ...SAVEABLE_STAGE,
@@ -176,7 +278,7 @@ describe('Options', () => {
       await screen.findByRole('button', { name: 'Remove option 2' }),
     );
     await user.click(
-      await screen.findByRole('button', { name: 'Remove option' }),
+      await screen.findByRole('button', { name: 'Delete option' }),
     );
 
     await waitFor(() =>
@@ -188,10 +290,9 @@ describe('Options', () => {
    * What a confirm's own window can outlive: not the row, but what the list
    * will accept.
    *
-   * `ArrayField` withdraws a row's delete handler the moment its list is
-   * disabled, and says nothing else about it. A confirm answered after that
-   * calls a handler that is no longer there, removes nothing, and closes as
-   * though the option had gone.
+   * The refusal is `ArrayField`'s (see its `deleteAvailability` spec); this
+   * asks it of a real options list in a real stage editor, where the list goes
+   * read-only because the stage did.
    */
   it('removes nothing when the list stops accepting changes mid-confirm', async () => {
     const { user, draft, stopAcceptingChanges } = renderOptions({
@@ -205,17 +306,17 @@ describe('Options', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Remove option 2' }),
     );
-    await screen.findByRole('button', { name: 'Remove option' });
+    await screen.findByRole('button', { name: 'Delete option' });
 
     // The list stops accepting changes while the confirm sits open. The option
     // is untouched — only what may be done to it has changed.
     stopAcceptingChanges();
 
-    await user.click(screen.getByRole('button', { name: 'Remove option' }));
+    await user.click(screen.getByRole('button', { name: 'Delete option' }));
 
     expect(
       await screen.findByText(
-        'This list stopped accepting changes while you were confirming, so this option was not removed. Remove it again once the list can be edited.',
+        'This list stopped accepting changes while you were confirming, so nothing was removed. Try again once the list can be edited.',
       ),
     ).toBeInTheDocument();
     expect(draft().options).toEqual([
@@ -414,12 +515,12 @@ describe('a row removal confirm the list stops accepting', () => {
     stopAcceptingChanges();
 
     await user.click(
-      within(dialog).getByRole('button', { name: 'Remove item' }),
+      within(dialog).getByRole('button', { name: 'Delete item' }),
     );
 
     expect(
       await screen.findByText(
-        'This list stopped accepting changes while you were confirming, so this item was not removed. Remove it again once the list can be edited.',
+        'This list stopped accepting changes while you were confirming, so nothing was removed. Try again once the list can be edited.',
       ),
     ).toBeInTheDocument();
     expect(draft().sortOrder).toEqual([

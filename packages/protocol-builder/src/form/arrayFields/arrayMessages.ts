@@ -8,10 +8,10 @@ import { defineMessage } from '@codaco/app-i18n/messages';
  * here rather than in whichever of them happened to need it first.
  *
  * Only the generic row noun qualifies today. It is the word two separate
- * sentences are built around — a refused removal (`useConfirmRowRemoval`) and
- * a row's own affordances (`rowDialog`) — and it reaches both the same way: as
- * the descriptor a list hands over for its rows, never as a translated word a
- * caller has already resolved.
+ * sentences are built around — a row's own affordances (`rowDialog`) and the
+ * removal confirmation `ArrayField` raises for it — and it reaches both the
+ * same way: as the descriptor a list hands over for its rows, never as a
+ * translated word a caller has already resolved.
  */
 
 /**

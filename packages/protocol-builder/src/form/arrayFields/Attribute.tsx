@@ -14,6 +14,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import {
   stripManagedProperties,
   type ArrayFieldItemProps,
@@ -35,14 +36,14 @@ import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import { rowsOf } from '../rowDialog.tsx';
 import { useStageEditorForm } from '../stageEditorContext.ts';
+import { cellIssues, requiredCell } from './cellRules.ts';
 import {
   crossClassPickIssue,
   draftValidatedElsewhereMessage,
   validatedElsewhereMessage,
   variableDisplayName,
 } from './crossClassPick.ts';
-import RowField from './RowField.tsx';
-import { requiredRow, type RowValidator } from './rowValidators.ts';
+import { useEditedCells } from './useEditedCells.ts';
 
 const FrescoBooleanControl = FrescoBooleanField as ComponentType<
   Record<string, unknown>
@@ -174,8 +175,6 @@ const messages = defineMessages({
   },
 });
 
-const REQUIRED_ONLY: readonly RowValidator[] = [requiredRow()];
-
 /**
  * The three things the creation round trip can outlive, in the words the
  * researcher reads.
@@ -255,7 +254,7 @@ export type AssignAttributesCrossClassContext = {
  * sources; this stage's saved roles are stale once editing begins.
  *
  * Shared verbatim by the row's DISPLAYED error and the owning array field's
- * BLOCKING rule (`makeAssignAttributesValidation`). A `RowField` error can
+ * BLOCKING rule (`makeAssignAttributesValidation`). A row cell's error can
  * only display — nothing there reaches the form's validity — so an error with
  * no array-level counterpart is a contradiction the researcher is shown and
  * then invited to save. The two layers must therefore be one function, escape
@@ -310,6 +309,7 @@ export default function Attribute({
     forceShowErrors,
   } = useAssignAttributesContext();
   const intl = useAppIntl();
+  const { hasEdited, markEdited } = useEditedCells();
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const { openDialog } = useDialog();
@@ -352,8 +352,8 @@ export default function Attribute({
     [protocolContext, subject],
   );
 
-  const crossClassValidate = useCallback<RowValidator>(
-    (value) =>
+  const crossClassValidate = useCallback(
+    (value: unknown) =>
       assignAttributeCrossClassIssue(typeof value === 'string' ? value : '', {
         allVariables,
         committedVariableIds,
@@ -369,10 +369,15 @@ export default function Attribute({
     ],
   );
 
-  const variableValidators = useMemo<readonly RowValidator[]>(
-    () => [requiredRow(), crossClassValidate],
-    [crossClassValidate],
+  const variableErrors = cellIssues(
+    requiredCell(variable),
+    crossClassValidate(variable),
   );
+  const valueErrors = cellIssues(requiredCell(item.value));
+  const showVariableErrors =
+    (hasEdited('variable') || forceShowErrors) && variableErrors.length > 0;
+  const showValueErrors =
+    (hasEdited('value') || forceShowErrors) && valueErrors.length > 0;
 
   // Answered rather than fired and forgotten: the picker keeps the name the
   // researcher typed until it hears the attribute exists, because a refusal is
@@ -395,9 +400,9 @@ export default function Attribute({
         // variable is stamped onto that one's attribute.
         //
         // Content is the only identity such a row has, and it is enough for
-        // the same reason it is enough in `useConfirmRowRemoval`: two rows the
-        // researcher cannot tell apart are two rows this control described
-        // identically.
+        // the same reason it is enough anywhere a dialog outlives the row it
+        // was opened on: two rows the researcher cannot tell apart are two rows
+        // this control described identically.
         const createdFrom = stripManagedProperties(rowRef.current);
         const created = await onCreateVariable(variableName);
         // The one answer that is a refusal: nothing was written, so the name
@@ -457,18 +462,19 @@ export default function Attribute({
     <Surface className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-8">
       {/* Fields carry their own bottom margin, so this column just stacks. */}
       <div>
-        <RowField
+        <UnconnectedField
           name={`${rowFieldName}.variable`}
           label={intl.formatMessage(messages.variableLabel)}
           component={variablePickerComponent}
           value={variable}
-          onChange={(value: unknown) =>
-            onUpdate?.({
-              variable: typeof value === 'string' ? value : undefined,
-            })
-          }
-          validators={variableValidators}
-          forceShowErrors={forceShowErrors}
+          onChange={(value: unknown) => {
+            const next = typeof value === 'string' ? value : undefined;
+            markEdited('variable', next, variable);
+            onUpdate?.({ variable: next });
+          }}
+          errors={variableErrors}
+          showErrors={showVariableErrors}
+          aria-invalid={showVariableErrors}
           options={variableOptions}
           onCreateOption={handleCreateOption}
           entity={subject.entity}
@@ -476,19 +482,20 @@ export default function Attribute({
           disabled={disabled || readOnly}
         />
         {variable && (
-          <RowField
+          <UnconnectedField
             name={`${rowFieldName}.value`}
             label={intl.formatMessage(messages.valueLabel)}
             hint={intl.formatMessage(messages.valueHint)}
             component={FrescoBooleanControl}
             value={item.value}
-            onChange={(value: unknown) =>
-              onUpdate?.({
-                value: typeof value === 'boolean' ? value : undefined,
-              })
-            }
-            validators={REQUIRED_ONLY}
-            forceShowErrors={forceShowErrors}
+            onChange={(value: unknown) => {
+              const next = typeof value === 'boolean' ? value : undefined;
+              markEdited('value', next, item.value);
+              onUpdate?.({ value: next });
+            }}
+            errors={valueErrors}
+            showErrors={showValueErrors}
+            aria-invalid={showValueErrors}
             options={booleanOptions}
             noReset
             disabled={disabled || readOnly}
