@@ -9,9 +9,21 @@ import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
 
 /**
- * End-to-end coverage for #1382: a stage editor's nested field and variable
- * editors used to write the shared codebook the moment they were saved, so
- * cancelling a field or discarding a stage left the protocol mutated.
+ * What a stage edit owns, and what it does not.
+ *
+ * #1382 made a stage edit transactional over BOTH halves of what its nested
+ * editors wrote: the stage, and the shared codebook. `@codaco/protocol-builder`
+ * reverses the codebook half. An attribute is not part of the stage that
+ * happens to collect it — every other stage collecting the same attribute is
+ * looking at the same values, the same rules and the same control — so the
+ * codebook editors the field dialog opens each commit on their own submit,
+ * under the codebook's own lock, and a cancelled stage edit does not take them
+ * back. The stage document itself is unchanged: discarding still reverts every
+ * word typed into the stage.
+ *
+ * That is a change researchers see, so each half is fenced here rather than
+ * asserted once: a codebook edit SURVIVES the discard, the stage's own edits
+ * do NOT, and a codebook edit alone does not make the stage unsaved.
  *
  * The oracle throughout is the canonical protocol row in IndexedDB
  * (`readProtocolJson`) — the same JSON that survives a reload — so these
@@ -37,8 +49,18 @@ const validationOf = (
 ): Record<string, unknown> | undefined =>
   variable && 'validation' in variable ? variable.validation : undefined;
 
+const isRequired = (protocol: CurrentProtocol, name: string): boolean =>
+  validationOf(byName(protocol, name))?.required === true;
+
+// `Stage` is a tagged union too, and only the form interfaces carry a `form`.
+const formFieldsOf = (
+  stage: CurrentProtocol['stages'][number] | undefined,
+): readonly unknown[] | undefined =>
+  stage !== undefined && 'form' in stage ? stage.form.fields : undefined;
+
 // Builds the shared starting point: one committed EgoForm stage carrying one
-// committed codebook variable, which the discard cases then try to corrupt.
+// committed codebook attribute, which the cases below then edit from inside a
+// stage edit they never save.
 async function seedStageWithVariable(
   architectPage: Parameters<typeof readProtocolJson>[0],
 ): Promise<StageEditor> {
@@ -55,10 +77,10 @@ async function seedStageWithVariable(
     'Thanks for taking part in this study.',
   );
 
-  await addFormField(editor.section('Form configuration'), {
+  await addFormField(editor.section('Form fields'), {
     variableName: 'age',
     promptText: 'How old are you?',
-    inputControl: 'Number Input',
+    inputControl: 'Number input',
   });
 
   await editor.save();
@@ -80,13 +102,46 @@ async function reopenStage(
     .catch(() => {});
 }
 
+/**
+ * Open the committed field's dialog, set its attribute's Required rule through
+ * the codebook editor behind it, and close the field dialog WITHOUT saving the
+ * row — so the only thing that could have reached the protocol is the codebook
+ * write the rules editor made on its own submit.
+ */
+async function requireAnAnswerFromTheCodebookEditor(
+  editor: StageEditor,
+  architectPage: Parameters<typeof readProtocolJson>[0],
+): Promise<void> {
+  await editor
+    .section('Form fields')
+    .getByRole('button', { name: 'Edit field', exact: true })
+    .click();
+  const fieldDialog = architectPage.getByRole('dialog', {
+    name: 'Edit form field',
+    exact: true,
+  });
+  const rules = await openValidationSection(fieldDialog);
+  await rules.getByRole('checkbox', { name: 'Required', exact: true }).check();
+  await rules
+    .getByRole('button', { name: 'Save validation', exact: true })
+    .click();
+  // Detached rather than hidden: the editor closes only once the codebook
+  // write has been accepted, so this is the write landing, not an animation.
+  await rules.waitFor({ state: 'detached' });
+
+  await fieldDialog
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .click();
+  await fieldDialog.waitFor({ state: 'detached' });
+}
+
 async function leaveWithoutSaving(
   architectPage: Parameters<typeof readProtocolJson>[0],
 ): Promise<void> {
   await architectPage.getByRole('button', { name: 'Cancel' }).first().click();
   // The stage editor's leave prompt names the stage specifically, so it cannot
-  // be confused with the nested-editor prompt (`confirmDiscardNestedDraft`,
-  // still titled "Unsaved Changes") that can be raised from inside it.
+  // be confused with the nested-editor prompt ("Discard your changes?") that
+  // can be raised from inside it.
   await expect(
     architectPage.getByRole('heading', {
       name: 'Discard unsaved stage changes?',
@@ -98,7 +153,7 @@ async function leaveWithoutSaving(
   await architectPage.waitForURL(/\/protocol$/);
 }
 
-test('discarding stage edits reverts a validation change to a shared variable', async ({
+test('a rule set on a shared attribute survives discarding the stage that set it', async ({
   architectPage,
   seed,
 }) => {
@@ -112,32 +167,25 @@ test('discarding stage edits reverts a validation change to a shared variable', 
 
   await reopenStage(architectPage);
 
-  // Edit the committed field and make its variable Required — a codebook
-  // property, shared with every other stage that renders this variable.
-  await editor
-    .section('Form configuration')
-    .getByRole('button', { name: 'Edit field' })
-    .click();
-  const fieldDialog = architectPage.getByRole('dialog', {
-    name: 'Edit Field',
-    exact: true,
-  });
-  await openValidationSection(fieldDialog);
-  await fieldDialog
-    .getByRole('switch', { name: 'Required answer', exact: true })
-    .click();
-  await architectPage
-    .getByRole('button', { name: 'Save', exact: true })
-    .click();
+  // The stage's own document is changed too, so the discard below has
+  // something of its own to revert — which is the other half of the rule.
+  await editor.setStageName('About You, revised');
+
+  await requireAnAnswerFromTheCodebookEditor(editor, architectPage);
 
   await leaveWithoutSaving(architectPage);
 
-  const after = await readProtocolJson(architectPage);
-  expect(validationOf(byName(after, 'age'))).toBeUndefined();
-  expect(after.codebook).toEqual(committed.codebook);
+  const after = await readProtocolJson(architectPage, (protocol) =>
+    isRequired(protocol, 'age'),
+  );
+  // Kept: the rule belongs to the attribute, which every stage collecting it
+  // shares.
+  expect(validationOf(byName(after, 'age'))).toMatchObject({ required: true });
+  // Reverted: the stage's own name is the researcher's unsaved typing.
+  expect(after.stages[0]?.label).toBe('About You');
 });
 
-test('discarding a stage removes the variable a discarded field created', async ({
+test('the attribute a discarded field created is kept in the codebook', async ({
   architectPage,
   seed,
 }) => {
@@ -151,30 +199,45 @@ test('discarding a stage removes the variable a discarded field created', async 
 
   await reopenStage(architectPage);
 
-  // Add a second field on a brand-new variable, then remove the field again.
-  await addFormField(editor.section('Form configuration'), {
+  // Renamed first, so the stage has an unsaved change of its OWN to discard.
+  // Adding a field and removing it again leaves the stage document exactly as
+  // it was, and dirtiness is a comparison against the document the editor
+  // opened on — so without this there would be nothing to discard and no
+  // prompt to answer.
+  await editor.setStageName('About You, revised');
+
+  // Add a second field on a brand-new attribute, then remove the field again.
+  // The attribute was written when the ROW was saved, so removing the row —
+  // and then throwing the whole stage edit away — leaves it standing.
+  const section = editor.section('Form fields');
+  await addFormField(section, {
     variableName: 'orphanVar',
     promptText: 'Something we will discard.',
   });
 
-  await editor
-    .section('Form configuration')
-    .getByRole('button', { name: 'Remove field' })
+  await section
+    .getByRole('button', { name: 'Remove field', exact: true })
     .last()
     .click();
   await architectPage
-    .getByRole('button', { name: 'Remove field', exact: true })
-    .last()
+    .getByRole('button', { name: 'Delete field', exact: true })
     .click();
 
   await leaveWithoutSaving(architectPage);
 
-  const after = await readProtocolJson(architectPage);
-  expect(byName(after, 'orphanVar')).toBeUndefined();
-  expect(after.codebook).toEqual(committed.codebook);
+  const after = await readProtocolJson(architectPage, (protocol) =>
+    Object.values(protocol.codebook.ego?.variables ?? {}).some(
+      (variable) => variable.name === 'orphanVar',
+    ),
+  );
+  expect(byName(after, 'orphanVar')).toBeDefined();
+  // The STAGE went back to what it was: its committed name, and the one
+  // question it was committed asking.
+  expect(after.stages[0]?.label).toBe('About You');
+  expect(formFieldsOf(after.stages[0])).toHaveLength(1);
 });
 
-test('renaming a variable inline marks the stage dirty and reverts on discard', async ({
+test('a codebook edit alone does not make a stage unsaved', async ({
   architectPage,
   seed,
 }) => {
@@ -182,56 +245,36 @@ test('renaming a variable inline marks the stage dirty and reverts on discard', 
   await gotoProtocol(architectPage);
 
   const editor = await seedStageWithVariable(architectPage);
-  const committed = await readProtocolJson(architectPage);
-
   await reopenStage(architectPage);
 
-  await editor
-    .section('Form configuration')
-    .getByRole('button', { name: 'Edit field' })
-    .click();
+  await requireAnAnswerFromTheCodebookEditor(editor, architectPage);
 
-  // The inline rename on the variable pill: its own confirm used to write the
-  // shared codebook immediately AND leave the stage reading as clean, so
-  // Cancel navigated away with no prompt at all.
-  await architectPage
-    .getByRole('button', { name: 'Edit attribute name: age' })
-    .dblclick();
-  const nameInput = architectPage.getByRole('textbox', {
-    name: 'Attribute name',
-  });
-  await nameInput.fill('ageQA');
-  await architectPage.getByRole('button', { name: 'Save Changes' }).click();
-
-  // Cancel the FIELD dialog — the rename must not survive it.
-  await architectPage
-    .getByRole('button', { name: 'Cancel', exact: true })
-    .first()
-    .click();
-
-  // The stage now reports unsaved changes, which is the signal that used to be
-  // missing entirely for this path.
+  // Nothing about the STAGE has changed, so there is nothing to save: the
+  // save control is not offered at all…
   await expect(
     architectPage.getByRole('button', { name: 'Finished Editing' }),
-  ).toBeVisible();
+  ).toBeHidden();
 
-  await leaveWithoutSaving(architectPage);
+  // …and leaving asks nothing, because nothing would be lost by leaving.
+  await architectPage.getByRole('button', { name: 'Cancel' }).first().click();
+  await architectPage.waitForURL(/\/protocol$/);
 
-  const after = await readProtocolJson(architectPage);
-  expect(byName(after, 'age')).toBeDefined();
-  expect(byName(after, 'ageQA')).toBeUndefined();
-  expect(after.codebook).toEqual(committed.codebook);
+  const after = await readProtocolJson(architectPage, (protocol) =>
+    isRequired(protocol, 'age'),
+  );
+  expect(validationOf(byName(after, 'age'))).toMatchObject({ required: true });
 });
 
-// The exits that leave a PRISTINE editor run no discard handler at all, so the
-// codebook transaction has to be closed by the editor unmounting. Left open, a
-// later codebook edit made anywhere else would be routed into a draft nothing
-// will ever commit — visible on screen, gone on reload.
+// A codebook edit made anywhere else, after a stage editor has been and gone,
+// must reach the canonical protocol. It is the fence #1382's draft codebook
+// left standing: a transaction the editor opened and did not close swallowed
+// every later codebook write into a draft nothing would ever commit — visible
+// on screen, gone on reload.
 //
 // Every navigation here is CLIENT-SIDE on purpose: a `page.goto`/`goBack`
-// rebuilds the Redux store, which is the only place a leaked transaction
-// lives, so a reloading version of this test cannot fail.
-test('leaving a pristine editor does not swallow later codebook edits', async ({
+// rebuilds the Redux store, which is the only place such a draft could live,
+// so a reloading version of this test cannot fail.
+test('leaving a stage editor does not swallow later codebook edits', async ({
   architectPage,
   seed,
 }) => {

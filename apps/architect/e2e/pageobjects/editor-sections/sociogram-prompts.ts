@@ -121,6 +121,9 @@ export async function addSociogramPrompt(
         await editor
           .field('edges.create')
           .getByRole('radio', { name: interaction.edgeName, exact: true })
+          // The chip's own label: the radio inside it is `sr-only`, which is
+          // not something a researcher can click.
+          .locator('xpath=ancestor::label[1]')
           .click();
       } else {
         await behaviour.getByRole('option', { name: /^Mark the node/ }).click();

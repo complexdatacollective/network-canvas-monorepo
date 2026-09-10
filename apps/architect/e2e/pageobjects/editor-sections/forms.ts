@@ -17,7 +17,7 @@ export async function addFormField(
   opts: {
     variableName: string;
     promptText: string;
-    /** A `TYPE_OPTIONS` label — the codebook type the new attribute holds. */
+    /** A `TYPE_OPTIONS` label. Derived from `inputControl` when absent. */
     variableType?: string;
     /** A `CONTROL_LABELS` label allowed for that type. */
     inputControl?: string;
@@ -32,7 +32,7 @@ export async function addFormField(
   // `addTitle`/`editTitle`). Naming it here is what makes the fields below
   // unambiguous without a second scope.
   const dialog = page.getByRole('dialog', { name: 'Create form field' });
-  await inventAttribute(dialog, opts);
+  await inventAttributeInFieldDialog(dialog, opts);
   const prompt = dialog.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
   await prompt.fill(opts.promptText);
@@ -45,43 +45,106 @@ export async function addFormField(
 }
 
 /**
+ * Which kind of answer an input control collects.
+ *
+ * Not a guess and not a shortcut: `VARIABLE_TYPE_COMPONENTS`
+ * (protocol-validation's schema module) lists the controls each type may be
+ * rendered with, and every control appears under exactly ONE type — so a
+ * caller that has said which control the participant answers with has already
+ * said what the attribute holds, and asking again would only create a second
+ * place for the two to disagree.
+ *
+ * Keys are the researcher-facing control names (`collectableTypes.ts`'s
+ * `CONTROL_LABELS`); values are the type names the "Kind of answer" control
+ * offers (`variableTypeLabels.ts`'s `VARIABLE_TYPE_OPTIONS`). `layout` and
+ * `location` are absent from both: they hold a position rather than an answer
+ * and no form can ask for one.
+ */
+const VARIABLE_TYPE_FOR_CONTROL: Readonly<Record<string, string>> = {
+  'Text input': 'Text',
+  'Text area': 'Text',
+  'Number input': 'Number',
+  'Yes or no buttons': 'Boolean',
+  'Toggle': 'Boolean',
+  'Radio group': 'Ordinal',
+  'Likert scale': 'Ordinal',
+  'Checkbox group': 'Categorical',
+  'Toggle button group': 'Categorical',
+  'Visual analogue scale': 'Scalar',
+  'Date picker': 'Date',
+  'Relative date picker': 'Date',
+};
+
+/**
+ * The kinds of answer a name and a type alone cannot finish, so the dialog
+ * sends the researcher to the codebook's own editor to invent one.
+ *
+ * `needsCodebookEditorToCreate` (`collectableTypes.ts`) decides this in the
+ * app: a list of answers IS its values, which the schema refuses fewer than
+ * two of, and a scale IS the two labels saying which end is which.
+ */
+const NEEDS_CODEBOOK_EDITOR = new Set(['Categorical', 'Ordinal', 'Scalar']);
+
+/** The button that opens that editor, which is named for what it creates. */
+const createInEditorLabel = (variableType: string): string =>
+  variableType === 'Scalar'
+    ? 'Create this attribute and what it accepts'
+    : 'Create this attribute and its values';
+
+export type InventAttributeOptions = {
+  variableName: string;
+  variableType?: string;
+  inputControl?: string;
+  /**
+   * Fills in whatever the codebook editor asks for beyond a name — the values
+   * of a list, the two ends of a scale. Called with the editor dialog, after
+   * its "Attribute name" is filled and before "Create attribute" is pressed.
+   * Only reached for the types in `NEEDS_CODEBOOK_EDITOR`.
+   */
+  inEditor?: (editor: Locator) => Promise<void>;
+};
+
+/**
  * Fill in the codebook half of an open form-field dialog: an attribute that
  * does not exist yet, and the control the participant answers it with.
  *
- * There is no attribute search here. `FormFieldEditor` (same file) asks which
- * attribute the answer is recorded under through a native `<select>`
+ * There is no attribute search here. `FormFieldEditor`
+ * (`sections/form-fields/FormFieldsSection.tsx`) asks which attribute the
+ * answer is recorded under through a native `<select>`
  * (`fields/VariablePickerField.tsx` -> fresco-ui's `NativeSelectField`, so
  * `selectOption` drives it directly) listing the subject's collectable
  * codebook attributes plus one sentinel option, "Create a new attribute…".
- * Choosing that option IS the request to invent one, and it reveals the two
- * things a name alone cannot supply:
+ * Choosing that option IS the request to invent one, and it reveals:
  *
- * - "Kind of answer" — the codebook type (`TYPE_OPTIONS`), asked first
- *   because it decides what else the attribute needs; and
- * - "Attribute name" — what the codebook and the exported data call it.
+ * - "Kind of answer" — the codebook type, asked first because it decides what
+ *   else the attribute needs; and then either
+ * - "Attribute name", for a kind a name finishes, or
+ * - the codebook editor's own button, for a kind it does not.
  *
- * "Input control" then lists only the controls that type allows
- * (`collectableTypes.ts`'s `controlsForType`) and arrives already showing the
- * first of them, so it is selected explicitly only to say which one is meant.
+ * "Input control" lists only the controls that type allows and arrives already
+ * showing the first of them, so selecting it says which one is meant rather
+ * than supplying a value the field would otherwise lack.
  *
- * Only for a kind of answer a name and a type finish. A list of answers
- * (categorical, ordinal) or a scale carries something a name cannot —
- * `needsCodebookEditorToCreate` — and the dialog replaces "Attribute name"
- * with the codebook editor's own button for those, which is a different flow.
- *
- * Nothing is written to the codebook until the dialog is submitted: the row
- * carries `_newVariableType`/`_newVariableName`/`_component` as its own
- * fields and `useCommitFormField` turns them into the attribute, which is why
- * every control above has to be answered before "Add" rather than after.
+ * Nothing reaches the codebook until something is submitted: for a kind a name
+ * finishes, the row carries `_newVariableType`/`_newVariableName`/`_component`
+ * and `useCommitFormField` turns them into the attribute when the ROW is
+ * saved; for the others, the editor's own "Create attribute" writes it and the
+ * row is then pointed at what it made.
  */
-async function inventAttribute(
+export async function inventAttributeInFieldDialog(
   dialog: Locator,
-  opts: {
-    variableName: string;
-    variableType?: string;
-    inputControl?: string;
-  },
+  opts: InventAttributeOptions,
 ): Promise<void> {
+  const page = dialog.page();
+  const inputControl = opts.inputControl ?? 'Text input';
+  const variableType =
+    opts.variableType ?? VARIABLE_TYPE_FOR_CONTROL[inputControl];
+  if (variableType === undefined) {
+    throw new Error(
+      `No codebook type is known for the input control "${inputControl}". Use one of the labels in CONTROL_LABELS (packages/protocol-builder/src/sections/collectableTypes.ts), or pass variableType.`,
+    );
+  }
+
   // `exact: true` on every name: "Attribute" is also the heading of the
   // dialog's first Section and the prefix of "Attribute name", and a
   // substring match would resolve to more than one control.
@@ -90,11 +153,33 @@ async function inventAttribute(
     .selectOption({ label: 'Create a new attribute…' });
   await dialog
     .getByRole('combobox', { name: 'Kind of answer', exact: true })
-    .selectOption({ label: opts.variableType ?? 'Text' });
-  await dialog
-    .getByRole('textbox', { name: 'Attribute name', exact: true })
-    .fill(opts.variableName);
+    .selectOption({ label: variableType });
+
+  if (NEEDS_CODEBOOK_EDITOR.has(variableType)) {
+    const openLabel = createInEditorLabel(variableType);
+    await dialog.getByRole('button', { name: openLabel, exact: true }).click();
+    // The editor is a dialog of its own, over the row's, and it takes the
+    // button's own words as its title (`AttributeCodebookControls`'s
+    // `editorTitle`) — which is what tells the two apart while both are open.
+    const editor = page.getByRole('dialog', { name: openLabel, exact: true });
+    await editor
+      .getByRole('textbox', { name: 'Attribute name', exact: true })
+      .fill(opts.variableName);
+    await opts.inEditor?.(editor);
+    await editor
+      .getByRole('button', { name: 'Create attribute', exact: true })
+      .click();
+    // The attribute has to EXIST before the row's own controls are driven:
+    // "Input control" is derived from the attribute the row now points at,
+    // and it is not on screen at all while one is still being invented.
+    await editor.waitFor({ state: 'detached' });
+  } else {
+    await dialog
+      .getByRole('textbox', { name: 'Attribute name', exact: true })
+      .fill(opts.variableName);
+  }
+
   await dialog
     .getByRole('combobox', { name: 'Input control', exact: true })
-    .selectOption({ label: opts.inputControl ?? 'Text input' });
+    .selectOption({ label: inputControl });
 }

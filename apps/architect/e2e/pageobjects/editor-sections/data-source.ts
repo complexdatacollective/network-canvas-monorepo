@@ -55,7 +55,7 @@ function openButton(field: Locator, kind: ResourceKind): Locator {
 }
 
 /** Opens the field's resource browser and returns the dialog. */
-export async function openResourcePicker(
+async function openResourcePicker(
   page: Page,
   field: Locator,
   kind: ResourceKind,

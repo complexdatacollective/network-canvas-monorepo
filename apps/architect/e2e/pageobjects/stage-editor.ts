@@ -77,7 +77,7 @@ function parseMarkdownBlocks(markdown: string): MarkdownBlock[] {
 // never meant to (a sentence that happens to start `1. `, say). Correctness
 // is not assumed — the final comparison re-parses every string, so a
 // mis-typed mark fails the run loudly.
-export async function typeInlineRun(page: Page, text: string): Promise<void> {
+async function typeInlineRun(page: Page, text: string): Promise<void> {
   for (const segment of text.split(EMPHASIS_SPLIT)) {
     if (!segment) continue;
     if (EMPHASIS_TEST.test(segment)) {
