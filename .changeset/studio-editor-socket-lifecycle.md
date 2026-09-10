@@ -16,5 +16,7 @@ closing its socket, because the link reconnects on its own schedule: a
 reconnection already scheduled when the researcher signed out would otherwise
 open a replacement while their session was still valid, and a request left
 waiting for one would have travelled on the next account's socket. Every way
-out of a session does it — signing out, switching accounts from an invitation,
-and a session that expires or is ended in another tab.
+out of a session does it, because it happens wherever the app learns that
+nobody is signed in — signing out, switching accounts from an invitation, and
+a session that expires or is ended in another tab, on a public page as much as
+inside the app.

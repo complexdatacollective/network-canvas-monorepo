@@ -17,7 +17,10 @@ import type { contract, SetupStatus } from '@codaco/studio-rpc';
 import { registerStudioEditorSession } from '../../editor/sessionLifecycle.ts';
 import { rpcClient } from '../../lib/api.ts';
 import { authClient } from '../../lib/auth.ts';
-import { reportUnauthorizedResponse } from '../../lib/session.ts';
+import {
+  reportUnauthorizedResponse,
+  sessionQueryOptions,
+} from '../../lib/session.ts';
 import { createAppRouter } from '../../router.tsx';
 
 vi.mock('../../lib/auth.ts', () => ({
@@ -428,6 +431,53 @@ describe('sign-out', () => {
       await waitFor(() =>
         expect(router.state.location.pathname).toBe('/sign-in'),
       );
+      // Called, rather than called once: the seam is every answer of "nobody
+      // is signed in", and the guard and the sign-in page it redirects to both
+      // ask. Ending a session already ended is a no-op.
+      expect(close).toHaveBeenCalled();
+    } finally {
+      unregister();
+    }
+  });
+
+  /**
+   * And on a page with no guard behind it at all.
+   *
+   * A marketing page is on the site branch, where the shell's own entry is the
+   * only reader of the session (`shell/SiteLayout.tsx`) and nothing guards the
+   * route. A researcher can open the editor, walk out to a public page, be
+   * signed out from another tab, and sign in here as somebody else — and the
+   * socket the editor left open, upgraded under the account that has gone,
+   * would be the one the next account edits and is audited through.
+   */
+  it('ends this tab’s editor session on a page the app shell does not guard', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
+    try {
+      const { queryClient, router } = renderWithClientAt('/');
+      await waitFor(() =>
+        expect(queryClient.getQueryData(sessionQueryOptions.queryKey)).toBe(
+          'signedIn',
+        ),
+      );
+      // The site branch, with no app route matched and so no guard to run.
+      expect(router.state.location.pathname).toBe('/');
+      expect(
+        screen.queryByRole('button', { name: 'Account' }),
+      ).not.toBeInTheDocument();
+
+      // Signed out in another tab, learnt when this one comes back.
+      mocked.getSession.mockResolvedValue(signedOut);
+      await act(async () => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      await waitFor(() =>
+        expect(queryClient.getQueryData(sessionQueryOptions.queryKey)).toBe(
+          'signedOut',
+        ),
+      );
+
       expect(close).toHaveBeenCalledTimes(1);
     } finally {
       unregister();

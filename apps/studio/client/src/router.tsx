@@ -16,7 +16,6 @@ import AppArea from '@codaco/fresco-ui/layout/AppArea';
 import RouteFocus from '@codaco/fresco-ui/navigation/RouteFocus';
 import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
-import { closeStudioEditorSessions } from './editor/sessionLifecycle.ts';
 import LanguageChoice from './i18n/LanguageChoice.tsx';
 import LocaleSync from './i18n/LocaleSync.tsx';
 import { StudioI18nProvider } from './i18n/StudioI18nProvider.tsx';
@@ -991,14 +990,6 @@ const appLayoutRoute = createRoute({
       // tenancy state from a loader; dropping a dead session's cache is not
       // that.
       context.queryClient.clear();
-      // The socket the protocol editor talks its host over belongs to the
-      // session that has just ended as surely as the cache does: the server
-      // reads the account once, when the socket is opened, and attributes
-      // every later message to it. Ended here for the same reason the cache is
-      // cleared here — this is the one place that learns a session expired, or
-      // was ended in another tab, and the editor's own sign-out path
-      // (`shell/useSignOut.ts`) never runs for either.
-      await closeStudioEditorSessions();
       // A dirty-form blocker must not strand the researcher in a private
       // route whose cached data has just been removed. Authentication has
       // already gone away, so there is no editor state left worth keeping.

@@ -305,38 +305,44 @@ describe('invitation acceptance', () => {
   });
 
   /**
-   * And this tab's editor session ends with the account, not after it.
+   * And this tab's editor session ends with the account.
    *
-   * Switching accounts here is a sign-out like the account menu's, and it owes
-   * the same order: the socket the protocol editor talks its host over is
-   * upgraded once, under the account signing out, so it has to be given back
-   * while the cookie still works — both so the sections this tab holds go back
-   * to its collaborators, and so the account signing in next cannot edit, and
-   * be audited, through the socket of the one signing out.
+   * Switching accounts here is a sign-out, and the socket the protocol editor
+   * talks its host over is upgraded once, under the account signing out: left
+   * open, the account signing in next would edit, and be audited, through it.
+   * Not said at this call site, though — `lib/session.ts` ends the session
+   * wherever the session query answers that nobody is signed in, which is the
+   * one channel every reader of the session shares, this route's own
+   * destination included.
    */
-  it('ends this tab’s editor session before signing the visitor out', async () => {
+  it('ends this tab’s editor session when the visitor signs out of it', async () => {
     mocks.getSession.mockResolvedValue({ data: SESSION, error: null });
     mocks.useSession.mockReturnValue({
       data: SESSION,
       isPending: false,
       error: null,
     });
-    const order: string[] = [];
-    mocks.signOut.mockImplementation(async () => {
-      order.push('signOut');
+    mocks.signOut.mockImplementationOnce(async () => {
+      mocks.getSession.mockResolvedValue({ data: null, error: null });
+      mocks.useSession.mockReturnValue({
+        data: null,
+        isPending: false,
+        error: null,
+      });
       return { data: { success: true }, error: null };
     });
-    const unregister = registerStudioEditorSession(async () => {
-      order.push('closeEditorSessions');
-    });
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
     try {
-      renderAt(`/invitations/${INVITATION_ID}`);
+      const router = renderAt(`/invitations/${INVITATION_ID}`);
 
       fireEvent.click(
         await screen.findByRole('button', { name: 'Use a different account' }),
       );
-      await waitFor(() => expect(mocks.signOut).toHaveBeenCalledTimes(1));
-      expect(order).toEqual(['closeEditorSessions', 'signOut']);
+      await waitFor(() =>
+        expect(router.state.location.pathname).toBe('/sign-in'),
+      );
+      await waitFor(() => expect(close).toHaveBeenCalled());
     } finally {
       unregister();
     }
