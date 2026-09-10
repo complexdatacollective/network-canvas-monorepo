@@ -46,6 +46,17 @@ const VISIBLE_WINDOW = 7;
 // then progressively older above).
 const INITIAL_BLOOM_STAGGER_S = 0.12;
 
+// Information's platinum-dark is illegible against Architect's platinum page bg
+// Override it with charcoal throughout the timeline. Every
+// other stage color is dark enough to draw as authored
+const INFORMATION_TIMELINE_COLOR = 'var(--color-charcoal)';
+
+function timelineColor(type: StageType) {
+  return type === 'Information'
+    ? INFORMATION_TIMELINE_COLOR
+    : stageTypeColorStyle(type).color;
+}
+
 type TransitMapProps = {
   stops: TimelineStop[];
   count: number;
@@ -141,7 +152,7 @@ export default function TransitMap({ stops, count }: TransitMapProps) {
                     mass: 2,
                     delay: segDelay,
                   }}
-                  style={{ stroke: stageTypeColorStyle(prev.type).color }}
+                  style={{ stroke: timelineColor(prev.type) }}
                   strokeWidth={LINE_STROKE}
                   strokeLinecap="round"
                   opacity={0.9}
@@ -223,7 +234,7 @@ function Station({
 }: StationProps) {
   // Palette colours are CSS custom properties, which SVG presentation
   // attributes do not resolve — they have to be set as style properties.
-  const { color, contrast } = stageTypeColorStyle(type);
+  const color = timelineColor(type);
   const StageIcon = stageTypeIcon(type);
   const shouldEntry = entryDelay !== undefined;
   const baseDelay = entryDelay ?? 0;
@@ -279,7 +290,7 @@ function Station({
           y={y - ICON_SIZE / 2}
           width={ICON_SIZE}
           height={ICON_SIZE}
-          style={{ stroke: contrast }}
+          style={{ stroke: 'var(--color-white)' }}
         />
       </motion.g>
 
