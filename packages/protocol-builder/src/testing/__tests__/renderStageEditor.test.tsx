@@ -5,21 +5,21 @@ import { describe, expect, it } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { buildUpdateVariableRequest } from '../../codebook/editing.ts';
 import RichTextField from '../../fields/RichTextField.tsx';
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
-import { useResourceGateway } from '../../resources/context.tsx';
+import { useResourceClient } from '../../resources/client.tsx';
+import type { ResourceDescriptor } from '../../resources/types.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
 import SkipLogicSection from '../../sections/SkipLogicSection.tsx';
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import SubjectSection from '../../sections/SubjectSection.tsx';
-import type { CompoundEditResult } from '../../session.ts';
 import type {
   StageEditorComponent,
   StageEditorProps,
 } from '../../stage-editor-contract.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 import { fixtureStageIds, loadFixtureStage } from '../protocolFixture.ts';
 import {
   renderStageEditor,
@@ -35,33 +35,70 @@ const commonSections = (
   </>
 );
 
+/** The text of a `data:` URL, which is how the contract delivers a file. */
+const previewText = (url: string): string => {
+  const comma = url.indexOf(',');
+  if (comma === -1) throw new Error(`"${url}" is not a data URL`);
+  const payload = url.slice(comma + 1);
+  return url.slice(0, comma).endsWith(';base64')
+    ? new TextDecoder().decode(
+        Uint8Array.from(
+          atob(payload),
+          (character) => character.codePointAt(0) ?? 0,
+        ),
+      )
+    : decodeURIComponent(payload);
+};
+
 /**
- * A section that asks the gateway what is INSIDE a data file, the way a roster
- * stage's card, sort and search sections do: the columns they offer a
- * researcher are the roster's own attribute names, and nothing but the file
- * can supply them. Seeded with a placeholder body instead, every one of those
- * sections would test its "this file cannot be read" state rather than itself.
+ * A section that reads what is INSIDE a data file, the way a roster stage's
+ * card, sort and search sections do: the columns they offer a researcher are
+ * the roster's own attribute names, and nothing but the file can supply them.
+ * Seeded with a placeholder body instead, every one of those sections would
+ * test its "this file cannot be read" state rather than itself.
+ *
+ * The contract has no download, so the file arrives as the URL a preview
+ * resolves to — which is what `ResourcePickerControl` reads one through.
  */
 function RosterColumnsSection({
   resourceId,
 }: Readonly<{ resourceId: string }>) {
-  const gateway = useResourceGateway();
+  const resources = useResourceClient();
   const [columns, setColumns] = useState<readonly string[]>([]);
   const [unreadable, setUnreadable] = useState(false);
 
   useEffect(() => {
     let current = true;
     const readColumns = async () => {
-      const result = await gateway.inspect(resourceId);
+      const result = await resources.resolvePreview(resourceId);
       if (!current) return;
-      if (result.status === 'ok') setColumns(result.data.variableNames ?? []);
-      else setUnreadable(true);
+      if (result.status !== 'ok') {
+        setUnreadable(true);
+        return;
+      }
+      const roster = JSON.parse(previewText(result.data.url)) as unknown;
+      const nodes =
+        typeof roster === 'object' && roster !== null && 'nodes' in roster
+          ? roster.nodes
+          : undefined;
+      const names = new Set<string>();
+      for (const node of Array.isArray(nodes) ? nodes : []) {
+        const attributes =
+          typeof node === 'object' && node !== null && 'attributes' in node
+            ? node.attributes
+            : undefined;
+        if (typeof attributes === 'object' && attributes !== null) {
+          for (const name of Object.keys(attributes)) names.add(name);
+        }
+      }
+      if (names.size === 0) setUnreadable(true);
+      else setColumns([...names].toSorted());
     };
     void readColumns();
     return () => {
       current = false;
     };
-  }, [gateway, resourceId]);
+  }, [resources, resourceId]);
 
   return (
     <BuilderSection title="Card details">
@@ -74,82 +111,55 @@ function RosterColumnsSection({
   );
 }
 
-/**
- * A section that reads a map LAYER, the way a geospatial stage's target-feature
- * section does: the properties it offers a researcher are the layer's own, and
- * only the file has them. Seeded with a placeholder body — valid JSON with no
- * features in it — this section would offer nothing at all and say the layer
- * cannot be read.
- */
-function LayerFeaturesSection({
-  resourceId,
-  property,
-}: Readonly<{ resourceId: string; property: string }>) {
-  const gateway = useResourceGateway();
-  const [features, setFeatures] = useState<readonly string[]>([]);
-  const [unreadable, setUnreadable] = useState(false);
+/** A section that lists what the protocol's resources are, as a picker does. */
+function ResourceListSection() {
+  const resources = useResourceClient();
+  const [listed, setListed] = useState<readonly ResourceDescriptor[]>([]);
+  const [refused, setRefused] = useState(false);
 
   useEffect(() => {
     let current = true;
-    const readFeatures = async () => {
-      const result = await gateway.download(resourceId);
+    const read = async () => {
+      const result = await resources.list();
       if (!current) return;
-      const layer =
-        result.status === 'ok'
-          ? (JSON.parse(new TextDecoder().decode(result.data.bytes)) as unknown)
-          : undefined;
-      const collection =
-        typeof layer === 'object' && layer !== null && 'features' in layer
-          ? layer.features
-          : undefined;
-      if (!Array.isArray(collection) || collection.length === 0) {
-        setUnreadable(true);
-        return;
-      }
-      setFeatures(
-        collection.map((feature: unknown) => {
-          const properties =
-            typeof feature === 'object' &&
-            feature !== null &&
-            'properties' in feature
-              ? feature.properties
-              : undefined;
-          const value =
-            typeof properties === 'object' && properties !== null
-              ? (properties as Record<string, unknown>)[property]
-              : undefined;
-          return typeof value === 'string' ? value : '';
-        }),
-      );
+      if (result.status === 'ok') setListed(result.data);
+      else setRefused(true);
     };
-    void readFeatures();
+    void read();
     return () => {
       current = false;
     };
-  }, [gateway, property, resourceId]);
+  }, [resources]);
 
   return (
-    <BuilderSection title="Target feature">
-      <p>
-        {unreadable
-          ? 'That layer could not be read as GeoJSON.'
-          : `Features: ${features.join(', ')}`}
-      </p>
+    <BuilderSection title="Files">
+      {refused && <p>The host refused to list its files.</p>}
+      <ul>
+        {listed.map((resource) => (
+          <li key={resource.id}>
+            {`${resource.id}: ${resource.name}, ${resource.kind}, ${resource.status}`}
+          </li>
+        ))}
+      </ul>
     </BuilderSection>
   );
 }
 
 describe('the stage-editor test harness', () => {
-  it('opens a stage of the shared protocol over a real session', () => {
+  it('opens a stage of the shared protocol over a real host', () => {
     const harness = renderStageEditor({
       stageId: 'information-1',
       sections: commonSections,
     });
 
     expect(harness.seeded.type).toBe('Information');
-    expect(harness.session.getSnapshot().editedSection.fields).toMatchObject({
-      title: expect.any(String) as unknown as string,
-    });
+    // The fixture's own name, written out rather than read back off the seed:
+    // a control showing whatever the seed happens to hold would pass over a
+    // form that was never given the document at all.
+    expect(harness.seeded.fields.label).toBe('Information');
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+      'Information',
+    );
     expect(screen.getByRole('button', { name: 'Save stage' })).toBeEnabled();
   });
 
@@ -241,26 +251,14 @@ describe('the stage-editor test harness', () => {
     const unowned = ['title', 'items'];
 
     await harness.roundTrip({ unowned });
-    harness.setReadOnly();
+    // Nothing tells the editor the lock has gone; the next save is refused by
+    // the host, and the round trip must not read the earlier save as this one.
+    harness.takeOverLock();
 
     expect(await harness.submit()).toBeNull();
     await expect(harness.roundTrip({ unowned })).rejects.toThrow(
       /did not save/,
     );
-  });
-
-  it('hands editing away and takes it back', async () => {
-    const harness = renderStageEditor({
-      stageId: 'information-1',
-      sections: commonSections,
-    });
-
-    harness.setReadOnly();
-    expect(harness.session.getSnapshot().access.mode).toBe('readOnly');
-    expect(await harness.submit()).toBeNull();
-
-    harness.setReadOnly(false);
-    expect(harness.session.getSnapshot().access.mode).toBe('editable');
   });
 });
 
@@ -558,55 +556,36 @@ describe('what a round trip refuses', () => {
 });
 
 /**
- * The protocol's asset manifest and the resource gateway are two halves of one
- * fact: a stage may reference a resource only if the manifest lists it AND the
- * host holds its bytes. The harness seeds both from the same manifest, so a
+ * The protocol's asset manifest and the host's resource store are two halves of
+ * one fact: a stage may reference a resource only if the manifest lists it AND
+ * the host holds its bytes. The harness seeds both from the same manifest, so a
  * stage seeded with a reference is one a host would accept — and a section that
  * reads a data file gets the file, not a placeholder.
  */
 describe('the resources a harnessed stage can reach', () => {
   it('hands a section the columns of the roster the fixture ships', async () => {
-    const harness = renderStageEditor({
+    renderStageEditor({
       stageId: 'name-generator-roster-1',
-      sections: <RosterColumnsSection resourceId="roster_data" />,
+      sections: (
+        <>
+          <RosterColumnsSection resourceId="roster_data" />
+          <ResourceListSection />
+        </>
+      ),
     });
 
     // The roster's own attributes, read out of the file beside the protocol.
+    // A placeholder body would leave the section saying it could not be read.
     expect(await screen.findByText('Columns: age, name')).toBeInTheDocument();
-    // And the gateway holds it as something the protocol already has, rather
-    // than as something this session staged.
-    const listed = await harness.gateway.list();
-    if (listed.status !== 'ok') throw new Error('the gateway refused to list');
+    // And the host holds it as something the protocol already has, rather than
+    // as something this edit staged.
     expect(
-      listed.data.find((resource) => resource.id === 'roster_data'),
-    ).toMatchObject({ name: 'Roster', kind: 'network', status: 'committed' });
-  });
-
-  /**
-   * The same claim for the OTHER file the protocol ships. A layer seeded with
-   * a placeholder parses as JSON and holds no features, so every geospatial
-   * section that reads it shows its unreadable state — which is what the whole
-   * interface's tests and stories were doing.
-   */
-  it('hands a section the features of the map layer the fixture ships', async () => {
-    const harness = renderStageEditor({
-      stageId: 'geospatial-1',
-      sections: <LayerFeaturesSection resourceId="geo_data" property="name" />,
-    });
-
-    // The layer's own regions, named by the property `geospatial-1` targets.
-    expect(
-      await screen.findByText('Features: Downtown, Uptown'),
+      await screen.findByText('roster_data: Roster, network, committed'),
     ).toBeInTheDocument();
-    const listed = await harness.gateway.list();
-    if (listed.status !== 'ok') throw new Error('the gateway refused to list');
-    expect(
-      listed.data.find((resource) => resource.id === 'geo_data'),
-    ).toMatchObject({ name: 'Regions', kind: 'geojson', status: 'committed' });
   });
 
-  it('joins an extra asset to the manifest and the gateway together', async () => {
-    const harness = renderStageEditor({
+  it('joins an extra asset to the manifest and the host’s files together', async () => {
+    renderStageEditor({
       stageId: 'name-generator-roster-1',
       assets: {
         second_roster: {
@@ -615,15 +594,21 @@ describe('the resources a harnessed stage can reach', () => {
           source: 'roster.json',
         },
       },
-      sections: <RosterColumnsSection resourceId="second_roster" />,
+      sections: (
+        <>
+          <RosterColumnsSection resourceId="second_roster" />
+          <ResourceListSection />
+        </>
+      ),
     });
 
     expect(await screen.findByText('Columns: age, name')).toBeInTheDocument();
-    const listed = await harness.gateway.list();
-    if (listed.status !== 'ok') throw new Error('the gateway refused to list');
-    expect(listed.data.map((resource) => resource.id)).toEqual(
-      expect.arrayContaining(['roster_data', 'second_roster']),
-    );
+    expect(
+      await screen.findByText(/^second_roster: Another roster, network,/),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/^roster_data: Roster,/),
+    ).toBeInTheDocument();
   });
 });
 
@@ -675,11 +660,11 @@ const settle = () =>
 /**
  * A stage being created differs from every other stage in two ways an editor
  * cannot work out for itself: its name may be proposed, and it has no place in
- * the stage order to read its position from. Both come from the session, which
+ * the stage order to read its position from. Both come from the open edit, which
  * the host opened saying so — the sections below are mounted with no props at
  * all, which is how a family editor mounts them.
  */
-describe('a stage the session is creating', () => {
+describe('a stage being created', () => {
   it('proposes a name, and stops as soon as the researcher types one', async () => {
     const harness = renderStageEditor({
       create: { type: 'Information', position: INFORMATION_INDEX },
@@ -735,10 +720,17 @@ describe('a stage the session is creating', () => {
 
     const request = await harness.submit();
     expect(request?.stageDocument).toMatchObject({
-      id: harness.seeded.id,
       type: 'Information',
       label: 'A new page',
     });
+    // Under an id the edit minted, in the section the host answered with: the
+    // stage is in the protocol now, which is what saving a new one means.
+    expect(request?.sectionId).toBe(
+      sectionId({ kind: 'stage', stageId: String(request?.stageDocument.id) }),
+    );
+    expect(harness.protocolSections()[String(request?.sectionId)]).toEqual(
+      request?.stageDocument,
+    );
   });
 
   it('offers the destinations its insertion position allows', async () => {
@@ -838,19 +830,14 @@ describe('the harness editor slot', () => {
 });
 
 /**
- * The harness seeds a codebook the way a collaborator changes one, and both
- * ends of the session have to hear about it: the editor under test, which
- * reads the session, and the host, which is what a later compound edit is
- * judged against.
+ * The harness seeds a codebook change the way a collaborator makes one: it
+ * reaches the protocol itself, so the revision travels the same channel every
+ * other change does and every subscribed component re-renders with it.
  *
- * They used to hear different stories. The seeded attribute reached the
- * session alone, under a revision the harness made up, so the host's copy of
- * the entity still hashed to what it held before — and the next compound edit
- * touching that entity, built (correctly) on what the session was shown, was
- * refused as `stale-base`. A family test that needed an existing attribute had
- * to create one through the dialog instead of seeding it, and "nothing reached
- * the codebook" could only be asserted as "the host's type never gained it",
- * which nothing could seed in the first place.
+ * It used to reach the editor alone, under a revision the harness made up, so
+ * the protocol's own copy of the entity was still what it held before — and a
+ * test could seed an attribute, watch a section offer it, and be looking at
+ * something no host would ever have sent.
  */
 describe('a codebook change the harness seeds', () => {
   const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
@@ -863,16 +850,6 @@ describe('a codebook change the harness seeds', () => {
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
 
-  /** The fixture's `person` type, as the session currently holds it. */
-  const personDocument = (harness: StageEditorHarness): SectionDoc => {
-    const person =
-      harness.session.getSnapshot().protocolSections[PERSON_SECTION];
-    if (person === undefined) {
-      throw new Error('the fixture has no "person" node type');
-    }
-    return person;
-  };
-
   /**
    * The fixture's `person` type with one more attribute on it.
    *
@@ -881,7 +858,10 @@ describe('a codebook change the harness seeds', () => {
    * having done anything.
    */
   const personWithNickname = (harness: StageEditorHarness): SectionDoc => {
-    const person = personDocument(harness);
+    const person = harness.protocolSections()[PERSON_SECTION];
+    if (person === undefined) {
+      throw new Error('the fixture has no "person" node type');
+    }
     const variables = isRecord(person.variables) ? person.variables : {};
     if (Object.hasOwn(variables, 'nickname')) {
       throw new Error(
@@ -891,181 +871,40 @@ describe('a codebook change the harness seeds', () => {
     return { ...person, variables: { ...variables, nickname: NICKNAME } };
   };
 
-  const seededHarness = (): StageEditorHarness => {
+  /** A section reading the codebook, the way every attribute picker does. */
+  function PersonAttributesSection() {
+    const { codebook } = useProtocolContext();
+    const names = Object.keys(codebook.node?.person?.variables ?? {});
+    return (
+      <BuilderSection title="Person attributes">
+        <p>{`Attributes: ${names.toSorted().join(', ')}`}</p>
+      </BuilderSection>
+    );
+  }
+
+  it('reaches a subscribed section, and the protocol it came from', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
-      sections: commonSections,
-    });
-    harness.receiveCodebookUpdate({
-      node: { person: personWithNickname(harness) },
-    });
-    return harness;
-  };
-
-  /** The rename a codebook editor sends when the researcher renames one. */
-  const renameNickname = async (
-    harness: StageEditorHarness,
-  ): Promise<CompoundEditResult> => {
-    const request = buildUpdateVariableRequest({
-      requestId: 'rename-the-seeded-attribute',
-      description: 'Rename an attribute',
-      subject: { entity: 'node', type: 'person' },
-      // What an editor builds its edit from: the entity the SESSION showed it.
-      authoritativeDocument: personDocument(harness),
-      variableId: 'nickname',
-      draft: { name: 'preferred_name' },
-    });
-    let result: CompoundEditResult | undefined;
-    await act(async () => {
-      result = await harness.session.requestCompoundEdit(request);
-    });
-    if (result === undefined)
-      throw new Error('the compound edit never settled');
-    return result;
-  };
-
-  it('reaches the host as well as the session', () => {
-    const harness = seededHarness();
-
-    expect(
-      harness.hostCodebook().node?.person?.variables?.nickname,
-    ).toMatchObject({ name: 'nickname' });
-    expect(harness.session.getSnapshot().manifestRevision).toEqual(
-      harness.host.getSnapshot().manifestRevision,
-    );
-  });
-
-  it('is a base a later compound edit is accepted against', async () => {
-    const harness = seededHarness();
-
-    await expect(renameNickname(harness)).resolves.toMatchObject({
-      status: 'applied',
-    });
-    expect(
-      harness.hostCodebook().node?.person?.variables?.nickname,
-    ).toMatchObject({ name: 'preferred_name' });
-  });
-
-  /**
-   * The escape hatch, and the reason it stays: a session whose base has moved
-   * out from under the host is a real state, and nothing else can produce it
-   * now that seeding keeps the two in step.
-   */
-  it('can be fabricated for the session alone, leaving the host behind', async () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: commonSections,
-    });
-    harness.receiveConflictingCodebookUpdate({
-      node: { person: personWithNickname(harness) },
-    });
-
-    expect(personDocument(harness).variables).toHaveProperty('nickname');
-    expect(harness.hostCodebook().node?.person?.variables).not.toHaveProperty(
-      'nickname',
-    );
-    await expect(renameNickname(harness)).resolves.toMatchObject({
-      status: 'failed',
-      reason: 'stale-base',
-    });
-  });
-
-  /**
-   * The harness's `onFinish` records the save rather than applying it, so the
-   * host is deliberately a save behind on the edited stage's own section.
-   * Seeding hands the session the host's whole snapshot, which would carry
-   * that lag back in: the editor would go on describing the stage as it was
-   * before the researcher saved it, because a collaborator added an attribute
-   * somewhere else entirely.
-   */
-  it('does not put the host’s older stage back into the session', async () => {
-    const harness = renderStageEditor({
-      stageId: 'name-generator-roster-1',
       sections: (
         <>
-          <StageNameSection />
-          <SubjectSection entity="node" />
+          {commonSections}
+          <PersonAttributesSection />
         </>
       ),
     });
-    const name = await screen.findByRole('textbox', { name: 'Stage name' });
-    await harness.user.clear(name);
-    await harness.user.type(name, 'Renamed roster');
-    const request = await harness.submit();
-    expect(request?.stageDocument.label).toBe('Renamed roster');
-
-    const stageKey = sectionId({
-      kind: 'stage',
-      stageId: 'name-generator-roster-1',
-    });
-    const labelNow = () =>
-      harness.session.getSnapshot().protocolSections[stageKey]?.label;
-    // Reported as a pair, so a save the session never took is told apart from
-    // a seeding that undid one.
-    const beforeSeeding = labelNow();
+    const before = await screen.findByText(/^Attributes: /);
+    expect(before).not.toHaveTextContent('nickname');
 
     harness.receiveCodebookUpdate({
-      node: {
-        place: { name: 'Place', color: 'sea-green', variables: {} },
-      },
-    });
-
-    expect({ beforeSeeding, afterSeeding: labelNow() }).toEqual({
-      beforeSeeding: 'Renamed roster',
-      afterSeeding: 'Renamed roster',
-    });
-  });
-
-  /**
-   * And says so rather than dropping the next arrival in silence: a session
-   * already past the host refuses every revision the host issues after it, and
-   * `receiveAuthoritativeUpdate` refuses without a word.
-   */
-  it('refuses to seed a session a fabricated arrival has taken past the host', () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: commonSections,
-    });
-    harness.receiveConflictingCodebookUpdate({
       node: { person: personWithNickname(harness) },
     });
 
-    expect(() =>
-      harness.receiveCodebookUpdate({
-        node: { person: personDocument(harness) },
-      }),
-    ).toThrow(/did not take the seeded codebook change/);
-  });
-});
-
-/**
- * `liveCommands()` answers about a HOST, and a harness opened without
- * `applyLive` has none.
- *
- * Over a buffering host the session hands nothing over until finish, so
- * `expect(harness.liveCommands()).toEqual([])` — the assertion every test that
- * reaches for this writes — is true whatever the editor did. A cancelled edit
- * that left its whole batch behind would pass it, which is precisely the
- * failure the reader is asking about. Refusing the question is what keeps the
- * answer worth having.
- */
-describe('liveCommands', () => {
-  it('refuses to answer when no live host was asked for', () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: commonSections,
-    });
-
-    expect(() => harness.liveCommands()).toThrow(/needs a live host/);
-  });
-
-  it('answers, with nothing yet, when one was', () => {
-    const harness = renderStageEditor({
-      stageId: 'alter-form-1',
-      sections: commonSections,
-      applyLive: true,
-    });
-
-    expect(harness.liveCommands()).toEqual([]);
+    // The revision reaches the section over the channel, which is a microtask.
+    expect(
+      await screen.findByText(/^Attributes: .*\bnickname\b/),
+    ).toBeInTheDocument();
+    expect(
+      harness.hostCodebook().node?.person?.variables?.nickname,
+    ).toMatchObject({ name: 'nickname' });
   });
 });

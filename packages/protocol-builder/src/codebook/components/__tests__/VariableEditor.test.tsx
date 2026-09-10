@@ -1,5 +1,4 @@
 import {
-  act,
   fireEvent,
   render,
   screen,
@@ -9,15 +8,12 @@ import {
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { ProtocolBuilderProtocolContext } from '../../../protocol-context.ts';
-import type {
-  CompoundEditRequest,
-  CompoundEditResult,
-} from '../../../session.ts';
-import type { AuxiliaryCodebookSubmitResult } from '../../editing.ts';
+import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
+import type { CodebookWriteOutcome } from '../../writes.ts';
 import VariableEditor, {
   type VariableEditorProps,
 } from '../VariableEditor.tsx';
@@ -31,29 +27,19 @@ const EMPTY_CONTEXT: ProtocolBuilderProtocolContext = {
   issues: [],
 };
 /**
- * The package's own words for a refused save, from `compoundFailureCopy`.
+ * The package's own words for a refused save.
  *
  * Written out here rather than imported: the point of the copy is that it is
  * NOT the message the host sent, and a test that read the same table as the
  * component would still pass if that table were replaced by a passthrough.
  */
 const REFUSED = {
-  'heldByNobodyNamed':
+  heldByNobodyNamed:
     'A section needed for this change is currently being edited.',
-  'heldBy': (who: string) =>
+  heldBy: (who: string) =>
     `${who} is currently editing a section needed for this change.`,
-  'stale-epoch':
-    'Editing access changed while this was being saved, so nothing was saved. Try again.',
-  'lease-lost':
-    'You are no longer the editor of this stage, so nothing was saved. Take over editing and try again.',
-  'stale-base':
-    'Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.',
-  'host-error':
-    'The protocol would not be valid with this change, so nothing was saved.',
-  'threw':
+  threw:
     'This change could not be saved, and nothing was altered. Wait a moment and try again.',
-  'invalid-request':
-    'This change could not be sent, and nothing was saved. Close this editor and try again.',
 } as const;
 
 /** What a host says. None of it reaches the researcher. */
@@ -88,28 +74,17 @@ const CONTRADICTION =
 const OPTION_COUNT_CONTRADICTION =
   'Attribute "preference": minSelected (3) is greater than the number of options (2)';
 
-const APPLIED: CompoundEditResult = {
+const APPLIED: CodebookWriteOutcome = {
   status: 'applied',
-  update: {
-    protocolSections: {},
-    manifestRevision: { sequence: 2n, hash: 'revision-2' },
-  },
+  sectionId: PERSON_SECTION,
 };
 
-const deferred = <Value,>() => {
-  let resolvePromise: ((value: Value) => void) | undefined;
-  const promise = new Promise<Value>((resolve) => {
-    resolvePromise = resolve;
-  });
-  return {
-    promise,
-    resolve(value: Value) {
-      if (resolvePromise === undefined)
-        throw new Error('deferred is not ready');
-      resolvePromise(value);
-    },
-  };
-};
+type SubmitDocument = (document: SectionDoc) => Promise<CodebookWriteOutcome>;
+
+const submitting = (
+  outcome: CodebookWriteOutcome = APPLIED,
+): ReturnType<typeof vi.fn<SubmitDocument>> =>
+  vi.fn<SubmitDocument>(async () => outcome);
 
 function personDocument(
   variables: Readonly<Record<string, unknown>> = {},
@@ -122,20 +97,17 @@ function personDocument(
   };
 }
 
+/** The attribute map of the section document a save handed over. */
 function submittedVariables(
-  request: CompoundEditRequest,
+  submit: ReturnType<typeof vi.fn<SubmitDocument>>,
+  call = 0,
 ): Record<string, unknown> {
-  const edit = request.edits[0];
-  if (edit?.kind !== 'update') {
-    throw new Error('expected a codebook section update');
+  const document = submit.mock.calls[call]?.[0];
+  if (document === undefined) throw new Error('missing submitted document');
+  if (!isRecord(document.variables)) {
+    throw new Error('expected the submitted variables map');
   }
-  const command = edit.commands.find(
-    (candidate) => candidate.op === 'set' && candidate.key === 'variables',
-  );
-  if (command?.op !== 'set' || !isRecord(command.value)) {
-    throw new Error('expected the variables command');
-  }
-  return command.value;
+  return document.variables;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -177,9 +149,7 @@ function createProps(
     variableId: 'new-variable',
     initialDraft: { name: '', type: 'text' },
     protocolContext: EMPTY_CONTEXT,
-    description: 'Create attribute',
-    createRequestId: () => 'request-1',
-    onSubmitRequest: () => APPLIED,
+    onSubmitDocument: async () => APPLIED,
     onComplete: () => undefined,
     ...overrides,
   };
@@ -188,16 +158,14 @@ function createProps(
 describe('VariableEditor', () => {
   it('creates a categorical variable and returns its stable record id', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const onComplete = vi.fn();
 
     render(
       <VariableEditor
         {...createProps({
           initialDraft: { name: '', type: 'categorical', options: [] },
-          onSubmitRequest,
+          onSubmitDocument,
           onComplete,
         })}
       />,
@@ -226,10 +194,8 @@ describe('VariableEditor', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const request = onSubmitRequest.mock.calls[0]?.[0];
-    if (request === undefined) throw new Error('missing submitted request');
-    expect(submittedVariables(request)['new-variable']).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(submittedVariables(onSubmitDocument)['new-variable']).toEqual({
       name: 'preference',
       type: 'categorical',
       options: [
@@ -245,9 +211,7 @@ describe('VariableEditor', () => {
 
   it('preserves host-supplied properties when creating a new variable', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
 
     render(
       <VariableEditor
@@ -258,17 +222,15 @@ describe('VariableEditor', () => {
             component: 'TextArea',
             validation: { required: true, minLength: 2 },
           },
-          onSubmitRequest,
+          onSubmitDocument,
         })}
       />,
     );
 
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const request = onSubmitRequest.mock.calls[0]?.[0];
-    if (request === undefined) throw new Error('missing submitted request');
-    expect(submittedVariables(request)['new-variable']).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(submittedVariables(onSubmitDocument)['new-variable']).toEqual({
       name: 'comment',
       type: 'text',
       component: 'TextArea',
@@ -287,9 +249,7 @@ describe('VariableEditor', () => {
       ],
     } as const;
     const authoritativeDocument = personDocument({ preference: existing });
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
 
     render(
       <VariableEditor
@@ -299,9 +259,7 @@ describe('VariableEditor', () => {
         authoritativeDocument={authoritativeDocument}
         variableId="preference"
         initialDraft={existing}
-        description="Update attribute"
-        createRequestId={() => 'request-update'}
-        onSubmitRequest={onSubmitRequest}
+        onSubmitDocument={onSubmitDocument}
         onComplete={() => undefined}
       />,
     );
@@ -315,10 +273,8 @@ describe('VariableEditor', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const request = onSubmitRequest.mock.calls[0]?.[0];
-    if (request === undefined) throw new Error('missing submitted request');
-    expect(submittedVariables(request).preference).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(submittedVariables(onSubmitDocument).preference).toEqual({
       name: 'ranking',
       type: 'ordinal',
       options: existing.options,
@@ -333,10 +289,7 @@ describe('VariableEditor', () => {
       validation: { required: true, minLength: 2 },
     } as const;
     const partialSeed = { name: existing.name, type: existing.type } as const;
-    const createRequestId = vi.fn(() => 'request-unchanged');
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const { container } = render(
       <VariableEditor
         openId="edit-unchanged"
@@ -345,9 +298,7 @@ describe('VariableEditor', () => {
         authoritativeDocument={personDocument({ comment: existing })}
         variableId="comment"
         initialDraft={partialSeed}
-        description="Update comment"
-        createRequestId={createRequestId}
-        onSubmitRequest={onSubmitRequest}
+        onSubmitDocument={onSubmitDocument}
         onComplete={() => undefined}
       />,
     );
@@ -356,8 +307,7 @@ describe('VariableEditor', () => {
     if (form === null) throw new Error('expected variable editor form');
     fireEvent.submit(form);
 
-    expect(createRequestId).not.toHaveBeenCalled();
-    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
     expect(
       screen.getByRole('button', { name: 'Save attribute' }),
     ).toBeDisabled();
@@ -372,9 +322,7 @@ describe('VariableEditor', () => {
       parameters: { type: 'year', min: '1900' },
       validation: { required: true, lessThanVariable: 'retirement' },
     } as const;
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
 
     render(
       <VariableEditor
@@ -384,9 +332,7 @@ describe('VariableEditor', () => {
         authoritativeDocument={personDocument({ birthday: existing })}
         variableId="birthday"
         initialDraft={existing}
-        description="Update birthday"
-        createRequestId={() => 'request-type-change'}
-        onSubmitRequest={onSubmitRequest}
+        onSubmitDocument={onSubmitDocument}
         onComplete={() => undefined}
       />,
     );
@@ -397,10 +343,8 @@ describe('VariableEditor', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const request = onSubmitRequest.mock.calls[0]?.[0];
-    if (request === undefined) throw new Error('missing submitted request');
-    expect(submittedVariables(request).birthday).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(submittedVariables(onSubmitDocument).birthday).toEqual({
       name: 'birthday',
       type: 'text',
       validation: { required: true },
@@ -416,9 +360,7 @@ describe('VariableEditor', () => {
       component: 'TextArea',
       validation: { required: true, minLength: 3 },
     } as const;
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
 
     render(
       <VariableEditor
@@ -428,9 +370,7 @@ describe('VariableEditor', () => {
         authoritativeDocument={personDocument({ secret: existing })}
         variableId="secret"
         initialDraft={existing}
-        description="Update secret"
-        createRequestId={() => 'request-encrypted-type-change'}
-        onSubmitRequest={onSubmitRequest}
+        onSubmitDocument={onSubmitDocument}
         onComplete={() => undefined}
       />,
     );
@@ -441,10 +381,8 @@ describe('VariableEditor', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const request = onSubmitRequest.mock.calls[0]?.[0];
-    if (request === undefined) throw new Error('missing submitted request');
-    expect(submittedVariables(request).secret).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(submittedVariables(onSubmitDocument).secret).toEqual({
       name: 'secret',
       type: 'number',
       validation: { required: true },
@@ -464,18 +402,14 @@ describe('VariableEditor', () => {
       component: 'TextArea',
       validation: { required: true, minLength: 2 },
     } as const;
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const onComplete = vi.fn();
     const common = {
       openId: 'edit-live-remote',
       mode: 'update' as const,
       subject: SUBJECT,
       variableId: 'comment',
-      description: 'Update comment',
-      createRequestId: () => 'request-live-remote',
-      onSubmitRequest,
+      onSubmitDocument,
       onComplete,
     };
     const { rerender } = render(
@@ -497,309 +431,21 @@ describe('VariableEditor', () => {
         initialDraft={initialVariable}
       />,
     );
-    expect(await screen.findByText('The codebook changed')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const request = onSubmitRequest.mock.calls[0]?.[0];
-    if (request === undefined) throw new Error('missing submitted request');
-    expect(submittedVariables(request).comment).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(submittedVariables(onSubmitDocument).comment).toEqual({
       name: 'localComment',
       type: 'text',
       component: 'TextArea',
       validation: { required: true, minLength: 2 },
     });
-    expect(request.edits[0]).toMatchObject({
-      expectedContentHash: contentHash(remoteDocument),
+    // The whole section, so a variable the researcher never opened travels
+    // with it rather than being dropped by a save that only named one.
+    expect(onSubmitDocument.mock.calls[0]?.[0]).toMatchObject({
+      name: remoteDocument.name,
     });
     expect(onComplete).toHaveBeenCalledOnce();
-  });
-
-  it('does not complete an applied submit that settles with an authoritative conflict', async () => {
-    const user = userEvent.setup();
-    const initialVariable = {
-      name: 'comment',
-      type: 'text',
-      component: 'Text',
-    } as const;
-    const pending = deferred<CompoundEditResult>();
-    const onSubmitRequest = vi.fn(() => pending.promise);
-    const onComplete = vi.fn();
-    const common = {
-      openId: 'edit-pending-authority',
-      mode: 'update' as const,
-      subject: SUBJECT,
-      variableId: 'comment',
-      initialDraft: initialVariable,
-      description: 'Update comment',
-      createRequestId: () => 'request-pending-authority',
-      onSubmitRequest,
-      onComplete,
-    };
-    const { rerender } = render(
-      <VariableEditor
-        {...common}
-        authoritativeDocument={personDocument({ comment: initialVariable })}
-      />,
-    );
-
-    const name = screen.getByRole('textbox', { name: /attribute name/i });
-    await user.clear(name);
-    await user.type(name, 'localComment');
-    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-    expect(onSubmitRequest).toHaveBeenCalledOnce();
-
-    const remoteVariable = { ...initialVariable, component: 'TextArea' };
-    rerender(
-      <VariableEditor
-        {...common}
-        authoritativeDocument={personDocument({ comment: remoteVariable })}
-      />,
-    );
-    await act(async () => pending.resolve(APPLIED));
-
-    expect(await screen.findByText('The codebook changed')).toBeVisible();
-    expect(name).toHaveValue('localComment');
-    expect(onComplete).not.toHaveBeenCalled();
-  });
-
-  it('uses a new intent id when authoritative data changes after a blocked submit', async () => {
-    const user = userEvent.setup();
-    const initialVariable = {
-      name: 'comment',
-      type: 'text',
-      component: 'Text',
-    } as const;
-    const remoteVariable = {
-      ...initialVariable,
-      component: 'TextArea',
-    } as const;
-    const createRequestId = vi
-      .fn<() => string>()
-      .mockReturnValueOnce('blocked-variable-intent')
-      .mockReturnValueOnce('rebased-variable-intent');
-    const onSubmitRequest = vi
-      .fn<(request: CompoundEditRequest) => CompoundEditResult>()
-      .mockReturnValueOnce({
-        status: 'blocked',
-        blockedSections: [{ sectionId: PERSON_SECTION }],
-      })
-      .mockReturnValueOnce(APPLIED);
-    const common = {
-      openId: 'edit-rebased-request',
-      mode: 'update' as const,
-      subject: SUBJECT,
-      variableId: 'comment',
-      description: 'Update comment',
-      createRequestId,
-      onSubmitRequest,
-      onComplete: () => undefined,
-    };
-    const { rerender } = render(
-      <VariableEditor
-        {...common}
-        authoritativeDocument={personDocument({ comment: initialVariable })}
-        initialDraft={initialVariable}
-      />,
-    );
-
-    const name = screen.getByRole('textbox', { name: /attribute name/i });
-    await user.clear(name);
-    await user.type(name, 'localComment');
-    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-    await screen.findByText(REFUSED.heldByNobodyNamed);
-
-    const remoteDocument = personDocument({ comment: remoteVariable });
-    rerender(
-      <VariableEditor
-        {...common}
-        authoritativeDocument={remoteDocument}
-        initialDraft={initialVariable}
-      />,
-    );
-    expect(await screen.findByText('The codebook changed')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
-    expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual([
-      'blocked-variable-intent',
-      'rebased-variable-intent',
-    ]);
-    expect(onSubmitRequest.mock.calls[1]?.[0].edits[0]).toMatchObject({
-      expectedContentHash: contentHash(remoteDocument),
-    });
-  });
-
-  it('preserves an uncertain retry id across a content-identical authority re-emission', async () => {
-    const user = userEvent.setup();
-    const initialVariable = {
-      name: 'comment',
-      type: 'text',
-      component: 'Text',
-    } as const;
-    const initialDocument = personDocument({ comment: initialVariable });
-    const createRequestId = vi
-      .fn<() => string>()
-      .mockReturnValueOnce('uncertain-variable-intent')
-      .mockReturnValueOnce('duplicate-variable-intent');
-    const onSubmitRequest = vi
-      .fn<(request: CompoundEditRequest) => Promise<CompoundEditResult>>()
-      .mockRejectedValueOnce(new Error('Connection dropped.'))
-      .mockResolvedValueOnce(APPLIED);
-    const commonProps = {
-      openId: 'uncertain-variable-retry',
-      mode: 'update' as const,
-      subject: SUBJECT,
-      variableId: 'comment',
-      initialDraft: initialVariable,
-      description: 'Update comment',
-      createRequestId,
-      onSubmitRequest,
-      onComplete: () => undefined,
-    };
-    const { rerender } = render(
-      <VariableEditor
-        {...commonProps}
-        authoritativeDocument={initialDocument}
-      />,
-    );
-
-    const name = screen.getByRole('textbox', { name: /attribute name/i });
-    await user.clear(name);
-    await user.type(name, 'localComment');
-    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-    await screen.findByText(REFUSED.threw);
-
-    rerender(
-      <VariableEditor
-        {...commonProps}
-        authoritativeDocument={structuredClone(initialDocument)}
-      />,
-    );
-    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
-    expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual([
-      'uncertain-variable-intent',
-      'uncertain-variable-intent',
-    ]);
-    expect(createRequestId).toHaveBeenCalledOnce();
-  });
-
-  it('uses a new retry id when another variable changes the parent content base', async () => {
-    const user = userEvent.setup();
-    const initialVariable = {
-      name: 'comment',
-      type: 'text',
-      component: 'Text',
-    } as const;
-    const initialDocument = personDocument({ comment: initialVariable });
-    const createRequestId = vi
-      .fn<() => string>()
-      .mockReturnValueOnce('initial-parent-intent')
-      .mockReturnValueOnce('changed-parent-intent');
-    const onSubmitRequest = vi
-      .fn<(request: CompoundEditRequest) => Promise<CompoundEditResult>>()
-      .mockRejectedValueOnce(new Error('Connection dropped.'))
-      .mockResolvedValueOnce(APPLIED);
-    const commonProps = {
-      openId: 'changed-parent-retry',
-      mode: 'update' as const,
-      subject: SUBJECT,
-      variableId: 'comment',
-      initialDraft: initialVariable,
-      description: 'Update comment',
-      createRequestId,
-      onSubmitRequest,
-      onComplete: () => undefined,
-    };
-    const { rerender } = render(
-      <VariableEditor
-        {...commonProps}
-        authoritativeDocument={initialDocument}
-      />,
-    );
-
-    const name = screen.getByRole('textbox', { name: /attribute name/i });
-    await user.clear(name);
-    await user.type(name, 'localComment');
-    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-    await screen.findByText(REFUSED.threw);
-
-    const changedParentDocument = personDocument({
-      comment: initialVariable,
-      weight: { name: 'Weight', type: 'number', component: 'Number' },
-    });
-    rerender(
-      <VariableEditor
-        {...commonProps}
-        authoritativeDocument={changedParentDocument}
-      />,
-    );
-    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
-    expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual([
-      'initial-parent-intent',
-      'changed-parent-intent',
-    ]);
-    expect(onSubmitRequest.mock.calls[1]?.[0].edits[0]).toMatchObject({
-      expectedContentHash: contentHash(changedParentDocument),
-    });
-  });
-
-  it('blocks a dirty draft when the authoritative variable type changes remotely', async () => {
-    const user = userEvent.setup();
-    const initialVariable = {
-      name: 'comment',
-      type: 'text',
-      component: 'Text',
-    } as const;
-    const remoteVariable = {
-      name: 'comment',
-      type: 'number',
-      component: 'NumberInput',
-      validation: { minValue: 0 },
-    } as const;
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
-    const common = {
-      openId: 'edit-remote-type',
-      mode: 'update' as const,
-      subject: SUBJECT,
-      variableId: 'comment',
-      description: 'Update comment',
-      createRequestId: () => 'request-remote-type',
-      onSubmitRequest,
-      onComplete: () => undefined,
-    };
-    const { rerender } = render(
-      <VariableEditor
-        {...common}
-        authoritativeDocument={personDocument({ comment: initialVariable })}
-        initialDraft={initialVariable}
-      />,
-    );
-
-    const name = screen.getByRole('textbox', { name: /attribute name/i });
-    await user.clear(name);
-    await user.type(name, 'localComment');
-    rerender(
-      <VariableEditor
-        {...common}
-        authoritativeDocument={personDocument({ comment: remoteVariable })}
-        initialDraft={initialVariable}
-      />,
-    );
-    await user.click(screen.getByRole('button', { name: 'Save attribute' }));
-
-    expect(
-      await screen.findByText(
-        'The attribute type changed elsewhere. Close and reopen this editor before saving.',
-      ),
-    ).toBeVisible();
-    expect(onSubmitRequest).not.toHaveBeenCalled();
   });
 
   it('shows and persists interface-owned options without editable controls', async () => {
@@ -808,16 +454,14 @@ describe('VariableEditor', () => {
       { label: 'Woman', value: 'woman' },
       { label: 'Man', value: 'man' },
     ] as const;
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
 
     render(
       <VariableEditor
         {...createProps({
           initialDraft: { name: 'sex', type: 'categorical' },
           lockedOptions,
-          onSubmitRequest,
+          onSubmitDocument,
         })}
       />,
     );
@@ -833,10 +477,8 @@ describe('VariableEditor', () => {
     ).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const request = onSubmitRequest.mock.calls[0]?.[0];
-    if (request === undefined) throw new Error('missing submitted request');
-    expect(submittedVariables(request)['new-variable']).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(submittedVariables(onSubmitDocument)['new-variable']).toEqual({
       name: 'sex',
       type: 'categorical',
       options: lockedOptions,
@@ -875,9 +517,7 @@ describe('VariableEditor', () => {
 
   it('keeps a null options draft open when local validation rejects it', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const onComplete = vi.fn();
 
     render(
@@ -888,7 +528,7 @@ describe('VariableEditor', () => {
             type: 'categorical',
             options: null,
           },
-          onSubmitRequest,
+          onSubmitDocument,
           onComplete,
         })}
       />,
@@ -905,7 +545,7 @@ describe('VariableEditor', () => {
     expect(
       screen.getByRole('textbox', { name: /attribute name/i }),
     ).toHaveValue('choice');
-    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -922,9 +562,7 @@ describe('VariableEditor', () => {
    */
   it('names the attribute a duplicate name collides with, and says so at the field', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
 
     render(
       <VariableEditor
@@ -933,7 +571,7 @@ describe('VariableEditor', () => {
             age: { name: 'Age', type: 'number' },
           }),
           initialDraft: { name: 'Age', type: 'text' },
-          onSubmitRequest,
+          onSubmitDocument,
         })}
       />,
     );
@@ -948,31 +586,26 @@ describe('VariableEditor', () => {
     expect(screen.getByTestId('variable-name-field-error')).toHaveTextContent(
       DUPLICATE_NAME,
     );
-    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
   });
 
   /**
-   * A reason nobody has written words for still has to read as a refusal.
+   * A write that threw still has to read as a refusal.
    *
-   * `CompoundEditFailureReason` is a TypeScript union, but a host is external
-   * code and the reason crosses the wire as a plain string. An unlisted one
-   * indexing into the copy table hands `formatMessage` nothing, which throws
-   * during render — so the researcher loses the whole editor and the unsaved
-   * draft it was holding rather than being told the save was refused.
+   * `useCodebookSectionWrite` promises to ANSWER, but a host is external code
+   * and a call site is free to hand this editor a promise that rejects. A
+   * rejection escaping the submit handler would lose the whole editor and the
+   * unsaved draft it was holding rather than telling the researcher the save
+   * was refused.
    */
-  it('refuses rather than throwing when a host names a reason this package has never heard of', async () => {
+  it('refuses rather than throwing when the write rejects', async () => {
     const user = userEvent.setup();
-    const fromAnUnknownHost = {
-      status: 'failed',
-      reason: 'quota-exceeded',
-      message: HOST_WORDS,
-    } as unknown as CompoundEditResult;
 
     render(
       <VariableEditor
         {...createProps({
           initialDraft: { name: 'quota', type: 'text' },
-          onSubmitRequest: () => fromAnUnknownHost,
+          onSubmitDocument: () => Promise.reject(new Error(HOST_WORDS)),
         })}
       />,
     );
@@ -1010,9 +643,7 @@ describe('VariableEditor', () => {
       ],
       validation: { minSelected: 3 },
     } as const;
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
 
     render(
       <VariableEditor
@@ -1022,9 +653,7 @@ describe('VariableEditor', () => {
         authoritativeDocument={personDocument({ preference: existing })}
         variableId="preference"
         initialDraft={existing}
-        description="Update attribute"
-        createRequestId={() => 'request-contradiction'}
-        onSubmitRequest={onSubmitRequest}
+        onSubmitDocument={onSubmitDocument}
         onComplete={() => undefined}
       />,
     );
@@ -1037,49 +666,24 @@ describe('VariableEditor', () => {
     expect(alert).not.toHaveTextContent(REFUSED.threw);
     expect(alert).toHaveFocus();
     // The draft never left the editor, and the researcher can still fix it.
-    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
     expect(
       screen.getByRole('button', { name: 'Save attribute' }),
     ).toBeEnabled();
   });
 
   /**
-   * The one refusal shown in the words it arrived in.
+   * A refusal already written for the researcher, shown in the words it
+   * arrived in.
    *
    * A contradiction — an attribute whose committed rules could not be
-   * satisfied by the options it is being left with — is legal to the codebook
-   * schema and to the host, so nothing downstream refuses it. The surface that
-   * detects it says so, and what it says names the rule and the values that
-   * cannot both hold, which is more than `compoundFailureCopy` could write
-   * about it.
-   *
-   * The control is the second case: the SAME sentence, reported the way it was
-   * before this channel existed, is discarded and the researcher gets the copy
-   * for a request that could not be sent. That is the bug the status exists to
-   * fix, so the test would pass on the old code for the wrong reason without
-   * it.
+   * satisfied by the options it is being left with — names the rule and the
+   * values that cannot both hold, which is more than the package's copy for a
+   * save that did not happen could say about it. Replacing it would tell the
+   * researcher to wait and try a save that cannot succeed until they change
+   * something.
    */
-  it.each([
-    {
-      caseName: 'a contradiction the surface refused itself',
-      result: {
-        status: 'contradiction',
-        message: CONTRADICTION,
-      } satisfies AuxiliaryCodebookSubmitResult,
-      shown: CONTRADICTION,
-      hidden: REFUSED['invalid-request'],
-    },
-    {
-      caseName: 'the same sentence sent as a failed result',
-      result: {
-        status: 'failed',
-        reason: 'invalid-request',
-        message: CONTRADICTION,
-      } satisfies AuxiliaryCodebookSubmitResult,
-      shown: REFUSED['invalid-request'],
-      hidden: CONTRADICTION,
-    },
-  ])('reports $caseName', async ({ result, shown, hidden }) => {
+  it('reports a refusal the write wrote for the researcher', async () => {
     const user = userEvent.setup();
     const onComplete = vi.fn();
 
@@ -1087,7 +691,11 @@ describe('VariableEditor', () => {
       <VariableEditor
         {...createProps({
           initialDraft: { name: '', type: 'text' },
-          onSubmitRequest: () => result,
+          onSubmitDocument: async () => ({
+            status: 'refused',
+            message: CONTRADICTION,
+            refusal: { kind: 'unexplained' },
+          }),
           onComplete,
         })}
       />,
@@ -1098,8 +706,8 @@ describe('VariableEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(shown);
-    expect(alert).not.toHaveTextContent(hidden);
+    expect(alert).toHaveTextContent(CONTRADICTION);
+    expect(alert).not.toHaveTextContent(REFUSED.threw);
     // Refused either way: the draft stays put and the editor stays open.
     expect(name).toHaveValue('preserved');
     expect(onComplete).not.toHaveBeenCalled();
@@ -1108,115 +716,46 @@ describe('VariableEditor', () => {
     ).toBeEnabled();
   });
 
-  it.each([
-    {
-      caseName: 'blocked',
-      result: {
-        status: 'blocked',
-        blockedSections: [
-          {
-            sectionId: PERSON_SECTION,
-            holder: {
-              sessionId: 'tab-other',
-              userId: 'user-other',
-              displayName: 'Another researcher',
-              sectionId: PERSON_SECTION,
-              mode: 'editing',
-            },
-          },
-        ],
-      } satisfies CompoundEditResult,
-      message: REFUSED.heldBy('Another researcher'),
-    },
-    {
-      caseName: 'stale',
-      result: {
-        status: 'failed',
-        reason: 'stale-epoch',
-        message: HOST_WORDS,
-      } satisfies CompoundEditResult,
-      message: REFUSED['stale-epoch'],
-    },
-  ])(
-    'preserves the draft after a $caseName result',
-    async ({ result, message }) => {
-      const user = userEvent.setup();
-      const onSubmitRequest = vi.fn(
-        (_request: CompoundEditRequest): CompoundEditResult => result,
-      );
+  it('preserves the draft after a refused save', async () => {
+    const user = userEvent.setup();
+    const onSubmitDocument = submitting({
+      status: 'refused',
+      message: codebookRefusalMessage({
+        kind: 'held',
+        holders: ['Another researcher'],
+      }),
+      refusal: { kind: 'held', holders: ['Another researcher'] },
+    });
 
-      render(
-        <VariableEditor
-          {...createProps({
-            initialDraft: { name: '', type: 'text' },
-            onSubmitRequest,
-          })}
-        />,
-      );
+    render(
+      <VariableEditor
+        {...createProps({
+          initialDraft: { name: '', type: 'text' },
+          onSubmitDocument,
+        })}
+      />,
+    );
 
-      const name = screen.getByRole('textbox', { name: /attribute name/i });
-      await user.type(name, 'preserved');
-      await user.click(
-        screen.getByRole('button', { name: 'Create attribute' }),
-      );
+    const name = screen.getByRole('textbox', { name: /attribute name/i });
+    await user.type(name, 'preserved');
+    await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
-      await screen.findByText(message);
-      const report = screen.getByRole(
-        result.status === 'blocked' ? 'status' : 'alert',
-      );
-      // Never the host's own words, and never an internal section address: a
-      // researcher is told what happened to their change, not where.
-      expect(report).not.toHaveTextContent(HOST_WORDS);
-      expect(report).not.toHaveTextContent(PERSON_SECTION);
-      expect(name).toHaveValue('preserved');
-      expect(report).toHaveFocus();
-      expect(
-        screen.getByRole('button', { name: 'Create attribute' }),
-      ).toBeEnabled();
-    },
-  );
-
-  it.each(['stale-epoch', 'lease-lost', 'stale-base'] as const)(
-    'uses a new intent id after the retry-invalidating %s failure',
-    async (reason) => {
-      const user = userEvent.setup();
-      const createRequestId = vi
-        .fn<() => string>()
-        .mockReturnValueOnce('stale-variable-intent')
-        .mockReturnValueOnce('refreshed-variable-intent');
-      const onSubmitRequest = vi
-        .fn<(request: CompoundEditRequest) => CompoundEditResult>()
-        .mockReturnValueOnce({
-          status: 'failed',
-          reason,
-          message: HOST_WORDS,
-        })
-        .mockReturnValueOnce(APPLIED);
-
-      render(
-        <VariableEditor
-          {...createProps({
-            initialDraft: { name: 'retriable', type: 'text' },
-            createRequestId,
-            onSubmitRequest,
-          })}
-        />,
-      );
-
-      await user.click(
-        screen.getByRole('button', { name: 'Create attribute' }),
-      );
-      await screen.findByText(REFUSED[reason]);
-      await user.click(
-        screen.getByRole('button', { name: 'Create attribute' }),
-      );
-
-      await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(2));
-      expect(onSubmitRequest.mock.calls.map(([request]) => request.id)).toEqual(
-        ['stale-variable-intent', 'refreshed-variable-intent'],
-      );
-    },
-  );
+    // A notice rather than an alert: a section somebody else is holding is not
+    // a fault, and the change lands once they are finished.
+    const report = await screen.findByRole('status');
+    expect(report).toHaveTextContent(REFUSED.heldBy('Another researcher'));
+    // Never the host's own words, never an internal section address, and never
+    // the envelope the refusal travelled in: a researcher is told what happened
+    // to their change, not where.
+    expect(report).not.toHaveTextContent(HOST_WORDS);
+    expect(report).not.toHaveTextContent(PERSON_SECTION);
+    expect(report).not.toHaveTextContent('@codaco/app-i18n/error/v1');
+    expect(name).toHaveValue('preserved');
+    expect(report).toHaveFocus();
+    expect(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    ).toBeEnabled();
+  });
 
   it('starts a fresh draft when a rapid reopen changes openId', async () => {
     const user = userEvent.setup();
@@ -1274,7 +813,7 @@ describe('VariableEditor', () => {
 describe('the settings the chosen input control takes', () => {
   const parameterProps = (
     variable: Readonly<Record<string, unknown>>,
-    onSubmitRequest: VariableEditorProps['onSubmitRequest'],
+    onSubmitDocument: VariableEditorProps['onSubmitDocument'],
   ): Extract<VariableEditorProps, { mode: 'update' }> => ({
     openId: 'parameters-open',
     mode: 'update',
@@ -1282,31 +821,23 @@ describe('the settings the chosen input control takes', () => {
     authoritativeDocument: personDocument({ subject: variable }),
     variableId: 'subject',
     initialDraft: variable,
-    description: 'Update the attribute',
-    createRequestId: () => 'request-parameters',
-    onSubmitRequest,
+    onSubmitDocument,
     onComplete: () => undefined,
   });
 
   const savedVariable = (
-    onSubmitRequest: ReturnType<typeof vi.fn>,
+    onSubmitDocument: ReturnType<typeof vi.fn<SubmitDocument>>,
   ): Record<string, unknown> => {
-    const request = onSubmitRequest.mock.calls[0]?.[0] as
-      | CompoundEditRequest
-      | undefined;
-    if (request === undefined) throw new Error('nothing was submitted');
-    const variable = submittedVariables(request).subject;
+    const variable = submittedVariables(onSubmitDocument).subject;
     if (!isRecord(variable)) throw new Error('the attribute was not submitted');
     return variable;
   };
 
   it('saves the resolution and the bounds a date attribute accepts', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const variable = { name: 'met', type: 'datetime', component: 'DatePicker' };
-    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(variable, onSubmitDocument)} />);
 
     // The resolution the interview assumes when the protocol declares none, so
     // the control opens showing what will happen rather than showing nothing.
@@ -1321,8 +852,8 @@ describe('the settings the chosen input control takes', () => {
     });
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest)).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'met',
       type: 'datetime',
       component: 'DatePicker',
@@ -1340,23 +871,21 @@ describe('the settings the chosen input control takes', () => {
    */
   it('takes years a date bound can be authored at, past the window the interview offers by default', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const variable = {
       name: 'met',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year' },
     };
-    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(variable, onSubmitDocument)} />);
 
     await user.type(screen.getByLabelText('Earliest date'), '1900');
     await user.type(screen.getByLabelText('Latest date'), '2030');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument).parameters).toEqual({
       type: 'year',
       min: '1900',
       max: '2030',
@@ -1379,16 +908,14 @@ describe('the settings the chosen input control takes', () => {
    */
   it('shows a year bound past any list of years, and keeps it through a rename', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year', min: '1900', max: '4500' },
     };
-    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(committed, onSubmitDocument)} />);
 
     expect(screen.getByLabelText('Latest date')).toHaveValue('4500');
 
@@ -1397,8 +924,8 @@ describe('the settings the chosen input control takes', () => {
     await user.type(name, 'firstMet');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest)).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'firstMet',
       type: 'datetime',
       component: 'DatePicker',
@@ -1413,24 +940,22 @@ describe('the settings the chosen input control takes', () => {
    */
   it('rewrites a year bound past any list of years', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'year', max: '4500' },
     };
-    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(committed, onSubmitDocument)} />);
 
     const latest = screen.getByLabelText('Latest date');
     await user.clear(latest);
     await user.type(latest, '9999');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument).parameters).toEqual({
       type: 'year',
       max: '9999',
     });
@@ -1442,16 +967,14 @@ describe('the settings the chosen input control takes', () => {
    */
   it('writes the year and picks the month of a bound at month resolution', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const variable = {
       name: 'met',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'month' },
     };
-    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(variable, onSubmitDocument)} />);
 
     await user.type(
       screen.getByRole('textbox', { name: 'Earliest date Year' }),
@@ -1463,8 +986,8 @@ describe('the settings the chosen input control takes', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument).parameters).toEqual({
       type: 'month',
       min: '4500-06',
     });
@@ -1472,24 +995,22 @@ describe('the settings the chosen input control takes', () => {
 
   it('saves the window a relative date attribute offers around its anchor', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const variable = {
       name: 'met',
       type: 'datetime',
       component: 'RelativeDatePicker',
     };
-    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(variable, onSubmitDocument)} />);
 
     await user.type(screen.getByLabelText('Days before'), '30');
     await user.type(screen.getByLabelText('Days after'), '7');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     // Numbers, not the strings a number input reports: the schema takes
     // integers, and `"30"` would be refused after the dialog had closed.
-    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+    expect(savedVariable(onSubmitDocument).parameters).toEqual({
       before: 30,
       after: 7,
     });
@@ -1507,16 +1028,14 @@ describe('the settings the chosen input control takes', () => {
    */
   it('refuses a day count that is not whole rather than clearing the window', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30 },
     };
-    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(committed, onSubmitDocument)} />);
 
     const before = screen.getByLabelText('Days before');
     // The whole value at once, which is what a paste delivers: a number input
@@ -1535,21 +1054,19 @@ describe('the settings the chosen input control takes', () => {
     // And nothing was submitted, so the window the codebook holds is still
     // the one the interview will use — which is the whole difference between
     // a refusal and a silent clearing.
-    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
   });
 
   it('saves a day count corrected after that refusal', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30 },
     };
-    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(committed, onSubmitDocument)} />);
 
     const before = screen.getByLabelText('Days before');
     fireEvent.change(before, { target: { value: '1.5' } });
@@ -1559,23 +1076,21 @@ describe('the settings the chosen input control takes', () => {
     await user.type(before, '2');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     // A number, not the text the field reported: the draft carries the text
     // only while it holds something the schema would refuse.
-    expect(savedVariable(onSubmitRequest).parameters).toEqual({ before: 2 });
+    expect(savedVariable(onSubmitDocument).parameters).toEqual({ before: 2 });
   });
 
   it('saves the labels a scale shows at each end', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const variable = {
       name: 'closeness',
       type: 'scalar',
       component: 'VisualAnalogScale',
     };
-    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(variable, onSubmitDocument)} />);
 
     await user.type(
       screen.getByRole('textbox', { name: 'Minimum label' }),
@@ -1587,8 +1102,8 @@ describe('the settings the chosen input control takes', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument).parameters).toEqual({
       minLabel: 'Not at all close',
       maxLabel: 'Extremely close',
     });
@@ -1601,15 +1116,13 @@ describe('the settings the chosen input control takes', () => {
    */
   it('refuses a scale whose ends are named with nothing but spaces', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const variable = {
       name: 'closeness',
       type: 'scalar',
       component: 'VisualAnalogScale',
     };
-    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(variable, onSubmitDocument)} />);
 
     await user.type(
       screen.getByRole('textbox', { name: 'Minimum label' }),
@@ -1624,26 +1137,23 @@ describe('the settings the chosen input control takes', () => {
     expect(
       await screen.findByText('Write what the high end of the scale means.'),
     ).toBeVisible();
-    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
   });
 
   /**
-   * The schema's own refusal, reached before a request is built.
+   * The schema's own refusal, reached before a document is built.
    *
-   * The request builder catches this too, but by throwing — which the draft
-   * session records as a failed submission, so the researcher is handed a
-   * second, generic "attribute not saved" alert telling them to wait a moment
-   * and try again. Nothing about a reversed range gets better by waiting. So
-   * the same schema runs here first, and the only thing said is the thing
-   * they can act on.
+   * The document builder catches this too, but by throwing — which is reported
+   * as a generic "attribute not saved" alert telling the researcher to wait a
+   * moment and try again. Nothing about a reversed range gets better by
+   * waiting. So the same schema runs here first, and the only thing said is
+   * the thing they can act on.
    */
   it('refuses a date range that ends before it starts, against the date that ends it', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const variable = { name: 'met', type: 'datetime', component: 'DatePicker' };
-    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(variable, onSubmitDocument)} />);
 
     fireEvent.change(screen.getByLabelText('Earliest date'), {
       target: { value: '2024-01-01' },
@@ -1664,7 +1174,7 @@ describe('the settings the chosen input control takes', () => {
     expect(
       screen.queryByText('DatePicker "min" must not be after "max"'),
     ).toBeNull();
-    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
     expect(screen.queryByText('Attribute not saved')).toBeNull();
   });
 
@@ -1681,9 +1191,7 @@ describe('the settings the chosen input control takes', () => {
    */
   it('associates a refusal about the whole settings block with the fieldset', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
 
     render(
       <VariableEditor
@@ -1697,7 +1205,7 @@ describe('the settings the chosen input control takes', () => {
             // the schema refuses it and the editor's own checks do not.
             parameters: { type: 'month', min: '0099-01' },
           },
-          onSubmitRequest,
+          onSubmitDocument,
         })}
       />,
     );
@@ -1716,7 +1224,7 @@ describe('the settings the chosen input control takes', () => {
     );
     // Never the schema's own account of the path it refused.
     expect(fieldset).not.toHaveTextContent('DatePicker "min"');
-    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
   });
 
   /**
@@ -1732,9 +1240,7 @@ describe('the settings the chosen input control takes', () => {
    */
   it('swaps the fields and drops the old settings when the control changes', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
       type: 'datetime',
@@ -1743,7 +1249,7 @@ describe('the settings the chosen input control takes', () => {
     };
     render(
       <VariableEditor
-        {...parameterProps(committed, onSubmitRequest)}
+        {...parameterProps(committed, onSubmitDocument)}
         initialDraft={{ ...committed, component: 'RelativeDatePicker' }}
       />,
     );
@@ -1755,8 +1261,8 @@ describe('the settings the chosen input control takes', () => {
     await user.type(screen.getByLabelText('Days before'), '30');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest)).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'met',
       type: 'datetime',
       component: 'RelativeDatePicker',
@@ -1766,16 +1272,14 @@ describe('the settings the chosen input control takes', () => {
 
   it('clears the bounds when the resolution they were chosen under changes', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '2020-01-01', max: '2024-12-31' },
     };
-    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(committed, onSubmitDocument)} />);
 
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Date resolution' }),
@@ -1795,8 +1299,8 @@ describe('the settings the chosen input control takes', () => {
     expect(liveRegionsAround(notice)).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest).parameters).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument).parameters).toEqual({
       type: 'year',
     });
   });
@@ -1805,29 +1309,27 @@ describe('the settings the chosen input control takes', () => {
    * Clearing every setting is an answer: the attribute accepts whatever its
    * control accepts by default.
    *
-   * The request builder lays the draft OVER the variable the codebook holds,
+   * The document builder lays the draft OVER the variable the codebook holds,
    * so a `parameters` key the draft no longer carries survives unless this
    * editor says it is replacing the block — and the researcher who emptied
    * the field would find the old window still there.
    */
   it('removes the settings block when every setting is cleared', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'met',
       type: 'datetime',
       component: 'RelativeDatePicker',
       parameters: { before: 30 },
     };
-    render(<VariableEditor {...parameterProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(committed, onSubmitDocument)} />);
 
     await user.clear(screen.getByLabelText('Days before'));
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const saved = savedVariable(onSubmitRequest);
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    const saved = savedVariable(onSubmitDocument);
     expect(Object.hasOwn(saved, 'parameters')).toBe(false);
     expect(saved).toEqual({
       name: 'met',
@@ -1838,9 +1340,7 @@ describe('the settings the chosen input control takes', () => {
 
   it('creates an attribute together with the settings its control takes', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     render(
       <VariableEditor
         {...createProps({
@@ -1850,7 +1350,7 @@ describe('the settings the chosen input control takes', () => {
             type: 'scalar',
             component: 'VisualAnalogScale',
           },
-          onSubmitRequest,
+          onSubmitDocument,
         })}
       />,
     );
@@ -1869,9 +1369,8 @@ describe('the settings the chosen input control takes', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const request = onSubmitRequest.mock.calls[0]?.[0] as CompoundEditRequest;
-    expect(submittedVariables(request).closeness).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(submittedVariables(onSubmitDocument).closeness).toEqual({
       name: 'closeness',
       type: 'scalar',
       component: 'VisualAnalogScale',
@@ -1884,16 +1383,14 @@ describe('the settings the chosen input control takes', () => {
 
   it('leaves an attribute whose control takes no settings alone', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const variable = {
       name: 'comment',
       type: 'text',
       component: 'Text',
       validation: { required: true },
     };
-    render(<VariableEditor {...parameterProps(variable, onSubmitRequest)} />);
+    render(<VariableEditor {...parameterProps(variable, onSubmitDocument)} />);
 
     expect(screen.queryByText('What this control accepts')).toBeNull();
     const name = screen.getByRole('textbox', { name: /attribute name/i });
@@ -1901,11 +1398,11 @@ describe('the settings the chosen input control takes', () => {
     await user.type(name, 'note');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     // The control and the rules are still preserved rather than replaced: this
     // editor writes `component` only where it writes the settings that depend
     // on it.
-    expect(savedVariable(onSubmitRequest)).toEqual({
+    expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'note',
       type: 'text',
       component: 'Text',
@@ -1933,7 +1430,7 @@ describe('the settings the chosen input control takes', () => {
 describe('the two answers a boolean offers', () => {
   const booleanProps = (
     variable: Readonly<Record<string, unknown>>,
-    onSubmitRequest: VariableEditorProps['onSubmitRequest'],
+    onSubmitDocument: VariableEditorProps['onSubmitDocument'],
   ): Extract<VariableEditorProps, { mode: 'update' }> => ({
     openId: 'boolean-open',
     mode: 'update',
@@ -1941,31 +1438,23 @@ describe('the two answers a boolean offers', () => {
     authoritativeDocument: personDocument({ flagged: variable }),
     variableId: 'flagged',
     initialDraft: variable,
-    description: 'Update the attribute',
-    createRequestId: () => 'request-boolean',
-    onSubmitRequest,
+    onSubmitDocument,
     onComplete: () => undefined,
   });
 
   const savedVariable = (
-    onSubmitRequest: ReturnType<typeof vi.fn>,
+    onSubmitDocument: ReturnType<typeof vi.fn<SubmitDocument>>,
   ): Record<string, unknown> => {
-    const request = onSubmitRequest.mock.calls[0]?.[0] as
-      | CompoundEditRequest
-      | undefined;
-    if (request === undefined) throw new Error('nothing was submitted');
-    const variable = submittedVariables(request).flagged;
+    const variable = submittedVariables(onSubmitDocument).flagged;
     if (!isRecord(variable)) throw new Error('the attribute was not submitted');
     return variable;
   };
 
   it('names the two answers a boolean choice shows, and marks one as negative', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const variable = { name: 'flagged', type: 'boolean', component: 'Boolean' };
-    render(<VariableEditor {...booleanProps(variable, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(variable, onSubmitDocument)} />);
 
     await user.type(
       screen.getByRole('textbox', { name: 'Label for “true”' }),
@@ -1980,11 +1469,11 @@ describe('the two answers a boolean offers', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
     // The schema's own shape for a boolean's answers: the label is authored,
     // the value is the boolean it records, and `negative` is carried only
     // where it was switched on.
-    expect(savedVariable(onSubmitRequest)).toEqual({
+    expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'flagged',
       type: 'boolean',
       component: 'Boolean',
@@ -1997,9 +1486,7 @@ describe('the two answers a boolean offers', () => {
 
   it('keeps the answers of a boolean that holds more than two, through an edit that only renames it', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
       type: 'boolean',
@@ -2010,15 +1497,15 @@ describe('the two answers a boolean offers', () => {
         { label: 'Prefer not to say', value: false, negative: true },
       ],
     };
-    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     const name = screen.getByRole('textbox', { name: /attribute name/i });
     await user.clear(name);
     await user.type(name, 'starred');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest)).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument)).toEqual({
       ...committed,
       name: 'starred',
     });
@@ -2067,16 +1554,14 @@ describe('the two answers a boolean offers', () => {
    */
   it('keeps a boolean that offers a single answer, and asks for no second one', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
       type: 'boolean',
       component: 'Boolean',
       options: [{ label: 'Agreed', value: true }],
     };
-    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     expect(
       screen.queryByRole('textbox', { name: 'Label for “false”' }),
@@ -2087,8 +1572,8 @@ describe('the two answers a boolean offers', () => {
     await user.type(name, 'starred');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest)).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument)).toEqual({
       ...committed,
       name: 'starred',
     });
@@ -2110,9 +1595,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('keeps both stored booleans of a pair that records one of them twice, through an edit that only renames it', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
       type: 'boolean',
@@ -2122,15 +1605,15 @@ describe('the two answers a boolean offers', () => {
         { label: 'Agreed, with conditions', value: true },
       ],
     };
-    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     const name = screen.getByRole('textbox', { name: /attribute name/i });
     await user.clear(name);
     await user.type(name, 'starred');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest)).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument)).toEqual({
       ...committed,
       name: 'starred',
     });
@@ -2175,9 +1658,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('writes an answer edited on a pair that records both booleans', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
       type: 'boolean',
@@ -2187,7 +1668,7 @@ describe('the two answers a boolean offers', () => {
         { label: 'No', value: false },
       ],
     };
-    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     const negative = screen.getByRole('textbox', {
       name: 'Label for “false”',
@@ -2196,8 +1677,8 @@ describe('the two answers a boolean offers', () => {
     await user.type(negative, 'Never');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest).options).toEqual([
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument).options).toEqual([
       { label: 'Yes', value: true },
       { label: 'Never', value: false },
     ]);
@@ -2205,11 +1686,9 @@ describe('the two answers a boolean offers', () => {
 
   it('offers no answers to name for a boolean collected with a toggle', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const variable = { name: 'flagged', type: 'boolean', component: 'Toggle' };
-    render(<VariableEditor {...booleanProps(variable, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(variable, onSubmitDocument)} />);
 
     expect(screen.queryByText('The two answers')).toBeNull();
     expect(
@@ -2221,8 +1700,8 @@ describe('the two answers a boolean offers', () => {
     await user.type(name, 'starred');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest)).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'starred',
       type: 'boolean',
       component: 'Toggle',
@@ -2238,9 +1717,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('drops the answers and records the control that cannot show them', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
       type: 'boolean',
@@ -2252,7 +1729,7 @@ describe('the two answers a boolean offers', () => {
     };
     render(
       <VariableEditor
-        {...booleanProps(committed, onSubmitRequest)}
+        {...booleanProps(committed, onSubmitDocument)}
         initialDraft={{ ...committed, component: 'Toggle' }}
       />,
     );
@@ -2262,8 +1739,8 @@ describe('the two answers a boolean offers', () => {
     ).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const saved = savedVariable(onSubmitRequest);
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    const saved = savedVariable(onSubmitDocument);
     expect(Object.hasOwn(saved, 'options')).toBe(false);
     // Both, or neither. The words the researcher wrote are removed because the
     // control they were written for is being left behind, so that control has
@@ -2287,9 +1764,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('writes the control the answers were authored for, not the one the codebook holds', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
       type: 'boolean',
@@ -2297,7 +1772,7 @@ describe('the two answers a boolean offers', () => {
     };
     render(
       <VariableEditor
-        {...booleanProps(committed, onSubmitRequest)}
+        {...booleanProps(committed, onSubmitDocument)}
         initialDraft={{ ...committed, component: 'Boolean' }}
       />,
     );
@@ -2312,8 +1787,8 @@ describe('the two answers a boolean offers', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest)).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument)).toEqual({
       name: 'flagged',
       type: 'boolean',
       component: 'Boolean',
@@ -2337,7 +1812,7 @@ describe('the two answers a boolean offers', () => {
               { label: 'No', value: false },
             ],
           },
-          () => APPLIED,
+          async () => APPLIED,
         )}
         readOnly
       />,
@@ -2350,9 +1825,7 @@ describe('the two answers a boolean offers', () => {
 
   it('leaves a pair of answers nobody touched exactly as it was', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
       type: 'boolean',
@@ -2362,7 +1835,7 @@ describe('the two answers a boolean offers', () => {
         { label: 'No', value: false, negative: true },
       ],
     };
-    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     expect(
       screen.getByRole('textbox', { name: 'Label for “true”' }),
@@ -2380,8 +1853,8 @@ describe('the two answers a boolean offers', () => {
     await user.type(name, 'starred');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest).options).toEqual(committed.options);
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument).options).toEqual(committed.options);
   });
 
   /**
@@ -2395,9 +1868,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('keeps which answer records which value when a protocol stores false first', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
       type: 'boolean',
@@ -2407,7 +1878,7 @@ describe('the two answers a boolean offers', () => {
         { label: 'Always', value: true },
       ],
     };
-    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     expect(
       screen.getByRole('textbox', { name: 'Label for “false”' }),
@@ -2421,8 +1892,8 @@ describe('the two answers a boolean offers', () => {
     await user.type(name, 'starred');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest).options).toEqual(committed.options);
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument).options).toEqual(committed.options);
   });
 
   /**
@@ -2432,11 +1903,9 @@ describe('the two answers a boolean offers', () => {
    */
   it('refuses a pair with only one of its answers named', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const variable = { name: 'flagged', type: 'boolean', component: 'Boolean' };
-    render(<VariableEditor {...booleanProps(variable, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(variable, onSubmitDocument)} />);
 
     await user.type(
       screen.getByRole('textbox', { name: 'Label for “true”' }),
@@ -2453,7 +1922,7 @@ describe('the two answers a boolean offers', () => {
         'Write what this answer says, or clear both to offer Yes and No.',
       ),
     ).toBeVisible();
-    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
   });
 
   /**
@@ -2464,9 +1933,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('refuses a pair whose two answers say the same thing', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'agrees',
       type: 'boolean',
@@ -2476,7 +1943,7 @@ describe('the two answers a boolean offers', () => {
         { label: 'No', value: false },
       ],
     };
-    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     const negative = screen.getByRole('textbox', { name: 'Label for “false”' });
     await user.clear(negative);
@@ -2490,7 +1957,7 @@ describe('the two answers a boolean offers', () => {
         'Give this answer different words: two buttons saying the same thing cannot be told apart.',
       ),
     ).toBeVisible();
-    expect(onSubmitRequest).not.toHaveBeenCalled();
+    expect(onSubmitDocument).not.toHaveBeenCalled();
   });
 
   /**
@@ -2501,9 +1968,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('takes two answers that differ only in case', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'agrees',
       type: 'boolean',
@@ -2513,15 +1978,15 @@ describe('the two answers a boolean offers', () => {
         { label: 'No', value: false },
       ],
     };
-    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     const negative = screen.getByRole('textbox', { name: 'Label for “false”' });
     await user.clear(negative);
     await user.type(negative, 'yes');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest).options).toEqual([
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument).options).toEqual([
       { label: 'YES', value: true },
       { label: 'yes', value: false },
     ]);
@@ -2535,9 +2000,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('takes the answers away again when both are cleared', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
       type: 'boolean',
@@ -2547,7 +2010,7 @@ describe('the two answers a boolean offers', () => {
         { label: 'No', value: false },
       ],
     };
-    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     await user.clear(screen.getByRole('textbox', { name: 'Label for “true”' }));
     await user.clear(
@@ -2555,8 +2018,8 @@ describe('the two answers a boolean offers', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const saved = savedVariable(onSubmitRequest);
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    const saved = savedVariable(onSubmitDocument);
     expect(Object.hasOwn(saved, 'options')).toBe(false);
     expect(saved).toEqual({
       name: 'flagged',
@@ -2576,9 +2039,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('keeps a stored pair whose two answers are blank, through an edit that only renames it', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
       type: 'boolean',
@@ -2590,15 +2051,15 @@ describe('the two answers a boolean offers', () => {
         { label: ' ', value: false },
       ],
     };
-    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     const name = screen.getByRole('textbox', { name: /attribute name/i });
     await user.clear(name);
     await user.type(name, 'starred');
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest)).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument)).toEqual({
       ...committed,
       name: 'starred',
     });
@@ -2610,9 +2071,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('writes the answers a researcher names onto a stored pair that was blank', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     const committed = {
       name: 'flagged',
       type: 'boolean',
@@ -2622,7 +2081,7 @@ describe('the two answers a boolean offers', () => {
         { label: '', value: false },
       ],
     };
-    render(<VariableEditor {...booleanProps(committed, onSubmitRequest)} />);
+    render(<VariableEditor {...booleanProps(committed, onSubmitDocument)} />);
 
     await user.type(
       screen.getByRole('textbox', { name: 'Label for “true”' }),
@@ -2634,8 +2093,8 @@ describe('the two answers a boolean offers', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Save attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    expect(savedVariable(onSubmitRequest).options).toEqual([
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(savedVariable(onSubmitDocument).options).toEqual([
       { label: 'Always', value: true },
       { label: 'Never', value: false },
     ]);
@@ -2643,15 +2102,13 @@ describe('the two answers a boolean offers', () => {
 
   it('creates a boolean together with the answers it offers', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     render(
       <VariableEditor
         {...createProps({
           variableId: 'flagged',
           initialDraft: { name: '', type: 'boolean', component: 'Boolean' },
-          onSubmitRequest,
+          onSubmitDocument,
         })}
       />,
     );
@@ -2670,9 +2127,8 @@ describe('the two answers a boolean offers', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const request = onSubmitRequest.mock.calls[0]?.[0] as CompoundEditRequest;
-    expect(submittedVariables(request).flagged).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(submittedVariables(onSubmitDocument).flagged).toEqual({
       name: 'flagged',
       type: 'boolean',
       component: 'Boolean',
@@ -2696,9 +2152,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('drops the answers a create draft carried to a toggle', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     render(
       <VariableEditor
         {...createProps({
@@ -2712,7 +2166,7 @@ describe('the two answers a boolean offers', () => {
               { label: 'No', value: false, negative: true },
             ],
           },
-          onSubmitRequest,
+          onSubmitDocument,
         })}
       />,
     );
@@ -2722,9 +2176,8 @@ describe('the two answers a boolean offers', () => {
     ).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const request = onSubmitRequest.mock.calls[0]?.[0] as CompoundEditRequest;
-    const created = submittedVariables(request).flagged;
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    const created = submittedVariables(onSubmitDocument).flagged;
     if (!isRecord(created)) throw new Error('the attribute was not submitted');
     expect(Object.hasOwn(created, 'options')).toBe(false);
     expect(created).toEqual({
@@ -2741,9 +2194,7 @@ describe('the two answers a boolean offers', () => {
    */
   it('creates a boolean with the answers its draft already carried', async () => {
     const user = userEvent.setup();
-    const onSubmitRequest = vi.fn(
-      (_request: CompoundEditRequest): CompoundEditResult => APPLIED,
-    );
+    const onSubmitDocument = submitting();
     render(
       <VariableEditor
         {...createProps({
@@ -2757,7 +2208,7 @@ describe('the two answers a boolean offers', () => {
               { label: 'No', value: false, negative: true },
             ],
           },
-          onSubmitRequest,
+          onSubmitDocument,
         })}
       />,
     );
@@ -2767,9 +2218,8 @@ describe('the two answers a boolean offers', () => {
     ).toHaveValue('Yes');
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
-    await waitFor(() => expect(onSubmitRequest).toHaveBeenCalledTimes(1));
-    const request = onSubmitRequest.mock.calls[0]?.[0] as CompoundEditRequest;
-    expect(submittedVariables(request).flagged).toEqual({
+    await waitFor(() => expect(onSubmitDocument).toHaveBeenCalledTimes(1));
+    expect(submittedVariables(onSubmitDocument).flagged).toEqual({
       name: 'flagged',
       type: 'boolean',
       component: 'Boolean',
@@ -2859,9 +2309,7 @@ describe('the strong destructive ink a tinted row opts into', () => {
         authoritativeDocument={personDocument({ preference: existing })}
         variableId="preference"
         initialDraft={existing}
-        description="Update attribute"
-        createRequestId={() => 'request-strong-ink'}
-        onSubmitRequest={() => APPLIED}
+        onSubmitDocument={async () => APPLIED}
         onComplete={() => undefined}
       />,
     );
@@ -2901,9 +2349,7 @@ describe('the strong destructive ink a tinted row opts into', () => {
         authoritativeDocument={personDocument({ flagged: variable })}
         variableId="flagged"
         initialDraft={variable}
-        description="Update the attribute"
-        createRequestId={() => 'request-boolean-strong-ink'}
-        onSubmitRequest={() => APPLIED}
+        onSubmitDocument={async () => APPLIED}
         onComplete={() => undefined}
       />,
     );

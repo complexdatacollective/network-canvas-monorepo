@@ -1,66 +1,25 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen, waitFor } from '@testing-library/react';
 import { type ComponentType, type ReactNode, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import FieldNamespace from '@codaco/fresco-ui/form/FieldNamespace';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { useStageEditorController } from '../../controller.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-} from '../../session.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import ProtocolField from '../ProtocolField.tsx';
-import StageEditorShell from '../StageEditorShell.tsx';
 
-function createSession(fields: SectionDoc) {
-  return new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('Information', () => 'stage-1'),
-    fields,
-    protocolSections: {},
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Protocol field test',
-      schemaVersion: 8,
-      codebook: {},
-      stages: [stageDocument],
-    }),
+const renderField = (fields: SectionDoc, children: ReactNode) =>
+  renderStageEditor({
+    stage: { type: 'Information', fields },
+    sections: <BuilderSection title="Introduction">{children}</BuilderSection>,
   });
-}
-
-function renderField(
-  session: ProtocolBuilderSessionStore,
-  children: React.ReactNode,
-) {
-  function Host() {
-    const controller = useStageEditorController(session, 'stage-form');
-    return (
-      <StageEditorShell controller={controller}>
-        <BuilderSection title="Introduction">{children}</BuilderSection>
-      </StageEditorShell>
-    );
-  }
-
-  return render(
-    <DialogProvider>
-      <Host />
-    </DialogProvider>,
-  );
-}
 
 describe('ProtocolField', () => {
   it('seeds a field from the path it is really registered under', async () => {
     renderField(
-      createSession({
-        label: 'Welcome',
-        introductionPanel: { title: 'Before we start' },
-      }),
+      { label: 'Welcome', introductionPanel: { title: 'Before we start' } },
       <FieldNamespace prefix="introductionPanel">
         <ProtocolField
           name="title"
@@ -70,9 +29,9 @@ describe('ProtocolField', () => {
       </FieldNamespace>,
     );
 
-    // The namespace is part of where this field lives. Reading the committed
-    // draft from the root instead would start the control blank and then save
-    // that blank over what the author wrote.
+    // The namespace is part of where this field lives. Reading the opened
+    // document from the root instead would start the control blank and then
+    // save that blank over what the author wrote.
     await waitFor(() =>
       expect(screen.getByRole('textbox', { name: 'Panel title' })).toHaveValue(
         'Before we start',
@@ -82,12 +41,12 @@ describe('ProtocolField', () => {
 
   it('treats an opaque name as one key rather than a route', async () => {
     renderField(
-      createSession({
+      {
         label: 'Welcome',
         // A protocol-authored variable id, which may contain a dot and is not
         // a path into anything.
         attributes: { 'person.age': 'seeded' },
-      }),
+      },
       <FieldNamespace prefix="attributes">
         <ProtocolField
           name="person.age"
@@ -154,9 +113,9 @@ const SetBounds = (({
 
 /**
  * Fields may overlap: one registered at a container, others at paths inside
- * it. A leaf mounting beneath both starts from the committed draft, which is
- * the one account of what a path holds — so an edit the form has PARKED
- * cannot come back through it.
+ * it. A leaf mounting beneath both starts from the document the editor was
+ * opened with, which is the one account of what a path holds — so an edit the
+ * form has PARKED cannot come back through it.
  *
  * That matters because a parked value under a mounted container is not a
  * value the save will write: the form assembles its values from the fields
@@ -166,13 +125,9 @@ const SetBounds = (({
  * as soon as they touched it.
  */
 describe('a field mounting beneath overlapping fields', () => {
-  it('starts from the committed draft rather than a parked edit beneath a mounted container', async () => {
-    const user = userEvent.setup({ delay: null });
-    renderField(
-      createSession({
-        label: 'Welcome',
-        settings: { bounds: { min: 'one' } },
-      }),
+  it('starts from the opened document rather than a parked edit beneath a mounted container', async () => {
+    const harness = renderField(
+      { label: 'Welcome', settings: { bounds: { min: 'one' } } },
       <>
         <ProtocolField
           name="settings"
@@ -198,12 +153,20 @@ describe('a field mounting beneath overlapping fields', () => {
 
     // An edit made in the bounds control, then folded away: parked, with the
     // settings container still mounted above it.
-    await user.click(screen.getByRole('button', { name: 'Show bounds' }));
-    await user.click(screen.getByRole('button', { name: 'Set bounds' }));
-    await user.click(screen.getByRole('button', { name: 'Hide bounds' }));
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Show bounds' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Set bounds' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Hide bounds' }),
+    );
 
-    // The draft's value, not the parked one.
-    await user.click(screen.getByRole('button', { name: 'Show minimum' }));
+    // The opened document's value, not the parked one.
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Show minimum' }),
+    );
     expect(await screen.findByRole('textbox', { name: 'Minimum' })).toHaveValue(
       'one',
     );
@@ -234,10 +197,10 @@ const SEEDED_ITEMS: SectionDoc = {
  * The other half of the overlap: a container that is still MOUNTED, holding an
  * edit the researcher has made and no save has taken yet.
  *
- * The committed draft is the account of what a path holds once saved, and the
- * live form is the account of the edit that has not been. A leaf mounting
- * beneath a live container and seeding from the committed draft shows the
- * value the researcher has just replaced — and, because a submit replays
+ * The opened document is the account of what a path held when the stage was
+ * handed over, and the live form is the account of the edit since. A leaf
+ * mounting beneath a live container and seeding from the opened document shows
+ * the value the researcher has just replaced — and, because a submit replays
  * deeper fields after the containers above them, writes it back over their
  * edit on the very next save.
  */
@@ -256,7 +219,7 @@ describe('a field mounting beneath a container holding an unsaved edit', () => {
     </>
   );
 
-  it('shows the edit rather than the draft it replaced', async () => {
+  it('shows the edit rather than the value it replaced', async () => {
     const harness = renderStageEditor({
       stage: { type: 'Information', fields: SEEDED_ITEMS },
       sections: overlappingItems,

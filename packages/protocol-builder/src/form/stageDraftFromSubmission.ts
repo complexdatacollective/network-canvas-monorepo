@@ -7,7 +7,7 @@ import {
 } from '@codaco/fresco-ui/form/utils/objectPath';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { StageFormDraft } from '../session.ts';
+import type { StageFormDraft } from '../stageDocument.ts';
 import {
   isAbsentValue,
   withoutAbsentValues,
@@ -32,7 +32,7 @@ export type DormantField = Readonly<{
 }>;
 
 export type StageDraftSubmission = Readonly<{
-  /** The draft as the session currently holds it. */
+  /** The document as the editor currently holds it. */
   currentFields: StageFormDraft;
   /** What the form handed the submit handler: mounted fields only. */
   submittedValues: Readonly<Record<string, FieldValue>>;
@@ -59,7 +59,7 @@ export type StageDraftSubmission = Readonly<{
  *    part of a nested value delete the parts beside it. A Family Pedigree's
  *    form section owns `nodeConfig.form` and nothing else under `nodeConfig`.
  * 2. Fields the form still has mounted replace the value at their OWN path,
- *    shallowest first. That is the unit the session turns into a command, and
+ *    shallowest first. That is the unit a write addresses, and
  *    writing at the path rather than at the top-level key above it is what
  *    lets a section own a nested value without having to render every sibling
  *    it happens to share a key with.
@@ -126,7 +126,7 @@ export function stageDraftFromSubmission(
       continue;
     }
     // `setValue` copies every container it traverses, so this cannot write
-    // through into the session's own frozen snapshot.
+    // through into the document the editor opened on.
     setValue(draft, path, value);
   }
 
@@ -152,7 +152,7 @@ export function stageDraftFromSubmission(
     (a, b) => a.path.length - b.path.length,
   )) {
     // `setValue` copies every container it traverses, so this cannot write
-    // through into the session's own frozen snapshot.
+    // through into the document the editor opened on.
     setValue(draft, write.path, write.value);
   }
 

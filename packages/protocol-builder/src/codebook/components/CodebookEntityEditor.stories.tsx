@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import CodebookEntityEditor from './CodebookEntityEditor.tsx';
 
 const PERSON: SectionDoc = {
@@ -20,21 +21,19 @@ function ExistingNodeEditor() {
       <CodebookEntityEditor
         mode="update"
         sessionKey="storybook-person-open-1"
-        createRequestId={() => 'storybook-update-person'}
-        description="Update the Person node type"
         subject={{ entity: 'node', type: 'person' }}
         initialDraft={PERSON}
         authoritativeDocument={PERSON}
         existingEntityNames={['Place']}
         // Storybook has no host to save to, so every save is refused — which
-        // is also what puts the refusal alert on screen to look at. The
-        // `message` is the host's own note for a log; the editor writes the
-        // sentence the researcher reads from the `reason`.
-        onSubmit={() => ({
-          status: 'failed',
-          reason: 'unavailable',
-          message: 'the storybook host does not persist changes',
-        })}
+        // is also what puts the refusal alert on screen to look at.
+        onSubmit={() =>
+          Promise.resolve({
+            status: 'refused' as const,
+            message: codebookRefusalMessage({ kind: 'unreachable' }),
+            refusal: { kind: 'unreachable' } as const,
+          })
+        }
       />
     </main>
   );

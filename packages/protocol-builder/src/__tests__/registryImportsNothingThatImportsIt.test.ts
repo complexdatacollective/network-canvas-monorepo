@@ -18,8 +18,8 @@ import { describe, expect, it } from 'vitest';
  * module a program reaches first is not something a family controls.
  *
  * The fix was to move `defineStageEditorPart` and `StageEditorRegistryPart`
- * into `stage-editor-contract.ts`, which imports the controller and the stage
- * types and nothing else. `type-tests/partFromRegistry.ts` holds the specific
+ * into `stage-editor-contract.ts`, which imports the stage types and nothing
+ * else. `type-tests/partFromRegistry.ts` holds the specific
  * route shut — the helper is not reachable through the registry, so a family
  * cannot import it from there. This holds the general rule: whatever a part
  * imports, and whatever that imports, none of it may come back here.
@@ -111,6 +111,6 @@ describe('the module graph under the registry', () => {
           ),
         ),
       ].toSorted(),
-    ).toEqual(['controller.ts', 'stage-types.ts']);
+    ).toEqual(['stage-types.ts']);
   });
 });

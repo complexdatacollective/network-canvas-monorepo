@@ -214,7 +214,7 @@ export const ruleSetProblem = (
   // One rule combines with nothing, so no join control is rendered for it and
   // there is nothing to choose again. `FilterSchema` still declares
   // `join: z.enum(['OR', 'AND']).optional()`, which refuses any other value
-  // whatever the rule count — so a stale `"XOR"` a hand-edit or a merge left
+  // whatever the rule count — so a stale `"XOR"` a hand-edit or an import left
   // behind has to be reported here, or the stage saves and the protocol
   // schema refuses it with nothing on screen to point at. Editing or deleting
   // a rule rewrites the set through `updateRules`, which drops the join of a

@@ -24,6 +24,7 @@ import {
   type RuleEntityTypeOption,
   ruleEntityTypeOptions,
 } from '../rules/ruleCodebook.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 
 /**
  * What the researcher is asked before a change that costs them something.
@@ -191,27 +192,23 @@ const DELETED_TARGET_TITLES = defineMessages({
 }) satisfies Record<RuleEntityTarget, MessageDescriptor>;
 
 /**
- * Whether this stage may still be written to, read at the moment the write
- * would happen — and the one place that says so when it may not.
+ * Whether this stage may be written to at all, and the one place that says so
+ * when it may not.
  *
- * Every type change here is applied by a closure from the render that asked
- * about it, and editing can be taken away while the question stands: the
- * session then refuses the reset the change causes, and a picker showing the
- * new type over the old type's attributes is a pedigree nobody authored and
- * one no save could produce. So the lease is read back through a ref, exactly
- * as the codebook and the refusal are, and a change answered after it has gone
- * applies nothing.
+ * Every way a confirmed type change is applied goes through here. A read-only
+ * stage takes neither the change nor the reset it causes, and a picker showing
+ * the new type over the old type's attributes is a pedigree nobody authored and
+ * one no save could produce.
  *
  * It is SAID, in the form's own error region and in the shell's own words: a
  * researcher who has just answered a question is owed an answer, and this is
- * the same sentence a refused save or a refused list write gives them, cleared
- * by the same thing — editing being handed back.
+ * the same sentence a refused save or a refused list write gives them.
  *
  * `controlUneditable` is the caller's own reading of itself, for the one part
- * of this the session cannot see: a picker whose props have stopped accepting
+ * of this the form cannot see: a picker whose props have stopped accepting
  * input. Everything a control derives that from — `ProtocolField` disabling
- * every field of a read-only session, the control's own `readOnly` — is a
- * render away from the closure that resumes, so it is read live too.
+ * every field of a read-only editor, the control's own `readOnly` — is a
+ * render away from the closure that resumes, so it is read live.
  */
 function useRefuseUneditableChange(): (controlUneditable?: boolean) => boolean {
   const { readOnly, reportRefusedWrite } = useStageEditorForm();
@@ -253,10 +250,9 @@ function useRefuseUneditableChange(): (controlUneditable?: boolean) => boolean {
  * save. So it is refused here, once, for every way a confirmed type change is
  * applied.
  *
- * And on the LEASE as it stands when the answer is given, for the same reason
- * and in the same place: editing taken away while the question was open makes
- * the change one the session will not take, and every way a confirmed type
- * change is applied goes through here.
+ * And on whether the stage may be written to at all, in the same place and for
+ * the same reason: every way a confirmed type change is applied goes through
+ * here.
  */
 export function useConfirmEntityTypeChange(): (
   question: EntityTypeChangeConfirmation | undefined,
@@ -264,7 +260,7 @@ export function useConfirmEntityTypeChange(): (
 ) => Promise<boolean> {
   const { confirm, openDialog } = useDialog();
   const intl = useAppIntl();
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const refuseUneditableChange = useRefuseUneditableChange();
   /**
    * The codebook the answer is judged against, kept live.
@@ -289,10 +285,10 @@ export function useConfirmEntityTypeChange(): (
       });
       if (confirmed !== true) return false;
 
-      // The lease first. Whether the type the change lands on is still in the
+      // Read-only first. Whether the type the change lands on is still in the
       // codebook is a question about a write that may happen at all, and this
-      // one is not: the session takes nothing from a lease it no longer holds,
-      // so there is nothing to judge a target against.
+      // one is not: a read-only stage takes nothing, so there is nothing to
+      // judge a target against.
       if (refuseUneditableChange()) return false;
 
       const stillDefined = ruleEntityTypeOptions(
@@ -424,14 +420,13 @@ function EntityOption({
 /**
  * Picks one node or edge type from the protocol's codebook.
  *
- * The types come from the editor's own protocol context, so a section mounting
- * this never carries a codebook prop, a selector, or a stage path — and a type
- * a collaborator adds or deletes while the editor is open appears or
- * disappears here without the section doing anything.
+ * The types are subscribed to here, in the control that reads them, so a
+ * section mounting this never carries a codebook prop, a selector, or a stage
+ * path — and a type a collaborator adds or deletes while the editor is open
+ * appears or disappears here without the section doing anything.
  *
  * There is deliberately no "create a new type" affordance: creating a codebook
- * entity from inside a rule is a compound edit across two protocol sections,
- * which the package's codebook editors own.
+ * entity is a write to the codebook, which the package's codebook editors own.
  *
  * Labelling belongs to the surrounding field; pass `label`/`hint` to the
  * `Field` that renders this.
@@ -454,7 +449,8 @@ export function EntitySelectControl({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: EntitySelectFieldProps) {
-  const { protocolContext, readOnly: sessionReadOnly } = useStageEditorForm();
+  const { readOnly: sessionReadOnly } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const intl = useAppIntl();
   const { openDialog } = useDialog();
   const confirmEntityTypeChange = useConfirmEntityTypeChange();
@@ -491,11 +487,12 @@ export function EntitySelectControl({
    * The same seam the pedigree's own slot gate reads its live inputs through.
    *
    * Whether this control accepts input at all is read the same way and for the
-   * same reason. A field of a read-only session arrives `disabled`
-   * (`ProtocolField` decides that for every field, so no section has to), and
-   * a lease can go while the question stands: the chips the researcher is
-   * answering about are already out of reach behind the dialog, and the
-   * closure resuming under them must not write what they can no longer choose.
+   * same reason. A field of a read-only editor arrives `disabled`
+   * (`ProtocolField` decides that for every field, so no section has to), and a
+   * section can withdraw its own list while the question stands: the chips the
+   * researcher is answering about are already out of reach behind the dialog,
+   * and the closure resuming under them must not write what they can no longer
+   * choose.
    */
   const judgeAgainst = useRef({ blockChangeReason, value, readOnly, disabled });
   judgeAgainst.current = { blockChangeReason, value, readOnly, disabled };
@@ -547,10 +544,10 @@ export function EntitySelectControl({
         }))
       )
         return;
-      // And on this control as it stands now. The session's own read-only is
+      // And on this control as it stands now. The stage's own read-only is
       // answered inside the confirm above, for every caller of it; what is
       // left here is this picker's reading of itself, which a section can
-      // withdraw without the lease moving.
+      // withdraw on its own.
       const live = judgeAgainst.current;
       if (refuseUneditableChange(live.readOnly || live.disabled)) return;
       // Asked AGAIN, on the protocol as it stands now. The researcher has

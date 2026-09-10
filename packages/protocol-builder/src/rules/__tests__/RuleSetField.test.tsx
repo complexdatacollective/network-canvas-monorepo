@@ -2,23 +2,18 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
+import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { useStageEditorController } from '../../controller.ts';
 import ProtocolField from '../../form/ProtocolField.tsx';
-import StageEditorShell from '../../form/StageEditorShell.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-} from '../../session.ts';
+import type { InMemoryProtocolStore } from '../../testing/host/protocolStore.ts';
 import type { RuleDraft } from '../rule.ts';
 import type { RuleSetValue } from '../ruleSet.ts';
 import { QueryRuleSetField } from '../RuleSetField.tsx';
+import { RuleEditorHost } from './ruleEditorHost.tsx';
 
 const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
 const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
@@ -69,7 +64,11 @@ const baseSections: Record<string, SectionDoc> = {
   [egoSection]: { variables: { egoName: { name: 'EgoName', type: 'text' } } },
 };
 
-function createSession(
+/**
+ * The protocol this editor is opened over, with the stage carrying whatever
+ * rules the test starts from.
+ */
+function ruleSections(
   options: Readonly<{
     /**
      * Typed as the record a stored rule IS rather than as a `RuleDraft`,
@@ -81,7 +80,7 @@ function createSession(
     join?: string;
     sections?: Record<string, SectionDoc>;
   }> = {},
-) {
+): Record<string, SectionDoc> {
   const filter =
     options.rules === undefined
       ? undefined
@@ -89,25 +88,15 @@ function createSession(
           ...(options.join === undefined ? {} : { join: options.join }),
           rules: [...options.rules],
         };
+  const sections = options.sections ?? baseSections;
 
-  return new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('Information', () => 'stage-1'),
-    fields: {
-      label: 'Welcome',
-      title: 'Welcome',
-      items: [],
+  return {
+    ...sections,
+    [stageSection]: {
+      ...sections[stageSection],
       ...(filter === undefined ? {} : { skipLogic: { filter } }),
     },
-    protocolSections: options.sections ?? baseSections,
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Rule editing',
-      schemaVersion: 8,
-      codebook: {},
-      stages: [stageDocument],
-    }),
-  });
+  };
 }
 
 /**
@@ -130,38 +119,45 @@ const probedRuleSet = (): RuleSetValue | null => {
   return JSON.parse(text) as RuleSetValue | null;
 };
 
-function Editor({ session }: { session: ProtocolBuilderSessionStore }) {
-  const controller = useStageEditorController(session, 'stage-form');
+/**
+ * The whole composition: a name and a label. No stage path, no selector, no
+ * codebook prop, no host store.
+ */
+const ruleSetSection = (
+  <BuilderSection title="Skip logic">
+    <ProtocolField
+      name={RULE_SET_FIELD}
+      label="Rules"
+      component={QueryRuleSetField}
+    />
+    <RuleSetProbe />
+  </BuilderSection>
+);
 
-  return (
-    <StageEditorShell
-      controller={controller}
+function renderEditor(sections: Record<string, SectionDoc> = ruleSections()) {
+  let store: InMemoryProtocolStore | null = null;
+  const view = render(
+    <RuleEditorHost
+      sections={sections}
+      onStore={(built) => {
+        store = built;
+      }}
       actions={({ formId }) => (
         <SubmitButton form={formId}>Finished editing</SubmitButton>
       )}
     >
-      <BuilderSection title="Skip logic">
-        {/*
-          The whole composition: a name and a label. No stage path, no
-          selector, no codebook prop, no host store.
-        */}
-        <ProtocolField
-          name={RULE_SET_FIELD}
-          label="Rules"
-          component={QueryRuleSetField}
-        />
-        <RuleSetProbe />
-      </BuilderSection>
-    </StageEditorShell>
+      {ruleSetSection}
+    </RuleEditorHost>,
   );
-}
 
-function renderEditor(session: ProtocolBuilderSessionStore) {
-  return render(
-    <DialogProvider>
-      <Editor session={session} />
-    </DialogProvider>,
-  );
+  return {
+    ...view,
+    /** A change made somewhere other than this editor. */
+    collaboratorWrites: (id: string, document: SectionDoc) =>
+      act(() => {
+        store?.applyAsCollaborator(sectionId(parseSectionId(id)), document);
+      }),
+  };
 }
 
 const openRuleEditor = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -192,13 +188,13 @@ const ruleRowSentence = (index = 0): string => {
 
 describe('the rule set field', () => {
   it('names itself from the field that renders it', () => {
-    renderEditor(createSession());
+    renderEditor(ruleSections());
     expect(screen.getByRole('group', { name: /Rules/ })).toBeInTheDocument();
   });
 
   it('offers the entity types the protocol context holds, with no codebook prop', async () => {
     const user = userEvent.setup();
-    renderEditor(createSession());
+    renderEditor(ruleSections());
 
     await openRuleEditor(user);
     await user.click(
@@ -215,7 +211,7 @@ describe('the rule set field', () => {
 
   it('offers ego rules to a query and reads the ego attributes from context', async () => {
     const user = userEvent.setup();
-    renderEditor(createSession());
+    renderEditor(ruleSections());
 
     await openRuleEditor(user);
     await user.click(
@@ -234,7 +230,7 @@ describe('the rule set field', () => {
 
   it('adds a rule through the editor and shows it as a sentence', async () => {
     const user = userEvent.setup();
-    renderEditor(createSession());
+    renderEditor(ruleSections());
 
     await openRuleEditor(user);
     await user.click(
@@ -266,7 +262,7 @@ describe('the rule set field', () => {
 
   it('refuses a rule the schema would not accept', async () => {
     const user = userEvent.setup();
-    renderEditor(createSession());
+    renderEditor(ruleSections());
 
     await openRuleEditor(user);
     await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
@@ -279,85 +275,11 @@ describe('the rule set field', () => {
   });
 });
 
-/**
- * The list withdraws its save handler when it stops being editable — a lost
- * lease, a read-only session — and the rule editor may already be open when
- * that happens. A dialog that reports a save it could not make is worse than
- * one that refuses: the draft is gone and the researcher has no way to know.
- */
-describe('a rule editor that is open when the list stops being editable', () => {
-  const buildPresenceRule = async (
-    user: ReturnType<typeof userEvent.setup>,
-  ) => {
-    await user.click(
-      screen.getByRole('radio', {
-        name: 'Node - match a node type or one of its attributes.',
-      }),
-    );
-    await user.click(await screen.findByRole('radio', { name: 'Person' }));
-    await user.click(await screen.findByRole('option', { name: /Presence/ }));
-    await user.click(await screen.findByRole('radio', { name: 'exists' }));
-  };
-
-  it('refuses the save in words rather than reporting one that never happened', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
-    renderEditor(session);
-
-    await openRuleEditor(user);
-    await buildPresenceRule(user);
-
-    act(() => {
-      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
-    });
-    await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
-
-    expect(
-      await screen.findByText(
-        'These rules are no longer editable, so this rule cannot be saved. Copy anything you want to keep, then close the editor.',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('dialog', { name: 'Construct a Rule' }),
-    ).toBeInTheDocument();
-    expect(probedRuleSet()).toBeNull();
-  });
-
-  it('still lets the researcher out of the editor afterwards', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
-    renderEditor(session);
-
-    await openRuleEditor(user);
-    await buildPresenceRule(user);
-
-    act(() => {
-      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
-    });
-    await user.click(screen.getByRole('button', { name: 'Finish and Close' }));
-    await screen.findByText(/These rules are no longer editable/);
-
-    // A refused save is not an outcome: the session has not ended, so
-    // dismissing it must still discard the draft and close the dialog rather
-    // than leaving the editor with no way out.
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    await user.click(
-      await screen.findByRole('button', { name: 'Discard changes' }),
-    );
-
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('dialog', { name: 'Construct a Rule' }),
-      ).toBeNull(),
-    );
-  });
-});
-
 describe('rule list identity', () => {
   it('keeps the surviving rule when one is deleted', async () => {
     const user = userEvent.setup();
     renderEditor(
-      createSession({
+      ruleSections({
         join: 'AND',
         rules: [nodeRule('rule-a'), nodeRule('rule-b')],
       }),
@@ -383,13 +305,15 @@ describe('rule list identity', () => {
   it('moves a rule without changing which rule it is', async () => {
     const user = userEvent.setup();
     renderEditor(
-      createSession({
+      ruleSections({
         join: 'AND',
         rules: [nodeRule('rule-a'), nodeRule('rule-b')],
       }),
     );
 
-    const handle = screen.getByRole('button', { name: 'Reorder item 1 of 2' });
+    const handle = await screen.findByRole('button', {
+      name: 'Reorder item 1 of 2',
+    });
     handle.focus();
     await user.keyboard('{ArrowDown}');
 
@@ -405,7 +329,7 @@ describe('rule list identity', () => {
   it('asks how two rules combine, and records the answer', async () => {
     const user = userEvent.setup();
     renderEditor(
-      createSession({ rules: [nodeRule('rule-a'), nodeRule('rule-b')] }),
+      ruleSections({ rules: [nodeRule('rule-a'), nodeRule('rule-b')] }),
     );
 
     await user.click(screen.getByRole('radio', { name: 'Any rule can match' }));
@@ -418,7 +342,7 @@ describe('rule list identity', () => {
   });
 
   it('does not offer a combination for a single rule', () => {
-    renderEditor(createSession({ rules: [nodeRule('rule-a')] }));
+    renderEditor(ruleSections({ rules: [nodeRule('rule-a')] }));
     expect(
       screen.queryByRole('radio', { name: 'Any rule can match' }),
     ).toBeNull();
@@ -439,14 +363,14 @@ describe('a stored rule about whether an attribute was answered', () => {
   });
 
   it('reads it as one phrase rather than repeating the operator', () => {
-    renderEditor(createSession({ rules: [attributePresenceRule('EXISTS')] }));
+    renderEditor(ruleSections({ rules: [attributePresenceRule('EXISTS')] }));
 
     expect(ruleRowSentence()).toBe('Person where Age');
   });
 
   it('reads its negative the same way', () => {
     renderEditor(
-      createSession({ rules: [attributePresenceRule('NOT_EXISTS')] }),
+      ruleSections({ rules: [attributePresenceRule('NOT_EXISTS')] }),
     );
 
     expect(ruleRowSentence()).toBe('Person without Age');
@@ -456,7 +380,7 @@ describe('a stored rule about whether an attribute was answered', () => {
 describe('rules the codebook can no longer account for', () => {
   it('reports a deleted attribute on the rule, without throwing', () => {
     renderEditor(
-      createSession({
+      ruleSections({
         rules: [
           {
             id: 'rule-a',
@@ -483,7 +407,7 @@ describe('rules the codebook can no longer account for', () => {
   });
 
   it('reports a deleted entity type on the rule, without throwing', () => {
-    renderEditor(createSession({ rules: [nodeRule('rule-a', 'ghost')] }));
+    renderEditor(ruleSections({ rules: [nodeRule('rule-a', 'ghost')] }));
 
     expect(
       screen.getByText(
@@ -494,7 +418,7 @@ describe('rules the codebook can no longer account for', () => {
 
   it('reports an operator a rule about presence cannot use', () => {
     renderEditor(
-      createSession({
+      ruleSections({
         rules: [
           {
             id: 'rule-a',
@@ -526,7 +450,7 @@ describe('rules the codebook can no longer account for', () => {
    */
   it('reports a rule that has no identifier', () => {
     renderEditor(
-      createSession({
+      ruleSections({
         rules: [
           // Every part the editor asks for is answered; the id is not there.
           { type: 'node', options: { type: 'person', operator: 'EXISTS' } },
@@ -575,7 +499,7 @@ describe('two stored rules that share an identifier', () => {
   ];
 
   it('shows both rules, and marks both', () => {
-    renderEditor(createSession({ join: 'AND', rules: sharingOneId() }));
+    renderEditor(ruleSections({ join: 'AND', rules: sharingOneId() }));
 
     // Two rows, each reading its own rule — not one row rendered twice.
     expect(screen.getAllByRole('button', { name: /^Edit rule:/ })).toHaveLength(
@@ -588,7 +512,7 @@ describe('two stored rules that share an identifier', () => {
 
   it('deletes exactly one of them', async () => {
     const user = userEvent.setup();
-    renderEditor(createSession({ join: 'AND', rules: sharingOneId() }));
+    renderEditor(ruleSections({ join: 'AND', rules: sharingOneId() }));
 
     await user.click(
       screen.getAllByRole('button', { name: /^Delete rule:/ })[0]!,
@@ -607,7 +531,7 @@ describe('two stored rules that share an identifier', () => {
   it('keeps two rules whose identifier is not a string apart as well', async () => {
     const user = userEvent.setup();
     renderEditor(
-      createSession({
+      ruleSections({
         join: 'AND',
         rules: [
           {
@@ -647,7 +571,7 @@ describe('two stored rules that share an identifier', () => {
 
   it('gives one of them a new identifier when it is edited and saved', async () => {
     const user = userEvent.setup();
-    renderEditor(createSession({ join: 'AND', rules: sharingOneId() }));
+    renderEditor(ruleSections({ join: 'AND', rules: sharingOneId() }));
 
     await user.click(
       screen.getAllByRole('button', { name: /^Edit rule:/ })[1]!,
@@ -703,7 +627,7 @@ describe('a stored rule that does not say what it is about', () => {
     'shows the row for a rule with $what, and its controls',
     async ({ rule }) => {
       const user = userEvent.setup();
-      renderEditor(createSession({ rules: [rule] }));
+      renderEditor(ruleSections({ rules: [rule] }));
 
       expect(
         screen.getByText(
@@ -726,19 +650,13 @@ describe('a stored rule that does not say what it is about', () => {
 
 describe('a codebook that changes underneath the editor', () => {
   it('renames an entity type in every rule that names it', async () => {
-    const session = createSession({ rules: [nodeRule('rule-a')] });
-    renderEditor(session);
+    const harness = renderEditor(ruleSections({ rules: [nodeRule('rule-a')] }));
 
     expect(screen.getByText('Person')).toBeInTheDocument();
 
-    act(() => {
-      session.receiveAuthoritativeUpdate({
-        protocolSections: {
-          ...baseSections,
-          [personSection]: { ...personDefinition, name: 'Participant' },
-        },
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
+    harness.collaboratorWrites(personSection, {
+      ...personDefinition,
+      name: 'Participant',
     });
 
     expect(await screen.findByText('Participant')).toBeInTheDocument();
@@ -747,8 +665,7 @@ describe('a codebook that changes underneath the editor', () => {
 
   it('offers an entity type a collaborator adds while the editor is open', async () => {
     const user = userEvent.setup();
-    const session = createSession();
-    renderEditor(session);
+    const harness = renderEditor();
 
     await openRuleEditor(user);
     await user.click(
@@ -759,18 +676,10 @@ describe('a codebook that changes underneath the editor', () => {
     expect(await screen.findByRole('radio', { name: 'Person' })).toBeVisible();
     expect(screen.queryByRole('radio', { name: 'Place' })).toBeNull();
 
-    act(() => {
-      session.receiveAuthoritativeUpdate({
-        protocolSections: {
-          ...baseSections,
-          [placeSection]: {
-            name: 'Place',
-            color: 'node-color-seq-3',
-            shape: { default: 'circle' },
-          },
-        },
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
+    harness.collaboratorWrites(placeSection, {
+      name: 'Place',
+      color: 'node-color-seq-3',
+      shape: { default: 'circle' },
     });
 
     expect(
@@ -779,47 +688,40 @@ describe('a codebook that changes underneath the editor', () => {
   });
 
   it('reports a rule whose attribute a collaborator has just retyped', async () => {
-    const session = createSession({
-      rules: [
-        {
-          id: 'rule-a',
-          type: 'node',
-          options: {
-            type: 'person',
-            attribute: 'age',
-            operator: 'EXACTLY',
-            value: 30,
+    const harness = renderEditor(
+      ruleSections({
+        rules: [
+          {
+            id: 'rule-a',
+            type: 'node',
+            options: {
+              type: 'person',
+              attribute: 'age',
+              operator: 'EXACTLY',
+              value: 30,
+            },
           },
-        },
-      ],
-    });
-    renderEditor(session);
+        ],
+      }),
+    );
 
     expect(screen.queryByText(/no longer/)).toBeNull();
 
-    act(() => {
-      session.receiveAuthoritativeUpdate({
-        protocolSections: {
-          ...baseSections,
-          [personSection]: {
-            ...personDefinition,
-            variables: {
-              // `EXACTLY` survives the retype — it is legal for both types —
-              // so the operator check has nothing to say, and the operand left
-              // behind is a number where the runtime now compares a list.
-              age: {
-                name: 'Age',
-                type: 'categorical',
-                options: [
-                  { label: 'Young', value: 30 },
-                  { label: 'Old', value: 60 },
-                ],
-              },
-            },
-          },
+    harness.collaboratorWrites(personSection, {
+      ...personDefinition,
+      variables: {
+        // `EXACTLY` survives the retype — it is legal for both types — so the
+        // operator check has nothing to say, and the operand left behind is a
+        // number where the runtime now compares a list.
+        age: {
+          name: 'Age',
+          type: 'categorical',
+          options: [
+            { label: 'Young', value: 30 },
+            { label: 'Old', value: 60 },
+          ],
         },
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
+      },
     });
 
     expect(
@@ -830,36 +732,29 @@ describe('a codebook that changes underneath the editor', () => {
   });
 
   it('reports a rule whose attribute a collaborator has just deleted', async () => {
-    const session = createSession({
-      rules: [
-        {
-          id: 'rule-a',
-          type: 'node',
-          options: {
-            type: 'person',
-            attribute: 'mood',
-            operator: 'INCLUDES',
-            value: ['happy'],
+    const harness = renderEditor(
+      ruleSections({
+        rules: [
+          {
+            id: 'rule-a',
+            type: 'node',
+            options: {
+              type: 'person',
+              attribute: 'mood',
+              operator: 'INCLUDES',
+              value: ['happy'],
+            },
           },
-        },
-      ],
-    });
-    renderEditor(session);
+        ],
+      }),
+    );
 
     expect(screen.getByText('Mood')).toBeInTheDocument();
     expect(screen.getByText('Happy')).toBeInTheDocument();
 
-    act(() => {
-      session.receiveAuthoritativeUpdate({
-        protocolSections: {
-          ...baseSections,
-          [personSection]: {
-            ...personDefinition,
-            variables: { age: { name: 'Age', type: 'number' } },
-          },
-        },
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
+    harness.collaboratorWrites(personSection, {
+      ...personDefinition,
+      variables: { age: { name: 'Age', type: 'number' } },
     });
 
     expect(

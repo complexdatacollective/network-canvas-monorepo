@@ -2,10 +2,6 @@ import type { Codebook } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-} from '../../session.ts';
 import type { RuleDraft } from '../rule.ts';
 
 /**
@@ -155,25 +151,20 @@ export const nodeRule = (id: string): RuleDraft => ({
   options: { type: 'person', operator: 'EXISTS' },
 });
 
-export function createSession(rules?: readonly RuleDraft[]) {
-  return new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('Information', () => 'stage-1'),
-    fields: {
-      label: 'Welcome',
-      title: 'Welcome',
-      items: [],
+/**
+ * The protocol a rule test's editor is opened over, with the stage carrying
+ * whatever rules the test starts from.
+ */
+export function ruleSections(
+  rules?: readonly RuleDraft[],
+): Record<string, SectionDoc> {
+  return {
+    ...baseSections,
+    [stageSection]: {
+      ...baseSections[stageSection],
       ...(rules === undefined
         ? {}
         : { skipLogic: { filter: { rules: [...rules] } } }),
     },
-    protocolSections: baseSections,
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Rule editing',
-      schemaVersion: 8,
-      codebook: {},
-      stages: [stageDocument],
-    }),
-  });
+  };
 }

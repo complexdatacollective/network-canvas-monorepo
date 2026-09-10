@@ -1,6 +1,6 @@
 // Studio serving the `@codaco/protocol-builder` host contract over its own
-// storage: the sectioned draft, the lease table `protocols.acquireSection`
-// already uses, and the protocol event log.
+// storage: the sectioned draft, the lease table Studio's protocol sync keeps,
+// and the protocol event log.
 //
 // The contract's lock is take-and-hold, with no renewal and no epoch, because
 // one editor owns a section while it holds it. Studio's lease is a wall-clock

@@ -17,7 +17,7 @@ export type SchemaIssueCode = z.core.$ZodIssue['code'];
  * One thing the protocol schema refuses about a stage, as the outline needs to
  * read it.
  *
- * `code` is the validator's, and stays a plain string because the session
+ * `code` is the validator's, and stays a plain string because the editor
  * carries issues from more than one validator. `absent` is the question the
  * code cannot answer on its own: the finalised issue keeps no record of what it
  * was given, so whether the fault is "this is wrong" or "there is nothing here"
@@ -172,7 +172,7 @@ const SCHEMA_PROBLEM_COPY: Readonly<
 /**
  * The same record, read by a code the type system cannot vouch for.
  *
- * The session carries issues from more than one validator, so a code arrives
+ * Issues arrive from more than one validator, so a code arrives
  * here as a plain string. A map keyed by string answers that question without
  * asserting the string INTO the union, which would let an unknown code read an
  * entry that is not there and hand back `undefined` as if it were copy.
@@ -211,160 +211,4 @@ export function schemaProblemSentence(
     ? stageMessages.nothingThere
     : (copy?.sentence ?? stageMessages.unrecognised);
   return createMessageError(sentence, { fieldLabel });
-}
-
-/**
- * What each kind of refusal is called when what was refused is a resource as
- * the protocol stores it, rather than a control on this form.
- *
- * A second set of words rather than the one above because those all answer for
- * the stage — "holds settings this stage does not have" — and a stage is not
- * what refuses a stored resource: a resource is written the same way whichever
- * stage points at it, and the researcher fixes it where resources are managed
- * rather than in the control that names it.
- *
- * Whole sentences again, and for a second reason as well as the first: the
- * frame names the resource, and a language that puts that name last cannot
- * reach it from a clause that was appended after a colon.
- *
- * `custom` is authored here as well, unlike above. The rules that raise it on
- * a stored resource are the asset schema's own — how a file name may be
- * written, that a key is not empty — and their messages are written about a
- * schema, not about this protocol.
- */
-const resourceMessages = defineMessages({
-  invalidType: {
-    id: 'protocolBuilder.schemaProblem.resourceInvalidType',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: part of its entry holds the wrong kind of value.',
-    description:
-      'Shown when a stage (one step of an interview) uses a file, roster, map layer or key whose stored entry the protocol refuses. resourceId is the stored identifier of that resource, which the researcher did not choose. This wording is used when one part of the entry holds the wrong kind of value.',
-  },
-  invalidValue: {
-    id: 'protocolBuilder.schemaProblem.resourceInvalidValue',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: part of its entry holds a value no resource can take.',
-    description:
-      'Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is not one of the values a resource is allowed to hold. resourceId is the resource’s stored identifier.',
-  },
-  invalidFormat: {
-    id: 'protocolBuilder.schemaProblem.resourceInvalidFormat',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: part of its entry is not written the way a resource needs it.',
-    description:
-      'Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is the right kind of text in the wrong shape. resourceId is the resource’s stored identifier.',
-  },
-  invalidUnion: {
-    id: 'protocolBuilder.schemaProblem.resourceInvalidUnion',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: its entry is not any of the kinds of resource there are.',
-    description:
-      'Shown when a stage uses a resource whose stored entry matches none of the resource kinds the protocol knows. resourceId is the resource’s stored identifier.',
-  },
-  tooBig: {
-    id: 'protocolBuilder.schemaProblem.resourceTooBig',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: part of its entry holds more than a resource allows.',
-    description:
-      'Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is over a limit. resourceId is the resource’s stored identifier.',
-  },
-  tooSmall: {
-    id: 'protocolBuilder.schemaProblem.resourceTooSmall',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: part of its entry holds less than a resource needs.',
-    description:
-      'Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is under a limit. resourceId is the resource’s stored identifier.',
-  },
-  notMultipleOf: {
-    id: 'protocolBuilder.schemaProblem.resourceNotMultipleOf',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: part of its entry holds a number that is not one of the steps a resource allows.',
-    description:
-      'Shown when a stage uses a resource whose stored entry holds a number that has to be a multiple of some step and is not. resourceId is the resource’s stored identifier.',
-  },
-  unrecognizedKeys: {
-    id: 'protocolBuilder.schemaProblem.resourceUnrecognizedKeys',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: its entry holds settings a resource does not have.',
-    description:
-      'Shown when a stage uses a resource whose stored entry carries settings no resource has. resourceId is the resource’s stored identifier.',
-  },
-  invalidKey: {
-    id: 'protocolBuilder.schemaProblem.resourceInvalidKey',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: its entry holds a part named something a resource cannot use.',
-    description:
-      'Shown when a stage uses a resource whose stored entry names one of its parts in a way the protocol refuses. resourceId is the resource’s stored identifier.',
-  },
-  invalidElement: {
-    id: 'protocolBuilder.schemaProblem.resourceInvalidElement',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: its entry holds a part a resource cannot use.',
-    description:
-      'Shown when a stage uses a resource whose stored entry holds a part the protocol refuses. resourceId is the resource’s stored identifier.',
-  },
-  custom: {
-    id: 'protocolBuilder.schemaProblem.resourceCustom',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: its entry breaks one of the rules a resource is stored under.',
-    description:
-      'Shown when a stage uses a resource whose stored entry breaks one of the protocol’s own rules about how resources are written. resourceId is the resource’s stored identifier.',
-  },
-  nothingThere: {
-    id: 'protocolBuilder.schemaProblem.resourceNothingThere',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: part of its entry is missing.',
-    description:
-      'Shown when a stage uses a resource whose stored entry has nothing where the protocol needs something. resourceId is the resource’s stored identifier.',
-  },
-  unrecognised: {
-    id: 'protocolBuilder.schemaProblem.resourceUnrecognised',
-    defaultMessage:
-      'This stage points at a resource ("{resourceId}") the protocol cannot read: its entry holds something the protocol cannot use.',
-    description:
-      'Last resort, shown when a resource entry is refused by a validator this editor has no words for. resourceId is the resource’s stored identifier.',
-  },
-});
-
-const RESOURCE_PROBLEM_COPY: Readonly<
-  Record<SchemaIssueCode, MessageDescriptor>
-> = Object.freeze({
-  invalid_type: resourceMessages.invalidType,
-  invalid_value: resourceMessages.invalidValue,
-  invalid_format: resourceMessages.invalidFormat,
-  invalid_union: resourceMessages.invalidUnion,
-  too_big: resourceMessages.tooBig,
-  too_small: resourceMessages.tooSmall,
-  not_multiple_of: resourceMessages.notMultipleOf,
-  unrecognized_keys: resourceMessages.unrecognizedKeys,
-  invalid_key: resourceMessages.invalidKey,
-  invalid_element: resourceMessages.invalidElement,
-  custom: resourceMessages.custom,
-});
-
-const RESOURCE_COPY_BY_CODE: ReadonlyMap<string, MessageDescriptor> = new Map(
-  Object.entries(RESOURCE_PROBLEM_COPY),
-);
-
-/**
- * What is wrong with a stored resource, as a message the caller interpolates
- * the resource's own id into.
- *
- * Takes the problem WITHOUT the validator's message, which is how this one
- * cannot do what `schemaProblemSentence` does for `custom`: there is no
- * message here to hand back, so nothing a validator wrote can reach a
- * researcher through it.
- *
- * A descriptor rather than a formatted sentence, because this is asked at the
- * point a stage draft is judged — no reader, no language — and the caller is
- * what knows whether the answer is being encoded for a form or formatted for
- * something on screen.
- */
-export function resourceProblemMessage(
-  problem: Omit<SchemaProblem, 'message'>,
-): MessageDescriptor {
-  if (problem.absent) return resourceMessages.nothingThere;
-  return (
-    RESOURCE_COPY_BY_CODE.get(problem.code) ?? resourceMessages.unrecognised
-  );
 }

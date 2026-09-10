@@ -4,7 +4,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 
-import type { ResourceGatewayFailure } from '../gateway.ts';
+import type { ResourceGatewayFailure } from '../types.ts';
 
 export type ResourceFailureNoticeProps = Readonly<{
   failure: ResourceGatewayFailure;
@@ -20,18 +20,18 @@ export type ResourceFailureNoticeProps = Readonly<{
 }>;
 
 /**
- * What went wrong, in the gateway's own researcher-facing words.
+ * What went wrong, in the host's own researcher-facing words.
  *
  * The message is rendered verbatim and nothing else about the failure is:
- * the port promises a message that names the researcher's situation rather
+ * the contract promises a message that names the researcher's situation rather
  * than a bucket, a database, or an HTTP status, and an editor that
  * embellished it would be inventing detail it does not have.
  *
- * "Verbatim" now means "in the reader's own language" for the refusals this
- * package produces: they cross the port's string-only `message` as an encoded
- * descriptor, and are decoded here. A host's plain-string failure — which the
- * contract still allows, and which a host has already localized itself — does
- * not decode, so it falls through unchanged.
+ * "Verbatim" means "in the reader's own language" for the refusals this
+ * package produces: they cross the contract's string-only `message` as an
+ * encoded descriptor, and are decoded here. A host's plain-string failure —
+ * which the contract still allows, and which a host has already localized
+ * itself — does not decode, so it falls through unchanged.
  */
 export default function ResourceFailureNotice({
   failure,

@@ -2,10 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { DATE_RESOLUTION } from '@codaco/protocol-validation';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { enIntl, esIntl, readMessage } from '../../testing/i18n.ts';
-import { compoundFailureMessage } from '../compoundFailureCopy.ts';
+import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
   DuplicateVariableNameError,
   MissingVariableError,
@@ -20,20 +19,14 @@ import {
  * The producers under `codebook/` that answer with words but render none,
  * read in Spanish.
  *
- * Two different contracts, and the difference is what these tests hold apart.
- *
- * `validateBooleanAnswers` and `validateParameters` are asked while a form is
- * being judged, where there is no reader and no language: they ENCODE a
- * descriptor with `createMessageError`, and `FieldErrors` decodes it where it
- * renders it — which is what lets a refusal already on screen follow a change
- * of language while it waits for the next submission. Reading them back with
+ * All of them are asked where there is no reader and no language, so they
+ * ENCODE a descriptor with `createMessageError` and the render site decodes it
+ * — which is what lets a refusal already on screen follow a change of language
+ * while it waits for the next save. Reading them back with
  * `readMessage(…, esIntl)` is therefore the same operation the render site
  * performs, and a producer that reached for a formatter of its own would
  * freeze its sentence in whatever language the researcher happened to be
  * reading when they pressed save.
- *
- * `compoundFailureMessage` is the other kind: it is asked AT the render site,
- * takes the reader's own formatter, and returns a finished sentence.
  */
 const readAll = (
   issues: Readonly<Record<string | number, readonly string[]>>,
@@ -196,50 +189,19 @@ describe('codebook copy produced outside React, read in Spanish', () => {
 
   it('says why a codebook save was refused in the reader’s language', () => {
     expect(
-      compoundFailureMessage(
-        {
-          kind: 'result',
-          result: {
-            status: 'failed',
-            reason: 'lease-lost',
-            // The host's own account of it, which no researcher is shown: the
-            // whole point of this record is that they read the package's
-            // sentence instead.
-            message: 'lease revoked',
-          },
-        },
-        esIntl,
-      ),
+      readMessage(codebookRefusalMessage({ kind: 'sectionGone' }), esIntl),
     ).toBe(
-      'Ya no eres quien edita esta etapa, así que no se ha guardado nada. Toma el control de la edición e inténtalo de nuevo.',
+      'Esta parte del libro de códigos ya no existe, así que no se ha guardado nada. Cierra este editor y empieza de nuevo.',
     );
   });
 
   it('names the collaborator holding a section it needs', () => {
-    const blockedSection = sectionId({
-      kind: 'codebookNode',
-      typeId: 'person',
-    });
     expect(
-      compoundFailureMessage(
-        {
-          kind: 'result',
-          result: {
-            status: 'blocked',
-            blockedSections: [
-              {
-                sectionId: blockedSection,
-                holder: {
-                  sessionId: 'session-1',
-                  userId: 'user-1',
-                  displayName: 'Ana',
-                  sectionId: blockedSection,
-                  mode: 'editing',
-                },
-              },
-            ],
-          },
-        },
+      readMessage(
+        codebookRefusalMessage({
+          kind: 'held',
+          holders: ['Ana'],
+        }),
         esIntl,
       ),
     ).toBe(
@@ -251,14 +213,10 @@ describe('codebook copy produced outside React, read in Spanish', () => {
 /**
  * The two refusals a researcher can reach that cross as an `Error.message`.
  *
- * `editing.ts` encodes both with `createMessageError`, and says of them that
- * they are "decoded where they are rendered". `compoundFailureMessage` is the
- * one place that renders them, so a reading that answered every thrown failure
- * with the generic sentence would leave that promise unkept and this package
- * with no reader of an encoded `Error.message` at all.
- *
- * Read in both languages: the English proves the decoder is reached, and the
- * Spanish proves what it reaches is a catalog rather than a literal.
+ * `editing.ts` encodes both with `createMessageError`, and `writes.ts` passes
+ * them through untouched so the surface showing them decodes them. Read in
+ * both languages: the English proves the decoder is reached, and the Spanish
+ * proves what it reaches is a catalog rather than a literal.
  */
 describe('a thrown refusal a researcher can act on', () => {
   it.each([
@@ -277,32 +235,19 @@ describe('a thrown refusal a researcher can act on', () => {
   ])(
     'reads $caseName in the reader’s language',
     ({ error, english, spanish }) => {
-      expect(
-        compoundFailureMessage(
-          { kind: 'error', message: error.message },
-          enIntl,
-        ),
-      ).toBe(english);
-      expect(
-        compoundFailureMessage(
-          { kind: 'error', message: error.message },
-          esIntl,
-        ),
-      ).toBe(spanish);
+      expect(readMessage(error.message, enIntl)).toBe(english);
+      expect(readMessage(error.message, esIntl)).toBe(spanish);
     },
   );
 
   /**
-   * Everything else that throws keeps the generic copy, which is the
-   * improvement this reading was built for: a transport error's own words and
-   * a schema's sentence about a path are written for whoever reads a log.
+   * Everything else that throws keeps the generic copy: a transport error's own
+   * words and a schema's sentence about a path are written for whoever reads a
+   * log, so `writes.ts` replaces them rather than passing them on.
    */
   it('still says nothing about a failure whose words were not written for a researcher', () => {
     expect(
-      compoundFailureMessage(
-        { kind: 'error', message: 'Expected object, received undefined' },
-        enIntl,
-      ),
+      readMessage(codebookRefusalMessage({ kind: 'unexplained' }), enIntl),
     ).toBe(
       'This change could not be saved, and nothing was altered. Wait a moment and try again.',
     );

@@ -59,11 +59,11 @@ type BoundArray = Readonly<{
    * Whether the repair is one a command that does NOT address a list needs
    * too.
    *
-   * A foreign value at the key itself is replaced by a whole-list `set` on its
-   * own, so putting the repair in front of one would make two history entries
-   * out of a single edit. An ancestor that is not a container is different in
-   * kind: nothing at all can be written through it, so every command the
-   * operation makes needs the way put right first.
+   * A foreign value at the key itself is replaced by the whole-list `set` the
+   * operation already makes, so a repair in front of one writes nothing that
+   * `set` does not. An ancestor that is not a container is different in kind:
+   * nothing at all can be written through it, so every command the operation
+   * makes needs the way put right first.
    */
   repairsAnAncestor: boolean;
 }>;
@@ -133,9 +133,8 @@ const emptyListUnder = (path: readonly string[]): unknown =>
  *
  * Without the replacement the command is addressed at the foreign value and
  * `apply`'s `asList` throws `ApplyError("Field … is not a list")` out of a
- * click handler, where nothing catches it: the shell re-throws everything that
- * is not a `SessionReadOnlyError`, so an Add takes the editor down instead of
- * adding a row.
+ * click handler, where nothing catches it — so an Add takes the editor down
+ * instead of adding a row.
  *
  * Two things the rule deliberately does NOT do:
  *
@@ -147,8 +146,7 @@ const emptyListUnder = (path: readonly string[]): unknown =>
  * - repair on its own. It rides with an operation, so a list that is only
  *   LOOKED at is never rewritten, and a refused operation (see
  *   `resolveRowIndex` — a remove or a move naming a row the value has not got
- *   issues no command) discards nothing. In the same batch it is also one
- *   history entry, so undoing the add puts the value back as it was.
+ *   issues no command) discards nothing.
  *
  * Nullish is not foreign: an absent key is the empty list to `asList` exactly
  * as it is to every reader here, so it needs no repair — UNLESS what makes it
@@ -227,8 +225,7 @@ const NO_ROWS: readonly never[] = [];
 
 /**
  * Whether a command needs the field to already hold a list. A whole-list `set`
- * replaces the foreign value itself, and a repair in front of one would make
- * two history entries out of a single edit.
+ * replaces the foreign value itself, so a repair in front of one is redundant.
  */
 const addressesAList = (command: Command) =>
   command.op === 'insertItem' ||
@@ -268,8 +265,8 @@ export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
    */
   onOperation: ((operation: ArrayFieldOperation<T>) => boolean) | undefined;
   /**
-   * Commits a row addressed by its own id — the save that outlived the editing
-   * session it was made in.
+   * Commits a row addressed by its own id — the save that outlived the list's
+   * editing state.
    *
    * `base` is the row the edit was computed from, so what the edit decided can
    * be told apart from what it merely carried over and re-seated on the row as
@@ -297,13 +294,14 @@ export type ArrayFieldCommands<T extends ArrayRow> = Readonly<{
 /**
  * Turns a list editor's committed operations into stage-document commands.
  *
- * Every mutation is resolved against the array the SESSION holds at the moment
+ * Every mutation is resolved against the array the DOCUMENT holds at the moment
  * it is committed, keyed by each row's own identity — never by replaying the
- * index the editor rendered with. That index is a revision behind as soon as
- * anything else touches the list, and replaying it is exactly what silently
- * edits, deletes or reorders the wrong row.
+ * index the editor rendered with. A dialog's save can land after the list has
+ * moved, and a document row the editor does not draw is numbered differently
+ * from the rows on screen; replaying the rendered index is what silently edits,
+ * deletes or reorders the wrong row.
  *
- * The list's form value is then brought level with what the session ended up
+ * The list's form value is then brought level with what the document ended up
  * holding — and with what it went on holding when a write was refused, because
  * `ArrayField` renders the edit out of its own state before anything is
  * written and re-reads the value only when the value changes. Either way the
@@ -379,13 +377,13 @@ export function useArrayFieldCommands<T extends ArrayRow>(
       nothingToWrite: ArrayWriteRefusal,
     ): ArrayWriteOutcome => {
       if (commands.length === 0) return refused(nothingToWrite);
-      const { draft, refused: sessionRefused } = applyOwnCommands(
+      const { draft, refused: declined } = applyOwnCommands(
         bound.repair.length > 0 &&
           (bound.repairsAnAncestor || commands.some(addressesAList))
           ? [...bound.repair, ...commands]
           : commands,
       );
-      if (sessionRefused) return refused('session-refused');
+      if (declined) return refused('read-only');
       onChangeRef.current?.(renderableRows<T>(getValue(draft, [...path])));
       return WRITTEN;
     },
@@ -488,11 +486,10 @@ export function useArrayFieldCommands<T extends ArrayRow>(
           getIdRef.current,
         ),
         // A drag is the one operation that can outlive its own row: it lasts
-        // as long as the pointer is down, and the row it took hold of can be
-        // removed from elsewhere in that time. That is a different thing to
-        // tell the researcher than a row the list could not tell apart from
-        // its neighbours — the row is gone, and looking at the list again will
-        // not bring it back.
+        // as long as the pointer is down, and the list can move in that time.
+        // That is a different thing to tell the researcher than a row the list
+        // could not tell apart from its neighbours — the row is gone, and
+        // looking at the list again will not bring it back.
         operation.type === 'move' &&
           movedRowIndex(
             renderedRef.current,

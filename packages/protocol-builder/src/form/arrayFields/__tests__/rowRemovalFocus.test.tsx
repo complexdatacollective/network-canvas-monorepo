@@ -1,23 +1,17 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, screen, waitFor } from '@testing-library/react';
 import { MotionConfig, type Transition } from 'motion/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
 
-import { useStageEditorController } from '../../../controller.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
-import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-} from '../../../session.ts';
+import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
 import { DialogFormField } from '../../DialogForm.tsx';
 import ProtocolArrayField from '../../ProtocolArrayField.tsx';
-import StageEditorShell from '../../StageEditorShell.tsx';
 import DialogArrayField from '../DialogArrayField.tsx';
 import MultiSelect, {
   makeMultiSelectValidation,
@@ -90,10 +84,10 @@ const answerConfirm = () => {
  *
  * `ArrayField` keeps a removed row mounted while its exit animation plays. The
  * suite finishes Motion's animations instantly, but "instantly" is the next
- * animation frame, not the act that removed the row — and the session
- * snapshot is no oracle for that window, since it has already changed by the
- * time the row starts leaving. Everything the tests below ask is asked of the
- * document, where the removed row and the row that took its place are both
+ * animation frame, not the act that removed the row — and the document the
+ * editor holds is no oracle for that window, since it has already changed by
+ * the time the row starts leaving. Everything the tests below ask is asked of
+ * the page, where the removed row and the row that took its place are both
  * present until that frame, so the wait is for `opener` — the removed row's
  * own Remove control — to be gone.
  */
@@ -102,48 +96,36 @@ const confirmRemoval = async (opener: HTMLElement) => {
   await waitFor(() => expect(opener).not.toBeInTheDocument());
 };
 
-function createSession(fields: SectionDoc) {
-  return new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('Information', () => 'stage-1'),
-    fields,
-    protocolSections: {},
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Row removal focus test',
-      schemaVersion: 8,
-      codebook: {},
-      stages: [stageDocument],
-    }),
-  });
-}
-
+/**
+ * The list under test, in a real stage editor.
+ *
+ * The lists here are edited over stage keys no Information page declares, so
+ * nothing is ever saved: what the removal reached is read out of the document
+ * the editor is holding, which is the value a save would assemble.
+ */
 function renderInShell(
-  session: ProtocolBuilderSessionStore,
+  fields: SectionDoc,
   children: ReactNode,
   /**
-   * Motion timing for the whole editor. Left undefined by every case except
-   * the one about a row's exit window, where the suite's instant animation
-   * would close the window before it can be observed.
+   * Motion timing for the list. Left undefined by every case except the one
+   * about a row's exit window, where the suite's instant animation would close
+   * the window before it can be observed.
    */
   transition?: Transition,
 ) {
-  function Host() {
-    const controller = useStageEditorController(session, 'stage-form');
-    return (
-      <StageEditorShell controller={controller}>
-        <BuilderSection title="List">{children}</BuilderSection>
-      </StageEditorShell>
-    );
-  }
-
-  return render(
-    <MotionConfig transition={transition}>
-      <DialogProvider>
-        <Host />
-      </DialogProvider>
-    </MotionConfig>,
-  );
+  const { probe, draft } = createStageDraftProbe();
+  const harness = renderStageEditor({
+    stage: { type: 'Information', fields },
+    sections: (
+      <MotionConfig transition={transition}>
+        <BuilderSection title="List">
+          {probe}
+          {children}
+        </BuilderSection>
+      </MotionConfig>
+    ),
+  });
+  return { user: harness.user, draft };
 }
 
 const SORT_PROPERTIES: PropertyField[] = [
@@ -166,16 +148,14 @@ function PromptFields() {
 
 describe('a row removal confirm', () => {
   it('names the option that takes the removed one’s place', async () => {
-    const user = userEvent.setup();
-    const session = createSession({
-      options: [
-        { label: 'Alpha', value: 'alpha' },
-        { label: 'Bravo', value: 'bravo' },
-        { label: 'Charlie', value: 'charlie' },
-      ],
-    });
-    renderInShell(
-      session,
+    const { user, draft } = renderInShell(
+      {
+        options: [
+          { label: 'Alpha', value: 'alpha' },
+          { label: 'Bravo', value: 'bravo' },
+          { label: 'Charlie', value: 'charlie' },
+        ],
+      },
       <ProtocolArrayField
         name="options"
         label="Answer options"
@@ -190,11 +170,7 @@ describe('a row removal confirm', () => {
     });
     await user.click(opener);
     await confirmRemoval(opener);
-    await waitFor(() =>
-      expect(session.getSnapshot().editedSection.fields.options).toHaveLength(
-        2,
-      ),
-    );
+    await waitFor(() => expect(draft().options as unknown[]).toHaveLength(2));
 
     // The row that has moved up into the removed one's place, which is where
     // the researcher was already looking. Options are named by position, so
@@ -205,15 +181,13 @@ describe('a row removal confirm', () => {
   });
 
   it('names the control that asked when the option is still there', async () => {
-    const user = userEvent.setup();
-    const session = createSession({
-      options: [
-        { label: 'Alpha', value: 'alpha' },
-        { label: 'Bravo', value: 'bravo' },
-      ],
-    });
-    renderInShell(
-      session,
+    const { user } = renderInShell(
+      {
+        options: [
+          { label: 'Alpha', value: 'alpha' },
+          { label: 'Bravo', value: 'bravo' },
+        ],
+      },
       <ProtocolArrayField
         name="options"
         label="Answer options"
@@ -234,12 +208,10 @@ describe('a row removal confirm', () => {
   });
 
   it('names the add button when the last option is removed', async () => {
-    const user = userEvent.setup();
-    const session = createSession({
-      options: [{ label: 'Alpha', value: 'alpha' }],
-    });
-    renderInShell(
-      session,
+    const { user, draft } = renderInShell(
+      {
+        options: [{ label: 'Alpha', value: 'alpha' }],
+      },
       <ProtocolArrayField
         name="options"
         label="Answer options"
@@ -254,11 +226,7 @@ describe('a row removal confirm', () => {
     });
     await user.click(opener);
     await confirmRemoval(opener);
-    await waitFor(() =>
-      expect(session.getSnapshot().editedSection.fields.options).toHaveLength(
-        0,
-      ),
-    );
+    await waitFor(() => expect(draft().options as unknown[]).toHaveLength(0));
 
     // An emptied list has no row to hand focus to. Answering nothing here is
     // what leaves focus on `<body>`, which Base UI resolves to the first
@@ -269,15 +237,13 @@ describe('a row removal confirm', () => {
   });
 
   it('names the surviving row of a list whose rows are all called the same thing', async () => {
-    const user = userEvent.setup();
-    const session = createSession({
-      sortOrder: [
-        { property: 'name', direction: 'asc' },
-        { property: 'age', direction: 'desc' },
-      ],
-    });
-    renderInShell(
-      session,
+    const { user, draft } = renderInShell(
+      {
+        sortOrder: [
+          { property: 'name', direction: 'asc' },
+          { property: 'age', direction: 'desc' },
+        ],
+      },
       <ProtocolArrayField
         name="sortOrder"
         label="Sort order"
@@ -294,11 +260,7 @@ describe('a row removal confirm', () => {
     });
     await user.click(firstRemove!);
     await confirmRemoval(firstRemove!);
-    await waitFor(() =>
-      expect(session.getSnapshot().editedSection.fields.sortOrder).toHaveLength(
-        1,
-      ),
-    );
+    await waitFor(() => expect(draft().sortOrder as unknown[]).toHaveLength(1));
 
     // Every row of a MultiSelect names its Remove control identically, so the
     // row that took this one's place can only be found by its position in the
@@ -309,16 +271,14 @@ describe('a row removal confirm', () => {
   });
 
   it('names the prompt that takes the removed one’s place', async () => {
-    const user = userEvent.setup();
-    const session = createSession({
-      prompts: [
-        { id: 'a', text: 'Alpha' },
-        { id: 'b', text: 'Bravo' },
-        { id: 'c', text: 'Charlie' },
-      ],
-    });
-    renderInShell(
-      session,
+    const { user, draft } = renderInShell(
+      {
+        prompts: [
+          { id: 'a', text: 'Alpha' },
+          { id: 'b', text: 'Bravo' },
+          { id: 'c', text: 'Charlie' },
+        ],
+      },
       <ProtocolArrayField
         name="prompts"
         label="Prompts"
@@ -336,11 +296,7 @@ describe('a row removal confirm', () => {
     });
     await user.click(removes[1]!);
     await confirmRemoval(removes[1]!);
-    await waitFor(() =>
-      expect(session.getSnapshot().editedSection.fields.prompts).toHaveLength(
-        2,
-      ),
-    );
+    await waitFor(() => expect(draft().prompts as unknown[]).toHaveLength(2));
 
     const remaining = screen.getAllByRole('button', { name: 'Remove prompt' });
     expect(focusTarget()).toBe(remaining[1]);
@@ -359,16 +315,14 @@ describe('a row removal confirm', () => {
    */
   it('passes over the option that is still animating away', async () => {
     await withAnimationsEnabled(async () => {
-      const user = userEvent.setup();
-      const session = createSession({
-        options: [
-          { label: 'Alpha', value: 'alpha' },
-          { label: 'Bravo', value: 'bravo' },
-          { label: 'Charlie', value: 'charlie' },
-        ],
-      });
-      renderInShell(
-        session,
+      const { user, draft } = renderInShell(
+        {
+          options: [
+            { label: 'Alpha', value: 'alpha' },
+            { label: 'Bravo', value: 'bravo' },
+            { label: 'Charlie', value: 'charlie' },
+          ],
+        },
         <ProtocolArrayField
           name="options"
           label="Answer options"
@@ -387,11 +341,7 @@ describe('a row removal confirm', () => {
       const survivor = screen.getByRole('button', { name: 'Remove option 3' });
       await user.click(opener);
       answerConfirm();
-      await waitFor(() =>
-        expect(session.getSnapshot().editedSection.fields.options).toHaveLength(
-          2,
-        ),
-      );
+      await waitFor(() => expect(draft().options as unknown[]).toHaveLength(2));
 
       // The removed row is still in the document — the assertions below say
       // nothing without it.

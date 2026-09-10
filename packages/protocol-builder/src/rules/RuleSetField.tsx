@@ -7,7 +7,7 @@ import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import type { RuleDraft } from './rule.ts';
 import type { RuleTargetType } from './ruleCodebook.ts';
 import type { RuleTypeOption } from './RuleEditorDialog.tsx';
@@ -116,10 +116,10 @@ export type RuleSetFieldProps = CreateFormFieldProps<
  * nothing and the rule builder anonymous and unmarked to assistive technology,
  * while the visible "Rules *" and its error message sit right beside it.
  *
- * The codebook comes from the editor's protocol context. Nothing about this
- * control knows where the protocol is stored, and a codebook change made
- * elsewhere reaches every rule preview and every control inside the rule
- * editor as soon as the session reports it.
+ * The codebook comes from the package's protocol read model, which this
+ * control subscribes to where it renders. Nothing about it knows where the
+ * protocol is stored, and a codebook edit committed elsewhere reaches every
+ * rule preview and every control inside the rule editor as it lands.
  */
 function RuleSetControl({
   id,
@@ -137,7 +137,7 @@ function RuleSetControl({
   'aria-required': ariaRequired,
   'aria-invalid': ariaInvalid,
 }: RuleSetFieldProps) {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const intl = useAppIntl();
   const codebook = protocolContext.codebook;
 

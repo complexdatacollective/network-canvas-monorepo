@@ -142,7 +142,7 @@ type MaximalStage = Readonly<{
  *
  * Everything they name is real in the fixture protocol: the attributes are the
  * codebook's and the assets are the manifest's. A stage that referred to
- * something absent would be refused by the session's validation rather than by
+ * something absent would be refused by the stage's own schema rather than by
  * the editor, which proves nothing about either.
  */
 const MAXIMAL: readonly MaximalStage[] = [
@@ -200,7 +200,7 @@ const FIXTURE_STAGES: readonly Readonly<{
  * The other half of the round trip, which the stages above cannot ask.
  *
  * A stage carrying every key its schema has cannot gain one: an invented key
- * the schema does not know is refused by the session's own validation, and
+ * the schema does not know is refused by the stage's own schema, and
  * every key it does know is already there. So the question "did the editor add
  * something nobody authored" has to be put to a stage that is MISSING optional
  * keys — which is what the fixture protocol's stages are.

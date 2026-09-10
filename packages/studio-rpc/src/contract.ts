@@ -22,8 +22,6 @@ export {
 import {
   AcceptTeamInvitationInputSchema,
   AcceptTeamInvitationResultSchema,
-  AcquireSectionInputSchema,
-  AcquireSectionResultSchema,
   AddInformationStageInputSchema,
   AuditEventDetailSchema,
   AuditFilterOptionsSchema,
@@ -32,7 +30,6 @@ import {
   AuditListOutputSchema,
   CancelTeamInvitationInputSchema,
   CancelTeamInvitationResultSchema,
-  CommitSectionInputSchema,
   CompleteSetupInputSchema,
   CompleteSetupResultSchema,
   CreateTeamInvitationInputSchema,
@@ -47,9 +44,6 @@ import {
   ProtocolDraftInputSchema,
   ProtocolDraftSchema,
   ProtocolSummarySchema,
-  ReleaseSectionInputSchema,
-  RenewSectionInputSchema,
-  RenewSectionResultSchema,
   StatusSchema,
   SetupStatusSchema,
   StudyCountsInputSchema,
@@ -80,11 +74,6 @@ export {
   AuditActorKindSchema,
   AuditCategorySchema,
   AuditOutcomeSchema,
-  // Named here as well as used in the contract below, so the wire shape of a
-  // command can be tested directly. What a server built before nested command
-  // addressing accepts is a fact about this schema, and it is checked against
-  // a frozen copy of the version that predates it.
-  CommitSectionInputSchema,
   SOCIAL_PROVIDERS,
   STUDY_PARTICIPATION_MODES,
   STUDY_STATES,
@@ -209,16 +198,6 @@ export const contract = {
       .output(CreateProtocolResultSchema),
     draft: oc.input(ProtocolDraftInputSchema).output(ProtocolDraftSchema),
     list: oc.input(TeamScopedSchema).output(z.array(ProtocolSummarySchema)),
-    acquireSection: oc
-      .input(AcquireSectionInputSchema)
-      .output(AcquireSectionResultSchema),
-    commitSection: oc
-      .input(CommitSectionInputSchema)
-      .output(ManifestRevisionSchema),
-    renewSection: oc
-      .input(RenewSectionInputSchema)
-      .output(RenewSectionResultSchema),
-    releaseSection: oc.input(ReleaseSectionInputSchema).output(z.void()),
     addInformationStage: oc
       .input(AddInformationStageInputSchema)
       .output(ManifestRevisionSchema),

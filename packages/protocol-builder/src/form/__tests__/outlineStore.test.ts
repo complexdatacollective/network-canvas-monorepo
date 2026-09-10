@@ -59,7 +59,7 @@ describe('SectionOutlineStore', () => {
 
 /**
  * A reader for a form where nothing is wrong and nothing is empty, so the
- * status these tests read can only have come from a session issue.
+ * status these tests read can only have come from a schema issue.
  */
 const CONTENTED_FORM: SectionFieldReader = {
   getFieldState: () => ({
@@ -137,7 +137,7 @@ const sectionNamed = (
 };
 
 /**
- * A session issue is addressed by a path in the stage document, and the only
+ * A schema issue is addressed by a path in the stage document, and the only
  * thing that can turn one into a place on the page is the fields the sections
  * registered. Getting that wrong in either direction is a real cost: an
  * unclaimed issue leaves every section reading "Finished" over a stage that
@@ -154,7 +154,7 @@ const sectionNamed = (
  */
 const read = (issue: string) => readMessage(issue);
 
-describe('session issues in the outline', () => {
+describe('schema issues in the outline', () => {
   it('claims an issue at a field, inside it, and at the container above it', () => {
     const store = storeWith({ search: ['searchOptions.fuzziness'] });
 
@@ -425,8 +425,8 @@ describe('session issues in the outline', () => {
     store.setValidationIssues(issues);
     const snapshot = store.getSnapshot();
 
-    // A fresh array of the same issues arrives on every validation pass, and
-    // one that re-notified would re-render the outline forever.
+    // Every refused save hands the store a fresh array of the same issues,
+    // and one that re-notified would re-render the outline forever.
     store.setValidationIssues(issues.map((issue) => ({ ...issue })));
 
     expect(store.getSnapshot()).toBe(snapshot);

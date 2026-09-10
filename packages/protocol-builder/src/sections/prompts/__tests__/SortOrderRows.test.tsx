@@ -9,10 +9,12 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { SortableProperty } from '../../../fields/sortOrderOptions.ts';
 import { DialogFormField } from '../../../form/DialogForm.tsx';
-import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
-import type { FinishRequest } from '../../../session.ts';
-import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { useProtocolContext } from '../../../state/protocolContext.ts';
+import {
+  renderStageEditor,
+  type SavedStage,
+} from '../../../testing/renderStageEditor.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
 import type { RowEditorProps, RowPreviewProps } from '../../rowRenderers.tsx';
 import SortOrderRows from '../SortOrderRows.tsx';
@@ -112,7 +114,7 @@ const SortOrderPromptEditor = makeEditor(PERSON_PROPERTIES);
  * dialog is open.
  */
 function CodebookPromptEditor({ item }: RowEditorProps) {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const properties = useMemo<readonly SortableProperty[]>(
     () =>
       Object.entries(variablesForSubject(protocolContext, SUBJECT)).map(
@@ -137,6 +139,40 @@ function CodebookPromptEditor({ item }: RowEditorProps) {
     </>
   );
 }
+
+const CODEBOOK_PROBE = 'Attributes the codebook holds';
+
+/**
+ * The person type's attributes as a SUBSCRIBED component sees them.
+ *
+ * A collaborator's write reaches the protocol at once and the components
+ * reading it a microtask later, over the channel. So a test that deletes an
+ * attribute and then opens the row dialog has to wait for the deletion to
+ * arrive first, or the dialog mounts on the codebook as it was and the deletion
+ * lands while it is already open — which is a different case, and the one the
+ * tests beside it are about.
+ */
+function CodebookProbe() {
+  const protocolContext = useProtocolContext();
+  return (
+    <ul aria-label={CODEBOOK_PROBE}>
+      {Object.entries(variablesForSubject(protocolContext, SUBJECT)).map(
+        ([id, variable]) => (
+          <li key={id}>{variable.name ?? id}</li>
+        ),
+      )}
+    </ul>
+  );
+}
+
+const attributeGone = (attribute: string) =>
+  waitFor(() =>
+    expect(
+      within(screen.getByRole('list', { name: CODEBOOK_PROBE })).queryByText(
+        attribute,
+      ),
+    ).toBeNull(),
+  );
 
 function SortOrderPromptPreview({ item }: RowPreviewProps) {
   return <span>{typeof item.text === 'string' ? item.text : 'Empty'}</span>;
@@ -219,12 +255,12 @@ const seededWithAnOrphanedRule = () =>
  * below is that a key is GONE, and a refusal read as an empty prompt would
  * satisfy that claim without the stage ever having been saved.
  */
-function savedPrompt(request: FinishRequest | null): Record<string, unknown> {
-  if (request === null) {
+function savedPrompt(written: SavedStage | null): Record<string, unknown> {
+  if (written === null) {
     throw new Error('The stage did not save, so nothing was committed.');
   }
-  const [first] = Array.isArray(request.stageDocument.prompts)
-    ? request.stageDocument.prompts
+  const [first] = Array.isArray(written.stageDocument.prompts)
+    ? written.stageDocument.prompts
     : [];
   if (typeof first !== 'object' || first === null) {
     throw new Error('The saved stage has no prompt to read.');
@@ -630,8 +666,21 @@ describe('a subject with nothing to sort by', () => {
  * whatever was true when the field mounted, in both directions.
  */
 describe('a collaborator deletes the attribute while the dialog is open', () => {
-  const seeded = () =>
-    seededWith([{ property: 'age', direction: 'desc' }], CodebookPromptEditor);
+  const seeded = () => {
+    const opened = seededWith(
+      [{ property: 'age', direction: 'desc' }],
+      CodebookPromptEditor,
+    );
+    return {
+      ...opened,
+      sections: (
+        <>
+          {opened.sections}
+          <CodebookProbe />
+        </>
+      ),
+    };
+  };
 
   const expectDeletedOption = async () => {
     await waitFor(() =>
@@ -672,6 +721,7 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
     const harness = renderStageEditor(seeded());
 
     harness.receiveCodebookUpdate({ node: { person: personWithout(['age']) } });
+    await attributeGone('age');
     await openPrompt(harness);
     // Armed: the rule is dangling and the editor says so.
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
@@ -748,6 +798,7 @@ describe('a collaborator deletes the attribute while the dialog is open', () => 
     const harness = renderStageEditor(seeded());
 
     harness.receiveCodebookUpdate({ node: { person: personWithout(['age']) } });
+    await attributeGone('age');
     await openPrompt(harness);
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));

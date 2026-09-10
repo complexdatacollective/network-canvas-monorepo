@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -76,8 +76,7 @@ function variableIdByName(
   harness: StageEditorHarness,
   name: string,
 ): string | undefined {
-  const definition =
-    harness.host.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+  const definition = harness.protocolSections()[FAMILY_MEMBER_SECTION];
   const variables = isRecord(definition) ? definition.variables : undefined;
   if (!isRecord(variables)) return undefined;
   return Object.entries(variables).find(
@@ -94,6 +93,24 @@ const optionsOf = (name: string): string[] =>
 const outlineStateOf = (harness: StageEditorHarness, title: string) =>
   harness.outline().find((section) => section.title === title)?.state;
 
+/**
+ * Nothing the researcher did reached the protocol.
+ *
+ * The draft lives in the form and nowhere else until a save hands the whole
+ * section back, so the protocol is where an edit that escaped would show up.
+ */
+const expectStageUntouched = (harness: StageEditorHarness): void => {
+  expect(
+    harness.protocolSections()[
+      sectionId({ kind: 'stage', stageId: harness.seeded.id })
+    ],
+  ).toEqual({
+    id: harness.seeded.id,
+    type: harness.seeded.type,
+    ...harness.seeded.fields,
+  });
+};
+
 describe('the family pedigree stage editor', () => {
   /**
    * A stage the host is CREATING, opened the way a host opens one: from this
@@ -102,7 +119,7 @@ describe('the family pedigree stage editor', () => {
    * differently for a new stage follows from that one signal, which the
    * shared sections read from the editor's context rather than from a prop.
    */
-  it('opens a stage being created on the creation the session carries', async () => {
+  it('opens a stage being created on the creation the edit carries', async () => {
     renderStageEditor({
       create: { type: 'FamilyPedigree', position: NEW_STAGE_POSITION },
       editor: familyPedigreeEditor,
@@ -290,7 +307,7 @@ describe('the family pedigree stage editor', () => {
     expect(outlineStateOf(harness, 'Family member data')).toBe('Finished');
   });
 
-  it('leaves nothing pending when the researcher cancels', async () => {
+  it('leaves the stage alone when the researcher cancels', async () => {
     const harness = openFixture();
 
     await harness.user.selectOptions(
@@ -299,17 +316,20 @@ describe('the family pedigree stage editor', () => {
     );
     await harness.cancel();
 
-    expect(harness.pendingCommands()).toEqual([]);
+    expectStageUntouched(harness);
   });
 
-  it('refuses to save once editing has been taken away', async () => {
-    const harness = openFixture();
-    harness.setReadOnly();
+  it('refuses to save a stage somebody else is editing', async () => {
+    const harness = renderStageEditor({
+      stageId: 'family-pedigree-1',
+      editor: familyPedigreeEditor,
+      readOnly: true,
+    });
 
     expect(await harness.submit()).toBeNull();
     expect(
       screen.getByText(
-        'This stage is read-only, so your changes were not saved. Take over editing and try again.',
+        'This stage is read-only, so your change was not made. Somebody else is editing it.',
       ),
     ).toBeInTheDocument();
   });
@@ -384,16 +404,13 @@ describe('a codebook that changes while the pedigree is open', () => {
    */
   it('reports a bound attribute that has been deleted, without echoing it', async () => {
     const harness = openFixture();
-    const definition =
-      harness.session.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+    const definition = harness.protocolSections()[FAMILY_MEMBER_SECTION];
     if (definition === undefined) {
       throw new Error('The fixture protocol has no "family_member" node type.');
     }
     const variables = { ...(definition.variables as Record<string, unknown>) };
     delete variables.fm_name;
 
-    const dispatched = vi.spyOn(harness.session, 'dispatch');
-    const submitted = vi.spyOn(harness.host, 'submit');
     harness.receiveCodebookUpdate({
       node: { family_member: { ...definition, variables } },
     });
@@ -409,22 +426,17 @@ describe('a codebook that changes while the pedigree is open', () => {
         name: 'fm_name — this attribute is not available here',
       }),
     ).toBeInTheDocument();
-    await waitFor(() =>
-      expect(harness.session.getSnapshot().validation.status).not.toBe('valid'),
-    );
-    expect(dispatched).not.toHaveBeenCalled();
-    expect(submitted).not.toHaveBeenCalled();
-    expect(harness.pendingCommands()).toEqual([]);
+    // Their deletion is theirs: the slot still points where the researcher
+    // pointed it, and nothing about this stage has been rewritten.
+    expectStageUntouched(harness);
   });
 
   it('offers an attribute a collaborator added, without echoing it', async () => {
     const harness = openFixture();
-    const definition =
-      harness.session.getSnapshot().protocolSections[FAMILY_MEMBER_SECTION];
+    const definition = harness.protocolSections()[FAMILY_MEMBER_SECTION];
     if (definition === undefined) {
       throw new Error('The fixture protocol has no "family_member" node type.');
     }
-    const dispatched = vi.spyOn(harness.session, 'dispatch');
 
     harness.receiveCodebookUpdate({
       node: {
@@ -441,23 +453,22 @@ describe('a codebook that changes while the pedigree is open', () => {
     await waitFor(() =>
       expect(optionsOf('Display label')).toContain('fm_nickname'),
     );
-    expect(dispatched).not.toHaveBeenCalled();
-    expect(harness.pendingCommands()).toEqual([]);
+    expectStageUntouched(harness);
   });
 });
 
 describe('creating an attribute a slot needs without leaving the stage', () => {
   /**
    * The attribute is a codebook edit and the binding is a stage edit, and the
-   * two land separately: the compound edit puts the whole attribute in the
-   * codebook at once, and the save that follows carries the stage that now
-   * points at it.
+   * two land separately: the codebook dialog commits the attribute under its
+   * own lock, and the save that follows carries the stage that now points at
+   * it.
    */
-  it('writes the attribute as one compound edit, and saves the stage bound to it', async () => {
+  it('writes the attribute to the codebook, and saves the stage bound to it', async () => {
     const harness = openFixture();
 
     await harness.user.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: 'Create a new display label attribute',
       }),
     );
@@ -466,7 +477,6 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
       creator.getByRole('textbox', { name: 'Attribute name' }),
       'nickname',
     );
-    const submitted = vi.spyOn(harness.host, 'submit');
     await harness.user.click(
       creator.getByRole('button', { name: 'Create attribute' }),
     );
@@ -476,11 +486,8 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
         screen.getByRole('combobox', { name: 'Display label' }),
       ).not.toHaveValue('fm_name'),
     );
-    expect(submitted).toHaveBeenCalledTimes(1);
-    expect(
-      submitted.mock.calls[0]?.[0].edits.map((edit) => edit.sectionId),
-    ).toEqual([FAMILY_MEMBER_SECTION]);
-
+    // In the codebook already, before the stage was saved: cancelling the
+    // stage edit would not take the attribute back.
     const created = variableIdByName(harness, 'nickname');
     expect(created).toEqual(expect.any(String));
     const request = await harness.submit();

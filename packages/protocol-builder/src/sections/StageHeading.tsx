@@ -1,4 +1,5 @@
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import StageNameSection, {
   type StageNameSectionProps,
 } from './StageNameSection.tsx';
@@ -33,7 +34,8 @@ export default function StageHeading({
   documentationUrl,
   autoName,
 }: StageHeadingProps) {
-  const { identity, protocolContext } = useStageEditorForm();
+  const { identity } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const index = protocolContext.orderedStages.findIndex(
     (stage) => stage.id === identity.id,
   );

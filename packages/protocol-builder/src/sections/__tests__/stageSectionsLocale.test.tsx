@@ -59,7 +59,7 @@ import {
  */
 const researcherWords = (harness: StageEditorHarness) =>
   protocolStrings(
-    harness.session.getSnapshot().protocolSections,
+    harness.protocolSections(),
     harness.seeded.fields,
     harness.hostCodebook(),
   );
@@ -885,11 +885,6 @@ describe('a prompt’s sort rules, read in Spanish', () => {
  * swapped, which is the point of writing them per subject: an edge is a
  * relationship rather than a member, and the section is the one place a
  * researcher is told what the stage is about.
- *
- * `subjectSection.nodeCreateDescription` and `edgeCreateDescription` are NOT
- * asserted here, because nothing renders them: `CodebookEntityEditor` takes
- * that string as the human-readable label of the compound edit it submits, so
- * it reaches a host's record of protocol edits and never the screen.
  */
 describe('the subject section’s edge wording, read in Spanish', () => {
   it('names an edge subject and the type it offers to create', async () => {
@@ -912,7 +907,9 @@ describe('the subject section’s edge wording, read in Spanish', () => {
     expectNoLocaleLeaks('the edge subject section', researcherWords(harness));
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Crear un tipo de vínculo nuevo' }),
+      await screen.findByRole('button', {
+        name: 'Crear un tipo de vínculo nuevo',
+      }),
     );
 
     // The same words title the dialog the button opens, so a section that

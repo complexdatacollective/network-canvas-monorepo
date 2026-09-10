@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
 import StageNameSection from '../../sections/StageNameSection.tsx';
 import {
   renderStageEditor,
@@ -142,7 +144,14 @@ describe('the stage a harness call opens', () => {
     });
 
     expect(harness.seeded.type).toBe('Information');
-    expect(harness.session.getSnapshot().editedSection.creation).toBeDefined();
+    // Said by the protocol rather than by the seed: a stage being created is
+    // one the protocol does not hold, and a `create` that seeded the section
+    // anyway would be opening an ordinary edit under another name.
+    expect(
+      harness.protocolSections()[
+        sectionId({ kind: 'stage', stageId: harness.seeded.id })
+      ],
+    ).toBeUndefined();
   });
 
   /** And a call giving none of them still says what it needs. */

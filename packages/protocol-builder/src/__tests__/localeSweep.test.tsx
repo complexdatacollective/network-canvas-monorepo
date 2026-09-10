@@ -66,7 +66,7 @@ const FIXTURE_ROW_EDITOR_WORDS = [
  */
 const researcherWords = (harness: StageEditorHarness) =>
   protocolStrings(
-    harness.session.getSnapshot().protocolSections,
+    harness.protocolSections(),
     harness.seeded.fields,
     harness.hostCodebook(),
   );

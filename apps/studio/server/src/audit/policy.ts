@@ -25,25 +25,12 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
   'team.cancelInvitation': { kind: 'required' },
   'studies.create': { kind: 'required' },
   'protocols.create': { kind: 'required' },
-  'protocols.commitSection': { kind: 'required' },
   'protocols.addInformationStage': { kind: 'required' },
   'protocols.moveStage': { kind: 'required' },
-  'protocols.acquireSection': {
-    kind: 'none',
-    reason: 'Lease acquisition is explicitly excluded from the team audit log.',
-  },
-  'protocols.renewSection': {
-    kind: 'none',
-    reason: 'Lease renewal is explicitly excluded from the team audit log.',
-  },
-  'protocols.releaseSection': {
-    kind: 'none',
-    reason: 'Lease release is explicitly excluded from the team audit log.',
-  },
-  // The protocol-builder host (#1483). Its writes are the same domain
-  // mutation `protocols.commitSection` is, so they carry the same required
-  // event; its locks are the same lease coordination `acquireSection` is, so
-  // they carry none. Staging and discarding an import commit nothing at all —
+  // The protocol-builder host (#1483), which is now the only way a protocol's
+  // sections are locked and written. Its writes are domain mutations, so they
+  // carry a required event; a lock is lease coordination, which the audit
+  // design excludes. Staging and discarding an import commit nothing at all —
   // a staged file lives in the editing process until the submit that names it
   // promotes it, and that submit is the audited write.
   'protocolBuilder.submit': { kind: 'required' },

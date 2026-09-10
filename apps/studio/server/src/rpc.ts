@@ -56,13 +56,11 @@ import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
 import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import {
   addAuditedInformationStage,
-  commitAuditedProtocolSection,
   createAuditedProtocol,
   moveAuditedProtocolStage,
   ProtocolCommandAuthorizationError,
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
-import { createProtocolSyncServer } from './protocol/sync.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
 import { readStudyCounts } from './study/counts.ts';
 import { StudyStore } from './study/store.ts';
@@ -687,91 +685,6 @@ export function createRpcRouter(
             },
             sections: draft.sections,
           };
-        }),
-      acquireSection: os.protocols.acquireSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          const syncServer = createProtocolSyncServer(context.tenantDb);
-          const owner = `${context.principal.userId}:${input.clientId}`;
-          const lease = await syncServer.acquire(
-            input.draftId,
-            input.sectionId,
-            owner,
-          );
-          if (!lease) return { mode: 'readOnly' as const };
-
-          let resume: Awaited<ReturnType<typeof syncServer.resume>>;
-          try {
-            resume = await syncServer.resume(input.draftId, owner);
-          } catch (error) {
-            // Acquisition and resume are separate transactions. If the
-            // sequence lookup fails after the lease commits, expire the exact
-            // epoch so a client that never received it cannot block editors.
-            await syncServer
-              .release(input.draftId, input.sectionId, owner, lease.epoch)
-              .catch(() => undefined);
-            throw error;
-          }
-          const lastApplied = resume.lastApplied[input.sectionId];
-          const nextClientSequence =
-            lastApplied?.epoch === lease.epoch
-              ? lastApplied.clientSeq + 1n
-              : 1n;
-          return {
-            mode: 'editable' as const,
-            leaseEpoch: String(lease.epoch),
-            nextClientSequence: String(nextClientSequence),
-          };
-        }),
-      commitSection: os.protocols.commitSection
-        .use(requireProtocol)
-        .handler(({ context, input }) =>
-          handleAuditedProtocolCommand(() =>
-            commitAuditedProtocolSection(
-              {
-                tenantDb: context.tenantDb,
-                principal: context.principal,
-                requestId: context.requestId,
-              },
-              input,
-            ),
-          ),
-        ),
-      renewSection: os.protocols.renewSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          return {
-            renewed: Boolean(
-              await createProtocolSyncServer(context.tenantDb).renew(
-                input.draftId,
-                input.sectionId,
-                `${context.principal.userId}:${input.clientId}`,
-                BigInt(input.leaseEpoch),
-              ),
-            ),
-          };
-        }),
-      releaseSection: os.protocols.releaseSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          await createProtocolSyncServer(context.tenantDb).release(
-            input.draftId,
-            input.sectionId,
-            `${context.principal.userId}:${input.clientId}`,
-            BigInt(input.leaseEpoch),
-          );
         }),
       addInformationStage: os.protocols.addInformationStage
         .use(requireProtocol)

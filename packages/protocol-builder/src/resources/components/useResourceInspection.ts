@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { useResourceGateway } from '../context.tsx';
-import type { ResourceInspection } from '../gateway.ts';
+import { useResourceClient } from '../client.tsx';
+import type { ResourceInspection } from '../types.ts';
 import {
   useResourceAttempt,
   type ResourceAttempt,
@@ -29,7 +29,7 @@ export type ResourceInspectionState = Readonly<{
 export function useResourceInspection(
   resourceId: string | undefined,
 ): ResourceInspectionState {
-  const gateway = useResourceGateway();
+  const resources = useResourceClient();
   const { busy, failure, retry, run, clear } = useResourceAttempt();
   const [inspection, setInspection] = useState<ResourceInspection | undefined>(
     undefined,
@@ -41,8 +41,8 @@ export function useResourceInspection(
       clear();
       return;
     }
-    run(() => gateway.inspect(resourceId), setInspection);
-  }, [clear, gateway, resourceId, run]);
+    run(() => resources.inspect(resourceId), setInspection);
+  }, [clear, resourceId, resources, run]);
 
   useEffect(() => {
     // Dropped before the new one is asked for, so a picker never shows the

@@ -27,6 +27,7 @@ import ProtocolArrayField from '../form/ProtocolArrayField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { variablesForSubject } from '../protocol-context.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import { CreatableVariablePickerControl } from './CreatableVariablePicker.tsx';
 import PromptsSection from './PromptsSection.tsx';
 import type { RowEditorProps, RowPreviewProps } from './rowRenderers.tsx';
@@ -197,7 +198,8 @@ function AdditionalAttributes({
   item,
 }: Readonly<{ item: RowEditorProps['item'] }>) {
   const intl = useAppIntl();
-  const { protocolContext, identity } = useStageEditorForm();
+  const { identity } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const subject = useStageSubject('node');
   const committed = useMemo(
     () => asAttributes(item.additionalAttributes),

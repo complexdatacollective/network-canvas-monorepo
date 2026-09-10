@@ -8,7 +8,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from 'react';
 
 import {
@@ -16,7 +15,6 @@ import {
   defineMessages,
   formatMessageError,
 } from '@codaco/app-i18n/messages';
-import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
@@ -41,16 +39,12 @@ import {
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
-import type { CompoundEditRequest } from '../../session.ts';
-import { compoundFailureMessage } from '../compoundFailureCopy.ts';
+import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
-  AuxiliaryCodebookDraftSession,
-  buildCreateVariableRequest,
-  buildUpdateVariableRequest,
+  documentWithCreatedVariable,
+  documentWithUpdatedVariable,
   DuplicateVariableNameError,
   InvalidCodebookDraftError,
-  type AuxiliaryCodebookDraftFailure,
-  type AuxiliaryCodebookSubmitResult,
   type CodebookDraftIssue,
   type CodebookSubject,
   type CodebookVariableDraft,
@@ -79,6 +73,7 @@ import {
   type ParameterShape,
 } from '../variableParameters.ts';
 import { VARIABLE_TYPE_OPTIONS } from '../variableTypeLabels.ts';
+import type { CodebookWriteOutcome } from '../writes.ts';
 import VariableBooleanAnswerFields from './VariableBooleanAnswerFields.tsx';
 import VariableParameterFields from './VariableParameterFields.tsx';
 
@@ -107,32 +102,6 @@ const messages = defineMessages({
     defaultMessage: 'Attribute not saved',
     description:
       'Heading of the alert shown when saving an attribute (a codebook variable) was refused. The reason follows underneath.',
-  },
-  staleTitle: {
-    id: 'protocolBuilder.codebookVariable.staleTitle',
-    defaultMessage: 'The codebook changed',
-    description:
-      'Heading of the warning shown when the protocol’s codebook changed elsewhere while this attribute editor was open.',
-  },
-  staleDescription: {
-    id: 'protocolBuilder.codebookVariable.staleDescription',
-    defaultMessage:
-      'A newer version arrived while you were editing. Your draft has been preserved; review it before trying again.',
-    description:
-      'What to do after the protocol’s codebook changed elsewhere while this attribute editor was open.',
-  },
-  savedTitle: {
-    id: 'protocolBuilder.codebookVariable.savedTitle',
-    defaultMessage: 'Attribute saved',
-    description:
-      'Heading of the confirmation shown once the attribute has been accepted and the editor is waiting for the saved version to arrive back.',
-  },
-  savedDescription: {
-    id: 'protocolBuilder.codebookVariable.savedDescription',
-    defaultMessage:
-      'Waiting for the host to publish the authoritative codebook update.',
-    description:
-      'Shown after an attribute is accepted, while the application it is being edited in finishes writing the change back into the protocol.',
   },
   submittingStatus: {
     id: 'protocolBuilder.codebookVariable.submittingStatus',
@@ -293,7 +262,7 @@ const VARIABLE_EDITOR_PROPERTIES = ['name', 'type'] as const;
 /**
  * What the answers surface REPLACES, which is `options` whatever it renders.
  *
- * Listed the way `parameters` is, and for the same reason: the request builder
+ * Listed the way `parameters` is, and for the same reason: the document builder
  * lays the draft OVER the prior variable, so a key the draft no longer carries
  * would survive being taken away. Unconditional, though, where the parameters
  * block is not — "this attribute offers no list at all" is one of the answers
@@ -323,7 +292,7 @@ const TYPE_OWNED_PROPERTIES = [
  *
  * Only `parameters`, and only because a block can be emptied: every setting
  * cleared is an attribute that carries no `parameters` key at all, and the
- * request builder lays the draft OVER the prior variable — so a key the draft
+ * document builder lays the draft OVER the prior variable — so a key the draft
  * no longer has would otherwise survive being deleted.
  *
  * `component` is not listed because it does not need to be: the surface
@@ -345,29 +314,24 @@ type EditableOption = Readonly<{
 type VariableEditorCommonProps = Readonly<{
   /**
    * A stable identity for this opening of the editor. The host must change it
-   * for every open, even when a closing animation has not finished. The keyed
-   * inner editor then receives a fresh auxiliary draft session synchronously.
+   * for every open, even when a closing animation has not finished; the keyed
+   * inner editor then starts a fresh draft synchronously.
    */
   openId: string | number;
   subject: CodebookSubject;
   authoritativeDocument: Readonly<SectionDoc>;
   variableId: string;
   initialDraft: CodebookVariableDraft;
-  description: string;
-  createRequestId(): string;
   /**
-   * Sends the compound edit, and may refuse it instead.
+   * Writes the section, and answers with what became of it.
    *
-   * A host that knows the draft contradicts rules already committed answers
-   * `{ status: 'contradiction', message }` rather than a `failed` result: the
-   * sentence is already written for the researcher, and the editor shows it
-   * verbatim. See `AuxiliaryCodebookContradiction`.
+   * A refusal already written for the researcher — one naming the rule and the
+   * values that cannot both hold — is shown as it arrived rather than replaced
+   * by this package's copy for a save that did not happen.
    */
-  onSubmitRequest(
-    request: CompoundEditRequest,
-  ): Promise<AuxiliaryCodebookSubmitResult> | AuxiliaryCodebookSubmitResult;
+  onSubmitDocument(document: SectionDoc): Promise<CodebookWriteOutcome>;
   /**
-   * Receives the stable record id after the compound edit is accepted, and the
+   * Receives the stable record id after the save is accepted, and the
    * researcher-facing name it was written under.
    *
    * The NAME as well as the id, because a caller that can no longer use what
@@ -408,7 +372,7 @@ type VariableEditorInstanceProps = VariableEditorProps extends infer TProps
  *
  * Validation rules deliberately belong to the separate variable-validation
  * surface; any unrendered draft properties are preserved and validated by the
- * request builder rather than silently normalised here.
+ * document builder rather than silently normalised here.
  *
  * Which of the optional blocks appears is decided by the attribute rather than
  * by the host: a list of values for an attribute whose answer is chosen from
@@ -428,9 +392,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     authoritativeDocument,
     variableId,
     initialDraft,
-    description,
-    createRequestId,
-    onSubmitRequest,
+    onSubmitDocument,
     onComplete,
     onDraftChange,
     allowedVariableTypes,
@@ -457,37 +419,22 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         )
       : null,
   );
-  const [draftSession] = useState(
-    () =>
-      new AuxiliaryCodebookDraftSession(
-        seededDraft,
-        props.mode === 'update'
-          ? variableFromDocument(authoritativeDocument, variableId)
-          : null,
-      ),
-  );
-  const subscribe = useCallback(
-    (listener: () => void) => draftSession.subscribe(listener),
-    [draftSession],
-  );
-  const getSnapshot = useCallback(
-    () => draftSession.getSnapshot(),
-    [draftSession],
-  );
-  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const [draft, setDraft] = useState<CodebookVariableDraft>(seededDraft);
   const [issues, setIssues] = useState<readonly CodebookDraftIssue[]>([]);
-  const activeRequestId = useRef<string | null>(null);
+  // A record rather than the sentence, so a second refusal saying the same
+  // thing is still a new failure for the effect below to move focus to.
+  const [failure, setFailure] =
+    useState<Readonly<{ message: string; held: boolean }>>();
+  const [busy, setBusy] = useState(false);
   const failureRef = useRef<HTMLDivElement>(null);
-  const firstRender = useRef(true);
-  const previousAuthoritativeDocument = useRef(authoritativeDocument);
   const optionKeySequence = useRef(0);
   const [optionKeys, setOptionKeys] = useState(() =>
     readEditableOptions(seededDraft.options).map(
       () => `initial-option-${optionKeySequence.current++}`,
     ),
   );
-  const options = readEditableOptions(snapshot.draft.options);
-  const selectedType = variableTypeFrom(snapshot.draft.type);
+  const options = readEditableOptions(draft.options);
+  const selectedType = variableTypeFrom(draft.type);
   const currentAuthoritativeVariable =
     props.mode === 'update'
       ? variableFromDocument(authoritativeDocument, variableId)
@@ -501,15 +448,9 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     props.mode === 'update' && selectedType !== authoritativeType;
   // Which settings the chosen control takes — the whole of what decides
   // whether this editor renders and writes a `parameters` block at all.
-  const parameterShape = parameterShapeFor(
-    snapshot.draft.type,
-    snapshot.draft.component,
-  );
+  const parameterShape = parameterShapeFor(draft.type, draft.component);
   // Which list of answers this attribute holds, on the same terms.
-  const optionsShape = optionsShapeFor(
-    snapshot.draft.type,
-    snapshot.draft.component,
-  );
+  const optionsShape = optionsShapeFor(draft.type, draft.component);
   const replaceProperties = variableEditorReplaceProperties(
     typeChanged,
     parameterShape,
@@ -517,13 +458,13 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const submittedDraft =
     props.mode === 'create'
       ? draftWithOwnedBlocks(
-          snapshot.draft,
+          draft,
           seededDraft.options,
           parameterShape,
           optionsShape,
         )
       : draftOwnedByVariableEditor(
-          snapshot.draft,
+          draft,
           seededDraft.options,
           lockedOptions !== null,
           typeChanged,
@@ -535,13 +476,12 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   // attribute holds, or whether its answers are a list to be shown and left
   // alone — and if so, why, because the researcher is told which it is. See
   // `heldBooleanAnswersReason`.
-  const heldAnswersReason = heldBooleanAnswersReason(snapshot.draft.options);
+  const heldAnswersReason = heldBooleanAnswersReason(draft.options);
   const booleanAnswersEditable = heldAnswersReason === null;
-  const booleanAnswers = readBooleanAnswers(snapshot.draft.options);
-  const heldBooleanAnswers = readHeldBooleanAnswers(snapshot.draft.options);
-  const optionsLocked =
-    lockedOptions !== null || snapshot.draft.readOnly === true;
-  const interactionDisabled = readOnly || snapshot.status !== 'editing';
+  const booleanAnswers = readBooleanAnswers(draft.options);
+  const heldBooleanAnswers = readHeldBooleanAnswers(draft.options);
+  const optionsLocked = lockedOptions !== null || draft.readOnly === true;
+  const interactionDisabled = readOnly || busy;
   const unchangedUpdate =
     props.mode === 'update' &&
     currentAuthoritativeVariable !== null &&
@@ -564,33 +504,6 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       : headingTagBelow(enclosingHeadingLevel);
 
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
-    if (
-      props.mode !== 'update' ||
-      previousAuthoritativeDocument.current === authoritativeDocument
-    ) {
-      return;
-    }
-    const previousDocument = previousAuthoritativeDocument.current;
-    previousAuthoritativeDocument.current = authoritativeDocument;
-    if (
-      canonicalize(previousDocument) !== canonicalize(authoritativeDocument)
-    ) {
-      activeRequestId.current = null;
-    }
-    const authoritativeVariable = variableFromDocument(
-      authoritativeDocument,
-      variableId,
-    );
-    if (authoritativeVariable !== null) {
-      draftSession.receiveAuthoritative(authoritativeVariable);
-    }
-  }, [authoritativeDocument, draftSession, props.mode, variableId]);
-
-  useEffect(() => {
     setOptionKeys((current) => {
       if (current.length === options.length) return current;
       if (current.length > options.length)
@@ -606,8 +519,8 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   }, [options.length]);
 
   useEffect(() => {
-    if (snapshot.lastFailure !== null) failureRef.current?.focus();
-  }, [snapshot.lastFailure]);
+    if (failure !== undefined) failureRef.current?.focus();
+  }, [failure]);
 
   const typeOptions = useMemo(() => {
     const allowed = new Set(
@@ -621,19 +534,18 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
 
   const replaceDraft = useCallback(
     (nextDraft: CodebookVariableDraft) => {
-      activeRequestId.current = null;
       setIssues([]);
-      draftSession.replaceDraft(nextDraft);
+      setDraft(nextDraft);
       onDraftChange?.(nextDraft);
     },
-    [draftSession, onDraftChange],
+    [onDraftChange],
   );
 
   const replaceProperty = useCallback(
     (property: string, value: unknown) => {
-      replaceDraft({ ...snapshot.draft, [property]: value });
+      replaceDraft({ ...draft, [property]: value });
     },
-    [replaceDraft, snapshot.draft],
+    [replaceDraft, draft],
   );
 
   const replaceOptions = useCallback(
@@ -659,14 +571,14 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     if (parameterShape === null) return;
     replaceProperty(
       'parameters',
-      parametersWith(parameterShape, snapshot.draft.parameters, key, value),
+      parametersWith(parameterShape, draft.parameters, key, value),
     );
   };
 
   const handleTypeChange = (value: string | number | undefined) => {
     const nextType = variableTypeFrom(value);
     if (nextType === null) return;
-    replaceDraft(draftForType(snapshot.draft, nextType));
+    replaceDraft(draftForType(draft, nextType));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -679,7 +591,6 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     event.stopPropagation();
     if (interactionDisabled) return;
     if (authoritativeTypeConflict) {
-      activeRequestId.current = null;
       // Encoded rather than formatted, like every other issue held here: it
       // stands until the next submission, and `FieldErrors` decodes it where
       // it renders it, so it follows a change of language while it waits.
@@ -696,9 +607,8 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     // schema takes any string as a label, so nothing downstream refuses an
     // answer with no words on it.
     if (optionsShape === 'boolean') {
-      const answerIssues = validateBooleanAnswers(snapshot.draft.options);
+      const answerIssues = validateBooleanAnswers(draft.options);
       if (hasBooleanAnswerIssues(answerIssues)) {
-        activeRequestId.current = null;
         setIssues(
           Object.entries(answerIssues).flatMap(([index, refusals]) =>
             refusals.map((message) => ({
@@ -710,17 +620,16 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         return;
       }
     }
-    // Judged here rather than left to the request builder: the builder parses
+    // Judged here rather than left to the document builder: the builder parses
     // the whole variable and answers against a path, which cannot say WHICH of
     // two dates is the one the schema will not take. The same schemas run
     // either way — this one just knows which control asked.
     if (parameterShape !== null) {
       const parameterIssues = validateParameters(
         parameterShape,
-        snapshot.draft.parameters,
+        draft.parameters,
       );
       if (hasParameterIssues(parameterIssues)) {
-        activeRequestId.current = null;
         setIssues(
           Object.entries(parameterIssues).flatMap(([key, refusals]) =>
             refusals.map((message) => ({
@@ -734,64 +643,65 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       }
     }
     setIssues([]);
-    const requestId = activeRequestId.current ?? createRequestId();
-    activeRequestId.current = requestId;
+    setFailure(undefined);
 
-    const buildRequest =
-      props.mode === 'create'
-        ? () =>
-            buildCreateVariableRequest({
-              requestId,
-              description,
+    let document: SectionDoc;
+    try {
+      document =
+        props.mode === 'create'
+          ? documentWithCreatedVariable({
               subject,
               authoritativeDocument,
               variableId,
               protocolContext: props.protocolContext,
               draft: submittedDraft,
             })
-        : () =>
-            buildUpdateVariableRequest({
-              requestId,
-              description,
+          : documentWithUpdatedVariable({
               subject,
               authoritativeDocument,
               variableId,
               draft: submittedDraft,
               replaceProperties,
             });
-
-    try {
-      const result = await draftSession.submit(buildRequest, onSubmitRequest);
-      if (
-        result.status === 'failed' &&
-        (result.reason === 'stale-epoch' ||
-          result.reason === 'lease-lost' ||
-          result.reason === 'stale-base')
-      ) {
-        activeRequestId.current = null;
-      }
-      if (
-        result.status === 'applied' &&
-        !draftSession.getSnapshot().authoritativeChanged
-      ) {
-        onComplete(
-          variableId,
-          typeof submittedDraft.name === 'string' ? submittedDraft.name : '',
-        );
-      }
     } catch (error: unknown) {
-      if (error instanceof InvalidCodebookDraftError) {
-        setIssues(error.issues);
-      }
       // The one refused save the researcher fixes in a FIELD rather than by
       // reading the alert. The message is already encoded — `editing.ts` writes
       // it that way so it can be decoded where it is rendered — and the alert
       // shows it too, at the top of a form they may have scrolled past.
       if (error instanceof DuplicateVariableNameError) {
         setIssues([{ path: ['name'], message: error.message }]);
+        setFailure({ message: error.message, held: false });
+        return;
       }
-      // AuxiliaryCodebookDraftSession stores and announces the failure. The
-      // form deliberately remains mounted with the exact rejected draft.
+      if (error instanceof InvalidCodebookDraftError) setIssues(error.issues);
+      setFailure({
+        message: codebookRefusalMessage({ kind: 'unexplained' }),
+        held: false,
+      });
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const outcome = await onSubmitDocument(document);
+      if (outcome.status === 'applied') {
+        onComplete(
+          variableId,
+          typeof submittedDraft.name === 'string' ? submittedDraft.name : '',
+        );
+        return;
+      }
+      setFailure({
+        message: outcome.message,
+        held: outcome.refusal.kind === 'held',
+      });
+    } catch {
+      setFailure({
+        message: codebookRefusalMessage({ kind: 'unexplained' }),
+        held: false,
+      });
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -802,11 +712,21 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   const parameterIssues = parameterMessages(issues);
   const blockParameterErrors = parameterIssues[PARAMETERS_BLOCK] ?? [];
   const contradictions = contradictionMessages(issues);
-  const failurePresentation = failureFrom(
-    snapshot.lastFailure,
-    contradictions,
-    intl,
-  );
+  // A contradiction REPLACES the refusal rather than joining it: it names the
+  // rule and the values that cannot both hold, where the package's own copy for
+  // a save that did not happen would tell the researcher to wait and try a save
+  // that cannot succeed until they change something.
+  const refusals =
+    contradictions.length > 0
+      ? contradictions
+      : failure === undefined
+        ? []
+        : [failure.message];
+  // A section somebody else is holding is not a fault: the change is fine and
+  // lands once they are finished, so it is said in the register of a notice
+  // rather than of an error. A contradiction is the researcher's to resolve.
+  const refusalIsANotice =
+    contradictions.length === 0 && failure?.held === true;
 
   return (
     <Surface
@@ -816,7 +736,6 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       shadow="sm"
       className="w-full overflow-visible!"
       aria-labelledby={`${statusId}-title`}
-      data-status={snapshot.status}
     >
       <Heading
         id={`${statusId}-title`}
@@ -832,44 +751,34 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       </Paragraph>
 
       <EnclosingHeadingLevel level={headingTag}>
-        {failurePresentation !== null && (
+        {refusals.length > 0 && (
           <Alert
             ref={failureRef}
             tabIndex={-1}
-            variant={failurePresentation.variant}
+            variant={refusalIsANotice ? 'warning' : 'destructive'}
             className="focusable"
           >
             <AlertTitle>{intl.formatMessage(messages.failureTitle)}</AlertTitle>
             <AlertDescription>
-              {failurePresentation.messages.length === 1 ? (
-                failurePresentation.messages[0]
+              {/* Decoded here, not where it was raised: a refusal stands until
+                  the next save, so it follows a change of language while it
+                  waits. One already written for a researcher is not ours to
+                  decode and passes through. */}
+              {refusals.length === 1 ? (
+                (formatMessageError(refusals[0] ?? '', intl) ?? refusals[0])
               ) : (
                 <ul className="list-disc pl-5">
-                  {failurePresentation.messages.map((message) => (
-                    <li key={message}>{message}</li>
+                  {refusals.map((message) => (
+                    <li key={message}>
+                      {formatMessageError(message, intl) ?? message}
+                    </li>
                   ))}
                 </ul>
               )}
             </AlertDescription>
           </Alert>
         )}
-        {snapshot.authoritativeChanged && (
-          <Alert variant="warning">
-            <AlertTitle>{intl.formatMessage(messages.staleTitle)}</AlertTitle>
-            <AlertDescription>
-              {intl.formatMessage(messages.staleDescription)}
-            </AlertDescription>
-          </Alert>
-        )}
-        {snapshot.status === 'awaiting-authoritative' && (
-          <Alert variant="success">
-            <AlertTitle>{intl.formatMessage(messages.savedTitle)}</AlertTitle>
-            <AlertDescription>
-              {intl.formatMessage(messages.savedDescription)}
-            </AlertDescription>
-          </Alert>
-        )}
-        {snapshot.status === 'submitting' && (
+        {busy && (
           <p role="status" className="sr-only">
             {intl.formatMessage(messages.submittingStatus)}
           </p>
@@ -881,9 +790,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
             label={intl.formatMessage(messages.nameLabel)}
             hint={intl.formatMessage(messages.nameHint)}
             component={InputField}
-            value={
-              typeof snapshot.draft.name === 'string' ? snapshot.draft.name : ''
-            }
+            value={typeof draft.name === 'string' ? draft.name : ''}
             onChange={(value) => replaceProperty('name', value ?? '')}
             autoFocus={!readOnly}
             required
@@ -1125,7 +1032,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               )}
               <VariableParameterFields
                 shape={parameterShape}
-                parameters={snapshot.draft.parameters}
+                parameters={draft.parameters}
                 onChange={replaceParameter}
                 issues={parameterIssues}
                 readOnly={interactionDisabled}
@@ -1138,7 +1045,7 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
               type="submit"
               color="primary"
               disabled={interactionDisabled || unchangedUpdate}
-              aria-busy={snapshot.status === 'submitting'}
+              aria-busy={busy}
             >
               {intl.formatMessage(
                 props.mode === 'create'
@@ -1242,7 +1149,7 @@ function draftWithOwnedBlocks(
   // clear it with and the attribute can never be created at all.
   //
   // A choice list is still passed through as authored, so an unauthored one
-  // reaches the request builder to be refused there — see `optionsForShape`.
+  // reaches the document builder to be refused there — see `optionsForShape`.
   const options = optionsForShape(optionsShape, draft.options, storedOptions);
   if (options === undefined) delete next.options;
   else next.options = options;
@@ -1471,39 +1378,6 @@ function contradictionMessages(
         issue.path[0] === 'variables' && issue.path[2] === 'validation',
     )
     .map((issue) => issue.message);
-}
-
-/**
- * How a failed save is presented: what it means to the researcher, and how
- * loudly to say it.
- *
- * The words are the package's own — see `compoundFailureCopy` — never the
- * host's, with the one exception every codebook surface makes: a refusal that
- * arrives already written for a researcher, naming the rule and the values
- * that cannot both hold, is shown as it was written. It replaces the generic
- * copy rather than joining it, which would otherwise tell the researcher to
- * wait and try a save that cannot succeed until they change something.
- *
- * A section held by a collaborator is something to wait for rather than
- * something that went wrong, so it is the one failure shown as a warning.
- */
-function failureFrom(
-  failure: AuxiliaryCodebookDraftFailure | null,
-  contradictions: readonly string[],
-  intl: IntlShape,
-): Readonly<{
-  variant: 'warning' | 'destructive';
-  messages: readonly string[];
-}> | null {
-  if (contradictions.length > 0) {
-    return { variant: 'destructive', messages: contradictions };
-  }
-  if (failure === null) return null;
-  const held = failure.kind === 'result' && failure.result.status === 'blocked';
-  return {
-    variant: held ? 'warning' : 'destructive',
-    messages: [compoundFailureMessage(failure, intl)],
-  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -58,7 +58,7 @@ export type StageNameSectionProps = Readonly<{
   /**
    * Whether the name field takes focus when the editor opens.
    *
-   * The session's answer by default, for the same reason `autoName` reads it:
+   * The edit's own answer by default, for the same reason `autoName` reads it:
    * naming the stage is the first thing there is to do in a stage that does
    * not exist yet, and an existing stage was opened to be looked at rather
    * than renamed. An editor with a reason to differ overrides it either way.
@@ -67,7 +67,7 @@ export type StageNameSectionProps = Readonly<{
   /**
    * What a proposed name is derived from, and whether to propose one at all.
    *
-   * Whether to propose is the session's answer by default — only a stage being
+   * Whether to propose is the edit's own answer by default — only a stage being
    * created is named automatically, and an existing stage's name is already the
    * researcher's — so an editor that serves both cases leaves `propose` out and
    * gets the right behaviour in each. `propose` overrides that answer, in

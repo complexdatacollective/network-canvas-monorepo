@@ -39,7 +39,7 @@ export type OutlineFieldRegistration = Readonly<{
 }>;
 
 /**
- * A problem the SESSION found in the stage, addressed by its path inside the
+ * A problem the STAGE'S OWN SCHEMA found, addressed by its path inside the
  * stage document rather than by a form field name.
  *
  * These are the refusals a form field cannot see: a reference to a resource
@@ -160,7 +160,7 @@ export class SectionOutlineStore {
     Map<string, OutlineFieldRegistration>
   >();
   /**
-   * The session's own validation problems, as paths into the stage document.
+   * The schema's problems with the stage, as paths into its document.
    * Kept whole rather than filed under a section: a field registering later
    * can be the one that claims an issue that arrived before it.
    */
@@ -266,7 +266,7 @@ export class SectionOutlineStore {
   }
 
   /**
-   * Replaces everything the session currently says is wrong with the stage.
+   * Replaces everything currently known to be wrong with the stage.
    *
    * The whole set at once, because that is what "cleared" means here: an issue
    * stops being reported by not being in the next set, and a section holding a
@@ -454,7 +454,7 @@ export function sectionOutlineStatus(
   // a problem at almost every path it will eventually own — reporting all of
   // them would bury the one choice that unlocks the rest.
   if (section.availability !== 'available') return section.availability;
-  // A problem only the session can see outranks the fields, which by
+  // A problem only the schema can see outranks the fields, which by
   // definition cannot see it: a dangling resource reference and a deleted
   // codebook type are both values a control accepts and a protocol refuses.
   if (section.issues.length > 0) return 'error';

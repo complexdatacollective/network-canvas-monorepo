@@ -136,8 +136,8 @@ const messages = defineMessages({
  * rule this is does that narrowing once.
  *
  * There is deliberately no "create a new attribute" affordance. Every current
- * caller sits inside a rule editor, where inventing a codebook variable while
- * building a filter is a different, compound edit — see the package's codebook
+ * caller sits inside a rule editor, where inventing a codebook variable is a
+ * write to the codebook rather than to this stage — see the package's codebook
  * editors for that flow.
  *
  * Labelling belongs to the surrounding field; pass `label`/`hint` to the

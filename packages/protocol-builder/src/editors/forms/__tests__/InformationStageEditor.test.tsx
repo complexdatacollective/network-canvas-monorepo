@@ -7,7 +7,11 @@ import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { InformationStageEditor } from '../InformationStageEditor.tsx';
-import { mountedAs, stageNameInput } from './formEditorHarness.tsx';
+import {
+  expectStageUntouched,
+  mountedAs,
+  stageNameInput,
+} from './formEditorHarness.tsx';
 
 /**
  * The block editor's text control is a rich-text editor, and ProseMirror
@@ -100,7 +104,7 @@ describe('the editor for a page of content', () => {
 
     // An Information stage has no authored defaults, so a new one arrives
     // empty — and the editor has to be able to say so rather than showing a
-    // heading nobody wrote. The exception is the name, which the session
+    // heading nobody wrote. The exception is the name, which the open edit
     // proposes because it is creating the stage.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Information/);
@@ -165,9 +169,11 @@ describe('the editor for a page of content', () => {
   });
 
   /**
-   * Typing is buffered in the form until the researcher saves, so an editor
-   * closed without saving has written nothing at all. The pending batches are
-   * the proof: a field wired to write on change would leave one behind.
+   * The draft lives in the form and nowhere else until a save hands the whole
+   * section back, so an editor closed without saving has written nothing at
+   * all. Asked of the protocol, because that is the only place it could have
+   * reached: a field wired to write on change would have left the heading
+   * there.
    */
   it('writes nothing when the researcher discards the edit', async () => {
     const harness = renderStageEditor(openFixture());
@@ -179,20 +185,15 @@ describe('the editor for a page of content', () => {
       screen.getByRole('textbox', { name: 'Page heading' }),
       'A heading nobody kept',
     );
-    expect(harness.pendingCommands()).toHaveLength(0);
+    expectStageUntouched(harness);
 
     await harness.cancel();
 
-    expect(harness.pendingCommands()).toHaveLength(0);
-    expect(harness.session.getSnapshot().editedSection.fields).toEqual(
-      harness.seeded.fields,
-    );
+    expectStageUntouched(harness);
   });
 
-  it('refuses to save a stage the session has made read-only', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    harness.setReadOnly();
+  it('refuses to save a stage somebody else is editing', async () => {
+    const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
     await waitFor(() =>
       expect(

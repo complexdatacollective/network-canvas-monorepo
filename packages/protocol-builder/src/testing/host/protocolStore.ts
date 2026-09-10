@@ -265,7 +265,7 @@ export class InMemoryProtocolStore {
       ...(assetEntries === undefined ? [] : [ASSETS]),
     ];
     if (touched.length > 0) {
-      const blocked = this.#blockedBy(touched, new Set());
+      const blocked = this.#blockedBy(touched, new Set<ProtocolSectionId>());
       if (blocked.length > 0) return { status: 'blocked', blocked };
     }
     // The ego codebook is the one creatable singleton: a protocol whose
@@ -323,7 +323,7 @@ export class InMemoryProtocolStore {
         [STAGE_ORDER, { ...order, stages }],
       ],
       principal,
-      new Set(),
+      new Set<ProtocolSectionId>(),
     );
   }
 
@@ -367,6 +367,25 @@ export class InMemoryProtocolStore {
       (documents) => entityTypeReferences(documents, entity, typeId),
       principal,
     );
+  }
+
+  /**
+   * Writes a section as another editor's revision, without going through a
+   * lock.
+   *
+   * The collaborator-edit seam a test needs and the contract deliberately does
+   * not offer: `submit` requires the lock, and a test setting up "somebody else
+   * has already changed the codebook" is describing a write that happened
+   * before this editor opened rather than one it is racing. A section the
+   * protocol does not hold yet is added; `undefined` removes one.
+   */
+  applyAsCollaborator(
+    id: ProtocolSectionId,
+    document: SectionDoc | undefined,
+  ): Revision {
+    const sequence = this.#advance();
+    if (document === undefined) return this.#remove(id, sequence);
+    return this.#write(id, document, sequence);
   }
 
   /**

@@ -3,18 +3,19 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
+import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
-import { FamilyPedigreeStageEditor } from './FamilyPedigreeStageEditor.tsx';
+import { pedigreeAndAnonymisationStageEditors } from '../pedigreeAndAnonymisationStageEditors.ts';
 
 const meta = {
   title: 'Protocol Builder/Editors/Family Pedigree',
   component: StageEditorStoryHost,
   args: {
     stageId: 'family-pedigree-1',
-    renderEditor: ({ controller, actions }) => (
-      <FamilyPedigreeStageEditor
-        controller={controller}
-        stageType="FamilyPedigree"
+    renderEditor: ({ actions, ...editor }) => (
+      <StageEditor
+        {...editor}
+        registry={pedigreeAndAnonymisationStageEditors}
         actions={actions}
       />
     ),
@@ -24,7 +25,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The stage a participant draws their family in. It runs from what the pedigree is — the language it uses, how far it must reach — through the codebook attributes the interface writes the family into, to the introduction screen and the questions asked while it is built. Attributes can be created here without leaving the stage, which reaches the codebook as a compound edit rather than as a stage field.',
+          'The stage a participant draws their family in. It runs from what the pedigree is — the language it uses, how far it must reach — through the codebook attributes the interface writes the family into, to the introduction screen and the questions asked while it is built. Attributes can be created here without leaving the stage, which commits to the codebook on its own rather than travelling as a stage field.',
       },
     },
   },

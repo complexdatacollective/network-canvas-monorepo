@@ -141,7 +141,9 @@ describe('the prompt list a stage owns', () => {
       sections: prompts,
     });
 
-    screen.getByRole('button', { name: 'Reorder prompt 1 of 2' }).focus();
+    (
+      await screen.findByRole('button', { name: 'Reorder prompt 1 of 2' })
+    ).focus();
     await harness.user.keyboard('{ArrowDown}');
 
     const request = await harness.submit();
@@ -546,13 +548,9 @@ describe('what a family says about its own prompt', () => {
       await screen.findByText('Another prompt already asks this.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    // And nothing was added: the list still holds the one prompt it opened on.
-    expect(screen.getAllByText(SEEDED_QUESTION).length).toBeGreaterThanOrEqual(
-      1,
-    );
-    expect(harness.session.getSnapshot().editedSection.fields.prompts).toEqual([
-      { id: 'name-generator-prompt-1', text: SEEDED_QUESTION },
-    ]);
+    // And nothing was added: one row asks the question, not two. The list is
+    // the document the editor would hand back, so this is what a save carries.
+    expect(screen.getAllByText(SEEDED_QUESTION)).toHaveLength(1);
   });
 
   /**
@@ -576,21 +574,22 @@ describe('what a family says about its own prompt', () => {
     await harness.user.click(
       await screen.findByRole('button', { name: 'Edit prompt' }),
     );
-    await harness.user.type(
-      await screen.findByRole('textbox', { name: 'Negative label' }),
-      'Nobody',
-    );
+    // Typed out again rather than left alone, so the rule really is asked
+    // about a submitted question equal to the one the list already holds.
+    const text = await screen.findByRole('textbox', { name: 'Prompt text' });
+    await harness.user.clear(text);
+    await harness.user.type(text, SEEDED_QUESTION);
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
-    expect(harness.session.getSnapshot().editedSection.fields.prompts).toEqual([
-      {
-        id: 'name-generator-prompt-1',
-        text: SEEDED_QUESTION,
-        negativeLabel: 'Nobody',
-      },
+    expect(
+      screen.queryByText('Another prompt already asks this.'),
+    ).not.toBeInTheDocument();
+    const written = await harness.submit();
+    expect(written?.stageDocument.prompts).toEqual([
+      { id: 'name-generator-prompt-1', text: SEEDED_QUESTION },
     ]);
   });
 

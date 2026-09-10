@@ -108,8 +108,8 @@
     "description": "What the researcher was entering, named inside the sentence that refuses it: the stored value of one option of a categorical or ordinal attribute, as opposed to the label a participant reads. Interpolated mid-sentence after \"Not a valid\", so it is lower case."
   },
   "protocolBuilder.arrayField.readOnlyRefusal": {
-    "defaultMessage": "This stage is read-only, so this {itemLabel} was not saved. Take over editing and try again.",
-    "description": "Shown to a researcher whose edit to one row of a list was refused because they no longer hold the right to edit the stage (one step of an interview). itemLabel is the list’s own noun for one of its rows, already in the reader’s language. Taking over editing is an action offered elsewhere in the host application."
+    "defaultMessage": "This stage is read-only, so this {itemLabel} was not saved. Somebody else is editing it.",
+    "description": "Shown to a researcher whose edit to one row of a list was refused because somebody else is editing the stage (one step of an interview). itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
   },
   "protocolBuilder.arrayField.removalUnavailableRefusal": {
     "defaultMessage": "This list stopped accepting changes while you were confirming, so this {itemLabel} was not removed. Remove it again once the list can be edited.",
@@ -231,26 +231,6 @@
     "defaultMessage": "Create this attribute and its values",
     "description": "Button that opens the codebook editor for inventing an attribute whose answers are chosen from a list, together with that list. Also the title of the dialog it opens. An attribute is one thing an interview records about a network member."
   },
-  "protocolBuilder.attributeCodebookControls.describeAnswerLabels": {
-    "defaultMessage": "Change the answer labels of \"{name}\"",
-    "description": "The same record for a yes/no attribute, whose two stored values are fixed and whose words are what a researcher writes. name is the attribute’s researcher-facing name."
-  },
-  "protocolBuilder.attributeCodebookControls.describeCreate": {
-    "defaultMessage": "Create an attribute for a form field",
-    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. The attribute has no name yet — the researcher is about to type one — so this is the one edit here that cannot name it."
-  },
-  "protocolBuilder.attributeCodebookControls.describeParameters": {
-    "defaultMessage": "Change what \"{name}\" accepts",
-    "description": "The same record for an attribute whose answer is not chosen from a list — a date between two bounds, a position on a scale. name is the attribute’s researcher-facing name."
-  },
-  "protocolBuilder.attributeCodebookControls.describeRules": {
-    "defaultMessage": "Change the rules for \"{name}\"",
-    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name."
-  },
-  "protocolBuilder.attributeCodebookControls.describeValues": {
-    "defaultMessage": "Change the values of \"{name}\"",
-    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name."
-  },
   "protocolBuilder.attributeCodebookControls.editAnswerLabels": {
     "defaultMessage": "Change this attribute’s answer labels",
     "description": "The same button for a yes/no attribute, whose two stored values are fixed and whose WORDS are what a researcher writes — so this says labels rather than values. Also the title of the dialog it opens."
@@ -275,10 +255,6 @@
     "defaultMessage": "Year",
     "description": "Names the year half of a bounding date that is written as a year and a month, for a screen reader that would otherwise hear the two halves as one field said twice."
   },
-  "protocolBuilder.codebookEditing.createDescription": {
-    "defaultMessage": "Create the attribute \"{name}\"",
-    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute name the researcher typed."
-  },
   "protocolBuilder.codebookEditing.createVariableRefused": {
     "defaultMessage": "This attribute could not be created, so nothing was changed. Try again.",
     "description": "Refusal shown on the attribute control of a stage editor when inventing a new attribute (a codebook variable) failed for a reason with no explanation of its own."
@@ -286,10 +262,6 @@
   "protocolBuilder.codebookEditing.duplicateVariableName": {
     "defaultMessage": "Attribute with name \"{name}\" already exists",
     "description": "Refusal shown when a researcher names an attribute (a codebook variable) something another attribute of the same entity is already called. name is what they typed."
-  },
-  "protocolBuilder.codebookEditing.missingType": {
-    "defaultMessage": "This type is no longer in the codebook, so an attribute cannot be added to it.",
-    "description": "Refusal shown when the node or edge type the stage works with has been deleted from the codebook — the protocol’s definition of what an interview records — while the researcher was editing."
   },
   "protocolBuilder.codebookEditing.missingVariable": {
     "defaultMessage": "Attribute record id \"{variableId}\" does not exist",
@@ -331,17 +303,9 @@
     "defaultMessage": "Saving…",
     "description": "The submit button of a codebook editor while the change is in flight, replacing its usual wording."
   },
-  "protocolBuilder.codebookEditing.setComponentDescription": {
-    "defaultMessage": "Set the input control for \"{name}\"",
-    "description": "What the change is called in the record a host keeps of protocol edits, and in any undo history it offers. name is the attribute’s researcher-facing name."
-  },
   "protocolBuilder.codebookEditing.setComponentRefused": {
     "defaultMessage": "This attribute’s input control could not be changed, so nothing was changed. Try again.",
     "description": "Refusal shown on the input-control dropdown of a stage editor when recording which control an attribute is collected with failed for a reason with no explanation of its own."
-  },
-  "protocolBuilder.codebookEditing.staleAuthoritativeTitle": {
-    "defaultMessage": "Newer codebook data is available",
-    "description": "Heading of the warning shown when the protocol’s codebook changed elsewhere while the researcher had this editor open. The codebook is the protocol’s definition of its entity types and their attributes."
   },
   "protocolBuilder.codebookEditing.unsupportedControl": {
     "defaultMessage": "This attribute cannot be collected with that input control.",
@@ -406,10 +370,6 @@
   "protocolBuilder.codebookEntity.createTitle": {
     "defaultMessage": "{entity, select, node {Create node type} edge {Create edge type} other {Create ego definition}}",
     "description": "Heading of the editor while a new codebook entity is being added. entity is node, edge or ego."
-  },
-  "protocolBuilder.codebookEntity.draftNotice": {
-    "defaultMessage": "Changes remain in this editor until every required section can be updated together.",
-    "description": "Sentence under the editor heading explaining that nothing is saved until every part of the protocol the change touches can be written at once."
   },
   "protocolBuilder.codebookEntity.edgeColorOption": {
     "defaultMessage": "Edge color {index, number}",
@@ -551,10 +511,6 @@
     "defaultMessage": "Choose a default shape.",
     "description": "Refusal shown under the shape field of the node type editor when the researcher has chosen none."
   },
-  "protocolBuilder.codebookEntity.staleAuthoritativeDescription": {
-    "defaultMessage": "Your draft has been kept. Close and reopen this editor to load the latest entity before saving.",
-    "description": "What to do after the protocol’s codebook changed elsewhere while this entity editor was open."
-  },
   "protocolBuilder.codebookEntity.subjectDescription": {
     "defaultMessage": "{entity, select, node {Node type: {name}} edge {Edge type: {name}} other {Ego attributes}}",
     "description": "Names one card of the codebook overview, and is the card’s accessible name. entity is node, edge or ego; name is the researcher’s own name for that node or edge type. The ego is the interview participant themselves, and has attributes but no type name."
@@ -687,22 +643,6 @@
     "defaultMessage": "Save attribute",
     "description": "Button that saves the changes to an existing attribute (a codebook variable)."
   },
-  "protocolBuilder.codebookVariable.savedDescription": {
-    "defaultMessage": "Waiting for the host to publish the authoritative codebook update.",
-    "description": "Shown after an attribute is accepted, while the application it is being edited in finishes writing the change back into the protocol."
-  },
-  "protocolBuilder.codebookVariable.savedTitle": {
-    "defaultMessage": "Attribute saved",
-    "description": "Heading of the confirmation shown once the attribute has been accepted and the editor is waiting for the saved version to arrive back."
-  },
-  "protocolBuilder.codebookVariable.staleDescription": {
-    "defaultMessage": "A newer version arrived while you were editing. Your draft has been preserved; review it before trying again.",
-    "description": "What to do after the protocol’s codebook changed elsewhere while this attribute editor was open."
-  },
-  "protocolBuilder.codebookVariable.staleTitle": {
-    "defaultMessage": "The codebook changed",
-    "description": "Heading of the warning shown when the protocol’s codebook changed elsewhere while this attribute editor was open."
-  },
   "protocolBuilder.codebookVariable.submittingStatus": {
     "defaultMessage": "Saving attribute.",
     "description": "Announced to screen reader users while the attribute is being saved. Not shown on screen."
@@ -759,201 +699,49 @@
     "defaultMessage": "Write what this answer says, or clear both to offer Yes and No.",
     "description": "Refusal shown under one of the two answers of a yes/no attribute when it has been left blank while the other is written. Clearing both is a real answer: an attribute that names neither is offered to the participant as Yes and No."
   },
-  "protocolBuilder.compoundEdit.assemblyFailed": {
-    "defaultMessage": "protocol assembly failed",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: the parts could not be put back together into a whole protocol, and nothing more specific is known."
-  },
-  "protocolBuilder.compoundEdit.assetInvalid": {
-    "defaultMessage": "asset {assetId}: {reason}",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: one of the resources in the protocol did not pass its checks. assetId identifies the resource; reason is the wording of the check that refused it."
-  },
-  "protocolBuilder.compoundEdit.assetInvalidReason": {
-    "defaultMessage": "asset validation failed",
-    "description": "Stands in for the reason a resource failed its checks when the checks said nothing more specific. Read inside the \"asset {assetId}: {reason}\" message."
-  },
-  "protocolBuilder.compoundEdit.duplicateSection": {
-    "defaultMessage": "a compound edit may touch each section only once",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it named the same part of the protocol twice."
-  },
-  "protocolBuilder.compoundEdit.editNeedsHash": {
-    "defaultMessage": "a compound section edit requires an expected content hash",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it did not say which version of that part of the protocol it was built from."
-  },
-  "protocolBuilder.compoundEdit.failed": {
-    "defaultMessage": "the compound edit failed",
-    "description": "Why the host could not change the codebook alongside the interview step being edited, when nothing more specific is known."
-  },
-  "protocolBuilder.compoundEdit.leaseEpochStale": {
-    "defaultMessage": "the primary section lease epoch is stale",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: editing of the step was handed over since the change was prepared."
-  },
-  "protocolBuilder.compoundEdit.leaseGone": {
-    "defaultMessage": "the primary section lease is no longer held",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: nobody holds the step for editing any more."
-  },
-  "protocolBuilder.compoundEdit.leaseTaken": {
-    "defaultMessage": "the primary section lease is now held by another editor",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: someone else is editing the step now."
-  },
-  "protocolBuilder.compoundEdit.missingId": {
-    "defaultMessage": "a compound edit requires an id and at least one section edit",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: the request was not formed correctly."
-  },
-  "protocolBuilder.compoundEdit.notSerializable": {
-    "defaultMessage": "the compound edit payload is not canonically serializable",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: the request could not be written down in a form the host can compare against a retry."
-  },
-  "protocolBuilder.compoundEdit.protocolInvalid": {
-    "defaultMessage": "protocol validation failed",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: the whole protocol did not pass its checks, and the checks said nothing more specific."
-  },
-  "protocolBuilder.compoundEdit.removalNeedsHash": {
-    "defaultMessage": "a compound section removal requires an expected content hash",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: a deletion did not say which version of that part of the protocol it was built from."
-  },
-  "protocolBuilder.compoundEdit.removeMissingSection": {
-    "defaultMessage": "cannot remove a compound section that does not exist",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: it was asked to delete a part of the protocol that is not there."
-  },
-  "protocolBuilder.compoundEdit.requestIdReused": {
-    "defaultMessage": "compound edit request id {requestId} was reused for a different payload",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: an identifier that must name one change was sent with different contents. requestId is that identifier."
-  },
-  "protocolBuilder.compoundEdit.requiresDescription": {
-    "defaultMessage": "a compound edit requires a description",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it did not say what it was doing."
-  },
-  "protocolBuilder.compoundEdit.requiresId": {
-    "defaultMessage": "a compound edit requires a stable request id",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it carried no identifier the host could use to apply it exactly once."
-  },
-  "protocolBuilder.compoundEdit.sectionExists": {
-    "defaultMessage": "cannot create a compound section that already exists",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: it was asked to add a part of the protocol that is already there."
-  },
-  "protocolBuilder.compoundEdit.sectionInvalid": {
-    "defaultMessage": "section validation failed",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: the changed part of the protocol did not pass its checks, and the checks said nothing more specific."
-  },
-  "protocolBuilder.compoundEdit.settingsInvalid": {
-    "defaultMessage": "settings validation failed",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: the protocol settings did not pass their checks, and the checks said nothing more specific."
-  },
-  "protocolBuilder.compoundEdit.settingsUnknownKey": {
-    "defaultMessage": "protocol settings contain unknown key {key}",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: the protocol settings hold something this version does not recognise. key is the unrecognised setting name."
-  },
-  "protocolBuilder.compoundEdit.stageIdMismatch": {
-    "defaultMessage": "the stage document id does not match its section id",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: the identifier inside the step disagrees with the one it is filed under. \"stage\" is one step of an interview."
-  },
-  "protocolBuilder.compoundEdit.stageIdentityLocked": {
-    "defaultMessage": "stage identity fields cannot be changed by a compound edit",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it would rename or retype the step itself. \"stage\" is one step of an interview."
-  },
-  "protocolBuilder.compoundEdit.stageOrderDuplicate": {
-    "defaultMessage": "stage order lists the same stage twice",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: one step appears twice in the interview step order. \"stage\" is one step of an interview."
-  },
-  "protocolBuilder.compoundEdit.stageOrderNotList": {
-    "defaultMessage": "stage order must be a list of non-empty stage ids",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: the record of the interview step order is not a list of steps. \"stage\" is one step of an interview."
-  },
-  "protocolBuilder.compoundEdit.stageOrderUnknownKey": {
-    "defaultMessage": "stage order contains an unknown key",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: the record of the interview step order holds something other than the order. \"stage\" is one step of an interview."
-  },
-  "protocolBuilder.compoundEdit.staleBase": {
-    "defaultMessage": "the compound edit was built from an outdated section document",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: that part of the protocol has changed since the edit was prepared."
-  },
-  "protocolBuilder.compoundEdit.structuralSectionLocked": {
-    "defaultMessage": "only codebook sections can be structurally created or removed",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it would add or delete a part of the protocol that is not a codebook entry."
-  },
-  "protocolBuilder.compoundEdit.touchesNothing": {
-    "defaultMessage": "a compound edit must touch at least one section",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it would change nothing."
-  },
-  "protocolBuilder.compoundEdit.unknownSection": {
-    "defaultMessage": "a compound edit contains an unknown section id",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it named a part of the protocol that does not exist."
-  },
-  "protocolBuilder.compoundEdit.unknownSectionNamed": {
-    "defaultMessage": "the compound edit names an unknown section",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: it named a part of the protocol this version does not recognise."
-  },
-  "protocolBuilder.compoundEdit.unsupportedSection": {
-    "defaultMessage": "the compound edit names an unsupported section",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: it named a part of the protocol this host cannot change."
-  },
-  "protocolBuilder.compoundEdit.updateMissingDocument": {
-    "defaultMessage": "cannot update a missing compound section document",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: the part of the protocol it was changing went missing partway through."
-  },
-  "protocolBuilder.compoundEdit.updateMissingSection": {
-    "defaultMessage": "cannot update a compound section that does not exist",
-    "description": "Why the host could not change the codebook alongside the interview step being edited: it was asked to change a part of the protocol that is not there."
-  },
-  "protocolBuilder.compoundEdit.updateNeedsCommands": {
-    "defaultMessage": "a compound section update requires at least one command",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: one of the parts it named would change nothing."
-  },
-  "protocolBuilder.compoundEdit.updateNeedsHash": {
-    "defaultMessage": "a compound section update requires an expected content hash",
-    "description": "Why a change touching the codebook alongside the interview step being edited was refused: it did not say which version of that part of the protocol it was built from."
-  },
-  "protocolBuilder.compoundFailure.compoundInFlight": {
-    "defaultMessage": "Another change to the codebook is still being saved. Wait for it to finish, then save this one.",
-    "description": "Refusal shown in a codebook editor when a previous change to the codebook — the protocol’s definition of what an interview records — has not finished saving."
-  },
   "protocolBuilder.compoundFailure.heldBy": {
     "defaultMessage": "{holder} is currently editing a section needed for this change.",
     "description": "Refusal shown in a codebook editor when a named collaborator is editing part of the protocol the change needs. holder is that person’s display name, which the host supplies."
+  },
+  "protocolBuilder.compoundFailure.heldBySeveral": {
+    "defaultMessage": "{holders} are currently editing sections needed for this change.",
+    "description": "Refusal shown in a codebook editor when several named collaborators are between them editing the parts of the protocol the change needs. holders is their display names, which the host supplies, joined as a list."
   },
   "protocolBuilder.compoundFailure.heldBySomeoneUnnamed": {
     "defaultMessage": "A section needed for this change is currently being edited.",
     "description": "Refusal shown in a codebook editor when part of the protocol the change needs is being edited by somebody the host would not name."
   },
-  "protocolBuilder.compoundFailure.hostError": {
-    "defaultMessage": "The protocol would not be valid with this change, so nothing was saved. Adjust this type and try again, or close this and come back once the rest of the stage is filled in.",
-    "description": "Refusal shown in a codebook editor when the change would leave the whole protocol invalid — usually because the stage being configured is not finished yet. A stage is one step of an interview."
+  "protocolBuilder.compoundFailure.invalidShape": {
+    "defaultMessage": "This change is not something the codebook can hold, so nothing was saved. Check what you entered and try again.",
+    "description": "Refusal shown in a codebook editor when the protocol refused the change because it is not shaped like the part of the codebook it was written to."
   },
-  "protocolBuilder.compoundFailure.invalidRequest": {
-    "defaultMessage": "This change could not be sent, and nothing was saved. Close this editor and try again.",
-    "description": "Refusal shown in a codebook editor when the change could not be sent for saving at all."
+  "protocolBuilder.compoundFailure.protocolGone": {
+    "defaultMessage": "This protocol is no longer open, so nothing was saved. Reload it and try again.",
+    "description": "Refusal shown in a codebook editor when the application it is running in no longer holds the protocol the change was written to."
   },
-  "protocolBuilder.compoundFailure.invalidResponse": {
-    "defaultMessage": "The protocol came back in a state this editor cannot read, so nothing here has been kept. Reload the protocol before making this change.",
-    "description": "Refusal shown in a codebook editor when what came back after saving was not something the editor could read."
+  "protocolBuilder.compoundFailure.referencesRemain": {
+    "defaultMessage": "{references, plural, one {One other part of the protocol still uses this} other {# other parts of the protocol still use this}}, so nothing was deleted. Change those first, then delete it.",
+    "description": "Refusal shown in a codebook editor when deleting an attribute or a type would leave the protocol naming something that no longer exists, in places the application cannot rewrite for the researcher. references is how many such places there are."
   },
-  "protocolBuilder.compoundFailure.leaseLost": {
-    "defaultMessage": "You are no longer the editor of this stage, so nothing was saved. Take over editing and try again.",
-    "description": "Refusal shown in a codebook editor when the researcher no longer holds the right to edit this stage. Taking over editing is an action offered elsewhere in the host application."
+  "protocolBuilder.compoundFailure.sectionCreatedElsewhere": {
+    "defaultMessage": "Somebody else has just added the participant’s first attribute, so nothing was saved. Try again to add yours to theirs.",
+    "description": "Refusal shown when the researcher added the first attribute asked of the participant themselves at the same moment as a collaborator, so the protocol already held the part of the codebook this change would have created."
   },
-  "protocolBuilder.compoundFailure.pendingCommands": {
-    "defaultMessage": "A file you added is still waiting to be saved with this stage. Save the stage first, then make this change.",
-    "description": "Refusal shown in a codebook editor when the stage still holds an imported file that has not been saved, which has to land before the codebook can change."
+  "protocolBuilder.compoundFailure.sectionGone": {
+    "defaultMessage": "This part of the codebook no longer exists, so nothing was saved. Close this editor and start again.",
+    "description": "Refusal shown in a codebook editor when the entity type being edited has been deleted from the protocol, usually by a collaborator, while the editor was open."
   },
-  "protocolBuilder.compoundFailure.staleBase": {
-    "defaultMessage": "Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.",
-    "description": "Refusal shown in a codebook editor when a collaborator changed the same thing while this editor was open."
-  },
-  "protocolBuilder.compoundFailure.staleEpoch": {
-    "defaultMessage": "Editing access changed while this was being saved, so nothing was saved. Try again.",
-    "description": "Refusal shown in a codebook editor when who holds the right to edit changed midway through saving."
-  },
-  "protocolBuilder.compoundFailure.staleResult": {
-    "defaultMessage": "A newer version of the protocol is already open, so this change was not applied. Try again.",
-    "description": "Refusal shown in a codebook editor when a newer version of the protocol had already been loaded by the time the change came back."
-  },
-  "protocolBuilder.compoundFailure.unavailable": {
-    "defaultMessage": "This editor cannot change the codebook right now. Reload the protocol and try again.",
-    "description": "Refusal shown in a codebook editor when the host cannot accept codebook changes at all just now."
+  "protocolBuilder.compoundFailure.subjectGone": {
+    "defaultMessage": "This stage works with something the codebook no longer holds, so nothing was saved. Choose what it works with again.",
+    "description": "Refusal shown on a control inside a stage editor when the node or edge type the stage collects into has been deleted from the protocol, usually by a collaborator, while the researcher was working. A stage is one step of an interview."
   },
   "protocolBuilder.compoundFailure.unexplained": {
     "defaultMessage": "This change could not be saved, and nothing was altered. Wait a moment and try again.",
-    "description": "Refusal shown in a codebook editor when saving was refused for a reason there are no words for — it threw with no explanation a researcher could act on, or the application it is running in named a reason this editor does not know. The last resort."
+    "description": "Refusal shown in a codebook editor when saving was refused for a reason there are no words for — it threw with no explanation a researcher could act on. The last resort."
+  },
+  "protocolBuilder.compoundFailure.unreachable": {
+    "defaultMessage": "This change could not be sent, and nothing was saved. Check your connection and try again.",
+    "description": "Refusal shown in a codebook editor when the change never reached the application it is running in."
   },
   "protocolBuilder.contentBlock.audioDescriptionHint": {
     "defaultMessage": "What this recording is, read aloud in place of the file’s name to a participant using a screen reader.",
@@ -1402,10 +1190,6 @@
   "protocolBuilder.formFields.questionSectionTitle": {
     "defaultMessage": "Question",
     "description": "Heading of the half of the field dialog that says what the participant is asked."
-  },
-  "protocolBuilder.formFields.scopeMissing": {
-    "defaultMessage": "Choose what this stage works with before adding fields to its form.",
-    "description": "Shown inside the field editor when the researcher has not yet chosen which node or edge type the stage (one step of an interview) is about, so there is no codebook to draw attributes from."
   },
   "protocolBuilder.formFields.title": {
     "defaultMessage": "Form fields",
@@ -2191,10 +1975,6 @@
     "defaultMessage": "Choose the edge type and map the attributes used to store family relationships.",
     "description": "Description of the relationship data section."
   },
-  "protocolBuilder.pedigree.edgeGameteRoleCreateDescription": {
-    "defaultMessage": "Create the categorical attribute the pedigree records gamete roles in",
-    "description": "Said inside the dialog for creating the gamete role attribute. \"The\" rather than \"a\", because only one value set is allowed and the dialog seeds it."
-  },
   "protocolBuilder.pedigree.edgeGameteRoleCreateLabel": {
     "defaultMessage": "Create a new gamete role attribute",
     "description": "Button that opens a dialog for adding the gamete role attribute to the codebook."
@@ -2206,10 +1986,6 @@
   "protocolBuilder.pedigree.edgeGameteRoleLabel": {
     "defaultMessage": "Gamete role",
     "description": "Label of the control binding the attribute that records which reproductive cell a parent contributed — the egg or the sperm."
-  },
-  "protocolBuilder.pedigree.edgeGestationalCarrierCreateDescription": {
-    "defaultMessage": "Create a boolean attribute recording who carried each pregnancy",
-    "description": "Said inside the dialog for creating the gestational carrier attribute."
   },
   "protocolBuilder.pedigree.edgeGestationalCarrierCreateLabel": {
     "defaultMessage": "Create a new gestational carrier attribute",
@@ -2223,10 +1999,6 @@
     "defaultMessage": "Gestational carrier",
     "description": "Label of the control binding the attribute that records who carried each pregnancy. A gestational carrier is the person who was pregnant, who may not be a genetic parent."
   },
-  "protocolBuilder.pedigree.edgeIsActiveCreateDescription": {
-    "defaultMessage": "Create a boolean attribute recording whether a relationship is current",
-    "description": "Said inside the dialog for creating the active status attribute."
-  },
   "protocolBuilder.pedigree.edgeIsActiveCreateLabel": {
     "defaultMessage": "Create a new active status attribute",
     "description": "Button that opens a dialog for adding the active status attribute to the codebook."
@@ -2238,10 +2010,6 @@
   "protocolBuilder.pedigree.edgeIsActiveLabel": {
     "defaultMessage": "Active status",
     "description": "Label of the control binding the attribute that records whether a relationship is a current one."
-  },
-  "protocolBuilder.pedigree.edgeRelationshipTypeCreateDescription": {
-    "defaultMessage": "Create the categorical attribute the pedigree records relationship kinds in",
-    "description": "Said inside the dialog for creating the relationship type attribute. \"The\" rather than \"a\", because only one value set is allowed and the dialog seeds it."
   },
   "protocolBuilder.pedigree.edgeRelationshipTypeCreateLabel": {
     "defaultMessage": "Create a new relationship type attribute",
@@ -2367,10 +2135,6 @@
     "defaultMessage": "Family member form",
     "description": "Heading of the section holding what a Family Pedigree asks about each person the participant adds. Replaces the shared form section’s generic heading, because this form describes a relative rather than standing on its own."
   },
-  "protocolBuilder.pedigree.nodeBiologicalSexCreateDescription": {
-    "defaultMessage": "Create the categorical attribute the pedigree records sex in",
-    "description": "Said inside the dialog for creating the biological sex attribute. \"The\" rather than \"a\", because only one value set is allowed and the dialog seeds it."
-  },
   "protocolBuilder.pedigree.nodeBiologicalSexCreateLabel": {
     "defaultMessage": "Create a new biological sex attribute",
     "description": "Button that opens a dialog for adding the biological sex attribute to the codebook."
@@ -2387,10 +2151,6 @@
     "defaultMessage": "Choose the node type and map the attributes used to represent family members.",
     "description": "Description of the family member data section. \"Map\" here means point each of the interface’s slots at one attribute of the codebook."
   },
-  "protocolBuilder.pedigree.nodeEgoCreateDescription": {
-    "defaultMessage": "Create a boolean attribute marking the participant",
-    "description": "Said inside the dialog for creating the participant identifier attribute."
-  },
   "protocolBuilder.pedigree.nodeEgoCreateLabel": {
     "defaultMessage": "Create a new participant identifier attribute",
     "description": "Button that opens a dialog for adding the participant identifier attribute to the codebook."
@@ -2403,10 +2163,6 @@
     "defaultMessage": "Participant identifier",
     "description": "Label of the control binding the attribute that marks which person in the family tree is the participant themselves."
   },
-  "protocolBuilder.pedigree.nodeLabelCreateDescription": {
-    "defaultMessage": "Create a text attribute for family member names",
-    "description": "Said inside the dialog for creating the display label attribute, so the researcher knows what the attribute they are naming is for."
-  },
   "protocolBuilder.pedigree.nodeLabelCreateLabel": {
     "defaultMessage": "Create a new display label attribute",
     "description": "Button that opens a dialog for adding the display label attribute to the codebook. Whole rather than a generic \"Create\", because a pedigree editor shows several of these at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
@@ -2418,10 +2174,6 @@
   "protocolBuilder.pedigree.nodeLabelLabel": {
     "defaultMessage": "Display label",
     "description": "Label of the control binding the attribute that holds the name shown on each person drawn in the family tree."
-  },
-  "protocolBuilder.pedigree.nodeRelationshipCreateDescription": {
-    "defaultMessage": "Create a text attribute for each relationship to the participant",
-    "description": "Said inside the dialog for creating the relationship-to-participant attribute."
   },
   "protocolBuilder.pedigree.nodeRelationshipCreateLabel": {
     "defaultMessage": "Create a new relationship attribute",
@@ -2470,10 +2222,6 @@
   "protocolBuilder.pedigree.nominationAtLeastOne": {
     "defaultMessage": "Add at least one nomination prompt, or switch this section off.",
     "description": "Refusal shown above the nomination prompt list when a researcher saves a pedigree whose nomination section is switched on and empty. Switching the section off is the other way out, and is offered beside the list."
-  },
-  "protocolBuilder.pedigree.nominationCreateDescription": {
-    "defaultMessage": "Create a boolean attribute for this nomination prompt",
-    "description": "Said inside the dialog for creating a nomination prompt’s attribute."
   },
   "protocolBuilder.pedigree.nominationCreateLabel": {
     "defaultMessage": "Create a new nomination attribute",
@@ -2707,78 +2455,6 @@
     "defaultMessage": "Try loading the resource list again",
     "description": "Button beside a failure notice, which asks the host again for the list of resources. Named rather than generic because several parts of the dialog can be failing at once."
   },
-  "protocolBuilder.resourceFailure.alreadyCommitted": {
-    "defaultMessage": "that resource is already part of the protocol",
-    "description": "Refusal shown when a save was asked to import a resource the protocol already holds. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.assetValidationFailed": {
-    "defaultMessage": "asset validation failed",
-    "description": "Fallback reason used when the protocol schema rejected an asset entry without saying why. Appears inside a longer sentence, so it is lower case and has no full stop."
-  },
-  "protocolBuilder.resourceFailure.downloadUnsupported": {
-    "defaultMessage": "secret material cannot be downloaded",
-    "description": "Refusal shown when something asked to download an API key’s content. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.fileEmpty": {
-    "defaultMessage": "the selected file is empty",
-    "description": "Refusal shown when the file a researcher chose holds no bytes at all. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.fileTooLarge": {
-    "defaultMessage": "the selected file is larger than the {limit, number} byte limit",
-    "description": "Refusal shown when the file a researcher chose exceeds what the host will store. limit is that size as an exact byte count, not a rounded one. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.hostUnavailable": {
-    "defaultMessage": "the resource host is temporarily unavailable",
-    "description": "Refusal shown when the store holding protocol resources cannot answer right now. Lower case and without a full stop: surfaces put it after a clause of their own."
-  },
-  "protocolBuilder.resourceFailure.invalidManifestEntry": {
-    "defaultMessage": "asset {resourceId}: {reason}",
-    "description": "Shown to a researcher when a host proposed a protocol asset entry the protocol schema rejects. resourceId is the asset id; reason is the schema’s own English message, or the generic fallback. Lower case because a surface may put it after a clause of its own."
-  },
-  "protocolBuilder.resourceFailure.invalidResource": {
-    "defaultMessage": "The resource (\"{resourceId}\") this stage uses is not valid: {reason}",
-    "description": "Validation problem shown against the field of an interview stage whose resource has an unusable entry in the protocol. resourceId is the asset id; reason is the schema’s own English message, or the generic fallback."
-  },
-  "protocolBuilder.resourceFailure.manifestUpdateFailed": {
-    "defaultMessage": "the asset manifest could not be updated",
-    "description": "Refusal shown when the protocol’s own list of resources could not be written while saving. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.missingResource": {
-    "defaultMessage": "This stage uses a resource (\"{resourceId}\") that is not in the protocol.",
-    "description": "Validation problem shown against the field of an interview stage (one step of an interview) that names a resource the protocol does not contain. resourceId is the asset id the field holds."
-  },
-  "protocolBuilder.resourceFailure.notFound": {
-    "defaultMessage": "that resource is no longer available",
-    "description": "Refusal shown when nothing in the protocol or this editing session has the requested resource id. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.previewUnsupported": {
-    "defaultMessage": "secret material cannot be previewed",
-    "description": "Refusal shown when something asked to display an API key’s content. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.promotionDuplicateResource": {
-    "defaultMessage": "a promotion may name each resource only once",
-    "description": "Refusal shown when a save of imported resources named the same one twice. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.promotionNeedsId": {
-    "defaultMessage": "a promotion requires a stable request id",
-    "description": "Refusal shown when a save of imported resources arrived without the identifier that makes it safe to repeat. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.promotionNeedsResource": {
-    "defaultMessage": "a promotion must name at least one staged resource",
-    "description": "Refusal shown when a save of imported resources named none of them. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.promotionRolledBack": {
-    "defaultMessage": "the resources could not be stored; nothing was changed",
-    "description": "Refusal shown when saving a stage’s imported resources failed partway and every part of it was undone. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.promotionUndecided": {
-    "defaultMessage": "the last attempt to save these resources did not say whether it finished, so they cannot be discarded until saving again settles it",
-    "description": "Refusal shown when a researcher asks to discard an imported resource whose last save never reported whether it committed. Lower case and without a full stop: surfaces put it after a clause of their own."
-  },
-  "protocolBuilder.resourceFailure.readOnly": {
-    "defaultMessage": "this protocol is open for viewing only, so its resources cannot change",
-    "description": "Refusal shown when a researcher tries to import, discard, or save a resource in a protocol opened read-only. Lower case and without a full stop because surfaces put it after a clause of their own."
-  },
   "protocolBuilder.resourceFailure.resourceDiscarded": {
     "defaultMessage": "That resource is no longer available: it was discarded while this list was open. Close and reopen the browser to see what there is.",
     "description": "Refusal shown when a researcher picks a resource from a list read before that resource was discarded. \"The browser\" is this app’s resource-picking dialog, not the web browser."
@@ -2819,49 +2495,9 @@
     "defaultMessage": "the \"{name}\" attribute of row {row} is not a value a variable can hold",
     "description": "Names the cell at fault in an imported spreadsheet roster. name is the researcher’s own column heading; row is its one-based line in the file. \"Attribute\" and \"variable\" are the data fields a protocol records. Lower case and without a full stop."
   },
-  "protocolBuilder.resourceFailure.saveInFlight": {
-    "defaultMessage": "these resources are being saved right now, so they cannot be discarded until the save finishes",
-    "description": "Refusal shown when a researcher asks to discard an imported resource while the stage that uses it is being saved. Lower case and without a full stop: surfaces put it after a clause of their own."
-  },
-  "protocolBuilder.resourceFailure.secretNeedsHandle": {
-    "defaultMessage": "a staged secret can only be promoted with its staged handle",
-    "description": "Refusal shown when a save tried to store an API key without the token the host issued for it. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.secretNeedsIdAndName": {
-    "defaultMessage": "a staged secret needs a stable request id and a name",
-    "description": "Refusal shown when an API key was submitted without the name or request identifier the host needs. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.secretValueEmpty": {
-    "defaultMessage": "the secret value is empty",
-    "description": "Refusal shown when an API key was submitted with no value in it. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.sessionCancelled": {
-    "defaultMessage": "this stage was discarded, so its resources can no longer be saved",
-    "description": "Refusal shown when a save is attempted after the interview stage being edited was discarded. \"Stage\" is one step of an interview. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.stagingEndedFile": {
-    "defaultMessage": "this editing session ended before the file finished staging, so it was not kept",
-    "description": "Refusal shown when a researcher’s imported file finished uploading after they had already discarded or saved the stage. Lower case and without a full stop: surfaces put it after a clause of their own."
-  },
-  "protocolBuilder.resourceFailure.stagingEndedSecret": {
-    "defaultMessage": "this editing session ended before the secret finished staging, so it was not kept",
-    "description": "Refusal shown when a researcher’s API key finished being stored after they had already discarded or saved the stage. Lower case and without a full stop: surfaces put it after a clause of their own."
-  },
   "protocolBuilder.resourceFailure.unreachable": {
     "defaultMessage": "The resource could not be reached. Try again in a moment.",
     "description": "Shown to a researcher when the host storing protocol resources (images, audio, rosters, API keys) threw instead of answering. Deliberately says nothing about the host."
-  },
-  "protocolBuilder.resourceFailure.unsavableResource": {
-    "defaultMessage": "The resource (\"{resourceId}\") this stage uses cannot be saved: {reason}",
-    "description": "Validation problem shown when saving an interview stage and the host will not vouch for a resource it references. resourceId is the asset id; reason is the host’s own refusal, itself a localized sentence."
-  },
-  "protocolBuilder.resourceFailure.uploadNeedsFilename": {
-    "defaultMessage": "a staged file needs a filename without path separators",
-    "description": "Refusal shown when an imported file’s recorded filename still carries a folder path. Lower case and without a full stop."
-  },
-  "protocolBuilder.resourceFailure.uploadNeedsIdAndName": {
-    "defaultMessage": "a staged file needs a stable request id and a name",
-    "description": "Refusal shown when an imported file arrived without the name or request identifier the host needs. Lower case and without a full stop."
   },
   "protocolBuilder.resourceKinds.apikeyBrowserDescription": {
     "defaultMessage": "Add an API key, or choose one already stored in this protocol.",
@@ -3025,7 +2661,7 @@
   },
   "protocolBuilder.resourceKinds.stagedStatus": {
     "defaultMessage": "Imported, not yet saved",
-    "description": "Badge on a resource the researcher imported during this editing session, which the protocol will only hold once the stage (one step of an interview) is saved."
+    "description": "Badge on a resource the researcher imported while this stage was open, which the protocol will only hold once the stage (one step of an interview) is saved."
   },
   "protocolBuilder.resourceKinds.unsupportedFile": {
     "defaultMessage": "That file cannot be imported here. Supported file types are: {types}.",
@@ -3061,11 +2697,11 @@
   },
   "protocolBuilder.resourcePicker.discard": {
     "defaultMessage": "Discard this resource",
-    "description": "Button that throws away a resource imported in this editing session, for the whole session rather than only for this field."
+    "description": "Button that throws away a resource imported while this stage has been open, for the whole edit rather than only for this field."
   },
   "protocolBuilder.resourcePicker.discardedAnnouncement": {
     "defaultMessage": "The imported resource was discarded.",
-    "description": "Announced to assistive technology when a resource imported in this editing session is thrown away."
+    "description": "Announced to assistive technology when a resource imported while this stage has been open is thrown away."
   },
   "protocolBuilder.resourcePicker.download": {
     "defaultMessage": "Download this resource",
@@ -3197,7 +2833,7 @@
   },
   "protocolBuilder.resourceSummary.fileTerm": {
     "defaultMessage": "File",
-    "description": "Label beside the original filename of a resource a researcher imported into their protocol."
+    "description": "Label beside the original filename of a file a researcher has just imported into their protocol and not yet saved."
   },
   "protocolBuilder.resourceSummary.nodesTerm": {
     "defaultMessage": "Nodes",
@@ -3915,58 +3551,6 @@
     "defaultMessage": "{fieldLabel} has no value, and this stage needs one.",
     "description": "Shown beside one section of a stage editor when a value the stage requires is simply not there. Said for every refusal about an empty value, whatever code the validator reached for. fieldLabel is the control’s own name and starts the sentence."
   },
-  "protocolBuilder.schemaProblem.resourceCustom": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry breaks one of the rules a resource is stored under.",
-    "description": "Shown when a stage uses a resource whose stored entry breaks one of the protocol’s own rules about how resources are written. resourceId is the resource’s stored identifier."
-  },
-  "protocolBuilder.schemaProblem.resourceInvalidElement": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry holds a part a resource cannot use.",
-    "description": "Shown when a stage uses a resource whose stored entry holds a part the protocol refuses. resourceId is the resource’s stored identifier."
-  },
-  "protocolBuilder.schemaProblem.resourceInvalidFormat": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry is not written the way a resource needs it.",
-    "description": "Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is the right kind of text in the wrong shape. resourceId is the resource’s stored identifier."
-  },
-  "protocolBuilder.schemaProblem.resourceInvalidKey": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry holds a part named something a resource cannot use.",
-    "description": "Shown when a stage uses a resource whose stored entry names one of its parts in a way the protocol refuses. resourceId is the resource’s stored identifier."
-  },
-  "protocolBuilder.schemaProblem.resourceInvalidType": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry holds the wrong kind of value.",
-    "description": "Shown when a stage (one step of an interview) uses a file, roster, map layer or key whose stored entry the protocol refuses. resourceId is the stored identifier of that resource, which the researcher did not choose. This wording is used when one part of the entry holds the wrong kind of value."
-  },
-  "protocolBuilder.schemaProblem.resourceInvalidUnion": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry is not any of the kinds of resource there are.",
-    "description": "Shown when a stage uses a resource whose stored entry matches none of the resource kinds the protocol knows. resourceId is the resource’s stored identifier."
-  },
-  "protocolBuilder.schemaProblem.resourceInvalidValue": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry holds a value no resource can take.",
-    "description": "Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is not one of the values a resource is allowed to hold. resourceId is the resource’s stored identifier."
-  },
-  "protocolBuilder.schemaProblem.resourceNotMultipleOf": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry holds a number that is not one of the steps a resource allows.",
-    "description": "Shown when a stage uses a resource whose stored entry holds a number that has to be a multiple of some step and is not. resourceId is the resource’s stored identifier."
-  },
-  "protocolBuilder.schemaProblem.resourceNothingThere": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry is missing.",
-    "description": "Shown when a stage uses a resource whose stored entry has nothing where the protocol needs something. resourceId is the resource’s stored identifier."
-  },
-  "protocolBuilder.schemaProblem.resourceTooBig": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry holds more than a resource allows.",
-    "description": "Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is over a limit. resourceId is the resource’s stored identifier."
-  },
-  "protocolBuilder.schemaProblem.resourceTooSmall": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: part of its entry holds less than a resource needs.",
-    "description": "Shown when a stage uses a resource whose stored entry the protocol refuses because part of it is under a limit. resourceId is the resource’s stored identifier."
-  },
-  "protocolBuilder.schemaProblem.resourceUnrecognised": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry holds something the protocol cannot use.",
-    "description": "Last resort, shown when a resource entry is refused by a validator this editor has no words for. resourceId is the resource’s stored identifier."
-  },
-  "protocolBuilder.schemaProblem.resourceUnrecognizedKeys": {
-    "defaultMessage": "This stage points at a resource (\"{resourceId}\") the protocol cannot read: its entry holds settings a resource does not have.",
-    "description": "Shown when a stage uses a resource whose stored entry carries settings no resource has. resourceId is the resource’s stored identifier."
-  },
   "protocolBuilder.schemaProblem.tooBig": {
     "defaultMessage": "{fieldLabel} holds more than this stage allows.",
     "description": "Shown beside one section of a stage editor when a control holds too many items, too much text, or a number above the limit. fieldLabel is the control’s own name and starts the sentence."
@@ -3983,77 +3567,33 @@
     "defaultMessage": "{fieldLabel} holds settings this stage does not have.",
     "description": "Shown beside one section of a stage editor when the saved stage carries settings this kind of stage knows nothing about — usually a stage imported from an older or newer protocol. fieldLabel is the control’s own name and starts the sentence."
   },
-  "protocolBuilder.session.compoundConflictingRevision": {
-    "defaultMessage": "the compound result conflicts with the loaded authoritative revision",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: what came back cannot be reconciled with the version of the protocol on screen."
-  },
-  "protocolBuilder.session.compoundHostError": {
-    "defaultMessage": "the compound edit failed",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen, when the host gave no reason of its own."
-  },
-  "protocolBuilder.session.compoundIdentityChanged": {
-    "defaultMessage": "the authoritative response changed the edited stage identity",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the answer came back naming a different step. \"stage\" is one step of an interview."
-  },
-  "protocolBuilder.session.compoundInFlight": {
-    "defaultMessage": "another compound edit is still in progress",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: one is already running."
-  },
-  "protocolBuilder.session.compoundInvalidStage": {
-    "defaultMessage": "the authoritative response contains an invalid edited stage",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the step that came back could not be read. \"stage\" is one step of an interview."
-  },
-  "protocolBuilder.session.compoundLeaseLost": {
-    "defaultMessage": "editing access was lost before the compound edit completed",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: this researcher stopped being the one editing it partway through."
-  },
-  "protocolBuilder.session.compoundMissingStage": {
-    "defaultMessage": "the authoritative response omitted the current edited stage from its full protocol snapshot",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the step being edited was missing from the answer. \"stage\" is one step of an interview."
-  },
-  "protocolBuilder.session.compoundNewerRevision": {
-    "defaultMessage": "a newer authoritative protocol revision is already loaded",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: a later version of the protocol is already on screen."
-  },
-  "protocolBuilder.session.compoundPendingCommands": {
-    "defaultMessage": "save the current stage changes before editing related sections",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the step has unsaved changes."
-  },
-  "protocolBuilder.session.compoundSentChangesStale": {
-    "defaultMessage": "the stage changes already sent no longer apply to this session’s base, so nothing local was altered",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: earlier changes already sent no longer fit the step this session started from. \"stage\" is one step of an interview."
-  },
-  "protocolBuilder.session.compoundStageAlreadyApplied": {
-    "defaultMessage": "the stage changes this compound edit asks for have already been made",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the step already carries everything the edit asked for. \"stage\" is one step of an interview."
-  },
-  "protocolBuilder.session.compoundStaleEpoch": {
-    "defaultMessage": "editing authority changed before the compound edit completed",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: someone else took over editing the step partway through."
-  },
-  "protocolBuilder.session.compoundStaleStage": {
-    "defaultMessage": "the authoritative stage changed while this change was being made, so nothing local was altered",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: the shared copy of the step moved on while the researcher was working. \"stage\" is one step of an interview."
-  },
-  "protocolBuilder.session.compoundUnavailable": {
-    "defaultMessage": "compound editing is unavailable",
-    "description": "Why an edit that would change the codebook alongside the interview step being edited did not happen: this host does not offer it."
-  },
   "protocolBuilder.shell.formUnavailableRefusal": {
     "defaultMessage": "This stage could not be saved because its form is no longer available. Reopen the stage and try again.",
     "description": "Shown above a stage editor’s fields when a save arrives after the editor’s own form has been taken down, so there are no values left to save."
   },
-  "protocolBuilder.shell.readOnlyRefusal": {
-    "defaultMessage": "This stage is read-only, so your changes were not saved. Take over editing and try again.",
-    "description": "Shown above a stage editor’s fields when the researcher no longer holds the right to edit this stage (a stage is one step of an interview) and something they did would have written to it. Taking over editing is an action offered elsewhere in the host application."
+  "protocolBuilder.shell.heldBy": {
+    "defaultMessage": "{holder} is editing this stage, so you can read it but not change it.",
+    "description": "Shown at the top of a stage editor opened while a collaborator holds it. holder is that person’s display name, which the host supplies. A stage is one step of an interview."
   },
-  "protocolBuilder.shell.saveFailedRefusal": {
-    "defaultMessage": "This stage could not be saved. Wait a moment and try again.",
-    "description": "Shown above a stage editor’s fields when saving failed for a reason that carried no explanation of its own. The last resort, used only when the failure said nothing readable."
+  "protocolBuilder.shell.heldByNobodyNamed": {
+    "defaultMessage": "Somebody else is editing this stage, so you can read it but not change it.",
+    "description": "Shown at the top of a stage editor opened while somebody the host would not name holds it. A stage is one step of an interview."
+  },
+  "protocolBuilder.shell.invalidStageRefusal": {
+    "defaultMessage": "This stage is not finished, so it was not saved. The sections below say what is missing.",
+    "description": "Shown above a stage editor’s fields when the stage does not yet satisfy the protocol’s own rules for this interface, so the save was not attempted. A stage is one step of an interview."
+  },
+  "protocolBuilder.shell.readOnlyRefusal": {
+    "defaultMessage": "This stage is read-only, so your change was not made. Somebody else is editing it.",
+    "description": "Shown above a stage editor’s fields when the researcher cannot edit this stage — somebody else has it — and something they did would have written to it. A stage is one step of an interview."
   },
   "protocolBuilder.shell.saveStage": {
     "defaultMessage": "Save stage",
     "description": "Action that saves the step of the interview a researcher is editing. Names the stage rather than saying only \"Save\", because a host may show its own controls beside this one."
+  },
+  "protocolBuilder.shell.stageUnavailable": {
+    "defaultMessage": "This stage could not be opened. It may have been deleted while you were away. Go back to the interview and choose another one.",
+    "description": "Shown in place of a stage editor when the protocol would not open the stage at all — it has been deleted, or the application could not be reached. A stage is one step of an interview."
   },
   "protocolBuilder.skipLogic.actionHint": {
     "defaultMessage": "What should happen when the rules match?",
@@ -4191,6 +3731,38 @@
     "defaultMessage": "This rule points at an attribute that cannot be used to sort. Choose another or delete the rule.",
     "description": "Shown above a prompt’s sort rules when one of them names an attribute that is still in the codebook but holds nothing one network member can be put ahead of another by. Names both ways out, because the rule looks complete and is not."
   },
+  "protocolBuilder.stageEdit.addFailed": {
+    "defaultMessage": "This stage could not be added. Wait a moment and try again.",
+    "description": "Shown above a stage editor’s fields when adding a new stage failed for a reason that carried no explanation of its own. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.blockedBy": {
+    "defaultMessage": "{holder} is editing another part of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.",
+    "description": "Shown above a stage editor’s fields when the save was refused because a named collaborator is editing another part of the protocol the save has to write. holder is that person’s display name, which the host supplies. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.blockedBySeveral": {
+    "defaultMessage": "{holders} are editing other parts of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.",
+    "description": "Shown above a stage editor’s fields when the save was refused because several named collaborators are between them editing the other parts of the protocol the save has to write. holders is their display names, which the host supplies, joined as a list. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.blockedBySomeoneUnnamed": {
+    "defaultMessage": "Another part of the protocol that this save needs is being edited, so nothing was saved and your changes are still here. Try saving again in a moment.",
+    "description": "Shown above a stage editor’s fields when the save was refused because somebody the host would not name is editing another part of the protocol the save has to write. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.invalidShape": {
+    "defaultMessage": "This stage is not something the protocol can hold, so nothing was saved and your unsaved changes have been discarded.",
+    "description": "Shown above a stage editor’s fields when the host refused the save because the stage was the wrong shape. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.lockLost": {
+    "defaultMessage": "Somebody else is editing this stage now, so nothing was saved and your unsaved changes have been discarded. Reopen the stage to see their version.",
+    "description": "Shown above a stage editor’s fields when the researcher no longer holds the right to edit this stage and their save was refused because of it. Their unsaved work is gone. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.notReady": {
+    "defaultMessage": "This stage is still opening, so there was nothing to save. Wait a moment and try again.",
+    "description": "Refusal shown when a save is asked for before the stage has finished opening. A stage is one step of an interview."
+  },
+  "protocolBuilder.stageEdit.promotionFailed": {
+    "defaultMessage": "The files you imported could not be saved with this stage, so nothing was saved and your changes are still here. Try saving again.",
+    "description": "Shown above a stage editor’s fields when the host would not take the files imported during this edit, so neither they nor the stage were saved. The researcher’s unsaved work is still on screen. A stage is one step of an interview."
+  },
   "protocolBuilder.stageName.documentation": {
     "defaultMessage": "Documentation",
     "description": "Link to the documentation for this type of interview interface."
@@ -4222,10 +3794,6 @@
   "protocolBuilder.subjectSection.edgeChangeTitle": {
     "defaultMessage": "Change the edge type?",
     "description": "Title of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured for the one it has."
-  },
-  "protocolBuilder.subjectSection.edgeCreateDescription": {
-    "defaultMessage": "Create an edge type and use it on this stage",
-    "description": "Description shown inside the dialog for inventing a kind of relationship, and what the change is called in the record a host keeps of protocol edits."
   },
   "protocolBuilder.subjectSection.edgeCreateLabel": {
     "defaultMessage": "Create a new edge type",
@@ -4270,10 +3838,6 @@
   "protocolBuilder.subjectSection.nodeChangeTitle": {
     "defaultMessage": "Change the node type?",
     "description": "Title of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured for the one it has."
-  },
-  "protocolBuilder.subjectSection.nodeCreateDescription": {
-    "defaultMessage": "Create a node type and use it on this stage",
-    "description": "Description shown inside the dialog for inventing a kind of network member, and what the change is called in the record a host keeps of protocol edits."
   },
   "protocolBuilder.subjectSection.nodeCreateLabel": {
     "defaultMessage": "Create a new node type",
@@ -4483,10 +4047,6 @@
     "defaultMessage": "Attribute unavailable",
     "description": "Heading of the alert shown in place of the rules when the attribute they belong to has been deleted from the codebook."
   },
-  "protocolBuilder.variableValidation.awaitingAuthoritative": {
-    "defaultMessage": "Waiting for latest data…",
-    "description": "The submit button after the validation rules have been accepted, while the application finishes writing them back into the protocol."
-  },
   "protocolBuilder.variableValidation.comparisonsHeading": {
     "defaultMessage": "Compare to another attribute",
     "description": "Heading over the validation rules that judge this attribute’s answer against another attribute’s. \"Attribute\" is a codebook variable."
@@ -4594,10 +4154,6 @@
   "protocolBuilder.variableValidation.selectTarget": {
     "defaultMessage": "Select an attribute",
     "description": "The unchosen entry of the control naming which other attribute a comparison rule judges this one against."
-  },
-  "protocolBuilder.variableValidation.staleAuthoritativeDescription": {
-    "defaultMessage": "Your validation draft has been kept. Saving will apply it to the latest authoritative entity data.",
-    "description": "What happens next after the protocol’s codebook changed elsewhere while this validation surface was open."
   },
   "protocolBuilder.variableValidation.submit": {
     "defaultMessage": "Save validation",

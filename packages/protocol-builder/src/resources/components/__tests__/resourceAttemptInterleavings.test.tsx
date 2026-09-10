@@ -1,30 +1,35 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 
+import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
 import ProtocolField from '../../../form/ProtocolField.tsx';
+import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { enIntl } from '../../../testing/i18n.ts';
-import { ResourceGatewayProvider } from '../../context.tsx';
 import {
-  resourceFailure,
   RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
-  type ProtocolBuilderResourceGateway,
-  type ResourceContent,
   type ResourceDescriptor,
-  type ResourcePreview as ResolvedPreview,
-  type ResourceResult,
-  type StagedSecret,
-} from '../../gateway.ts';
-import { InMemoryResourceGateway } from '../../InMemoryResourceGateway.ts';
-import { overrideGateway } from '../../overrideGateway.ts';
+} from '../../types.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import ResourcePreview, {
   PREVIEW_RENEWAL_LEAD_MS,
   PREVIEW_RENEWAL_MIN_INTERVAL_MS,
 } from '../ResourcePreview.tsx';
 import ResourceSecretControl from '../ResourceSecretControl.tsx';
-import { deferred, flushPendingWork, type Deferred } from './asyncControls.ts';
+import { deferred, flushPendingWork } from './asyncControls.ts';
+import {
+  advance,
+  createPreviewHost,
+  renderPreview,
+  shownUrl,
+} from './previewHarness.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
+import { renderInResourceContext, TEST_EDIT_ID } from './resourceContext.tsx';
+import {
+  createResourceHost,
+  stagedResources,
+  withResourceProcedures,
+} from './resourceHost.ts';
 
 /**
  * Every state one resource attempt can be in, against every input that can
@@ -36,7 +41,7 @@ import { renderResourceEditor } from './renderResourceEditor.tsx';
  * while a call was undecided, answered as though they had not. Reading the
  * machine one surface at a time hides exactly that, so the interleavings are
  * enumerated here in one place and each one is driven through the real
- * components.
+ * components, over the in-memory host.
  */
 type Interleaving = Readonly<{
   /** The surface whose attempt is mid-flight. */
@@ -65,8 +70,20 @@ const UNSUPPORTED_IMAGE_FILE = `That file cannot be imported here. Supported fil
   ['.jpg', '.jpeg', '.gif', '.png', '.svg'],
 )}.`;
 
-/** What a host that throws rather than reporting is told to the researcher as. */
+/** What a host that throws rather than answering is told to the researcher as. */
 const UNREACHABLE = 'The resource could not be reached. Try again in a moment.';
+
+/** What the hosts below say when they refuse. */
+const HOST_UNAVAILABLE = 'the resource host is temporarily unavailable';
+
+const REFUSAL = {
+  status: 'failed' as const,
+  failure: {
+    reason: 'unavailable' as const,
+    message: HOST_UNAVAILABLE,
+    retryable: true,
+  },
+};
 
 const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);
 
@@ -88,6 +105,17 @@ function rosterField() {
       name="dataSource"
       label="Roster"
       kind="network"
+    />
+  );
+}
+
+function mapLayerField() {
+  return (
+    <ProtocolField
+      component={ResourcePickerControl}
+      name="mapLayer"
+      label="Map layer"
+      kind="geojson"
     />
   );
 }
@@ -141,122 +169,32 @@ function heldFile(
   return { file, read: () => held.settle(bytes.buffer as ArrayBuffer) };
 }
 
-async function stageImage(
-  gateway: InMemoryResourceGateway,
-  requestId: string,
-  source: string,
-): Promise<string> {
-  const staged = await gateway.stageUpload({
-    requestId,
-    kind: 'image',
-    name: source,
-    source,
-    contentType: 'image/png',
-    bytes: bytesOf(`png-${source}`),
-  });
-  if (staged.status === 'failed') throw new Error('could not stage the image');
-  return staged.data.id;
-}
-
-function renderPreview(
-  gateway: ProtocolBuilderResourceGateway,
-  resourceId: string,
-  name: string,
+function renderSecretControl(
+  host: InMemoryHost,
+  client: ProtocolBuilderClient = host.client,
 ) {
-  return render(
-    <ResourceGatewayProvider gateway={gateway}>
-      <ResourcePreview resourceId={resourceId} kind="image" name={name} />
-    </ResourceGatewayProvider>,
-  );
-}
-
-function renderSecretControl(gateway: ProtocolBuilderResourceGateway) {
   const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
-  render(
-    <ResourceGatewayProvider gateway={gateway}>
-      <ResourceSecretControl onStaged={staged} />
-    </ResourceGatewayProvider>,
+  renderInResourceContext(
+    client,
+    host.protocolId,
+    <ResourceSecretControl onStaged={staged} />,
   );
   return staged;
-}
-
-/**
- * A host handing out leases that end, where the FIRST lease for a resource is
- * issued at once and every renewal is the test's to time or to refuse. That is
- * the only way to observe the moment a renewal is undecided, which is where
- * the researcher's playback either survives or does not.
- */
-function leasingHost(
-  inner: InMemoryResourceGateway,
-  livesForMs: number,
-  renewal: 'hold' | 'fail',
-) {
-  let issued = 0;
-  let released = 0;
-  const callsFor = new Map<string, number>();
-  const renewals: Deferred<ResourceResult<ResolvedPreview>>[] = [];
-
-  const issue = async (
-    resourceId: string,
-  ): Promise<ResourceResult<ResolvedPreview>> => {
-    const result = await inner.resolvePreview(resourceId);
-    if (result.status === 'failed') return result;
-    issued += 1;
-    const lease = issued;
-    return {
-      status: 'ok',
-      data: {
-        resourceId,
-        url: `${result.data.url}#lease-${lease}`,
-        expiresAt: Date.now() + livesForMs,
-        release: () => {
-          released += 1;
-          result.data.release();
-        },
-      },
-    };
-  };
-
-  return {
-    issue,
-    issued: () => issued,
-    released: () => released,
-    renewals,
-    gateway: overrideGateway(inner, {
-      resolvePreview: (resourceId) => {
-        const calls = (callsFor.get(resourceId) ?? 0) + 1;
-        callsFor.set(resourceId, calls);
-        if (calls === 1) return issue(resourceId);
-        if (renewal === 'fail') {
-          return Promise.resolve(
-            resourceFailure<ResolvedPreview>(
-              'unavailable',
-              'the resource host is temporarily unavailable',
-            ),
-          );
-        }
-        const held = deferred<ResourceResult<ResolvedPreview>>();
-        renewals.push(held);
-        return held.promise;
-      },
-    }),
-  };
 }
 
 /** A picker holding a staged image, over a host that discards on command. */
 async function pickerWithADiscardInFlight(
   user: ReturnType<typeof userEvent.setup>,
 ) {
-  const inner = new InMemoryResourceGateway();
   const held = deferred<void>();
-  const gateway = overrideGateway(inner, {
-    discardStaged: async (resourceId) => {
-      await held.promise;
-      return inner.discardStaged(resourceId);
-    },
-  });
   const { fieldValue } = renderResourceEditor({
-    gateway,
+    client: (host) =>
+      withResourceProcedures(host.client, {
+        discard: async (input) => {
+          await held.promise;
+          return host.client.resources.discard(input);
+        },
+      }),
     children: imageField(),
   });
 
@@ -283,10 +221,9 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'the file chosen last is the one imported',
     check: async () => {
       const user = userEvent.setup();
-      const gateway = new InMemoryResourceGateway();
-      const stageUpload = vi.spyOn(gateway, 'stageUpload');
+      const sources: string[] = [];
       const { fieldValue } = renderResourceEditor({
-        gateway,
+        client: (host) => stagingsInto(host, sources),
         children: imageField(),
       });
 
@@ -304,9 +241,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       await waitFor(() =>
         expect(fieldValue('backgroundImage')).toBe('staged-resource-1'),
       );
-      expect(stageUpload.mock.calls.map(([request]) => request.source)).toEqual(
-        ['newer.png'],
-      );
+      expect(sources).toEqual(['newer.png']);
     },
   },
   {
@@ -316,10 +251,9 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'the rejection stands and the earlier file is not imported',
     check: async () => {
       const user = userEvent.setup({ applyAccept: false });
-      const gateway = new InMemoryResourceGateway();
-      const stageUpload = vi.spyOn(gateway, 'stageUpload');
+      const sources: string[] = [];
       const { fieldValue } = renderResourceEditor({
-        gateway,
+        client: (host) => stagingsInto(host, sources),
         children: imageField(),
       });
 
@@ -338,7 +272,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       older.read();
       await act(flushPendingWork);
 
-      expect(stageUpload).not.toHaveBeenCalled();
+      expect(sources).toEqual([]);
       expect(fieldValue('backgroundImage')).toBeUndefined();
       expect(screen.getByText(UNSUPPORTED_IMAGE_FILE)).toBeVisible();
     },
@@ -350,11 +284,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'the researcher is asked before the choice is thrown away',
     check: async () => {
       const user = userEvent.setup();
-      const gateway = new InMemoryResourceGateway();
-      const { fieldValue } = renderResourceEditor({
-        gateway,
-        children: imageField(),
-      });
+      const { fieldValue } = renderResourceEditor({ children: imageField() });
 
       const input = await openBrowser(user, 'Select an image');
       const chosen = heldFile('skyline.png', 'image/png', bytesOf('skyline'));
@@ -388,8 +318,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'nothing is asked about a choice that was never taken',
     check: async () => {
       const user = userEvent.setup({ applyAccept: false });
-      const gateway = new InMemoryResourceGateway();
-      renderResourceEditor({ gateway, children: imageField() });
+      renderResourceEditor({ children: imageField() });
 
       const input = await openBrowser(user, 'Select an image');
       await user.upload(
@@ -415,9 +344,18 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'the stale failure goes with the choice it was about',
     check: async () => {
       const user = userEvent.setup({ applyAccept: false });
-      const gateway = new InMemoryResourceGateway();
-      gateway.failNext('stageUpload');
-      renderResourceEditor({ gateway, children: imageField() });
+      let refuse = true;
+      renderResourceEditor({
+        client: (host) =>
+          withResourceProcedures(host.client, {
+            stage: (input) => {
+              if (!refuse) return host.client.resources.stage(input);
+              refuse = false;
+              return Promise.resolve(REFUSAL);
+            },
+          }),
+        children: imageField(),
+      });
 
       const input = await openBrowser(user, 'Select an image');
       await user.upload(
@@ -450,11 +388,20 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'the stale retry cannot repeat the call over the newer choice',
     check: async () => {
       const user = userEvent.setup();
-      const gateway = new InMemoryResourceGateway();
-      const stageUpload = vi.spyOn(gateway, 'stageUpload');
-      gateway.failNext('stageUpload');
+      const sources: string[] = [];
+      let refuse = true;
       const { fieldValue } = renderResourceEditor({
-        gateway,
+        client: (host) =>
+          withResourceProcedures(host.client, {
+            stage: (input) => {
+              sources.push(
+                input.request.kind === 'content' ? input.request.source : '',
+              );
+              if (!refuse) return host.client.resources.stage(input);
+              refuse = false;
+              return Promise.resolve(REFUSAL);
+            },
+          }),
         children: imageField(),
       });
 
@@ -484,9 +431,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       await waitFor(() =>
         expect(fieldValue('backgroundImage')).toBe('staged-resource-1'),
       );
-      expect(stageUpload.mock.calls.map(([request]) => request.source)).toEqual(
-        ['refused.png', 'newer.png'],
-      );
+      expect(sources).toEqual(['refused.png', 'newer.png']);
     },
   },
   {
@@ -496,12 +441,17 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'no second file is accepted until the first has settled',
     check: async () => {
       const user = userEvent.setup();
-      const inner = new InMemoryResourceGateway();
-      const held = deferred<ResourceResult<ResourceDescriptor>>();
-      const gateway = overrideGateway(inner, {
-        stageUpload: () => held.promise,
+      const held = deferred<void>();
+      renderResourceEditor({
+        client: (host) =>
+          withResourceProcedures(host.client, {
+            stage: async () => {
+              await held.promise;
+              return REFUSAL;
+            },
+          }),
+        children: imageField(),
       });
-      renderResourceEditor({ gateway, children: imageField() });
 
       const input = await openBrowser(user, 'Select an image');
       await user.upload(
@@ -510,9 +460,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       );
 
       await waitFor(() => expect(input).toBeDisabled());
-      held.settle(
-        resourceFailure<ResourceDescriptor>('unavailable', 'not this time'),
-      );
+      held.settle(undefined);
       await waitFor(() => expect(input).toBeEnabled());
     },
   },
@@ -523,9 +471,21 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'nothing is selected, nothing stays staged, and the reason is shown',
     check: async () => {
       const user = userEvent.setup();
-      const gateway = new InMemoryResourceGateway();
-      const { fieldValue } = renderResourceEditor({
-        gateway,
+      // A host that will hold any bytes is not a host that can tell a roster
+      // from a text file, and `inspect` is where it says so.
+      const { fieldValue, staged } = renderResourceEditor({
+        client: (host) =>
+          withResourceProcedures(host.client, {
+            inspect: () =>
+              Promise.resolve({
+                status: 'failed' as const,
+                failure: {
+                  reason: 'invalid-content' as const,
+                  message: 'the selected file is not a readable network',
+                  retryable: false,
+                },
+              }),
+          }),
         children: rosterField(),
       });
 
@@ -543,7 +503,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       // A field pointed at an unreadable roster is a stage the interview
       // cannot load, so the field is never pointed at one.
       expect(fieldValue('dataSource')).toBeUndefined();
-      expect(gateway.getStagingResidue()).toEqual([]);
+      await waitFor(async () => expect(await staged()).toEqual([]));
     },
   },
   {
@@ -553,16 +513,19 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'the correction stands and the superseded key is not selected',
     check: async () => {
       const user = userEvent.setup();
-      const inner = new InMemoryResourceGateway();
-      const held = deferred<ResourceResult<StagedSecret>>();
+      const host = createResourceHost();
+      const held = deferred<void>();
       let calls = 0;
-      const gateway = overrideGateway(inner, {
-        stageSecret: (request) => {
-          calls += 1;
-          return calls === 1 ? held.promise : inner.stageSecret(request);
-        },
-      });
-      const staged = renderSecretControl(gateway);
+      const staged = renderSecretControl(
+        host,
+        withResourceProcedures(host.client, {
+          stage: async (input) => {
+            calls += 1;
+            if (calls === 1) await held.promise;
+            return host.client.resources.stage(input);
+          },
+        }),
+      );
 
       await user.type(screen.getByLabelText('Name'), 'Mapbox key');
       await user.type(screen.getByLabelText('Key'), SECRET);
@@ -572,13 +535,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       await user.type(screen.getByLabelText('Name'), 'Mapbox production key');
 
       // The host answers the submission the researcher has already moved off.
-      held.settle(
-        await inner.stageSecret({
-          requestId: 'superseded',
-          name: 'Mapbox key',
-          value: SECRET,
-        }),
-      );
+      held.settle(undefined);
       await act(flushPendingWork);
 
       expect(staged).not.toHaveBeenCalled();
@@ -595,16 +552,27 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'nothing offers to repeat the superseded call',
     check: async () => {
       const user = userEvent.setup();
-      const inner = new InMemoryResourceGateway();
-      const held = deferred<ResourceResult<StagedSecret>>();
+      const host = createResourceHost();
+      const held = deferred<void>();
       let calls = 0;
-      const gateway = overrideGateway(inner, {
-        stageSecret: (request) => {
-          calls += 1;
-          return calls === 1 ? held.promise : inner.stageSecret(request);
-        },
-      });
-      renderSecretControl(gateway);
+      renderSecretControl(
+        host,
+        withResourceProcedures(host.client, {
+          stage: async (input) => {
+            calls += 1;
+            if (calls > 1) return host.client.resources.stage(input);
+            await held.promise;
+            return {
+              status: 'failed' as const,
+              failure: {
+                reason: 'unavailable' as const,
+                message: 'the key could not be added just now',
+                retryable: true,
+              },
+            };
+          },
+        }),
+      );
 
       await user.type(screen.getByLabelText('Name'), 'Mapbox key');
       await user.type(screen.getByLabelText('Key'), SECRET);
@@ -613,12 +581,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       await user.clear(screen.getByLabelText('Name'));
       await user.type(screen.getByLabelText('Name'), 'Mapbox production key');
 
-      held.settle(
-        resourceFailure<StagedSecret>(
-          'unavailable',
-          'the key could not be added just now',
-        ),
-      );
+      held.settle(undefined);
       await act(flushPendingWork);
 
       expect(
@@ -639,8 +602,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'the corrected field stops being described as invalid',
     check: async () => {
       const user = userEvent.setup();
-      const gateway = new InMemoryResourceGateway();
-      renderSecretControl(gateway);
+      renderSecretControl(createResourceHost());
 
       await user.click(screen.getByRole('button', { name: 'Add API key' }));
       const name = await screen.findByLabelText('Name');
@@ -666,9 +628,11 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'it is refused without ever being read',
     check: async () => {
       const user = userEvent.setup();
-      const gateway = new InMemoryResourceGateway();
-      const stageUpload = vi.spyOn(gateway, 'stageUpload');
-      renderResourceEditor({ gateway, children: imageField() });
+      const sources: string[] = [];
+      renderResourceEditor({
+        client: (host) => stagingsInto(host, sources),
+        children: imageField(),
+      });
 
       const input = await openBrowser(user, 'Select an image');
       const arrayBuffer = vi.fn(() => Promise.resolve(new ArrayBuffer(0)));
@@ -683,7 +647,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       // Reading the file to learn what its own size already said is what
       // pulls a file of any size into memory just to refuse it.
       expect(arrayBuffer).not.toHaveBeenCalled();
-      expect(stageUpload).not.toHaveBeenCalled();
+      expect(sources).toEqual([]);
     },
   },
   {
@@ -693,21 +657,22 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'what it staged is discarded rather than left at the host',
     check: async () => {
       const user = userEvent.setup();
-      const inner = new InMemoryResourceGateway();
-      const discardStaged = vi.spyOn(inner, 'discardStaged');
       // Held at the HOST, not at the file read: the call has to be under way
       // for the browser to be cancelled during it. A read still in flight is
       // the other row — nothing has been sent, and nothing is dispatched.
       const staging = deferred<void>();
-      const gateway = overrideGateway(inner, {
-        stageUpload: async (request) => {
-          await staging.promise;
-          return inner.stageUpload(request);
-        },
-      });
-      const stageUpload = vi.spyOn(gateway, 'stageUpload');
-      const { fieldValue, session } = renderResourceEditor({
-        gateway,
+      const sources: string[] = [];
+      const { fieldValue, staged } = renderResourceEditor({
+        client: (host) =>
+          withResourceProcedures(host.client, {
+            stage: async (input) => {
+              sources.push(
+                input.request.kind === 'content' ? input.request.source : '',
+              );
+              await staging.promise;
+              return host.client.resources.stage(input);
+            },
+          }),
         children: imageField(),
       });
 
@@ -716,7 +681,7 @@ const INTERLEAVINGS: readonly Interleaving[] = [
         input,
         new File(['late-png'], 'late.png', { type: 'image/png' }),
       );
-      await waitFor(() => expect(stageUpload).toHaveBeenCalled());
+      await waitFor(() => expect(sources).toEqual(['late.png']));
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
       // An import still in flight is work the researcher chose and nothing
       // else records, so the dismissal asks first; this row is about what
@@ -726,15 +691,11 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       );
       await browserClosed();
       // The host answers an import whose surface has gone. Suppressing the
-      // callback is not enough: the resource exists, the session is tracking
-      // it, and no field will ever name it.
+      // callback is not enough: the resource exists, the edit is tracking it,
+      // and no field will ever name it.
       staging.settle(undefined);
 
-      await waitFor(() =>
-        expect(discardStaged).toHaveBeenCalledWith('staged-resource-1'),
-      );
-      expect(inner.getStagingResidue()).toEqual([]);
-      expect(session.getSnapshot().stagedResources).toEqual([]);
+      await waitFor(async () => expect(await staged()).toEqual([]));
       expect(fieldValue('backgroundImage')).toBeUndefined();
     },
   },
@@ -745,10 +706,9 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'the import is never sent to the host at all',
     check: async () => {
       const user = userEvent.setup();
-      const gateway = new InMemoryResourceGateway();
-      const stageUpload = vi.spyOn(gateway, 'stageUpload');
-      const { fieldValue } = renderResourceEditor({
-        gateway,
+      const sources: string[] = [];
+      const { fieldValue, staged } = renderResourceEditor({
+        client: (host) => stagingsInto(host, sources),
         children: imageField(),
       });
 
@@ -769,8 +729,8 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       held.read();
       await act(flushPendingWork);
 
-      expect(stageUpload).not.toHaveBeenCalled();
-      expect(gateway.getStagingResidue()).toEqual([]);
+      expect(sources).toEqual([]);
+      expect(await staged()).toEqual([]);
       expect(fieldValue('backgroundImage')).toBeUndefined();
     },
   },
@@ -781,16 +741,19 @@ const INTERLEAVINGS: readonly Interleaving[] = [
     rule: 'the staged key is discarded rather than held for a form nobody is watching',
     check: async () => {
       const user = userEvent.setup();
-      const inner = new InMemoryResourceGateway();
-      const discardStaged = vi.spyOn(inner, 'discardStaged');
-      const held = deferred<ResourceResult<StagedSecret>>();
+      const host = createResourceHost();
+      const held = deferred<void>();
+      const client = withResourceProcedures(host.client, {
+        stage: async (input) => {
+          await held.promise;
+          return host.client.resources.stage(input);
+        },
+      });
       const staged = vi.fn<(descriptor: ResourceDescriptor) => void>();
-      const { unmount } = render(
-        <ResourceGatewayProvider
-          gateway={overrideGateway(inner, { stageSecret: () => held.promise })}
-        >
-          <ResourceSecretControl onStaged={staged} />
-        </ResourceGatewayProvider>,
+      const { unmount } = renderInResourceContext(
+        client,
+        host.protocolId,
+        <ResourceSecretControl onStaged={staged} />,
       );
 
       await user.type(screen.getByLabelText('Name'), 'Mapbox key');
@@ -798,71 +761,50 @@ const INTERLEAVINGS: readonly Interleaving[] = [
       await user.click(screen.getByRole('button', { name: 'Add API key' }));
 
       unmount();
-      held.settle(
-        await inner.stageSecret({
-          requestId: 'abandoned',
-          name: 'Mapbox key',
-          value: SECRET,
-        }),
-      );
+      held.settle(undefined);
 
-      await waitFor(() =>
-        expect(discardStaged).toHaveBeenCalledWith('staged-resource-1'),
-      );
       // A key the host goes on holding for a form that is gone is worse than
       // abandoned bytes: nothing left knows it is there.
-      expect(inner.getStagingResidue()).toEqual([]);
+      await waitFor(async () =>
+        expect(
+          await stagedResources(host.client, host.protocolId, TEST_EDIT_ID),
+        ).toEqual([]),
+      );
       expect(staged).not.toHaveBeenCalled();
     },
   },
   {
     surface: 'preview',
-    state: 'a lease being renewed',
+    state: 'a URL being renewed',
     input: 'the renewal has not answered yet',
-    rule: 'the lease in use goes on playing and is not released',
+    rule: 'the URL in use goes on rendering until its replacement lands',
     check: async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
       try {
-        const inner = new InMemoryResourceGateway();
-        const resourceId = await stageImage(
-          inner,
-          'renewal-held',
-          'leased.png',
-        );
-        const host = leasingHost(inner, PREVIEW_RENEWAL_LEAD_MS + 30, 'hold');
-
-        renderPreview(host.gateway, resourceId, 'Leased image');
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(1);
-        });
-        expect(
-          screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
-        ).toContain('#lease-1');
-
-        // This lease ends 30ms after the lead, so the renewal falls due on the
+        const host = createPreviewHost();
+        const image = await host.image('leased.png');
+        // This URL ends 30ms after the lead, so the renewal falls due on the
         // floor rather than on the lead — asking again in 30ms would be the
         // host answering as fast as it can, for as long as the preview shows.
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(PREVIEW_RENEWAL_MIN_INTERVAL_MS);
-        });
-        expect(host.renewals).toHaveLength(1);
-        // The renewal is undecided, and the URL on screen still works:
+        host.urlsLastFor(PREVIEW_RENEWAL_LEAD_MS + 30);
+
+        renderPreview(host, image);
+        await advance(1);
+        expect(shownUrl()).toBe(1);
+
+        const renewal = host.holdNext();
+        await advance(PREVIEW_RENEWAL_MIN_INTERVAL_MS);
+
+        // The renewal is undecided and the URL on screen still resolves:
         // throwing it away here is what stops an audio or video element
         // mid-playback.
-        expect(
-          screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
-        ).toContain('#lease-1');
-        expect(host.released()).toBe(0);
+        expect(shownUrl()).toBe(1);
+        expect(host.issued()).toBe(1);
 
-        await act(async () => {
-          host.renewals[0]?.settle(await host.issue(resourceId));
-          await vi.advanceTimersByTimeAsync(0);
-        });
+        renewal.settle(undefined);
+        await advance(1);
 
-        expect(
-          screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
-        ).toContain('#lease-2');
-        expect(host.released()).toBe(1);
+        expect(shownUrl()).toBe(2);
       } finally {
         vi.useRealTimers();
       }
@@ -870,100 +812,31 @@ const INTERLEAVINGS: readonly Interleaving[] = [
   },
   {
     surface: 'preview',
-    state: 'a lease being renewed',
+    state: 'a URL being renewed',
     input: 'the renewal fails',
-    rule: 'the working lease is kept until it really ends, then reported',
+    rule: 'the working URL is kept until it really ends, then the failure is reported',
     check: async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
       try {
-        const inner = new InMemoryResourceGateway();
-        const resourceId = await stageImage(
-          inner,
-          'renewal-refused',
-          'leased.png',
-        );
-        const host = leasingHost(inner, PREVIEW_RENEWAL_LEAD_MS + 40, 'fail');
+        const host = createPreviewHost();
+        const image = await host.image('leased.png');
+        host.urlsLastFor(PREVIEW_RENEWAL_MIN_INTERVAL_MS + 40);
 
-        renderPreview(host.gateway, resourceId, 'Leased image');
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(1);
-        });
-        expect(
-          screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
-        ).toContain('#lease-1');
+        renderPreview(host, image);
+        await advance(1);
+        expect(shownUrl()).toBe(1);
 
         // The renewal falls due, and the host cannot answer it.
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(45);
-        });
-        expect(
-          screen.getByRole('img', { name: 'Leased image' }).getAttribute('src'),
-        ).toContain('#lease-1');
-        expect(host.released()).toBe(0);
-        expect(
-          screen.queryByText('the resource host is temporarily unavailable'),
-        ).toBeNull();
+        host.refuseNext();
+        await advance(PREVIEW_RENEWAL_MIN_INTERVAL_MS);
+        expect(shownUrl()).toBe(1);
+        expect(screen.queryByText(HOST_UNAVAILABLE)).toBeNull();
 
-        // Only once the lease it was renewing has ended is there anything to
-        // tell the researcher about.
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(PREVIEW_RENEWAL_LEAD_MS);
-        });
-        expect(
-          screen.getByText('the resource host is temporarily unavailable'),
-        ).toBeVisible();
-      } finally {
-        vi.useRealTimers();
-      }
-    },
-  },
-  {
-    surface: 'preview',
-    state: 'a lease being renewed',
-    input: 'the field moves to another resource',
-    rule: 'every lease for the resource left behind is released',
-    check: async () => {
-      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-      try {
-        const inner = new InMemoryResourceGateway();
-        const first = await stageImage(inner, 'renewal-switch-1', 'first.png');
-        const second = await stageImage(
-          inner,
-          'renewal-switch-2',
-          'second.png',
-        );
-        const host = leasingHost(inner, PREVIEW_RENEWAL_LEAD_MS + 30, 'hold');
-
-        const { rerender } = renderPreview(host.gateway, first, 'First');
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(1);
-        });
-        screen.getByRole('img', { name: 'First' });
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(PREVIEW_RENEWAL_MIN_INTERVAL_MS);
-        });
-        expect(host.renewals).toHaveLength(1);
-
-        rerender(
-          <ResourceGatewayProvider gateway={host.gateway}>
-            <ResourcePreview resourceId={second} kind="image" name="Second" />
-          </ResourceGatewayProvider>,
-        );
-        await act(async () => {
-          await vi.advanceTimersByTimeAsync(1);
-        });
-        screen.getByRole('img', { name: 'Second' });
-
-        // The renewal for the resource the field left answers at last.
-        // Nothing will ever render it, so nothing else would ever release it.
-        await act(async () => {
-          host.renewals[0]?.settle(await host.issue(first));
-          await vi.advanceTimersByTimeAsync(0);
-        });
-
-        expect(screen.getByRole('img', { name: 'Second' })).toBeVisible();
-        expect(host.issued()).toBe(3);
-        expect(host.released()).toBe(2);
+        // Only once the URL it was renewing has stopped resolving is there
+        // anything to tell the researcher about.
+        await advance(40);
+        expect(screen.getByText(HOST_UNAVAILABLE)).toBeVisible();
+        expect(shownUrl()).toBeUndefined();
       } finally {
         vi.useRealTimers();
       }
@@ -1015,25 +888,34 @@ const INTERLEAVINGS: readonly Interleaving[] = [
   {
     surface: 'picker',
     state: 'a call in flight',
-    input: 'the host throws instead of reporting',
+    input: 'the host throws instead of answering',
     rule: 'the throw is told as a failure and the control stops waiting',
     check: async () => {
       const user = userEvent.setup();
-      const inner = new InMemoryResourceGateway();
-      // Thrown synchronously, which is the shape a `.catch()` chained onto the
-      // call itself cannot see: the throw happens before there is a promise to
-      // chain onto.
-      const gateway = overrideGateway(inner, {
-        download: (): Promise<ResourceResult<ResourceContent>> => {
-          throw new Error('the host adapter threw');
-        },
+      // A map layer rather than an image, so the only call resolving a URL is
+      // the download the researcher asked for: an image would have a preview
+      // beside it asking the same throwing procedure.
+      renderResourceEditor({
+        // Thrown synchronously, which is the shape a `.catch()` chained onto
+        // the call itself cannot see: the throw happens before there is a
+        // promise to chain onto.
+        client: (host) =>
+          withResourceProcedures(host.client, {
+            preview: () => {
+              throw new Error('the host threw');
+            },
+          }),
+        children: mapLayerField(),
       });
-      renderResourceEditor({ gateway, children: imageField() });
 
-      const input = await openBrowser(user, 'Select an image');
+      const input = await openBrowser(user, 'Select a map layer');
       await user.upload(
         input,
-        new File(['fake-png-bytes'], 'skyline.png', { type: 'image/png' }),
+        new File(
+          [JSON.stringify({ type: 'FeatureCollection', features: [] })],
+          'wards.geojson',
+          { type: '' },
+        ),
       );
       await user.click(
         await screen.findByRole('button', { name: 'Download this resource' }),
@@ -1049,24 +931,61 @@ const INTERLEAVINGS: readonly Interleaving[] = [
   },
   {
     surface: 'preview',
-    state: 'resolving its first lease',
-    input: 'the host throws instead of reporting',
+    state: 'resolving its first URL',
+    input: 'the host throws instead of answering',
     rule: 'the throw is told as a failure rather than left as empty space',
     check: async () => {
-      const inner = new InMemoryResourceGateway();
-      const image = await stageImage(inner, 'request-throwing', 'thrown.png');
-      const gateway = overrideGateway(inner, {
-        resolvePreview: (): Promise<ResourceResult<ResolvedPreview>> => {
-          throw new Error('the host adapter threw');
+      const host = createResourceHost();
+      const staged = await host.client.resources.stage({
+        protocolId: host.protocolId,
+        // The edit the preview below is mounted in; a file staged for another
+        // one is not one it may resolve.
+        editId: TEST_EDIT_ID,
+        requestId: 'request-throwing',
+        request: {
+          kind: 'content',
+          contentKind: 'image',
+          name: 'thrown.png',
+          source: 'thrown.png',
+          contentType: 'image/png',
+          bytes: new Blob(['png'], { type: 'image/png' }),
         },
       });
+      if (staged.status !== 'ok') throw new Error('the image was not staged');
 
-      renderPreview(gateway, image, 'Thrown image');
+      renderInResourceContext(
+        withResourceProcedures(host.client, {
+          preview: () => {
+            throw new Error('the host threw');
+          },
+        }),
+        host.protocolId,
+        <ResourcePreview
+          resourceId={staged.data.descriptor.id}
+          kind="image"
+          name="Thrown image"
+        />,
+      );
 
       expect(await screen.findByText(UNREACHABLE)).toBeVisible();
     },
   },
 ];
+
+/** The host, recording the filename of every staging it is asked to make. */
+function stagingsInto(
+  host: InMemoryHost,
+  sources: string[],
+): ProtocolBuilderClient {
+  return withResourceProcedures(host.client, {
+    stage: (input) => {
+      sources.push(
+        input.request.kind === 'content' ? input.request.source : '',
+      );
+      return host.client.resources.stage(input);
+    },
+  });
+}
 
 it.each(INTERLEAVINGS)(
   'the $surface control, $state: $input — $rule',

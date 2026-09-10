@@ -225,8 +225,8 @@ export default function AssignAttributes({
    *
    * A default only answers for `undefined`, and this list is a field component
    * like any other: it renders whatever the stage document holds at its key,
-   * which an import, a collaborator's write or a mid-cascade reseed can leave
-   * as something that is not a list of records at all. Reading a foreign shape
+   * which an import or a migration can leave as something that is not a list of
+   * records at all. Reading a foreign shape
    * throws out of render, and a render that never commits is a render whose
    * corrective effect never runs — so the value stays foreign for good, which
    * is fresco-ui's render-tolerance contract (#1433) and the reason for this.

@@ -1,8 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { sectionId } from '@codaco/studio-sync/taxonomy';
-
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import NameGeneratorPromptsSection from '../NameGeneratorPromptsSection.tsx';
 
@@ -180,18 +178,17 @@ describe("a name generator's prompts", () => {
   });
 
   /**
-   * A collaborator adding an attribute is not this session's edit. It has to
-   * reach the picker, and it must not be echoed back as a command of ours —
-   * doing so would write their change into this stage's pending batches and
-   * save it as ours.
+   * The codebook is not this stage's section, so a collaborator may add an
+   * attribute to it while this stage is open. It has to reach the picker,
+   * which subscribes to the codebook where it renders rather than reading a
+   * copy the stage editor took when it opened.
    */
-  it('offers an attribute another session added, without claiming it', async () => {
+  it('offers an attribute another session added', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
       sections: prompts,
     });
 
-    const before = harness.pendingCommands().length;
     harness.receiveCodebookUpdate({
       node: {
         person: personDefinition({
@@ -213,12 +210,15 @@ describe("a name generator's prompts", () => {
     const picker = await dialog.findByRole('combobox', {
       name: 'Create or select an attribute',
     });
-    expect(
-      within(picker)
-        .getAllByRole('option')
-        .map((option) => (option as HTMLOptionElement).value),
-    ).toContain('contacted');
-    expect(harness.pendingCommands()).toHaveLength(before);
+    // The revision reaches the picker over the protocol channel, which is a
+    // microtask rather than the click that opened the dialog.
+    await waitFor(() =>
+      expect(
+        within(picker)
+          .getAllByRole('option')
+          .map((option) => (option as HTMLOptionElement).value),
+      ).toContain('contacted'),
+    );
   });
 
   /**
@@ -258,9 +258,10 @@ describe("a name generator's prompts", () => {
    * attribute row, so a researcher who has to leave the prompt, open the
    * codebook and come back has been sent away by this builder alone.
    *
-   * The codebook write and the stage that references it are one compound edit,
-   * which the in-memory host here applies exactly as a real one would — so
-   * this also proves both halves can land together.
+   * The attribute is committed to the codebook as it is created, under the
+   * codebook's own lock, so it is in the protocol before the stage that
+   * references it is saved — and stays there whatever this stage edit does
+   * next.
    */
   it('creates the boolean attribute a stamp needs, and selects it', async () => {
     const harness = renderStageEditor({
@@ -293,13 +294,10 @@ describe("a name generator's prompts", () => {
 
     // A stamp is written straight onto the node, so it has to be a boolean
     // the interview can set — the type is the section's, not the researcher's.
-    const person =
-      harness.session.getSnapshot().protocolSections[
-        sectionId({ kind: 'codebookNode', typeId: 'person' })
-      ];
-    if (person === undefined) throw new Error('the person type is gone');
+    // Read from the protocol rather than from the picker: the attribute is
+    // already committed, and nothing this stage saves later can add it.
     expect(
-      (person.variables as Record<string, { type?: string }>)[created],
+      harness.hostCodebook().node?.person?.variables?.[created],
     ).toMatchObject({ name: 'nominated_early', type: 'boolean' });
 
     await harness.user.click(dialog.getByRole('radio', { name: 'True' }));

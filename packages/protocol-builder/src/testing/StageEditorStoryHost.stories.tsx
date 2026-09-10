@@ -5,11 +5,13 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { interfaceDocumentationUrl } from '../interfaces/documentation.ts';
+import { ResourceClientProvider } from '../resources/client.tsx';
 import ContentBlockEditor from '../sections/contentBlocks/ContentBlockEditor.tsx';
 import ContentBlockPreview from '../sections/contentBlocks/ContentBlockPreview.tsx';
 import { contentBlockSlots } from '../sections/contentBlocks/contentBlockTypes.ts';
 import PageContentSection from '../sections/PageContentSection.tsx';
 import StageHeading from '../sections/StageHeading.tsx';
+import { StageEditSession } from '../stageEdit.tsx';
 import { fixtureStageIds } from './protocolFixture.ts';
 import { StageEditorStoryHost } from './StageEditorStoryHost.tsx';
 
@@ -18,17 +20,21 @@ const meta = {
   component: StageEditorStoryHost,
   args: {
     stageId: 'information-1',
-    renderEditor: ({ controller, actions }) => (
-      <StageEditorShell controller={controller} actions={actions}>
-        <StageHeading
-          documentationUrl={interfaceDocumentationUrl('information')}
-        />
-        <PageContentSection
-          ItemEditor={ContentBlockEditor}
-          ItemPreview={ContentBlockPreview}
-          slots={contentBlockSlots}
-        />
-      </StageEditorShell>
+    renderEditor: ({ target, formId, onSaved, actions }) => (
+      <ResourceClientProvider>
+        <StageEditSession target={target} formId={formId} onSaved={onSaved}>
+          <StageEditorShell actions={actions}>
+            <StageHeading
+              documentationUrl={interfaceDocumentationUrl('information')}
+            />
+            <PageContentSection
+              ItemEditor={ContentBlockEditor}
+              ItemPreview={ContentBlockPreview}
+              slots={contentBlockSlots}
+            />
+          </StageEditorShell>
+        </StageEditSession>
+      </ResourceClientProvider>
     ),
   },
   parameters: {
@@ -36,7 +42,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The host every stage editor’s stories run in. It opens a real editing session over one stage of the shared all-interfaces protocol — the same session the package’s tests are written against — renders whatever editor the story names, and reports what a save committed. Shown here with shared sections rather than a named editor, because the families that own those editors are still landing.',
+          'The host every stage editor’s stories run in. It serves one stage of the shared all-interfaces protocol over the package’s own host contract — the same host the package’s tests are written against — renders whatever editor the story names, and reports what a save committed. Shown here with shared sections rather than a named editor, because the families that own those editors are still landing.',
       },
     },
   },
@@ -60,9 +66,13 @@ export const Editing: Story = {
     // protocol the host opened — so the line is derived from that same stage
     // order, and from the stage this story actually opened, rather than
     // written out here.
+    //
+    // Awaited: the stage order is another section, and the host answers for it
+    // over a promise like any other. The editor draws itself from the stage it
+    // holds and fills the position in when that answer lands.
     const order = fixtureStageIds();
     await expect(
-      canvas.getByText(
+      await canvas.findByText(
         `Stage ${order.indexOf(args.stageId) + 1} of ${order.length}`,
       ),
     ).toBeInTheDocument();

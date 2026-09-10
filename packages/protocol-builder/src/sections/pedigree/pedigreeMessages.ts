@@ -426,12 +426,6 @@ export const pedigreeMessages = defineMessages({
     description:
       'Button that opens a dialog for adding the display label attribute to the codebook. Whole rather than a generic "Create", because a pedigree editor shows several of these at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons.',
   },
-  nodeLabelCreateDescription: {
-    id: 'protocolBuilder.pedigree.nodeLabelCreateDescription',
-    defaultMessage: 'Create a text attribute for family member names',
-    description:
-      'Said inside the dialog for creating the display label attribute, so the researcher knows what the attribute they are naming is for.',
-  },
   nodeEgoLabel: {
     id: 'protocolBuilder.pedigree.nodeEgoLabel',
     defaultMessage: 'Participant identifier',
@@ -450,12 +444,6 @@ export const pedigreeMessages = defineMessages({
     defaultMessage: 'Create a new participant identifier attribute',
     description:
       'Button that opens a dialog for adding the participant identifier attribute to the codebook.',
-  },
-  nodeEgoCreateDescription: {
-    id: 'protocolBuilder.pedigree.nodeEgoCreateDescription',
-    defaultMessage: 'Create a boolean attribute marking the participant',
-    description:
-      'Said inside the dialog for creating the participant identifier attribute.',
   },
   nodeRelationshipLabel: {
     id: 'protocolBuilder.pedigree.nodeRelationshipLabel',
@@ -476,13 +464,6 @@ export const pedigreeMessages = defineMessages({
     description:
       'Button that opens a dialog for adding the relationship-to-participant attribute to the codebook.',
   },
-  nodeRelationshipCreateDescription: {
-    id: 'protocolBuilder.pedigree.nodeRelationshipCreateDescription',
-    defaultMessage:
-      'Create a text attribute for each relationship to the participant',
-    description:
-      'Said inside the dialog for creating the relationship-to-participant attribute.',
-  },
   nodeBiologicalSexLabel: {
     id: 'protocolBuilder.pedigree.nodeBiologicalSexLabel',
     defaultMessage: 'Biological sex',
@@ -501,13 +482,6 @@ export const pedigreeMessages = defineMessages({
     defaultMessage: 'Create a new biological sex attribute',
     description:
       'Button that opens a dialog for adding the biological sex attribute to the codebook.',
-  },
-  nodeBiologicalSexCreateDescription: {
-    id: 'protocolBuilder.pedigree.nodeBiologicalSexCreateDescription',
-    defaultMessage:
-      'Create the categorical attribute the pedigree records sex in',
-    description:
-      'Said inside the dialog for creating the biological sex attribute. "The" rather than "a", because only one value set is allowed and the dialog seeds it.',
   },
 
   // The edge type the pedigree records relationships as.
@@ -554,13 +528,6 @@ export const pedigreeMessages = defineMessages({
     description:
       'Button that opens a dialog for adding the relationship type attribute to the codebook.',
   },
-  edgeRelationshipTypeCreateDescription: {
-    id: 'protocolBuilder.pedigree.edgeRelationshipTypeCreateDescription',
-    defaultMessage:
-      'Create the categorical attribute the pedigree records relationship kinds in',
-    description:
-      'Said inside the dialog for creating the relationship type attribute. "The" rather than "a", because only one value set is allowed and the dialog seeds it.',
-  },
   edgeIsActiveLabel: {
     id: 'protocolBuilder.pedigree.edgeIsActiveLabel',
     defaultMessage: 'Active status',
@@ -578,13 +545,6 @@ export const pedigreeMessages = defineMessages({
     defaultMessage: 'Create a new active status attribute',
     description:
       'Button that opens a dialog for adding the active status attribute to the codebook.',
-  },
-  edgeIsActiveCreateDescription: {
-    id: 'protocolBuilder.pedigree.edgeIsActiveCreateDescription',
-    defaultMessage:
-      'Create a boolean attribute recording whether a relationship is current',
-    description:
-      'Said inside the dialog for creating the active status attribute.',
   },
   edgeGestationalCarrierLabel: {
     id: 'protocolBuilder.pedigree.edgeGestationalCarrierLabel',
@@ -604,13 +564,6 @@ export const pedigreeMessages = defineMessages({
     description:
       'Button that opens a dialog for adding the gestational carrier attribute to the codebook.',
   },
-  edgeGestationalCarrierCreateDescription: {
-    id: 'protocolBuilder.pedigree.edgeGestationalCarrierCreateDescription',
-    defaultMessage:
-      'Create a boolean attribute recording who carried each pregnancy',
-    description:
-      'Said inside the dialog for creating the gestational carrier attribute.',
-  },
   edgeGameteRoleLabel: {
     id: 'protocolBuilder.pedigree.edgeGameteRoleLabel',
     defaultMessage: 'Gamete role',
@@ -629,13 +582,6 @@ export const pedigreeMessages = defineMessages({
     defaultMessage: 'Create a new gamete role attribute',
     description:
       'Button that opens a dialog for adding the gamete role attribute to the codebook.',
-  },
-  edgeGameteRoleCreateDescription: {
-    id: 'protocolBuilder.pedigree.edgeGameteRoleCreateDescription',
-    defaultMessage:
-      'Create the categorical attribute the pedigree records gamete roles in',
-    description:
-      'Said inside the dialog for creating the gamete role attribute. "The" rather than "a", because only one value set is allowed and the dialog seeds it.',
   },
 
   // The optional questions asked about every family member at once.
@@ -757,12 +703,6 @@ export const pedigreeMessages = defineMessages({
     defaultMessage: 'Create a new nomination attribute',
     description:
       'Button that opens a dialog for adding the attribute this nomination prompt will record its answers in to the codebook.',
-  },
-  nominationCreateDescription: {
-    id: 'protocolBuilder.pedigree.nominationCreateDescription',
-    defaultMessage: 'Create a boolean attribute for this nomination prompt',
-    description:
-      'Said inside the dialog for creating a nomination prompt’s attribute.',
   },
   nominationPreviewEmptyText: {
     id: 'protocolBuilder.pedigree.nominationPreviewEmptyText',

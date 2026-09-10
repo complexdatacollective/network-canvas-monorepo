@@ -6,6 +6,7 @@ import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { EgoFormStageEditor } from '../EgoFormStageEditor.tsx';
 import {
+  expectStageUntouched,
   fieldsOf,
   mountedAs,
   authorsDateSettingsFromField,
@@ -95,7 +96,7 @@ describe('the editor for a form about the participant', () => {
 
     // An ego form has no authored defaults, so a new one arrives empty and
     // every required part of it is the researcher's to write — except the
-    // name, which the session proposes because it is creating the stage.
+    // name, which is proposed because the stage is being created.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Ego Form/);
     expect(
@@ -183,19 +184,16 @@ describe('the editor for a form about the participant', () => {
       screen.getByRole('textbox', { name: 'Introduction heading' }),
       'A heading nobody kept',
     );
-    expect(harness.pendingCommands()).toHaveLength(0);
+    expectStageUntouched(harness);
 
     await harness.cancel();
 
-    expect(harness.pendingCommands()).toHaveLength(0);
-    expect(harness.session.getSnapshot().editedSection.fields).toEqual(
-      harness.seeded.fields,
-    );
+    expectStageUntouched(harness);
   });
 
   /**
    * A collaborator deleting an attribute this form collects is their edit, not
-   * this session's. The editor has to show what happened — otherwise the form
+   * this researcher's. The editor has to show what happened — otherwise the form
    * goes on claiming to collect something the codebook no longer has — and
    * must not emit a command of its own, which would save their deletion as
    * ours.
@@ -206,31 +204,20 @@ describe('the editor for a form about the participant', () => {
       await screen.findByText('Collects "ego_name" as text.'),
     ).toBeInTheDocument();
 
-    const dispatch = vi.spyOn(harness.session, 'dispatch');
     harness.receiveCodebookUpdate({ ego: { variables: {} } });
 
     expect(
       await screen.findByText('This attribute is no longer in the codebook.'),
     ).toBeInTheDocument();
-    expect(dispatch).not.toHaveBeenCalled();
-    expect(harness.pendingCommands()).toHaveLength(0);
-    // The session says so too, naming the attribute, so the researcher is not
-    // left to notice the badge: a stage collecting an attribute that is gone
-    // cannot be saved.
-    await waitFor(() =>
-      expect(
-        harness.outline().find((section) => section.title === 'Form fields')
-          ?.state,
-      ).toBe(
-        'Has a problem. The attribute "ego_name" does not exist in the codebook',
-      ),
-    );
+    // Their deletion is theirs. The field the researcher authored is still on
+    // the stage, still pointing where they pointed it: an editor that quietly
+    // dropped it would be saving somebody else's edit as this one.
+    expectStageUntouched(harness);
+    await harness.roundTrip({ unowned: [] });
   });
 
-  it('refuses to save a stage the session has made read-only', async () => {
-    const harness = renderStageEditor(openFixture());
-
-    harness.setReadOnly();
+  it('refuses to save a stage somebody else is editing', async () => {
+    const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
     await waitFor(() =>
       expect(

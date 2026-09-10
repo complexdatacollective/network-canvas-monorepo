@@ -318,9 +318,6 @@ describe('audit mutation policy', () => {
     expect(RPC_MUTATION_AUDIT_POLICIES['studies.create']).toEqual({
       kind: 'required',
     });
-    expect(RPC_MUTATION_AUDIT_POLICIES['protocols.commitSection']).toEqual({
-      kind: 'required',
-    });
     expect(
       RPC_MUTATION_AUDIT_POLICIES['protocols.addInformationStage'],
     ).toEqual({ kind: 'required' });

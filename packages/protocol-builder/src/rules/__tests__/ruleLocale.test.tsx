@@ -1,16 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { formatMessageError } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
-import { useStageEditorController } from '../../controller.ts';
 import ProtocolField from '../../form/ProtocolField.tsx';
-import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { enIntl, esIntl } from '../../testing/i18n.ts';
@@ -19,7 +15,8 @@ import { ruleDraftRefusal } from '../RuleEditorDialog.tsx';
 import { ruleSubjectMessages } from '../ruleMessages.ts';
 import RulePreview from '../RulePreview.tsx';
 import { QueryRuleSetField } from '../RuleSetField.tsx';
-import { createSession, testCodebook } from './fixtures.ts';
+import { ruleSections, testCodebook } from './fixtures.ts';
+import { RuleEditorHost } from './ruleEditorHost.tsx';
 
 /**
  * A rule reads back in the researcher's own language, through both routes the
@@ -177,26 +174,21 @@ describe('a refusal that quotes a noun phrase of its own', () => {
  * discarding whatever the researcher had entered but not yet saved.
  */
 function LocaleSwitchingRuleList({ locale }: { locale: 'en' | 'es' }) {
-  const [session] = useState(createSession);
-  const controller = useStageEditorController(session, 'stage-form');
-
   return (
     <AppI18nProvider
       locale={locale}
       locales={ecosystemLocales}
       messages={locale === 'es' ? protocolBuilderCatalogs.es : undefined}
     >
-      <DialogProvider>
-        <StageEditorShell controller={controller}>
-          <BuilderSection title="Skip logic">
-            <ProtocolField
-              name="skipLogic.filter"
-              label="Rules"
-              component={QueryRuleSetField}
-            />
-          </BuilderSection>
-        </StageEditorShell>
-      </DialogProvider>
+      <RuleEditorHost sections={ruleSections()}>
+        <BuilderSection title="Skip logic">
+          <ProtocolField
+            name="skipLogic.filter"
+            label="Rules"
+            component={QueryRuleSetField}
+          />
+        </BuilderSection>
+      </RuleEditorHost>
     </AppI18nProvider>
   );
 }

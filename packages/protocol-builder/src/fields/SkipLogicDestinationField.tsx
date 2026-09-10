@@ -7,6 +7,7 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { SkipLogicDestination } from '@codaco/protocol-validation';
 
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import {
   destinationRoute,
   routeDestination,
@@ -34,9 +35,9 @@ export type SkipLogicDestinationFieldProps = CreateFormFieldProps<
 /**
  * Where the interview continues when this stage is skipped.
  *
- * The stages on offer come from the editor's own protocol context, so nothing
- * mounting this passes a stage list, a stage path or a selector — and a stage
- * a collaborator adds, renames, deletes or moves while the editor is open
+ * The stage index is subscribed to here, in the control that reads it, so
+ * nothing mounting this passes a stage list, a stage path or a selector — and a
+ * stage a collaborator adds, renames, deletes or moves while the editor is open
  * changes what is offered here without the section doing anything.
  *
  * A destination that has become impossible — its stage deleted, or moved to
@@ -66,11 +67,8 @@ export default function SkipLogicDestinationField({
   'aria-labelledby': ariaLabelledBy,
   'aria-required': ariaRequired,
 }: SkipLogicDestinationFieldProps) {
-  const {
-    protocolContext,
-    identity,
-    readOnly: sessionReadOnly,
-  } = useStageEditorForm();
+  const { identity, readOnly: sessionReadOnly } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const intl = useAppIntl();
   const readOnly = readOnlyProp || sessionReadOnly;
   const problemId = useId();

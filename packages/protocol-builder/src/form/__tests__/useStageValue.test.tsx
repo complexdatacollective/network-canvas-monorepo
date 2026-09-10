@@ -1,25 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { useStageEditorController } from '../../controller.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-} from '../../session.ts';
+import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import ProtocolField from '../ProtocolField.tsx';
-import StageEditorShell from '../StageEditorShell.tsx';
 import { useStageValue } from '../stageFormHooks.ts';
-
-const settingsSection = sectionId({ kind: 'settings' });
-const stageOrderSection = sectionId({ kind: 'stageOrder' });
-const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
 
 /**
  * A key a researcher authored that contains a dot.
@@ -29,34 +17,6 @@ const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
  * separator.
  */
 const DOTTED_KEY = 'my.title';
-
-const protocolSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Stage value reading', schemaVersion: 8 },
-  [stageOrderSection]: { stages: ['stage-1'] },
-  [stageSection]: {
-    id: 'stage-1',
-    type: 'Information',
-    label: 'Welcome',
-    title: 'Welcome',
-    items: [],
-  },
-};
-
-function createSession(fields: SectionDoc) {
-  return new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('Information', () => 'stage-1'),
-    fields,
-    protocolSections,
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Stage value reading',
-      schemaVersion: 8,
-      codebook: {},
-      stages: [stageDocument],
-    }),
-  });
-}
 
 /** Writes out whatever the hook reports, so a test can read it back. */
 function ValueProbe({ path }: { path: string }) {
@@ -74,35 +34,22 @@ function renderEditor({
   path,
   fieldName,
 }: Readonly<{ fields: SectionDoc; path: string; fieldName?: string }>) {
-  const session = createSession(fields);
-
-  function Editor() {
-    const controller = useStageEditorController(session, 'stage-form');
-
-    return (
-      <StageEditorShell controller={controller}>
-        <BuilderSection title="Page content">
-          {fieldName !== undefined && (
-            <ProtocolField
-              name={fieldName}
-              nameMode="opaque"
-              label="Page heading"
-              component={InputField}
-            />
-          )}
-          <ValueProbe path={path} />
-        </BuilderSection>
-      </StageEditorShell>
-    );
-  }
-
-  render(
-    <DialogProvider>
-      <Editor />
-    </DialogProvider>,
-  );
-
-  return { session };
+  return renderStageEditor({
+    stage: { type: 'Information', fields },
+    sections: (
+      <BuilderSection title="Page content">
+        {fieldName !== undefined && (
+          <ProtocolField
+            name={fieldName}
+            nameMode="opaque"
+            label="Page heading"
+            component={InputField}
+          />
+        )}
+        <ValueProbe path={path} />
+      </BuilderSection>
+    ),
+  });
 }
 
 /**
@@ -115,7 +62,7 @@ function renderEditor({
  * would split it in two and find nothing there.
  */
 describe('useStageValue', () => {
-  it('reads a value the committed draft holds', () => {
+  it('reads a value the stage was opened with', () => {
     renderEditor({
       fields: { label: 'Welcome', title: 'Hello', items: [] },
       path: 'title',
@@ -170,9 +117,8 @@ describe('useStageValue', () => {
     expect(probedValue()).toBe('the authored key');
   });
 
-  it('prefers what the form holds over the draft it was opened with', async () => {
-    const user = userEvent.setup();
-    renderEditor({
+  it('prefers what the form holds over the document it was opened with', async () => {
+    const harness = renderEditor({
       fields: {
         label: 'Welcome',
         title: 'Hello',
@@ -183,7 +129,7 @@ describe('useStageValue', () => {
       fieldName: DOTTED_KEY,
     });
 
-    await user.type(
+    await harness.user.type(
       screen.getByRole('textbox', { name: 'Page heading' }),
       ' edited',
     );

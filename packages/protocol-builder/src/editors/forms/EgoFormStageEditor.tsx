@@ -17,15 +17,9 @@ import { saveStageAction } from '../saveStageAction.tsx';
  * That is also why the form fields are told their subject is `ego` rather than
  * reading it from the stage — there is no `subject` in the document to read.
  */
-export function EgoFormStageEditor({
-  controller,
-  actions,
-}: StageEditorProps<'EgoForm'>) {
+export function EgoFormStageEditor({ actions }: StageEditorProps<'EgoForm'>) {
   return (
-    <StageEditorShell
-      controller={controller}
-      actions={actions ?? saveStageAction}
-    >
+    <StageEditorShell actions={actions ?? saveStageAction}>
       <StageHeading documentationUrl={interfaceDocumentationUrl('ego-form')} />
       <IntroductionSection />
       <FormFieldsSection subject="ego" />
