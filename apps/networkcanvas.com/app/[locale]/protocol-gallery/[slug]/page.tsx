@@ -101,7 +101,7 @@ export default async function ProtocolDetailPage({
             </Button>
           </div>
 
-          <div className="tablet-landscape:grid-cols-[auto_minmax(24rem,1fr)] mt-8 grid grid-cols-1 gap-8">
+          <div className="tablet-landscape:grid-cols-[auto_minmax(24rem,1fr)] laptop:grid-cols-[auto_minmax(38rem,1fr)] mt-8 grid grid-cols-1 gap-8">
             <div className="max-w-[80ch] min-w-0 space-y-8">
               <div>
                 {protocol.featured ? (
