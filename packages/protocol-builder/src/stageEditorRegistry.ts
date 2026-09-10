@@ -34,10 +34,13 @@ import type { StageType } from '@codaco/protocol-validation';
 
 import { alterEdgeFormStageEditor } from './editors/alter-edge-form/AlterEdgeFormStageEditor.ts';
 import { alterFormStageEditor } from './editors/alter-form/AlterFormStageEditor.ts';
+import { dyadCensusStageEditor } from './editors/dyad-census/DyadCensusStageEditor.ts';
 import { egoFormStageEditor } from './editors/ego-form/EgoFormStageEditor.ts';
 import { familyPedigreeStageEditor } from './editors/family-pedigree/FamilyPedigreeStageEditor.ts';
 import { informationStageEditor } from './editors/information/InformationStageEditor.ts';
 import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
+import { oneToManyDyadCensusStageEditor } from './editors/one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
+import { tieStrengthCensusStageEditor } from './editors/tie-strength-census/TieStrengthCensusStageEditor.ts';
 import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
 
 /**
@@ -114,10 +117,13 @@ const REGISTRY_PARTS = [
   // One imported part per line, alphabetically, each with a trailing comma.
   alterEdgeFormStageEditor,
   alterFormStageEditor,
+  dyadCensusStageEditor,
   egoFormStageEditor,
   familyPedigreeStageEditor,
   informationStageEditor,
   nameGeneratorStageEditor,
+  oneToManyDyadCensusStageEditor,
+  tieStrengthCensusStageEditor,
 ] as const satisfies readonly StageEditorRegistryPart[];
 
 export const stageEditorRegistry: StageEditorRegistryPart =
@@ -212,17 +218,14 @@ export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
 export const AWAITING_STAGE_EDITORS = [
   'Anonymisation',
   'CategoricalBin',
-  'DyadCensus',
   'Geospatial',
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
   'Narrative',
   'NarrativePedigree',
   'NetworkComposer',
-  'OneToManyDyadCensus',
   'OrdinalBin',
   'Sociogram',
-  'TieStrengthCensus',
 ] as const satisfies readonly UnregisteredStageType[];
 
 export type Assert<T extends true> = T;
