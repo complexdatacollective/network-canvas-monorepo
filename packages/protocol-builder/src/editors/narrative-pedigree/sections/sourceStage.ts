@@ -1,7 +1,7 @@
 import type { Stage } from '@codaco/protocol-validation';
 
-import { stagePlacement } from '../../fields/stageDestination.ts';
-import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
+import { stagePlacement } from '../../../fields/stageDestination.ts';
+import type { ProtocolBuilderProtocolContext } from '../../../protocol-context.ts';
 
 export type SourceStageOption = Readonly<{ value: string; label: string }>;
 

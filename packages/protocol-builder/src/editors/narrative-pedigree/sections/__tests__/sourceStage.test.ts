@@ -5,8 +5,8 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import {
   protocolContextFromSections,
   type ProtocolBuilderProtocolContext,
-} from '../../../protocol-context.ts';
-import { fixtureProtocolSections } from '../../../testing/protocolFixture.ts';
+} from '../../../../protocol-context.ts';
+import { fixtureProtocolSections } from '../../../../testing/protocolFixture.ts';
 import { resolveSourceStages, sourceStageNodeType } from '../sourceStage.ts';
 
 /**

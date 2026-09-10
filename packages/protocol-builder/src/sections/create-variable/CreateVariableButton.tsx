@@ -6,18 +6,18 @@ import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import type { VariableOption, VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import VariableEditor from '../../../codebook/components/VariableEditor.tsx';
+import VariableEditor from '../../codebook/components/VariableEditor.tsx';
 import {
   documentWithRebasedVariable,
   sectionIdForCodebookSubject,
-} from '../../../codebook/editing.ts';
-import { useCodebookSectionWrite } from '../../../codebook/writes.ts';
-import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
-import type { CodebookSubject } from '../../../protocol-context.ts';
+} from '../../codebook/editing.ts';
+import { useCodebookSectionWrite } from '../../codebook/writes.ts';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import type { CodebookSubject } from '../../protocol-context.ts';
 import {
   useProtocolContext,
   useProtocolSections,
-} from '../../../state/protocolContext.ts';
+} from '../../state/protocolContext.ts';
 
 export type CreateVariableButtonProps = Readonly<{
   /** The type the attribute is created on. `null` while none is chosen. */

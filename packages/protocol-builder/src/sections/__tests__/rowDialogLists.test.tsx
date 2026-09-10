@@ -6,7 +6,6 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { familyPedigreeStageWith } from '../../editors/family-pedigree/sections/__tests__/pedigreeFixtures.tsx';
 import NominationPromptsSection from '../../editors/family-pedigree/sections/NominationPromptsSection.tsx';
-import NodePanelsSection from '../../editors/name-generator/sections/panels/NodePanelsSection.tsx';
 import type { RowValues } from '../../form/rowDialog.tsx';
 import {
   renderStageEditor,
@@ -15,6 +14,7 @@ import {
 } from '../../testing/renderStageEditor.tsx';
 import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import PageContentSection from '../page-content/PageContentSection.tsx';
+import NodePanelsSection from '../panels/NodePanelsSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
 import {
   TestItemEditor,

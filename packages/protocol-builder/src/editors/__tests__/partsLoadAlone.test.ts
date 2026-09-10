@@ -19,8 +19,8 @@ import { nameGeneratorStageEditor } from '../name-generator/NameGeneratorStageEd
  * Which module a program reaches first is not something an editor controls: a
  * host importing an editor, a story naming a part, a test mounting one — each
  * enters the graph somewhere different. So a part depends only on the contract
- * its sections are written against, and both `defineStageEditor` and
- * `defineStageEditorPart` live away from the registry for that reason.
+ * its sections are written against, and `defineStageEditor` lives away from
+ * the registry for that reason.
  */
 describe('a part reached before the registry', () => {
   it.each([

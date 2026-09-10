@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import AlterLimitsSection from '../../../sections/alter-limits/AlterLimitsSection.tsx';
+import NameGeneratorPromptsSection from '../../../sections/name-generator-prompts/NameGeneratorPromptsSection.tsx';
+import NodePanelsSection from '../../../sections/panels/NodePanelsSection.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import AlterLimitsSection from '../sections/alter-limits/AlterLimitsSection.tsx';
-import NodePanelsSection from '../sections/panels/NodePanelsSection.tsx';
-import NameGeneratorPromptsSection from '../sections/prompts/NameGeneratorPromptsSection.tsx';
 
 /**
  * The name-generator sections read in Spanish.

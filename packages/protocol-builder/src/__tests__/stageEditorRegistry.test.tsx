@@ -5,11 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import StageEditorShell from '../form/StageEditorShell.tsx';
-import {
-  defineStageEditorPart,
-  missingStageEditors,
-  STAGE_TYPES,
-} from '../stage-editor-contract.ts';
+import { missingStageEditors, STAGE_TYPES } from '../stage-editor-contract.ts';
 import type {
   StageEditorComponent,
   StageEditorProps,
@@ -48,8 +44,8 @@ const ChromeEditor: StageEditorComponent<'Information'> = ({
 describe('composing the registry from family parts', () => {
   it('merges the parts each family exports', () => {
     const registry = composeStageEditorRegistry(
-      defineStageEditorPart({ Information: InformationEditor }),
-      defineStageEditorPart({ EgoForm: EgoFormEditor }),
+      { Information: InformationEditor },
+      { EgoForm: EgoFormEditor },
     );
 
     expect(Object.keys(registry).toSorted()).toEqual([
@@ -236,7 +232,7 @@ describe('the two lists a family edits', () => {
  *
  * The controls matter as much as the probes: `valid.ts` proves the machinery
  * is not simply refusing everything, and its `ClaimsExactlyTheseTwo` proves
- * `defineStageEditorPart` keeps a part's exact key set — the fact all three
+ * `defineStageEditor` keeps a part's exact key set — the fact all three
  * registry probes rest on, and the one an annotated `const part:
  * StageEditorRegistryPart` destroys. `actionsSlot.ts` is the control for the
  * fourth probe: an editor may ignore the host's action chrome or forward it,
@@ -245,8 +241,9 @@ describe('the two lists a family edits', () => {
  * `partFromRegistry.ts` is a probe about the import graph rather than about
  * coverage: the registry imports every family's part, so the helper a part is
  * declared with must not be reachable through the registry, or a family closes
- * the cycle again. Its control is every other probe in this project — they all
- * import that helper from `stage-editor-contract.ts` and all compile.
+ * the cycle again. Its control is every other registry probe in this
+ * project — they all reach that helper through
+ * `editors/defineStageEditor.tsx` and all compile.
  */
 describe('the compile-time coverage checks', () => {
   it('refuses a missing entry, a stale entry, a duplicate claim, an editor that insists on chrome, and a part helper read from the registry', () => {

@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 
-import { useStageValue } from '../../../../form/stageFormHooks.ts';
-import type { AutoStageNamePanel } from '../../../../naming/useAutoStageName.ts';
-import type { StageHeadingSectionProps } from '../../../../sections/stage-heading/StageHeadingSection.tsx';
+import { useStageValue } from '../../form/stageFormHooks.ts';
+import type { AutoStageNamePanel } from '../../naming/useAutoStageName.ts';
+import type { StageHeadingSectionProps } from '../stage-heading/StageHeadingSection.tsx';
 
 /** Where a name generator that offers side panels keeps them. */
 const PANELS = 'panels';

@@ -1,6 +1,5 @@
-import { defineStageEditorPart } from '../src/stage-editor-contract.ts';
+import { defineStageEditor } from '../src/editors/defineStageEditor.tsx';
 import { type UnregisteredIn } from '../src/stageEditorRegistry.ts';
-import { InformationEditor } from './fixtures.ts';
 
 /**
  * MUST NOT COMPILE: an interface that has an editor and is still listed as
@@ -9,9 +8,7 @@ import { InformationEditor } from './fixtures.ts';
  * The list is documentation a reviewer trusts, so a stale entry is worse than
  * no list at all: it says a family has not landed when it has.
  */
-const PARTS = [
-  defineStageEditorPart({ Information: InformationEditor }),
-] as const;
+const PARTS = [defineStageEditor('Information', [])] as const;
 
 export const AWAITING = [
   'Information',

@@ -124,9 +124,9 @@ after the fact is marked in place.
 | `contentBlock`              | `sections/content-blocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                                           | sections  |
 | `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                                 | sections  |
 | `integerField`              | `fields/IntegerField.tsx`                                                                                                                                                                     | family D  |
-| `alterLimits`               | `editors/name-generator/sections/alter-limits/AlterLimitsSection.tsx`                                                                                                                         | family D  |
-| `nameGeneratorPrompts`      | `editors/name-generator/sections/prompts/NameGeneratorPromptsSection.tsx`                                                                                                                     | family D  |
-| `nodePanels`                | `editors/name-generator/sections/panels/NodePanelsSection.tsx`                                                                                                                                | family D  |
+| `alterLimits`               | `sections/alter-limits/AlterLimitsSection.tsx`                                                                                                                                                | family D  |
+| `nameGeneratorPrompts`      | `sections/name-generator-prompts/NameGeneratorPromptsSection.tsx`                                                                                                                             | family D  |
+| `nodePanels`                | `sections/panels/NodePanelsSection.tsx`                                                                                                                                                       | family D  |
 | `pedigree`                  | `editors/family-pedigree/sections/`                                                                                                                                                           | family F  |
 
 Family D added a second-level segment the reserved list did not hold. One line,
@@ -264,7 +264,7 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection`   | family E    |
 | `ordinalColor`             | `fields/OrdinalColorField`                   | family E    |
 | `networkCanvas`            | `sections/network/`                          | family F    |
-| `narrativePedigree`        | `sections/narrativePedigree/`                | family F    |
+| `narrativePedigree`        | `editors/narrative-pedigree/sections/`       | family F    |
 | `geospatial`               | `sections/geospatial/`, geospatial `fields/` | family F    |
 | `anonymisation`            | `sections/anonymisation/`                    | family F    |
 

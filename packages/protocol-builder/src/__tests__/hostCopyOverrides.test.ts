@@ -280,7 +280,7 @@ describe('the not-yet-converted exclusions', () => {
     const families = [
       'sections/network',
       'editors/family-pedigree/sections',
-      'sections/narrativePedigree',
+      'editors/narrative-pedigree/sections',
       'sections/geospatial',
       'sections/anonymisation',
     ];

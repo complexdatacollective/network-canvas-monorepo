@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
+import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import NodePanelsSection from '../NodePanelsSection.tsx';
 
 const panels = <NodePanelsSection />;
