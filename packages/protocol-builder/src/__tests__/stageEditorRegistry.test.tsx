@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { missingStageEditors, STAGE_TYPES } from '../stage-editor-contract.ts';
@@ -10,7 +10,6 @@ import type {
   StageEditorComponent,
   StageEditorProps,
 } from '../stage-editor-contract.ts';
-import { UnregisteredStageTypeError } from '../StageEditor.tsx';
 import {
   AWAITING_STAGE_EDITORS,
   composeStageEditorRegistry,
@@ -75,6 +74,15 @@ describe('composing the registry from family parts', () => {
     ]);
   });
 
+  it('accounts for every schema stage type exactly once', () => {
+    expect(
+      [
+        ...AWAITING_STAGE_EDITORS,
+        ...Object.keys(stageEditorRegistry),
+      ].toSorted(),
+    ).toEqual([...STAGE_TYPES].toSorted());
+  });
+
   /**
    * The state PR 3 reaches, asserted rather than inferred from the pair above.
    *
@@ -87,15 +95,6 @@ describe('composing the registry from family parts', () => {
     expect([...AWAITING_STAGE_EDITORS]).toEqual([]);
     expect(missingStageEditors(stageEditorRegistry)).toEqual([]);
     expect(Object.keys(stageEditorRegistry)).toHaveLength(STAGE_TYPES.length);
-  });
-
-  it('accounts for every schema stage type exactly once', () => {
-    expect(
-      [
-        ...AWAITING_STAGE_EDITORS,
-        ...Object.keys(stageEditorRegistry),
-      ].toSorted(),
-    ).toEqual([...STAGE_TYPES].toSorted());
   });
 
   /**
@@ -186,8 +185,19 @@ describe('the two lists a family edits', () => {
     'utf8',
   );
 
-  /** The lines between a list's own brackets, comments and blanks dropped. */
+  /**
+   * The lines between a list's own brackets, comments and blanks dropped.
+   *
+   * A list with nothing in it is written `[]`, because there are no entries to
+   * keep on lines of their own — which is what `AWAITING_STAGE_EDITORS` is now
+   * that every interface has an editor. Only empty brackets are allowed
+   * through, with the whitespace the formatter chooses to put around them: a
+   * list that HAS entries and was collapsed onto one line still fails, which
+   * is the merge the shape is for.
+   */
   const entriesOf = (name: string): string[] => {
+    if (new RegExp(`const ${name} =\\s*\\[\\] as const`).test(source))
+      return [];
     const body = new RegExp(
       `const ${name} = \\[\\n([\\s\\S]*?)\\n\\] as const`,
     ).exec(source)?.[1];
@@ -315,48 +325,22 @@ describe('dispatching to a named editor', () => {
   });
 
   /**
-   * Thrown rather than reported: there is no editor to fall back to, and
-   * rendering nothing would leave a researcher on an empty page with no
-   * account of why.
-   *
-   * Read off the error rather than off a mounted dispatch, because there is no
-   * longer an interface to mount that reaches it. Every stage type the schema
-   * declares has an editor (`AWAITING_STAGE_EDITORS` is empty, asserted just
-   * above), a host registry is merged OVER the package's rather than replacing
-   * it, and an entry a host leaves empty claims nothing — so nothing a host can
-   * pass takes an interface away. What survives is the contract the message
-   * keeps for the report a host collects: it names the interface, and the error
-   * carries it as a field.
+   * Every interface now has an editor, so nothing this package composes can
+   * reach `UnregisteredStageTypeError` any more: an explicit `{}` from a host
+   * is merged OVER the package's registry rather than replacing it, and there
+   * is no longer a stage type the package leaves out. What the throw says, and
+   * that it names the interface, is asserted in
+   * `hostStageEditorOverrides.test.tsx`, where the package registry is mocked
+   * down to two interfaces and a third is genuinely unregistered.
    */
-  it('names the interface nothing is registered for', () => {
-    const error = new UnregisteredStageTypeError('Sociogram');
-
-    expect(error.stageType).toBe('Sociogram');
-    expect(error.message).toMatch(/"Sociogram" interface/);
-    expect(error).toBeInstanceOf(Error);
-  });
-
   it('is the package registry when a host does not supply one', () => {
-    const consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
+    // An interface a landed family claims opens in that family's editor with
+    // no registry passed at all, which is how a host reaches one.
+    const harness = renderStageEditor({ stageId: 'information-1' });
 
-    try {
-      // An interface a landed family claims opens in that family's editor with
-      // no registry passed at all, which is how a host reaches one.
-      const harness = renderStageEditor({ stageId: 'information-1' });
-      expect(harness.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
-        'Information',
-      );
-
-      // And every OTHER interface too, which is the half that used to be an
-      // interface still awaiting its family throwing instead. No stage type is
-      // left to throw for, so the reading is inverted: the package's own
-      // registry claims all of them.
-      expect(missingStageEditors(stageEditorRegistry)).toEqual([]);
-    } finally {
-      consoleError.mockRestore();
-    }
+    expect(harness.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+      'Information',
+    );
   });
 
   /**

@@ -151,6 +151,43 @@ export const addPersonVariable = (
 };
 
 /**
+ * One of this type's attributes given a different kind of answer, put there by
+ * a collaborator while this editor is open.
+ *
+ * The protocol is read live, so the attribute a row is recording into can stop
+ * being the kind the control that row names knows how to ask for — which is a
+ * pairing the protocol schema refuses outright.
+ */
+export const retypePersonVariable = (
+  harness: StageEditorHarness,
+  variableId: string,
+  type: string,
+): void => {
+  const section = harness.protocolSections()[PERSON_SECTION];
+  if (section === undefined) {
+    throw new Error('the fixture protocol has no person node type');
+  }
+  const variables = isRecord(section.variables) ? section.variables : {};
+  const held = variables[variableId];
+  if (!isRecord(held)) {
+    throw new Error(`"person" has no "${variableId}" attribute to retype.`);
+  }
+  if (held.type === type) {
+    throw new Error(
+      `"person"’s "${variableId}" is already a "${type}" attribute, so retyping it proves nothing.`,
+    );
+  }
+  harness.receiveCodebookUpdate({
+    node: {
+      person: {
+        ...section,
+        variables: { ...variables, [variableId]: { ...held, type } },
+      },
+    },
+  });
+};
+
+/**
  * Another stage in the protocol starting to WRITE one of this type's
  * attributes without the codebook's rules running, put there by a
  * collaborator while this editor is open.

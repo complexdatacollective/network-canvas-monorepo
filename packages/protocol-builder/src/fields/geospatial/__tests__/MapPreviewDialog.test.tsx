@@ -195,6 +195,39 @@ describe('setting the starting view on a map', () => {
     });
   });
 
+  /**
+   * The view a researcher pans east across the antimeridian to.
+   *
+   * Mapbox counts longitude as they keep going — its own `LngLat#wrap`
+   * documents 286.0251 as the place -73.9749 names — and this dialog is the
+   * one place that number becomes a value the stage holds. Taken as it came,
+   * the accepted view is a centre the section's own control refuses, so the
+   * researcher would be sent to type by hand the coordinates of the place
+   * they had just pointed at.
+   */
+  it('accepts a view panned past the antimeridian as a place the stage can save', async () => {
+    servedStyle = HOSTED_STYLE;
+    const harness = openEditor();
+    await openMap(harness);
+    await waitFor(() => expect(mapsBuilt()).toHaveLength(1));
+    act(() => emitMapEvent('load'));
+
+    setMapView({ lng: 286.0251, lat: 40.7736 }, 12);
+    act(() => emitMapEvent('move'));
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Use this view' }),
+    );
+
+    const request = await harness.submit();
+    expect(request).not.toBeNull();
+    const center = mapOptionsOf(request?.stageDocument ?? {}).center;
+    const [longitude, latitude] = Array.isArray(center) ? center : [];
+    expect(longitude).toBeCloseTo(-73.9749, 10);
+    expect(latitude).toBe(40.7736);
+    expect(mapOptionsOf(request?.stageDocument ?? {}).initialZoom).toBe(12);
+  });
+
   it('tears the map down when the dialog is closed', async () => {
     servedStyle = HOSTED_STYLE;
     const harness = openEditor();

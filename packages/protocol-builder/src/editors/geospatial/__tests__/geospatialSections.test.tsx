@@ -1,4 +1,4 @@
-import { act, screen, waitFor, type within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -87,6 +87,55 @@ const asCollaborator = (
   const current = harness.host.store.read(section).document;
   act(() => {
     harness.host.store.applyAsCollaborator(section, rewrite({ ...current }));
+  });
+};
+
+/** One more attribute this stage's prompts could record a place in. */
+const addLocationAttribute = (
+  harness: ReturnType<typeof openEditor>,
+  id: string,
+): void => {
+  asCollaborator(harness, PERSON, (person) => ({
+    ...person,
+    variables: {
+      ...(typeof person.variables === 'object' && person.variables !== null
+        ? person.variables
+        : {}),
+      [id]: { name: id, type: 'location' },
+    },
+  }));
+};
+
+/**
+ * The stage as another tool could have authored it: two prompts recording one
+ * attribute.
+ *
+ * Not reachable through this editor, which is the point — the picker offers no
+ * attribute a sibling prompt records — so the state a save gate exists for is
+ * seeded rather than performed.
+ */
+const openTwoPromptsOnOneAttribute = () => {
+  const { type, fields } = loadFixtureStage('geospatial-1');
+  return renderStageEditor({
+    stage: {
+      type,
+      fields: {
+        ...fields,
+        prompts: [
+          {
+            id: 'geospatial-prompt-1',
+            text: 'Where do you live?',
+            variable: 'location',
+          },
+          {
+            id: 'geospatial-prompt-2',
+            text: 'Where do you work?',
+            variable: 'location',
+          },
+        ],
+      },
+    },
+    sections: geospatialSections,
   });
 };
 
@@ -299,15 +348,22 @@ describe('the places a geospatial stage asks about', () => {
 
   it('adds a prompt recording an existing location attribute', async () => {
     const harness = openEditor();
+    await harness.opened();
+    addLocationAttribute(harness, 'workplace');
 
     const dialog = await openPrompt(harness, 'Create new prompt');
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Prompt text' }),
       'Work?',
     );
+    // The attribute the stage's own prompt already records is not among them:
+    // this list is what is left.
+    await waitFor(() =>
+      expect(offeredAttributes(dialog)).toEqual(['workplace']),
+    );
     await harness.user.selectOptions(
       dialog.getByRole('combobox', { name: 'Location attribute' }),
-      'location',
+      'workplace',
     );
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
@@ -319,8 +375,62 @@ describe('the places a geospatial stage asks about', () => {
     expect(Array.isArray(prompts) ? prompts : []).toHaveLength(2);
     expect((Array.isArray(prompts) ? prompts : [])[1]).toMatchObject({
       text: 'Work?',
-      variable: 'location',
+      variable: 'workplace',
     });
+  });
+
+  /**
+   * The interview writes each answer into its own prompt's attribute, so two
+   * prompts recording one attribute leave the stage holding only the last
+   * place the participant chose — and nothing downstream can say so, because
+   * both prompts name a location attribute and the schema is satisfied.
+   *
+   * The fixture's type has exactly one such attribute and its only prompt
+   * already records it, so there is nothing left for a second prompt to
+   * choose. Asked and answered where a network composer's form fields ask it
+   * of their own siblings.
+   */
+  it('offers no location attribute another prompt already records', async () => {
+    const harness = openEditor();
+    await harness.opened();
+
+    const dialog = await openPrompt(harness, 'Create new prompt');
+    expect(
+      dialog.queryByRole('combobox', { name: 'Location attribute' }),
+    ).toBeNull();
+    expect(
+      dialog.getByText(
+        'No location attribute is free for this prompt. Create one to record where the participant chooses.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The other half of the same rule, for the state the picker cannot prevent:
+   * a stage that ARRIVED with two prompts on one attribute — authored by
+   * another tool, or by an older version of this one — is refused at the row
+   * that holds the duplicate, under the control that resolves it.
+   */
+  it('refuses to save a prompt holding an attribute another prompt records', async () => {
+    const harness = openTwoPromptsOnOneAttribute();
+    await harness.opened();
+
+    await harness.user.click(
+      screen.getAllByRole('button', { name: 'Edit prompt' })[1] as HTMLElement,
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(
+      dialog.getByRole('combobox', { name: 'Location attribute' }),
+    ).toHaveValue('location');
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await dialog.findByText(
+        'Another prompt on this stage already records this attribute, and the later answer would replace the earlier one. Choose a different attribute, or edit the existing prompt instead.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   /**
@@ -335,8 +445,10 @@ describe('the places a geospatial stage asks about', () => {
     const harness = openEditor();
     await harness.opened();
 
-    // Added by somebody else, so nothing in the protocol uses it: what keeps
-    // it out of the list is its TYPE and nothing else.
+    // Both added by somebody else, so nothing in the protocol uses either:
+    // what keeps the nickname out of the list is its TYPE and nothing else,
+    // and the free location attribute is what leaves the list non-empty now
+    // that the stage's own prompt has taken the fixture's only one.
     asCollaborator(harness, PERSON, (person) => ({
       ...person,
       variables: {
@@ -344,11 +456,14 @@ describe('the places a geospatial stage asks about', () => {
           ? person.variables
           : {}),
         nickname: { name: 'nickname', type: 'text', component: 'Text' },
+        workplace: { name: 'workplace', type: 'location' },
       },
     }));
 
     const dialog = await openPrompt(harness, 'Create new prompt');
-    expect(offeredAttributes(dialog)).toEqual(['location']);
+    await waitFor(() =>
+      expect(offeredAttributes(dialog)).toEqual(['workplace']),
+    );
   });
 
   /**
@@ -366,9 +481,14 @@ describe('the places a geospatial stage asks about', () => {
   it('stops offering a location attribute a form elsewhere collects', async () => {
     const harness = openEditor();
     await harness.opened();
+    // Asserted against an attribute no prompt on this stage records, so what
+    // removes it from the list is the form elsewhere and nothing else.
+    addLocationAttribute(harness, 'workplace');
 
     const before = await openPrompt(harness, 'Create new prompt');
-    expect(offeredAttributes(before)).toEqual(['location']);
+    await waitFor(() =>
+      expect(offeredAttributes(before)).toEqual(['workplace']),
+    );
     await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -383,7 +503,7 @@ describe('the places a geospatial stage asks about', () => {
           )
             ? ((stage.form as Record<string, unknown>).fields as unknown[])
             : []),
-          { variable: 'location', prompt: 'Where do they live?' },
+          { variable: 'workplace', prompt: 'Where do they work?' },
         ],
       },
     }));
@@ -394,7 +514,7 @@ describe('the places a geospatial stage asks about', () => {
     ).toBeNull();
     expect(
       after.getByText(
-        'This type has no location attributes yet. Create one to record where the participant chooses.',
+        'No location attribute is free for this prompt. Create one to record where the participant chooses.',
       ),
     ).toBeInTheDocument();
   });

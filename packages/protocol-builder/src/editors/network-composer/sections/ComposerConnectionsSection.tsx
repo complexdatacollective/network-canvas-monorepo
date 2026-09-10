@@ -6,10 +6,7 @@ import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 
-import {
-  type EntitySubject,
-  EntitySubjectPickerField,
-} from '../../../fields/EntityTypePickerField.tsx';
+import { EntitySubjectPickerField } from '../../../fields/EntityTypePickerField.tsx';
 import {
   RowDialog,
   RowList,
@@ -17,7 +14,6 @@ import {
   rowId,
   rowsOf,
   rowTemplate,
-  type RowEditorProps,
   type RowListConfig,
   type RowPreviewProps,
   type RowSaveContext,
@@ -41,12 +37,6 @@ const SUBJECT_FIELD = 'subject';
 /** The connection type one entry stands for, however tolerantly it arrived. */
 const typeOf = (entry: RowValues): string | undefined =>
   asNestedText(entry[SUBJECT_FIELD], 'type');
-
-/** That type as the subject picker holds it, or nothing for a new entry. */
-const subjectOf = (entry: RowValues): EntitySubject | undefined => {
-  const type = typeOf(entry);
-  return type === undefined ? undefined : { entity: 'edge', type };
-};
 
 /** The questions that entry already asks, read as tolerantly as the entry. */
 const fieldsOf = (entry: RowValues): RowValues[] => {
@@ -187,8 +177,15 @@ export default function ComposerConnectionsSection() {
  * The type alone: what the connection RECORDS is asked below the list, because
  * each form is a list of its own and a list inside a row dialog would be a
  * dialog inside a dialog.
+ *
+ * The picker states no `initialValue`. The row document is what seeds every
+ * field of a row dialog, and `subject` is a key it already holds — a field
+ * `initialValue` is for one the document does NOT hold. Restated here it was a
+ * fresh object per render, which is a dependency of the registration effect
+ * every field runs: the control re-registered on every render, marking a row
+ * nobody had touched dirty and dropping the submission that was in flight.
  */
-function ComposerConnectionFields({ item }: RowEditorProps) {
+function ComposerConnectionFields() {
   const intl = useAppIntl();
 
   return (
@@ -198,7 +195,6 @@ function ComposerConnectionFields({ item }: RowEditorProps) {
       entityType="edge"
       label={intl.formatMessage(messages.connectionTypeLabel)}
       hint={intl.formatMessage(messages.connectionTypeHint)}
-      initialValue={subjectOf(item)}
       required={intl.formatMessage(messages.connectionTypeRequired)}
     />
   );

@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
@@ -10,6 +10,53 @@ import {
 } from '../../../editors/geospatial/__tests__/geospatialFixtures.tsx';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+
+/**
+ * The layer whose read is held open, and the handle that lets it answer.
+ *
+ * A read in flight is a state every other case in this file waits out, so it
+ * cannot be observed by timing: the harness's host answers immediately. Held
+ * here instead, for exactly the one asset a test names, so the editor sits in
+ * the state a researcher passes through every time they choose a layer — and
+ * nothing else about the host changes.
+ */
+let heldLayer: string | undefined;
+let releaseHeldLayer: (() => void) | undefined;
+
+vi.mock('../../../resources/client.tsx', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../resources/client.tsx')>();
+  const { useMemo } = await import('react');
+  return {
+    ...actual,
+    useResourceClient: () => {
+      const client = actual.useResourceClient();
+      // Held for the life of the edit, exactly as the real client is: a fresh
+      // object every render would re-run every effect that reads a resource.
+      // oxlint-disable-next-line react-hooks/rules-of-hooks
+      return useMemo(() => {
+        const held = heldLayer;
+        if (held === undefined) return client;
+        return {
+          ...client,
+          resolvePreview: async (resourceId: string) => {
+            if (resourceId !== held) return client.resolvePreview(resourceId);
+            await new Promise<void>((resolve) => {
+              releaseHeldLayer = resolve;
+            });
+            return client.resolvePreview(resourceId);
+          },
+        };
+      }, [client]);
+    },
+  };
+});
+
+afterEach(() => {
+  heldLayer = undefined;
+  releaseHeldLayer?.();
+  releaseHeldLayer = undefined;
+});
 
 /**
  * Two more layers beside the fixture's own.
@@ -115,7 +162,7 @@ describe('the property a map selection is recorded as', () => {
    * Blanking a stale reference would hide the very mismatch the researcher has
    * to resolve, and would then save the blank over it.
    */
-  it('keeps a stored property this layer does not have, and says so', async () => {
+  it('keeps a stored property this layer does not have, and marks it', async () => {
     openWithMapOptions({ targetFeatureProperty: 'postcode' });
 
     const picker = await awaitLayerRead();
@@ -125,11 +172,117 @@ describe('the property a map selection is recorded as', () => {
         'postcode — this property is not in the chosen layer',
       ]),
     );
+  });
+
+  /**
+   * Both halves of the pairing are on this stage, so the mismatch is refused
+   * rather than reported: an interview run against a stage recording a
+   * property its layer does not carry stores nothing for every area the
+   * participant chooses, and nothing downstream reads the layer's bytes to
+   * say so.
+   *
+   * The layer is SWAPPED under a property the stage already records, which is
+   * the move that breaks the pair — and the researcher has both controls in
+   * front of them.
+   */
+  it('refuses to save a property the newly chosen layer does not carry', async () => {
+    const harness = openWithMapOptions({ targetFeatureProperty: 'name' });
+    await awaitLayerRead();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Change the map layer' }),
+    );
+    await harness.user.click(
+      await within(await screen.findByRole('dialog')).findByRole('button', {
+        name: 'Boroughs',
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        offered(screen.getByRole('combobox', { name: 'Recorded property' })),
+      ).toEqual(['borough', 'name — this property is not in the chosen layer']),
+    );
+
+    expect(await harness.submit()).toBeNull();
     expect(
-      screen.getByText(
+      await screen.findByText(
         'This property is not in the chosen map layer. Choose one that is.',
       ),
     ).toBeInTheDocument();
+
+    // And the way out is the one the refusal names, in the same dialog.
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Recorded property' }),
+      'borough',
+    );
+
+    const request = await harness.submit();
+    expect(mapOptionsOf(request?.stageDocument ?? {})).toMatchObject({
+      dataSourceAssetId: 'boroughs_layer',
+      targetFeatureProperty: 'borough',
+    });
+  });
+
+  /**
+   * The window the gate would otherwise be walked straight through: the read
+   * of the newly chosen layer is still in flight, so nothing yet contradicts
+   * the property the stage holds — and a save taken now commits exactly the
+   * mismatched pair the gate exists to stop. "Not known yet" is not "cannot be
+   * known": the answer is coming, so the save waits for it and says so.
+   */
+  it('does not save a property it cannot check while the layer is still being read', async () => {
+    heldLayer = 'boroughs_layer';
+    const harness = openWithMapOptions({
+      dataSourceAssetId: 'boroughs_layer',
+      targetFeatureProperty: 'name',
+    });
+    await harness.opened();
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'The map layer is still being read, so this property cannot be checked against it yet. Save again in a moment.',
+      ),
+    ).toBeInTheDocument();
+
+    // And once the layer answers, the refusal is the one the pair earns: this
+    // is `boroughs.geojson`, which carries no `name`.
+    releaseHeldLayer?.();
+    await waitFor(() =>
+      expect(
+        offered(screen.getByRole('combobox', { name: 'Recorded property' })),
+      ).toEqual(['borough', 'name — this property is not in the chosen layer']),
+    );
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'This property is not in the chosen map layer. Choose one that is.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The one thing a gate over a file must not do: refuse on knowledge it does
+   * not have. A layer that could not be read says nothing about whether the
+   * property the stage records is in it, so the stage still saves — the same
+   * rule the roster editors keep for an inspection that will not come.
+   */
+  it('does not refuse a stored property when the layer cannot be read', async () => {
+    const harness = openWithMapOptions({
+      dataSourceAssetId: 'unreadable_layer',
+      targetFeatureProperty: 'postcode',
+    });
+
+    expect(
+      await screen.findByText(
+        'This layer could not be read as GeoJSON, so its properties cannot be listed.',
+      ),
+    ).toBeInTheDocument();
+
+    const request = await harness.submit();
+    expect(
+      mapOptionsOf(request?.stageDocument ?? {}).targetFeatureProperty,
+    ).toBe('postcode');
   });
 
   it('asks for a layer before a property', async () => {

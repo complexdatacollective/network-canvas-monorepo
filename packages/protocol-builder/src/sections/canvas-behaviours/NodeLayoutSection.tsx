@@ -40,10 +40,10 @@ export type NodeLayoutSectionProps = Readonly<{
    * passes `behaviours.allowRepositioning` down to the canvas, so the "Allow
    * moving nodes" switch withdraws it in both modes.
    *
-   * A network composer differs again, and about the setting rather than about
-   * the simulation: there, automatic layout is where the stage STARTS and the
-   * participant switches it off and on for themselves, which the shared
-   * sentence — a simulation the stage runs when it opens — does not say.
+   * A network composer needs one for a different reason: there, automatic
+   * layout is where the stage STARTS and the participant switches it off and
+   * on for themselves, which the shared sentence — a simulation the stage runs
+   * when it opens — does not say.
    */
   automaticDescription?: MessageDescriptor;
 }>;

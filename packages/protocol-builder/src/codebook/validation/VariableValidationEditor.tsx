@@ -22,23 +22,32 @@ import {
 } from '../variableValidation.ts';
 
 type VariableValidationEditorProps = Readonly<{
-  entity: 'node' | 'edge' | 'ego';
-  variableType: string;
-  currentVariableId: string;
-  allVariables: Readonly<Record<string, unknown>>;
-  value: Readonly<ValidationMap>;
-  onChange(value: ValidationMap): void;
-  readOnly?: boolean;
+  'entity': 'node' | 'edge' | 'ego';
+  'variableType': string;
+  'currentVariableId': string;
+  'allVariables': Readonly<Record<string, unknown>>;
+  'value': Readonly<ValidationMap>;
+  'onChange'(value: ValidationMap): void;
+  'readOnly'?: boolean;
+  'className'?: string;
   /**
-   * A hosting `Field` reports this control invalid, which for a caller that
-   * renders the editor as one means the field's own verdict on the same rule
-   * map: its error region is an `aria-live` region already showing the
-   * sentence the editor would show at the rules. The editor then marks the
-   * rule group invalid to match and leaves that region to be the one that
-   * says it, so a refusal is on screen once rather than twice.
+   * Whether the field mounting this editor has refused what it holds.
+   *
+   * Carried on the editor's own root because the editor IS the field's
+   * rendered control: a refusal the field raises — one about the rule map as a
+   * whole, which this editor's per-rule verdicts do not cover — is otherwise
+   * announced by the field's error region and invisible to everything that
+   * finds a refused field by looking for `aria-invalid` (the stage outline's
+   * observer, `focusFirstError`).
+   *
+   * It also stands the editor's own `role="alert"` paragraph down while it
+   * holds: a field that refuses this rule map is announcing that refusal in an
+   * `aria-live` error region beside the control, and the sentence the editor
+   * would state at the rules is the same one, so a refusal is on screen once
+   * rather than twice. A caller with no error region of its own — the codebook
+   * dialog — passes nothing, and keeps the editor's alert.
    */
-  hostFieldInvalid?: boolean;
-  className?: string;
+  'aria-invalid'?: boolean;
 }>;
 
 const messages = defineMessages({
@@ -142,8 +151,8 @@ export default function VariableValidationEditor({
   value,
   onChange,
   readOnly = false,
-  hostFieldInvalid = false,
   className,
+  'aria-invalid': ariaInvalid,
 }: VariableValidationEditorProps) {
   const intl = useAppIntl();
   const editorId = useId();
@@ -216,7 +225,9 @@ export default function VariableValidationEditor({
           intl,
         )
       : intl.formatMessage(missingComparisonTargetMessage);
-  const announceIssue = issue !== undefined && !hostFieldInvalid;
+  // Not while the field mounting this editor is already saying it: see the
+  // `aria-invalid` prop.
+  const announceIssue = issue !== undefined && ariaInvalid !== true;
   const issueId = announceIssue ? `${editorId}-issue` : undefined;
 
   const toggleRule = (ruleKey: string, enabled: boolean) => {
@@ -239,8 +250,8 @@ export default function VariableValidationEditor({
   return (
     <div
       className={className}
-      aria-invalid={hostFieldInvalid || undefined}
       aria-describedby={issueId}
+      aria-invalid={ariaInvalid}
     >
       {groups.map((group) => (
         <fieldset

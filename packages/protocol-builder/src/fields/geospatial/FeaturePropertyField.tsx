@@ -7,7 +7,7 @@ import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import ResourceFailureNotice from '../../resources/components/ResourceFailureNotice.tsx';
 import { geospatialMessages } from './geospatialMessages.ts';
-import { useGeoJsonFeatureProperties } from './useGeoJsonFeatureProperties.ts';
+import type { GeoJsonPropertiesState } from './useGeoJsonFeatureProperties.ts';
 
 export type FeaturePropertyFieldProps = CreateFormFieldProps<
   string,
@@ -15,6 +15,14 @@ export type FeaturePropertyFieldProps = CreateFormFieldProps<
   {
     /** The chosen map layer, whose features carry the properties offered. */
     dataSourceAssetId?: string;
+    /**
+     * What that layer's features carry, read by the SECTION rather than here.
+     *
+     * The same read decides what this control offers and whether the section's
+     * save gate refuses what it holds, so the two cannot disagree about a
+     * layer — and the file is fetched once for both.
+     */
+    properties: GeoJsonPropertiesState;
   }
 >;
 
@@ -29,7 +37,9 @@ export type FeaturePropertyFieldProps = CreateFormFieldProps<
  * A property the stage already records is KEPT and shown even when the current
  * layer has no such property, and even when the layer could not be read at
  * all: blanking it would hide the very mismatch the researcher has to resolve,
- * and would then save the blank over it.
+ * and would then save the blank over it. Refusing that mismatch belongs to the
+ * section's own save gate, which is the only thing a save passes through —
+ * see `MapSourceSection`.
  *
  * Labelling belongs to the surrounding field.
  */
@@ -41,6 +51,7 @@ export default function FeaturePropertyField({
   onBlur,
   onFocus,
   dataSourceAssetId,
+  properties,
   disabled = false,
   readOnly = false,
   className,
@@ -50,8 +61,7 @@ export default function FeaturePropertyField({
   'aria-required': ariaRequired,
 }: FeaturePropertyFieldProps) {
   const intl = useAppIntl();
-  const { names, busy, failure, retry, unreadable } =
-    useGeoJsonFeatureProperties(dataSourceAssetId);
+  const { names, busy, failure, retry, unreadable } = properties;
 
   const selected = value === '' ? undefined : value;
   const noLayerChosen =
@@ -154,11 +164,6 @@ export default function FeaturePropertyField({
             aria-labelledby={ariaLabelledBy}
             aria-required={ariaRequired}
           />
-          {isMissing && (
-            <p className="text-destructive mt-2 text-sm">
-              {intl.formatMessage(geospatialMessages.propertyMissingRefusal)}
-            </p>
-          )}
         </>
       )}
     </div>

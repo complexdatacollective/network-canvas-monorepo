@@ -155,6 +155,10 @@
     "defaultMessage": "Passphrase rules",
     "description": "Label of the control inside the passphrase-rules section that holds the rules themselves. Deliberately the same words as the section heading above it — the section holds this one control — but a separate message, because a translator may need to distinguish a heading from the name of a form control."
   },
+  "protocolBuilder.anonymisation.passphraseRulesMaximumBelowOne": {
+    "defaultMessage": "The longest passphrase you allow must be at least one character.",
+    "description": "Refusal shown on the passphrase-rules control when the researcher has set the longest allowed passphrase to zero. The interview asks every participant for a passphrase and will not accept an empty one, so a maximum of zero is a length no passphrase can have and the interview could never be finished."
+  },
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": {
     "defaultMessage": "The shortest passphrase you allow cannot be longer than the longest one.",
     "description": "Refusal shown on the passphrase-rules control when the minimum length the researcher set is greater than the maximum, so no passphrase could satisfy both."
@@ -1939,9 +1943,13 @@
     "defaultMessage": "Write the question this prompt asks.",
     "description": "Refusal shown under the prompt-text field when a researcher saves a geospatial prompt without writing its question."
   },
+  "protocolBuilder.geospatial.promptVariableDuplicateRefusal": {
+    "defaultMessage": "Another prompt on this stage already records this attribute, and the later answer would replace the earlier one. Choose a different attribute, or edit the existing prompt instead.",
+    "description": "Refusal shown under the location-attribute control when two prompts of one geospatial stage would store the participant’s chosen area in the same attribute. A prompt is one question a participant is asked; a stage is one step of an interview."
+  },
   "protocolBuilder.geospatial.promptVariableEmptyState": {
-    "defaultMessage": "This type has no location attributes yet. Create one to record where the participant chooses.",
-    "description": "Shown in place of the location-attribute control while the node or edge type this stage works with has no attribute that can hold a place. \"Type\" is the kind of network member the stage is about."
+    "defaultMessage": "No location attribute is free for this prompt. Create one to record where the participant chooses.",
+    "description": "Shown in place of the location-attribute control when there is nothing for this prompt to choose: the node or edge type the stage works with has no attribute that can hold a place, or every one it has is already recorded by another prompt on this stage. \"Type\" is the kind of network member the stage is about."
   },
   "protocolBuilder.geospatial.promptVariableHint": {
     "defaultMessage": "The attribute the participant's chosen area is stored in.",
@@ -1978,6 +1986,10 @@
   "protocolBuilder.geospatial.propertyLabel": {
     "defaultMessage": "Recorded property",
     "description": "Label of the control that chooses which property of a selected area is stored as the participant’s answer. A property is one named field a GeoJSON feature carries."
+  },
+  "protocolBuilder.geospatial.propertyLayerReading": {
+    "defaultMessage": "The map layer is still being read, so this property cannot be checked against it yet. Save again in a moment.",
+    "description": "Refusal shown under the recorded-property control when a researcher saves while the chosen map layer is still being read. Nothing is wrong with what they chose: the check simply cannot be made until the layer arrives, and saying so is what stops a property the layer may not have from being saved unchecked."
   },
   "protocolBuilder.geospatial.propertyLoading": {
     "defaultMessage": "Reading the map layer.",
@@ -2408,8 +2420,8 @@
     "description": "Stands in for the name in the collapsed row of the disease list while the researcher has not written one, so the row can still be told apart and opened."
   },
   "protocolBuilder.narrativePedigree.diseaseVariableEmpty": {
-    "defaultMessage": "The source pedigree does not record who is affected by anything yet. Add a nomination prompt to it asking who has this condition, and it can be mapped here.",
-    "description": "Said in place of the affected-status list when no nomination prompt of the source Family Pedigree stage records an attribute this stage could draw. It names the one place the attribute can come from, because a disease mapped to anything else marks nobody. \"Nomination prompts\" is the name of that part of the pedigree editor."
+    "defaultMessage": "There is no attribute for this disease to map. A disease can only map an attribute that a nomination prompt of the source pedigree records and that no other disease already maps. Add a nomination prompt to that pedigree asking who has this condition, and it can be mapped here.",
+    "description": "Said in place of the affected-status list when the source Family Pedigree stage leaves this disease nothing to map — either because no nomination prompt of it records an attribute this stage could draw, or because every attribute it does record is already mapped by another disease. It states the rule and what to do rather than which of the two it is, because the remedy is the same nomination prompt either way. \"Nomination prompts\" is the name of that part of the pedigree editor."
   },
   "protocolBuilder.narrativePedigree.diseaseVariableGone": {
     "defaultMessage": "The attribute this disease maps ({attributeName}) is no longer in the codebook, so nothing can record who is affected. Choose another attribute.",
@@ -2541,11 +2553,11 @@
   },
   "protocolBuilder.narrativePedigree.sourceEmptyMessage": {
     "defaultMessage": "This interview has no Family Pedigree stage before this one. Add one, or move this stage later, before configuring it.",
-    "description": "Body of the notice shown in place of the source-stage control when nothing in the interview qualifies. \"Family Pedigree\" names the kind of interview step that collects a family tree."
+    "description": "Body of the notice shown above the source-stage control when nothing in the interview qualifies; the control itself stays on screen, disabled. \"Family Pedigree\" names the kind of interview step that collects a family tree."
   },
   "protocolBuilder.narrativePedigree.sourceEmptyTitle": {
     "defaultMessage": "No pedigree to read",
-    "description": "Heading of the notice shown in place of the source-stage control when the interview holds no family tree this stage could draw."
+    "description": "Heading of the notice shown above the source-stage control when the interview holds no family tree this stage could draw. The control itself stays on screen, disabled."
   },
   "protocolBuilder.narrativePedigree.sourceGone": {
     "defaultMessage": "The pedigree you chose is no longer one of the options here, so nothing has changed and no disease has been removed. Choose again.",
@@ -3298,6 +3310,10 @@
   "protocolBuilder.networkCanvas.sociogramPromptsWaitingDescription": {
     "defaultMessage": "Choose what this stage works with before writing its prompts.",
     "description": "Shown in place of the sociogram prompts description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
+  },
+  "protocolBuilder.networkCanvas.staleControlRefusal": {
+    "defaultMessage": "The “{attributeName}” attribute cannot be asked for with this input control. Choose another control, or record this field in a different attribute.",
+    "description": "Refusal shown when a network composer form field is saved with an input control that cannot collect the kind of answer its attribute holds — because a collaborator changed that attribute while this field was open. attributeName is the researcher-facing name of the codebook attribute. Both ways out are offered because an attribute can be changed to a kind no control at all can ask for."
   },
   "protocolBuilder.networkCanvas.tapBehaviourLabel": {
     "defaultMessage": "Tap behavior",

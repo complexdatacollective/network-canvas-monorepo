@@ -230,17 +230,19 @@ export function fixtureAssetContent(source: string): Uint8Array | undefined {
 }
 
 /**
- * The bytes a host has to hold for one asset manifest, keyed by the filename
- * the manifest names.
+ * The bytes a host holds for a manifest's assets, keyed by the filename the
+ * manifest names, ready to seed a resource gateway with.
  *
- * An asset the fixture ships a file for is seeded with that file; everything
- * else gets a placeholder body, because the editors that reference those read
- * only a resource's kind, name and size.
+ * An asset the fixture ships a file for is seeded with that file, because an
+ * editor asks the host what is INSIDE a data file — a roster's columns are the
+ * material its card, sort and search sections offer. Everything else gets a
+ * placeholder body: those editors read only a resource's kind, name and size.
  *
- * One function for both harnesses: the tests' and the stories' hosts serve the
- * same protocol, so a story whose host held no bytes rendered every "what is
- * inside this file" control in its failure state while the same editor under
- * test rendered itself.
+ * Here rather than in either harness, because both of them seed the same
+ * gateway from the same manifest: `renderStageEditor` for the suite, and
+ * `StageEditorStoryHost` for the stories. A harness that seeded only the
+ * manifest would leave `inspect` refusing for want of bytes, and every section
+ * chosen from a data file's columns would render its empty state.
  *
  * `extra` is the text a test wants served for a `source` of its own — a layer
  * with no feature properties, a roster with a column the fixture's has not.

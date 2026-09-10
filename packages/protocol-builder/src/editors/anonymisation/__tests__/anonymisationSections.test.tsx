@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import type { InMemoryClient } from '../../../testing/host/createInMemoryHost.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -82,6 +83,39 @@ describe('the sections of an anonymisation stage', () => {
         'The shortest passphrase you allow cannot be longer than the longest one.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * The interview asks every participant for a passphrase and refuses an empty
+   * one, so a maximum of zero is a length no passphrase can have: the stage
+   * would render, refuse everything the participant types, and the interview
+   * could never be finished. Both halves of that are this stage's own rules,
+   * so this stage is where it is refused.
+   */
+  it('refuses a longest passphrase of no characters at all', async () => {
+    const harness = openEditor();
+
+    // The minimum rule off, so this is about the maximum alone rather than
+    // about a minimum that now exceeds it.
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Minimum length' }),
+    );
+    const maximum = await screen.findByRole('spinbutton', {
+      name: /maximum length/i,
+    });
+    await harness.user.clear(maximum);
+    await harness.user.type(maximum, '0');
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        'The longest passphrase you allow must be at least one character.',
+      ),
+    ).toBeInTheDocument();
+    // And reported where a researcher goes looking for what to correct.
+    expect(
+      harness.outline().find((section) => section.title === 'Passphrase rules'),
+    ).toEqual({ title: 'Passphrase rules', state: 'Has a problem' });
   });
 
   /**
@@ -304,10 +338,72 @@ describe('the attributes a passphrase protects', () => {
 
     await harness.user.click(attributeCheckbox('person', 'name'));
 
-    expect(await screen.findByText(/Robin/)).toBeInTheDocument();
+    const refusal = await screen.findByText(/Robin/);
+    // A notice rather than an alert, as every other codebook writer says it:
+    // a section somebody else is holding is not a fault, and the change lands
+    // once they are finished.
+    expect(refusal.closest('[role]')).toHaveAttribute('role', 'status');
+    expect(screen.queryByRole('alert')).toBeNull();
     expect(Object.hasOwn(personVariable(harness, 'name'), 'encrypted')).toBe(
       false,
     );
+  });
+
+  /**
+   * Every checkbox here goes disabled while a codebook write is in flight, so
+   * a tick made in that window reaches nothing. Saying the section is saving
+   * is what keeps that from being silent: without it the researcher ticks a
+   * second attribute, watches the box refuse to move, and is told nothing
+   * about why or about the change that is already on its way.
+   */
+  it('says a change is in flight, so a tick the section drops is not silent', async () => {
+    const gate = Promise.withResolvers<void>();
+    const harness = renderStageEditor({
+      stageId: 'anonymisation-1',
+      registry: anonymisationStageEditor,
+      client: (host) => {
+        const submit: InMemoryClient['submit'] = async (
+          ...args: Parameters<InMemoryClient['submit']>
+        ) => {
+          await gate.promise;
+          return host.client.submit(...args);
+        };
+        return new Proxy(host.client, {
+          get: (target, property) =>
+            property === 'submit' ? submit : Reflect.get(target, property),
+        });
+      },
+    });
+    await screen.findByRole('checkbox', { name: 'name' });
+
+    await harness.user.click(attributeCheckbox('person', 'name'));
+
+    // On screen while the protocol has the write and has not answered.
+    expect(await screen.findByText('Saving…')).toBeInTheDocument();
+    expect(attributeCheckbox('person', 'relationship_to_ego')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+
+    await harness.user.click(
+      attributeCheckbox('person', 'relationship_to_ego'),
+    );
+    gate.resolve();
+
+    await waitFor(() =>
+      expect(personVariable(harness, 'name').encrypted).toBe(true),
+    );
+    await waitFor(() => expect(screen.queryByText('Saving…')).toBeNull());
+    // The second tick was dropped, and nothing on screen claims otherwise.
+    expect(
+      Object.hasOwn(
+        personVariable(harness, 'relationship_to_ego'),
+        'encrypted',
+      ),
+    ).toBe(false);
+    expect(
+      attributeCheckbox('person', 'relationship_to_ego'),
+    ).not.toBeChecked();
   });
 
   it('cannot be toggled by a spectator', async () => {

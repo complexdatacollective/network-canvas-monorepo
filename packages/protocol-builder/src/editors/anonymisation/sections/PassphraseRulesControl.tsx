@@ -44,15 +44,14 @@ export default function PassphraseRulesControl({
   disabled = false,
   readOnly = false,
   className,
-  // The field's own verdict on this control, which is `passphraseRulesIssue`
-  // below: while it holds, the field's error region is already showing the
-  // sentence the rule editor would otherwise show a second time at the rules.
-  'aria-invalid': fieldInvalid = false,
+  // Passed on rather than dropped: the section's own rule about the rules is a
+  // field refusal, and a control that does not carry it leaves the refusal
+  // invisible to the outline and to `focusFirstError`.
+  'aria-invalid': ariaInvalid,
 }: PassphraseRulesControlProps) {
   return (
     <VariableValidationEditor
       entity={ENTITY}
-      hostFieldInvalid={fieldInvalid}
       variableType={PASSPHRASE}
       currentVariableId=""
       allVariables={NO_VARIABLES}
@@ -62,6 +61,7 @@ export default function PassphraseRulesControl({
         onChange?.(next);
       }}
       readOnly={disabled || readOnly}
+      aria-invalid={ariaInvalid}
       {...(className === undefined ? {} : { className })}
     />
   );
@@ -78,6 +78,26 @@ export default function PassphraseRulesControl({
  */
 const MINIMUM_ABOVE_MAXIMUM = createMessageError(
   anonymisationMessages.passphraseRulesMinimumAboveMaximum,
+);
+
+/**
+ * A maximum of zero is a length no passphrase can have.
+ *
+ * The rule catalogue's own floor for a length is zero, which is right for a
+ * codebook attribute — a text answer may be left empty. A passphrase may not:
+ * the interview asks every participant for one and refuses an empty answer
+ * (`interfaces/Anonymisation/Anonymisation.tsx` renders both fields
+ * `required`) while applying this maximum to it, so a stage carrying zero
+ * refuses everything the participant can type and the interview can never be
+ * finished. Both halves of that are this stage's own rules, which is why it is
+ * refused here rather than in the shared catalogue.
+ *
+ * The protocol schema accepts it too (`schemas/8/stages/anonymisation.ts`
+ * pins the lengths to integers and no floor), so a protocol already holding
+ * one opens, is refused here, and can be corrected.
+ */
+const MAXIMUM_BELOW_ONE = createMessageError(
+  anonymisationMessages.passphraseRulesMaximumBelowOne,
 );
 
 /**
@@ -101,6 +121,9 @@ export function passphraseRulesIssue(value: unknown): string | undefined {
 
   const minimum = complete.minLength;
   const maximum = complete.maxLength;
+  // Asked before the comparison: with a maximum of zero both are true, and
+  // raising the maximum to one is the correction either way.
+  if (typeof maximum === 'number' && maximum < 1) return MAXIMUM_BELOW_ONE;
   if (
     typeof minimum === 'number' &&
     typeof maximum === 'number' &&

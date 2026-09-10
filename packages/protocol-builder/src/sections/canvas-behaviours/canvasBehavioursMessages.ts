@@ -73,18 +73,18 @@ export const canvasBehavioursMessages = defineMessages({
     description:
       'Says what the participant sees in automatic layout mode. A stage is one step of an interview; the simulation runs on the canvas while the participant watches.',
   },
-  layoutModeAutomaticComposerDescription: {
-    id: 'protocolBuilder.networkCanvas.layoutModeAutomaticComposerDescription',
-    defaultMessage:
-      'Starts the stage with the simulation running. The participant can switch it off and on as they work, and the stage reopens the way they left it.',
-    description:
-      'Says what the participant sees in automatic layout mode on a network composer stage, where the setting decides only how the stage starts because the participant has a switch of their own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the wordings of one control together.',
-  },
   layoutModeAutomaticNarrativeDescription: {
     id: 'protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription',
     defaultMessage:
       'Arranges the nodes by simulating physical forces such as attraction and repulsion. Only the nodes the attribute the preset positions by holds a position for are arranged; the rest are left off the canvas, as in manual mode. The participant can pause and resume the simulation, and can move nodes by hand only if “Allow moving nodes” is switched on.',
     description:
       'Says what the participant sees in automatic layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the two wordings of one control together. “Allow moving nodes” is the switch named by repositioningLabel, and is quoted because it is being named as a control the researcher can go and find.',
+  },
+  layoutModeAutomaticComposerDescription: {
+    id: 'protocolBuilder.networkCanvas.layoutModeAutomaticComposerDescription',
+    defaultMessage:
+      'Starts the stage with the simulation running. The participant can switch it off and on as they work, and the stage reopens the way they left it.',
+    description:
+      'Says what the participant sees in automatic layout mode on a network composer stage, where the setting decides only how the stage starts because the participant has a switch of their own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the wordings of one control together.',
   },
 });
