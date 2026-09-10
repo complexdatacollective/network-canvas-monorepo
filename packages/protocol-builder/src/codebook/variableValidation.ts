@@ -606,7 +606,7 @@ const baselineContradictions = (
  * finally rendered — so the reader's language is the one they are reading in,
  * not the one that was active when the rule was typed.
  */
-export const describeDraftContradiction = (
+const describeDraftContradiction = (
   contradiction: ValidationContradiction,
   draft: ProspectiveDraft,
 ): string => {

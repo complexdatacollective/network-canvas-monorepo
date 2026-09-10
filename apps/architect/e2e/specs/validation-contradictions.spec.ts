@@ -263,8 +263,8 @@ test('the option editor rejects canonically equivalent labels', async ({
 
   // Written with explicit escapes so the source file's own encoding cannot
   // quietly normalise the decomposed spelling into the precomposed one.
-  const PRECOMPOSED = 'Café';
-  const DECOMPOSED = 'Café';
+  const PRECOMPOSED = 'Caf\u00e9';
+  const DECOMPOSED = 'Cafe\u0301';
 
   await addOption.click();
   await optionLabel(1).fill(PRECOMPOSED);

@@ -407,10 +407,11 @@ export function assertBuiltProtocolInvariants(built: unknown): void {
   }
 
   // --- assetManifest[*].source (deleted: canonical uses opaque storage keys)
-  // Upload writes `source: file.name` and `name: file.name` from the same
-  // File, so they must agree; a source whose extension contradicts its type
-  // (the '.txt for a video' case) would break export ZIP entries and preview
-  // MIME types while still validating.
+  // An import writes `source` as a content-addressed name and `name` as the
+  // researcher's own, so the two no longer agree by construction and each is
+  // checked for what it is. The extension still has to match the type: a
+  // source whose extension contradicts it (the '.txt for a video' case) would
+  // break export ZIP entries and preview MIME types while still validating.
   const EXTENSIONS: Record<string, RegExp> = {
     image: /\.(png|svg|jpe?g|gif)$/i,
     video: /\.(mov|mp4)$/i,

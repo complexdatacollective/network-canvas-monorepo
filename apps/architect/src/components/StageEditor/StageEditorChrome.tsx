@@ -105,7 +105,7 @@ const messages = defineMessages({
   },
 });
 
-export type StageEditorChromeProps = Readonly<{
+type StageEditorChromeProps = Readonly<{
   /** The DOM id of the stage form, so the toolbar's save control can submit it. */
   formId: string;
   /** Whether the package opened this stage read-only. */

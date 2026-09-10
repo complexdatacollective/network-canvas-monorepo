@@ -17,7 +17,7 @@ import type { Stage } from '@codaco/protocol-validation';
  *
  * One editor is open at a time — it is a route — so one value, not a registry.
  */
-export type StageDraftBeacon = Readonly<{
+type StageDraftBeacon = Readonly<{
   /** A stage editor is mounted. */
   open: boolean;
   /**
