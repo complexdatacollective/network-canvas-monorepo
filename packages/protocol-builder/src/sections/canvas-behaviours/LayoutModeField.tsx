@@ -23,12 +23,12 @@ export type LayoutModeFieldProps = Omit<
      */
     manualDescription?: string;
     /**
-     * And the same for automatic mode, wherever what the participant gets is
-     * not what the shared sentence describes — a narrative stage, which
-     * arranges only the nodes its preset positions, or a network composer,
-     * which treats automatic layout as the state the stage OPENS in rather
-     * than as how it arranges nodes, because the participant has a switch of
-     * their own on the canvas.
+     * And the same for automatic mode, where what the participant gets is not
+     * what the shared sentence describes: a narrative stage simulates only the
+     * nodes its preset holds a position for, and a network composer treats
+     * automatic layout as the state the stage OPENS in rather than as how it
+     * arranges nodes — the participant has a switch of their own on the
+     * canvas, and whichever way they leave it is remembered.
      */
     automaticDescription?: string;
   }>;
@@ -76,7 +76,7 @@ export default function LayoutModeField({
           ),
       },
     ],
-    [automaticDescription, intl, manualDescription],
+    [intl, manualDescription, automaticDescription],
   );
 
   return (
