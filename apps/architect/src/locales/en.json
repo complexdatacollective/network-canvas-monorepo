@@ -1,12 +1,4 @@
 {
-  "architect.additional.form.arrayFields.assignAttributes.addNewAttributeToAssign": {
-    "defaultMessage": "Add new attribute to assign",
-    "description": "The addButtonLabel text in components / Form / arrayFields / AssignAttributes."
-  },
-  "architect.additional.form.arrayFields.assignAttributes.noAdditionalAttributesAssigned": {
-    "defaultMessage": "No additional attributes assigned.",
-    "description": "The emptyStateMessage text in components / Form / arrayFields / AssignAttributes."
-  },
   "architect.additional.form.arrayFields.options.noOptionsHaveBeenAddedYet": {
     "defaultMessage": "No options have been added yet.",
     "description": "The emptyStateMessage text in components / Form / arrayFields / Options."
@@ -123,22 +115,6 @@
     "defaultMessage": "Upgrade to continue",
     "description": "The title text in components / protocolOpenDialogs."
   },
-  "architect.additional.query.rules.previewRules.noRulesHaveBeenCreatedYet": {
-    "defaultMessage": "No rules have been created yet.",
-    "description": "The emptyStateMessage text in components / Query / Rules / PreviewRules."
-  },
-  "architect.additional.query.rules.ruleEditor.rulesAreUsedToFilterThe": {
-    "defaultMessage": "Rules are used to filter the data in your study. You can use them to show or hide nodes and edges based on their attributes. For help with constructing rules, see our documentation articles on <ExternalLink> {value1} </ExternalLink> and <ExternalLink2> {value3} </ExternalLink2> .",
-    "description": "Visible text in components / Query / Rules / RuleEditor."
-  },
-  "architect.additional.sections.form.variableDefinitionFields.createNewOption": {
-    "defaultMessage": "Create new option",
-    "description": "The addButtonLabel text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.additional.sections.form.variableDefinitionFields.howTheAnswerIsCollectedFor": {
-    "defaultMessage": "How the answer is collected. For detailed information about these options, see our <ExternalLink> documentation </ExternalLink> .",
-    "description": "Visible text in components / sections / Form / VariableDefinitionFields."
-  },
   "architect.additional.typeEditor.shapeVariableMapping.addThreshold": {
     "defaultMessage": "Add threshold",
     "description": "The addButtonLabel text in components / TypeEditor / ShapeVariableMapping."
@@ -154,54 +130,6 @@
   "architect.appUpdate.appUpdatePill.v": {
     "defaultMessage": "v{appVersion}",
     "description": "The label text in components / AppUpdate / AppUpdatePill."
-  },
-  "architect.arrayField.column.direction": {
-    "defaultMessage": "Direction",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.arrayField.column.label": {
-    "defaultMessage": "Label",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.arrayField.column.property": {
-    "defaultMessage": "Property",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.arrayField.column.value": {
-    "defaultMessage": "Value",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.arrayField.column.variable": {
-    "defaultMessage": "Attribute",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.arrayItem.attribute": {
-    "defaultMessage": "attribute",
-    "description": "Singular item name used in array-editor controls and whole confirmation sentences. Does not change stored field identifiers."
-  },
-  "architect.arrayItem.disease": {
-    "defaultMessage": "disease",
-    "description": "Singular item name used in array-editor controls and whole confirmation sentences. Does not change stored field identifiers."
-  },
-  "architect.arrayItem.field": {
-    "defaultMessage": "field",
-    "description": "Singular item name used in array-editor controls and whole confirmation sentences. Does not change stored field identifiers."
-  },
-  "architect.arrayItem.item": {
-    "defaultMessage": "item",
-    "description": "Singular item name used in array-editor controls and whole confirmation sentences. Does not change stored field identifiers."
-  },
-  "architect.arrayItem.preset": {
-    "defaultMessage": "preset",
-    "description": "Singular item name used in array-editor controls and whole confirmation sentences. Does not change stored field identifiers."
-  },
-  "architect.arrayItem.prompt": {
-    "defaultMessage": "prompt",
-    "description": "Singular item name used in array-editor controls and whole confirmation sentences. Does not change stored field identifiers."
-  },
-  "architect.arrayRows.complete": {
-    "defaultMessage": "Every row needs a value in each column.",
-    "description": "Validation error for an incomplete row of display or sorting properties."
   },
   "architect.assetBrowser.assetBrowser.addANewResourceToThis": {
     "defaultMessage": "Add a new resource to this protocol.",
@@ -242,10 +170,6 @@
   "architect.assetBrowser.assetBrowser.resourceLibrary": {
     "defaultMessage": "Resource library",
     "description": "The title text in components / AssetBrowser / AssetBrowser."
-  },
-  "architect.assetBrowser.assetBrowserWindow.resourceBrowser": {
-    "defaultMessage": "Resource Browser",
-    "description": "The title text in components / AssetBrowser / AssetBrowserWindow."
   },
   "architect.assetBrowser.assetCard.delete": {
     "defaultMessage": "Delete {name}",
@@ -403,46 +327,6 @@
     "defaultMessage": "Toggle SortBy",
     "description": "The title text in components / Assets / Table."
   },
-  "architect.assignAttributes.complete": {
-    "defaultMessage": "Every additional attribute needs both an attribute and a value.",
-    "description": "Validation error for an incomplete fixed attribute assignment."
-  },
-  "architect.booleanChoice.answerOptions": {
-    "defaultMessage": "Answer options",
-    "description": "The label text in components / BooleanChoice."
-  },
-  "architect.booleanChoice.eachValueCanAlsoBeStyled": {
-    "defaultMessage": "Each value can also be styled to indicate that it is negative. When enabled, this will make the option red when selected.",
-    "description": "Visible text in components / BooleanChoice."
-  },
-  "architect.booleanChoice.label": {
-    "defaultMessage": "Label",
-    "description": "The label text in components / BooleanChoice."
-  },
-  "architect.booleanChoice.optionOne": {
-    "defaultMessage": "Option One",
-    "description": "Visible text in components / BooleanChoice."
-  },
-  "architect.booleanChoice.optionTwo": {
-    "defaultMessage": "Option Two",
-    "description": "Visible text in components / BooleanChoice."
-  },
-  "architect.booleanChoice.styleOptionOneAsNegative": {
-    "defaultMessage": "Style Option One as negative",
-    "description": "The label text in components / BooleanChoice."
-  },
-  "architect.booleanChoice.styleOptionTwoAsNegative": {
-    "defaultMessage": "Style Option Two as negative",
-    "description": "The label text in components / BooleanChoice."
-  },
-  "architect.booleanChoice.theBooleanChoiceInputComponentAllowsYou": {
-    "defaultMessage": "The BooleanChoice input component allows you to specify rich text labels for the two choices that your participant sees. Create a label for the first option, representing the value true, and the second option, representing the value false, below.",
-    "description": "Visible text in components / BooleanChoice."
-  },
-  "architect.booleanChoice.thisOptionWillSetTheValue": {
-    "defaultMessage": "This option will set the value <strong>{value1}</strong> when selected.",
-    "description": "Visible text in components / BooleanChoice."
-  },
   "architect.brand.returnToStartScreen": {
     "defaultMessage": "Return to start screen",
     "description": "The aria-label text in components / Brand."
@@ -471,10 +355,6 @@
     "defaultMessage": "Node",
     "description": "Researcher-facing explanatory text in components / Codebook / EntityTypeDialog."
   },
-  "architect.chrome.form.fields.nativeSelect.anOptionNamedIs": {
-    "defaultMessage": "An option named \"{candidate}\" is already defined{hasEntity, select, yes { on entity type {entity}} other {}}",
-    "description": "Researcher-facing explanatory text in components / Form / Fields / NativeSelect."
-  },
   "architect.chrome.home.libraryPanel.anExampleIntroducingTheKeyFeatures": {
     "defaultMessage": "An example introducing the key features and techniques available in Network Canvas.",
     "description": "The description text in components / Home / LibraryPanel."
@@ -486,10 +366,6 @@
   "architect.chrome.home.libraryPanel.yourProtocolsAreSavedOnlyOn": {
     "defaultMessage": "{protocolCount, plural, one {Your protocol is saved only on this device. It is never uploaded to a server.} other {Your # protocols are saved only on this device. They are never uploaded to a server.}}",
     "description": "Researcher-facing explanatory text in components / Home / LibraryPanel."
-  },
-  "architect.chrome.parameters.datePicker.message": {
-    "defaultMessage": "{value1} ({value2})",
-    "description": "The label text in components / Parameters / DatePicker."
   },
   "architect.chrome.projectNav.projectActions.returnToStages": {
     "defaultMessage": "Return to Stages",
@@ -539,18 +415,6 @@
     "defaultMessage": "Unknown",
     "description": "Visible text in lib / ProtocolSummary / components / Stage / QuickAdd."
   },
-  "architect.chrome.query.rules.ruleEditor.enterARegularExpressionToCompare": {
-    "defaultMessage": "Enter a regular expression to compare against.",
-    "description": "The regExpHint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.chrome.query.rules.ruleEditor.enterTheValueToCompareAgainst": {
-    "defaultMessage": "Enter the value to compare against. You can use a regular expression to match multiple values.",
-    "description": "The regExpHint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.chrome.sections.fields.entitySelectField.previewEdge.selectEdge": {
-    "defaultMessage": "Select edge {label}",
-    "description": "The aria-label text in components / sections / fields / EntitySelectField / PreviewEdge."
-  },
   "architect.chrome.stageEditor.stageEditor.openingPreview": {
     "defaultMessage": "Opening preview…",
     "description": "Researcher-facing explanatory text in components / StageEditor / StageEditor."
@@ -566,18 +430,6 @@
   "architect.chrome.timeline.timelineStageRow.editStage76e56": {
     "defaultMessage": "Edit stage {position, number}: {stageName}",
     "description": "Researcher-facing explanatory text in components / Timeline / TimelineStageRow."
-  },
-  "architect.chrome.validations.validations.everyComparableAttributeWouldMakeThis": {
-    "defaultMessage": "Every comparable attribute would make this rule impossible to satisfy.",
-    "description": "Researcher-facing explanatory text in components / Validations / Validations."
-  },
-  "architect.chrome.validations.validations.noOtherAttributeOfThisType": {
-    "defaultMessage": "No other attribute of this type exists to compare against.",
-    "description": "Researcher-facing explanatory text in components / Validations / Validations."
-  },
-  "architect.chrome.validations.validations.thisAttributeHasOnlyPossibleValues": {
-    "defaultMessage": "{uniqueValueCount, plural, one {This attribute has only # possible value. Interview preview will refuse to generate synthetic data if more than # entity can hold a value while ‘Must be unique’ is enabled.} other {This attribute has only # possible values. Interview preview will refuse to generate synthetic data if more than # entities can hold a value while ‘Must be unique’ is enabled.}}",
-    "description": "Researcher-facing explanatory text in components / Validations / Validations."
   },
   "architect.codebook.codebook.createEdgeType": {
     "defaultMessage": "Create edge type",
@@ -1079,18 +931,6 @@
     "defaultMessage": "VisualAnalogScale",
     "description": "Presentation label or description in config/variables.ts. Identifiers are not translated."
   },
-  "architect.constants.components.form.fields.geospatial.apikeybrowser.duplicateNameMessage": {
-    "defaultMessage": "A key with this name already exists. Choose a different name.",
-    "description": "Researcher-facing status or validation message. Context: components/Form/Fields/Geospatial/APIKeyBrowser.tsx."
-  },
-  "architect.constants.components.form.fields.geospatial.apikeybrowser.nameRequiredMessage": {
-    "defaultMessage": "Enter a name for this key.",
-    "description": "Researcher-facing status or validation message. Context: components/Form/Fields/Geospatial/APIKeyBrowser.tsx."
-  },
-  "architect.constants.components.form.fields.geospatial.apikeybrowser.valueRequiredMessage": {
-    "defaultMessage": "Enter the value of the key.",
-    "description": "Researcher-facing status or validation message. Context: components/Form/Fields/Geospatial/APIKeyBrowser.tsx."
-  },
   "architect.constants.components.nesteddraftreclaimdialog.elsewhereDescription": {
     "defaultMessage": "The other tab has been closed, so this protocol can be edited here again. Before that can happen, the editor you have open needs to be dealt with. It was filled in from the version this tab had before, so saving it now would write those older settings over what the other tab saved. Cancel that editor to continue — if you have made changes in it, you will be asked to confirm before anything is discarded.",
     "description": "Researcher-facing status or validation message. Context: components/NestedDraftReclaimDialog.tsx."
@@ -1098,18 +938,6 @@
   "architect.constants.components.nesteddraftreclaimdialog.title": {
     "defaultMessage": "An editor is still open",
     "description": "Researcher-facing status or validation message. Context: components/NestedDraftReclaimDialog.tsx."
-  },
-  "architect.constants.components.query.rules.ruleeditor.ruleEditorSubmit": {
-    "defaultMessage": "Finish and Close",
-    "description": "Researcher-facing status or validation message. Context: components/Query/Rules/RuleEditor.tsx."
-  },
-  "architect.constants.components.query.rules.ruleeditor.ruleEditorTitle": {
-    "defaultMessage": "Construct a Rule",
-    "description": "Researcher-facing status or validation message. Context: components/Query/Rules/RuleEditor.tsx."
-  },
-  "architect.constants.components.query.rules.ruleeditor.ruleStructureDescription": {
-    "defaultMessage": "Choose an attribute, operator, and comparison value to define this rule.",
-    "description": "Researcher-facing status or validation message. Context: components/Query/Rules/RuleEditor.tsx."
   },
   "architect.constants.components.stageeditor.stagedraftconflictdialog.conflictTitle": {
     "defaultMessage": "Choose what to do with your unsaved changes",
@@ -1227,42 +1055,6 @@
     "defaultMessage": "These changes cannot be saved over the version the other tab saved. Choose whether to keep them or discard them first.",
     "description": "Whole message describing a protocol save/lock state at utils/protocolLockMessages.ts."
   },
-  "architect.defaults.components.Form.Fields.File.selectButtonLabel": {
-    "defaultMessage": "Select resource",
-    "description": "Default researcher-facing copy when the caller does not supply its own selectButtonLabel."
-  },
-  "architect.defaults.components.Form.Fields.File.updateButtonLabel": {
-    "defaultMessage": "Update resource",
-    "description": "Default researcher-facing copy when the caller does not supply its own updateButtonLabel."
-  },
-  "architect.defaults.components.Form.Fields.NativeSelect.createInputLabel": {
-    "defaultMessage": "New attribute name",
-    "description": "Default researcher-facing copy when the caller does not supply its own createInputLabel."
-  },
-  "architect.defaults.components.Form.Fields.NativeSelect.createInputPlaceholder": {
-    "defaultMessage": "Enter an attribute name...",
-    "description": "Default researcher-facing copy when the caller does not supply its own createInputPlaceholder."
-  },
-  "architect.defaults.components.Form.Fields.NativeSelect.createLabelText": {
-    "defaultMessage": "✨ Create new ✨",
-    "description": "Default researcher-facing copy when the caller does not supply its own createLabelText."
-  },
-  "architect.defaults.components.Form.Fields.NativeSelect.placeholder": {
-    "defaultMessage": "Select an option",
-    "description": "Default researcher-facing copy when the caller does not supply its own placeholder."
-  },
-  "architect.defaults.components.Form.arrayFields.DialogArrayField.emptyStateMessage": {
-    "defaultMessage": "No items have been created yet.",
-    "description": "Default researcher-facing copy when the caller does not supply its own emptyStateMessage."
-  },
-  "architect.defaults.components.Form.arrayFields.DialogArrayField.itemLabel": {
-    "defaultMessage": "item",
-    "description": "Default researcher-facing copy when the caller does not supply its own itemLabel."
-  },
-  "architect.defaults.components.Form.arrayFields.MultiSelect.emptyStateMessage": {
-    "defaultMessage": "No items available.",
-    "description": "Default researcher-facing copy when the caller does not supply its own emptyStateMessage."
-  },
   "architect.defaults.components.ProjectNav.ActionToolbar.ariaLabel": {
     "defaultMessage": "Page actions",
     "description": "Default researcher-facing copy when the caller does not supply its own ariaLabel."
@@ -1270,14 +1062,6 @@
   "architect.defaults.components.ProjectNav.ActionToolbar.leadingAriaLabel": {
     "defaultMessage": "History actions",
     "description": "Default researcher-facing copy when the caller does not supply its own leadingAriaLabel."
-  },
-  "architect.defaults.components.sections.ValidationSection.label": {
-    "defaultMessage": "Validation",
-    "description": "Default researcher-facing copy when the caller does not supply its own label."
-  },
-  "architect.defaults.components.sections.ValidationSection.summary": {
-    "defaultMessage": "Enable validation of this attribute.",
-    "description": "Default researcher-facing copy when the caller does not supply its own summary."
   },
   "architect.dialogForm.dialogForm.resizeFormAndPreviewPanes": {
     "defaultMessage": "Resize form and preview panes",
@@ -1293,38 +1077,6 @@
   },
   "architect.dropzone.failed": {
     "defaultMessage": "Unable to import this file. Check its format and try again.",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.editableAttributesList.composerAttributeFields.caption": {
-    "defaultMessage": "Caption",
-    "description": "The label text in components / EditableAttributesList / ComposerAttributeFields."
-  },
-  "architect.editableAttributesList.composerAttributeFields.createOrSelectACodebookAttribute": {
-    "defaultMessage": "Create or select a codebook attribute. If you select an existing attribute, any changes you make to the input control or validation options will also change other uses of this attribute.",
-    "description": "The hint text in components / EditableAttributesList / ComposerAttributeFields."
-  },
-  "architect.editableAttributesList.composerAttributeFields.defaultsToTheAttributeName": {
-    "defaultMessage": "Defaults to the attribute name",
-    "description": "The placeholder text in components / EditableAttributesList / ComposerAttributeFields."
-  },
-  "architect.editableAttributesList.composerAttributeFields.displayCaption": {
-    "defaultMessage": "Display caption",
-    "description": "The title text in components / EditableAttributesList / ComposerAttributeFields."
-  },
-  "architect.editableAttributesList.composerAttributeFields.optionallyCustomizeHowThisAttributeIs": {
-    "defaultMessage": "Optionally customize how this attribute is named in the side panel.",
-    "description": "The description text in components / EditableAttributesList / ComposerAttributeFields."
-  },
-  "architect.editableAttributesList.composerAttributeFields.thisAttributeCannotBeSaved": {
-    "defaultMessage": "This attribute cannot be saved",
-    "description": "Visible text in components / EditableAttributesList / ComposerAttributeFields."
-  },
-  "architect.editableAttributesList.composerAttributeFields.whenLeftEmptyTheAttributeName": {
-    "defaultMessage": "When left empty, the attribute name is shown instead.",
-    "description": "The hint text in components / EditableAttributesList / ComposerAttributeFields."
-  },
-  "architect.entityPreview.selectNode": {
-    "defaultMessage": "Select node {label}",
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.errors.appErrorBoundary.copied": {
@@ -1371,10 +1123,6 @@
     "defaultMessage": "has attributes written both with and without validation",
     "description": "Researcher-facing Architect control or feedback."
   },
-  "architect.final.components.Query.Rules.RuleEditor.incomplete": {
-    "defaultMessage": "This rule is not complete. Please fill in every field before saving it.",
-    "description": "Researcher-facing Architect control or feedback."
-  },
   "architect.final.components.StageEditor.StageEditor.newStage": {
     "defaultMessage": "New stage",
     "description": "Researcher-facing Architect control or feedback."
@@ -1418,70 +1166,6 @@
   "architect.final.utils.downloadActiveProtocol.skippedAssets": {
     "defaultMessage": "Your protocol was downloaded, but these assets could not be included and are missing from the file: {assetList}.",
     "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.form.arrayFields.attribute.config.false": {
-    "defaultMessage": "False",
-    "description": "Presentation label or description in components/Form/arrayFields/Attribute.tsx. Identifiers are not translated."
-  },
-  "architect.form.arrayFields.attribute.config.true": {
-    "defaultMessage": "True",
-    "description": "Presentation label or description in components/Form/arrayFields/Attribute.tsx. Identifiers are not translated."
-  },
-  "architect.form.arrayFields.attribute.createOrSelectAnAttribute": {
-    "defaultMessage": "Create or select an attribute",
-    "description": "The label text in components / Form / arrayFields / Attribute."
-  },
-  "architect.form.arrayFields.attribute.deleteAttribute": {
-    "defaultMessage": "Delete attribute",
-    "description": "The aria-label text in components / Form / arrayFields / Attribute."
-  },
-  "architect.form.arrayFields.attribute.everyNodeCreatedOnThisPrompt": {
-    "defaultMessage": "Every node created on this prompt is given this value.",
-    "description": "The hint text in components / Form / arrayFields / Attribute."
-  },
-  "architect.form.arrayFields.attribute.valueToAssign": {
-    "defaultMessage": "Value to assign",
-    "description": "The label text in components / Form / arrayFields / Attribute."
-  },
-  "architect.form.arrayFields.dialogArrayField.add": {
-    "defaultMessage": "Add",
-    "description": "The submitLabel text in components / Form / arrayFields / DialogArrayField."
-  },
-  "architect.form.arrayFields.dialogArrayField.addItem": {
-    "defaultMessage": "Add {itemLabel}",
-    "description": "Default dialog heading for adding one item of the translated item type."
-  },
-  "architect.form.arrayFields.dialogArrayField.edit": {
-    "defaultMessage": "Edit {itemLabel}",
-    "description": "The aria-label text in components / Form / arrayFields / DialogArrayField."
-  },
-  "architect.form.arrayFields.dialogArrayField.remove": {
-    "defaultMessage": "Remove {itemLabel}",
-    "description": "The confirmLabel text in components / Form / arrayFields / DialogArrayField."
-  },
-  "architect.form.arrayFields.dialogArrayField.removeThis": {
-    "defaultMessage": "Remove this {itemLabel}?",
-    "description": "The title text in components / Form / arrayFields / DialogArrayField."
-  },
-  "architect.form.arrayFields.dialogArrayField.reorderOf": {
-    "defaultMessage": "Reorder {itemLabel} {value2, number} of {itemCount, number}",
-    "description": "The label text in components / Form / arrayFields / DialogArrayField."
-  },
-  "architect.form.arrayFields.dialogArrayField.thisWillBeRemovedFromThe": {
-    "defaultMessage": "This {itemLabel} will be removed from the list.",
-    "description": "The description text in components / Form / arrayFields / DialogArrayField."
-  },
-  "architect.form.arrayFields.multiSelect.areYouSureYouWantTo": {
-    "defaultMessage": "Are you sure you want to remove this item?",
-    "description": "The description text in components / Form / arrayFields / MultiSelect."
-  },
-  "architect.form.arrayFields.multiSelect.removeItem": {
-    "defaultMessage": "Remove item",
-    "description": "The title text in components / Form / arrayFields / MultiSelect."
-  },
-  "architect.form.arrayFields.multiSelect.reorderItemOf": {
-    "defaultMessage": "Reorder item {value1, number} of {itemCount, number}",
-    "description": "The label text in components / Form / arrayFields / MultiSelect."
   },
   "architect.form.arrayFields.option.areYouSureYouWantTo": {
     "defaultMessage": "Are you sure you want to remove this option?",
@@ -1535,18 +1219,6 @@
     "defaultMessage": "Value",
     "description": "The label text in components / Form / arrayFields / Option."
   },
-  "architect.form.arrayFields.useCreateVariable.couldNotCreateAttribute": {
-    "defaultMessage": "Could not create attribute",
-    "description": "The title text in components / Form / arrayFields / useCreateVariable."
-  },
-  "architect.form.arrayFields.useCreateVariable.oK": {
-    "defaultMessage": "OK",
-    "description": "The label text in components / Form / arrayFields / useCreateVariable."
-  },
-  "architect.form.attributeControlDescription": {
-    "defaultMessage": "<type>{typeLabel}</type> attribute using <control>{controlLabel}</control> input control",
-    "description": "Whole description in field-preview badges. Type and control tags emphasize translated metadata labels; the stable protocol identifiers are unchanged."
-  },
   "architect.form.autoFileDrop.considerRemovingDuplicatesFromYourCSV": {
     "defaultMessage": "Consider removing duplicates from your CSV file before importing.",
     "description": "Visible text in components / Form / AutoFileDrop."
@@ -1586,114 +1258,6 @@
   "architect.form.dropzone.dropzone.uploadFile": {
     "defaultMessage": "Upload file",
     "description": "The aria-label text in components / Form / Dropzone / Dropzone."
-  },
-  "architect.form.fields.dataSource.useANetworkDataFile": {
-    "defaultMessage": "Use a network data file",
-    "description": "The label text in components / Form / Fields / DataSource."
-  },
-  "architect.form.fields.dataSource.useTheNetworkFromTheInProgress": {
-    "defaultMessage": "Use the network from the in-progress interview",
-    "description": "The label text in components / Form / Fields / DataSource."
-  },
-  "architect.form.fields.datePicker.config.full": {
-    "defaultMessage": "Full",
-    "description": "Presentation label or description in components/Form/Fields/DatePicker.tsx. Identifiers are not translated."
-  },
-  "architect.form.fields.datePicker.config.month": {
-    "defaultMessage": "Month",
-    "description": "Presentation label or description in components/Form/Fields/DatePicker.tsx. Identifiers are not translated."
-  },
-  "architect.form.fields.datePicker.config.year": {
-    "defaultMessage": "Year",
-    "description": "Presentation label or description in components/Form/Fields/DatePicker.tsx. Identifiers are not translated."
-  },
-  "architect.form.fields.file.noResourceSelected": {
-    "defaultMessage": "No resource selected.",
-    "description": "Visible text in components / Form / Fields / File."
-  },
-  "architect.form.fields.geospatial.aPIKeyBrowser.aPIKeyBrowser": {
-    "defaultMessage": "API Key Browser",
-    "description": "The title text in components / Form / Fields / Geospatial / APIKeyBrowser."
-  },
-  "architect.form.fields.geospatial.aPIKeyBrowser.createAPIKey": {
-    "defaultMessage": "Create API key",
-    "description": "The title text in components / Form / Fields / Geospatial / APIKeyBrowser."
-  },
-  "architect.form.fields.geospatial.aPIKeyBrowser.createKey": {
-    "defaultMessage": "Create Key",
-    "description": "Visible text in components / Form / Fields / Geospatial / APIKeyBrowser."
-  },
-  "architect.form.fields.geospatial.aPIKeyBrowser.enterAnAPIKey": {
-    "defaultMessage": "Enter an API Key...",
-    "description": "The placeholder text in components / Form / Fields / Geospatial / APIKeyBrowser."
-  },
-  "architect.form.fields.geospatial.aPIKeyBrowser.keyName": {
-    "defaultMessage": "Key name",
-    "description": "The label text in components / Form / Fields / Geospatial / APIKeyBrowser."
-  },
-  "architect.form.fields.geospatial.aPIKeyBrowser.keyValue": {
-    "defaultMessage": "Key value",
-    "description": "The label text in components / Form / Fields / Geospatial / APIKeyBrowser."
-  },
-  "architect.form.fields.geospatial.aPIKeyBrowser.nameThisKey": {
-    "defaultMessage": "Name this key",
-    "description": "The placeholder text in components / Form / Fields / Geospatial / APIKeyBrowser."
-  },
-  "architect.form.fields.geospatial.aPIKeyBrowser.savedAPIKeys": {
-    "defaultMessage": "Saved API keys",
-    "description": "The title text in components / Form / Fields / Geospatial / APIKeyBrowser."
-  },
-  "architect.form.fields.geospatial.aPIKeyBrowser.selectAnAPIKeyAlreadyStored": {
-    "defaultMessage": "Select an API key already stored in this protocol.",
-    "description": "The description text in components / Form / Fields / Geospatial / APIKeyBrowser."
-  },
-  "architect.form.fields.geospatial.aPIKeyBrowser.thisKeyIsSavedInsideYour": {
-    "defaultMessage": "This key is saved inside your protocol and included as plain text in exported <code>.netcanvas</code> files, so only use a key you are comfortable distributing.",
-    "description": "Visible text in components / Form / Fields / Geospatial / APIKeyBrowser."
-  },
-  "architect.form.fields.geospatial.mapSelection.editMapView": {
-    "defaultMessage": "Edit map view",
-    "description": "Visible text in components / Form / Fields / Geospatial / MapSelection."
-  },
-  "architect.form.fields.geospatial.mapSelection.setMapView": {
-    "defaultMessage": "Set map view",
-    "description": "Visible text in components / Form / Fields / Geospatial / MapSelection."
-  },
-  "architect.form.fields.geospatial.mapView.initialMapView": {
-    "defaultMessage": "Initial Map View",
-    "description": "The title text in components / Form / Fields / Geospatial / MapView."
-  },
-  "architect.form.fields.geospatial.mapView.initialMapViewe0149": {
-    "defaultMessage": "Initial map view",
-    "description": "The title text in components / Form / Fields / Geospatial / MapView."
-  },
-  "architect.form.fields.geospatial.mapView.interactiveMapPreview": {
-    "defaultMessage": "Interactive map preview",
-    "description": "The aria-label text in components / Form / Fields / Geospatial / MapView."
-  },
-  "architect.form.fields.geospatial.mapView.loadingMapPreview": {
-    "defaultMessage": "Loading map preview.",
-    "description": "Visible text in components / Form / Fields / Geospatial / MapView."
-  },
-  "architect.form.fields.geospatial.mapView.panAndZoomTheMapTo": {
-    "defaultMessage": "Pan and zoom the map to set the view participants see when the map first loads or is reset.",
-    "description": "The description text in components / Form / Fields / Geospatial / MapView."
-  },
-  "architect.form.fields.geospatial.mapView.saveChanges": {
-    "defaultMessage": "Save Changes",
-    "description": "Visible text in components / Form / Fields / Geospatial / MapView."
-  },
-  "architect.form.fields.nativeSelect.create": {
-    "defaultMessage": "Create",
-    "description": "Visible text in components / Form / Fields / NativeSelect."
-  },
-  "architect.form.fields.nativeSelect.creating": {
-    "defaultMessage": "Creating…",
-    "description": "Visible text in components / Form / Fields / NativeSelect."
-  },
-  "architect.form.fields.nativeSelect.message": {
-    "defaultMessage": "-- {placeholder} --",
-    "description": "The label text in components / Form / Fields / NativeSelect."
   },
   "architect.form.fields.variablePicker.variablePicker.changeAttribute": {
     "defaultMessage": "Change attribute",
@@ -1742,18 +1306,6 @@
   "architect.form.fields.variablePicker.variableSpotlight.youCannotCreateANewAttribute": {
     "defaultMessage": "You cannot create a new attribute from here. Please create one or more attributes elsewhere in your protocol, and return here to select them.",
     "description": "Visible text in components / Form / Fields / VariablePicker / VariableSpotlight."
-  },
-  "architect.geoApiKey.select": {
-    "defaultMessage": "Select API key",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.geoApiKey.selected": {
-    "defaultMessage": "API key {name} {created, select, true {created and selected.} other {selected.}}",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.geoApiKey.update": {
-    "defaultMessage": "Update API key",
-    "description": "Researcher-facing Architect control or feedback."
   },
   "architect.home.demoSubtitle.categoricalBin": {
     "defaultMessage": "Categorical Bin",
@@ -2267,22 +1819,6 @@
     "defaultMessage": "{stages, plural, one {# stage} other {# stages}} · {nodes, plural, one {# node type} other {# node types}} · {edges, plural, one {# edge type} other {# edge types}}",
     "description": "Researcher-facing Architect control or feedback."
   },
-  "architect.mapView.failure.mapLoadErrorMessage": {
-    "defaultMessage": "The map preview could not be loaded. Check the API key and map style, then try again.",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.mapView.failure.unavailableKeyMessage": {
-    "defaultMessage": "The map preview could not be loaded because its API key is unavailable. Select an API key and try again.",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.mapView.required": {
-    "defaultMessage": "Required",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.nativeSelect.createFailed": {
-    "defaultMessage": "Unable to create this option.",
-    "description": "Researcher-facing Architect control or feedback."
-  },
   "architect.nestedDraftReclaimDialog.backToTheEditor": {
     "defaultMessage": "Back to the Editor",
     "description": "The label text in components / NestedDraftReclaimDialog."
@@ -2446,90 +1982,6 @@
   "architect.pages.summaryPage.protocolSummary": {
     "defaultMessage": "Protocol Summary",
     "description": "The title text in components / pages / SummaryPage."
-  },
-  "architect.parameters.datePicker.dateResolution": {
-    "defaultMessage": "Date resolution",
-    "description": "The label text in components / Parameters / DatePicker."
-  },
-  "architect.parameters.datePicker.dateResolutionControlsThePrecisionOf": {
-    "defaultMessage": "Date resolution controls the precision of the measurement. By default, this input will ask for a year, a month, and a day. You may optionally choose to collect only a year and a month, or only a year. Changing the resolution clears the start and end range, because those dates are stored at the resolution you choose here.",
-    "description": "The hint text in components / Parameters / DatePicker."
-  },
-  "architect.parameters.datePicker.endDateMustNotBeBefore": {
-    "defaultMessage": "End date must not be before start date",
-    "description": "The message text in components / Parameters / DatePicker."
-  },
-  "architect.parameters.datePicker.endRange": {
-    "defaultMessage": "End range",
-    "description": "The label text in components / Parameters / DatePicker."
-  },
-  "architect.parameters.datePicker.selectAStartRangeDate": {
-    "defaultMessage": "Select a start range date...",
-    "description": "The placeholder text in components / Parameters / DatePicker."
-  },
-  "architect.parameters.datePicker.selectAnEndRangeDateOr": {
-    "defaultMessage": "Select an end range date, or leave empty to use interview date...",
-    "description": "The placeholder text in components / Parameters / DatePicker."
-  },
-  "architect.parameters.datePicker.startRange": {
-    "defaultMessage": "Start range",
-    "description": "The label text in components / Parameters / DatePicker."
-  },
-  "architect.parameters.datePicker.theEarliestDateAvailableForThe": {
-    "defaultMessage": "The earliest date available for the participant to select. If left empty, it will default to starting in the year 1920.",
-    "description": "The hint text in components / Parameters / DatePicker."
-  },
-  "architect.parameters.datePicker.theLatestDateAvailableForThe": {
-    "defaultMessage": "The latest date available for the participant to select. If it is not supplied, the input will default to ending at the current date.",
-    "description": "The hint text in components / Parameters / DatePicker."
-  },
-  "architect.parameters.datePicker.theStartAndEndRangeWere": {
-    "defaultMessage": "The start and end range were cleared because they were set at the previous date resolution. Set them again if you still need them.",
-    "description": "Visible text in components / Parameters / DatePicker."
-  },
-  "architect.parameters.relativeDatePicker.anchorDateMustUseAYear": {
-    "defaultMessage": "Anchor date must use a year of 0001 or later",
-    "description": "The message text in components / Parameters / RelativeDatePicker."
-  },
-  "architect.parameters.relativeDatePicker.daysAfter": {
-    "defaultMessage": "Days after",
-    "description": "The label text in components / Parameters / RelativeDatePicker."
-  },
-  "architect.parameters.relativeDatePicker.daysBefore": {
-    "defaultMessage": "Days before",
-    "description": "The label text in components / Parameters / RelativeDatePicker."
-  },
-  "architect.parameters.relativeDatePicker.specificAnchorDate": {
-    "defaultMessage": "Specific Anchor Date",
-    "description": "The label text in components / Parameters / RelativeDatePicker."
-  },
-  "architect.parameters.relativeDatePicker.theAnchorDateDefinesThePoint": {
-    "defaultMessage": "The anchor date defines the point that the participant can select a date relative to. Using the interview date sets it dynamically based on when the interview is conducted; turn this off to specify a date manually.",
-    "description": "The hint text in components / Parameters / RelativeDatePicker."
-  },
-  "architect.parameters.relativeDatePicker.theNumberOfDaysAfterThe": {
-    "defaultMessage": "The number of days after the anchor date that can be selected from. Defaults to 0 days if left blank.",
-    "description": "The hint text in components / Parameters / RelativeDatePicker."
-  },
-  "architect.parameters.relativeDatePicker.theNumberOfDaysPriorTo": {
-    "defaultMessage": "The number of days prior to the anchor date that can be selected from. Defaults to 180 days if left blank.",
-    "description": "The hint text in components / Parameters / RelativeDatePicker."
-  },
-  "architect.parameters.relativeDatePicker.useInterviewDate": {
-    "defaultMessage": "Use interview date",
-    "description": "The label text in components / Parameters / RelativeDatePicker."
-  },
-  "architect.parameters.scalar.maximumLabel": {
-    "defaultMessage": "Maximum label",
-    "description": "The label text in components / Parameters / Scalar."
-  },
-  "architect.parameters.scalar.minimumLabel": {
-    "defaultMessage": "Minimum label",
-    "description": "The label text in components / Parameters / Scalar."
-  },
-  "architect.parameters.scalar.thisInputTypeRequiresYouTo": {
-    "defaultMessage": "This input type requires you to specify a <strong>minimum</strong> and <strong2>maximum</strong2> label, which will be displayed at each end of the scale.",
-    "description": "Visible text in components / Parameters / Scalar."
   },
   "architect.presentation.conflictSubject": {
     "defaultMessage": "{entityName}: {variableNames}",
@@ -3059,233 +2511,13 @@
     "defaultMessage": "Technical details (English):",
     "description": "Visible text in components / ProtocolValidationDialogReporter."
   },
-  "architect.query.operator.contains": {
-    "defaultMessage": "contains",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.doesNotContain": {
-    "defaultMessage": "does not contain",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.exactly": {
-    "defaultMessage": "is exactly",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.excludes": {
-    "defaultMessage": "excludes",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.exists": {
-    "defaultMessage": "exists",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.greaterThan": {
-    "defaultMessage": "is greater than",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.greaterThanOrEqual": {
-    "defaultMessage": "is greater than or exactly",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.includes": {
-    "defaultMessage": "includes",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.lessThan": {
-    "defaultMessage": "is less than",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.lessThanOrEqual": {
-    "defaultMessage": "is less than or exactly",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.not": {
-    "defaultMessage": "is not",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.notExists": {
-    "defaultMessage": "does not exist",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.optionsEquals": {
-    "defaultMessage": "number of selected options is exactly",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.optionsGreaterThan": {
-    "defaultMessage": "number of selected options is greater than",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.optionsLessThan": {
-    "defaultMessage": "number of selected options is less than",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.operator.optionsNotEquals": {
-    "defaultMessage": "number of selected options is not",
-    "description": "Operator label in the network filter and skip logic rule editor."
-  },
-  "architect.query.rules.previewRules.deleteRule": {
-    "defaultMessage": "Delete rule:",
-    "description": "Visible text in components / Query / Rules / PreviewRules."
-  },
-  "architect.query.rules.previewRules.editRule": {
-    "defaultMessage": "Edit rule:",
-    "description": "Visible text in components / Query / Rules / PreviewRules."
-  },
   "architect.query.rules.previewText.attribute": {
     "defaultMessage": "{value1} attribute {label}",
-    "description": "The aria-label text in components / Query / Rules / PreviewText."
+    "description": "The aria-label text in the printable protocol summary’s rule sentence."
   },
   "architect.query.rules.previewText.ego": {
     "defaultMessage": "Ego",
-    "description": "Visible text in components / Query / Rules / PreviewText."
-  },
-  "architect.query.rules.ruleEditor.attributeValue": {
-    "defaultMessage": "Attribute value",
-    "description": "The label text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.chooseANodeTypeToBase": {
-    "defaultMessage": "Choose a node type to base your rule on. Remember you can add multiple rules if you need to cover different types.",
-    "description": "The hint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.chooseAnEdgeTypeToBase": {
-    "defaultMessage": "Choose an edge type to base your rule on. Remember you can add multiple rules if you need to cover different types.",
-    "description": "The hint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.edgeAttribute": {
-    "defaultMessage": "Edge attribute",
-    "description": "The label text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.edgeType": {
-    "defaultMessage": "Edge type",
-    "description": "The label text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.egoAttribute": {
-    "defaultMessage": "Ego attribute",
-    "description": "The label text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.enterARegularExpression": {
-    "defaultMessage": "Enter a regular expression...",
-    "description": "The placeholder text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.enterAValue": {
-    "defaultMessage": "Enter a value...",
-    "description": "The placeholder text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.enterTheNumberOfOptionsThat": {
-    "defaultMessage": "Enter the number of options that must be selected for this rule to pass.",
-    "description": "The hint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.enterTheValueToCompareAgainst": {
-    "defaultMessage": "Enter the value to compare against.",
-    "description": "The hint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.entity": {
-    "defaultMessage": "Entity",
-    "description": "The label text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.networkFiltering": {
-    "defaultMessage": "network filtering",
-    "description": "Visible text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.nodeAttribute": {
-    "defaultMessage": "Node attribute",
-    "description": "The label text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.nodeType": {
-    "defaultMessage": "Node type",
-    "description": "The label text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.operator": {
-    "defaultMessage": "Operator",
-    "description": "The label text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.presenceCondition": {
-    "defaultMessage": "Presence condition",
-    "description": "The title text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.ruleBasis": {
-    "defaultMessage": "Rule basis",
-    "description": "The title text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.ruleStructure": {
-    "defaultMessage": "Rule structure",
-    "description": "The title text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.ruleTarget": {
-    "defaultMessage": "Rule target",
-    "description": "The title text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.ruleType": {
-    "defaultMessage": "Rule type",
-    "description": "The label text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.selectAnAttributeToBaseThis": {
-    "defaultMessage": "Select an attribute to base this rule on.",
-    "description": "The hint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.selectAnOperator": {
-    "defaultMessage": "Select an operator…",
-    "description": "The placeholder text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.selectTheEgoAttributeThisRule": {
-    "defaultMessage": "Select the ego attribute this rule will be based on.",
-    "description": "The hint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.selectTheOperatorThatWillBe": {
-    "defaultMessage": "Select the operator that will be used to compare the ego attribute to the value.",
-    "description": "The hint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.selectTheOperatorThatWillBea3104": {
-    "defaultMessage": "Select the operator that will be used to compare the attribute to the value.",
-    "description": "The hint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.selectTheOperatorThatWillBeb7725": {
-    "defaultMessage": "Select the operator that will be used to compare the entity type to the value.",
-    "description": "The hint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.selectWhetherThisRuleWillBe": {
-    "defaultMessage": "Select whether this rule will be based on the entity type or an attribute.",
-    "description": "The hint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.selectWhichNetworkEntityYourRule": {
-    "defaultMessage": "Select which network entity your rule should target.",
-    "description": "The hint text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.selectedOptionCount": {
-    "defaultMessage": "Selected option count",
-    "description": "The label text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.ruleEditor.skipLogic": {
-    "defaultMessage": "skip logic",
-    "description": "Visible text in components / Query / Rules / RuleEditor."
-  },
-  "architect.query.rules.rules.config.allRulesMustMatch": {
-    "defaultMessage": "All rules must match",
-    "description": "Presentation label or description in components/Query/Rules/Rules.tsx. Identifiers are not translated."
-  },
-  "architect.query.rules.rules.config.anyRuleCanMatch": {
-    "defaultMessage": "Any rule can match",
-    "description": "Presentation label or description in components/Query/Rules/Rules.tsx. Identifiers are not translated."
-  },
-  "architect.query.rules.rules.config.edgeMatchAnEdgeType": {
-    "defaultMessage": "Edge - match an edge type or one of its attributes.",
-    "description": "Presentation label or description in components/Query/Rules/Rules.tsx. Identifiers are not translated."
-  },
-  "architect.query.rules.rules.config.egoMatchOneOfThe": {
-    "defaultMessage": "Ego - match one of the ego attributes.",
-    "description": "Presentation label or description in components/Query/Rules/Rules.tsx. Identifiers are not translated."
-  },
-  "architect.query.rules.rules.config.nodeMatchANodeType": {
-    "defaultMessage": "Node - match a node type or one of its attributes.",
-    "description": "Presentation label or description in components/Query/Rules/Rules.tsx. Identifiers are not translated."
-  },
-  "architect.query.rules.rules.ruleMatching": {
-    "defaultMessage": "Rule Matching",
-    "description": "The label text in components / Query / Rules / Rules."
-  },
-  "architect.query.rules.rules.whenYouHaveMultipleRulesHow": {
-    "defaultMessage": "When you have multiple rules, how should matching work?",
-    "description": "The hint text in components / Query / Rules / Rules."
+    "description": "Visible text in the printable protocol summary’s rule sentence."
   },
   "architect.query.sentence.attributePresence": {
     "defaultMessage": "<subject><entity></entity></subject> <operator>{operatorCode, select, NOT_EXISTS {without} other {where}}</operator> <attribute></attribute>",
@@ -3395,22 +2627,6 @@
     "defaultMessage": "That file type is not supported as a resource.",
     "description": "Researcher-facing Architect control or feedback."
   },
-  "architect.ruleKind.attribute": {
-    "defaultMessage": "Attribute",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.ruleKind.attributeDescription": {
-    "defaultMessage": "Rule based on the value of this {target, select, node {node} edge {edge} other {ego}} type's attributes.",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.ruleKind.presence": {
-    "defaultMessage": "Presence",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.ruleKind.presenceDescription": {
-    "defaultMessage": "Based on the presence or absence of this {target, select, node {node} edge {edge} other {ego}} type in the interview network.",
-    "description": "Researcher-facing Architect control or feedback."
-  },
   "architect.screens.newStageScreen.interfaceList.clearSearchAndFilter": {
     "defaultMessage": "Clear search and filter",
     "description": "Visible text in components / Screens / NewStageScreen / InterfaceList."
@@ -3442,110 +2658,6 @@
   "architect.screens.newStageScreen.newStageScreen.selectAnInterfaceType": {
     "defaultMessage": "Select an Interface Type",
     "description": "The title text in components / Screens / NewStageScreen / NewStageScreen."
-  },
-  "architect.sections.fields.entitySelectField.entitySelectField.cannotChangeType": {
-    "defaultMessage": "Cannot change {entityType, select, node {node} other {edge}} type",
-    "description": "The title text in components / sections / fields / EntitySelectField / EntitySelectField."
-  },
-  "architect.sections.fields.entitySelectField.entitySelectField.changeType": {
-    "defaultMessage": "Change {entityType, select, node {node} other {edge}} type?",
-    "description": "The title text in components / sections / fields / EntitySelectField / EntitySelectField."
-  },
-  "architect.sections.fields.entitySelectField.entitySelectField.createNewType": {
-    "defaultMessage": "Create new {entityType, select, node {node} other {edge}} type",
-    "description": "Visible text in components / sections / fields / EntitySelectField / EntitySelectField."
-  },
-  "architect.sections.fields.entitySelectField.entitySelectField.noTypesCurrentlyDefined": {
-    "defaultMessage": "No {entityType, select, node {node} other {edge}} types currently defined",
-    "description": "Visible text in components / sections / fields / EntitySelectField / EntitySelectField."
-  },
-  "architect.sections.fields.entitySelectField.entitySelectField.oK": {
-    "defaultMessage": "OK",
-    "description": "The label text in components / sections / fields / EntitySelectField / EntitySelectField."
-  },
-  "architect.sections.fields.entitySelectField.entitySelectField.typeField": {
-    "defaultMessage": "{value1, select, true {Node} other {Edge}} type field",
-    "description": "The aria-label text in components / sections / fields / EntitySelectField / EntitySelectField."
-  },
-  "architect.sections.fields.entitySelectField.entitySelectField.typeOptions": {
-    "defaultMessage": "{value1, select, true {Node} other {Edge}} type options",
-    "description": "The aria-label text in components / sections / fields / EntitySelectField / EntitySelectField."
-  },
-  "architect.sections.form.variableDefinitionFields.aPreExistingAttributeIsCurrentlySelected": {
-    "defaultMessage": "A pre-existing attribute is currently selected. You cannot change an attribute type after it has been created, so only <strong>{variableType}</strong> compatible input controls can be selected above. If you would like to use a different input control type, you will need to create a new attribute.",
-    "description": "Visible text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.answerControl": {
-    "defaultMessage": "Answer control",
-    "description": "The title text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.attribute": {
-    "defaultMessage": "Attribute",
-    "description": "The description text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.attributeSelection": {
-    "defaultMessage": "Attribute selection",
-    "description": "The title text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.attributeTypeIsLocked": {
-    "defaultMessage": "Attribute type is locked",
-    "description": "Visible text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.booleanValues": {
-    "defaultMessage": "Boolean values",
-    "description": "The description text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.categoricalOrdinalOptions": {
-    "defaultMessage": "Categorical/Ordinal options",
-    "description": "The label text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.choiceValues": {
-    "defaultMessage": "Choice values",
-    "description": "The description text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.chooseHowParticipantsEnterAnAnswer": {
-    "defaultMessage": "Choose how participants enter an answer for this attribute.",
-    "description": "The description text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.chooseTheAttributeThisFormField": {
-    "defaultMessage": "Choose the attribute this form field will collect.",
-    "description": "The description text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.configureTheSettingsAvailableForThis": {
-    "defaultMessage": "Configure the settings available for this input control.",
-    "description": "The description text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.controlSettings": {
-    "defaultMessage": "Control settings",
-    "description": "The description text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.defineTheValuesParticipantsCanChoose": {
-    "defaultMessage": "Define the values participants can choose for this categorical or ordinal attribute.",
-    "description": "The description text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.defineTheValuesStoredForThe": {
-    "defaultMessage": "Define the values stored for the on and off states.",
-    "description": "The description text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.inputControl": {
-    "defaultMessage": "Input control",
-    "description": "The description text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.selectAnAttributeBeforeChoosingIts": {
-    "defaultMessage": "Select an attribute before choosing its input control.",
-    "description": "The description text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.selectAnInputControl": {
-    "defaultMessage": "Select an input control",
-    "description": "The placeholder text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.theInputTypeYouSelectedIndicates": {
-    "defaultMessage": "The input type you selected indicates that this is a categorical or ordinal attribute. Create a minimum of two possible values for the participant to choose between.",
-    "description": "The hint text in components / sections / Form / VariableDefinitionFields."
-  },
-  "architect.sections.form.variableDefinitionFields.theSelectedInputControlWillCause": {
-    "defaultMessage": "The selected input control will cause this attribute to be defined as type <strong>{variableType}</strong>. Once set, this cannot be changed (although you may change the input control within this type).",
-    "description": "Visible text in components / sections / Form / VariableDefinitionFields."
   },
   "architect.skipDestination.finish": {
     "defaultMessage": "End interview",
@@ -4171,10 +3283,6 @@
     "defaultMessage": "{entity, select, node {Node} other {Edge}} type name",
     "description": "The label text in components / TypeEditor / TypeEditor."
   },
-  "architect.utility.booleanChoice.bothOptionLabelsAreRequired": {
-    "defaultMessage": "Both option labels are required",
-    "description": "Researcher-facing explanatory text in components / BooleanChoice."
-  },
   "architect.utility.dialogForm.confirmDiscardNestedDraft.closeWithoutSaving": {
     "defaultMessage": "Close Without Saving",
     "description": "The label text in components / DialogForm / confirmDiscardNestedDraft."
@@ -4275,14 +3383,6 @@
     "defaultMessage": "{over, plural, one {# character over the {maximum, number} character limit} other {# characters over the {maximum, number} character limit}}",
     "description": "Researcher-facing explanatory text in components / ProtocolInfoCard."
   },
-  "architect.utility.selectors.roleFilters.interfaceOwned": {
-    "defaultMessage": "An interface sets this attribute, so it cannot be used here. Choose a different attribute.",
-    "description": "Fallback when an unknown interface owns an attribute. Its raw implementation name is not researcher repair guidance."
-  },
-  "architect.utility.selectors.roleFilters.thisAttributeIsSetBy": {
-    "defaultMessage": "This attribute is set by {interfaceName}, so it cannot be used here. Choose a different attribute.",
-    "description": "Researcher-facing explanatory text in selectors / roleFilters."
-  },
   "architect.utility.timeline.skipDestinationGuards.cannotDeleteStage": {
     "defaultMessage": "Cannot delete stage",
     "description": "The title text in components / Timeline / skipDestinationGuards."
@@ -4347,22 +3447,6 @@
     "defaultMessage": "attribute name",
     "description": "Default subject in the invalid identifier guidance."
   },
-  "architect.validation.contradiction.thisAttribute": {
-    "defaultMessage": "this attribute",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.validation.crossClass.draftValidatedElsewhereMessage": {
-    "defaultMessage": "\"{variableName}\" is collected by this stage's form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.validation.crossClass.unvalidatedElsewhereMessage": {
-    "defaultMessage": "\"{variableName}\" is written without validation by another stage, so it cannot be used as a form field",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.validation.crossClass.validatedElsewhereMessage": {
-    "defaultMessage": "\"{variableName}\" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)",
-    "description": "Researcher-facing Architect control or feedback."
-  },
   "architect.validation.dateIsNotValidValue1": {
     "defaultMessage": "Date is not valid ({value1})",
     "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
@@ -4370,18 +3454,6 @@
   "architect.validation.dateMustBeMinOr": {
     "defaultMessage": "Date must be {min} or later",
     "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
-  },
-  "architect.validation.group.comparisons": {
-    "defaultMessage": "Compare to another attribute",
-    "description": "Group heading for related validation rules."
-  },
-  "architect.validation.group.limits": {
-    "defaultMessage": "Limits",
-    "description": "Group heading for related validation rules."
-  },
-  "architect.validation.group.requirements": {
-    "defaultMessage": "Requirements",
-    "description": "Group heading for related validation rules."
   },
   "architect.validation.mustBeAtLeastMin": {
     "defaultMessage": "Must be at least {min, number}",
@@ -4423,22 +3495,6 @@
     "defaultMessage": "Required",
     "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
   },
-  "architect.validation.ruleValue.comparison": {
-    "defaultMessage": "Choose a comparison attribute for \"{label}\", or switch the rule off.",
-    "description": "Validation rule completion errors; the rule label is localized independently from stable rule IDs."
-  },
-  "architect.validation.ruleValue.floor": {
-    "defaultMessage": "{label} must be at least {floor, number}",
-    "description": "Validation rule completion errors; the rule label is localized independently from stable rule IDs."
-  },
-  "architect.validation.ruleValue.value": {
-    "defaultMessage": "Enter a value for \"{label}\", or switch the rule off.",
-    "description": "Validation rule completion errors; the rule label is localized independently from stable rule IDs."
-  },
-  "architect.validation.ruleValue.whole": {
-    "defaultMessage": "{label} must be a whole number",
-    "description": "Validation rule completion errors; the rule label is localized independently from stable rule IDs."
-  },
   "architect.validation.unknownRule": {
     "defaultMessage": "The validation rule \"{rule}\" is not available. Review this field’s settings.",
     "description": "Actionable fallback for an unsupported validation rule; rule is a stable technical identifier."
@@ -4458,26 +3514,6 @@
   "architect.validation.youMustChooseAMinimum": {
     "defaultMessage": "{min, plural, one {You must choose a minimum of # option} other {You must choose a minimum of # options}}",
     "description": "Validation error shown in an Architect field. User-authored custom errors override this default."
-  },
-  "architect.validations.validationRule.decrease": {
-    "defaultMessage": "Decrease {label}",
-    "description": "Accessible action for decreasing the named validation rule value; label is the localized rule name."
-  },
-  "architect.validations.validationRule.increase": {
-    "defaultMessage": "Increase {label}",
-    "description": "Accessible action for increasing the named validation rule value; label is the localized rule name."
-  },
-  "architect.validations.validationRule.selectComparisonAttribute": {
-    "defaultMessage": "Select comparison attribute",
-    "description": "The placeholder text in components / Validations / ValidationRule."
-  },
-  "architect.validations.validations.enableOneOrMoreValidationRules": {
-    "defaultMessage": "Enable one or more validation rules to apply to this attribute.",
-    "description": "The hint text in components / Validations / Validations."
-  },
-  "architect.validations.validations.validationRules": {
-    "defaultMessage": "Validation rules",
-    "description": "The label text in components / Validations / Validations."
   },
   "architect.variablePill.attribute": {
     "defaultMessage": "{type} attribute",

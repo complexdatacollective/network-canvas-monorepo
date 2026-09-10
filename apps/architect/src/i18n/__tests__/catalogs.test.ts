@@ -31,7 +31,11 @@ describe('Architect catalog contract', () => {
   it('keeps the extraction fresh, namespaced, and documented', async () => {
     const extracted = await extractMessages(collectSourceFiles(srcDir));
     expect(checkCatalogFreshness(en, extracted)).toEqual([]);
-    expect(Object.keys(extracted).length).toBeGreaterThan(1000);
+    // A smoke check that extraction actually walked the tree, not a bound on
+    // the catalog: 899 ids at the time this was set, with the same headroom
+    // under it that 1,000 left under the 1,140 of the app before it handed
+    // its stage editors to @codaco/protocol-builder.
+    expect(Object.keys(extracted).length).toBeGreaterThan(800);
     for (const [id, entry] of Object.entries(extracted)) {
       expect(id).toMatch(/^architect\./);
       expect(entry.defaultMessage.trim()).not.toBe('');
