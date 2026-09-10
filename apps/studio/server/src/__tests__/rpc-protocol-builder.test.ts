@@ -10,7 +10,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { getEventMeta, isDefinedError, safe } from '@orpc/client';
+import { getEventMeta, isDefinedError, ORPCError, safe } from '@orpc/client';
 import { createRouterClient } from '@orpc/server';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -18,11 +18,12 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
-import type { AssetStore } from '../assets.ts';
+import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
 import {
   createProtocolBuilderRuntime,
   IDLE_MS,
+  REAUTHORIZE_MS,
   RECONNECT_GRACE_MS,
   type ProtocolBuilderRuntime,
 } from '../protocol-builder/runtime.ts';
@@ -160,9 +161,14 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
    * promotion is refused `unavailable` and the manifest is never written.
    */
   const stored = new Map<string, { bytes: Uint8Array; mediaType: string }>();
+  /** Set while a test needs the object store to be the thing that is down. */
+  let storeUnreachable = false;
   const assetStore: AssetStore = {
     checkHealth: () => Promise.resolve(),
     put: (bytes, mediaType) => {
+      if (storeUnreachable) {
+        return Promise.reject(new Error('the object store is unreachable'));
+      }
       const hash = createHash('sha256').update(bytes).digest('hex');
       if (!stored.has(hash)) stored.set(hash, { bytes, mediaType });
       const existing = stored.get(hash);
@@ -218,6 +224,13 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       document: { type: 'Information', label, title: label, items: [] },
     });
 
+  /** Researchers whose membership the team has taken away. */
+  const revoked = new Set<string>();
+  const memberships = (userId: string) =>
+    Promise.resolve(
+      revoked.has(userId) ? [] : [{ teamId: TEAM_ID, role: 'owner' as const }],
+    );
+
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     const scratch = await createScratchSchema(db);
@@ -271,10 +284,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
           socialProviders: [],
         },
         {
-          auth: stubAuthService({
-            listMemberships: () =>
-              Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
-          }),
+          auth: stubAuthService({ listMemberships: memberships }),
           deployment: { mode: 'self-hosted', billing: false },
           telemetry: false,
           invitationDeliveryAvailable: false,
@@ -291,10 +301,7 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
         socialProviders: [],
       },
       {
-        auth: stubAuthService({
-          listMemberships: () =>
-            Promise.resolve([{ teamId: TEAM_ID, role: 'owner' }]),
-        }),
+        auth: stubAuthService({ listMemberships: memberships }),
         deployment: { mode: 'self-hosted', billing: false },
         telemetry: false,
         invitationDeliveryAvailable: false,
@@ -1879,6 +1886,236 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       protocolId,
       sectionId,
     });
+    now = Date.now();
+  });
+
+  it('answers a write with the written section’s own content hash', async () => {
+    // `Revision.contentHash` is the hash the sectioned store keys documents
+    // by, so a caller that took a write’s answer as the section’s next base
+    // — or compared it with the revision the event channel carried — would be
+    // comparing it with something else entirely.
+    const stage = await createStage(ADA, 'Answers with its own hash');
+    const created = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    expect(stage.revision).toEqual(created.revision);
+
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    const written = await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      requestId: randomUUID(),
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Renamed, and hashed as itself' },
+      revision: held.revision,
+    });
+    const after = await asClient(ADA).protocolBuilder.getSection({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    expect(written.revision).toEqual(after.revision);
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+  });
+
+  it('refuses a resource larger than this deployment stores, and keeps none of it', async () => {
+    const edit = 'edit-oversize';
+    const oversized = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      editId: edit,
+      requestId: 'oversized',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'A photograph nobody can send',
+        source: 'huge.png',
+        contentType: 'image/png',
+        bytes: new Blob([new Uint8Array(MAX_UPLOAD_BYTES + 1)], {
+          type: 'image/png',
+        }),
+      },
+    });
+
+    expect(oversized).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'too-large' },
+    });
+    // Refused before the bytes were kept: an authenticated caller cannot make
+    // the process hold what it will not store.
+    const listed = await asClient(ADA).protocolBuilder.resources.list({
+      protocolId,
+      editId: edit,
+      status: 'staged',
+    });
+    if (listed.status !== 'ok') throw new Error(listed.failure.message);
+    expect(listed.data.resources).toEqual([]);
+  });
+
+  it('answers an unreachable object store with a failure the editor can retry', async () => {
+    const edit = 'edit-store-down';
+    const stage = await createStage(ADA, 'Names a file the store cannot take');
+    const staged = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      editId: edit,
+      requestId: 'store-down',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'A photograph',
+        source: 'photo.png',
+        contentType: 'image/png',
+        bytes: new Blob([new Uint8Array([9, 9, 9])], { type: 'image/png' }),
+      },
+    });
+    if (staged.status !== 'ok') throw new Error(staged.failure.message);
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+    const promote = {
+      editId: edit,
+      resourceIds: [staged.data.descriptor.id],
+    };
+
+    storeUnreachable = true;
+    let refused;
+    try {
+      refused = await safe(
+        asClient(ADA).protocolBuilder.submit({
+          protocolId,
+          requestId: randomUUID(),
+          sectionId: stage.sectionId,
+          document: { ...held.document, label: 'Renamed with a file' },
+          revision: held.revision,
+          promote,
+        }),
+      );
+    } finally {
+      storeUnreachable = false;
+    }
+    const { error } = refused;
+    if (!isDefinedError(error) || error.code !== 'PROMOTION_FAILED') {
+      throw error ?? new Error('the submit was not refused at all');
+    }
+    expect(error.data.failure).toMatchObject({
+      reason: 'unavailable',
+      retryable: true,
+      resourceId: staged.data.descriptor.id,
+    });
+
+    // Retryable is a promise about what is still there: the resource is
+    // staged, the section is unwritten, and the same submit lands once the
+    // store is back.
+    const written = await asClient(ADA).protocolBuilder.submit({
+      protocolId,
+      requestId: randomUUID(),
+      sectionId: stage.sectionId,
+      document: { ...held.document, label: 'Renamed with a file' },
+      revision: held.revision,
+      promote,
+    });
+    expect(written.promoted?.map((entry) => entry.status)).toEqual([
+      'committed',
+    ]);
+    await asClient(ADA).protocolBuilder.releaseLock({
+      protocolId,
+      sectionId: stage.sectionId,
+    });
+  });
+
+  it('keeps a tab editing the section it still holds when it gives the other back', async () => {
+    // A codebook dialog over a stage editor: one tab, two sections, and
+    // closing the dialog is not the researcher stopping editing.
+    const editor = await createStage(ADA, 'Held while a dialog is open');
+    const dialog = await createStage(ADA, 'The dialog over it');
+    const watch = await watching(asClient(ADA), protocolId);
+    try {
+      for (const sectionId of [editor.sectionId, dialog.sectionId]) {
+        await asClient(ADA).protocolBuilder.acquireLock({
+          protocolId,
+          sectionId,
+        });
+      }
+      await asClient(ADA).protocolBuilder.releaseLock({
+        protocolId,
+        sectionId: dialog.sectionId,
+      });
+
+      expect(
+        runtime.presence
+          .list(draftId)
+          .find((who) => who.sessionId === ADA.connectionId),
+      ).toMatchObject({ mode: 'editing', sectionId: editor.sectionId });
+    } finally {
+      await asClient(ADA).protocolBuilder.releaseLock({
+        protocolId,
+        sectionId: editor.sectionId,
+      });
+      await watch.close();
+    }
+  });
+
+  it('ends a watch whose membership was taken away, and gives back what it held', async () => {
+    const owner = `${GRACE.principal.userId}:${GRACE.clientSessionId}`;
+    const stage = await createStage(
+      ADA,
+      'Watched by a colleague who is removed',
+    );
+    const controller = new AbortController();
+    const stream = await asClient(GRACE).protocolBuilder.watchProtocol(
+      { protocolId },
+      { signal: controller.signal },
+    );
+    /** Whatever ends the stream, or nothing if it is still running. */
+    const ending = (async () => {
+      try {
+        for await (const event of stream) void event;
+        return new Error('the stream ended without saying why');
+      } catch (error: unknown) {
+        return error;
+      }
+    })();
+
+    let ended: unknown;
+    try {
+      await asClient(GRACE).protocolBuilder.acquireLock({
+        protocolId,
+        sectionId: stage.sectionId,
+      });
+      expect(runtime.leases.heldSections(draftId, owner)).toContain(
+        stage.sectionId,
+      );
+
+      // The team takes GRACE off the study while her socket is open.
+      revoked.add(GRACE.principal.userId);
+      now += REAUTHORIZE_MS;
+      // ADA goes on working, and none of it is GRACE's to receive.
+      await createStage(ADA, 'Written after the membership was revoked');
+      ended = await Promise.race([
+        ending,
+        new Promise((resolve) => setTimeout(() => resolve(undefined), 2_000)),
+      ]);
+    } finally {
+      revoked.delete(GRACE.principal.userId);
+      controller.abort();
+      await ending;
+    }
+
+    if (!(ended instanceof ORPCError) || ended.code !== 'PROTOCOL_NOT_FOUND') {
+      throw ended ?? new Error('the watch went on delivering the protocol');
+    }
+    // The channel was also what kept her leases renewed, so the section goes
+    // back to the team once the reconnect grace has run out.
+    now += RECONNECT_GRACE_MS + 1;
+    await runtime.leases.renewDue();
+    expect(runtime.leases.heldSections(draftId, owner)).not.toContain(
+      stage.sectionId,
+    );
     now = Date.now();
   });
 });

@@ -8,6 +8,7 @@ import type {
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
+import { getActiveProtocolId } from '~/ducks/modules/app';
 import { getCanonicalProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
@@ -93,6 +94,8 @@ export class ProtocolRevisions {
   readonly #watchers = new Set<EventQueue>();
   #presence: Presence;
   #protocol: CurrentProtocol | null = null;
+  /** The protocol everything above belongs to. */
+  #protocolId: string | null = null;
   #sequence = 0n;
   #cursor = 0;
   #emitting = true;
@@ -192,7 +195,9 @@ export class ProtocolRevisions {
   }
 
   #seed(): void {
-    this.#protocol = getCanonicalProtocol(this.#store.getState());
+    const state = this.#store.getState();
+    this.#protocolId = getActiveProtocolId(state);
+    this.#protocol = getCanonicalProtocol(state);
     if (this.#protocol === null) return;
     for (const [id, document] of protocolSections(this.#protocol)) {
       this.#sections.set(id, {
@@ -202,9 +207,36 @@ export class ProtocolRevisions {
     }
   }
 
+  /**
+   * Everything here belongs to one protocol, so opening another leaves none of
+   * it standing: its sections are not revisions of the ones before them, its
+   * locks are not this protocol's to keep — a lock the researcher can no
+   * longer release, because releasing names the protocol it was taken in,
+   * would refuse a create in the protocol they went on to open — and a
+   * watcher of the last protocol must not be handed this one's revisions. The
+   * stream ends instead, which is what the client reconnects from and is then
+   * told the protocol it asked for is not the open one.
+   */
+  #reopen(): void {
+    for (const watcher of this.#watchers) watcher.close();
+    this.#watchers.clear();
+    this.#sections.clear();
+    this.#locks.clear();
+    this.#log.length = 0;
+    this.#sequence = 0n;
+    this.#cursor = 0;
+    const { sectionId: _released, ...rest } = this.#presence;
+    this.#presence = { ...rest, mode: 'viewing' };
+    this.#seed();
+  }
+
   #refresh(): ReadonlyMap<ProtocolSectionId, Revision> {
-    const protocol = getCanonicalProtocol(this.#store.getState());
     const changed = new Map<ProtocolSectionId, Revision>();
+    if (getActiveProtocolId(this.#store.getState()) !== this.#protocolId) {
+      this.#reopen();
+      return changed;
+    }
+    const protocol = getCanonicalProtocol(this.#store.getState());
     if (protocol === this.#protocol) return changed;
     this.#protocol = protocol;
 

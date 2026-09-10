@@ -527,6 +527,13 @@ export async function releaseConnection(
 type WrittenSections = {
   head: HeadState;
   writes: Map<ProtocolSectionId, SectionDoc | undefined>;
+  /**
+   * The section the returned revision names — a submit's own, a create's new
+   * one. Absent for a change that has no single subject: a refactor answers
+   * with `changedSections` instead, and the manifest's hash is then the only
+   * thing that identifies what it wrote.
+   */
+  revisionOf?: ProtocolSectionId;
 };
 
 /**
@@ -536,7 +543,7 @@ type WrittenSections = {
 async function writeSections(
   client: pg.PoolClient,
   session: ProtocolBuilderSession,
-  { head, writes }: WrittenSections,
+  { head, writes, revisionOf }: WrittenSections,
 ): Promise<{ revision: Revision; events: LoggedProtocolEvent[] }> {
   const teamId = session.tenantDb.teamId;
   const added: Record<string, SectionDoc> = {};
@@ -585,13 +592,17 @@ async function writeSections(
     session.draftId,
     records,
   );
-  // Every section written by one operation carries that operation's sequence;
-  // the hash on the returned revision is the manifest's, which is what a
-  // caller comparing "did anything change" needs.
+  // Every section written by one operation carries that operation's sequence.
+  // The hash identifies the section the caller asked about — the same hash its
+  // revision event and its `getSection` answer carry, because the contract's
+  // `contentHash` is the one the sectioned store keys documents by. Only a
+  // change with no single subject falls back to the manifest's.
+  const revisionHash =
+    revisionOf === undefined ? undefined : sectionHashes[revisionOf];
   return {
     revision: {
       sequence: result.manifestSeq,
-      contentHash: result.manifestHash,
+      contentHash: revisionHash ?? result.manifestHash,
     },
     events,
   };
@@ -738,7 +749,11 @@ export async function submit(
         }
         writes.set(ASSETS, { ...assets.document, ...write.assetEntries });
       }
-      const written = await writeSections(client, session, { head, writes });
+      const written = await writeSections(client, session, {
+        head,
+        writes,
+        revisionOf: sectionId,
+      });
       events.push(...written.events);
       await recordWriteReceipt(client, teamId, key, {
         revision: written.revision,
@@ -882,7 +897,11 @@ export async function create(
         }
         writes.set(ASSETS, { ...assets.document, ...input.assetEntries });
       }
-      const written = await writeSections(client, session, { head, writes });
+      const written = await writeSections(client, session, {
+        head,
+        writes,
+        revisionOf: target,
+      });
       events.push(...written.events);
       await recordWriteReceipt(client, teamId, key, {
         revision: written.revision,

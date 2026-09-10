@@ -20,7 +20,7 @@ import {
 } from '@codaco/protocol-builder/contract/schemas';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { AssetStore } from '../assets.ts';
+import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
 
 type Descriptor = z.output<typeof ResourceDescriptorSchema>;
 type Failure = z.output<typeof ResourceGatewayFailureSchema>;
@@ -177,6 +177,16 @@ export class StagedResources {
         },
       };
     }
+    if (request.kind === 'content' && request.bytes.size > MAX_UPLOAD_BYTES) {
+      // Refused before the blob is kept rather than after: the bytes reach the
+      // handler with the request, and what this bounds is how long an
+      // authenticated caller can make the process hold them — an edit's
+      // staging lives until its submit or its cancel.
+      return failure(
+        'too-large',
+        `this deployment stores at most ${MAX_UPLOAD_BYTES} bytes per resource`,
+      );
+    }
     const id = this.#mintId();
     const entry: StagedEntry =
       request.kind === 'secret'
@@ -269,10 +279,24 @@ export class StagedResources {
           resourceId,
         );
       }
-      const stored = await store.put(
-        new Uint8Array(await entry.bytes.arrayBuffer()),
-        entry.descriptor.contentType ?? 'application/octet-stream',
-      );
+      // An object store that is unreachable is the researcher's situation
+      // rather than the host's: the contract has a retryable failure for it,
+      // and reaching the generic error boundary instead would tell an editor
+      // that has staged a file to give up on a promotion it could make a
+      // minute later.
+      let stored: Awaited<ReturnType<AssetStore['put']>>;
+      try {
+        stored = await store.put(
+          new Uint8Array(await entry.bytes.arrayBuffer()),
+          entry.descriptor.contentType ?? 'application/octet-stream',
+        );
+      } catch {
+        return failure(
+          'unavailable',
+          'the object store could not be reached',
+          resourceId,
+        );
+      }
       const source = storedSource(stored.hash, entry.descriptor.source);
       entries[resourceId] = {
         name: entry.descriptor.name,

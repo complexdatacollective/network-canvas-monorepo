@@ -1284,4 +1284,148 @@ describe("Architect's in-process protocol-builder host", () => {
       { id: 'roster_data', kind: 'network', status: 'committed' },
     ]);
   });
+
+  /**
+   * A handle authorises the secret it stands for; `resourceIds` is what a
+   * write promotes. Taken together, the handle for a named secret would
+   * promote it twice, and a handle for one the write did not name would
+   * commit that secret behind the edit's back.
+   */
+  it('promotes a staged secret once, and only what the write names', async () => {
+    const { store, client } = openProtocol();
+    const named = await client.resources.stage({
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+      requestId: 'named-secret',
+      request: { kind: 'secret', name: 'Mapbox token', value: 'pk.named' },
+    });
+    const unnamed = await client.resources.stage({
+      protocolId: PROTOCOL_ID,
+      editId: EDIT,
+      requestId: 'unnamed-secret',
+      request: { kind: 'secret', name: 'Another token', value: 'pk.unnamed' },
+    });
+    if (named.status !== 'ok' || unnamed.status !== 'ok') {
+      throw new Error('staging failed');
+    }
+    const handles = [named.data.handle, unnamed.data.handle];
+    if (handles[0] === undefined || handles[1] === undefined) {
+      throw new Error('a staged secret has no handle');
+    }
+
+    const held = await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: INFORMATION,
+    });
+    const written = await client.submit({
+      protocolId: PROTOCOL_ID,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: { ...held.document, label: 'Names one of two secrets' },
+      revision: held.revision,
+      promote: {
+        editId: EDIT,
+        resourceIds: [named.data.descriptor.id],
+        secretHandles: [handles[0], handles[1]],
+      },
+    });
+
+    expect(written.promoted?.map((entry) => entry.id)).toEqual([
+      named.data.descriptor.id,
+    ]);
+    // The secret the write did not name is still this edit's to take back,
+    // which is what stops a cancelled edit leaving a credential behind.
+    expect(
+      await client.resources.discard({
+        protocolId: PROTOCOL_ID,
+        editId: EDIT,
+        resourceId: unnamed.data.descriptor.id,
+      }),
+    ).toEqual({ status: 'ok' });
+    const manifest = getAssetManifest(store.getState());
+    expect(manifest[unnamed.data.descriptor.id]).toBeUndefined();
+    expect(manifest[named.data.descriptor.id]).toMatchObject({
+      type: 'apikey',
+      name: 'Mapbox token',
+    });
+  });
+
+  it('takes nothing from the last protocol into the next one opened', async () => {
+    const { store, client } = openProtocol();
+    // Held when the researcher goes back to the library — the release names
+    // the protocol it was taken in, so once that protocol is closed there is
+    // no call left that could give it back.
+    await client.acquireLock({
+      protocolId: PROTOCOL_ID,
+      sectionId: STAGE_ORDER_SECTION,
+    });
+    const stream = await openStream(client);
+    const before = revisionsOf(stream.seen).length;
+
+    const next = 'library-row-2';
+    store.dispatch(setActiveProtocolId(next));
+    store.dispatch(
+      setActiveProtocol(CurrentProtocolSchema.parse(allInterfaces)),
+    );
+
+    const template = await client.getSection({
+      protocolId: next,
+      sectionId: INFORMATION,
+    });
+    const { id: _id, ...withoutId } = template.document;
+    const created = await client.create({
+      protocolId: next,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: { ...withoutId, label: 'Added in the protocol opened next' },
+    });
+
+    const ref = parseSectionId(created.sectionId);
+    expect(stageIds(store)).toContain(ref.kind === 'stage' ? ref.stageId : '');
+    // The watcher of the protocol before this one was ended rather than
+    // handed this one's revisions.
+    expect(revisionsOf(stream.seen)).toHaveLength(before);
+  });
+
+  it('refuses an import whose protocol was closed while its bytes were read', async () => {
+    const { store, client } = openProtocol();
+    const before = getAssetManifest(store.getState());
+    const digest = globalThis.crypto.subtle.digest.bind(
+      globalThis.crypto.subtle,
+    );
+    // The researcher closes the protocol while the file is being hashed,
+    // which is the one part of an import long enough for them to. Pinned to
+    // that moment rather than raced for it.
+    const hashing = vi
+      .spyOn(globalThis.crypto.subtle, 'digest')
+      .mockImplementation((algorithm, data) => {
+        store.dispatch(setActiveProtocolId('another-protocol'));
+        return digest(algorithm as AlgorithmIdentifier, data as BufferSource);
+      });
+
+    try {
+      const staged = await client.resources.stage({
+        protocolId: PROTOCOL_ID,
+        editId: EDIT,
+        requestId: 'import-across-a-switch',
+        request: {
+          kind: 'content',
+          contentKind: 'image',
+          name: 'A photograph',
+          source: 'photo.png',
+          contentType: 'image/png',
+          bytes: new Blob([new Uint8Array([7, 7, 7])], { type: 'image/png' }),
+        },
+      });
+      expect(staged).toMatchObject({
+        status: 'failed',
+        failure: { reason: 'invalid-request' },
+      });
+    } finally {
+      hashing.mockRestore();
+    }
+
+    // Nothing reached the protocol that is open now.
+    expect(getAssetManifest(store.getState())).toEqual(before);
+  });
 });

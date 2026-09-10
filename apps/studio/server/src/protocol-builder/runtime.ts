@@ -43,6 +43,17 @@ export const RECONNECT_GRACE_MS = 20_000;
  */
 export const IDLE_MS = 5 * 60_000;
 
+/**
+ * How long a watcher's authorisation is trusted for.
+ *
+ * `watchProtocol` resolves membership once and then runs for as long as the
+ * researcher keeps the protocol open, so a grant revoked in between would
+ * otherwise go on delivering research protocol changes to someone who no
+ * longer has any. Re-resolved no less often than the leases are renewed, so a
+ * revocation costs at most one renewal interval of access nobody has.
+ */
+export const REAUTHORIZE_MS = RENEW_INTERVAL_MS;
+
 type HeldLease = {
   sync: SyncServer;
   draftId: string;

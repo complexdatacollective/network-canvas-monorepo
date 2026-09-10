@@ -45,7 +45,11 @@ import {
   SECRET_STORAGE,
   StagedResourceRegistry,
 } from './resources.ts';
-import { IDLE_MS, type ProtocolBuilderRuntime } from './runtime.ts';
+import {
+  IDLE_MS,
+  REAUTHORIZE_MS,
+  type ProtocolBuilderRuntime,
+} from './runtime.ts';
 import { resolveProtocolSession } from './tenancy.ts';
 import {
   readWriteReceipt,
@@ -239,16 +243,22 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
           throw errors.PROTOCOL_NOT_FOUND({ data: input });
         }
         const result = await releaseLock(session, input.sectionId);
-        runtime.leases.drop(
+        const owner = sessionOwner(session);
+        runtime.leases.drop(session.draftId, input.sectionId, owner);
+        // A tab can hold two sections at once — a codebook dialog over a stage
+        // editor — so giving one back does not stop it editing. Presence
+        // follows what is left rather than being set to viewing, or a
+        // colleague would be told this tab is editing nothing while its
+        // remaining lease is still renewed.
+        const [stillHeld] = runtime.leases.heldSections(
           session.draftId,
-          input.sectionId,
-          sessionOwner(session),
-        );
+          owner,
+        ) as ProtocolSectionId[];
         runtime.presence.setMode(
           session.draftId,
           session.connectionId,
-          'viewing',
-          undefined,
+          stillHeld === undefined ? 'viewing' : 'editing',
+          stillHeld,
         );
         publish(session, result.events);
         if (result.events.length > 0) publishPresence(session);
@@ -329,7 +339,19 @@ export function createProtocolBuilderRouter(deps: ProtocolBuilderRouterDeps) {
         // The join above published this watcher's own arrival, which the
         // subscription below delivers: the first live event a new watcher
         // sees is who is here.
+        let authorizedAt = runtime.now();
         for await (const entry of subscription.events) {
+          // Nothing this channel carries may reach someone whose membership
+          // has been taken away since it opened. Asked before the event is
+          // handed over rather than on a timer of its own, so a socket nobody
+          // is publishing to costs nothing; ending the iterator here also ends
+          // the connection that was keeping this owner's leases renewed.
+          if (runtime.now() - authorizedAt >= REAUTHORIZE_MS) {
+            if ((await openSession(context, input.protocolId)) === null) {
+              throw errors.PROTOCOL_NOT_FOUND({ data: input });
+            }
+            authorizedAt = runtime.now();
+          }
           // Presence carries no cursor: it is not replayable, so it must
           // never move the position a dropped client resumes from.
           if (entry.cursor === undefined) {

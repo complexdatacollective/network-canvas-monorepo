@@ -9,6 +9,7 @@ import type {
   ResourceSecretStorageSchema,
   StageResourceInputSchema,
 } from '@codaco/protocol-builder/contract/schemas';
+import { getActiveProtocolId } from '~/ducks/modules/app';
 import {
   addApiKeyAsset,
   deleteAsset,
@@ -88,7 +89,6 @@ function failed(
 export class ResourceBridge {
   readonly #store: ArchitectStore;
   readonly #byRequest = new Map<string, string>();
-  readonly #handles = new Map<string, string>();
   /** Which edit imported each staged resource, by resource id. */
   readonly #staged = new Map<string, string>();
 
@@ -153,10 +153,22 @@ export class ResourceBridge {
     // the file as and what every other host commits by content, and two
     // imports of different pictures both called `portrait.png` must stay two
     // assets wherever the protocol is opened next.
+    const openedFor = getActiveProtocolId(this.#store.getState());
     const source = await contentAddressedSource(request.bytes, request.source);
     const file = new File([request.bytes], source, {
       type: request.contentType,
     });
+    // Hashing is the one part of this that takes long enough for the
+    // researcher to have closed the protocol underneath it, and there is one
+    // store: an import that went ahead would enter the manifest of whichever
+    // protocol they opened next. Asked here rather than on the way in, which
+    // is what the caller's own entry check already did.
+    if (getActiveProtocolId(this.#store.getState()) !== openedFor) {
+      return failed(
+        'invalid-request',
+        'the protocol this import was made for is no longer open',
+      );
+    }
     try {
       const imported = await this.#store
         .dispatch(importAssetAsync({ file, name: request.name }))
@@ -174,21 +186,34 @@ export class ResourceBridge {
    *
    * A promotion takes the naming edit's own imports and no others — the file
    * another edit is still composing around is not this write's to commit.
+   *
+   * `resourceIds` is the whole of what is promoted. A handle authorises the
+   * secret it stands for and adds nothing: a handle for a resource the write
+   * did not name would otherwise commit that secret and stop the edit's
+   * cancel taking it back, and the handle for one it did name would promote
+   * it twice.
    */
   planPromotion(
     editId: string,
     resourceIds: readonly string[],
     secretHandles: readonly string[] | undefined,
   ): ResourceOutcome<Readonly<{ promoted: Descriptor[]; ids: string[] }>> {
-    const ids = [
-      ...resourceIds,
-      ...(secretHandles ?? []).map((handle) => this.#handles.get(handle) ?? ''),
-    ];
+    const ids = [...resourceIds];
     const promoted: Descriptor[] = [];
     for (const id of ids) {
       const descriptor = this.#descriptor(id, editId);
       if (descriptor === undefined || this.#staged.get(id) !== editId) {
         return failed('not-found', 'no such staged resource', id);
+      }
+      if (
+        descriptor.kind === 'apikey' &&
+        secretHandles?.includes(secretHandle(id)) !== true
+      ) {
+        return failed(
+          'invalid-request',
+          'promoting a staged secret needs the handle staging returned',
+          id,
+        );
       }
       promoted.push({ ...descriptor, status: 'committed' });
     }
@@ -294,9 +319,7 @@ export class ResourceBridge {
 
   #stagedResource(descriptor: Descriptor): StagedResource {
     if (descriptor.kind !== 'apikey') return { descriptor };
-    const handle = `staged-secret:${descriptor.id}`;
-    this.#handles.set(handle, descriptor.id);
-    return { descriptor, handle };
+    return { descriptor, handle: secretHandle(descriptor.id) };
   }
 
   /**
@@ -331,6 +354,15 @@ export class ResourceBridge {
   ): Descriptor | undefined {
     return this.#descriptors(editId).find(({ id }) => id === resourceId);
   }
+}
+
+/**
+ * What staging answers with for a secret, and the only thing that authorises
+ * promoting it. Derived from the asset id rather than remembered, so a host
+ * restarted mid-edit still recognises the handle the picker is holding.
+ */
+function secretHandle(resourceId: string): string {
+  return `staged-secret:${resourceId}`;
 }
 
 /** Everything one edit's staging requests are keyed under. */
