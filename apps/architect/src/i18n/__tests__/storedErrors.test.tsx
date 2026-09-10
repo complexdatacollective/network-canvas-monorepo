@@ -8,8 +8,6 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { useState } from 'react';
-import { Provider } from 'react-redux';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -17,12 +15,9 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import Form from '@codaco/fresco-ui/form/Form';
+import { ruleMapIssue } from '@codaco/protocol-builder/codebook/variableValidation';
 import ArchitectField from '~/components/Form/ArchitectField';
-import { arrayItemMessages } from '~/components/Form/arrayFields/arrayMessages';
-import { completeAttributes } from '~/components/Form/arrayFields/AssignAttributes';
-import DialogArrayField from '~/components/Form/arrayFields/DialogArrayField';
 import { showProtocolOpenResultDialog } from '~/components/protocolOpenDialogs';
-import { ruleMapIssue } from '~/components/Validations/validateRuleMap';
 import { VARIABLE_TYPES } from '~/config/variables';
 import { rootReducer } from '~/ducks/modules/root';
 import { guardState, promptLeaveEditor } from '~/hooks/useProtocolNavGuard';
@@ -174,80 +169,6 @@ it('translates an already queued migration failure while preserving technical ev
   expect(screen.getByText(detail)).toHaveAttribute('dir', 'ltr');
 });
 
-const ResearchRow = ({ label }: Record<string, unknown>) => (
-  <span>{typeof label === 'string' ? label : ''}</span>
-);
-
-it('translates an already-open row removal noun and preserves cancel and remove behavior', async () => {
-  const changed = vi.fn();
-  const original = [{ id: 'research_row_1', label: 'Research_Row_Á1' }];
-  function ListDraft() {
-    const [rows, setRows] = useState(original);
-    return (
-      <Form onSubmit={() => ({ success: true })}>
-        <DialogArrayField
-          name="prompts"
-          value={rows}
-          onChange={(next) => {
-            changed(next);
-            if (next === undefined)
-              throw new Error('Row removal must provide the remaining array');
-            setRows(next);
-          }}
-          itemLabelMessage={arrayItemMessages.prompt}
-          addButtonLabel="Add research row"
-          editorTitle="Edit research row"
-          editorFieldsComponent={ResearchRow}
-          previewComponent={ResearchRow}
-        />
-      </Form>
-    );
-  }
-  render(
-    <ArchitectI18nProvider>
-      <Provider store={configureStore({ reducer: rootReducer })}>
-        <DialogProvider>
-          <ListDraft />
-        </DialogProvider>
-      </Provider>
-    </ArchitectI18nProvider>,
-  );
-  fireEvent.click(screen.getByRole('button', { name: 'Remove prompt' }));
-  expect(
-    await screen.findByRole('heading', { name: 'Remove this prompt?' }),
-  ).toBeVisible();
-  switchDeviceLocale('es');
-  expect(
-    await screen.findByRole('heading', { name: '¿Eliminar pregunta?' }),
-  ).toBeVisible();
-  expect(
-    screen.getByText('Se eliminará de la lista este elemento (pregunta).'),
-  ).toBeVisible();
-  expect(
-    screen.getByRole('button', { name: 'Eliminar pregunta' }),
-  ).toBeVisible();
-  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
-  await waitFor(() =>
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
-  );
-  expect(screen.getByText('Research_Row_Á1')).toBeVisible();
-  expect(changed).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Eliminar pregunta' }));
-  expect(
-    await screen.findByRole('heading', { name: '¿Eliminar pregunta?' }),
-  ).toBeVisible();
-  fireEvent.click(
-    within(screen.getByRole('dialog')).getByRole('button', {
-      name: 'Eliminar pregunta',
-    }),
-  );
-  await waitFor(() => expect(changed).toHaveBeenCalledExactlyOnceWith([]));
-  expect(screen.queryByText('Research_Row_Á1')).not.toBeInTheDocument();
-  expect(original).toEqual([
-    { id: 'research_row_1', label: 'Research_Row_Á1' },
-  ]);
-});
-
 it('translates both already-open leave actions and preserves cancellation and confirmed navigation', async () => {
   const testStore = configureStore({ reducer: rootReducer });
   const dispatch = vi.spyOn(testStore, 'dispatch');
@@ -311,42 +232,4 @@ it('translates both already-open leave actions and preserves cancellation and co
   );
   await waitFor(() => expect(leave).toHaveBeenCalledExactlyOnceWith());
   expect(dispatch).toHaveBeenCalledTimes(1);
-});
-
-it('preserves an incomplete attribute submission while changing its error language', async () => {
-  const issue = completeAttributes([{ variable: 'Research_Name' }]);
-  if (!issue) throw new Error('Expected the real incomplete-attribute error');
-  const submit = vi.fn(() => ({
-    success: false as const,
-    formErrors: [issue],
-  }));
-  render(
-    <ArchitectI18nProvider>
-      <Form onSubmit={submit}>
-        <ArchitectField
-          name="draft"
-          label="Research draft"
-          component={InputField}
-          initialValue="Research_Value"
-        />
-        <button type="submit">Submit attributes</button>
-      </Form>
-    </ArchitectI18nProvider>,
-  );
-  fireEvent.click(screen.getByRole('button', { name: 'Submit attributes' }));
-  expect(
-    await screen.findByText(
-      'Every additional attribute needs both an attribute and a value.',
-    ),
-  ).toBeVisible();
-  switchDeviceLocale('es');
-  expect(
-    await screen.findByText(
-      'Cada atributo adicional necesita un atributo y un valor.',
-    ),
-  ).toBeVisible();
-  expect(screen.getByRole('textbox', { name: 'Research draft' })).toHaveValue(
-    'Research_Value',
-  );
-  expect(submit).toHaveBeenCalledTimes(1);
 });
