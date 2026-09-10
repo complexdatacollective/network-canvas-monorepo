@@ -111,7 +111,7 @@ export function assertDeclaredStageType(
 export type FixtureStage = Readonly<{
   id: string;
   type: StageType;
-  /** Everything but `id` and `type`, which the session owns. */
+  /** Everything but `id` and `type`, which the section owns. */
   fields: SectionDoc;
 }>;
 
@@ -137,7 +137,7 @@ export function fixtureStageIds(): string[] {
 }
 
 /**
- * One stage of the fixture, split into what the session owns and what the
+ * One stage of the fixture, split into what the section owns and what the
  * editor edits.
  *
  * Throws rather than answering with a blank stage: a test naming a stage that
@@ -227,6 +227,38 @@ export function fixtureAssetManifest(): Record<string, unknown> {
 export function fixtureAssetContent(source: string): Uint8Array | undefined {
   const content = FIXTURE_ASSET_CONTENT[source];
   return content === undefined ? undefined : new TextEncoder().encode(content);
+}
+
+/**
+ * The bytes a host holds for a manifest's assets, keyed by the filename the
+ * manifest names, ready to seed a resource gateway with.
+ *
+ * An asset the fixture ships a file for is seeded with that file, because an
+ * editor asks the host what is INSIDE a data file — a roster's columns are the
+ * material its card, sort and search sections offer. Everything else gets a
+ * placeholder body: those editors read only a resource's kind, name and size.
+ *
+ * Here rather than in either harness, because both of them seed the same
+ * gateway from the same manifest: `renderStageEditor` for the suite, and
+ * `StageEditorStoryHost` for the stories. A harness that seeded only the
+ * manifest would leave `inspect` refusing for want of bytes, and every section
+ * chosen from a data file's columns would render its empty state.
+ */
+export function fixtureAssetContentFor(
+  manifest: Readonly<Record<string, unknown>>,
+): Record<string, Blob> {
+  const content: Record<string, Blob> = {};
+  for (const entry of Object.values(manifest)) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const source = Reflect.get(entry, 'source');
+    if (typeof source !== 'string') continue;
+    const bytes = fixtureAssetContent(source);
+    content[source] = new Blob(
+      [(bytes ?? new TextEncoder().encode('{}')) as BlobPart],
+      { type: 'application/json' },
+    );
+  }
+  return content;
 }
 
 /**

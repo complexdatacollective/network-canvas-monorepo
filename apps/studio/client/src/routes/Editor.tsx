@@ -1,26 +1,25 @@
-import { ORPCError } from '@orpc/client';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createORPCClient, DynamicLink, ORPCError } from '@orpc/client';
+import type { ClientLink } from '@orpc/client';
+import { RPCLink } from '@orpc/client/websocket';
+import type { RouterContractClient } from '@orpc/contract';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { getRouteApi, useBlocker } from '@tanstack/react-router';
 import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
-  type RefObject,
 } from 'react';
 
-import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Form from '@codaco/fresco-ui/form/Form';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
@@ -29,20 +28,170 @@ import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import { useStageEditorController } from '@codaco/protocol-builder/controller';
-import type { ProtocolBuilderSession } from '@codaco/protocol-builder/session';
+import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
+import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
+import StageEditor from '@codaco/protocol-builder/StageEditor';
+import {
+  useProtocolRevision,
+  useRereadProtocol,
+  useStageIndex,
+  type StageSummary,
+} from '@codaco/protocol-builder/state/hooks';
+import {
+  useProtocolReading,
+  type ProtocolReading,
+} from '@codaco/protocol-builder/state/protocolContext';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import type { contract } from '@codaco/studio-rpc';
+import { CLIENT_SESSION_PARAM } from '@codaco/studio-rpc/client-session';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { useStudioStageSession } from '../editor/useStudioStageSession.ts';
+import { registerStudioEditorSession } from '../editor/sessionLifecycle.ts';
 import { orpc, rpcClient } from '../lib/api.ts';
+import { clientSessionId } from '../lib/clientSession.ts';
 import { createUuid } from '../lib/createUuid.ts';
 
 // The route id carries the area layout it sits under (§5.3), so it moved with
 // the screen onto `/study/$studyId/editor`.
 const route = getRouteApi('/app/study/$studyId/editor/');
+
+/**
+ * The same contract `lib/api.ts` builds its `/rpc` client from, over the other
+ * transport the server serves it on. The protocol builder's host is one branch
+ * of it (`client.protocolBuilder`), so the package and Studio are typed by one
+ * contract and cannot drift apart.
+ */
+type StudioHostClient = RouterContractClient<typeof contract>;
+
+/**
+ * The upgrade URL this tab's socket is opened at.
+ *
+ * The tab names itself on the query string because a browser cannot put a
+ * header on a WebSocket handshake, and the server derives the protocol
+ * builder's lock owner from it: a tab that reconnects has to still be the
+ * holder of the section it has open, and two tabs of one researcher have to be
+ * two editors (#1275). `CLIENT_SESSION_PARAM` is the name the server reads it
+ * under, so the two spellings cannot drift.
+ */
+export function hostSocketUrl(): string {
+  const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = new URL(`${scheme}//${window.location.host}/ws`);
+  url.searchParams.set(CLIENT_SESSION_PARAM, clientSessionId());
+  return url.toString();
+}
+
+/**
+ * One authenticated session's way of reaching the protocol builder's host.
+ *
+ * A session rather than a socket, because closing the socket does not end
+ * either of the things that outlive a sign-out.
+ *
+ * The server reads the principal ONCE, at the upgrade
+ * (`server/src/app.ts`), and authorises and audits every message on that
+ * socket as them — so a socket still open when the next account signs in on
+ * this tab is one they would be editing, and be logged, as the previous
+ * researcher through.
+ *
+ * And the transport reconnects on its own schedule. A call that was in flight
+ * at sign-out is parked inside `getConnectedPeer`, on a socket that is still
+ * connecting or on the delay before the next attempt, and it wakes up after
+ * the sign-out has been decided. Refusing to `connect` does not settle it: an
+ * `RPCLink` with reconnection enabled swallows what `connect` throws and tries
+ * again. So the refusal has to be permanent for THIS session — which is what
+ * ending one means — and the next session is a transport of its own, which the
+ * parked call has no way to reach.
+ */
+type HostSession = Readonly<{
+  link: ClientLink<Record<never, never>>;
+  /** Permanently. Nothing reopens a session; the next call opens another. */
+  end: () => void;
+}>;
+
+/** The session in force, or none because nothing has needed one yet. */
+let hostSession: HostSession | undefined;
+
+/**
+ * A transport for whoever is signed in now.
+ *
+ * Reconnection is the whole of what makes a dropped socket survivable, and it
+ * is off by default in `@orpc/client`: without it the transport keeps the
+ * closed peer and answers every later call from it, so one blip leaves the
+ * editor unable to lock, save or watch anything until the page is reloaded —
+ * and the host's lock-survival grace, which exists exactly for a tab that
+ * comes back, can never be reached. Reopening lazily rather than `onClose`, so
+ * that closing the socket at sign-out is not immediately undone.
+ */
+function openHostSession(): HostSession {
+  let socket: WebSocket | undefined;
+  let ended = false;
+  const link = new RPCLink({
+    connect: (): WebSocket => {
+      // Refused rather than opened: a handshake is what authenticates, so a
+      // socket opened here after the session ended is already the researcher
+      // who left. `shell/useSignOut.ts` ends the editor's sessions BEFORE
+      // `authClient.signOut()`, on purpose, so the cookie a reconnection
+      // carried in this window would still work.
+      if (ended) throw new Error('This tab’s editor session has ended.');
+      socket = new WebSocket(hostSocketUrl());
+      return socket;
+    },
+    reconnect: { enabled: true },
+  });
+  return {
+    link,
+    end: () => {
+      ended = true;
+      socket?.close();
+      socket = undefined;
+    },
+  };
+}
+
+/**
+ * The session every call goes through, opened by the first call to need one.
+ *
+ * Exported so the suite drives the same sessions the application runs on.
+ */
+export function currentHostSession(): HostSession {
+  hostSession ??= openHostSession();
+  return hostSession;
+}
+
+/**
+ * The host client, whose link is the session in force at the moment of a call.
+ *
+ * One client for the life of the tab, because `ProtocolBuilder` memoises its
+ * whole context on this identity and every lock in the editor is taken from an
+ * effect keyed on it. `DynamicLink` is oRPC's own way of writing that: the
+ * client is fixed and the link behind it is resolved per call, so ending a
+ * session swaps the transport without any of the editor noticing a new object.
+ */
+const hostClient: StudioHostClient = createORPCClient(
+  new DynamicLink(() => currentHostSession().link),
+);
+
+/**
+ * Ending this tab's editor session.
+ *
+ * Registered at module scope rather than from the editor's own effect because
+ * of when it is called: sign-out leaves the editor by an ordinary navigation
+ * first, so the unsaved-changes blocker runs while the session is still valid,
+ * and only then closes the editor's sessions — by which time the route is
+ * unmounted and an effect's registration is gone with it.
+ *
+ * `closeStudioEditorSessions` is the one place this happens, and every way out
+ * of an authenticated session calls it: `shell/useSignOut.ts`, the "use a
+ * different account" sign-out on an invitation, and the app shell's guard,
+ * which is where an expired session and a sign-out in another tab are learnt.
+ *
+ * Closing is also what gives the sections this tab was holding back to its
+ * collaborators.
+ */
+registerStudioEditorSession(async () => {
+  hostSession?.end();
+  hostSession = undefined;
+});
 
 /** What `protocols.draft` and every editing procedure are addressed by. */
 type DraftAddress = {
@@ -54,8 +203,6 @@ type DraftAddress = {
 type Selection =
   | { kind: 'stage'; stageId: string }
   | { kind: 'settings' | 'codebook' | 'assets' | 'translations' };
-
-type Draft = Awaited<ReturnType<typeof rpcClient.protocols.draft>>;
 
 /**
  * What the study in the URL gives the editor to open, as far as this
@@ -75,6 +222,7 @@ type EditorTarget =
 
 type DraftValidation =
   | Readonly<{ status: 'pending'; issues: readonly [] }>
+  | Readonly<{ status: 'unreadable'; issues: readonly [] }>
   | Readonly<{ status: 'valid'; issues: readonly [] }>
   | Readonly<{
       status: 'invalid';
@@ -226,6 +374,32 @@ const messages = defineMessages({
     description:
       'Shown when re-reading the protocol after an unconfirmed screen reorder also failed.',
   },
+  readingScreens: {
+    id: 'studio.editor.readingScreens',
+    defaultMessage: 'Reading the protocol…',
+    description:
+      'Shown in place of the list of interview screens while the protocol is still being read.',
+  },
+  screensUnreadable: {
+    id: 'studio.editor.screensUnreadable',
+    defaultMessage:
+      'Part of this protocol could not be read, so its screens are not shown.',
+    description:
+      'Shown in place of the list of interview screens when part of the protocol could not be read at all.',
+  },
+  protocolUnreadable: {
+    id: 'studio.editor.protocolUnreadable',
+    defaultMessage:
+      'Part of this protocol could not be read, so it has not been checked.',
+    description:
+      'Shown in the validation panel when part of the protocol could not be read at all.',
+  },
+  protocolNotChecked: {
+    id: 'studio.editor.protocolNotChecked',
+    defaultMessage: 'Protocol not checked',
+    description:
+      'Button reporting that the protocol could not be checked, because part of it could not be read.',
+  },
   noScreens: {
     id: 'studio.editor.noScreens',
     defaultMessage: 'Add a screen to begin the interview flow.',
@@ -277,13 +451,7 @@ const messages = defineMessages({
     id: 'studio.editor.inspector',
     defaultMessage: 'Inspector',
     description:
-      'Heading of the panel showing access, change, and validation detail for the selected screen.',
-  },
-  selectScreen: {
-    id: 'studio.editor.selectScreen',
-    defaultMessage: 'Select a screen to see access and change details.',
-    description:
-      'Shown in the inspector while no interview screen is selected.',
+      'Heading of the panel listing the validation problems of the protocol being edited.',
   },
   validationProblems: {
     id: 'studio.editor.validationProblems',
@@ -309,115 +477,10 @@ const messages = defineMessages({
     description:
       'Validation problem shown when the draft could not be turned into a protocol document to check.',
   },
-  openingScreen: {
-    id: 'studio.editor.openingScreen',
-    defaultMessage: 'Opening screen…',
-    description:
-      'Shown on the editing canvas while the selected interview screen is being opened.',
-  },
-  screenTypeSummary: {
-    id: 'studio.editor.screenTypeSummary',
-    defaultMessage: '{type} screen',
-    description:
-      'Supporting line naming the kind of interview screen being edited; {type} is the screen type recorded in the protocol.',
-  },
-  interviewScreen: {
-    id: 'studio.editor.interviewScreen',
-    defaultMessage: 'Interview screen',
-    description:
-      'Supporting line used when the screen being edited carries no recognisable type.',
-  },
-  readOnlyScreen: {
-    id: 'studio.editor.readOnlyScreen',
-    defaultMessage:
-      'This screen is read-only while another editor holds its lock.',
-    description:
-      'Shown when somebody else is editing the screen, so this researcher can only read it.',
-  },
-  addingScreen: {
-    id: 'studio.editor.addingScreen',
-    defaultMessage: 'Adding a new screen…',
-    description: 'Status shown while a new interview screen is being created.',
-  },
-  saveFailed: {
-    id: 'studio.editor.saveFailed',
-    defaultMessage:
-      'This screen could not be saved. Wait a moment and try again.',
-    description: 'Form error shown when saving an interview screen failed.',
-  },
   saveScreen: {
     id: 'studio.editor.saveScreen',
     defaultMessage: 'Save screen',
     description: "Submit button of the interview screen's form.",
-  },
-  screenName: {
-    id: 'studio.editor.screenName',
-    defaultMessage: 'Screen name',
-    description:
-      'Label of the field naming an interview screen for the researcher, in the outline.',
-  },
-  pageHeading: {
-    id: 'studio.editor.pageHeading',
-    defaultMessage: 'Page heading',
-    description:
-      'Label of the field holding the heading a participant sees on this interview screen.',
-  },
-  access: {
-    id: 'studio.editor.access',
-    defaultMessage: 'Access',
-    description:
-      'Inspector term for whether this researcher may currently change the screen.',
-  },
-  accessEditing: {
-    id: 'studio.editor.accessEditing',
-    defaultMessage: 'Editing',
-    description:
-      'Inspector value shown when this researcher holds the screen lock and may change it.',
-  },
-  accessReadOnly: {
-    id: 'studio.editor.accessReadOnly',
-    defaultMessage: 'Read-only',
-    description:
-      'Inspector value shown when this researcher may read the screen but not change it.',
-  },
-  changes: {
-    id: 'studio.editor.changes',
-    defaultMessage: 'Changes',
-    description:
-      'Inspector term for whether the screen has changes still being saved.',
-  },
-  changesSaved: {
-    id: 'studio.editor.changesSaved',
-    defaultMessage: 'Saved',
-    description:
-      'Inspector value shown when every change to the screen has been saved.',
-  },
-  changesPending: {
-    id: 'studio.editor.changesPending',
-    defaultMessage: '{count, plural, one {# pending} other {# pending}}',
-    description:
-      'Inspector value counting the changes to the screen that are still being saved.',
-  },
-  changeHistory: {
-    id: 'studio.editor.changeHistory',
-    defaultMessage: 'Change history',
-    description: 'Accessible name of the group holding Undo and Redo.',
-  },
-  undo: {
-    id: 'studio.editor.undo',
-    defaultMessage: 'Undo',
-    description: 'Button that reverses the last saved change to the screen.',
-  },
-  redo: {
-    id: 'studio.editor.redo',
-    defaultMessage: 'Redo',
-    description: 'Button that reapplies the change Undo reversed.',
-  },
-  historyDisabled: {
-    id: 'studio.editor.historyDisabled',
-    defaultMessage: 'Save or discard your screen changes to use Undo and Redo.',
-    description:
-      'Explains why Undo and Redo are unavailable while the screen form holds unsaved values.',
   },
   validationHeading: {
     id: 'studio.editor.validationHeading',
@@ -466,22 +529,14 @@ const messages = defineMessages({
   },
 });
 
-function stageOrder(sections: Readonly<Record<string, SectionDoc>>): string[] {
-  const value = sections[sectionId({ kind: 'stageOrder' })]?.stages;
-  return Array.isArray(value) &&
-    value.every((entry) => typeof entry === 'string')
-    ? value
-    : [];
-}
-
 function stageLabel(
   intl: IntlShape,
-  document: SectionDoc | undefined,
+  stage: StageSummary,
   index: number,
 ): string {
-  return typeof document?.label === 'string' && document.label.trim() !== ''
-    ? document.label
-    : intl.formatMessage(messages.defaultScreenName, { number: index + 1 });
+  return stage.label.trim() === ''
+    ? intl.formatMessage(messages.defaultScreenName, { number: index + 1 })
+    : stage.label;
 }
 
 /**
@@ -585,11 +640,76 @@ export default function Editor() {
   return <ProtocolEditor address={target.address} />;
 }
 
+/**
+ * What has to be answered before the editor can be opened at all: that this
+ * researcher's draft is there, and what it is called.
+ *
+ * The one thing `protocols.draft` is still asked for. Everything the editor
+ * then draws — the screens, their names, the validation, which screen it opens
+ * on, the revision a reorder is fenced on — comes from the protocol the
+ * package holds, which one channel keeps current (#1810). Two readings of one
+ * protocol is what left a collaborator's work off this screen until something
+ * unrelated happened to refetch.
+ */
 function ProtocolEditor({ address }: { address: DraftAddress }) {
+  const intl = useAppIntl();
+  const draft = useQuery(orpc.protocols.draft.queryOptions({ input: address }));
+
+  if (draft.isPending) {
+    return (
+      // The `<main id="main-content">` is the area layout's (§5.3, §7.1):
+      // `AppFrame` renders the skip link and `AppArea` the landmark it
+      // targets. These three branches are mutually exclusive, but each one
+      // used to declare a second `<main>` with the same id inside the area's.
+      <div className="flex h-full items-center justify-center">
+        <Spinner />
+        <span className="sr-only">
+          {intl.formatMessage(messages.openingEditor)}
+        </span>
+      </div>
+    );
+  }
+  if (!draft.data) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          {intl.formatMessage(messages.draftUnavailable)}
+        </Alert>
+      </div>
+    );
+  }
+
+  return (
+    <ProtocolBuilder
+      client={hostClient.protocolBuilder}
+      protocolId={address.protocolId}
+    >
+      <EditorWorkspace
+        address={address}
+        protocolName={draft.data.protocol.name}
+      />
+    </ProtocolBuilder>
+  );
+}
+
+/**
+ * The editor itself, inside the protocol the package holds.
+ *
+ * Inside rather than around it because everything here reads that protocol:
+ * the package's hooks are observers on its cache, and the channel feeding it
+ * is what carries a collaborator's screen, rename, deletion or reorder onto
+ * this screen without anything here asking for it again.
+ */
+function EditorWorkspace({
+  address,
+  protocolName,
+}: {
+  address: DraftAddress;
+  protocolName: string;
+}) {
   const intl = useAppIntl();
   const params = address;
   const { confirm } = useDialog();
-  const queryClient = useQueryClient();
   const [selection, setSelection] = useState<Selection>({ kind: 'settings' });
   const [stageFormDirty, setStageFormDirty] = useState(false);
   const [reconcilingAdd, setReconcilingAdd] = useState(false);
@@ -598,23 +718,18 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
   const [moveRecoveryFailed, setMoveRecoveryFailed] = useState(false);
   const selectionInitialized = useRef(false);
   const discardRequestPending = useRef(false);
-  const draft = useQuery(orpc.protocols.draft.queryOptions({ input: params }));
-  const draftQueryKey = useMemo(
-    () =>
-      orpc.protocols.draft.key({
-        input: {
-          teamId: params.teamId,
-          protocolId: params.protocolId,
-          draftId: params.draftId,
-        },
-      }),
-    [params.draftId, params.protocolId, params.teamId],
-  );
-  const stages = useMemo(
-    () => (draft.data ? stageOrder(draft.data.sections) : []),
-    [draft.data],
-  );
-  const draftValidation = useDraftValidation(draft.data?.sections);
+  // The outline, the position a reorder points at and the validation all read
+  // the protocol as a WHOLE, so all three wait for the whole of it. A stage
+  // whose section has not arrived is one `useStageIndex` leaves out, and an
+  // index in a list with a hole in it is not an index in the interview: a
+  // reorder computed from it moves the screen somewhere the researcher did not
+  // point at, and a list that is briefly empty is not a protocol with no
+  // screens in it.
+  const reading = useProtocolReading();
+  const stages = useStageIndex();
+  const revision = useProtocolRevision();
+  const rereadProtocol = useRereadProtocol();
+  const draftValidation = useDraftValidation(reading);
 
   const confirmDiscardStageChanges = useCallback(
     // `confirm` takes plain strings, so the descriptors are formatted here
@@ -676,59 +791,21 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
     disabled: !stageFormDirty,
   });
 
+  // Once, and only once the whole protocol has been read: a protocol that has
+  // no screens when it is opened stays on its settings, and the screen a
+  // collaborator adds minutes later is theirs rather than something this
+  // editor is moved to. A reading still missing sections would open on
+  // whichever screen happened to arrive first.
   useEffect(() => {
-    if (draft.data && !selectionInitialized.current) {
-      selectionInitialized.current = true;
-      const firstStage = stages[0];
-      if (firstStage !== undefined) {
-        setSelection({ kind: 'stage', stageId: firstStage });
-      }
+    if (reading.status !== 'read' || selectionInitialized.current) return;
+    selectionInitialized.current = true;
+    const firstStage = stages[0];
+    if (firstStage !== undefined) {
+      setSelection({ kind: 'stage', stageId: firstStage.id });
     }
-  }, [draft.data, stages]);
-
-  const refreshDraft = useCallback(async () => {
-    await queryClient.invalidateQueries(
-      {
-        queryKey: draftQueryKey,
-      },
-      { throwOnError: true },
-    );
-  }, [draftQueryKey, queryClient]);
-
-  const publishAuthoritativeDraft = useCallback(
-    (refreshed: Draft) => {
-      queryClient.setQueryData<Draft>(draftQueryKey, (current) => {
-        if (
-          current !== undefined &&
-          BigInt(current.revision.sequence) >
-            BigInt(refreshed.revision.sequence)
-        ) {
-          return current;
-        }
-        return refreshed;
-      });
-    },
-    [draftQueryKey, queryClient],
-  );
+  }, [reading, stages]);
 
   const selectedStageId = selection.kind === 'stage' ? selection.stageId : null;
-  const session = useStudioStageSession({
-    ...params,
-    stageId: selectedStageId,
-    draft: draft.data ?? {
-      protocol: {
-        id: params.protocolId,
-        draftId: params.draftId,
-        name: '',
-        createdAt: new Date(0),
-        updatedAt: new Date(0),
-      },
-      revision: { sequence: '0', hash: 'unavailable' },
-      sections: {},
-    },
-    onCommitted: refreshDraft,
-    onAuthoritativeDraft: publishAuthoritativeDraft,
-  });
 
   const addStage = useMutation({
     mutationFn: async () => {
@@ -737,27 +814,48 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
       return stageId;
     },
     onSuccess: async (stageId) => {
-      await refreshDraft();
+      await rereadProtocol();
       // Dirty changes were confirmed before the server mutation. Selecting
       // directly avoids asking again after the new screen already exists.
       setSelection({ kind: 'stage', stageId });
     },
   });
   const moveStage = useMutation({
-    mutationFn: async (input: { stageId: string; toIndex: number }) =>
+    mutationFn: async (input: {
+      stageId: string;
+      toIndex: number;
+      expectedRevision: bigint;
+    }) =>
       rpcClient.protocols.moveStage({
         ...params,
-        ...input,
-        expectedRevision: draft.data?.revision.sequence ?? '0',
+        stageId: input.stageId,
+        toIndex: input.toIndex,
+        expectedRevision: String(input.expectedRevision),
       }),
-    onSuccess: refreshDraft,
+    onSuccess: rereadProtocol,
   });
+
+  // The order this move is expressed against is the one on screen, so the
+  // revision it is fenced on has to be the one that drew it — the newest the
+  // channel has delivered. Quoting a revision from a reading of the draft made
+  // somewhere else is how a move computed from THIS order was accepted against
+  // another one.
+  const requestMoveStage = (stageId: string, toIndex: number) => {
+    if (revision === undefined) return;
+    moveStage.mutate({ stageId, toIndex, expectedRevision: revision });
+  };
+
+  // The reading is what reports a failure, so a retry that fails again has
+  // nothing to add: it puts the same message back on screen.
+  const retryReadingProtocol = () => {
+    void rereadProtocol().catch(() => undefined);
+  };
 
   const reconcileAddStage = async () => {
     setReconcilingAdd(true);
     setAddRecoveryFailed(false);
     try {
-      await refreshDraft();
+      await rereadProtocol();
       addStage.reset();
     } catch {
       setAddRecoveryFailed(true);
@@ -770,7 +868,7 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
     setReconcilingMove(true);
     setMoveRecoveryFailed(false);
     try {
-      await refreshDraft();
+      await rereadProtocol();
       moveStage.reset();
     } catch {
       setMoveRecoveryFailed(true);
@@ -790,45 +888,15 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
     addStage.mutate();
   };
 
-  if (draft.isPending) {
-    return (
-      // The `<main id="main-content">` is the area layout's (§5.3, §7.1):
-      // `AppFrame` renders the skip link and `AppArea` the landmark it
-      // targets. These three branches are mutually exclusive, but each one
-      // used to declare a second `<main>` with the same id inside the area's.
-      <div className="flex h-full items-center justify-center">
-        <Spinner />
-        <span className="sr-only">
-          {intl.formatMessage(messages.openingEditor)}
-        </span>
-      </div>
-    );
-  }
-  if (!draft.data) {
-    return (
-      <div className="p-6">
-        <Alert variant="destructive">
-          {intl.formatMessage(messages.draftUnavailable)}
-        </Alert>
-      </div>
-    );
-  }
-
-  const selectedStage =
-    selectedStageId === null
-      ? undefined
-      : draft.data.sections[
-          sectionId({ kind: 'stage', stageId: selectedStageId })
-        ];
   return (
     <div className="flex min-h-full flex-col">
       <div className="border-surface-1 flex flex-wrap items-center justify-between gap-4 border-y px-4 py-3">
         {/*
-          No way-out control here: the area's outline owns "Back to study" and
-          the header owns the team and study chips (§5.5). A second back
-          affordance inside `<main>` would be a third answer to the same
-          question, and the two would not even agree on where "back" is.
-        */}
+            No way-out control here: the area's outline owns "Back to study" and
+            the header owns the team and study chips (§5.5). A second back
+            affordance inside `<main>` would be a third answer to the same
+            question, and the two would not even agree on where "back" is.
+          */}
         <div className="min-w-0">
           <Heading
             className="truncate"
@@ -836,28 +904,25 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
             margin="none"
             {...routeFocusTargetProps}
           >
-            {draft.data.protocol.name}
+            {protocolName}
           </Heading>
           <Paragraph className="text-sm" margin="none">
             {intl.formatMessage(messages.draftEditor)}
           </Paragraph>
         </div>
-        <ValidationStatusButton
-          sessionState={session}
-          draftValidation={draftValidation}
-        />
+        <ValidationButton validation={draftValidation} />
       </div>
 
       <div className="laptop:grid-cols-[minmax(15rem,1fr)_minmax(24rem,2.5fr)_minmax(16rem,1fr)] grid min-h-0 flex-1 grid-cols-1 gap-4 p-4">
         <aside aria-labelledby="outline-heading" className="min-h-0">
           <Surface className="flex h-full min-h-0 flex-col" spacing="sm">
             {/*
-              "Protocol sections", not "Protocol outline": the area's sidebar
-              is the outline (§5.5), and two regions on one screen carrying
-              one name is two things a screen reader cannot tell apart. This
-              one is the editor's own section selector, inside `<main>`, and
-              #1272 is what eventually merges the two.
-            */}
+                "Protocol sections", not "Protocol outline": the area's sidebar
+                is the outline (§5.5), and two regions on one screen carrying
+                one name is two things a screen reader cannot tell apart. This
+                one is the editor's own section selector, inside `<main>`, and
+                #1272 is what eventually merges the two.
+              */}
             <Heading id="outline-heading" level="h2">
               {intl.formatMessage(messages.protocolSections)}
             </Heading>
@@ -935,32 +1000,52 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
                       )}
                     </Alert>
                   )}
-                  {stages.length === 0 ? (
+                  {reading.status === 'reading' && (
+                    <Paragraph className="px-2 text-sm">
+                      {intl.formatMessage(messages.readingScreens)}
+                    </Paragraph>
+                  )}
+                  {reading.status === 'unreadable' && (
+                    <Alert className="mb-2" variant="destructive">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span>
+                          {intl.formatMessage(messages.screensUnreadable)}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={retryReadingProtocol}
+                        >
+                          {intl.formatMessage(commonMessages.retry)}
+                        </Button>
+                      </div>
+                    </Alert>
+                  )}
+                  {reading.status === 'read' && stages.length === 0 && (
                     <Paragraph className="px-2 text-sm">
                       {intl.formatMessage(messages.noScreens)}
                     </Paragraph>
-                  ) : (
+                  )}
+                  {reading.status === 'read' && stages.length > 0 && (
                     <ol className="m-0 flex list-none flex-col gap-2 p-0 ps-3">
-                      {stages.map((stageId, index) => {
-                        const stage =
-                          draft.data.sections[
-                            sectionId({ kind: 'stage', stageId })
-                          ];
+                      {stages.map((stage, index) => {
                         return (
                           <li
-                            key={stageId}
+                            key={stage.id}
                             className="flex min-w-0 items-center gap-1"
                           >
                             <button
                               type="button"
                               className="focusable aria-current:bg-selected aria-current:text-selected-contrast min-w-0 flex-1 rounded px-3 py-2 text-start"
                               aria-current={
-                                selectedStageId === stageId ? 'page' : undefined
+                                selectedStageId === stage.id
+                                  ? 'page'
+                                  : undefined
                               }
                               onClick={() =>
                                 void requestSelection({
                                   kind: 'stage',
-                                  stageId,
+                                  stageId: stage.id,
                                 })
                               }
                             >
@@ -968,11 +1053,11 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
                                 {stageLabel(intl, stage, index)}
                               </span>
                               <span className="block truncate text-xs opacity-70">
-                                {typeof stage?.type === 'string'
-                                  ? stage.type
-                                  : intl.formatMessage(
+                                {stage.type === ''
+                                  ? intl.formatMessage(
                                       messages.unknownScreenType,
-                                    )}
+                                    )
+                                  : stage.type}
                               </span>
                             </button>
                             <div className="flex shrink-0 flex-col">
@@ -990,10 +1075,7 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
                                   reconcilingMove
                                 }
                                 onClick={() =>
-                                  moveStage.mutate({
-                                    stageId,
-                                    toIndex: index - 1,
-                                  })
+                                  requestMoveStage(stage.id, index - 1)
                                 }
                               >
                                 <ArrowUp aria-hidden="true" size={16} />
@@ -1012,10 +1094,7 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
                                   reconcilingMove
                                 }
                                 onClick={() =>
-                                  moveStage.mutate({
-                                    stageId,
-                                    toIndex: index + 1,
-                                  })
+                                  requestMoveStage(stage.id, index + 1)
                                 }
                               >
                                 <ArrowDown aria-hidden="true" size={16} />
@@ -1055,15 +1134,18 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
         <div className="min-h-[24rem]">
           <Surface className="h-full" spacing="lg">
             {selection.kind === 'stage' ? (
-              <StageCanvas
-                sessionState={session}
-                stage={selectedStage}
-                addingStage={addStage.isPending}
-                onDirtyChange={setStageFormDirty}
-                heading={stageLabel(
-                  intl,
-                  selectedStage,
-                  stages.indexOf(selection.stageId),
+              <StageEditor
+                target={{
+                  sectionId: sectionId({
+                    kind: 'stage',
+                    stageId: selection.stageId,
+                  }),
+                }}
+                actions={(context) => (
+                  <StageActions
+                    context={context}
+                    onDirtyChange={setStageFormDirty}
+                  />
                 )}
               />
             ) : (
@@ -1082,20 +1164,7 @@ function ProtocolEditor({ address }: { address: DraftAddress }) {
             <Heading id="inspector-heading" level="h2">
               {intl.formatMessage(messages.inspector)}
             </Heading>
-            {session.status === 'ready' && selection.kind === 'stage' ? (
-              <Inspector
-                session={session.session}
-                message={session.message}
-                formDirty={stageFormDirty}
-              />
-            ) : (
-              <>
-                <Paragraph>
-                  {intl.formatMessage(messages.selectScreen)}
-                </Paragraph>
-                <ProtocolProblems validation={draftValidation} />
-              </>
-            )}
+            <ProtocolProblems validation={draftValidation} />
           </Surface>
         </aside>
       </div>
@@ -1122,22 +1191,37 @@ function OutlineButton(props: {
   );
 }
 
-function ValidationStatusButton(props: {
-  sessionState: ReturnType<typeof useStudioStageSession>;
-  draftValidation: DraftValidation;
+/**
+ * Studio's own chrome for the stage the package is editing.
+ *
+ * The action slot renders inside the editor's form store, which is the only
+ * place the screen's unsaved state can be read from: the form belongs to
+ * `@codaco/protocol-builder`, while the discard dialog and the navigation
+ * blocker that consume this belong to the route.
+ */
+function StageActions(props: {
+  context: StageEditorActionContext;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
-  if (props.sessionState.status !== 'ready') {
-    return <ValidationButton validation={props.draftValidation} />;
-  }
-  return <ConnectedValidationStatus session={props.sessionState.session} />;
-}
+  const intl = useAppIntl();
+  const dirty = useFormStore(selectIsFormDirty);
+  const { onDirtyChange } = props;
 
-function ConnectedValidationStatus(props: { session: ProtocolBuilderSession }) {
-  const { snapshot } = useStageEditorController(
-    props.session,
-    'validation-status',
+  useLayoutEffect(() => {
+    onDirtyChange(dirty);
+    return () => onDirtyChange(false);
+  }, [dirty, onDirtyChange]);
+
+  return (
+    <div className="flex justify-end">
+      <SubmitButton
+        form={props.context.formId}
+        disabled={props.context.readOnly}
+      >
+        {intl.formatMessage(messages.saveScreen)}
+      </SubmitButton>
+    </div>
   );
-  return <ValidationButton validation={snapshot.validation} />;
 }
 
 function ValidationButton(props: { validation: DraftValidation }) {
@@ -1149,22 +1233,21 @@ function ValidationButton(props: { validation: DraftValidation }) {
       variant="outline"
       onClick={() => document.getElementById('protocol-problems')?.focus()}
     >
-      {validation.status === 'invalid'
-        ? intl.formatMessage(messages.validationProblems, {
-            count: validation.issues.length,
-          })
-        : intl.formatMessage(
-            validation.status === 'valid'
-              ? messages.protocolValid
-              : messages.checkingProtocol,
-          )}
+      {validation.status === 'invalid' &&
+        intl.formatMessage(messages.validationProblems, {
+          count: validation.issues.length,
+        })}
+      {validation.status === 'valid' &&
+        intl.formatMessage(messages.protocolValid)}
+      {validation.status === 'unreadable' &&
+        intl.formatMessage(messages.protocolNotChecked)}
+      {validation.status === 'pending' &&
+        intl.formatMessage(messages.checkingProtocol)}
     </Button>
   );
 }
 
-function useDraftValidation(
-  sections: Readonly<Record<string, SectionDoc>> | undefined,
-): DraftValidation {
+function useDraftValidation(reading: ProtocolReading): DraftValidation {
   const intl = useAppIntl();
   const [validation, setValidation] = useState<DraftValidation>({
     status: 'pending',
@@ -1173,13 +1256,21 @@ function useDraftValidation(
 
   useEffect(() => {
     let active = true;
-    if (sections === undefined) {
-      setValidation({ status: 'pending', issues: [] });
+    if (reading.status !== 'read') {
+      // "Could not be read" and "not yet" are different things to leave on
+      // screen: the first is an answer, and reporting it as the second is a
+      // check that never finishes.
+      setValidation(
+        reading.status === 'unreadable'
+          ? { status: 'unreadable', issues: [] }
+          : { status: 'pending', issues: [] },
+      );
       return () => {
         active = false;
       };
     }
 
+    const { sections } = reading;
     setValidation({ status: 'pending', issues: [] });
     void (async () => {
       try {
@@ -1214,7 +1305,7 @@ function useDraftValidation(
     return () => {
       active = false;
     };
-  }, [intl, sections]);
+  }, [intl, reading]);
 
   return validation;
 }
@@ -1230,315 +1321,6 @@ function toDraftValidationIssue(
   };
 }
 
-function StageCanvas(props: {
-  sessionState: ReturnType<typeof useStudioStageSession>;
-  stage: SectionDoc | undefined;
-  heading: string;
-  addingStage: boolean;
-  onDirtyChange: (dirty: boolean) => void;
-}) {
-  const intl = useAppIntl();
-
-  useEffect(() => {
-    if (props.sessionState.status !== 'ready') props.onDirtyChange(false);
-  }, [props.onDirtyChange, props.sessionState.status]);
-
-  if (props.sessionState.status === 'loading') {
-    return (
-      <div className="flex items-center gap-3">
-        <Spinner size="sm" />
-        <Paragraph>{intl.formatMessage(messages.openingScreen)}</Paragraph>
-      </div>
-    );
-  }
-  if (props.sessionState.status === 'failed') {
-    return (
-      <Alert variant="destructive">
-        {intl.formatMessage(props.sessionState.message)}
-      </Alert>
-    );
-  }
-  return (
-    <StageForm
-      key={props.sessionState.session.getSnapshot().editedSection.sectionId}
-      session={props.sessionState.session}
-      save={props.sessionState.save}
-      stage={props.stage}
-      heading={props.heading}
-      addingStage={props.addingStage}
-      onDirtyChange={props.onDirtyChange}
-    />
-  );
-}
-
-function StageForm(props: {
-  session: ProtocolBuilderSession;
-  save: () => Promise<void>;
-  stage: SectionDoc | undefined;
-  heading: string;
-  addingStage: boolean;
-  onDirtyChange: (dirty: boolean) => void;
-}) {
-  const intl = useAppIntl();
-  const controller = useStageEditorController(props.session);
-  const { fields } = controller.snapshot.editedSection;
-  const readOnly = controller.snapshot.access.mode === 'readOnly';
-  const hasTitle = typeof fields.title === 'string';
-  const label = typeof fields.label === 'string' ? fields.label : '';
-  const title = typeof fields.title === 'string' ? fields.title : '';
-  const baseline = useRef({ label, title });
-  const [baselineVersion, setBaselineVersion] = useState(0);
-  const labelInput = useRef<HTMLInputElement>(null);
-  const titleInput = useRef<HTMLInputElement>(null);
-  const saveButton = useRef<HTMLButtonElement>(null);
-  const restoreFocus = useRef<'label' | 'title' | 'save' | null>(null);
-
-  useEffect(() => {
-    if (controller.snapshot.pendingCommands.length !== 0) return;
-    if (baseline.current.label === label && baseline.current.title === title) {
-      return;
-    }
-
-    baseline.current = { label, title };
-    setBaselineVersion((version) => version + 1);
-  }, [controller.snapshot.pendingCommands.length, label, title]);
-
-  useLayoutEffect(() => {
-    const target = restoreFocus.current;
-    if (target === null) return;
-    restoreFocus.current = null;
-    const controls = {
-      label: labelInput,
-      title: titleInput,
-      save: saveButton,
-    };
-    controls[target].current?.focus();
-  }, [baselineVersion]);
-
-  return (
-    <>
-      <Heading level="h2">{props.heading}</Heading>
-      <Paragraph className="text-sm">
-        {typeof props.stage?.type === 'string'
-          ? intl.formatMessage(messages.screenTypeSummary, {
-              type: props.stage.type,
-            })
-          : intl.formatMessage(messages.interviewScreen)}
-      </Paragraph>
-      {readOnly && <Alert>{intl.formatMessage(messages.readOnlyScreen)}</Alert>}
-      {props.addingStage && (
-        <Paragraph role="status">
-          {intl.formatMessage(messages.addingScreen)}
-        </Paragraph>
-      )}
-      <Form
-        key={baselineVersion}
-        className="mt-6"
-        aria-busy={props.addingStage}
-        onSubmit={async (values) => {
-          const submittedLabel =
-            typeof values.label === 'string' ? values.label : '';
-          const submittedTitle =
-            typeof values.title === 'string' ? values.title : '';
-          const hasChanges =
-            submittedLabel !== baseline.current.label ||
-            (hasTitle && submittedTitle !== baseline.current.title);
-          const activeElement = document.activeElement;
-          restoreFocus.current = hasChanges
-            ? activeElement === labelInput.current
-              ? 'label'
-              : activeElement === titleInput.current
-                ? 'title'
-                : activeElement === saveButton.current
-                  ? 'save'
-                  : null
-            : null;
-          // Merged into the draft the session holds at submit time, not into
-          // the one this render captured: a change acknowledged while the form
-          // was open must survive being saved over.
-          controller.changeFields((current) => ({
-            ...current,
-            label: submittedLabel,
-            ...(hasTitle ? { title: submittedTitle } : {}),
-          }));
-          try {
-            await props.save();
-            return { success: true };
-          } catch {
-            restoreFocus.current = null;
-            return {
-              success: false,
-              formErrors: [intl.formatMessage(messages.saveFailed)],
-            };
-          }
-        }}
-      >
-        <StageFormDirtyObserver onDirtyChange={props.onDirtyChange} />
-        <StageFormFields
-          fields={fields}
-          baseline={baseline.current}
-          disabled={readOnly || props.addingStage}
-          labelInput={labelInput}
-          titleInput={titleInput}
-        />
-        <SubmitButton ref={saveButton} disabled={readOnly || props.addingStage}>
-          {intl.formatMessage(messages.saveScreen)}
-        </SubmitButton>
-      </Form>
-    </>
-  );
-}
-
-function StageFormDirtyObserver(props: {
-  onDirtyChange: (dirty: boolean) => void;
-}) {
-  const dirty = useFormStore(selectIsFormDirty);
-
-  useLayoutEffect(() => {
-    props.onDirtyChange(dirty);
-    return () => props.onDirtyChange(false);
-  }, [dirty, props.onDirtyChange]);
-
-  return null;
-}
-
-function StageFormFields(props: {
-  fields: Readonly<Record<string, unknown>>;
-  baseline: Readonly<{ label: string; title: string }>;
-  disabled: boolean;
-  labelInput: RefObject<HTMLInputElement | null>;
-  titleInput: RefObject<HTMLInputElement | null>;
-}) {
-  const intl = useAppIntl();
-  const label =
-    typeof props.fields.label === 'string' ? props.fields.label : '';
-  const title =
-    typeof props.fields.title === 'string' ? props.fields.title : '';
-  const hasTitle = typeof props.fields.title === 'string';
-  const setFieldValue = useFormStore((store) => store.setFieldValue);
-  const previous = useRef({ label, title });
-
-  useEffect(() => {
-    if (previous.current.label !== label) setFieldValue('label', label);
-    if (hasTitle && previous.current.title !== title) {
-      setFieldValue('title', title);
-    }
-    previous.current = { label, title };
-  }, [hasTitle, label, setFieldValue, title]);
-
-  return (
-    <>
-      <Field
-        name="label"
-        label={intl.formatMessage(messages.screenName)}
-        component={InputField}
-        ref={props.labelInput}
-        initialValue={props.baseline.label}
-        required
-        disabled={props.disabled}
-      />
-      {hasTitle && (
-        <Field
-          name="title"
-          label={intl.formatMessage(messages.pageHeading)}
-          component={InputField}
-          ref={props.titleInput}
-          initialValue={props.baseline.title}
-          required
-          disabled={props.disabled}
-        />
-      )}
-    </>
-  );
-}
-
-function Inspector(props: {
-  session: ProtocolBuilderSession;
-  message: MessageDescriptor;
-  formDirty: boolean;
-}) {
-  const intl = useAppIntl();
-  const controller = useStageEditorController(
-    props.session,
-    'inspector-actions',
-  );
-  const snapshot = controller.snapshot;
-  return (
-    <div className="flex flex-col gap-4">
-      <Paragraph role="status" className="text-sm">
-        {intl.formatMessage(props.message)}
-      </Paragraph>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
-        <dt className="font-bold">{intl.formatMessage(messages.access)}</dt>
-        <dd>
-          {intl.formatMessage(
-            snapshot.access.mode === 'editable'
-              ? messages.accessEditing
-              : messages.accessReadOnly,
-          )}
-        </dd>
-        <dt className="font-bold">{intl.formatMessage(messages.changes)}</dt>
-        <dd>
-          {snapshot.pendingCommands.length === 0
-            ? intl.formatMessage(messages.changesSaved)
-            : intl.formatMessage(messages.changesPending, {
-                count: snapshot.pendingCommands.length,
-              })}
-        </dd>
-      </dl>
-      <div
-        className="flex flex-wrap gap-2"
-        aria-label={intl.formatMessage(messages.changeHistory)}
-      >
-        <Button
-          size="sm"
-          variant="outline"
-          aria-describedby={
-            props.formDirty ? 'history-disabled-reason' : undefined
-          }
-          disabled={
-            props.formDirty ||
-            !snapshot.history.canUndo ||
-            snapshot.access.mode !== 'editable'
-          }
-          onClick={controller.undo}
-        >
-          {intl.formatMessage(messages.undo)}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          aria-describedby={
-            props.formDirty ? 'history-disabled-reason' : undefined
-          }
-          disabled={
-            props.formDirty ||
-            !snapshot.history.canRedo ||
-            snapshot.access.mode !== 'editable'
-          }
-          onClick={controller.redo}
-        >
-          {intl.formatMessage(messages.redo)}
-        </Button>
-      </div>
-      {props.formDirty && (
-        <Paragraph id="history-disabled-reason" className="text-sm">
-          {intl.formatMessage(messages.historyDisabled)}
-        </Paragraph>
-      )}
-      <ProtocolProblems validation={snapshot.validation} />
-    </div>
-  );
-}
-
-/**
- * A validation problem's `message` is a plain string because two very
- * different writers put one there: the protocol schema, whose message is
- * already a sentence, and `@codaco/protocol-builder`, which encodes one of its
- * own descriptors into the field so the reader's language decides the wording
- * rather than the language the check ran in. Decoding here is what tells them
- * apart — `?? text` leaves the schema's sentence exactly as it arrived.
- */
 function ProtocolProblems(props: { validation: DraftValidation }) {
   const intl = useAppIntl();
   return (
@@ -1551,6 +1333,9 @@ function ProtocolProblems(props: { validation: DraftValidation }) {
           {intl.formatMessage(messages.checkingThisProtocol)}
         </Paragraph>
       )}
+      {props.validation.status === 'unreadable' && (
+        <Paragraph>{intl.formatMessage(messages.protocolUnreadable)}</Paragraph>
+      )}
       {props.validation.status === 'valid' && (
         <Paragraph>
           {intl.formatMessage(messages.noValidationProblems)}
@@ -1559,9 +1344,7 @@ function ProtocolProblems(props: { validation: DraftValidation }) {
       {props.validation.status === 'invalid' && (
         <ul className="list-disc space-y-2 ps-5">
           {props.validation.issues.map((issue, index) => (
-            <li key={`${issue.path.join('.')}-${index}`}>
-              {formatMessageError(issue.message, intl) ?? issue.message}
-            </li>
+            <li key={`${issue.path.join('.')}-${index}`}>{issue.message}</li>
           ))}
         </ul>
       )}

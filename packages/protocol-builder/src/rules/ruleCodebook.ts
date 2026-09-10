@@ -87,9 +87,9 @@ const EMPTY_VARIABLES: Readonly<Variables> = Object.freeze({});
  * The formatter used when a caller has none of its own.
  *
  * Every display surface threads the reader's own `intl` in. This is the
- * fallback for the pure readers a host reaches without an editing session —
- * the printable protocol summary and this package's own module tests — which
- * have a rule and a codebook and nothing else.
+ * fallback for the pure readers a host reaches outside a stage editor — the
+ * printable protocol summary and this package's own module tests — which have
+ * a rule and a codebook and nothing else.
  */
 const englishIntl = createAppIntl({ locale: 'en' });
 
@@ -121,7 +121,7 @@ export const DEFAULT_EDGE_COLOR: ColorReference = 'edge-color-seq-1';
  *
  * Takes the codebook rather than the whole protocol context because the same
  * reads serve the printable-summary helper, which a host calls with a
- * validated protocol's codebook and no editing session at all.
+ * validated protocol's codebook and nothing else.
  */
 export const ruleVariables = (
   codebook: Readonly<Codebook>,
@@ -356,7 +356,7 @@ export const ruleVariableChoices = (
  * existence operators, which is what the `exists` subject holds.
  *
  * The operator the rule ALREADY holds is added to the list when the list does
- * not contain it, in the same way `skipLogicDestinationOptions` keeps an
+ * not contain it, in the same way `stageDestinationOptions` keeps an
  * unreachable destination and `VariablePickerControl` keeps a deleted
  * attribute. The list is deliberately narrower than the schema — a stored
  * protocol may hold an attribute-level `EXISTS` that today's editor would not

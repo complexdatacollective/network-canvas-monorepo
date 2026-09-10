@@ -1,32 +1,19 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { useEffect, useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { type ReactNode, useEffect, useState } from 'react';
+import { describe, expect, it } from 'vitest';
 
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { useStageEditorController } from '../../controller.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
-import {
-  createStageIdentity,
-  type FinishRequest,
-  type ProtocolBuilderSession,
-  ProtocolBuilderSessionStore,
-  SessionReadOnlyError,
-} from '../../session.ts';
+import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import { fixtureMessage } from '../../testing/i18n.ts';
-import ProtocolField from '../ProtocolField.tsx';
-import StageEditorShell from '../StageEditorShell.tsx';
+import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { REQUIRED } from '../requiredField.ts';
+import { createStageDraftProbe } from './stageDraftProbe.tsx';
 
 const initialFields: SectionDoc = {
   label: 'Welcome',
@@ -34,228 +21,197 @@ const initialFields: SectionDoc = {
   items: [],
 };
 
-function createSession(
+/** A host's own save control, which is how a host reaches the stage form. */
+const SUBMIT_LABEL = 'Finished editing';
+const hostActions = ({
+  formId,
+  readOnly,
+}: Readonly<{ formId: string; readOnly: boolean }>) => (
+  <SubmitButton form={formId} disabled={readOnly}>
+    {SUBMIT_LABEL}
+  </SubmitButton>
+);
+
+const scriptCapability = {
+  fields: ['interviewScript'],
+  confirmClear: {
+    title: fixtureMessage('This will clear your interview script'),
+    description: fixtureMessage('The text you entered will be deleted.'),
+    confirmLabel: fixtureMessage('Clear script'),
+  },
+};
+
+const skipLogicCapability = {
+  fields: ['skipLogic'],
+  confirmClear: {
+    title: fixtureMessage('This will clear your skip logic'),
+    description: fixtureMessage('The rules you created will be deleted.'),
+    confirmLabel: fixtureMessage('Clear skip logic'),
+  },
+};
+
+const settingsCapability = {
+  fields: ['settings.enabled'],
+  confirmClear: {
+    title: fixtureMessage('This will clear your advanced settings'),
+    description: fixtureMessage('The settings you chose will be deleted.'),
+    confirmLabel: fixtureMessage('Clear settings'),
+  },
+};
+
+const threeSections = (pageContentTitle = 'Page content') => (
+  <>
+    <StageNameSection position={{ index: 1, total: 3 }} />
+    <BuilderSection title={pageContentTitle}>
+      <Field
+        name="title"
+        label="Page heading"
+        component={InputField}
+        required={REQUIRED}
+      />
+    </BuilderSection>
+    <BuilderSection title="Interviewer guidance" capability={scriptCapability}>
+      <Field
+        name="interviewScript"
+        label="Interviewer script text"
+        component={InputField}
+      />
+    </BuilderSection>
+  </>
+);
+
+function renderEditor(
   options: Readonly<{
     fields?: SectionDoc;
+    sections?: ReactNode;
     readOnly?: boolean;
-    onFinish?: (request: FinishRequest) => void;
   }> = {},
 ) {
-  return new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('Information', () => 'stage-1'),
-    fields: options.fields ?? initialFields,
-    protocolSections: {},
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access:
-      options.readOnly === true
-        ? { mode: 'readOnly', reason: 'spectator' }
-        : { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Stage editor shell test',
-      schemaVersion: 8,
-      codebook: {},
-      stages: [stageDocument],
-    }),
-    ...(options.onFinish === undefined ? {} : { onFinish: options.onFinish }),
+  return renderStageEditor({
+    stage: { type: 'Information', fields: options.fields ?? initialFields },
+    sections: options.sections ?? threeSections(),
+    actions: hostActions,
+    submitLabel: SUBMIT_LABEL,
+    ...(options.readOnly === true ? { readOnly: true } : {}),
   });
 }
 
-function Editor({
-  session,
-  pageContentTitle = 'Page content',
+/** A control that shows and replaces one property of the object it is given. */
+function CompoundControl({
+  value,
+  onChange,
+  ...rest
 }: {
-  session: ProtocolBuilderSessionStore;
-  pageContentTitle?: string;
+  value?: Record<string, unknown>;
+  onChange?: (next: Record<string, unknown>) => void;
+  id?: string;
+  disabled?: boolean;
 }) {
-  const controller = useStageEditorController(session, 'stage-form');
-
   return (
-    <StageEditorShell
-      controller={controller}
-      actions={({ formId, readOnly }) => (
-        <SubmitButton form={formId} disabled={readOnly}>
-          Finished editing
-        </SubmitButton>
-      )}
-    >
-      <StageNameSection position={{ index: 1, total: 3 }} />
-      <BuilderSection title={pageContentTitle}>
-        <ProtocolField
-          name="title"
-          label="Page heading"
-          component={InputField}
-          required
-        />
-      </BuilderSection>
-      <BuilderSection
-        title="Interviewer guidance"
-        capability={{
-          fields: ['interviewScript'],
-          confirmClear: {
-            title: fixtureMessage('This will clear your interview script'),
-            description: fixtureMessage(
-              'The text you entered will be deleted.',
-            ),
-            confirmLabel: fixtureMessage('Clear script'),
-          },
-        }}
-      >
-        <ProtocolField
-          name="interviewScript"
-          label="Interviewer script text"
-          component={InputField}
-        />
-      </BuilderSection>
-    </StageEditorShell>
+    <input
+      {...rest}
+      type="text"
+      value={typeof value?.enabled === 'string' ? value.enabled : ''}
+      onChange={(event) => onChange?.({ enabled: event.target.value })}
+    />
   );
 }
 
-function renderEditor(
-  session: ProtocolBuilderSessionStore,
-  pageContentTitle?: string,
-) {
-  return render(
-    <DialogProvider>
-      <Editor session={session} pageContentTitle={pageContentTitle} />
-    </DialogProvider>,
-  );
-}
-
-function RefusingEditor({ session }: { session: ProtocolBuilderSession }) {
-  const controller = useStageEditorController(session, 'stage-form');
-
+/** Mounts and unmounts its children on demand, from a control of its own. */
+function Toggleable({
+  label,
+  children,
+}: Readonly<{ label: string; children: ReactNode }>) {
+  const [shown, setShown] = useState(true);
   return (
-    <StageEditorShell
-      controller={controller}
-      actions={({ formId }) => (
-        <SubmitButton form={formId}>Finished editing</SubmitButton>
-      )}
-    >
-      <BuilderSection title="Page content">
-        <ProtocolField
-          name="title"
-          label="Page heading"
-          component={InputField}
-          required
-        />
-      </BuilderSection>
-    </StageEditorShell>
+    <>
+      <button type="button" onClick={() => setShown((was) => !was)}>
+        {label}
+      </button>
+      {shown && children}
+    </>
   );
 }
 
 /**
- * A capability whose second field is behind a plain conditional render, so
- * hiding it parks the value rather than discarding it — the shape of a
- * collapsed group of advanced options inside a capability.
+ * The same control, with its state held OUTSIDE the section it hides part of.
+ *
+ * A capability switched off unmounts the section's children, which resets any
+ * state they hold: a toggle living inside would come back believing the hidden
+ * part was on screen, and the click meant to bring it back would take it away
+ * instead.
  */
-function CapabilityEditor({
-  session,
-}: {
-  session: ProtocolBuilderSessionStore;
-}) {
-  const controller = useStageEditorController(session, 'stage-form');
-  const [advancedShown, setAdvancedShown] = useState(true);
-
-  return (
-    <StageEditorShell
-      controller={controller}
-      actions={({ formId }) => (
-        <SubmitButton form={formId}>Finished editing</SubmitButton>
-      )}
-    >
-      <BuilderSection
-        title="Interviewer guidance"
-        capability={{
-          fields: ['interviewScript', 'interviewScriptStyle'],
-          confirmClear: {
-            title: fixtureMessage('This will clear your interview script'),
-            description: fixtureMessage(
-              'The text you entered will be deleted.',
-            ),
-            confirmLabel: fixtureMessage('Clear script'),
-          },
-        }}
-      >
-        <ProtocolField
-          name="interviewScript"
-          label="Interviewer script text"
-          component={InputField}
-        />
-        <button type="button" onClick={() => setAdvancedShown(false)}>
-          Hide advanced options
-        </button>
-        {advancedShown && (
-          <ProtocolField
-            name="interviewScriptStyle"
-            label="Script style"
-            component={InputField}
-          />
-        )}
-      </BuilderSection>
-    </StageEditorShell>
-  );
+function WithHiddenPart({
+  label,
+  children,
+}: Readonly<{
+  label: string;
+  children: (parts: { shown: boolean; toggle: ReactNode }) => ReactNode;
+}>) {
+  const [shown, setShown] = useState(true);
+  return children({
+    shown,
+    toggle: (
+      <button type="button" onClick={() => setShown((was) => !was)}>
+        {label}
+      </button>
+    ),
+  });
 }
-
-const outlineItems = () =>
-  screen
-    .getByRole('navigation', { name: 'Stage sections' })
-    .querySelectorAll('button');
 
 describe('StageEditorShell', () => {
   it('lists every mounted section in the order they appear on the page', async () => {
-    renderEditor(createSession());
+    const harness = renderEditor();
 
-    await waitFor(() => expect(outlineItems()).toHaveLength(3));
-    expect([...outlineItems()].map((item) => item.textContent)).toEqual([
-      'Stage nameFinished',
-      'Page contentFinished',
-      'Interviewer guidanceSwitched off',
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    expect(harness.outline()).toEqual([
+      { title: 'Stage name', state: 'Finished' },
+      { title: 'Page content', state: 'Finished' },
+      { title: 'Interviewer guidance', state: 'Switched off' },
     ]);
   });
 
   it('reports a section whose required field is empty as unfinished', async () => {
-    renderEditor(
-      createSession({ fields: { label: '', title: '', items: [] } }),
-    );
+    const harness = renderEditor({
+      fields: { label: '', title: '', items: [] },
+    });
 
-    await waitFor(() => expect(outlineItems()).toHaveLength(3));
-    expect([...outlineItems()].map((item) => item.textContent)).toEqual([
-      'Stage nameNot finished',
-      'Page contentNot finished',
-      'Interviewer guidanceSwitched off',
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    expect(harness.outline()).toEqual([
+      { title: 'Stage name', state: 'Not finished' },
+      { title: 'Page content', state: 'Not finished' },
+      { title: 'Interviewer guidance', state: 'Switched off' },
     ]);
   });
 
   it('moves focus to the section it was asked to jump to', async () => {
-    const user = userEvent.setup();
-    renderEditor(createSession());
-    await waitFor(() => expect(outlineItems()).toHaveLength(3));
+    const harness = renderEditor();
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
 
-    const pageContent = [...outlineItems()][1];
-    await user.click(pageContent as HTMLElement);
+    await harness.user.click(
+      screen.getByRole('button', { name: /^Page content/ }),
+    );
 
     // The section is a region named by its own heading, so arriving there
     // announces which section it is.
     expect(document.activeElement).toHaveAccessibleName('Page content');
   });
 
-  it('sends only the fields that changed when the stage is saved', async () => {
-    const user = userEvent.setup();
-    const onFinish = vi.fn();
-    const session = createSession({ onFinish });
-    renderEditor(session);
+  it('hands the whole stage back when it is saved', async () => {
+    const harness = renderEditor();
 
-    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
-    await user.type(
+    await harness.user.clear(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+    );
+    await harness.user.type(
       screen.getByRole('textbox', { name: 'Page heading' }),
       'A new heading',
     );
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
 
-    await waitFor(() => expect(onFinish).toHaveBeenCalled());
-    const request = onFinish.mock.calls[0]?.[0] as FinishRequest;
-    expect(request.stageDocument).toEqual({
-      id: 'stage-1',
+    const written = await harness.submit();
+
+    expect(written?.stageDocument).toEqual({
+      id: harness.seeded.id,
       type: 'Information',
       label: 'Welcome',
       title: 'A new heading',
@@ -264,614 +220,294 @@ describe('StageEditorShell', () => {
   });
 
   it('removes a capability the researcher switched off', async () => {
-    const user = userEvent.setup();
-    const onFinish = vi.fn();
-    const session = createSession({
-      onFinish,
+    const harness = renderEditor({
       fields: { ...initialFields, interviewScript: 'Read this aloud' },
     });
-    renderEditor(session);
 
-    await user.click(
+    await harness.user.click(
       screen.getByRole('switch', { name: 'Interviewer guidance' }),
     );
-    await user.click(screen.getByRole('button', { name: 'Clear script' }));
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Clear script' }),
+    );
 
-    await waitFor(() => expect(onFinish).toHaveBeenCalled());
-    const request = onFinish.mock.calls[0]?.[0] as FinishRequest;
+    const written = await harness.submit();
+
     // Absent, which is how the protocol schema spells "this stage has no
     // interviewer guidance" — not null, and not an empty string.
-    expect(Object.hasOwn(request.stageDocument, 'interviewScript')).toBe(false);
+    expect(written).not.toBeNull();
+    expect(Object.hasOwn(written?.stageDocument ?? {}, 'interviewScript')).toBe(
+      false,
+    );
   });
 
   it('reports a capability the researcher switched off as switched off', async () => {
-    const user = userEvent.setup();
-    renderEditor(
-      createSession({
-        fields: { ...initialFields, interviewScript: 'Read this aloud' },
-      }),
-    );
-    await waitFor(() => expect(outlineItems()).toHaveLength(3));
-    expect([...outlineItems()][2]?.textContent).toBe(
-      'Interviewer guidanceFinished',
-    );
-
-    await user.click(
-      screen.getByRole('switch', { name: 'Interviewer guidance' }),
-    );
-    await user.click(screen.getByRole('button', { name: 'Clear script' }));
-
-    // The value the capability owned is gone, so the section is off — not
-    // still reading as configured from the draft it was opened with.
-    await waitFor(() =>
-      expect([...outlineItems()][2]?.textContent).toBe(
-        'Interviewer guidanceSwitched off',
-      ),
-    );
-  });
-
-  it('reports a capability an arrival emptied as switched off', async () => {
-    const session = createSession({
+    const harness = renderEditor({
       fields: { ...initialFields, interviewScript: 'Read this aloud' },
     });
-    renderEditor(session);
-    await waitFor(() =>
-      expect([...outlineItems()][2]?.textContent).toBe(
-        'Interviewer guidanceFinished',
-      ),
-    );
-
-    act(() => {
-      session.replaceAuthoritativeStage({
-        fields: initialFields,
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    expect(harness.outline()[2]).toEqual({
+      title: 'Interviewer guidance',
+      state: 'Finished',
     });
 
-    // Nothing the capability owns holds anything any more, and the panel it
-    // was configured in has closed itself over that. Saying "available" beside
-    // a closed, empty capability describes a stage nobody is looking at.
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Interviewer guidance' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Clear script' }),
+    );
+
+    // The value the capability owned is gone, so the section is off — not
+    // still reading as configured from the document it was opened with.
     await waitFor(() =>
-      expect([...outlineItems()][2]?.textContent).toBe(
-        'Interviewer guidanceSwitched off',
-      ),
+      expect(harness.outline()[2]).toEqual({
+        title: 'Interviewer guidance',
+        state: 'Switched off',
+      }),
     );
   });
 
-  it('reads a null a stored protocol holds as nothing rather than throwing', async () => {
-    const session = createSession({
-      fields: { ...initialFields, title: 'Welcome to the study' },
-    });
-    renderEditor(session);
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        'Welcome to the study',
-      ),
-    );
-
+  it('reads a null a stored protocol holds as nothing rather than throwing', () => {
     // `null` is not in `FieldValue`'s union, but stored protocol data holds it
     // — fresco-ui's own `fieldValueContract` names it as a shape every control
-    // must render — so the re-seed cannot be the one place that throws on it.
-    // A throw here is not cosmetic: the render never commits, and the editor
-    // goes down over an arrival the researcher did not cause.
-    act(() => {
-      session.replaceAuthoritativeStage({
-        fields: { ...initialFields, title: null },
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
-    });
+    // must render — so seeding a control cannot be the one place that throws
+    // on it. A throw here is not cosmetic: the render never commits, and the
+    // editor goes down over content the researcher did not write.
+    renderEditor({ fields: { ...initialFields, title: null } });
 
     // Nothing is there, which this package spells `undefined` and shows as an
     // empty control — never as the word "null".
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        '',
-      ),
+    expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
+      '',
     );
   });
 
-  it('reports a capability an arrival filled as available', async () => {
-    const session = createSession();
-    renderEditor(session);
-    await waitFor(() =>
-      expect([...outlineItems()][2]?.textContent).toBe(
-        'Interviewer guidanceSwitched off',
-      ),
-    );
-
-    act(() => {
-      session.replaceAuthoritativeStage({
-        fields: { ...initialFields, interviewScript: 'Read this aloud' },
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
-    });
-
-    await waitFor(() =>
-      expect([...outlineItems()][2]?.textContent).toBe(
-        'Interviewer guidanceFinished',
-      ),
-    );
-  });
-
-  it('keeps a capability the researcher switched on when an arrival leaves it alone', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
-    renderEditor(session);
-    await waitFor(() => expect(outlineItems()).toHaveLength(3));
-
-    // Switched on and not yet filled in: nothing the capability owns holds a
-    // value, so only the researcher's own decision says it is on.
-    await user.click(
-      screen.getByRole('switch', { name: 'Interviewer guidance' }),
-    );
-    await screen.findByRole('textbox', { name: 'Interviewer script text' });
-    expect([...outlineItems()][2]?.textContent).toBe(
-      'Interviewer guidanceFinished',
-    );
-
-    act(() => {
-      session.replaceAuthoritativeStage({
-        fields: { ...initialFields, title: 'Renamed elsewhere' },
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
+  it('keeps a section’s fields when only its title changes', async () => {
+    function RenameableSection() {
+      const [title, setTitle] = useState('Page content');
+      return (
+        <>
+          <button type="button" onClick={() => setTitle('Screen content')}>
+            Rename the section
+          </button>
+          <BuilderSection title={title}>
+            <Field
+              name="title"
+              label="Page heading"
+              component={InputField}
+              required
+            />
+          </BuilderSection>
+        </>
+      );
+    }
+    const harness = renderEditor({
+      fields: { label: 'Welcome', items: [] },
+      sections: <RenameableSection />,
     });
     await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        'Renamed elsewhere',
-      ),
+      expect(harness.outline()).toEqual([
+        { title: 'Page content', state: 'Not finished' },
+      ]),
     );
 
-    // The arrival says nothing about this capability, so it says nothing about
-    // the decision the researcher just made about it either — and the panel
-    // that decision opened is still open, holding the field they were about to
-    // fill in.
-    expect({
-      outline: [...outlineItems()][2]?.textContent,
-      script:
-        screen.queryByRole('textbox', { name: 'Interviewer script text' }) !==
-        null,
-    }).toEqual({ outline: 'Interviewer guidanceFinished', script: true });
-  });
-
-  it('keeps a section\u2019s fields when only its title changes', async () => {
-    const session = createSession({ fields: { label: 'Welcome', items: [] } });
-    const { rerender } = renderEditor(session);
-    await waitFor(() =>
-      expect([...outlineItems()][1]?.textContent).toBe(
-        'Page contentNot finished',
-      ),
-    );
-
-    rerender(
-      <DialogProvider>
-        <Editor session={session} pageContentTitle="Screen content" />
-      </DialogProvider>,
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Rename the section' }),
     );
 
     // Renaming a section says nothing about what is inside it: its required
     // field is still empty, so it is still unfinished.
     await waitFor(() =>
-      expect([...outlineItems()][1]?.textContent).toBe(
-        'Screen contentNot finished',
-      ),
+      expect(harness.outline()).toEqual([
+        { title: 'Screen content', state: 'Not finished' },
+      ]),
     );
   });
 
   it('keeps a switched-off capability out of the way until it is asked for', async () => {
-    renderEditor(createSession());
+    const harness = renderEditor();
 
-    await waitFor(() => expect(outlineItems()).toHaveLength(3));
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
     expect(
       screen.queryByRole('textbox', { name: 'Interviewer script text' }),
     ).toBeNull();
   });
 
   it('reports exactly one problem for a field that owns it', async () => {
-    const user = userEvent.setup();
-    renderEditor(createSession({ fields: { label: 'Welcome', items: [] } }));
+    const harness = renderEditor({
+      fields: { label: 'Welcome', items: [] },
+    });
 
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    expect(await harness.submit()).toBeNull();
 
-    await waitFor(() =>
-      expect(
-        screen.getAllByText('This field is required.', { exact: false }),
-      ).toHaveLength(1),
-    );
+    expect(
+      screen.getAllByText('This field is required.', { exact: false }),
+    ).toHaveLength(1);
   });
 
-  it('reports a lease lost between opening the form and saving it', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
-    // Access is still editable to everything that rendered, and the session
-    // refuses the write anyway — the shape of losing a lease between the last
-    // render and the submit.
-    const refusing: ProtocolBuilderSession = {
-      subscribe: (listener) => session.subscribe(listener),
-      getSnapshot: () => session.getSnapshot(),
-      getServerSnapshot: () => session.getServerSnapshot(),
-      dispatch: () => {
-        throw new SessionReadOnlyError();
-      },
-      undo: () => session.undo(),
-      redo: () => session.redo(),
-      validate: () => session.validate(),
-      requestCompoundEdit: (request) => session.requestCompoundEdit(request),
-      finish: () => session.finish(),
-      cancel: () => session.cancel(),
-      getResourceGateway: () => session.getResourceGateway(),
-    };
-
-    render(
-      <DialogProvider>
-        <RefusingEditor session={refusing} />
-      </DialogProvider>,
-    );
-
-    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
-    await user.type(
-      screen.getByRole('textbox', { name: 'Page heading' }),
-      'A new heading',
-    );
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
-
-    await waitFor(() =>
-      expect(
-        screen.getByText('This stage is read-only', { exact: false }),
-      ).toBeInTheDocument(),
-    );
-  });
-
-  it('clears a capability\u2019s hidden fields when it is switched off', async () => {
-    const user = userEvent.setup();
-    const session = createSession({
+  it('clears a capability’s hidden fields when it is switched off', async () => {
+    const harness = renderEditor({
       fields: {
         ...initialFields,
         interviewScript: 'Read this aloud',
         interviewScriptStyle: 'formal',
       },
+      sections: (
+        <BuilderSection
+          title="Interviewer guidance"
+          capability={{
+            ...scriptCapability,
+            fields: ['interviewScript', 'interviewScriptStyle'],
+          }}
+        >
+          <Field
+            name="interviewScript"
+            label="Interviewer script text"
+            component={InputField}
+          />
+          <Toggleable label="Hide advanced options">
+            <Field
+              name="interviewScriptStyle"
+              label="Script style"
+              component={InputField}
+            />
+          </Toggleable>
+        </BuilderSection>
+      ),
     });
-    render(
-      <DialogProvider>
-        <CapabilityEditor session={session} />
-      </DialogProvider>,
-    );
 
     // Parked with its value intact, so closing the capability around it never
     // unmounts it again.
-    await user.click(
+    await harness.user.click(
       screen.getByRole('button', { name: 'Hide advanced options' }),
     );
-    await user.click(
+    await harness.user.click(
       screen.getByRole('switch', { name: 'Interviewer guidance' }),
     );
-    await user.click(screen.getByRole('button', { name: 'Clear script' }));
-
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Clear script' }),
+    );
     await waitFor(() =>
-      expect([...outlineItems()][0]?.textContent).toBe(
-        'Interviewer guidanceSwitched off',
-      ),
+      expect(harness.outline()[0]).toEqual({
+        title: 'Interviewer guidance',
+        state: 'Switched off',
+      }),
     );
 
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    const written = await harness.submit();
 
-    await waitFor(() => {
-      const { fields } = session.getSnapshot().editedSection;
-      expect(Object.hasOwn(fields, 'interviewScript')).toBe(false);
-      expect(Object.hasOwn(fields, 'interviewScriptStyle')).toBe(false);
+    expect(written?.stageDocument).toEqual({
+      id: harness.seeded.id,
+      type: 'Information',
+      ...initialFields,
     });
-  });
-
-  it('shows the refreshed fields when the host replaces the same stage', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
-    renderEditor(session);
-
-    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
-    await user.type(
-      screen.getByRole('textbox', { name: 'Page heading' }),
-      'Typed before promotion',
-    );
-
-    // What a host does when a spectator is promoted to editor: the stage is
-    // the same, but its authoritative content is not the one this form was
-    // opened with.
-    act(() => {
-      session.replaceAuthoritativeStage({
-        fields: {
-          label: 'Welcome',
-          title: 'Refreshed elsewhere',
-          items: [],
-        },
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
-    });
-
-    // A field that merely re-registers keeps the value it was holding, so
-    // without writing the new draft into the controls the promoted editor
-    // would show — and then save — what it had typed over a screen that had
-    // moved on.
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        'Refreshed elsewhere',
-      ),
-    );
-  });
-
-  it('keeps a field the researcher is editing when an arrival moves another', async () => {
-    const user = userEvent.setup();
-    const session = createSession({
-      fields: { ...initialFields, interviewScript: 'Read this aloud' },
-    });
-    renderEditor(session);
-
-    const script = await screen.findByRole('textbox', {
-      name: 'Interviewer script text',
-    });
-    await user.clear(script);
-    await user.type(script, 'Half-written note');
-
-    // An arrival that moves the heading and says nothing about the script.
-    act(() => {
-      session.replaceAuthoritativeStage({
-        fields: {
-          ...initialFields,
-          title: 'Renamed elsewhere',
-          interviewScript: 'Read this aloud',
-        },
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
-    });
-
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        'Renamed elsewhere',
-      ),
-    );
-    // The script is exactly where the arrival left it, so there is nothing
-    // about it for the controls to take. Writing the agreed value back over
-    // the researcher's half-finished note would discard work nothing in the
-    // stage disagreed with.
-    expect(
-      screen.getByRole('textbox', { name: 'Interviewer script text' }),
-    ).toHaveValue('Half-written note');
-  });
-
-  it('keeps what was typed after a save when an arrival moves another field', async () => {
-    const user = userEvent.setup();
-    const session = createSession({ onFinish: () => undefined });
-    renderEditor(session);
-
-    const heading = screen.getByRole('textbox', { name: 'Page heading' });
-    await user.clear(heading);
-    await user.type(heading, 'Saved heading');
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
-    await waitFor(() =>
-      expect(session.getSnapshot().editedSection.fields.title).toBe(
-        'Saved heading',
-      ),
-    );
-
-    // Still editing after the save, with the extra keystrokes in the form and
-    // nowhere else.
-    await user.type(heading, ' edited');
-
-    // A finish retires the batch it carried, so the save leaves nothing
-    // pending to acknowledge; the host already holds it. Someone else then
-    // renames the stage.
-    expect(session.getSnapshot().pendingCommands).toEqual([]);
-    act(() => {
-      session.replaceAuthoritativeStage({
-        fields: {
-          label: 'Renamed by someone else',
-          title: 'Saved heading',
-          items: [],
-        },
-        manifestRevision: { sequence: 3n, hash: 'revision-3' },
-      });
-    });
-
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
-        'Renamed by someone else',
-      ),
-    );
-    // The heading the arrival carries is the one this form saved, so the
-    // arrival decided nothing about it — the draft it must be compared with is
-    // the one the save left agreed, not the one the stage was opened with.
-    expect(heading).toHaveValue('Saved heading edited');
-  });
-
-  it('reopens a capability an authoritative replacement has refilled', async () => {
-    const user = userEvent.setup();
-    const session = createSession({
-      fields: { ...initialFields, interviewScript: 'Read this aloud' },
-    });
-    renderEditor(session);
-
-    await user.click(
-      screen.getByRole('switch', { name: 'Interviewer guidance' }),
-    );
-    await user.click(screen.getByRole('button', { name: 'Clear script' }));
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('textbox', { name: 'Interviewer script text' }),
-      ).toBeNull(),
-    );
-
-    // Switching a capability off is an edit, so it leaves a batch — and a
-    // wholesale replacement is refused while any batch is still in flight,
-    // which is exactly what stops one from swallowing unsaved work. Applied
-    // here as the host that received it would, so the replacement below is the
-    // one this test is about rather than a conflict.
-    act(() => {
-      session.acknowledge({
-        fields: initialFields,
-        throughBatchId: session.getSnapshot().pendingCommands.at(-1)?.id ?? 0,
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
-    });
-
-    act(() => {
-      session.replaceAuthoritativeStage({
-        fields: { ...initialFields, interviewScript: 'Read this instead' },
-        manifestRevision: { sequence: 3n, hash: 'revision-3' },
-      });
-    });
-
-    // The stage the form now holds has interviewer guidance again, and a
-    // section that stays closed over content it is holding tells the
-    // researcher the opposite of what the next save will write. Writing the
-    // new draft into the controls is only half of taking it: the sections
-    // decide whether they are on from what those controls hold, and something
-    // has to tell them to ask again.
-    await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: 'Interviewer script text' }),
-      ).toHaveValue('Read this instead'),
-    );
   });
 
   it('does not call a whitespace-only answer finished', async () => {
-    renderEditor(
-      createSession({ fields: { label: '   ', title: '  ', items: [] } }),
-    );
+    const harness = renderEditor({
+      fields: { label: '   ', title: '  ', items: [] },
+    });
 
     // Fresco's required validator trims, so a form that accepted this would
     // reject it on submit. The outline has to say the same thing the submit
     // will.
-    await waitFor(() => expect(outlineItems()).toHaveLength(3));
-    expect([...outlineItems()].map((item) => item.textContent)).toEqual([
-      'Stage nameNot finished',
-      'Page contentNot finished',
-      'Interviewer guidanceSwitched off',
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    expect(harness.outline()).toEqual([
+      { title: 'Stage name', state: 'Not finished' },
+      { title: 'Page content', state: 'Not finished' },
+      { title: 'Interviewer guidance', state: 'Switched off' },
     ]);
   });
 
   it('does not treat merely opening a capability as configuring it', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
     // A capability that owns a CONTAINER path while its controls register the
     // parts inside it — the shape skip logic has.
-    function ContainerCapability() {
-      const controller = useStageEditorController(session, 'stage-form');
-      return (
-        <StageEditorShell controller={controller}>
-          <BuilderSection
-            title="Skip logic"
-            capability={{
-              fields: ['skipLogic'],
-              confirmClear: {
-                title: fixtureMessage('This will clear your skip logic'),
-                description: fixtureMessage(
-                  'The rules you created will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear skip logic'),
-              },
-            }}
-          >
-            <ProtocolField
-              name="skipLogic.action"
-              label="What this stage does"
-              component={InputField}
-            />
-            <ProtocolField
-              name="skipLogic.destination"
-              label="Where the interview continues"
-              component={InputField}
-            />
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <ContainerCapability />
-      </DialogProvider>,
-    );
+    const harness = renderEditor({
+      sections: (
+        <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+          <Field
+            name="skipLogic.action"
+            label="What this stage does"
+            component={InputField}
+          />
+          <Field
+            name="skipLogic.destination"
+            label="Where the interview continues"
+            component={InputField}
+          />
+        </BuilderSection>
+      ),
+    });
 
     // Opening it mounts the controls, which is enough for the form to assemble
     // an object at the capability's own path — but nobody has entered anything.
-    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Skip logic' }),
+    );
     await screen.findByRole('textbox', { name: 'What this stage does' });
-    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Skip logic' }),
+    );
 
     // No confirmation, because there is nothing to lose.
     expect(
       screen.queryByRole('button', { name: 'Clear skip logic' }),
     ).toBeNull();
     await waitFor(() =>
-      expect([...outlineItems()][0]?.textContent).toBe(
-        'Skip logicSwitched off',
-      ),
+      expect(harness.outline()[0]).toEqual({
+        title: 'Skip logic',
+        state: 'Switched off',
+      }),
     );
   });
 
   it('clears a hidden part of a container capability for good', async () => {
-    const user = userEvent.setup();
-    const session = createSession({
+    const harness = renderEditor({
       fields: {
         ...initialFields,
         skipLogic: { action: 'SKIP', destination: 'finish' },
       },
-    });
-    function ContainerCapability() {
-      const controller = useStageEditorController(session, 'stage-form');
-      const [advancedShown, setAdvancedShown] = useState(true);
-      return (
-        <StageEditorShell controller={controller}>
-          <BuilderSection
-            title="Skip logic"
-            capability={{
-              fields: ['skipLogic'],
-              confirmClear: {
-                title: fixtureMessage('This will clear your skip logic'),
-                description: fixtureMessage(
-                  'The rules you created will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear skip logic'),
-              },
-            }}
-          >
-            <ProtocolField
-              name="skipLogic.action"
-              label="What this stage does"
-              component={InputField}
-            />
-            <button
-              type="button"
-              onClick={() => setAdvancedShown((shown) => !shown)}
-            >
-              Toggle advanced options
-            </button>
-            {advancedShown && (
-              <ProtocolField
-                name="skipLogic.destination"
-                label="Where the interview continues"
+      sections: (
+        <WithHiddenPart label="Toggle advanced options">
+          {({ shown, toggle }) => (
+            <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+              <Field
+                name="skipLogic.action"
+                label="What this stage does"
                 component={InputField}
               />
-            )}
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <ContainerCapability />
-      </DialogProvider>,
-    );
+              {toggle}
+              {shown && (
+                <Field
+                  name="skipLogic.destination"
+                  label="Where the interview continues"
+                  component={InputField}
+                />
+              )}
+            </BuilderSection>
+          )}
+        </WithHiddenPart>
+      ),
+    });
 
     // Parked with its value intact, inside the capability rather than at it —
     // so closing the capability around it never unmounts it, and a tombstone
     // left at the container path does not reach it.
-    await user.click(
+    await harness.user.click(
       screen.getByRole('button', { name: 'Toggle advanced options' }),
     );
-    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
-    await user.click(screen.getByRole('button', { name: 'Clear skip logic' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Skip logic' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Clear skip logic' }),
+    );
 
-    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
-    await user.click(
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Skip logic' }),
+    );
+    await harness.user.click(
       screen.getByRole('button', { name: 'Toggle advanced options' }),
     );
 
@@ -887,80 +523,54 @@ describe('StageEditorShell', () => {
   });
 
   it('sees content a capability is holding out of sight', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
-    function ContainerCapability() {
-      const controller = useStageEditorController(session, 'stage-form');
-      const [advancedShown, setAdvancedShown] = useState(true);
-      return (
-        <StageEditorShell controller={controller}>
-          <BuilderSection
-            title="Skip logic"
-            capability={{
-              fields: ['skipLogic'],
-              confirmClear: {
-                title: fixtureMessage('This will clear your skip logic'),
-                description: fixtureMessage(
-                  'The rules you created will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear skip logic'),
-              },
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => setAdvancedShown((shown) => !shown)}
-            >
-              Toggle advanced options
-            </button>
-            {advancedShown && (
-              <ProtocolField
-                name="skipLogic.destination"
-                label="Where the interview continues"
-                component={InputField}
-              />
-            )}
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <ContainerCapability />
-      </DialogProvider>,
-    );
+    const harness = renderEditor({
+      sections: (
+        <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+          <Toggleable label="Toggle advanced options">
+            <Field
+              name="skipLogic.destination"
+              label="Where the interview continues"
+              component={InputField}
+            />
+          </Toggleable>
+        </BuilderSection>
+      ),
+    });
 
-    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
-    await user.type(
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Skip logic' }),
+    );
+    await harness.user.type(
       await screen.findByRole('textbox', {
         name: 'Where the interview continues',
       }),
       'finish',
     );
     // Now the only field carrying anything is parked out of sight: there is no
-    // field at the capability's own path, and nothing was in the draft this
+    // field at the capability's own path, and nothing was in the document this
     // stage was opened with.
-    await user.click(
+    await harness.user.click(
       screen.getByRole('button', { name: 'Toggle advanced options' }),
     );
-    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Skip logic' }),
+    );
 
     // The researcher is asked before it goes, because there is something to
     // lose — and switching off without asking would also skip the clearing,
     // leaving skip logic active in a stage that says it has none.
-    await user.click(
+    await harness.user.click(
       await screen.findByRole('button', { name: 'Clear skip logic' }),
     );
     await waitFor(() =>
-      expect([...outlineItems()][0]?.textContent).toBe(
-        'Skip logicSwitched off',
-      ),
+      expect(harness.outline()[0]).toEqual({
+        title: 'Skip logic',
+        state: 'Switched off',
+      }),
     );
   });
 
   it('follows the page when a nested component reorders its sections', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
     // The order lives in a component of its own, so reordering re-renders that
     // subtree and nothing else — the outline beside it is never told.
     function ReorderableSections() {
@@ -974,7 +584,7 @@ describe('StageEditorShell', () => {
           </button>
           {shown.map((title) => (
             <BuilderSection key={title} title={title}>
-              <ProtocolField
+              <Field
                 name={title === 'Introduction' ? 'title' : 'label'}
                 label={`${title} text`}
                 component={InputField}
@@ -984,88 +594,62 @@ describe('StageEditorShell', () => {
         </>
       );
     }
-    function Host() {
-      const controller = useStageEditorController(session, 'stage-form');
-      return (
-        <StageEditorShell controller={controller}>
-          <ReorderableSections />
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <Host />
-      </DialogProvider>,
+    const harness = renderEditor({ sections: <ReorderableSections /> });
+
+    await waitFor(() =>
+      expect(harness.outline()).toEqual([
+        { title: 'Introduction', state: 'Finished' },
+        { title: 'Closing', state: 'Finished' },
+      ]),
     );
 
-    await waitFor(() => expect(outlineItems()).toHaveLength(2));
-    expect([...outlineItems()].map((item) => item.textContent)).toEqual([
-      'IntroductionFinished',
-      'ClosingFinished',
-    ]);
-
-    await user.click(
+    await harness.user.click(
       screen.getByRole('button', { name: 'Reverse the sections' }),
     );
 
     await waitFor(() =>
-      expect([...outlineItems()].map((item) => item.textContent)).toEqual([
-        'ClosingFinished',
-        'IntroductionFinished',
+      expect(harness.outline()).toEqual([
+        { title: 'Closing', state: 'Finished' },
+        { title: 'Introduction', state: 'Finished' },
       ]),
     );
   });
 
   it('asks again about content entered after a capability was cleared', async () => {
-    const user = userEvent.setup();
-    const session = createSession({
+    const harness = renderEditor({
       fields: { ...initialFields, skipLogic: { action: 'SKIP' } },
+      sections: (
+        <BuilderSection title="Skip logic" capability={skipLogicCapability}>
+          <Field
+            name="skipLogic.action"
+            label="What this stage does"
+            component={InputField}
+          />
+        </BuilderSection>
+      ),
     });
-    function ContainerCapability() {
-      const controller = useStageEditorController(session, 'stage-form');
-      return (
-        <StageEditorShell controller={controller}>
-          <BuilderSection
-            title="Skip logic"
-            capability={{
-              fields: ['skipLogic'],
-              confirmClear: {
-                title: fixtureMessage('This will clear your skip logic'),
-                description: fixtureMessage(
-                  'The rules you created will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear skip logic'),
-              },
-            }}
-          >
-            <ProtocolField
-              name="skipLogic.action"
-              label="What this stage does"
-              component={InputField}
-            />
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <ContainerCapability />
-      </DialogProvider>,
-    );
 
     // Clearing it parks a record at the capability's own path, holding
     // nothing.
-    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
-    await user.click(screen.getByRole('button', { name: 'Clear skip logic' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Skip logic' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Clear skip logic' }),
+    );
 
     // What is typed now lives BENEATH that record, which has no standing to
     // say the capability is empty any more.
-    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
-    await user.type(
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Skip logic' }),
+    );
+    await harness.user.type(
       await screen.findByRole('textbox', { name: 'What this stage does' }),
       'SHOW',
     );
-    await user.click(screen.getByRole('switch', { name: 'Skip logic' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Skip logic' }),
+    );
 
     // Asked again, because there is something to lose again — and a switch-off
     // that skipped the question would skip the clearing with it.
@@ -1075,67 +659,33 @@ describe('StageEditorShell', () => {
   });
 
   it('sees a capability filled in by a control that owns its parent', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
     // One compound control owns `settings`; the capability owns a path inside
     // it, and no field is registered there.
-    function CompoundControl({
-      value,
-      onChange,
-      ...rest
-    }: {
-      value?: Record<string, unknown>;
-      onChange?: (next: Record<string, unknown>) => void;
-      id?: string;
-      disabled?: boolean;
-    }) {
-      return (
-        <input
-          {...rest}
-          type="text"
-          value={typeof value?.enabled === 'string' ? value.enabled : ''}
-          onChange={(event) => onChange?.({ enabled: event.target.value })}
-        />
-      );
-    }
-    function NestedCapability() {
-      const controller = useStageEditorController(session, 'stage-form');
-      return (
-        <StageEditorShell controller={controller}>
-          <BuilderSection
-            title="Advanced settings"
-            capability={{
-              fields: ['settings.enabled'],
-              confirmClear: {
-                title: fixtureMessage('This will clear your advanced settings'),
-                description: fixtureMessage(
-                  'The settings you chose will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear settings'),
-              },
-            }}
-          >
-            <ProtocolField<typeof CompoundControl>
-              name="settings"
-              label="Settings"
-              component={CompoundControl}
-            />
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <NestedCapability />
-      </DialogProvider>,
-    );
+    const harness = renderEditor({
+      sections: (
+        <BuilderSection
+          title="Advanced settings"
+          capability={settingsCapability}
+        >
+          <Field<typeof CompoundControl>
+            name="settings"
+            label="Settings"
+            component={CompoundControl}
+          />
+        </BuilderSection>
+      ),
+    });
 
-    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
-    await user.type(
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Advanced settings' }),
+    );
+    await harness.user.type(
       await screen.findByRole('textbox', { name: 'Settings' }),
       'yes',
     );
-    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Advanced settings' }),
+    );
 
     // The value reaches the capability's path from the control above it, so
     // there is something to lose and the researcher has to be asked.
@@ -1145,75 +695,42 @@ describe('StageEditorShell', () => {
   });
 
   it('sees a capability carried by a control that is hidden above it', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
-    function CompoundControl({
-      value,
-      onChange,
-      ...rest
-    }: {
-      value?: Record<string, unknown>;
-      onChange?: (next: Record<string, unknown>) => void;
-      id?: string;
-      disabled?: boolean;
-    }) {
-      return (
-        <input
-          {...rest}
-          type="text"
-          value={typeof value?.enabled === 'string' ? value.enabled : ''}
-          onChange={(event) => onChange?.({ enabled: event.target.value })}
-        />
-      );
-    }
-    function HiddenAncestor() {
-      const controller = useStageEditorController(session, 'stage-form');
-      const [shown, setShown] = useState(true);
-      return (
-        <StageEditorShell controller={controller}>
-          <BuilderSection
-            title="Advanced settings"
-            capability={{
-              fields: ['settings.enabled'],
-              confirmClear: {
-                title: fixtureMessage('This will clear your advanced settings'),
-                description: fixtureMessage(
-                  'The settings you chose will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear settings'),
-              },
-            }}
-          >
-            <button type="button" onClick={() => setShown((was) => !was)}>
-              Toggle the control
-            </button>
-            {shown && (
-              <ProtocolField<typeof CompoundControl>
-                name="settings"
-                label="Settings"
-                component={CompoundControl}
-              />
-            )}
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <HiddenAncestor />
-      </DialogProvider>,
-    );
+    const harness = renderEditor({
+      sections: (
+        <WithHiddenPart label="Toggle the control">
+          {({ shown, toggle }) => (
+            <BuilderSection
+              title="Advanced settings"
+              capability={settingsCapability}
+            >
+              {toggle}
+              {shown && (
+                <Field<typeof CompoundControl>
+                  name="settings"
+                  label="Settings"
+                  component={CompoundControl}
+                />
+              )}
+            </BuilderSection>
+          )}
+        </WithHiddenPart>
+      ),
+    });
 
-    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
-    await user.type(
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Advanced settings' }),
+    );
+    await harness.user.type(
       await screen.findByRole('textbox', { name: 'Settings' }),
       'yes',
     );
     // Parked whole, with the capability's value inside it.
-    await user.click(
+    await harness.user.click(
       screen.getByRole('button', { name: 'Toggle the control' }),
     );
-    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Advanced settings' }),
+    );
 
     expect(
       await screen.findByRole('button', { name: 'Clear settings' }),
@@ -1221,9 +738,13 @@ describe('StageEditorShell', () => {
 
     // And confirming has to reach into that parked control, or the value it is
     // still holding is replayed into the stage on save.
-    await user.click(screen.getByRole('button', { name: 'Clear settings' }));
-    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
-    await user.click(
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Clear settings' }),
+    );
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Advanced settings' }),
+    );
+    await harness.user.click(
       await screen.findByRole('button', { name: 'Toggle the control' }),
     );
     await waitFor(() =>
@@ -1232,62 +753,61 @@ describe('StageEditorShell', () => {
   });
 
   it('clears a capability whose path is a name rather than a route', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
-    function OpaqueCapability() {
-      const controller = useStageEditorController(session, 'stage-form');
-      const [shown, setShown] = useState(true);
-      return (
-        <StageEditorShell controller={controller}>
-          <BuilderSection
-            title="Prompt override"
-            capability={{
-              // A protocol-authored key, canonically formatted. It is one
-              // name containing a space, not a route through anything.
-              fields: ['["prompt text"]'],
-              confirmClear: {
-                title: fixtureMessage('This will clear your prompt override'),
-                description: fixtureMessage(
-                  'The text you entered will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear override'),
-              },
-            }}
-          >
-            <button type="button" onClick={() => setShown((was) => !was)}>
-              Toggle the control
-            </button>
-            {shown && (
-              <ProtocolField
-                name="prompt text"
-                nameMode="opaque"
-                label="Prompt text"
-                component={InputField}
-              />
-            )}
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <OpaqueCapability />
-      </DialogProvider>,
-    );
+    const harness = renderEditor({
+      sections: (
+        <WithHiddenPart label="Toggle the control">
+          {({ shown, toggle }) => (
+            <BuilderSection
+              title="Prompt override"
+              capability={{
+                // A protocol-authored key, canonically formatted. It is one
+                // name containing a space, not a route through anything.
+                fields: ['["prompt text"]'],
+                confirmClear: {
+                  title: fixtureMessage('This will clear your prompt override'),
+                  description: fixtureMessage(
+                    'The text you entered will be deleted.',
+                  ),
+                  confirmLabel: fixtureMessage('Clear override'),
+                },
+              }}
+            >
+              {toggle}
+              {shown && (
+                <Field
+                  name="prompt text"
+                  nameMode="opaque"
+                  label="Prompt text"
+                  component={InputField}
+                />
+              )}
+            </BuilderSection>
+          )}
+        </WithHiddenPart>
+      ),
+    });
 
-    await user.click(screen.getByRole('switch', { name: 'Prompt override' }));
-    await user.type(
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Prompt override' }),
+    );
+    await harness.user.type(
       await screen.findByRole('textbox', { name: 'Prompt text' }),
       'Ask about work',
     );
-    await user.click(
+    await harness.user.click(
       screen.getByRole('button', { name: 'Toggle the control' }),
     );
-    await user.click(screen.getByRole('switch', { name: 'Prompt override' }));
-    await user.click(screen.getByRole('button', { name: 'Clear override' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Prompt override' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Clear override' }),
+    );
 
-    await user.click(screen.getByRole('switch', { name: 'Prompt override' }));
-    await user.click(
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Prompt override' }),
+    );
+    await harness.user.click(
       await screen.findByRole('button', { name: 'Toggle the control' }),
     );
     await waitFor(() =>
@@ -1297,166 +817,54 @@ describe('StageEditorShell', () => {
     );
   });
 
-  it('shows the undone value after the host undoes a change', async () => {
-    const user = userEvent.setup();
-    const session = createSession({ onFinish: () => undefined });
-    renderEditor(session);
-
-    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
-    await user.type(
-      screen.getByRole('textbox', { name: 'Page heading' }),
-      'A new heading',
-    );
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
-    await waitFor(() =>
-      expect(session.getSnapshot().editedSection.fields.title).toBe(
-        'A new heading',
+  it('saves no trace of a capability cleared out of the control above it', async () => {
+    const harness = renderEditor({
+      sections: (
+        <BuilderSection
+          title="Advanced settings"
+          capability={settingsCapability}
+        >
+          <Toggleable label="Toggle the control">
+            <Field<typeof CompoundControl>
+              name="settings"
+              label="Settings"
+              component={CompoundControl}
+            />
+          </Toggleable>
+        </BuilderSection>
       ),
-    );
-
-    // What a host's undo control does. The controls were built from the draft
-    // this replaces, so leaving them mounted would go on showing the value
-    // that was just undone — and write it back on the next save.
-    act(() => {
-      session.undo();
     });
 
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        'Welcome to the study',
-      ),
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Advanced settings' }),
     );
-  });
-
-  it('saves no trace of a capability cleared out of the control above it', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
-    function CompoundControl({
-      value,
-      onChange,
-      ...rest
-    }: {
-      value?: Record<string, unknown>;
-      onChange?: (next: Record<string, unknown>) => void;
-      id?: string;
-      disabled?: boolean;
-    }) {
-      return (
-        <input
-          {...rest}
-          type="text"
-          value={typeof value?.enabled === 'string' ? value.enabled : ''}
-          onChange={(event) => onChange?.({ enabled: event.target.value })}
-        />
-      );
-    }
-    function OnlyProperty() {
-      const controller = useStageEditorController(session, 'stage-form');
-      const [shown, setShown] = useState(true);
-      return (
-        <StageEditorShell
-          controller={controller}
-          actions={({ formId }) => (
-            <SubmitButton form={formId}>Finished editing</SubmitButton>
-          )}
-        >
-          <BuilderSection
-            title="Advanced settings"
-            capability={{
-              fields: ['settings.enabled'],
-              confirmClear: {
-                title: fixtureMessage('This will clear your advanced settings'),
-                description: fixtureMessage(
-                  'The settings you chose will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear settings'),
-              },
-            }}
-          >
-            <button type="button" onClick={() => setShown((was) => !was)}>
-              Toggle the control
-            </button>
-            {shown && (
-              <ProtocolField<typeof CompoundControl>
-                name="settings"
-                label="Settings"
-                component={CompoundControl}
-              />
-            )}
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <OnlyProperty />
-      </DialogProvider>,
-    );
-
-    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
-    await user.type(
+    await harness.user.type(
       await screen.findByRole('textbox', { name: 'Settings' }),
       'yes',
     );
     // The capability's path is the only thing this parked control holds.
-    await user.click(
+    await harness.user.click(
       screen.getByRole('button', { name: 'Toggle the control' }),
     );
-    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
-    await user.click(screen.getByRole('button', { name: 'Clear settings' }));
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Advanced settings' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Clear settings' }),
+    );
 
     // Emptying the control that carried it has to take the container with it.
-    // An empty object left behind is not "no capability" to the schema.
-    await waitFor(() =>
-      expect(
-        Object.hasOwn(session.getSnapshot().editedSection.fields, 'settings'),
-      ).toBe(false),
-    );
-  });
-
-  it('shows the redone value after an undo is redone', async () => {
-    const user = userEvent.setup();
-    const session = createSession({ onFinish: () => undefined });
-    renderEditor(session);
-
-    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
-    await user.type(
-      screen.getByRole('textbox', { name: 'Page heading' }),
-      'A new heading',
-    );
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
-    await waitFor(() =>
-      expect(session.getSnapshot().editedSection.fields.title).toBe(
-        'A new heading',
-      ),
-    );
-
-    act(() => {
-      session.undo();
+    // An empty object left behind is not "no capability" to the schema — and
+    // this stage would not be saveable at all with one.
+    const written = await harness.submit();
+    expect(written?.stageDocument).toEqual({
+      id: harness.seeded.id,
+      type: 'Information',
+      ...initialFields,
     });
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        'Welcome to the study',
-      ),
-    );
-
-    // Back to the content this form submitted — but the controls have been
-    // rebuilt from the undo since, so returning to it is a move like any
-    // other.
-    act(() => {
-      session.redo();
-    });
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        'A new heading',
-      ),
-    );
   });
 
   it('leaves an emptied row in the list when a capability inside it is cleared', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
     function RowControl({
       value,
       onChange,
@@ -1482,144 +890,67 @@ describe('StageEditorShell', () => {
         />
       );
     }
-    function RowCapability() {
-      const controller = useStageEditorController(session, 'stage-form');
-      const [shown, setShown] = useState(true);
-      return (
-        <StageEditorShell
-          controller={controller}
-          actions={({ formId }) => (
-            <SubmitButton form={formId}>Finished editing</SubmitButton>
-          )}
+    const { probe, draft } = createStageDraftProbe();
+    const harness = renderEditor({
+      sections: (
+        <BuilderSection
+          title="Row setting"
+          capability={{
+            fields: ['items[0].optionalSetting'],
+            confirmClear: {
+              title: fixtureMessage('This will clear the setting'),
+              description: fixtureMessage(
+                'The value you entered will be deleted.',
+              ),
+              confirmLabel: fixtureMessage('Clear setting'),
+            },
+          }}
         >
-          <BuilderSection
-            title="Row setting"
-            capability={{
-              fields: ['items[0].optionalSetting'],
-              confirmClear: {
-                title: fixtureMessage('This will clear the setting'),
-                description: fixtureMessage(
-                  'The value you entered will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear setting'),
-              },
-            }}
-          >
-            <button type="button" onClick={() => setShown((was) => !was)}>
-              Toggle the control
-            </button>
-            {shown && (
-              <ProtocolField<typeof RowControl>
-                name="items[0]"
-                label="First item"
-                component={RowControl}
-              />
-            )}
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <RowCapability />
-      </DialogProvider>,
-    );
+          {probe}
+          <Toggleable label="Toggle the control">
+            <Field<typeof RowControl>
+              name="items[0]"
+              label="First item"
+              component={RowControl}
+            />
+          </Toggleable>
+        </BuilderSection>
+      ),
+    });
 
-    await user.click(screen.getByRole('switch', { name: 'Row setting' }));
-    await user.type(
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Row setting' }),
+    );
+    await harness.user.type(
       await screen.findByRole('textbox', { name: 'First item' }),
       'on',
     );
-    await user.click(
+    await harness.user.click(
       screen.getByRole('button', { name: 'Toggle the control' }),
     );
-    await user.click(screen.getByRole('switch', { name: 'Row setting' }));
-    await user.click(screen.getByRole('button', { name: 'Clear setting' }));
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Row setting' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Clear setting' }),
+    );
 
     // The row survives as an empty row. Removing its index would leave a hole
-    // and renumber nothing, which is not what clearing a setting means.
-    await waitFor(() =>
-      expect(session.getSnapshot().editedSection.fields.items).toEqual([{}]),
-    );
-  });
-
-  it('does not let a submit that changed nothing explain a later redo', async () => {
-    const user = userEvent.setup();
-    const session = createSession({ onFinish: () => undefined });
-    renderEditor(session);
-
-    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
-    await user.type(
-      screen.getByRole('textbox', { name: 'Page heading' }),
-      'A new heading',
-    );
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
-    await waitFor(() =>
-      expect(session.getSnapshot().editedSection.fields.title).toBe(
-        'A new heading',
-      ),
-    );
-
-    // Saving again without changing anything writes no commands, so nothing
-    // ever arrives for a marker to explain.
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
-
-    act(() => {
-      session.undo();
-    });
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        'Welcome to the study',
-      ),
-    );
-
-    act(() => {
-      session.redo();
-    });
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        'A new heading',
-      ),
-    );
+    // and renumber nothing, which is not what clearing a setting means. Read
+    // from the document the editor is holding rather than from a save: an item
+    // with no content is not a stage the protocol would take.
+    await waitFor(() => expect(draft().items).toEqual([{}]));
   });
 
   it('empties a control elsewhere on the page when a capability is cleared', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
-    function CompoundControl({
-      value,
-      onChange,
-      ...rest
-    }: {
-      value?: Record<string, unknown>;
-      onChange?: (next: Record<string, unknown>) => void;
-      id?: string;
-      disabled?: boolean;
-    }) {
-      return (
-        <input
-          {...rest}
-          type="text"
-          value={typeof value?.enabled === 'string' ? value.enabled : ''}
-          onChange={(event) => onChange?.({ enabled: event.target.value })}
-        />
-      );
-    }
     // The control carrying the capability's path lives in ANOTHER section, so
     // closing the capability does not unmount it — it stays registered,
     // holding whatever the clear left in it.
-    function ControlElsewhere() {
-      const controller = useStageEditorController(session, 'stage-form');
-      return (
-        <StageEditorShell
-          controller={controller}
-          actions={({ formId }) => (
-            <SubmitButton form={formId}>Finished editing</SubmitButton>
-          )}
-        >
+    const harness = renderEditor({
+      sections: (
+        <>
           <BuilderSection title="Details">
-            <ProtocolField<typeof CompoundControl>
+            <Field<typeof CompoundControl>
               name="settings"
               label="Settings"
               component={CompoundControl}
@@ -1627,112 +958,76 @@ describe('StageEditorShell', () => {
           </BuilderSection>
           <BuilderSection
             title="Advanced settings"
-            capability={{
-              fields: ['settings.enabled'],
-              confirmClear: {
-                title: fixtureMessage('This will clear your advanced settings'),
-                description: fixtureMessage(
-                  'The settings you chose will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear settings'),
-              },
-            }}
+            capability={settingsCapability}
           >
-            <ProtocolField
+            <Field
               name="interviewScript"
               label="Notes"
               component={InputField}
             />
           </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <ControlElsewhere />
-      </DialogProvider>,
-    );
+        </>
+      ),
+    });
 
-    await user.type(screen.getByRole('textbox', { name: 'Settings' }), 'yes');
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Settings' }),
+      'yes',
+    );
 
     // Open it, then switch it off: the capability's path is carried by the
     // control in the other section, so there is something to lose.
-    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
-    await user.click(screen.getByRole('switch', { name: 'Advanced settings' }));
-    await user.click(
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Advanced settings' }),
+    );
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Advanced settings' }),
+    );
+    await harness.user.click(
       await screen.findByRole('button', { name: 'Clear settings' }),
     );
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
 
     // The control is still on screen and still registered. Emptying it has to
     // take the container with it, or a blank `settings` reaches the stage.
     expect(screen.getByRole('textbox', { name: 'Settings' })).toHaveValue('');
-    await waitFor(() =>
-      expect(
-        Object.hasOwn(session.getSnapshot().editedSection.fields, 'settings'),
-      ).toBe(false),
-    );
+    const written = await harness.submit();
+    expect(written?.stageDocument).toEqual({
+      id: harness.seeded.id,
+      type: 'Information',
+      ...initialFields,
+    });
   });
 
   it('clears a hidden value that was never an answer', async () => {
-    const user = userEvent.setup();
-    const session = createSession({
+    const harness = renderEditor({
       // Present, but not an answer: `hasAnswer` reads whitespace as blank, so
       // nothing will offer to confirm its deletion.
       fields: { ...initialFields, interviewScript: '   ' },
-    });
-    function BlankCapability() {
-      const controller = useStageEditorController(session, 'stage-form');
-      const [shown, setShown] = useState(true);
-      return (
-        <StageEditorShell
-          controller={controller}
-          actions={({ formId }) => (
-            <SubmitButton form={formId}>Finished editing</SubmitButton>
-          )}
+      sections: (
+        <BuilderSection
+          title="Interviewer guidance"
+          capability={scriptCapability}
         >
-          <BuilderSection
-            title="Interviewer guidance"
-            capability={{
-              fields: ['interviewScript'],
-              confirmClear: {
-                title: fixtureMessage('This will clear your interview script'),
-                description: fixtureMessage(
-                  'The text you entered will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear script'),
-              },
-            }}
-          >
-            <button type="button" onClick={() => setShown((was) => !was)}>
-              Toggle the control
-            </button>
-            {shown && (
-              <ProtocolField
-                name="interviewScript"
-                label="Interviewer script text"
-                component={InputField}
-              />
-            )}
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <BlankCapability />
-      </DialogProvider>,
-    );
+          <Toggleable label="Toggle the control">
+            <Field
+              name="interviewScript"
+              label="Interviewer script text"
+              component={InputField}
+            />
+          </Toggleable>
+        </BuilderSection>
+      ),
+    });
 
-    await user.click(
+    await harness.user.click(
       screen.getByRole('switch', { name: 'Interviewer guidance' }),
     );
     // Parked while the section is still open, so closing the section cannot
     // discard it.
-    await user.click(
+    await harness.user.click(
       screen.getByRole('button', { name: 'Toggle the control' }),
     );
-    await user.click(
+    await harness.user.click(
       screen.getByRole('switch', { name: 'Interviewer guidance' }),
     );
 
@@ -1740,20 +1035,15 @@ describe('StageEditorShell', () => {
     // it off still has to mean off.
     expect(screen.queryByRole('button', { name: 'Clear script' })).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
-    await waitFor(() =>
-      expect(
-        Object.hasOwn(
-          session.getSnapshot().editedSection.fields,
-          'interviewScript',
-        ),
-      ).toBe(false),
-    );
+    const written = await harness.submit();
+    expect(written?.stageDocument).toEqual({
+      id: harness.seeded.id,
+      type: 'Information',
+      ...initialFields,
+    });
   });
 
   it('does not rebuild its own controls when it saves them', async () => {
-    const user = userEvent.setup();
-    const session = createSession({ onFinish: () => undefined });
     let mounts = 0;
     function MountCounter() {
       useEffect(() => {
@@ -1761,167 +1051,76 @@ describe('StageEditorShell', () => {
       }, []);
       return null;
     }
-    function CountingEditor() {
-      const controller = useStageEditorController(session, 'stage-form');
-      return (
-        <StageEditorShell
-          controller={controller}
-          actions={({ formId }) => (
-            <SubmitButton form={formId}>Finished editing</SubmitButton>
-          )}
-        >
-          <BuilderSection title="Page content">
-            <MountCounter />
-            <ProtocolField
-              name="title"
-              label="Page heading"
-              component={InputField}
-              required
-            />
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <CountingEditor />
-      </DialogProvider>,
-    );
+    const harness = renderEditor({
+      sections: (
+        <BuilderSection title="Page content">
+          <MountCounter />
+          <Field
+            name="title"
+            label="Page heading"
+            component={InputField}
+            required
+          />
+        </BuilderSection>
+      ),
+    });
     await waitFor(() => expect(mounts).toBe(1));
 
-    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
-    await user.type(
+    await harness.user.clear(
+      screen.getByRole('textbox', { name: 'Page heading' }),
+    );
+    await harness.user.type(
       screen.getByRole('textbox', { name: 'Page heading' }),
       'A new heading',
     );
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
-    await waitFor(() =>
-      expect(session.getSnapshot().editedSection.fields.title).toBe(
-        'A new heading',
-      ),
-    );
+    expect(await harness.submit()).not.toBeNull();
 
-    // The form store is keyed by the draft, and saving moves the draft — but
-    // to the very values these controls are already showing. Rebuilding them
-    // for that would throw away focus and scroll position on every save.
+    // Rebuilding the controls for a save would throw away focus and scroll
+    // position every time the researcher saved.
     expect(mounts).toBe(1);
   });
 
   it('explains a prerequisite before it explains a switch', async () => {
-    const session = createSession();
-    function DisabledCapability() {
-      const controller = useStageEditorController(session, 'stage-form');
-      return (
-        <StageEditorShell controller={controller}>
-          <BuilderSection
-            title="Interviewer guidance"
-            disabled
-            capability={{
-              fields: ['interviewScript'],
-              confirmClear: {
-                title: fixtureMessage('This will clear your interview script'),
-                description: fixtureMessage(
-                  'The text you entered will be deleted.',
-                ),
-                confirmLabel: fixtureMessage('Clear script'),
-              },
-            }}
-          >
-            <ProtocolField
-              name="interviewScript"
-              label="Interviewer script text"
-              component={InputField}
-            />
-          </BuilderSection>
-        </StageEditorShell>
-      );
-    }
-    render(
-      <DialogProvider>
-        <DisabledCapability />
-      </DialogProvider>,
-    );
+    const harness = renderEditor({
+      sections: (
+        <BuilderSection
+          title="Interviewer guidance"
+          disabled
+          capability={scriptCapability}
+        >
+          <Field
+            name="interviewScript"
+            label="Interviewer script text"
+            component={InputField}
+          />
+        </BuilderSection>
+      ),
+    });
 
     // The researcher cannot switch this on until the thing it depends on is
     // chosen, so "switched off" would explain the wrong obstacle — and would
     // explain it differently depending only on whether content already exists.
     await waitFor(() =>
-      expect([...outlineItems()][0]?.textContent).toBe(
-        'Interviewer guidanceNot available yet',
-      ),
+      expect(harness.outline()[0]).toEqual({
+        title: 'Interviewer guidance',
+        state: 'Not available yet',
+      }),
     );
   });
 
-  it('does not remember a write the session refused', async () => {
-    const user = userEvent.setup();
-    const session = createSession();
-    const refusing: ProtocolBuilderSession = {
-      subscribe: (listener) => session.subscribe(listener),
-      getSnapshot: () => session.getSnapshot(),
-      getServerSnapshot: () => session.getServerSnapshot(),
-      dispatch: () => {
-        throw new SessionReadOnlyError();
-      },
-      undo: () => session.undo(),
-      redo: () => session.redo(),
-      validate: () => session.validate(),
-      requestCompoundEdit: (request) => session.requestCompoundEdit(request),
-      finish: () => session.finish(),
-      cancel: () => session.cancel(),
-      getResourceGateway: () => session.getResourceGateway(),
-    };
-
-    render(
-      <DialogProvider>
-        <RefusingEditor session={refusing} />
-      </DialogProvider>,
-    );
-
-    await user.clear(screen.getByRole('textbox', { name: 'Page heading' }));
-    await user.type(
-      screen.getByRole('textbox', { name: 'Page heading' }),
-      'Refused heading',
-    );
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
-    await screen.findByText('This stage is read-only', { exact: false });
-
-    // The draft moves elsewhere, then arrives at the content the refused
-    // submit had attempted. Nothing this form wrote ever landed, so this is an
-    // external change like any other and the controls have to follow it.
-    act(() => {
-      session.replaceAuthoritativeStage({
-        fields: { label: 'Welcome', title: 'Somewhere else', items: [] },
-        manifestRevision: { sequence: 2n, hash: 'revision-2' },
-      });
+  it('refuses to save a stage somebody else is holding', async () => {
+    const harness = renderEditor({ readOnly: true });
+    const stageSection = sectionId({
+      kind: 'stage',
+      stageId: harness.seeded.id,
     });
+    const before = harness.protocolSections()[stageSection];
+
+    // Awaited, because nothing tells the editor the section is somebody
+    // else's until the host answers its acquire.
     await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        'Somewhere else',
-      ),
+      expect(screen.getByRole('button', { name: SUBMIT_LABEL })).toBeDisabled(),
     );
-
-    act(() => {
-      session.replaceAuthoritativeStage({
-        fields: { label: 'Welcome', title: 'Refused heading', items: [] },
-        manifestRevision: { sequence: 3n, hash: 'revision-3' },
-      });
-    });
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Page heading' })).toHaveValue(
-        'Refused heading',
-      ),
-    );
-  });
-
-  it('refuses to save a stage the session has made read-only', async () => {
-    const onFinish = vi.fn();
-    const { container } = renderEditor(
-      createSession({ onFinish, readOnly: true }),
-    );
-
-    expect(
-      screen.getByRole('button', { name: 'Finished editing' }),
-    ).toBeDisabled();
     expect(
       screen.getByRole('textbox', { name: 'Page heading' }),
     ).toBeDisabled();
@@ -1931,103 +1130,24 @@ describe('StageEditorShell', () => {
     // Read-only is not the same as switched off. A spectator still needs to
     // see how much of the stage is done.
     await waitFor(() =>
-      expect([...outlineItems()][1]?.textContent).toBe('Page contentFinished'),
+      expect(harness.outline()[1]).toEqual({
+        title: 'Page content',
+        state: 'Finished',
+      }),
     );
 
     // A disabled button is the host's chrome, not the guarantee. Submitting
     // the form directly is what a keyboard, a stale render or another host's
     // own button can still do.
-    const form = container.querySelector('form');
+    const form = harness.container.querySelector('form');
     if (form === null) throw new Error('the editor rendered no form');
     fireEvent.submit(form);
 
-    await waitFor(() =>
-      expect(
-        screen.getByText('This stage is read-only', { exact: false }),
-      ).toBeInTheDocument(),
-    );
-    expect(onFinish).not.toHaveBeenCalled();
-  });
-});
-
-/**
- * Switching a capability off is a decision the SESSION records, and a session
- * can refuse it: editing is a lease, and it can be taken away between the
- * click that opened the confirmation and the click that answered it. The
- * refusal is the whole answer — nothing was thrown away — so the capability
- * has to be left exactly as it was, on screen and in the switch.
- */
-describe('a capability switched off as editing is taken away', () => {
-  const withScript = () =>
-    createSession({
-      fields: { ...initialFields, interviewScript: 'Read this aloud' },
-    });
-
-  const openTheConfirmation = async (
-    user: ReturnType<typeof userEvent.setup>,
-  ) => {
-    await user.click(
-      screen.getByRole('switch', { name: 'Interviewer guidance' }),
-    );
-    await screen.findByRole('button', { name: 'Clear script' });
-  };
-
-  it('leaves the capability holding what the session still holds', async () => {
-    const user = userEvent.setup();
-    const session = withScript();
-    renderEditor(session);
-    await openTheConfirmation(user);
-
-    act(() => {
-      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
-    });
-    await user.click(screen.getByRole('button', { name: 'Clear script' }));
-
-    // Emptying the form here would leave the capability looking cleared while
-    // the session still holds every value, with nothing left to re-seed it.
     expect(
-      await screen.findByRole('textbox', { name: 'Interviewer script text' }),
-    ).toHaveValue('Read this aloud');
-    expect(
-      screen.getByRole('switch', { name: 'Interviewer guidance' }),
-    ).toBeChecked();
-    expect(
-      screen.getByText('This stage is read-only', { exact: false }),
+      await screen.findByText(
+        'This stage is read-only, so your change was not made. Somebody else is editing it.',
+      ),
     ).toBeInTheDocument();
-  });
-
-  it('shows them again when editing is handed back', async () => {
-    const user = userEvent.setup();
-    const onFinish = vi.fn();
-    const session = createSession({
-      onFinish,
-      fields: { ...initialFields, interviewScript: 'Read this aloud' },
-    });
-    renderEditor(session);
-    await openTheConfirmation(user);
-
-    act(() => {
-      session.setAccess({ mode: 'readOnly', reason: 'lease-lost' });
-    });
-    await user.click(screen.getByRole('button', { name: 'Clear script' }));
-    act(() => {
-      session.setAccess({
-        mode: 'editable',
-        leaseOwner: 'tab-1',
-        leaseEpoch: 1n,
-      });
-    });
-
-    expect(
-      await screen.findByRole('textbox', { name: 'Interviewer script text' }),
-    ).toHaveValue('Read this aloud');
-
-    // Nothing here re-seeds a form, so a save is what proves the researcher
-    // is looking at the values rather than at a capability the next save
-    // would empty.
-    await user.click(screen.getByRole('button', { name: 'Finished editing' }));
-    await waitFor(() => expect(onFinish).toHaveBeenCalled());
-    const request = onFinish.mock.calls[0]?.[0] as FinishRequest;
-    expect(request.stageDocument.interviewScript).toBe('Read this aloud');
+    expect(harness.protocolSections()[stageSection]).toEqual(before);
   });
 });

@@ -59,7 +59,7 @@ describe('SectionOutlineStore', () => {
 
 /**
  * A reader for a form where nothing is wrong and nothing is empty, so the
- * status these tests read can only have come from a session issue.
+ * status these tests read can only have come from a schema issue.
  */
 const CONTENTED_FORM: SectionFieldReader = {
   getFieldState: () => ({
@@ -81,6 +81,26 @@ const EMPTY_FORM: SectionFieldReader = {
   getFieldErrors: () => null,
 };
 
+/**
+ * The markup a connected field renders around its control, which is where the
+ * outline reads its fields from: the form's own path attribute, the element
+ * the control is named by, and the marker a field that must be answered wears.
+ */
+function fieldMarkup(name: string, required: boolean): HTMLElement {
+  const container = document.createElement('div');
+  container.dataset.fieldPath = name;
+  const label = document.createElement('label');
+  label.id = `${name}-label`;
+  label.textContent = name;
+  container.append(label);
+  if (required) {
+    const marker = document.createElement('span');
+    marker.id = `${name}-required`;
+    container.append(marker);
+  }
+  return container;
+}
+
 function storeWith(
   fields: Readonly<Record<string, readonly string[]>>,
   required = false,
@@ -90,9 +110,7 @@ function storeWith(
     const element = mountSection(sectionId);
     store.registerSection({ id: sectionId, title: sectionId });
     store.setSectionElement(sectionId, element);
-    for (const name of names) {
-      store.registerField(sectionId, { name, label: name, required });
-    }
+    for (const name of names) element.append(fieldMarkup(name, required));
   }
   return store;
 }
@@ -137,7 +155,7 @@ const sectionNamed = (
 };
 
 /**
- * A session issue is addressed by a path in the stage document, and the only
+ * A schema issue is addressed by a path in the stage document, and the only
  * thing that can turn one into a place on the page is the fields the sections
  * registered. Getting that wrong in either direction is a real cost: an
  * unclaimed issue leaves every section reading "Finished" over a stage that
@@ -154,7 +172,7 @@ const sectionNamed = (
  */
 const read = (issue: string) => readMessage(issue);
 
-describe('session issues in the outline', () => {
+describe('schema issues in the outline', () => {
   it('claims an issue at a field, inside it, and at the container above it', () => {
     const store = storeWith({ search: ['searchOptions.fuzziness'] });
 
@@ -425,8 +443,8 @@ describe('session issues in the outline', () => {
     store.setValidationIssues(issues);
     const snapshot = store.getSnapshot();
 
-    // A fresh array of the same issues arrives on every validation pass, and
-    // one that re-notified would re-render the outline forever.
+    // Every refused save hands the store a fresh array of the same issues,
+    // and one that re-notified would re-render the outline forever.
     store.setValidationIssues(issues.map((issue) => ({ ...issue })));
 
     expect(store.getSnapshot()).toBe(snapshot);

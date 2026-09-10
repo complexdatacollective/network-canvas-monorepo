@@ -83,10 +83,22 @@ function registry(t) {
   });
 }
 
+// A response entry is either one answer for every request to that URL, or
+// `{ abbreviated, full }` — one answer for the install-time (abbreviated)
+// document and another for the full one, telling the two `accept` headers
+// apart. `calls` records each request as `<url>` or `<url> (full)`.
 function stubFetch(responses, calls = []) {
-  return async (url) => {
-    calls.push(String(url));
-    const response = responses[String(url)];
+  return async (url, init) => {
+    const accept = init?.headers?.accept ?? '';
+    const abbreviated = accept.includes('application/vnd.npm.install-v1+json');
+    calls.push(abbreviated ? String(url) : `${url} (full)`);
+    let response = responses[String(url)];
+    if (
+      response !== undefined &&
+      ('abbreviated' in response || 'full' in response)
+    ) {
+      response = abbreviated ? response.abbreviated : response.full;
+    }
     if (response === undefined) throw new Error(`unexpected fetch ${url}`);
     if (response instanceof Error) throw response;
     return {
@@ -159,11 +171,55 @@ test('a package npm has never heard of is reported, a known one with a pending v
     result.pendingVersions.map((pkg) => `${pkg.name}@${pkg.version}`),
     ['@codaco/established@1.2.0'],
   );
-  // The scoped name is one registry path segment.
+  // The scoped name is one registry path segment, and a 404 is only trusted
+  // once the full document repeats it.
   assert.deepEqual(calls, [
     'https://registry.npmjs.org/@codaco%2Fapp-i18n',
+    'https://registry.npmjs.org/@codaco%2Fapp-i18n (full)',
     'https://registry.npmjs.org/@codaco%2Festablished',
   ]);
+});
+
+test('a package whose abbreviated document lags its first publication is pending, not unpublished', async () => {
+  // npm builds the install-time document asynchronously: minutes after a
+  // first publication the abbreviated route still answers 404 while the full
+  // document lists the version. The guard must read the full document before
+  // calling the package unpublished, or it refuses the merge that the hand
+  // publication just unblocked.
+  const calls = [];
+  const url = 'https://registry.npmjs.org/@codaco%2Fapp-i18n';
+  const fetchImpl = stubFetch(
+    {
+      [url]: {
+        abbreviated: { status: 404 },
+        full: { status: 200, body: { versions: { '0.1.0': {} } } },
+      },
+    },
+    calls,
+  );
+  const result = await classifyLanePackages(
+    [{ name: '@codaco/app-i18n', version: '0.1.1', dir: 'packages/app-i18n' }],
+    { fetchImpl },
+  );
+  assert.deepEqual(result.neverPublished, []);
+  assert.deepEqual(
+    result.pendingVersions.map((pkg) => `${pkg.name}@${pkg.version}`),
+    ['@codaco/app-i18n@0.1.1'],
+  );
+  assert.deepEqual(calls, [url, `${url} (full)`]);
+
+  // Once the lagging document catches up the full document is never asked for.
+  const settled = [];
+  await classifyLanePackages(
+    [{ name: '@codaco/app-i18n', version: '0.1.0', dir: 'packages/app-i18n' }],
+    {
+      fetchImpl: stubFetch(
+        { [url]: { status: 200, body: { versions: { '0.1.0': {} } } } },
+        settled,
+      ),
+    },
+  );
+  assert.deepEqual(settled, [url]);
 });
 
 test('a version npm already has is neither pending nor a first publication', async () => {
@@ -224,8 +280,10 @@ test('the CLI refuses a tree whose publish needs a package npm does not know', a
   );
   assert.match(result.stderr, /trusted publishing/);
   assert.match(result.stderr, /First publications are made by hand/);
-  // Private and ignored-lane packages are never looked up.
+  // Private and ignored-lane packages are never looked up, and the missing
+  // package is asked for twice: the abbreviated document, then the full one.
   assert.deepEqual(requested.toSorted(), [
+    '@codaco/app-i18n',
     '@codaco/app-i18n',
     '@codaco/established',
   ]);

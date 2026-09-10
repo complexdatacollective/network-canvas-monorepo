@@ -152,6 +152,31 @@ const englishOnlyRuns = (): ReadonlyMap<string, string> => {
 
 const ENGLISH_RUNS = englishOnlyRuns();
 
+/** Object keys whose OWN keys are ids a researcher chose and an editor shows. */
+const ID_KEYED_MAPS: ReadonlySet<string> = new Set([
+  'node',
+  'edge',
+  'ego',
+  'variables',
+]);
+
+/**
+ * Keys whose value is a token from the protocol schema rather than anything a
+ * researcher wrote — a stage type, an entity, an input control, an id.
+ *
+ * Skipped entirely rather than merely not-collected-as-a-key, because it is
+ * the VALUE that is the token. Erring here is loud rather than silent: a
+ * researcher's word wrongly left out of this set is reported as a leak, which
+ * fails a sweep, while a token wrongly counted as content is a message the
+ * sweeps stop watching.
+ */
+const SCHEMA_TOKEN_KEYS: ReadonlySet<string> = new Set([
+  'id',
+  'type',
+  'entity',
+  'component',
+  'variable',
+]);
 /**
  * Every string a fixture holds, which is every string on screen that must NOT
  * be translated.
@@ -170,31 +195,47 @@ const ENGLISH_RUNS = englishOnlyRuns();
  * Takes arbitrary values rather than a harness so both the codebook editors
  * (which are handed section documents directly) and the stage editors (whose
  * harness exposes seeded fields and a host codebook) can feed it the same way.
+ *
+ * Read narrowly, because everything named here is a string the sweep will
+ * then FORGIVE wherever it appears — this set is the sweep's blind spot, and
+ * every entry in it is a message id the sweep can no longer see regress. Two
+ * rules keep it to what the paragraph above actually claims:
+ *
+ * - **Keys, only where a key is an id a researcher named.** A codebook indexes
+ *   its types and its attributes that way; a row of a list does not. Reading
+ *   every key at every depth is what made `protocolBuilder.promptsSection.itemNoun`
+ *   — the "pregunta" spliced into "Editar pregunta", and the exact string
+ *   #1720 round 1 found frozen in English — invisible to every sweep in this
+ *   package, because a form-field row happens to have a `prompt` key.
+ * - **No values under a key whose value is a schema token.** `component:
+ *   'Text'` and `type: 'boolean'` are the protocol's words, not the
+ *   researcher's, and counting them excused `protocolBuilder.contentBlock.kindText`
+ *   and `protocolBuilder.codebookVariable.typeBoolean` — two messages whose
+ *   whole English text is one of those tokens.
  */
 export const protocolStrings = (
   ...values: readonly unknown[]
 ): ReadonlySet<string> => {
   const strings = new Set<string>();
-  const collect = (value: unknown) => {
+  const collect = (value: unknown, keysAreIds: boolean) => {
     if (typeof value === 'string') {
       const text = collapse(value);
       if (text !== '') strings.add(text);
       return;
     }
     if (Array.isArray(value)) {
-      for (const entry of value) collect(entry);
+      for (const entry of value) collect(entry, false);
       return;
     }
     if (typeof value === 'object' && value !== null) {
       for (const [key, entry] of Object.entries(value)) {
-        // Keys are content too: a codebook indexes its types and attributes by
-        // ids the editors show, and those are the researcher's as well.
-        strings.add(collapse(key));
-        collect(entry);
+        if (keysAreIds) strings.add(collapse(key));
+        if (SCHEMA_TOKEN_KEYS.has(key)) continue;
+        collect(entry, ID_KEYED_MAPS.has(key));
       }
     }
   };
-  collect(values);
+  collect(values, false);
   return strings;
 };
 
@@ -211,7 +252,9 @@ export const protocolStrings = (
  *   raw payload.
  * - **An ICU argument nothing filled in**, which reaches them as `{name}`.
  */
-const localeLeaks = (content: ReadonlySet<string> = new Set()): string[] => {
+export const localeLeaks = (
+  content: ReadonlySet<string> = new Set(),
+): string[] => {
   const strings = visibleStrings();
   const leaks: string[] = [];
 
@@ -244,14 +287,42 @@ const localeLeaks = (content: ReadonlySet<string> = new Set()): string[] => {
 };
 
 /**
+ * The one thing a surface can put on screen that is English on purpose.
+ *
+ * Narrow, and declared at the call site, because a sweep that quietly forgave
+ * a leak would be a green tick over the defect it exists to find.
+ */
+export type SweepAllowances = Readonly<{
+  /**
+   * Words a test FIXTURE renders, which are nobody's copy.
+   *
+   * `TestPromptEditor` labels a box "Prompt text" as a stand-in for a family's
+   * own field. Three real areas happen to say the same words
+   * (`networkCanvas`, `pedigree` and `geospatial` each declare a `Prompt text`
+   * label), so the sweep — which indexes by the English SENTENCE, not by where
+   * it was rendered — reports the fixture's stand-in under whichever id is
+   * spelled the same. Naming them here says "a fixture put this here", the
+   * same claim `packageSource.ts` makes about a fixture FILE.
+   *
+   * Not a route around a real leak: a word listed here is one nothing in this
+   * package declares as copy, and the sweep still reports every id that does.
+   */
+  fixtureWords?: readonly string[];
+}>;
+
+/**
  * Assert that nothing on screen is English, raw or unformatted.
  *
  * `where` names the surface, because a sweep drives several and the failure
- * has to say which one was open.
+ * has to say which one was open. `content` is what the RESEARCHER wrote —
+ * build it with {@link protocolStrings} out of the documents the test mounted.
  */
 export const expectNoLocaleLeaks = (
   where: string,
   content: ReadonlySet<string> = new Set(),
+  { fixtureWords = [] }: SweepAllowances = {},
 ): void => {
-  expect(localeLeaks(content), `Spanish leaks at ${where}`).toEqual([]);
+  const allowed = new Set<string>(content);
+  for (const word of fixtureWords) allowed.add(collapse(word));
+  expect(localeLeaks(allowed), `Spanish leaks at ${where}`).toEqual([]);
 };

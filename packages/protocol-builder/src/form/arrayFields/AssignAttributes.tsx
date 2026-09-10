@@ -16,7 +16,6 @@ import Attribute, {
   type CreateAttributeVariable,
   type VariableOption,
 } from './Attribute.tsx';
-import { useArrayFieldCommands } from './useArrayFieldCommands.ts';
 
 // Re-exported so a call site configuring this editor needs only this module:
 // the committed-pick set feeds the row context AND the array-level rule below,
@@ -75,11 +74,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * Array-level completeness rule. It reaches the caller's `ProtocolArrayField`
+ * Array-level completeness rule. It reaches the caller's `<Field>`
  * through `makeAssignAttributesValidation`, which hands it the whole array.
  *
  * The rows run `required` on both cells too, but a row is not a registered
- * field (see `RowField`) and can only DISPLAY its error — nothing carries it
+ * field and can only DISPLAY its error — nothing carries it
  * into the form's validity. Without this counterpart the prompt dialog saves a
  * half-finished stamp such as `[{}]` or `[{ variable: 'x' }]`, which the
  * protocol schema rejects, so the stage fails validation long after the
@@ -108,7 +107,7 @@ const completeAttributes = (value: unknown) =>
  * Array-level cross-class rule: the BLOCKING counterpart to the row's
  * displayed error.
  *
- * `RowField` errors are display-only, so without this the researcher reads an
+ * A row cell's errors are display-only, so without this the researcher reads an
  * explicit "collected by a form elsewhere … cannot be written by this stage"
  * error, clicks Save, and the contradiction is written into the protocol
  * anyway — the interview then stamps unvalidated booleans onto a
@@ -137,7 +136,7 @@ const makeCrossClassPicks =
 
 /**
  * Every array-level rule this editor needs, as one object to SPREAD onto the
- * owning `ProtocolArrayField` — the `Options.tsx` `optionsValidation` idiom,
+ * owning `<Field>` — the `Options.tsx` `optionsValidation` idiom,
  * so a call site cannot keep some and drop others.
  *
  * A factory rather than a constant because the cross-class rule has to close
@@ -201,7 +200,7 @@ export type AssignAttributesProps = Omit<
 /**
  * Rows of variable-picker plus boolean value, added straight into the list.
  *
- * Rendered as `<ProtocolArrayField component={AssignAttributes} … />`, so the
+ * Rendered as `<Field component={AssignAttributes} … />`, so the
  * whole list is ONE field value and no row registers
  * `additionalAttributes[0].variable` in the form store — a deleted stamp must
  * not be able to reappear through a dormant value.
@@ -225,8 +224,8 @@ export default function AssignAttributes({
    *
    * A default only answers for `undefined`, and this list is a field component
    * like any other: it renders whatever the stage document holds at its key,
-   * which an import, a collaborator's write or a mid-cascade reseed can leave
-   * as something that is not a list of records at all. Reading a foreign shape
+   * which an import or a migration can leave as something that is not a list of
+   * records at all. Reading a foreign shape
    * throws out of render, and a render that never commits is a render whose
    * corrective effect never runs — so the value stays foreign for good, which
    * is fresco-ui's render-tolerance contract (#1433) and the reason for this.
@@ -281,7 +280,6 @@ export default function AssignAttributes({
     () => ({}) satisfies Partial<AttributeValue>,
     [],
   );
-  const { onOperation } = useArrayFieldCommands<AttributeValue>(rows, onChange);
 
   return (
     <AssignAttributesContext value={context}>
@@ -291,7 +289,6 @@ export default function AssignAttributes({
         name={name}
         value={value}
         onChange={onChange}
-        onOperation={onOperation}
         itemComponent={Attribute}
         itemTemplate={itemTemplate}
         // The row renders its own Surface, so ArrayField's wrapper stays bare

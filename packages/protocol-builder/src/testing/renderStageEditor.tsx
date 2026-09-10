@@ -17,39 +17,47 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import type { Codebook, StageType } from '@codaco/protocol-validation';
-import type { Command, SectionDoc } from '@codaco/studio-sync/apply';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
+  parseSectionId,
   sectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import type { InMemoryCompoundHost } from '../compound-edit/InMemoryCompoundHost.ts';
-import { useStageEditorController } from '../controller.ts';
 import { saveStageMessages } from '../editors/saveStageAction.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
 import { protocolBuilderCatalogs } from '../locales/catalogs.ts';
 import { protocolContextFromSections } from '../protocol-context.ts';
-import type { InMemoryResourceGateway } from '../resources/InMemoryResourceGateway.ts';
-import type {
-  FinishRequest,
-  PendingCommandBatch,
-  ProtocolBuilderSessionStore,
-} from '../session.ts';
+import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
+import { ResourceClientProvider } from '../resources/client.tsx';
 import type {
   StageEditorActions,
   StageEditorComponent,
   StageEditorRegistry,
 } from '../stage-editor-contract.ts';
+import type { StageCreation } from '../stageDocument.ts';
+import {
+  StageEditSession,
+  useStageEdit,
+  type StageEditTarget,
+} from '../stageEdit.tsx';
 import StageEditor from '../StageEditor.tsx';
 import {
-  FIXTURE_LEASE_EPOCH,
-  FIXTURE_SESSION_OWNER,
-  openFixtureStageSession,
-  type SeededStage,
-} from './fixtureSession.ts';
-import { type FixtureStageId, loadFixtureStage } from './protocolFixture.ts';
+  createInMemoryHost,
+  type InMemoryHost,
+} from './host/createInMemoryHost.ts';
+import type { HostPrincipal } from './host/protocolStore.ts';
+import {
+  fixtureAssetContentFor,
+  fixtureAssetManifest,
+  fixtureProtocolSections,
+  type FixtureStageId,
+  loadFixtureStage,
+} from './protocolFixture.ts';
+import { HARNESS_PRINCIPAL, SeedProtocolCache } from './seedProtocolCache.tsx';
 
 /**
  * A catalog entry and a `defaultMessage` are both typed as the string OR the
@@ -109,6 +117,23 @@ const nextStageFormId = (): string => {
 };
 
 /**
+ * The edit one mounted harness is, named rather than minted so a test can ask
+ * the host what THIS edit is holding staged — a question the contract answers
+ * only for a named edit, because staged files belong to the edit that imported
+ * them and to nothing wider.
+ *
+ * One per harness for the same reason the form id is: a test may mount two,
+ * and two edits sharing an id would each be able to promote and discard what
+ * the other imported. The number is nobody's to depend on; a test that needs
+ * the id reads `editId` off the harness.
+ */
+let editsOpened = 0;
+const nextEditId = (): string => {
+  editsOpened += 1;
+  return `stage-edit-${editsOpened}`;
+};
+
+/**
  * A change to the codebook made somewhere other than this editor.
  *
  * `null` removes the entity. The editor must follow either kind without
@@ -122,98 +147,92 @@ export type CodebookPatch = Readonly<{
   ego?: SectionDoc | null;
 }>;
 
+/** The stage a harness opens, split the way a section document holds it. */
+export type SeededStage = Readonly<{
+  id: string;
+  type: StageType;
+  /** Everything but `id` and `type`, which the section owns. */
+  fields: SectionDoc;
+  /** Set only for a stage the protocol does not hold yet. */
+  creation?: StageCreation;
+}>;
+
+/** A save the protocol took, and the stage document it now holds. */
+export type SavedStage = Readonly<{
+  sectionId: ProtocolSectionId;
+  /** The stage as the protocol holds it, identity included. */
+  stageDocument: SectionDoc;
+}>;
+
 export type StageEditorHarness = RenderResult &
   Readonly<{
-    session: ProtocolBuilderSessionStore;
-    host: InMemoryCompoundHost;
-    gateway: InMemoryResourceGateway;
+    /**
+     * The protocol, served from memory over the package's own host contract.
+     *
+     * `host.client` is what the editor is mounted over, `host.store` is what
+     * the protocol actually holds, and `host.asCollaborator` is a second
+     * connection — which is a second lock owner.
+     */
+    host: InMemoryHost;
     user: ReturnType<typeof userEvent.setup>;
     /**
      * The DOM id of THIS harness's stage form, which is what a host's own
      * action chrome is given as `formId`.
-     *
-     * One per mounted harness — see `nextStageFormId` — so a test that asserts
-     * on the contract a host is handed reads it here rather than writing the
-     * id down.
      */
     formId: string;
-    /** The stage the editor opened on, exactly as it was seeded. */
-    seeded: Readonly<{ id: string; type: StageType; fields: SectionDoc }>;
     /**
-     * Saves the stage and answers with what the host was asked to commit, or
-     * `null` when the editor refused to save.
+     * The edit THIS harness has open, which is what the host holds its staged
+     * files under. A test asking the host directly — listing what is staged,
+     * dropping it behind the editor's back — names it.
      */
-    submit(): Promise<FinishRequest | null>;
-    /** Ends the session without finishing, discarding anything staged. */
+    editId: string;
+    /** The stage the editor opened on, exactly as it was seeded. */
+    seeded: SeededStage;
+    /**
+     * Saves the stage and answers with what the protocol now holds, or `null`
+     * when the editor refused to save.
+     */
+    submit(): Promise<SavedStage | null>;
+    /**
+     * Closes the editor without saving: the lock goes back and anything staged
+     * in the edit is discarded.
+     */
     cancel(): Promise<void>;
     /**
-     * Applies a codebook change as if another session had made it.
+     * Waits for the host to answer the acquire, which is when the editor
+     * learns whether this researcher may write to the stage.
      *
-     * It reaches the HOST first, which issues the revision for it, and the
-     * session is then told about it under that same revision — so this is one
-     * change to one protocol, seen from both ends, rather than a story the
-     * session alone has been told. A later compound edit touching what was
-     * seeded is therefore built on a base the host recognises and is accepted;
-     * before this went to the host, every such edit was refused as stale, and
-     * a family test that needed a seeded attribute had to drive the create
-     * dialog to get one.
+     * Until then the stage is on screen but not theirs: its controls are
+     * disabled, and the ones a stage offers only to whoever holds it are not
+     * rendered at all. `user` waits for this before every action it takes, so
+     * a test needs it only where it reaches past the researcher's own actions
+     * — driving a list's commands directly, or reading a control before
+     * touching one.
+     */
+    opened(): Promise<void>;
+    /**
+     * Applies a codebook change as if another editor had made it before this
+     * one opened.
      *
-     * See `receiveConflictingCodebookUpdate` for the arrival the host has NOT
-     * accepted.
+     * It reaches the protocol itself, so the revision travels the same channel
+     * every other change does and every subscribed component sees it.
      */
     receiveCodebookUpdate(patch: CodebookPatch): void;
+    /** Every section as the protocol holds it. */
+    protocolSections(): Readonly<Record<string, SectionDoc>>;
     /**
-     * Tells the SESSION ALONE about a codebook change, under a revision the
-     * host never issued.
-     *
-     * The escape hatch for the one scenario the honest path cannot produce: a
-     * session whose base has moved out from under the host, where the next
-     * compound edit must be refused as `stale-base`. It is named rather than a
-     * flag because it leaves the harness lopsided on purpose — the host is
-     * behind the session from here on, `hostCodebook()` will not show what was
-     * seeded, and `receiveCodebookUpdate` afterwards throws rather than let the
-     * session silently drop an arrival whose revision it has already passed.
-     */
-    receiveConflictingCodebookUpdate(patch: CodebookPatch): void;
-    /**
-     * The codebook as the HOST holds it, read the way an editor reads one.
-     *
-     * The session's copy answers "what was this editor told?"; this answers
-     * "what does the protocol actually hold?" — the only way to prove that
-     * something an editor did (or refused to do) reached the codebook, or that
-     * nothing did.
+     * The codebook as the PROTOCOL holds it, read the way an editor reads one:
+     * the only way to prove that something an editor did reached the codebook,
+     * or that nothing did.
      */
     hostCodebook(): Readonly<Codebook>;
-    /** Every local batch the authoritative protocol has not acknowledged. */
-    pendingCommands(): readonly PendingCommandBatch[];
-    /**
-     * Every command a host applying this session's edits LIVE has been given,
-     * in the order it was given them.
-     *
-     * Most of what an editor does reaches such a host the moment it is done,
-     * and the session decides which edits may not: one naming a resource
-     * staged in this session, and everything after it, waits for the finish
-     * that promotes the file. So this is what a cancelled edit LEFT BEHIND —
-     * the one thing `pendingCommands` cannot say, because a batch that has
-     * gone to the host is pending there too until it is acknowledged.
-     *
-     * THROWS unless the harness was opened with `applyLive`, which is what
-     * puts a live host under it at all. Not empty: a buffering host is handed
-     * nothing until finish, so `toEqual([])` over one is true however the
-     * editor behaved — the assertion every test here reaches for would pass
-     * over a cancelled edit that left its whole batch behind. Answering only
-     * where there is a host to answer about is what keeps that assertion
-     * meaning something.
-     */
-    liveCommands(): readonly Command[];
     /**
      * The top-level stage keys the mounted sections have a field for.
      *
      * Read from the fields themselves — `data-field-path` is the canonical key
-     * the form store files a field under, the same string `ProtocolField`
-     * registers with the outline — and scoped to the stage form, so a row
-     * dialog's own fields (which belong to a form of their own, in a portal)
-     * are not mistaken for the stage's.
+     * the form store files a field under — and scoped to the stage form, so a
+     * row dialog's own fields (which belong to a form of their own, in a
+     * portal) are not mistaken for the stage's.
      */
     ownedKeys(): string[];
     /**
@@ -224,50 +243,37 @@ export type StageEditorHarness = RenderResult &
      *
      * A key the editor RENDERS can be dropped, altered or INVENTED by the save
      * itself, which the comparison against the seeded stage catches. The
-     * comparison runs in both directions and all the way down: a key the
-     * editor drops, a nested key a control defaults away, and a key nothing
-     * authored that the editor stamps on anyway are the same failure seen from
-     * three sides, and each is reported by its own path
-     * (`mapOptions.showTransit`, `prompts[0].id`). An invented key matters as
-     * much as a lost one — it is content in the researcher's protocol that the
-     * researcher did not write.
+     * comparison runs in both directions and all the way down, and each
+     * difference is reported by its own path.
      *
      * A key NO section renders is a quieter failure: it survives the round trip
      * untouched, by design — an interface with no `skipLogic` section must not
      * delete skip logic someone authored — so a comparison can never see it.
      * The editor is simply missing a section, and a researcher who opens the
-     * stage cannot see or change something their protocol holds.
-     *
-     * So an unrendered key has to be declared. `unowned` is where an editor
-     * says "this interface's schema has this key and nothing here edits it
-     * yet", one key at a time, in a list a reviewer can read.
+     * stage cannot see or change something their protocol holds. So an
+     * unrendered key has to be declared, one at a time, in `unowned`.
      */
     roundTrip(
       options?: Readonly<{
         /**
          * TOP-LEVEL keys the mounted sections deliberately do not own. Every
          * other key of the seeded stage must be owned by a mounted section.
-         *
-         * Top-level only, and it needs to be nothing more: a key inside one
-         * the editor does render cannot go unnoticed, because the comparison
-         * below reaches it. `unowned` answers "is there a section for this at
-         * all?", which is a question about the editor's outline; what happens
-         * inside a key a section does own is a question about the save, and
-         * the diff answers that one.
          */
         unowned?: readonly string[];
       }>,
-    ): Promise<FinishRequest>;
+    ): Promise<SavedStage>;
     /** The section outline, in the order it is rendered. */
     outline(): { title: string; state: string }[];
     /**
-     * Takes editing away from this session, or gives it back.
+     * Hands the stage's lock to somebody else while this editor still believes
+     * it holds it.
      *
-     * Given back under the lease the host is still holding, so a compound edit
-     * after the round trip is judged by the same authority as one before it.
-     * See `FIXTURE_LEASE_EPOCH`.
+     * The one thing an editor cannot see for itself: nothing tells it the lock
+     * has gone, so it goes on editing and finds out when the host refuses its
+     * submit. That is the whole of what the model says happens, and this is how
+     * a test reaches it.
      */
-    setReadOnly(readOnly?: boolean): void;
+    takeOverLock(): void;
   }>;
 
 /**
@@ -385,7 +391,7 @@ type StageEditorSeeding<T extends StageType> =
        * yet, and `position` is where the host will insert it, counting from
        * zero.
        *
-       * The session is opened with that creation, so everything a section
+       * The edit is opened with that creation, so everything a section
        * derives from it — the proposed name, the destinations a skip may
        * continue at — is exercised here exactly as it will be in the host.
        */
@@ -447,30 +453,31 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
     locale?: string;
     /**
      * Sections another editor is holding, named by who is holding them, so a
-     * change that needs one is blocked rather than applied.
+     * change that needs one is refused naming them rather than applied.
      */
     heldSections?: readonly Readonly<{
       sectionId: ProtocolSectionId;
       displayName: string;
     }>[];
     /**
-     * Open the stage over a host that applies each batch as it is made,
-     * instead of the buffering one that is handed nothing until the finish.
+     * Wraps the seeded host's own client, the way `renderResourceEditor` does,
+     * for a test about a host that holds its answer, or about a fact a real
+     * host KNOWS that this in-memory one does not work out for itself.
      *
-     * Off by default, because a buffering host is what almost every test here
-     * wants: an editor draws work in progress — a row added before anything
-     * has been typed into it, a capability cleared before the field replacing
-     * it is filled in — and a host holding that would refuse the very next
-     * compound edit for a protocol the researcher has not finished writing.
+     * Between the editor and the host rather than inside it: this host answers
+     * in a microtask, so a request that is still in flight is something only
+     * the transport can be. A stubbed store method would be answering for a
+     * write the host decides, and would go on compiling after the host stopped
+     * asking it the same question.
      *
-     * On, `host` really holds every batch it is handed, which is the only
-     * honest way to claim delivery: the session reads a host's later answers
-     * against what it was GIVEN (`deliveredPrefixLength`), so a port that
-     * recorded a batch and left the host where it was made the session read
-     * its own unsaved work as a collaborator's edit and retire it. Turn it on
-     * for what only a live host can be asked — see `liveCommands`.
+     * The fact so far is what is inside an imported data file: `inspect`
+     * answers with the manifest entry, and a roster stage's card, sort and
+     * search sections are all chosen from that file's columns — so a test about
+     * one of them has to say what the file holds, exactly as
+     * `AssetPickerField.test.tsx` already does for the picker's own summary.
+     * Everything the wrapper does not override stays the real host's.
      */
-    applyLive?: boolean;
+    client?: (host: InMemoryHost) => ProtocolBuilderClient;
   }> &
     StageEditorMounting<T> &
     StageEditorSeeding<T>;
@@ -526,16 +533,6 @@ const assertOneStageSource = (
 };
 
 /**
- * Mounts a stage editor over a real editing session.
- *
- * Everything below the editor is the package's own production machinery: a
- * `ProtocolBuilderSessionStore` holding a real protocol, a compound-edit host
- * that refuses what a real one would refuse, and a resource gateway. Nothing
- * is stubbed, so a test that saves a stage has proved the protocol schema
- * accepts it, and a test that creates a codebook entity has proved the host
- * could apply both halves at once.
- */
-/**
  * Mounts a provider only when a test asks for one.
  *
  * Without a locale there is deliberately no provider in the tree at all —
@@ -565,6 +562,24 @@ function LocaleFrame({
   );
 }
 
+/** The second connection every collaborator write is made from. */
+const COLLABORATOR: HostPrincipal = {
+  sessionId: 'collaborator-tab',
+  userId: 'collaborator',
+  displayName: 'Robin',
+};
+
+/**
+ * Mounts a stage editor over the protocol, served from memory by the package's
+ * own host contract.
+ *
+ * Nothing below the editor is stubbed: the host refuses a submit from a caller
+ * that does not hold the lock, checks the shape of every section it is given,
+ * and publishes each revision on the channel every subscribed component reads.
+ * So a test that saves a stage has proved the protocol schema accepts it, and
+ * one that writes to the codebook has proved a second editor could not have
+ * been holding it.
+ */
 export function renderStageEditor<T extends StageType = StageType>(
   options: RenderStageEditorOptions<T> = {},
 ): StageEditorHarness {
@@ -572,56 +587,79 @@ export function renderStageEditor<T extends StageType = StageType>(
   assertOneStageSource(options);
   const seeded = seedFrom(options);
   const stageSectionId = sectionId({ kind: 'stage', stageId: seeded.id });
-  const finishRequests: FinishRequest[] = [];
-  // What a host applying this session's edits live has been handed, for a
-  // harness opened with `applyLive`. `host` really applies them: claiming
-  // delivery without holding the batch is a host the session cannot read —
-  // see the option.
-  const liveCommands: Command[] = [];
-  // The same session a story is opened over, built once in `fixtureSession`:
-  // a test and a story that assembled the protocol differently would disagree
-  // about what the editor is mounted over.
-  const { session, host, gateway } = openFixtureStageSession({
-    seeded,
-    ...(options.assets === undefined ? {} : { assets: options.assets }),
-    ...(options.readOnly === undefined ? {} : { readOnly: options.readOnly }),
-    ...(options.heldSections === undefined
-      ? {}
-      : { heldSections: options.heldSections }),
-    ...(options.applyLive === true
-      ? {
-          onCommands: (batch: PendingCommandBatch) => {
-            liveCommands.push(...batch.commands);
-          },
-        }
-      : {}),
-    onFinish: (request) => {
-      finishRequests.push(request);
-    },
-  });
+  const assetManifest: Record<string, unknown> = {
+    ...fixtureAssetManifest(),
+    ...options.assets,
+  };
 
+  const host = createInMemoryHost({
+    sections: seededSections(seeded, assetManifest),
+    assetContent: fixtureAssetContentFor(assetManifest),
+    principal: HARNESS_PRINCIPAL,
+  });
+  const { protocolId, store } = host;
+  const editorClient = options.client?.(host) ?? host.client;
+
+  // Locks taken before the editor opens, which is what a collaborator holding
+  // a section IS: the acquire the editor is about to make comes back read-only
+  // and names them.
+  if (options.readOnly === true && seeded.creation === undefined) {
+    store.acquire(stageSectionId, COLLABORATOR);
+  }
+  for (const [index, held] of (options.heldSections ?? []).entries()) {
+    store.acquire(held.sectionId, {
+      sessionId: `holder-tab-${index}`,
+      userId: `holder-user-${index}`,
+      displayName: held.displayName,
+    });
+  }
+
+  const saved: SavedStage[] = [];
   const submitLabel = options.submitLabel ?? defaultSubmitLabel(options.locale);
   const formId = nextStageFormId();
+  const editId = nextEditId();
+  const target: StageEditTarget =
+    seeded.creation === undefined
+      ? { sectionId: stageSectionId }
+      : {
+          stageType: seeded.type,
+          position: seeded.creation.position,
+          fields: seeded.fields,
+        };
+
   const view = render(
     <LocaleFrame
       {...(options.locale === undefined ? {} : { locale: options.locale })}
     >
       <DialogProvider>
-        <HarnessEditor
-          session={session}
-          formId={formId}
-          submitLabel={submitLabel}
-          {...(options.actions === undefined
-            ? {}
-            : { actions: options.actions })}
-          {...(options.editor === undefined ? {} : { editor: options.editor })}
-          {...(options.sections === undefined
-            ? {}
-            : { sections: options.sections })}
-          {...(options.registry === undefined
-            ? {}
-            : { registry: options.registry })}
-        />
+        <ProtocolBuilder client={editorClient} protocolId={protocolId}>
+          <SeedProtocolCache store={store}>
+            <HarnessEditor
+              target={target}
+              formId={formId}
+              editId={editId}
+              submitLabel={submitLabel}
+              onSaved={(id) => {
+                saved.push({
+                  sectionId: id,
+                  stageDocument: store.read(id).document,
+                });
+              }}
+              {...(options.actions === undefined
+                ? {}
+                : { actions: options.actions })}
+              {...(options.editor === undefined
+                ? {}
+                : { editor: options.editor })}
+              {...(options.sections === undefined
+                ? {}
+                : { sections: options.sections })}
+              {...(options.registry === undefined
+                ? {}
+                : { registry: options.registry })}
+            />
+          </SeedProtocolCache>
+        </ProtocolBuilder>
       </DialogProvider>
     </LocaleFrame>,
   );
@@ -631,39 +669,19 @@ export function renderStageEditor<T extends StageType = StageType>(
   // nothing: a section editor's tests type whole questions and attribute
   // names, so the suite spends real seconds waiting on nothing.
   //
-  // `null` is not the same as `0`, which still schedules. Nothing here needs
-  // the gap: what a debounce or a delayed validation is waiting for is time,
-  // not keystrokes, and a test that needs it must await the thing itself —
-  // an assertion that only passed because the typing was slow is an assertion
-  // about the harness.
-  //
   // What it costs is worth saying plainly: with the turn gone, nothing that
   // waits for one runs BETWEEN two keystrokes. A passive effect, a microtask
   // chain or a timer that a real typist's fingers would have let through
-  // arrives here only after the whole string is in — so these tests exercise
-  // one scheduling of a change, not the one a person produces.
-  //
-  // The one turn of the event loop that IS needed — the one between `type`'s
-  // own click and the keystrokes that follow it — is given below.
+  // arrives here only after the whole string is in.
   const keyboard = userEvent.setup({ delay: null });
-  const user = withSafeTypingIntoRichText(keyboard);
-  // Only fabricated revisions are numbered here. A real seeded change takes
-  // the number the host gives it.
-  let fabrications = 0n;
+  const user = afterTheStageHasOpened(withSafeTypingIntoRichText(keyboard));
 
   /**
    * THIS harness's stage form, or `null` when what is mounted has none.
    *
-   * Found inside this harness's own container and by this harness's own id.
-   * `document.getElementById('stage-form')` answered with whichever form the
-   * document held first, which is the first harness a test mounted — so a
-   * second harness reported the first one's fields as its own, and every
-   * question asked of it was answered about something else.
-   *
-   * `null` rather than a throw, because a call may legitimately mount
-   * something that is not the shared shell — a stand-in editor rendering a
-   * paragraph, a section list under test — and "no form" is the honest answer
-   * for those. The callers say what they make of it.
+   * Found inside this harness's own container and by this harness's own id:
+   * `document.getElementById` answered with whichever form the document held
+   * first, so a second harness reported the first one's fields as its own.
    */
   const stageForm = (): HTMLFormElement | null =>
     [...view.container.querySelectorAll('form')].find(
@@ -689,113 +707,94 @@ export function renderStageEditor<T extends StageType = StageType>(
     return form;
   };
 
-  const submit = async (): Promise<FinishRequest | null> => {
-    const before = finishRequests.length;
+  /**
+   * Clicks the submit control and resolves once the form has SETTLED — not
+   * merely once a save landed. Returns the saved stage, or null if the
+   * submit was refused.
+   *
+   * The settling requirement means the stage form must still be mounted when
+   * the save resolves, on the success path as well as the refusal path. Every
+   * harness built on `StageEditorShell` satisfies that, because the shell
+   * keeps the form mounted and clears `aria-busy` after replaying the saved
+   * document over it. A host that unmounted the editor the moment `onSaved`
+   * fired — a dialog that closes on save, say — would instead turn an
+   * instant success into a `waitFor` timeout surfacing as the "found no
+   * form" error above. No current call site does that; if one ever needs to,
+   * it wants its own helper rather than a relaxation of this one, because
+   * the gap this closes is real: `onSaved` fires from inside `save()`,
+   * before the shell has reacted to it.
+   */
+  const submit = async (): Promise<SavedStage | null> => {
+    const before = saved.length;
     const button = within(view.container).getByRole('button', {
       name: submitLabel,
     });
     await user.click(button);
     await waitFor(() => {
-      if (finishRequests.length > before) return;
-      // A submit that did not finish has settled and left its reason on
-      // screen: the form's own errors, or a field marked invalid for
-      // `focusFirstError` to reach. Asserting both is what stops a submit
-      // still in flight from being read as a refusal.
-      //
-      // Settling is read from the FORM, not from the control that was
-      // clicked. It used to be read from the control's `aria-busy`, which only
-      // the package's own `SubmitButton` says — so a host rendering a plain
-      // `<button form={formId}>`, which the action-context contract allows and
-      // several hosts do, never satisfied it: the refusal was on screen and
-      // the form had settled, and the wait ran on to the suite's timeout,
-      // failing against whatever the test was doing next rather than against
-      // the control the host supplied.
+      // Settled either way, read from the FORM rather than from the control
+      // that was clicked — a host may render a plain `<button form={formId}>`
+      // that says nothing about itself. Checked before the save is judged,
+      // on BOTH outcomes: `onSaved` fires from inside `save()`, before the
+      // shell has replayed the saved document over the form — the rebase
+      // that clears its own dirty flag — and before `useForm` clears
+      // `isSubmitting`. A caller that treated `saved.length` moving as
+      // "settled" could read the form in that gap, between the save landing
+      // and the shell finishing what it does about it; every caller of
+      // `submit()` waits for the same signal the form itself uses to say it
+      // is done, rather than each re-deriving its own guess at "done enough"
+      // with a `waitFor` of its own after the fact.
       expect(submittingForm()).toHaveAttribute('aria-busy', 'false');
+      if (saved.length > before) return;
+      // A submit that did not save has settled and left its reason on screen:
+      // the form's own errors, or a field marked invalid for `focusFirstError`
+      // to reach. Asserting both is what stops a submit still in flight from
+      // being read as a refusal.
       expect(refusalOnScreen(view.container)).toBe(true);
     });
-    // Answered against the count taken before the click, never `at(-1)`: after
-    // one save has succeeded, the last request is a request — and a refused
-    // submit reported as that earlier success is a refusal a test can neither
-    // see nor assert against.
-    return finishRequests.length > before
-      ? (finishRequests.at(-1) ?? null)
-      : null;
+    return saved.length > before ? (saved.at(-1) ?? null) : null;
   };
 
   return {
     ...view,
-    session,
     host,
-    gateway,
     user,
     formId,
+    editId,
     seeded,
     submit,
     cancel: async () => {
+      // Unmounting IS the cancel: the lock goes back and whatever the edit
+      // staged is discarded, both from the effects the editor set up.
       await act(async () => {
-        await session.cancel();
+        view.unmount();
       });
+    },
+    opened: async () => {
+      // Everything the mount set in motion, settled: the acquire is a promise
+      // the effect made, so a turn of the microtask queue inside `act` is what
+      // its answer and the render that follows are waiting for.
+      await act(async () => {});
     },
     receiveCodebookUpdate: (patch) => {
-      const applied = host.receiveAuthoritativeSections(
-        codebookSections(patch),
-      );
       act(() => {
-        session.receiveAuthoritativeUpdate({
-          protocolSections: sectionsKeepingSavedStage(
-            applied.protocolSections,
-            session,
-            stageSectionId,
-          ),
-          manifestRevision: applied.manifestRevision,
-        });
-      });
-      // The session may refuse an arrival, and refusing is silent by design.
-      // The only way it can refuse this one is if a fabricated revision has
-      // already taken the session past the host, so say that rather than leave
-      // a test asserting against a codebook change that never landed.
-      if (
-        session.getSnapshot().manifestRevision.hash !==
-        applied.manifestRevision.hash
-      ) {
-        throw new Error(
-          'The session did not take the seeded codebook change. `receiveConflictingCodebookUpdate` has put this session ahead of the host, so nothing the host issues from here on is newer than what the session holds.',
-        );
-      }
-    },
-    receiveConflictingCodebookUpdate: (patch) => {
-      // Past whichever of the two is further ahead, so the session takes it
-      // however many revisions the host has issued, and unknown to the host,
-      // which is the whole point.
-      const sessionSequence = session.getSnapshot().manifestRevision.sequence;
-      const hostSequence = host.getSnapshot().manifestRevision.sequence;
-      const fabricated =
-        (sessionSequence > hostSequence ? sessionSequence : hostSequence) + 1n;
-      fabrications += 1n;
-      act(() => {
-        session.receiveAuthoritativeUpdate({
-          protocolSections: patchedCodebook(
-            session.getSnapshot().protocolSections,
-            patch,
-          ),
-          manifestRevision: {
-            sequence: fabricated,
-            hash: `fabricated-revision-${fabrications}`,
-          },
-        });
+        for (const [id, document] of Object.entries(codebookSections(patch))) {
+          store.applyAsCollaborator(
+            sectionId(parseSectionId(id)),
+            document ?? undefined,
+          );
+        }
       });
     },
+    protocolSections: () =>
+      Object.fromEntries(
+        store.sectionIds().map((id) => [id, store.read(id).document]),
+      ),
     hostCodebook: () =>
-      protocolContextFromSections(host.getSnapshot().protocolSections).codebook,
-    pendingCommands: () => session.getSnapshot().pendingCommands,
-    liveCommands: () => {
-      if (options.applyLive !== true) {
-        throw new Error(
-          'renderStageEditor: liveCommands() needs a live host. Open the harness with `applyLive: true`; without one the session buffers every batch until finish, so an empty answer here says nothing about what the editor did.',
-        );
-      }
-      return [...liveCommands];
-    },
+      protocolContextFromSections(
+        Object.fromEntries(
+          store.sectionIds().map((id) => [id, store.read(id).document]),
+        ),
+      ).codebook,
     ownedKeys: () => readOwnedKeys(stageForm()),
     roundTrip: async ({ unowned = [] } = {}) => {
       // Before the save, because it is a question about what is on screen and
@@ -809,18 +808,18 @@ export function renderStageEditor<T extends StageType = StageType>(
           `Nothing mounted here edits "${seeded.id}" keys: ${orphaned.join(', ')}. They round-trip untouched, so a researcher cannot see or change them. Add the section that owns each one, or name it in \`unowned\` to say the editor does not own it yet.`,
         );
       }
-      const request = await submit();
-      if (request === null) {
+      const written = await submit();
+      if (written === null) {
         throw new Error(
           `The stage did not save, so nothing round-tripped. The editor is showing: ${visibleProblems(view.container)}`,
         );
       }
-      // `id` and `type` are the session's, never the editor's: `seeded.fields`
-      // is the document without them, and `stageDocument` puts them back.
-      const { id: _id, type: _type, ...saved } = request.stageDocument;
+      // `id` and `type` are the section's, never the editor's: `seeded.fields`
+      // is the document without them.
+      const { id: _id, type: _type, ...savedFields } = written.stageDocument;
       const { dropped, added, changed } = stageDocumentDiff(
         seeded.fields,
-        saved,
+        savedFields,
       );
       if (dropped.length > 0 || added.length > 0 || changed.length > 0) {
         throw new Error(
@@ -831,38 +830,47 @@ export function renderStageEditor<T extends StageType = StageType>(
           }`,
         );
       }
-      return request;
+      return written;
     },
     outline: () => readOutline(view.container),
-    setReadOnly: (readOnly = true) => {
-      act(() => {
-        session.setAccess(
-          readOnly
-            ? { mode: 'readOnly', reason: 'lease-lost' }
-            : {
-                mode: 'editable',
-                leaseOwner: FIXTURE_SESSION_OWNER,
-                // The epoch the HOST holds, not a new one. A real host takes
-                // its epoch from whoever issued the lease and the issuer's own
-                // record carries the same number, so the two ends never
-                // disagree about it; this one grants the lease once, at
-                // `FIXTURE_LEASE_EPOCH`, and nothing here rotates it.
-                //
-                // Handing back an epoch of its own left the session claiming
-                // an authority the host does not recognise, and every compound
-                // edit after it was refused `stale-epoch` — invisible to a
-                // test that only reads the page, and reported against whatever
-                // the editor tried to write next rather than against the line
-                // that took editing back.
-                leaseEpoch: FIXTURE_LEASE_EPOCH,
-              },
-        );
-      });
+    takeOverLock: () => {
+      store.release(stageSectionId, HARNESS_PRINCIPAL);
+      store.acquire(stageSectionId, COLLABORATOR);
     },
   };
 }
 
 type HarnessUser = ReturnType<typeof userEvent.setup>;
+
+/**
+ * The researcher's own actions, taken once the stage has finished opening.
+ *
+ * A stage is not editable until the host has answered its acquire: until then
+ * nobody has said whether this researcher may write to it, so the form renders
+ * with its controls disabled. A test's first keystroke is otherwise in the
+ * same turn as the render — earlier than any researcher could act, and into a
+ * form that is on screen but not yet theirs.
+ *
+ * Waited for here, in the one place every test's interaction goes through,
+ * rather than by each test: what a test is about is what it does to an open
+ * editor, and "await the acquire first" in three hundred tests would be the
+ * harness's own timing written out three hundred times.
+ */
+function afterTheStageHasOpened(keyboard: HarnessUser): HarnessUser {
+  return new Proxy(keyboard, {
+    get: (target, property, receiver) => {
+      const value: unknown = Reflect.get(target, property, receiver);
+      if (typeof value !== 'function') return value;
+      const action = value as (...args: unknown[]) => unknown;
+      return async (...args: unknown[]) => {
+        // Everything the mount set in motion, settled: the acquire above all,
+        // which is what takes the controls out of their disabled state.
+        await act(async () => {});
+        return action.apply(target, args);
+      };
+    },
+  });
+}
 
 // Read from the attribute rather than from `isContentEditable`, which jsdom
 // leaves undefined.
@@ -972,44 +980,35 @@ function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
 }
 
 function HarnessEditor<T extends StageType>({
-  session,
+  target,
   formId,
+  editId,
   submitLabel,
+  onSaved,
   actions,
   editor: Editor,
   sections,
   registry,
 }: Readonly<{
-  session: ProtocolBuilderSessionStore;
+  target: StageEditTarget;
   /** This harness's own form id. See `nextStageFormId`. */
   formId: string;
+  /** This harness's own edit id. See `nextEditId`. */
+  editId: string;
   submitLabel: string;
+  onSaved: (sectionId: ProtocolSectionId) => void;
   actions?: StageEditorActions;
   editor?: StageEditorComponent<T>;
   sections?: ReactNode;
   registry?: Partial<StageEditorRegistry>;
 }>) {
-  const controller = useStageEditorController(session, formId);
-
-  if (Editor !== undefined) {
-    // The stage the session opened, as the editor's own stage type. They are
-    // the same interface by construction — `T` comes from this very call — but
-    // the session holds the type as a runtime string, and only the call site
-    // knows which literal it is.
-    const stageType = controller.snapshot.editedSection.identity.type as T;
-    return (
-      <Editor
-        controller={controller}
-        stageType={stageType}
-        {...(actions === undefined ? {} : { actions })}
-      />
-    );
-  }
-
-  if (sections === undefined) {
+  if (sections === undefined && Editor === undefined) {
     return (
       <StageEditor
-        controller={controller}
+        target={target}
+        formId={formId}
+        editId={editId}
+        onSaved={onSaved}
         {...(registry === undefined ? {} : { registry })}
         {...(actions === undefined ? {} : { actions })}
       />
@@ -1017,23 +1016,57 @@ function HarnessEditor<T extends StageType>({
   }
 
   return (
-    <StageEditorShell
-      controller={controller}
-      actions={
-        // This harness's own id, which is what the shell hands the slot
-        // anyway: read from the prop rather than out of the context so the
-        // name means one thing in this component.
-        actions ??
-        (() => <SubmitButton form={formId}>{submitLabel}</SubmitButton>)
-      }
-    >
-      {sections}
-    </StageEditorShell>
+    <ResourceClientProvider editId={editId}>
+      <StageEditSession target={target} formId={formId} onSaved={onSaved}>
+        {Editor === undefined ? (
+          <StageEditorShell
+            actions={
+              // This harness's own id, which is what the shell hands the slot
+              // anyway: read from the prop rather than out of the context so
+              // the name means one thing in this component.
+              actions ??
+              (() => <SubmitButton form={formId}>{submitLabel}</SubmitButton>)
+            }
+          >
+            {sections}
+          </StageEditorShell>
+        ) : (
+          <NamedEditorUnderTest
+            editor={Editor}
+            {...(actions === undefined ? {} : { actions })}
+          />
+        )}
+      </StageEditSession>
+    </ResourceClientProvider>
   );
 }
 
 /**
- * The stage the session is opened on, from whichever of the three the call
+ * The named editor under test, given the interface the stage actually is.
+ *
+ * They are the same interface by construction — `T` comes from the call that
+ * named both — but the stage's type is a runtime string on its document, and
+ * only the call site knows which literal it is.
+ */
+function NamedEditorUnderTest<T extends StageType>({
+  editor: Editor,
+  actions,
+}: Readonly<{
+  editor: StageEditorComponent<T>;
+  actions?: StageEditorActions;
+}>) {
+  const { identity } = useStageEdit();
+  if (identity === undefined) return null;
+  return (
+    <Editor
+      stageType={identity.type as T}
+      {...(actions === undefined ? {} : { actions })}
+    />
+  );
+}
+
+/**
+ * The stage the editor is opened on, from whichever of the three the call
  * gave.
  *
  * The order below is not a preference: `assertOneStageSource` has already
@@ -1066,32 +1099,6 @@ function seedFrom<T extends StageType>(
   return loadFixtureStage(options.stageId);
 }
 
-/**
- * The host's sections, with the edited stage left as the SESSION holds it.
- *
- * The harness's `onFinish` records the save instead of applying it — a test
- * asks what left the session, and a host that also committed it would answer
- * every other test's questions about the authoritative protocol differently.
- * So the host is deliberately a save behind on this one section, and handing
- * its copy back would undo the save inside the session: the editor would go on
- * describing the stage as it was before the researcher saved it.
- *
- * A codebook arrival says nothing about the stage anyway, which is what makes
- * keeping the session's own copy the honest answer rather than a patch over
- * the harness's shortcut. A stage being CREATED has no section in either place
- * yet, and is left exactly as the host answered.
- */
-function sectionsKeepingSavedStage(
-  hostSections: Readonly<Record<string, SectionDoc>>,
-  session: ProtocolBuilderSessionStore,
-  stageSectionId: ProtocolSectionId,
-): Readonly<Record<string, SectionDoc>> {
-  const saved = session.getSnapshot().protocolSections[stageSectionId];
-  return saved === undefined
-    ? hostSections
-    : { ...hostSections, [stageSectionId]: saved };
-}
-
 /** A codebook patch as the sections it changes, `null` for the ones it removes. */
 function codebookSections(
   patch: CodebookPatch,
@@ -1109,17 +1116,44 @@ function codebookSections(
   return changed;
 }
 
-/** The sections a patch would leave behind, applied to a copy of `sections`. */
-function patchedCodebook(
-  sections: Readonly<Record<string, SectionDoc>>,
-  patch: CodebookPatch,
+/**
+ * The protocol the harness serves, with the stage under test in it.
+ *
+ * A stage the fixture does not contain still has to be part of the protocol it
+ * is validated inside, or every save fails on the stage order — unless it is
+ * being CREATED, which is exactly the case where the protocol does not hold it
+ * yet.
+ */
+function seededSections(
+  seeded: SeededStage,
+  assetManifest: Readonly<Record<string, unknown>>,
 ): Record<string, SectionDoc> {
-  const next: Record<string, SectionDoc> = { ...sections };
-  for (const [id, definition] of Object.entries(codebookSections(patch))) {
-    if (definition === null) delete next[id];
-    else next[id] = definition;
+  const base = fixtureProtocolSections();
+  const sections: Record<string, SectionDoc> = { ...base };
+  if (seeded.creation === undefined) {
+    sections[sectionId({ kind: 'stage', stageId: seeded.id })] = {
+      id: seeded.id,
+      type: seeded.type,
+      ...seeded.fields,
+    };
+    sections[sectionId({ kind: 'stageOrder' })] = {
+      stages: stageOrderWith(base, seeded.id),
+    };
   }
-  return next;
+  sections[sectionId({ kind: 'assets' })] = assetManifest;
+  return sections;
+}
+
+/** The interview's stage order, with the edited stage in it exactly once. */
+function stageOrderWith(
+  sections: Readonly<Record<string, SectionDoc>>,
+  stageId: string,
+): string[] {
+  const order = sections[sectionId({ kind: 'stageOrder' })]?.stages;
+  const stages = Array.isArray(order)
+    ? order.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+  return stages.includes(stageId) ? stages : [...stages, stageId];
 }
 
 /** What a round trip did to the stage, one path per difference. */

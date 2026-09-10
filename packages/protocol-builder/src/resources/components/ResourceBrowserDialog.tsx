@@ -9,7 +9,7 @@ import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useDiscardDraftGuard } from '../../form/discardDraftGuard.ts';
-import { resourceOk, type ResourceDescriptor } from '../gateway.ts';
+import { resourceOk, type ResourceDescriptor } from '../types.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
   browsableKinds,
@@ -69,8 +69,8 @@ export type ResourceBrowserDialogProps = Readonly<{
 
 /**
  * Where a researcher chooses a resource: everything the protocol already
- * holds, everything imported so far in this editing session, and the way to
- * add another.
+ * holds, everything imported since this stage was opened, and the way to add
+ * another.
  *
  * Importing selects what it imported, exactly as choosing an existing resource
  * does, so a researcher who has just dropped a file is not then asked to find

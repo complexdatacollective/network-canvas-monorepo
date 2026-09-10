@@ -16,14 +16,14 @@ import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Section from '@codaco/fresco-ui/Section';
 import type { Codebook, VariableType } from '@codaco/protocol-validation';
 
-import { EntitySelectControl } from '../fields/EntitySelectField.tsx';
-import { VariablePickerControl } from '../fields/VariablePicker.tsx';
+import EntityTypePickerField from '../fields/EntityTypePickerField.tsx';
+import VariablePickerField from '../fields/VariablePickerField.tsx';
 import DialogForm, {
   type DialogFormErrors,
   type DialogFormProps,
 } from '../form/DialogForm.tsx';
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import type { RuleOperatorOption } from './operators.ts';
 import { incompleteRulePart, type RuleDraft, type RulePart } from './rule.ts';
 import {
@@ -971,8 +971,8 @@ const RULE_PROBLEM_PLACEMENTS: Readonly<
  *
  * Pure, and separate from the component, because it is the whole of what
  * "Finish and Close" decides: the dialog only hands it the values the fields
- * currently hold, the codebook the session holds right now, and the targets
- * the rule set it belongs to may be about.
+ * currently hold, the codebook as it now stands, and the targets the rule set
+ * it belongs to may be about.
  *
  * Everything it decides comes from `describeRule`, which is the whole point:
  * the row, the rule-set field and this dialog read one description, so a rule
@@ -1068,7 +1068,7 @@ function EgoRuleFields({
         name={ATTRIBUTE_FIELD}
         label={intl.formatMessage(messages.egoAttributeLabel)}
         hint={intl.formatMessage(messages.egoAttributeHint)}
-        component={VariablePickerControl}
+        component={VariablePickerField}
         options={variableOptions}
         emptyMessage={intl.formatMessage(messages.egoAttributeEmpty)}
         initialValue={seedString(seed, 'attribute')}
@@ -1170,7 +1170,7 @@ function EntityRuleFields({
                 : messages.edgeAttributeLabel,
             )}
             hint={intl.formatMessage(messages.attributeHint)}
-            component={VariablePickerControl}
+            component={VariablePickerField}
             options={variableOptions}
             emptyMessage={intl.formatMessage(
               isNode
@@ -1215,7 +1215,7 @@ function RuleEditorFields({
   ruleTypes: readonly RuleTypeOption[];
   description: ReactNode;
 }>) {
-  const { protocolContext } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const intl = useAppIntl();
   const codebook = protocolContext.codebook;
   const values = useFormValue(RULE_CASCADE);
@@ -1304,7 +1304,7 @@ function RuleEditorFields({
             hint={intl.formatMessage(
               target === 'node' ? messages.nodeTypeHint : messages.edgeTypeHint,
             )}
-            component={EntitySelectControl}
+            component={EntityTypePickerField}
             entityType={target}
             initialValue={seedString(seed, 'type')}
             required={intl.formatMessage(ruleEditorRequiredMessage)}
@@ -1381,8 +1381,8 @@ export type RuleEditorDialogProps = Readonly<{
  * on precisely the untouched fields it exists for, and the refusal arrived as
  * a modal that named none of them.
  *
- * The codebook reaches every control through the editor's protocol context,
- * never as a prop and never through a host selector.
+ * The codebook reaches every control through the package's protocol read
+ * model, never as a prop and never through a host selector.
  */
 export default function RuleEditorDialog({
   open,
@@ -1410,11 +1410,11 @@ export default function RuleEditorDialog({
 
   const intl = useAppIntl();
 
-  // The codebook the session holds right now, read through a ref so the check
-  // below stays live without giving the validator a new identity on every
-  // snapshot the session receives. Same reason `useRuleSetValidation` does it:
-  // a collaborator's edit has to reach a dialog that is already open.
-  const { protocolContext } = useStageEditorForm();
+  // The codebook as it now stands, read through a ref so the check below stays
+  // live without giving the validator a new identity on every revision that
+  // reaches it. Same reason `useRuleSetValidation` does it: a codebook edit
+  // committed elsewhere has to reach a dialog that is already open.
+  const protocolContext = useProtocolContext();
   const codebookRef = useRef(protocolContext.codebook);
   codebookRef.current = protocolContext.codebook;
 

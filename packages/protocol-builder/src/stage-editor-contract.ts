@@ -2,7 +2,6 @@ import type { ComponentType, ReactNode } from 'react';
 
 import type { StageType } from '@codaco/protocol-validation';
 
-import type { StageEditorController } from './controller.ts';
 import { STAGE_TYPES } from './stage-types.ts';
 
 /**
@@ -17,7 +16,6 @@ import { STAGE_TYPES } from './stage-types.ts';
  * a host can read without dragging a component tree into its own program.
  */
 export type StageEditorActionContext = Readonly<{
-  controller: StageEditorController;
   formId: string;
   readOnly: boolean;
 }>;
@@ -27,7 +25,6 @@ export type StageEditorActions = (
 ) => ReactNode;
 
 export type StageEditorProps<T extends StageType = StageType> = {
-  controller: StageEditorController;
   stageType: T;
   /**
    * The host's action chrome, which the editor passes straight through to the
@@ -64,43 +61,6 @@ export type StageEditorRegistry = {
  * to know how any of them is built.
  */
 export type StageEditorRegistryPart = Partial<StageEditorRegistry>;
-
-/**
- * Declares a family's part, keeping the exact set of types it claims.
- *
- * THE WAY TO WRITE A PART. An annotation — `export const part:
- * StageEditorRegistryPart = {…}` — widens the value to the whole partial
- * registry, and every key of that is optional, so `keyof` it is every stage
- * type. The coverage machinery in `stageEditorRegistry.ts` is built on
- * `keyof`: widen one part and the package believes every interface has an
- * editor, `UnregisteredStageType` collapses to `never`, and both compile-time
- * checks pass while saying nothing. Inferring the type from the object literal
- * instead is what keeps "this family claims exactly these three interfaces" a
- * fact the type system still knows.
- *
- * Here rather than beside the registry that composes the parts, because the
- * registry imports every part: a family reaching back into it for this helper
- * would close a cycle, and `REGISTRY_PARTS` would read a part binding that is
- * not initialised yet whenever a program loads the family module first. This
- * contract imports nothing but the controller and the stage types, so a part
- * can always import it.
- *
- * `type-tests/` compiles the failures this prevents, `partFromRegistry.ts`
- * among them: the registry must not offer this helper, or a family could reach
- * it there and close the cycle again.
- */
-export function defineStageEditorPart<
-  const Part extends StageEditorRegistryPart,
->(part: Part): Part {
-  return part;
-}
-
-export type StageEditorDispatcherProps = {
-  controller: StageEditorController;
-  registry: StageEditorRegistry;
-  /** Handed on to whichever editor the registry names. See `StageEditor`. */
-  actions?: StageEditorActions;
-};
 
 export function defineStageEditorRegistry<T extends StageEditorRegistry>(
   registry: T,

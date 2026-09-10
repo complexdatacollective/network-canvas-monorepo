@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
@@ -8,27 +8,30 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { useStageEditorController } from '../../controller.ts';
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
-import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-} from '../../session.ts';
+import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
+import { ResourceClientProvider } from '../../resources/client.tsx';
+import { StageEditSession } from '../../stageEdit.tsx';
+import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import {
   expectNoLocaleLeaks,
   protocolStrings,
 } from '../../testing/localeSweep.ts';
-import { EntitySelectControl } from '../EntitySelectField.tsx';
-import SkipLogicDestinationField from '../SkipLogicDestinationField.tsx';
-import { VariablePickerControl } from '../VariablePicker.tsx';
+import {
+  HARNESS_PRINCIPAL,
+  SeedProtocolCache,
+} from '../../testing/seedProtocolCache.tsx';
+import EntityTypePickerField from '../EntityTypePickerField.tsx';
+import StageDestinationPickerField from '../StageDestinationPickerField.tsx';
+import VariablePickerField from '../VariablePickerField.tsx';
 
 /**
  * The three controls in this directory, read in the researcher's own language.
  *
- * `EntitySelectControl` and `SkipLogicDestinationField` render their own words
+ * `EntityTypePickerField` and `StageDestinationPickerField` render their own words
  * with `useAppIntl()`; the destination control is handed everything it shows by
- * `skipLogicDestination.ts`, which is pure and takes the formatter as an
+ * `stageDestination.ts`, which is pure and takes the formatter as an
  * argument. Both have to agree, so this mounts the control rather than calling
  * the producer: a translated select beside an English option list is exactly
  * the drift this checks for.
@@ -41,6 +44,10 @@ import { VariablePickerControl } from '../VariablePicker.tsx';
 const settingsSection = sectionId({ kind: 'settings' });
 const stageOrderSection = sectionId({ kind: 'stageOrder' });
 const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });
+const STAGE_SECTION = sectionId({ kind: 'stage', stageId: 'stage-1' });
+
+/** The stage under edit, as its own section holds it. */
+const stageFields: SectionDoc = { label: 'Welcome', title: 'Hello', items: [] };
 
 const informationStage = (id: string, label: string): SectionDoc => ({
   id,
@@ -64,15 +71,12 @@ const personDefinition: SectionDoc = {
  * Every one of them is named: the protocol schema requires a stage label, so
  * the option that stands in for an unnamed stage cannot be reached through a
  * real protocol context. That branch is exercised in English against the pure
- * option builder, in `skipLogicDestination.test.ts`.
+ * option builder, in `stageDestination.test.ts`.
  */
 const baseSections: Record<string, SectionDoc> = {
   [settingsSection]: { name: 'Field localization', schemaVersion: 8 },
   [stageOrderSection]: { stages: ['stage-1', 'stage-2', 'stage-3'] },
-  [sectionId({ kind: 'stage', stageId: 'stage-1' })]: informationStage(
-    'stage-1',
-    'Welcome',
-  ),
+  [STAGE_SECTION]: { id: 'stage-1', type: 'Information', ...stageFields },
   [sectionId({ kind: 'stage', stageId: 'stage-2' })]: informationStage(
     'stage-2',
     'Middle',
@@ -84,58 +88,59 @@ const baseSections: Record<string, SectionDoc> = {
   [personSection]: personDefinition,
 };
 
-const stageFields: SectionDoc = { label: 'Welcome', title: 'Hello', items: [] };
-
 /**
  * Everything on screen that is the researcher's rather than this package's.
  *
  * Handed to the sweep so a stage a researcher called "Welcome" is not reported
  * as an untranslated string. Read out of the same documents the harness mounts,
  * so widening a fixture cannot quietly widen the sweep's blind spot; `extra`
- * carries the values a test passes as props rather than through the session —
+ * carries the values a test passes as props rather than through the protocol —
  * a dangling type id, an option list, a chosen value.
  */
 const researcherWords = (...extra: readonly unknown[]) =>
   protocolStrings(baseSections, stageFields, ...extra);
 
-function createSession(sections: Record<string, SectionDoc> = baseSections) {
-  return new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('Information', () => 'stage-1'),
-    fields: { ...stageFields },
-    protocolSections: sections,
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Field localization',
-      schemaVersion: 8,
-      codebook: {},
-      stages: [stageDocument],
-    }),
-  });
-}
-
+/**
+ * The editor these controls live in, over the protocol above served from
+ * memory — the same host the shared harness mounts, seeded here so the whole
+ * surface is on screen synchronously.
+ */
 function Harness({
-  session,
+  sections,
   children,
 }: {
-  session: ProtocolBuilderSessionStore;
+  sections: Record<string, SectionDoc>;
   children: ReactNode;
 }) {
-  const controller = useStageEditorController(session, 'stage-form');
+  const [host] = useState(() =>
+    createInMemoryHost({ sections, principal: HARNESS_PRINCIPAL }),
+  );
+
   return (
-    <StageEditorShell controller={controller}>{children}</StageEditorShell>
+    <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <SeedProtocolCache store={host.store}>
+        <ResourceClientProvider>
+          <StageEditSession
+            target={{ sectionId: STAGE_SECTION }}
+            formId="stage-form"
+          >
+            <StageEditorShell>{children}</StageEditorShell>
+          </StageEditSession>
+        </ResourceClientProvider>
+      </SeedProtocolCache>
+    </ProtocolBuilder>
   );
 }
 
 /** A control that reads the editor's protocol context, in Spanish. */
-const inEditor = (children: ReactNode, session = createSession()) => (
+const inEditor = (children: ReactNode, sections = baseSections) => (
   <AppI18nProvider
     locale="es"
     locales={ecosystemLocales}
     messages={protocolBuilderCatalogs.es}
   >
     <DialogProvider>
-      <Harness session={session}>{children}</Harness>
+      <Harness sections={sections}>{children}</Harness>
     </DialogProvider>
   </AppI18nProvider>
 );
@@ -185,7 +190,7 @@ describe('the fields in this directory, read in Spanish', () => {
     // Literals rather than the same descriptors re-formatted: asserting
     // `esIntl.formatMessage(...)` here would pass whatever the catalog said,
     // including nothing.
-    render(inEditor(<EntitySelectControl entityType="node" value="ghost" />));
+    render(inEditor(<EntityTypePickerField entityType="node" value="ghost" />));
 
     expect(
       screen.getByRole('radiogroup', { name: 'Tipo de nodo' }),
@@ -209,12 +214,7 @@ describe('the fields in this directory, read in Spanish', () => {
   it('says a protocol has no types yet in Spanish', () => {
     const { [personSection]: _person, ...withoutTypes } = baseSections;
 
-    render(
-      inEditor(
-        <EntitySelectControl entityType="node" />,
-        createSession(withoutTypes),
-      ),
-    );
+    render(inEditor(<EntityTypePickerField entityType="node" />, withoutTypes));
 
     expect(
       screen.getByText('Este protocolo aún no tiene tipos de nodo.'),
@@ -224,7 +224,7 @@ describe('the fields in this directory, read in Spanish', () => {
   it('reads the attribute picker in Spanish', () => {
     render(
       standalone(
-        <VariablePickerControl
+        <VariablePickerField
           name="attribute"
           options={[{ value: 'age', label: 'Age', type: 'number' }]}
           value="gone"
@@ -234,13 +234,11 @@ describe('the fields in this directory, read in Spanish', () => {
 
     expect(
       screen.getByRole('option', {
-        name: 'gone — este atributo ya no está en el libro de códigos',
+        name: 'gone — este atributo no está disponible aquí',
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'Este atributo ya no está en el libro de códigos. Elige otro.',
-      ),
+      screen.getByText('Este atributo no está disponible aquí. Elige otro.'),
     ).toBeInTheDocument();
     // The placeholder is still offered while a dangling choice is showing.
     expect(
@@ -255,7 +253,7 @@ describe('the fields in this directory, read in Spanish', () => {
   it('names the chosen attribute’s type in Spanish', () => {
     render(
       standalone(
-        <VariablePickerControl
+        <VariablePickerField
           name="attribute"
           options={[{ value: 'age', label: 'Age', type: 'number' }]}
           value="age"
@@ -270,7 +268,7 @@ describe('the fields in this directory, read in Spanish', () => {
   });
 
   it('says there is nothing to choose from in Spanish', () => {
-    render(standalone(<VariablePickerControl name="attribute" />));
+    render(standalone(<VariablePickerField name="attribute" />));
 
     expect(
       screen.getByText('No hay atributos entre los que elegir.'),
@@ -279,7 +277,7 @@ describe('the fields in this directory, read in Spanish', () => {
 
   it('offers the skip destinations in Spanish', () => {
     render(
-      inEditor(<SkipLogicDestinationField name="skipLogic.destination" />),
+      inEditor(<StageDestinationPickerField name="skipLogic.destination" />),
     );
 
     expect(optionText()).toEqual([
@@ -296,7 +294,7 @@ describe('the fields in this directory, read in Spanish', () => {
   it('reports a destination the interview has lost in Spanish', () => {
     render(
       inEditor(
-        <SkipLogicDestinationField
+        <StageDestinationPickerField
           name="skipLogic.destination"
           value={{ type: 'stage', stageId: 'deleted' }}
         />,

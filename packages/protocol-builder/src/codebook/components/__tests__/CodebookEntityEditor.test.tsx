@@ -1,26 +1,22 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
-import { applyCommands, type SectionDoc } from '@codaco/studio-sync/apply';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { CodebookSubject } from '../../../protocol-context.ts';
-import type {
-  CompoundEditRequest,
-  CompoundEditResult,
-} from '../../../session.ts';
+import { codebookRefusalMessage } from '../../compoundFailureCopy.ts';
+import type { CodebookWriteOutcome } from '../../writes.ts';
 import CodebookEntityEditor, {
   type CodebookEntityEditorProps,
 } from '../CodebookEntityEditor.tsx';
 
 const NODE_SUBJECT = { entity: 'node', type: 'person:adult' } as const;
+const PERSON_SECTION = sectionId({
+  kind: 'codebookNode',
+  typeId: 'person:adult',
+});
 
 /** What a host says when it fails: the schema's own sentence about a path. */
 const HOST_WORDS = 'Invalid input: expected object, received undefined';
@@ -35,43 +31,18 @@ const NODE_DOCUMENT: SectionDoc = {
   },
 };
 
-const appliedResult = (): Extract<
-  CompoundEditResult,
-  { status: 'applied' }
-> => ({
+const applied = (): CodebookWriteOutcome => ({
   status: 'applied',
-  update: {
-    protocolSections: {},
-    manifestRevision: { sequence: 2n, hash: 'revision-2' },
-  },
+  sectionId: PERSON_SECTION,
 });
 
-const deferred = <Value,>() => {
-  let resolvePromise: ((value: Value) => void) | undefined;
-  const promise = new Promise<Value>((resolve) => {
-    resolvePromise = resolve;
-  });
-  return {
-    promise,
-    resolve(value: Value) {
-      if (resolvePromise === undefined)
-        throw new Error('deferred is not ready');
-      resolvePromise(value);
-    },
-  };
-};
+type SubmitEntity = (document: SectionDoc) => Promise<CodebookWriteOutcome>;
 
-const renderUpdateEditor = (
-  onSubmit: (
-    request: CompoundEditRequest,
-  ) => CompoundEditResult | Promise<CompoundEditResult>,
-) =>
+const renderUpdateEditor = (onSubmit: SubmitEntity) =>
   render(
     <CodebookEntityEditor
       mode="update"
       sessionKey="open-1"
-      createRequestId={() => 'request-update-person'}
-      description="Update person type"
       subject={NODE_SUBJECT}
       initialDraft={NODE_DOCUMENT}
       authoritativeDocument={NODE_DOCUMENT}
@@ -87,21 +58,16 @@ describe('CodebookEntityEditor', () => {
       Readonly<{ mode: 'create' }>
     >;
     expectTypeOf<CreateEditorProps['onApplied']>().toEqualTypeOf<
-      (result: Extract<CompoundEditResult, { status: 'applied' }>) => void
+      (outcome: Extract<CodebookWriteOutcome, { status: 'applied' }>) => void
     >();
   });
 
   it('does not submit an unchanged existing entity', () => {
-    const createRequestId = vi.fn(() => 'should-not-be-created');
-    const onSubmit = vi.fn<
-      (request: CompoundEditRequest) => CompoundEditResult
-    >(() => appliedResult());
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     const { container } = render(
       <CodebookEntityEditor
         mode="update"
         sessionKey="unchanged"
-        createRequestId={createRequestId}
-        description="Update person"
         subject={NODE_SUBJECT}
         initialDraft={NODE_DOCUMENT}
         authoritativeDocument={NODE_DOCUMENT}
@@ -115,72 +81,12 @@ describe('CodebookEntityEditor', () => {
     const form = container.querySelector('form');
     if (form === null) throw new Error('expected entity editor form');
     fireEvent.submit(form);
-    expect(createRequestId).not.toHaveBeenCalled();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it.each([
-    { caseName: 'matching', publishedName: 'Adult', shouldComplete: true },
-    {
-      caseName: 'different',
-      publishedName: 'RemoteName',
-      shouldComplete: false,
-    },
-  ])(
-    '$caseName authoritative publication during submit completes: $shouldComplete',
-    async ({ publishedName, shouldComplete }) => {
-      const user = userEvent.setup();
-      const pending =
-        deferred<Extract<CompoundEditResult, { status: 'applied' }>>();
-      const onSubmit = vi.fn(() => pending.promise);
-      const onApplied = vi.fn();
-      const commonProps = {
-        mode: 'update' as const,
-        sessionKey: `pending-${publishedName}`,
-        createRequestId: () => `request-${publishedName}`,
-        description: 'Update person',
-        subject: NODE_SUBJECT,
-        initialDraft: NODE_DOCUMENT,
-        existingEntityNames: [] as const,
-        onSubmit,
-        onApplied,
-      };
-      const { rerender } = render(
-        <CodebookEntityEditor
-          {...commonProps}
-          authoritativeDocument={NODE_DOCUMENT}
-        />,
-      );
-
-      const name = screen.getByRole('textbox', { name: 'Node type name' });
-      await user.clear(name);
-      await user.type(name, 'Adult');
-      await user.click(screen.getByRole('button', { name: 'Save entity' }));
-      expect(onSubmit).toHaveBeenCalledOnce();
-
-      rerender(
-        <CodebookEntityEditor
-          {...commonProps}
-          authoritativeDocument={{ ...NODE_DOCUMENT, name: publishedName }}
-        />,
-      );
-      await act(async () => pending.resolve(appliedResult()));
-      await waitFor(() =>
-        expect(
-          screen.getByRole('button', { name: 'Save entity' }),
-        ).toBeDisabled(),
-      );
-
-      if (shouldComplete) expect(onApplied).toHaveBeenCalledOnce();
-      else expect(onApplied).not.toHaveBeenCalled();
-    },
-  );
-
   it('updates an existing node while preserving variables and unrendered properties', async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn<
-      (request: CompoundEditRequest) => CompoundEditResult
-    >(() => appliedResult());
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     renderUpdateEditor(onSubmit);
 
     const name = screen.getByRole('textbox', { name: 'Node type name' });
@@ -189,20 +95,59 @@ describe('CodebookEntityEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
-    const request = onSubmit.mock.calls[0]?.[0];
-    const edit = request?.edits[0];
-    if (edit?.kind !== 'update') throw new Error('expected update request');
-    expect(applyCommands(NODE_DOCUMENT, [...edit.commands])).toEqual({
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
       ...NODE_DOCUMENT,
       name: 'Adult',
     });
   });
 
+  it('saves the palette position the researcher picked from the swatches', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    renderUpdateEditor(onSubmit);
+
+    expect(screen.getByRole('radio', { name: 'Node color 1' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Node color 4' }));
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      ...NODE_DOCUMENT,
+      color: 'node-color-seq-4',
+    });
+  });
+
+  it('shows a stored colour the palette does not offer rather than any of the ones it does', () => {
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
+    const document = { ...NODE_DOCUMENT, color: 'cat-color-seq-3' };
+    render(
+      <CodebookEntityEditor
+        mode="update"
+        sessionKey="outside-palette"
+        subject={NODE_SUBJECT}
+        initialDraft={document}
+        authoritativeDocument={document}
+        existingEntityNames={[]}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect(
+      screen.getByRole('radio', { name: 'Current color (cat-color-seq-3)' }),
+    ).toBeChecked();
+    // Nothing in the palette stands in for it: a swatch checked here would be
+    // a colour the researcher never chose, and touching any other swatch would
+    // write it over the one the type actually has.
+    expect(
+      screen
+        .getAllByRole('radio')
+        .filter((swatch) => swatch.getAttribute('aria-checked') === 'true'),
+    ).toHaveLength(1);
+  });
+
   it('accepts periods in a schema-valid entity name', async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn<
-      (request: CompoundEditRequest) => CompoundEditResult
-    >(() => appliedResult());
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     renderUpdateEditor(onSubmit);
 
     const name = screen.getByRole('textbox', { name: 'Node type name' });
@@ -217,9 +162,7 @@ describe('CodebookEntityEditor', () => {
     'rejects the export-unsafe entity name %s',
     async (invalidName) => {
       const user = userEvent.setup();
-      const onSubmit = vi.fn<
-        (request: CompoundEditRequest) => CompoundEditResult
-      >(() => appliedResult());
+      const onSubmit = vi.fn<SubmitEntity>(async () => applied());
       renderUpdateEditor(onSubmit);
 
       const name = screen.getByRole('textbox', { name: 'Node type name' });
@@ -239,15 +182,11 @@ describe('CodebookEntityEditor', () => {
 
   it('rejects a canonically equivalent entity name', async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn<
-      (request: CompoundEditRequest) => CompoundEditResult
-    >(() => appliedResult());
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     render(
       <CodebookEntityEditor
         mode="update"
         sessionKey="canonical-duplicate"
-        createRequestId={() => 'canonical-duplicate'}
-        description="Update adult type"
         subject={NODE_SUBJECT}
         initialDraft={{ ...NODE_DOCUMENT, name: 'Adult' }}
         authoritativeDocument={{ ...NODE_DOCUMENT, name: 'Adult' }}
@@ -269,9 +208,7 @@ describe('CodebookEntityEditor', () => {
 
   it('rejects an icon the Fresco renderer cannot display', async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn<
-      (request: CompoundEditRequest) => CompoundEditResult
-    >(() => appliedResult());
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     renderUpdateEditor(onSubmit);
 
     const icon = screen.getByRole('textbox', { name: 'Interface icon' });
@@ -288,14 +225,10 @@ describe('CodebookEntityEditor', () => {
 
   it('reacts to live read-only access without losing the draft', async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn<
-      (request: CompoundEditRequest) => CompoundEditResult
-    >(() => appliedResult());
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     const commonProps = {
       mode: 'update' as const,
       sessionKey: 'live-read-only',
-      createRequestId: () => 'request-read-only',
-      description: 'Update person',
       subject: NODE_SUBJECT,
       initialDraft: NODE_DOCUMENT,
       authoritativeDocument: NODE_DOCUMENT,
@@ -332,7 +265,7 @@ describe('CodebookEntityEditor', () => {
     label: string;
     subject: CodebookSubject;
     draft: SectionDoc;
-    expectedSection: string;
+    expected: SectionDoc;
   }>([
     {
       label: 'node',
@@ -343,37 +276,41 @@ describe('CodebookEntityEditor', () => {
         icon: 'add-a-person',
         shape: { default: 'square' },
       },
-      expectedSection: 'codebook:node:new:person',
+      expected: {
+        name: 'NewPerson',
+        color: 'node-color-seq-2',
+        icon: 'add-a-person',
+        shape: { default: 'square' },
+        variables: {},
+      },
     },
     {
       label: 'edge',
       subject: { entity: 'edge', type: 'new:relationship' },
       draft: { name: 'Knows', color: 'edge-color-seq-2' },
-      expectedSection: 'codebook:edge:new:relationship',
+      expected: { name: 'Knows', color: 'edge-color-seq-2', variables: {} },
     },
     {
       label: 'ego',
       subject: { entity: 'ego' },
       draft: {},
-      expectedSection: 'codebook:ego',
+      expected: { variables: {} },
     },
   ])(
-    'creates a new $label section',
-    async ({ subject, draft, expectedSection }) => {
+    'hands over the whole document a new $label section is created from',
+    async ({ subject, draft, expected }) => {
       const user = userEvent.setup();
-      const onSubmit = vi.fn<
-        (request: CompoundEditRequest) => CompoundEditResult
-      >(() => appliedResult());
+      const onSubmit = vi.fn<SubmitEntity>(async () => applied());
       const onApplied =
         vi.fn<
-          (result: Extract<CompoundEditResult, { status: 'applied' }>) => void
+          (
+            outcome: Extract<CodebookWriteOutcome, { status: 'applied' }>,
+          ) => void
         >();
       render(
         <CodebookEntityEditor
           mode="create"
-          sessionKey={`create-${expectedSection}`}
-          createRequestId={() => `request-${expectedSection}`}
-          description="Create entity"
+          sessionKey={`create-${subject.entity}`}
           subject={subject}
           initialDraft={draft}
           existingEntityNames={[]}
@@ -385,79 +322,23 @@ describe('CodebookEntityEditor', () => {
       await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
       await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
-      expect(onApplied).toHaveBeenCalledOnce();
-      expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({
-        id: `request-${expectedSection}`,
-        edits: [{ kind: 'create', sectionId: expectedSection }],
-      });
+      expect(onSubmit.mock.calls[0]?.[0]).toEqual(expected);
+      expect(onApplied).toHaveBeenCalledWith(applied());
     },
   );
 
   /**
-   * A host refuses in the protocol schema's words, about a path — "expected
-   * object, received undefined". That sentence is about the stage the
-   * researcher was configuring, not the type they were creating, and it names
-   * neither what they did nor what to do next. Repeating it is how an
-   * authoring tool tells someone their work failed for reasons it will not
-   * explain.
-   *
-   * Both ways a host can fail carry one: a refusal carries it in `message`, and
-   * something that threw carries whatever it threw. Neither reaches the
-   * researcher.
+   * A save that threw carries whatever the thing that threw had to say, and it
+   * is written for whoever reads a log — "expected object, received undefined"
+   * is about a path, and names neither what the researcher did nor what to do
+   * next. Repeating it is how an authoring tool tells someone their work failed
+   * for reasons it will not explain.
    */
-  it.each([
-    {
-      caseName: 'refused it',
-      answer: (): CompoundEditResult => ({
-        status: 'failed',
-        reason: 'host-error',
-        message: HOST_WORDS,
-      }),
-      expected:
-        'The protocol would not be valid with this change, so nothing was saved.',
-    },
-    {
-      caseName: 'threw',
-      answer: (): CompoundEditResult => {
-        throw new Error(HOST_WORDS);
-      },
-      expected:
-        'This change could not be saved, and nothing was altered. Wait a moment and try again.',
-    },
-  ])(
-    'says what a failed save means when the host $caseName, never the words it used',
-    async ({ answer, expected }) => {
-      const user = userEvent.setup();
-      const onSubmit =
-        vi.fn<(request: CompoundEditRequest) => CompoundEditResult>(answer);
-      renderUpdateEditor(onSubmit);
-
-      const name = screen.getByRole('textbox', { name: 'Node type name' });
-      await user.clear(name);
-      await user.type(name, 'Adult');
-      await user.click(screen.getByRole('button', { name: 'Save entity' }));
-
-      const alert = await screen.findByRole('alert');
-      expect(alert).toHaveTextContent(expected);
-      expect(alert).not.toHaveTextContent(HOST_WORDS);
-      // And it points nowhere: this alert is the first thing in the editor, and
-      // nothing renders the host's account of what it refused, so a message
-      // sending the researcher to "the details above" sends them to nothing.
-      expect(alert).not.toHaveTextContent(/above/i);
-      // The draft is still there to correct, as it is after any failure.
-      expect(name).toHaveValue('Adult');
-    },
-  );
-
-  it('explains a lost lease in its own words too', async () => {
+  it('says what a failed save means when the write threw, never the words it used', async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn<
-      (request: CompoundEditRequest) => CompoundEditResult
-    >((): CompoundEditResult => ({
-      status: 'failed',
-      reason: 'lease-lost',
-      message: 'editing access was lost before the compound edit completed',
-    }));
+    const onSubmit = vi.fn<SubmitEntity>(() => {
+      throw new Error(HOST_WORDS);
+    });
     renderUpdateEditor(onSubmit);
 
     const name = screen.getByRole('textbox', { name: 'Node type name' });
@@ -467,35 +348,32 @@ describe('CodebookEntityEditor', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(
-      'You are no longer the editor of this stage, so nothing was saved.',
+      'This change could not be saved, and nothing was altered. Wait a moment and try again.',
     );
-    expect(alert).not.toHaveTextContent('compound edit');
+    expect(alert).not.toHaveTextContent(HOST_WORDS);
+    // And it points nowhere: this alert is the first thing in the editor, and
+    // nothing renders the host's account of what it refused, so a message
+    // sending the researcher to "the details above" sends them to nothing.
+    expect(alert).not.toHaveTextContent(/above/i);
+    // The draft is still there to correct, as it is after any failure.
+    expect(name).toHaveValue('Adult');
   });
 
-  it('keeps a blocked draft open, reports the holder, and focuses the failure', async () => {
+  /**
+   * The refusal reaches this editor encoded, so it is decoded HERE rather than
+   * where it was raised — which is what lets it follow a change of language
+   * while it stands. A renderer that showed the message as it arrived would put
+   * the `@codaco/app-i18n/error/v1:` payload in front of the researcher.
+   */
+  it('keeps a refused draft open, reports the holder, and focuses the failure', async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn<
-      (request: CompoundEditRequest) => CompoundEditResult
-    >((): CompoundEditResult => ({
-      status: 'blocked',
-      blockedSections: [
-        {
-          sectionId: sectionId({
-            kind: 'codebookNode',
-            typeId: 'person:adult',
-          }),
-          holder: {
-            sessionId: 'remote-session',
-            userId: 'remote-user',
-            displayName: 'Morgan',
-            sectionId: sectionId({
-              kind: 'codebookNode',
-              typeId: 'person:adult',
-            }),
-            mode: 'editing',
-          },
-        },
-      ],
+    const onSubmit = vi.fn<SubmitEntity>(async () => ({
+      status: 'refused',
+      message: codebookRefusalMessage({
+        kind: 'held',
+        holders: ['Morgan'],
+      }),
+      refusal: { kind: 'held' },
     }));
     renderUpdateEditor(onSubmit);
 
@@ -504,170 +382,25 @@ describe('CodebookEntityEditor', () => {
     await user.type(name, 'UnsavedLocalName');
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
-    const alert = await screen.findByRole('alert');
+    // A notice rather than an alert: a section somebody else is holding is not
+    // a fault, and the change lands once they are finished.
+    const alert = await screen.findByRole('status');
     expect(alert).toHaveTextContent(
       'Morgan is currently editing a section needed for this change.',
     );
+    expect(alert).not.toHaveTextContent('@codaco/app-i18n/error/v1');
     expect(alert).toHaveFocus();
     expect(name).toHaveValue('UnsavedLocalName');
     expect(screen.getByRole('button', { name: 'Save entity' })).toBeEnabled();
   });
 
-  it('uses a new intent id after editing a blocked draft', async () => {
-    const user = userEvent.setup();
-    const createRequestId = vi
-      .fn<() => string>()
-      .mockReturnValueOnce('blocked-intent')
-      .mockReturnValueOnce('revised-intent');
-    const onSubmit = vi
-      .fn<(request: CompoundEditRequest) => CompoundEditResult>()
-      .mockReturnValueOnce({
-        status: 'blocked',
-        blockedSections: [{ sectionId: sectionId({ kind: 'codebookEgo' }) }],
-      })
-      .mockReturnValueOnce(appliedResult());
-    render(
-      <CodebookEntityEditor
-        mode="update"
-        sessionKey="blocked-then-revised"
-        createRequestId={createRequestId}
-        description="Update person"
-        subject={NODE_SUBJECT}
-        initialDraft={NODE_DOCUMENT}
-        authoritativeDocument={NODE_DOCUMENT}
-        existingEntityNames={[]}
-        onSubmit={onSubmit}
-      />,
-    );
-
-    const name = screen.getByRole('textbox', { name: 'Node type name' });
-    await user.clear(name);
-    await user.type(name, 'FirstDraft');
-    await user.click(screen.getByRole('button', { name: 'Save entity' }));
-    await screen.findByText('Could not save this entity');
-
-    await user.type(name, '_revised');
-    await user.click(screen.getByRole('button', { name: 'Save entity' }));
-
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
-    expect(onSubmit.mock.calls.map(([request]) => request.id)).toEqual([
-      'blocked-intent',
-      'revised-intent',
-    ]);
-  });
-
-  it('preserves an uncertain retry id across a content-identical authority re-emission', async () => {
-    const user = userEvent.setup();
-    const createRequestId = vi
-      .fn<() => string>()
-      .mockReturnValueOnce('uncertain-entity-intent')
-      .mockReturnValueOnce('duplicate-entity-intent');
-    const onSubmit = vi
-      .fn<(request: CompoundEditRequest) => CompoundEditResult>()
-      .mockReturnValueOnce({
-        status: 'failed',
-        reason: 'host-error',
-        message: 'Host outcome uncertain.',
-      })
-      .mockReturnValueOnce(appliedResult());
-    const commonProps = {
-      mode: 'update' as const,
-      sessionKey: 'uncertain-entity-retry',
-      createRequestId,
-      description: 'Update person',
-      subject: NODE_SUBJECT,
-      initialDraft: NODE_DOCUMENT,
-      existingEntityNames: [] as const,
-      onSubmit,
-    };
-    const { rerender } = render(
-      <CodebookEntityEditor
-        {...commonProps}
-        authoritativeDocument={NODE_DOCUMENT}
-      />,
-    );
-
-    const name = screen.getByRole('textbox', { name: 'Node type name' });
-    await user.clear(name);
-    await user.type(name, 'UncertainName');
-    await user.click(screen.getByRole('button', { name: 'Save entity' }));
-    // The alert says what a refused save means for the researcher rather than
-    // repeating the host's own words; the wait is on its title.
-    await screen.findByText('Could not save this entity');
-
-    rerender(
-      <CodebookEntityEditor
-        {...commonProps}
-        authoritativeDocument={structuredClone(NODE_DOCUMENT)}
-      />,
-    );
-    await user.click(screen.getByRole('button', { name: 'Save entity' }));
-
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
-    expect(onSubmit.mock.calls.map(([request]) => request.id)).toEqual([
-      'uncertain-entity-intent',
-      'uncertain-entity-intent',
-    ]);
-    expect(createRequestId).toHaveBeenCalledOnce();
-  });
-
-  it.each(['stale-epoch', 'lease-lost', 'stale-base'] as const)(
-    'uses a new intent id after the retry-invalidating %s failure',
-    async (reason) => {
-      const user = userEvent.setup();
-      const createRequestId = vi
-        .fn<() => string>()
-        .mockReturnValueOnce('stale-authority-intent')
-        .mockReturnValueOnce('refreshed-authority-intent');
-      const onSubmit = vi
-        .fn<(request: CompoundEditRequest) => CompoundEditResult>()
-        .mockReturnValueOnce({
-          status: 'failed',
-          reason,
-          message: 'Editing authority changed.',
-        })
-        .mockReturnValueOnce(appliedResult());
-      render(
-        <CodebookEntityEditor
-          mode="update"
-          sessionKey={`authority-${reason}`}
-          createRequestId={createRequestId}
-          description="Update person"
-          subject={NODE_SUBJECT}
-          initialDraft={NODE_DOCUMENT}
-          authoritativeDocument={NODE_DOCUMENT}
-          existingEntityNames={[]}
-          onSubmit={onSubmit}
-        />,
-      );
-
-      const name = screen.getByRole('textbox', { name: 'Node type name' });
-      await user.clear(name);
-      await user.type(name, 'RetriableName');
-      await user.click(screen.getByRole('button', { name: 'Save entity' }));
-      await screen.findByText('Could not save this entity');
-
-      await user.click(screen.getByRole('button', { name: 'Save entity' }));
-
-      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
-      expect(onSubmit.mock.calls.map(([request]) => request.id)).toEqual([
-        'stale-authority-intent',
-        'refreshed-authority-intent',
-      ]);
-    },
-  );
-
   it('resets from the next opening identity even when the component never unmounts', async () => {
     const user = userEvent.setup();
-    const onSubmit = vi.fn<
-      (request: CompoundEditRequest) => CompoundEditResult
-    >(() => appliedResult());
+    const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     const { rerender } = render(
       <CodebookEntityEditor
         mode="update"
         sessionKey="open-1"
-        createRequestId={() => 'request-1'}
-        description="Update person"
         subject={NODE_SUBJECT}
         initialDraft={NODE_DOCUMENT}
         authoritativeDocument={NODE_DOCUMENT}
@@ -689,8 +422,6 @@ describe('CodebookEntityEditor', () => {
       <CodebookEntityEditor
         mode="update"
         sessionKey="open-2"
-        createRequestId={() => 'request-2'}
-        description="Update place"
         subject={{ entity: 'node', type: 'place' }}
         initialDraft={nextDocument}
         authoritativeDocument={nextDocument}
@@ -705,59 +436,5 @@ describe('CodebookEntityEditor', () => {
     expect(screen.getByRole('textbox', { name: 'Interface icon' })).toHaveValue(
       'add-a-place',
     );
-  });
-
-  it('preserves a dirty draft and prevents a stale save after a live authoritative change', async () => {
-    const user = userEvent.setup();
-    const createRequestId = vi.fn(() => 'request-live-change');
-    const onSubmit = vi.fn<
-      (request: CompoundEditRequest) => CompoundEditResult
-    >(() => appliedResult());
-    const { container, rerender } = render(
-      <CodebookEntityEditor
-        mode="update"
-        sessionKey="open-live-change"
-        createRequestId={createRequestId}
-        description="Update person"
-        subject={NODE_SUBJECT}
-        initialDraft={NODE_DOCUMENT}
-        authoritativeDocument={NODE_DOCUMENT}
-        existingEntityNames={[]}
-        onSubmit={onSubmit}
-      />,
-    );
-
-    const name = screen.getByRole('textbox', { name: 'Node type name' });
-    await user.clear(name);
-    await user.type(name, 'Adult');
-
-    const remoteDocument: SectionDoc = {
-      ...NODE_DOCUMENT,
-      icon: 'remote-icon',
-    };
-    rerender(
-      <CodebookEntityEditor
-        mode="update"
-        sessionKey="open-live-change"
-        createRequestId={createRequestId}
-        description="Update person"
-        subject={NODE_SUBJECT}
-        initialDraft={NODE_DOCUMENT}
-        authoritativeDocument={remoteDocument}
-        existingEntityNames={[]}
-        onSubmit={onSubmit}
-      />,
-    );
-
-    expect(name).toHaveValue('Adult');
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Newer codebook data is available',
-    );
-    expect(screen.getByRole('button', { name: 'Save entity' })).toBeDisabled();
-    const form = container.querySelector('form');
-    if (form === null) throw new Error('expected entity editor form');
-    fireEvent.submit(form);
-    expect(createRequestId).not.toHaveBeenCalled();
-    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

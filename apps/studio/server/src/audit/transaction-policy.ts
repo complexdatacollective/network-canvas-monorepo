@@ -105,6 +105,20 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     kind: 'none',
     reason: 'Protocol maintenance producer coverage is delivered by #1521.',
   },
+  'protocolBuilder.acquireLock': {
+    kind: 'none',
+    reason:
+      'Taking a section for editing is lease coordination, which the audit-log design excludes; the write it admits is audited on its own.',
+  },
+  'protocolBuilder.releaseLock': {
+    kind: 'none',
+    reason: 'Lease release is explicitly excluded from the team audit log.',
+  },
+  'protocolBuilder.releaseConnection': {
+    kind: 'none',
+    reason:
+      'A closed connection giving its leases back is release, recorded for the same reason and excluded for the same one.',
+  },
   'sync.createDraft': {
     kind: 'none',
     reason: 'Protocol synchronization producer coverage is delivered by #1521.',

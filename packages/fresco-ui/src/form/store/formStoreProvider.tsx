@@ -15,10 +15,22 @@ export const FormStoreContext: Context<FormStoreApi | undefined> =
   createContext<FormStoreApi | undefined>(undefined);
 
 type FormStoreProviderProps = {
+  /**
+   * The document this form is editing.
+   *
+   * A field with no `initialValue` of its own starts out holding whatever
+   * this has at the field's own path, so a form editing a document says so
+   * once instead of every field being handed its own starting value. A field
+   * that passes `initialValue` still decides for itself.
+   */
+  initialValues?: Record<string, unknown>;
   children: ReactNode;
 };
 
-const FormStoreProvider = ({ children }: FormStoreProviderProps) => {
+const FormStoreProvider = ({
+  initialValues,
+  children,
+}: FormStoreProviderProps) => {
   const storeRef = useRef<FormStoreApi>(undefined);
 
   // The store is created once and lives as long as the form, so it cannot
@@ -28,7 +40,16 @@ const FormStoreProvider = ({ children }: FormStoreProviderProps) => {
   const intlRef = useRef<IntlShape>(intl);
   intlRef.current = intl;
 
-  storeRef.current ??= createFormStore({ getIntl: () => intlRef.current });
+  // The document is read through a ref for the same reason, and one more: a
+  // form whose document advances while it is open must seed a field mounting
+  // afterwards from what the document holds then.
+  const initialValuesRef = useRef(initialValues);
+  initialValuesRef.current = initialValues;
+
+  storeRef.current ??= createFormStore({
+    getIntl: () => intlRef.current,
+    getInitialValues: () => initialValuesRef.current,
+  });
 
   return (
     <FormStoreContext.Provider value={storeRef.current}>

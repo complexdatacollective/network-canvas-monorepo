@@ -8,11 +8,9 @@ import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
-import type { CompoundEditResult } from '../../session.ts';
 import { esIntl, readMessage } from '../../testing/i18n.ts';
 import {
   expectNoLocaleLeaks,
@@ -21,8 +19,10 @@ import {
 import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import CodebookSurface from '../components/CodebookSurface.tsx';
 import VariableEditor from '../components/VariableEditor.tsx';
+import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import CodebookVariableValidationEditor from '../validation/CodebookVariableValidationEditor.tsx';
 import { ruleMapPrecheck } from '../variableValidation.ts';
+import type { CodebookWriteOutcome } from '../writes.ts';
 
 /**
  * The codebook read in the researcher's own language, through both routes the
@@ -210,8 +210,6 @@ describe('the codebook read in Spanish', () => {
  * they raise is copy a reader only sees when something has already gone wrong
  * and is the least likely to be looked at in review.
  */
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
-
 const PERSON_DOCUMENT: SectionDoc = {
   name: 'Person',
   color: 'node-color-seq-1',
@@ -220,10 +218,11 @@ const PERSON_DOCUMENT: SectionDoc = {
   variables: {},
 };
 
-/** A refusal that names no holder, so the editor formats its own sentence. */
-const blocked = (): CompoundEditResult => ({
-  status: 'blocked',
-  blockedSections: [{ sectionId: PERSON_SECTION }],
+/** A refusal that names no holder, so the editor reads the package's words. */
+const refused = async (): Promise<CodebookWriteOutcome> => ({
+  status: 'refused',
+  message: codebookRefusalMessage({ kind: 'held' }),
+  refusal: { kind: 'unexplained' },
 });
 
 describe('the codebook editors swept for English', () => {
@@ -233,12 +232,10 @@ describe('the codebook editors swept for English', () => {
       <CodebookEntityEditor
         mode="create"
         sessionKey="es-entity"
-        createRequestId={() => 'request-es-entity'}
-        description="crear tipo de nodo"
         subject={{ entity: 'node', type: 'person' }}
         initialDraft={PERSON_DOCUMENT}
         existingEntityNames={[]}
-        onSubmit={blocked}
+        onSubmit={refused}
         onApplied={() => undefined}
         onCancel={() => undefined}
       />,
@@ -281,12 +278,10 @@ describe('the codebook editors swept for English', () => {
       <CodebookEntityEditor
         mode="create"
         sessionKey="locale-switch-entity"
-        createRequestId={() => 'request-locale-switch'}
-        description="create node type"
         subject={{ entity: 'node', type: 'person' }}
         initialDraft={{}}
         existingEntityNames={[]}
-        onSubmit={blocked}
+        onSubmit={refused}
         onApplied={() => undefined}
       />
     );
@@ -337,9 +332,7 @@ describe('the codebook editors swept for English', () => {
         variableId="new-variable"
         initialDraft={draft}
         protocolContext={context}
-        description="crear atributo"
-        createRequestId={() => 'request-es-variable'}
-        onSubmitRequest={blocked}
+        onSubmitDocument={refused}
         onComplete={() => undefined}
       />,
     );
@@ -448,9 +441,7 @@ describe('the codebook editors swept for English', () => {
           variableId="new-variable"
           initialDraft={draft}
           protocolContext={context}
-          description="crear atributo"
-          createRequestId={() => `request-es-${draft.name}`}
-          onSubmitRequest={blocked}
+          onSubmitDocument={refused}
           onComplete={() => undefined}
         />,
       );
@@ -535,9 +526,7 @@ describe('the codebook editors swept for English', () => {
           variableId="new-variable"
           initialDraft={draft}
           protocolContext={context}
-          description="create attribute"
-          createRequestId={() => `request-held-${draft.name}`}
-          onSubmitRequest={blocked}
+          onSubmitDocument={refused}
           onComplete={() => undefined}
         />
       );
@@ -595,9 +584,7 @@ describe('the codebook editors swept for English', () => {
         }}
         variableId="comment"
         initialDraft={localVariable}
-        description="update comment"
-        createRequestId={() => 'request-locale-switch-variable'}
-        onSubmitRequest={blocked}
+        onSubmitDocument={refused}
         onComplete={() => undefined}
       />
     );
@@ -658,11 +645,7 @@ describe('the codebook editors swept for English', () => {
         variableId="age"
         authoritativeEntityDocument={document}
         allSubjectVariables={variables}
-        requestMetadata={{
-          createId: () => 'request-es-validation',
-          description: 'actualizar la validación de Age',
-        }}
-        onSubmitRequest={blocked}
+        onSubmitDocument={refused}
       />,
     );
 

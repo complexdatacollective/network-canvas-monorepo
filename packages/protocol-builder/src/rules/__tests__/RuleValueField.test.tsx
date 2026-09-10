@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
@@ -7,18 +6,13 @@ import type { VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { useStageEditorController } from '../../controller.ts';
-import StageEditorShell from '../../form/StageEditorShell.tsx';
-import {
-  createStageIdentity,
-  ProtocolBuilderSessionStore,
-} from '../../session.ts';
 import type { RuleChoiceOption } from '../ruleCodebook.ts';
 import {
   emptyRuleValue,
   RULE_VALUE_FIELD,
   RuleOperandField,
 } from '../RuleValueField.tsx';
+import { RuleEditorHost, STAGE_SECTION } from './ruleEditorHost.tsx';
 
 /**
  * What a rule's operand is reset to when the choice above it changes.
@@ -59,14 +53,13 @@ describe('emptyRuleValue', () => {
   });
 });
 
-const settingsSection = sectionId({ kind: 'settings' });
-const stageOrderSection = sectionId({ kind: 'stageOrder' });
-const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
-
 const baseSections: Record<string, SectionDoc> = {
-  [settingsSection]: { name: 'Operand entry', schemaVersion: 8 },
-  [stageOrderSection]: { stages: ['stage-1'] },
-  [stageSection]: {
+  [sectionId({ kind: 'settings' })]: {
+    name: 'Operand entry',
+    schemaVersion: 8,
+  },
+  [sectionId({ kind: 'stageOrder' })]: { stages: ['stage-1'] },
+  [STAGE_SECTION]: {
     id: 'stage-1',
     type: 'Information',
     label: 'Welcome',
@@ -74,21 +67,6 @@ const baseSections: Record<string, SectionDoc> = {
     items: [],
   },
 };
-
-const createSession = () =>
-  new ProtocolBuilderSessionStore({
-    identity: createStageIdentity('Information', () => 'stage-1'),
-    fields: { label: 'Welcome', title: 'Welcome', items: [] },
-    protocolSections: baseSections,
-    manifestRevision: { sequence: 1n, hash: 'revision-1' },
-    access: { mode: 'editable', leaseOwner: 'tab-1', leaseEpoch: 1n },
-    buildCandidate: ({ stageDocument }) => ({
-      name: 'Operand entry',
-      schemaVersion: 8,
-      codebook: {},
-      stages: [stageDocument],
-    }),
-  });
 
 /** Reports the operand the FORM holds, whatever the control is showing. */
 function OperandProbe() {
@@ -108,11 +86,8 @@ function OperandEditor({
   variableType?: VariableType;
   options?: readonly RuleChoiceOption[];
 }) {
-  const [session] = useState(createSession);
-  const controller = useStageEditorController(session, 'stage-form');
-
   return (
-    <StageEditorShell controller={controller}>
+    <RuleEditorHost sections={baseSections}>
       <RuleOperandField
         variableType={variableType}
         operator={operator}
@@ -120,14 +95,14 @@ function OperandEditor({
         regExpHint="Enter a regular expression."
       />
       <OperandProbe />
-    </StageEditorShell>
+    </RuleEditorHost>
   );
 }
 
 const renderOperand = async (operator = 'GREATER_THAN') => {
   render(<OperandEditor operator={operator} />);
-  // Awaited rather than read synchronously, so the editing session's own
-  // first snapshot has landed before the control is driven.
+  // Awaited rather than read synchronously, so the form has been drawn from
+  // the document the lock handed over before the control is driven.
   return await screen.findByRole('spinbutton', { name: /Attribute value/ });
 };
 

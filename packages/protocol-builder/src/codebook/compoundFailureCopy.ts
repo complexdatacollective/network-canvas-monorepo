@@ -1,102 +1,33 @@
-import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
-import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
-
-import type { CompoundEditFailureReason } from '../session.ts';
-import type { AuxiliaryCodebookDraftFailure } from './editing.ts';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 
 /**
- * What each way a save can be refused reads like to the researcher.
+ * Why a codebook save did not happen, in the terms the contract answers in.
  *
- * Written here rather than passed through, because the reasons that reach a
- * codebook editor are carried by a `message` written for whoever is reading a
- * log. A host that could not take the change reports the protocol schema's own
- * words about a path — "expected object, received undefined" — which names
- * neither what the researcher did nor what they can do next, and which is about
- * the stage they were configuring rather than the type they were creating.
+ * `held` covers all three ways a lock stands in the way — the acquire came
+ * back read-only, the submit was refused because the lock had gone, a refactor
+ * could not take every section it writes — because a researcher is told who is
+ * editing rather than which of the three it was. A section id is an internal
+ * address and is never shown, so unnamed holders are all that is left to say.
  *
- * Every reason is spelled out, so a new one cannot arrive as a blank alert: the
- * compiler asks for it here. That is a compile-time promise about the reasons
- * THIS package knows, though, and a host is external code — see the lookup in
- * `compoundFailureMessage`, which is total at runtime as well.
+ * `sectionGone` and `subjectGone` are one fact seen from two surfaces: the
+ * type a codebook editor is open on has been deleted, and the type a STAGE
+ * collects into has. What to do about it differs — there is no codebook editor
+ * to close on a stage row — so each says its own sentence.
  */
+export type CodebookRefusal =
+  | Readonly<{ kind: 'held'; holders?: readonly string[] }>
+  /** Something the host cannot rewrite still names what was to be deleted. */
+  | Readonly<{ kind: 'referencesRemain'; references: number }>
+  | Readonly<{ kind: 'invalidShape' }>
+  | Readonly<{ kind: 'sectionGone' }>
+  /** A collaborator created the section this change would have created. */
+  | Readonly<{ kind: 'sectionCreatedElsewhere' }>
+  | Readonly<{ kind: 'subjectGone' }>
+  | Readonly<{ kind: 'protocolGone' }>
+  | Readonly<{ kind: 'unreachable' }>
+  | Readonly<{ kind: 'unexplained' }>;
+
 const messages = defineMessages({
-  compoundInFlight: {
-    id: 'protocolBuilder.compoundFailure.compoundInFlight',
-    defaultMessage:
-      'Another change to the codebook is still being saved. Wait for it to finish, then save this one.',
-    description:
-      'Refusal shown in a codebook editor when a previous change to the codebook — the protocol’s definition of what an interview records — has not finished saving.',
-  },
-  hostError: {
-    id: 'protocolBuilder.compoundFailure.hostError',
-    defaultMessage:
-      'The protocol would not be valid with this change, so nothing was saved. Adjust this type and try again, or close this and come back once the rest of the stage is filled in.',
-    description:
-      'Refusal shown in a codebook editor when the change would leave the whole protocol invalid — usually because the stage being configured is not finished yet. A stage is one step of an interview.',
-  },
-  invalidRequest: {
-    id: 'protocolBuilder.compoundFailure.invalidRequest',
-    defaultMessage:
-      'This change could not be sent, and nothing was saved. Close this editor and try again.',
-    description:
-      'Refusal shown in a codebook editor when the change could not be sent for saving at all.',
-  },
-  invalidResponse: {
-    id: 'protocolBuilder.compoundFailure.invalidResponse',
-    defaultMessage:
-      'The protocol came back in a state this editor cannot read, so nothing here has been kept. Reload the protocol before making this change.',
-    description:
-      'Refusal shown in a codebook editor when what came back after saving was not something the editor could read.',
-  },
-  leaseLost: {
-    id: 'protocolBuilder.compoundFailure.leaseLost',
-    defaultMessage:
-      'You are no longer the editor of this stage, so nothing was saved. Take over editing and try again.',
-    description:
-      'Refusal shown in a codebook editor when the researcher no longer holds the right to edit this stage. Taking over editing is an action offered elsewhere in the host application.',
-  },
-  pendingCommands: {
-    id: 'protocolBuilder.compoundFailure.pendingCommands',
-    defaultMessage:
-      'A file you added is still waiting to be saved with this stage. Save the stage first, then make this change.',
-    description:
-      'Refusal shown in a codebook editor when the stage still holds an imported file that has not been saved, which has to land before the codebook can change.',
-  },
-  staleBase: {
-    id: 'protocolBuilder.compoundFailure.staleBase',
-    defaultMessage:
-      'Someone else changed this while you were editing it, so nothing was saved. Close and reopen this editor to load their version, then make your change again.',
-    description:
-      'Refusal shown in a codebook editor when a collaborator changed the same thing while this editor was open.',
-  },
-  staleEpoch: {
-    id: 'protocolBuilder.compoundFailure.staleEpoch',
-    defaultMessage:
-      'Editing access changed while this was being saved, so nothing was saved. Try again.',
-    description:
-      'Refusal shown in a codebook editor when who holds the right to edit changed midway through saving.',
-  },
-  staleResult: {
-    id: 'protocolBuilder.compoundFailure.staleResult',
-    defaultMessage:
-      'A newer version of the protocol is already open, so this change was not applied. Try again.',
-    description:
-      'Refusal shown in a codebook editor when a newer version of the protocol had already been loaded by the time the change came back.',
-  },
-  unavailable: {
-    id: 'protocolBuilder.compoundFailure.unavailable',
-    defaultMessage:
-      'This editor cannot change the codebook right now. Reload the protocol and try again.',
-    description:
-      'Refusal shown in a codebook editor when the host cannot accept codebook changes at all just now.',
-  },
-  unexplained: {
-    id: 'protocolBuilder.compoundFailure.unexplained',
-    defaultMessage:
-      'This change could not be saved, and nothing was altered. Wait a moment and try again.',
-    description:
-      'Refusal shown in a codebook editor when saving was refused for a reason there are no words for — it threw with no explanation a researcher could act on, or the application it is running in named a reason this editor does not know. The last resort.',
-  },
   heldBySomeoneUnnamed: {
     id: 'protocolBuilder.compoundFailure.heldBySomeoneUnnamed',
     defaultMessage:
@@ -111,101 +42,126 @@ const messages = defineMessages({
     description:
       'Refusal shown in a codebook editor when a named collaborator is editing part of the protocol the change needs. holder is that person’s display name, which the host supplies.',
   },
-});
-
-const REFUSAL_MESSAGES: Readonly<
-  Record<CompoundEditFailureReason, MessageDescriptor>
-> = Object.freeze({
-  'compound-in-flight': messages.compoundInFlight,
-  // No "see the details above": nothing renders the host's account of what
-  // it refused, and this alert is the first thing in the editor.
-  'host-error': messages.hostError,
-  'invalid-request': messages.invalidRequest,
-  'invalid-response': messages.invalidResponse,
-  'lease-lost': messages.leaseLost,
-  'pending-commands': messages.pendingCommands,
-  'stale-base': messages.staleBase,
-  'stale-epoch': messages.staleEpoch,
-  'stale-result': messages.staleResult,
-  'unavailable': messages.unavailable,
+  heldBySeveral: {
+    id: 'protocolBuilder.compoundFailure.heldBySeveral',
+    defaultMessage:
+      '{holders} are currently editing sections needed for this change.',
+    description:
+      'Refusal shown in a codebook editor when several named collaborators are between them editing the parts of the protocol the change needs. holders is their display names, which the host supplies, joined as a list.',
+  },
+  referencesRemain: {
+    id: 'protocolBuilder.compoundFailure.referencesRemain',
+    defaultMessage:
+      '{references, plural, one {One other part of the protocol still uses this} other {# other parts of the protocol still use this}}, so nothing was deleted. Change those first, then delete it.',
+    description:
+      'Refusal shown in a codebook editor when deleting an attribute or a type would leave the protocol naming something that no longer exists, in places the application cannot rewrite for the researcher. references is how many such places there are.',
+  },
+  subjectGone: {
+    id: 'protocolBuilder.compoundFailure.subjectGone',
+    defaultMessage:
+      'This stage works with something the codebook no longer holds, so nothing was saved. Choose what it works with again.',
+    description:
+      'Refusal shown on a control inside a stage editor when the node or edge type the stage collects into has been deleted from the protocol, usually by a collaborator, while the researcher was working. A stage is one step of an interview.',
+  },
+  invalidShape: {
+    id: 'protocolBuilder.compoundFailure.invalidShape',
+    defaultMessage:
+      'This change is not something the codebook can hold, so nothing was saved. Check what you entered and try again.',
+    description:
+      'Refusal shown in a codebook editor when the protocol refused the change because it is not shaped like the part of the codebook it was written to.',
+  },
+  sectionGone: {
+    id: 'protocolBuilder.compoundFailure.sectionGone',
+    defaultMessage:
+      'This part of the codebook no longer exists, so nothing was saved. Close this editor and start again.',
+    description:
+      'Refusal shown in a codebook editor when the entity type being edited has been deleted from the protocol, usually by a collaborator, while the editor was open.',
+  },
+  sectionCreatedElsewhere: {
+    id: 'protocolBuilder.compoundFailure.sectionCreatedElsewhere',
+    defaultMessage:
+      'Somebody else has just added the participant’s first attribute, so nothing was saved. Try again to add yours to theirs.',
+    description:
+      'Refusal shown when the researcher added the first attribute asked of the participant themselves at the same moment as a collaborator, so the protocol already held the part of the codebook this change would have created.',
+  },
+  protocolGone: {
+    id: 'protocolBuilder.compoundFailure.protocolGone',
+    defaultMessage:
+      'This protocol is no longer open, so nothing was saved. Reload it and try again.',
+    description:
+      'Refusal shown in a codebook editor when the application it is running in no longer holds the protocol the change was written to.',
+  },
+  unreachable: {
+    id: 'protocolBuilder.compoundFailure.unreachable',
+    defaultMessage:
+      'This change could not be sent, and nothing was saved. Check your connection and try again.',
+    description:
+      'Refusal shown in a codebook editor when the change never reached the application it is running in.',
+  },
+  unexplained: {
+    id: 'protocolBuilder.compoundFailure.unexplained',
+    defaultMessage:
+      'This change could not be saved, and nothing was altered. Wait a moment and try again.',
+    description:
+      'Refusal shown in a codebook editor when saving was refused for a reason there are no words for — it threw with no explanation a researcher could act on. The last resort.',
+  },
 });
 
 /**
  * What to tell the researcher about a codebook change that did not happen.
  *
- * One helper for every auxiliary codebook surface — the entity editor, the
- * attribute editor, the validation editor — because a refusal means the same
- * thing to a researcher whichever of them they were looking at, and because the
- * thing they must never be shown is the same in all three: the words the host
- * used.
+ * Encoded rather than formatted: a refusal stands in front of the researcher
+ * from one save until the next, which is longer than the language it was
+ * raised in is guaranteed to last. Every surface that shows one decodes it
+ * with `formatMessageError`, so it follows a change of language while it
+ * waits — and so a refusal that arrives already written for a researcher,
+ * naming the rule and the values that cannot both hold, passes through
+ * untouched instead of being replaced by the copy here.
  */
-export function compoundFailureMessage(
-  failure: AuxiliaryCodebookDraftFailure,
-  intl: IntlShape,
-): string {
-  switch (failure.kind) {
-    // A thrown failure carries whatever the thing that threw had to say, and
-    // the two are told apart by the same decoder every string-only contract in
-    // this package is read through. `editing.ts` encodes the two refusals a
-    // researcher can actually reach — a duplicate attribute name, an attribute
-    // a collaborator deleted — precisely so they can be decoded here; a
-    // transport error's own words and a schema's sentence about a path are not
-    // encoded, so the decoder answers `undefined` and they are reported as the
-    // same "nothing was saved, try again" the reasons above end in.
-    case 'error':
-      return (
-        formatMessageError(failure.message, intl) ??
-        intl.formatMessage(messages.unexplained)
-      );
-
-    // The one failure whose own words are shown. Everything else here is
-    // rewritten because it arrives written for whoever reads a log; a
-    // contradiction arrives already written for the researcher, naming the
-    // rule and the values that cannot both hold, which is more than this
-    // module could say about it — it does not know which rule was broken.
-    // Rewriting it would be the bug this case exists to prevent.
-    // Read back through the same decoder every other string-only contract in
-    // this package is read through, so a contradiction encoded by
-    // `variableValidation` reaches the researcher in their own language and a
-    // plain sentence a host wrote passes through untouched.
-    case 'contradiction':
-      return formatMessageError(failure.message, intl) ?? failure.message;
-
-    case 'result': {
-      if (failure.result.status === 'failed') {
-        // Read as a lookup that can miss, unlike `kind` below. A reason is
-        // minted by the HOST, which is external code, and crosses the wire as
-        // a plain string however the union types it — so a host one version
-        // ahead names a reason this table has never heard of, and indexing
-        // into it hands `formatMessage` nothing, which throws during render.
-        // The researcher would lose the whole editor and the draft it was
-        // holding rather than being told the save was refused. The table
-        // stays exhaustive, so the compiler still asks for a sentence when a
-        // reason is added here.
-        const descriptor: MessageDescriptor | undefined =
-          REFUSAL_MESSAGES[failure.result.reason];
-        return intl.formatMessage(descriptor ?? messages.unexplained);
+export function codebookRefusalMessage(refusal: CodebookRefusal): string {
+  switch (refusal.kind) {
+    case 'held': {
+      // A refactor takes every section it writes, so more than one person can
+      // be standing in the way of one change — and being told about one of
+      // them, then about the next, is how a researcher comes to believe the
+      // application is refusing at random. The list is assembled by
+      // `formatList`, where the reader's own language decides the commas.
+      const [holder, ...rest] = refusal.holders ?? [];
+      if (holder === undefined) {
+        return createMessageError(messages.heldBySomeoneUnnamed);
       }
-      // A section id is an internal address, so a blocked change is reported
-      // by who is holding it, or not at all.
-      const blocker = failure.result.blockedSections[0];
-      return blocker?.holder === undefined
-        ? intl.formatMessage(messages.heldBySomeoneUnnamed)
-        : intl.formatMessage(messages.heldBy, {
-            holder: blocker.holder.displayName,
+      return rest.length === 0
+        ? createMessageError(messages.heldBy, { holder })
+        : createMessageError(messages.heldBySeveral, {
+            holders: { list: [holder, ...rest] },
           });
     }
-
-    // Every kind is spelled out above, so a new one cannot arrive as a blank
-    // alert: the compiler asks for it here, exactly as `REFUSAL_MESSAGES`
-    // asks for every reason.
-    default:
-      return unreachable(failure);
+    case 'referencesRemain':
+      return createMessageError(messages.referencesRemain, {
+        references: refusal.references,
+      });
+    case 'invalidShape':
+      return createMessageError(messages.invalidShape);
+    case 'sectionGone':
+      return createMessageError(messages.sectionGone);
+    case 'sectionCreatedElsewhere':
+      return createMessageError(messages.sectionCreatedElsewhere);
+    case 'subjectGone':
+      return createMessageError(messages.subjectGone);
+    case 'protocolGone':
+      return createMessageError(messages.protocolGone);
+    case 'unreachable':
+      return createMessageError(messages.unreachable);
+    case 'unexplained':
+      return createMessageError(messages.unexplained);
   }
+  // Every kind is spelled out above, so a new one cannot arrive as a blank
+  // alert: the compiler asks for its words here.
+  return unreachable(refusal);
 }
 
-function unreachable(failure: never): never {
+function unreachable(refusal: never): never {
   throw new TypeError(
-    `No researcher-facing words are written for this kind of refused codebook save: ${JSON.stringify(failure)}`,
+    `No researcher-facing words are written for this refusal: ${JSON.stringify(refusal)}`,
   );
 }

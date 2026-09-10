@@ -47,23 +47,38 @@ export function LockScreen() {
   const { kind } = useAuth();
   const [location] = useLocation();
   const interviewRoute = isInterviewRoutePath(location);
+  const locked = kind === 'locked';
+  // Seeded from the lock-specific marker so a reload during a restricted lock
+  // cycle stays restricted; mounting unlocked starts clean, because the marker
+  // is cleared on the way out of a lock cycle.
   const [recoveryRestricted, setRecoveryRestricted] = useState(
-    readInterviewRecoveryRestriction,
+    () => locked && readInterviewRecoveryRestriction(),
   );
+  const [wasLocked, setWasLocked] = useState(locked);
 
-  useLayoutEffect(() => {
-    if (kind !== 'locked') {
+  // Adjusted during render rather than in an effect so the restriction is part
+  // of the first committed frame: the latch is derived from the lock cycle and
+  // the route, not synchronised with anything outside React.
+  if (wasLocked !== locked) {
+    setWasLocked(locked);
+    if (!locked) {
       setRecoveryRestricted(false);
-      return;
     }
+  }
+  if (locked && interviewRoute && !recoveryRestricted) {
+    setRecoveryRestricted(true);
+  }
 
-    if (kind === 'locked' && interviewRoute) {
-      setRecoveryRestricted(true);
+  // Writing the marker is a side effect on sessionStorage, so it stays in an
+  // effect — layout-phase so a reload mid-cycle can never observe the lock
+  // screen painted without it.
+  useLayoutEffect(() => {
+    if (locked && interviewRoute) {
       persistInterviewRecoveryRestriction();
     }
-  }, [interviewRoute, kind]);
+  }, [interviewRoute, locked]);
 
-  if (kind !== 'locked') {
+  if (!locked) {
     return null;
   }
 

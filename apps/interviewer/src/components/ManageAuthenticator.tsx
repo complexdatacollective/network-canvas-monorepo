@@ -244,6 +244,31 @@ const MODE_LABEL: Record<string, MessageDescriptor> = {
 
 const PIN_PATTERN = /^\d{8}$/;
 
+// Localised nodes handed to the toast and confirm APIs. Built once at module
+// scope so the handlers that pass them along stay plain callbacks rather than
+// element factories re-created on every render.
+const pinChangedTitle = createElement(AppMessage, {
+  message: messages.pINChanged,
+});
+const passphraseChangedTitle = createElement(AppMessage, {
+  message: messages.passphraseChanged,
+});
+const resetDeviceTitle = createElement(AppMessage, {
+  message: messages.resetDeviceAndWipeData,
+});
+const revokeDeviceLockTitle = createElement(AppMessage, {
+  message: messages.revokeDeviceLockAndWipeData,
+});
+const revokeDescription = createElement(AppMessage, {
+  message: messages.thisWillDestroyAllDataOnThis,
+});
+const revokeConfirmLabel = createElement(AppMessage, {
+  message: messages.destroyDeviceData,
+});
+const describeGenericError = () => (
+  <AppMessage message={commonMessages.genericError} />
+);
+
 type ReEnrolHandler = (current: string, next: string) => Promise<AuthResult>;
 
 export function ChangePinForm({
@@ -525,9 +550,7 @@ export function ManageAuthenticator() {
           onCancel={() => setChanging(false)}
           onSuccess={() => {
             toast.add({
-              title: createElement(AppMessage, {
-                message: messages.pINChanged,
-              }),
+              title: pinChangedTitle,
               variant: 'success',
             });
             setChanging(false);
@@ -540,9 +563,7 @@ export function ManageAuthenticator() {
           onCancel={() => setChanging(false)}
           onSuccess={() => {
             toast.add({
-              title: createElement(AppMessage, {
-                message: messages.passphraseChanged,
-              }),
+              title: passphraseChangedTitle,
               variant: 'success',
             });
             setChanging(false);
@@ -596,21 +617,11 @@ export function ResetDeviceRow() {
 
   const handleRevoke = async () => {
     await confirm({
-      title: isReset
-        ? createElement(AppMessage, {
-            message: messages.resetDeviceAndWipeData,
-          })
-        : createElement(AppMessage, {
-            message: messages.revokeDeviceLockAndWipeData,
-          }),
-      description: createElement(AppMessage, {
-        message: messages.thisWillDestroyAllDataOnThis,
-      }),
-      confirmLabel: createElement(AppMessage, {
-        message: messages.destroyDeviceData,
-      }),
+      title: isReset ? resetDeviceTitle : revokeDeviceLockTitle,
+      description: revokeDescription,
+      confirmLabel: revokeConfirmLabel,
       intent: 'destructive',
-      describeError: () => <AppMessage message={commonMessages.genericError} />,
+      describeError: describeGenericError,
       onConfirm: async () => {
         await auth.revoke();
       },

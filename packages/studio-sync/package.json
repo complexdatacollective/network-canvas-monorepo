@@ -23,6 +23,7 @@
     "./role-bootstrap": "./src/role-bootstrap.ts",
     "./email-sender": "./src/email-sender.ts",
     "./postmark-email-sender": "./src/postmark-email-sender.ts",
+    "./section-references": "./src/section-references.ts",
     "./section-validation": "./src/section-validation.ts",
     "./template-metadata": "./src/template-metadata.ts",
     "./template-exchange": "./src/template-exchange.ts",
@@ -46,7 +47,7 @@
     "drizzle-orm": "catalog:",
     "fflate": "^0.8.3",
     "file-type": "^22.0.2",
-    "nodemailer": "9.0.5",
+    "nodemailer": "9.1.1",
     "pg": "^8.22.0",
     "pg-connection-string": "^2.14.0",
     "zod": "catalog:"

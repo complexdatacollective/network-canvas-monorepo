@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 
 import Button from '@codaco/fresco-ui/Button';
 import type { VariableOption } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
-import type { CompoundEditResult } from '../../session.ts';
-import type { AuxiliaryCodebookSubmitResult } from '../editing.ts';
+import type { CodebookWriteOutcome } from '../writes.ts';
 import VariableEditor from './VariableEditor.tsx';
 
 const SUBJECT = { entity: 'node', type: 'person' } as const;
@@ -216,7 +216,6 @@ type DemoProps = Readonly<{
 function VariableEditorDemo({ mode, surface, locked, readOnly }: DemoProps) {
   const [openId, setOpenId] = useState(1);
   const [completedId, setCompletedId] = useState<string | null>(null);
-  const requestSequence = useRef(1);
   const held: SurfaceCase = SURFACES[surface];
   const authoritativeDocument: SectionDoc = {
     name: 'Person',
@@ -224,33 +223,19 @@ function VariableEditorDemo({ mode, surface, locked, readOnly }: DemoProps) {
     shape: { default: 'circle' },
     variables: mode === 'update' ? { [held.variableId]: held.committed } : {},
   };
-  const appliedResult: CompoundEditResult = {
-    status: 'applied',
-    update: {
-      protocolSections: {},
-      manifestRevision: {
-        sequence: BigInt(requestSequence.current),
-        hash: `storybook-${requestSequence.current}`,
-      },
-    },
-  };
-  // Every surface here is accepted by the host. A host that REFUSES with a
-  // sentence of its own (`AuxiliaryCodebookContradiction`) used to be a case
-  // this fixture could set, and no surface set it — the one story named for a
-  // contradiction is refused by the editor's own analyser before the host is
-  // reached, so the branch could not run. `VariableEditor.test.tsx` drives the
-  // host's refusal directly, where it can be seen to.
-  const answer = (): AuxiliaryCodebookSubmitResult => appliedResult;
+  // Every surface here is accepted by the host: the one story named for a
+  // contradiction is refused by the editor's own analyser before a host is
+  // reached. `VariableEditor.test.tsx` drives a host's refusal directly.
+  const answer = (): Promise<CodebookWriteOutcome> =>
+    Promise.resolve({
+      status: 'applied',
+      sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+    });
   const common = {
     openId,
     subject: SUBJECT,
     authoritativeDocument,
-    description:
-      mode === 'create'
-        ? 'Create Storybook attribute'
-        : `Update ${held.variableId}`,
-    createRequestId: () => `storybook-request-${requestSequence.current++}`,
-    onSubmitRequest: answer,
+    onSubmitDocument: answer,
     onComplete: setCompletedId,
     readOnly,
   } as const;
@@ -306,7 +291,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'A host-neutral attribute editor backed by an isolated auxiliary draft session. Change "openId" for every opening so a rapid close and reopen always starts with fresh form state.',
+          'A host-neutral attribute editor holding its own draft. Change "openId" for every opening so a rapid close and reopen always starts with fresh form state.',
       },
     },
   },

@@ -217,7 +217,7 @@ function SectionOutlineItem({ section }: { section: OutlineSection }) {
       />
       <span className="truncate">{section.title}</span>
       {/*
-        The status, and — when the problem is one only the session can see —
+        The status, and — when the problem is one only the schema can see —
         what it is. A dangling resource reference has no field showing a
         message beside it, so the outline is the only place it is written down,
         and reading it must not depend on seeing the colour of an icon.

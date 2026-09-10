@@ -17,9 +17,11 @@ import { describe, expect, it } from 'vitest';
  * first part, each from a different entry point, which is the tell: which
  * module a program reaches first is not something a family controls.
  *
- * The fix was to move `defineStageEditorPart` and `StageEditorRegistryPart`
- * into `stage-editor-contract.ts`, which imports the controller and the stage
- * types and nothing else. `type-tests/partFromRegistry.ts` holds the specific
+ * The fix was to move `StageEditorRegistryPart` into
+ * `stage-editor-contract.ts`, which imports the stage types and nothing else,
+ * and to keep `defineStageEditor` — the helper a part is declared with — in
+ * `editors/defineStageEditor.tsx`, which does not import this module.
+ * `type-tests/partFromRegistry.ts` holds the specific
  * route shut — the helper is not reachable through the registry, so a family
  * cannot import it from there. This holds the general rule: whatever a part
  * imports, and whatever that imports, none of it may come back here.
@@ -90,7 +92,7 @@ describe('the module graph under the registry', () => {
       cycle,
       cycle === undefined
         ? ''
-        : `A module the registry imports imports it back, so whichever of the two a program loads first leaves the other half-evaluated: ${cycle.map(shortName).join(' -> ')}. A family declares its part with defineStageEditorPart from stage-editor-contract.ts, which imports nothing from here.`,
+        : `A module the registry imports imports it back, so whichever of the two a program loads first leaves the other half-evaluated: ${cycle.map(shortName).join(' -> ')}. A family declares its part with defineStageEditor from editors/defineStageEditor.tsx, which imports nothing from here.`,
     ).toBeUndefined();
   });
 
@@ -111,6 +113,6 @@ describe('the module graph under the registry', () => {
           ),
         ),
       ].toSorted(),
-    ).toEqual(['controller.ts', 'stage-types.ts']);
+    ).toEqual(['stage-types.ts']);
   });
 });

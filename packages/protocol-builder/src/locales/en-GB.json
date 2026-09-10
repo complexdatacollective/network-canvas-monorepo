@@ -1,8 +1,13 @@
 {
+  "protocolBuilder.censusPrompts.ordinalBinColorLabel": "Colour gradient",
+  "protocolBuilder.censusPrompts.ordinalBinColorTitle": "Colour of the scale",
   "protocolBuilder.codebookEntity.colorHint": "{entity, select, node {Choose a colour reference for this node type.} edge {Choose a colour reference for this edge type.} other {Choose a colour reference for this ego definition.}}",
   "protocolBuilder.codebookEntity.colorLabel": "Protocol colour",
-  "protocolBuilder.codebookEntity.colorPlaceholder": "Choose a colour…",
+  "protocolBuilder.codebookEntity.colorOutsidePalette": "Current colour ({color})",
   "protocolBuilder.codebookEntity.colorRequired": "Choose a colour.",
   "protocolBuilder.codebookEntity.edgeColorOption": "Edge colour {index, number}",
-  "protocolBuilder.codebookEntity.nodeColorOption": "Node colour {index, number}"
+  "protocolBuilder.codebookEntity.nodeColorOption": "Node colour {index, number}",
+  "protocolBuilder.networkCanvas.composerEdgeTypeHint": "The kind of connection the participant draws. Its name and colour come from the codebook.",
+  "protocolBuilder.networkCanvas.presetsTitle": "Visualisation presets",
+  "protocolBuilder.pedigree.dependentStagesDescription": "These stages visualise this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have."
 }

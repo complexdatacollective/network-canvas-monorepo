@@ -110,6 +110,7 @@
     "./form/Field/fieldElements": "./src/form/Field/fieldElements.ts",
     "./form/Field/types": "./src/form/Field/types.ts",
     "./form/FieldErrors": "./src/form/FieldErrors.tsx",
+    "./form/FieldsDisabled": "./src/form/FieldsDisabled.tsx",
     "./form/FieldGroup": "./src/form/FieldGroup.tsx",
     "./form/FieldLabel": "./src/form/FieldLabel.tsx",
     "./form/FieldNamespace": "./src/form/FieldNamespace.tsx",
@@ -121,6 +122,7 @@
     "./form/fields/Boolean": "./src/form/fields/Boolean.tsx",
     "./form/fields/Checkbox": "./src/form/fields/Checkbox.tsx",
     "./form/fields/CheckboxGroup": "./src/form/fields/CheckboxGroup.tsx",
+    "./form/fields/ColorPicker": "./src/form/fields/ColorPicker.tsx",
     "./form/fields/Combobox/Combobox": "./src/form/fields/Combobox/Combobox.tsx",
     "./form/fields/Combobox/shared": "./src/form/fields/Combobox/shared.ts",
     "./form/fields/DatePicker": "./src/form/fields/DatePicker.tsx",
@@ -155,6 +157,7 @@
     "./form/utils/ymd": "./src/form/utils/ymd.ts",
     "./form/validation/helpers": "./src/form/validation/helpers.tsx",
     "./form/validation/utils/isUnanswered": "./src/form/validation/utils/isUnanswered.ts",
+    "./hooks/useHasHydrated": "./src/hooks/useHasHydrated.ts",
     "./hooks/useNodeInteractions": "./src/hooks/useNodeInteractions.ts",
     "./hooks/usePrevious": "./src/hooks/usePrevious.ts",
     "./hooks/useResizablePanel": "./src/hooks/useResizablePanel.ts",
@@ -570,6 +573,10 @@
         "types": "./dist/form/FieldErrors.d.ts",
         "default": "./dist/form/FieldErrors.js"
       },
+      "./form/FieldsDisabled": {
+        "types": "./dist/form/FieldsDisabled.d.ts",
+        "default": "./dist/form/FieldsDisabled.js"
+      },
       "./form/FieldGroup": {
         "types": "./dist/form/FieldGroup.d.ts",
         "default": "./dist/form/FieldGroup.js"
@@ -613,6 +620,10 @@
       "./form/fields/CheckboxGroup": {
         "types": "./dist/form/fields/CheckboxGroup.d.ts",
         "default": "./dist/form/fields/CheckboxGroup.js"
+      },
+      "./form/fields/ColorPicker": {
+        "types": "./dist/form/fields/ColorPicker.d.ts",
+        "default": "./dist/form/fields/ColorPicker.js"
       },
       "./form/fields/Combobox/Combobox": {
         "types": "./dist/form/fields/Combobox/Combobox.d.ts",
@@ -749,6 +760,10 @@
       "./form/validation/utils/isUnanswered": {
         "types": "./dist/form/validation/utils/isUnanswered.d.ts",
         "default": "./dist/form/validation/utils/isUnanswered.js"
+      },
+      "./hooks/useHasHydrated": {
+        "types": "./dist/hooks/useHasHydrated.d.ts",
+        "default": "./dist/hooks/useHasHydrated.js"
       },
       "./hooks/useNodeInteractions": {
         "types": "./dist/hooks/useNodeInteractions.d.ts",
@@ -910,15 +925,15 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "catalog:",
-    "@tiptap/core": "^3.31.0",
-    "@tiptap/extension-bullet-list": "^3.31.0",
-    "@tiptap/extension-heading": "^3.31.0",
-    "@tiptap/extension-ordered-list": "^3.31.0",
-    "@tiptap/extension-paragraph": "^3.31.0",
-    "@tiptap/extension-placeholder": "^3.31.0",
-    "@tiptap/pm": "^3.31.0",
-    "@tiptap/react": "^3.31.0",
-    "@tiptap/starter-kit": "^3.31.0",
+    "@tiptap/core": "^3.31.3",
+    "@tiptap/extension-bullet-list": "^3.31.3",
+    "@tiptap/extension-heading": "^3.31.3",
+    "@tiptap/extension-ordered-list": "^3.31.3",
+    "@tiptap/extension-paragraph": "^3.31.3",
+    "@tiptap/extension-placeholder": "^3.31.3",
+    "@tiptap/pm": "^3.31.3",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
     "comlink": "^4.4.2",
     "cva": "1.0.0-beta.4",
     "es-toolkit": "catalog:",

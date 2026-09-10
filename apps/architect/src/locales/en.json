@@ -3231,10 +3231,6 @@
     "defaultMessage": "DataSource",
     "description": "The title text in lib / ProtocolSummary / components / Stage / DataSource."
   },
-  "architect.protocolSummary.stage.diseaseNominationPrompts.diseaseNominationPrompts": {
-    "defaultMessage": "Disease Nomination Prompts",
-    "description": "The title text in lib / ProtocolSummary / components / Stage / DiseaseNominationPrompts."
-  },
   "architect.protocolSummary.stage.form.form": {
     "defaultMessage": "Form",
     "description": "The title text in lib / ProtocolSummary / components / Stage / Form."
@@ -3270,6 +3266,10 @@
   "architect.protocolSummary.stage.nameGenerationStep.nameGenerationStepInstructions": {
     "defaultMessage": "Name Generation Step Instructions",
     "description": "Visible text in lib / ProtocolSummary / components / Stage / NameGenerationStep."
+  },
+  "architect.protocolSummary.stage.nominationPrompts.nominationPrompts": {
+    "defaultMessage": "Nomination Prompts",
+    "description": "The title text in lib / ProtocolSummary / components / Stage / NominationPrompts. A Family Pedigree stage asks these after the family is built; each records a condition or trait as a boolean attribute of the family members the participant picks."
   },
   "architect.protocolSummary.stage.pageHeading.pageHeading": {
     "defaultMessage": "Page Heading",

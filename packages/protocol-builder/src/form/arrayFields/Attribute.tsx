@@ -14,6 +14,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import {
   stripManagedProperties,
   type ArrayFieldItemProps,
@@ -26,18 +27,23 @@ import {
   buildVariableRoleMap,
   hasValidatedUse,
 } from '../../codebook/variableRoles.ts';
+// The contract the picker's `onCreateOption` prop is written in, taken from
+// where that prop is declared. A type, so nothing about which picker a host
+// injects is decided here — see `variablePickerComponent`.
+import type { CreateOptionOutcome } from '../../fields/VariablePickerField.tsx';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
+import { rowsOf } from '../rowDialog.tsx';
 import { useStageEditorForm } from '../stageEditorContext.ts';
-import { readRows } from './arrayFieldCommands.ts';
+import { cellIssues, requiredCell } from './cellRules.ts';
 import {
   crossClassPickIssue,
   draftValidatedElsewhereMessage,
   validatedElsewhereMessage,
   variableDisplayName,
 } from './crossClassPick.ts';
-import RowField from './RowField.tsx';
-import { requiredRow, type RowValidator } from './rowValidators.ts';
+import { useEditedCells } from './useEditedCells.ts';
 
 const FrescoBooleanControl = FrescoBooleanField as ComponentType<
   Record<string, unknown>
@@ -169,18 +175,16 @@ const messages = defineMessages({
   },
 });
 
-const REQUIRED_ONLY: readonly RowValidator[] = [requiredRow()];
-
 /**
  * The three things the creation round trip can outlive, in the words the
  * researcher reads.
  *
  * `rowReplaced` is said when the row a new attribute was created from is no
  * longer that row. `listClosed` is said when the list stopped accepting
- * changes while the attribute was being created — a lost lease, a section
- * whose prerequisite stopped being chosen — which `ArrayField` reports only by
- * withdrawing the row’s update handler: an optional call assigns nothing and
- * says nothing, which reads as an assignment that worked. `rowGone` is said
+ * changes while the attribute was being created — a section whose prerequisite
+ * stopped being chosen — which `ArrayField` reports only by withdrawing the
+ * row’s update handler: an optional call assigns nothing and says nothing,
+ * which reads as an assignment that worked. `rowGone` is said
  * when the assignment reached no row at all, the one case re-checking this
  * control cannot see for itself: a row that has left the list stops being
  * rendered — `ArrayField` even keeps its editor mounted on frozen props while
@@ -212,19 +216,19 @@ const REQUIRED_ONLY: readonly RowValidator[] = [requiredRow()];
  *
  * The argument is whatever the stage document holds at the array's key, not
  * something a caller has already vetted — a host builds this from that value
- * inside its own `useMemo`, in its own render path. An import, a migration or
- * a mid-cascade reseed can leave a list holding an entry that is not a row at
- * all, and destructuring one throws out of that render, taking down the
+ * inside its own `useMemo`, in its own render path. An import or a migration
+ * can leave a list holding an entry that is not a row at all, and
+ * destructuring one throws out of that render, taking down the
  * editor before the render-tolerant control this whole package is built around
  * ever draws. So it reads its rows the way every other reader here does, with
- * `readRows` — see `renderedRows` in `arrayFieldCommands`, and fresco-ui's
+ * `rowsOf`, which drops what is not a row rather than reading it — fresco-ui's
  * render-tolerance contract (#1433).
  */
 export const committedAttributeVariableIds = (
   committedValue?: unknown,
 ): ReadonlySet<string> =>
   new Set(
-    readRows(committedValue)
+    rowsOf(committedValue)
       .map((row) => row.variable)
       .filter(
         (variable): variable is string =>
@@ -250,7 +254,7 @@ export type AssignAttributesCrossClassContext = {
  * sources; this stage's saved roles are stale once editing begins.
  *
  * Shared verbatim by the row's DISPLAYED error and the owning array field's
- * BLOCKING rule (`makeAssignAttributesValidation`). A `RowField` error can
+ * BLOCKING rule (`makeAssignAttributesValidation`). A row cell's error can
  * only display — nothing there reaches the form's validity — so an error with
  * no array-level counterpart is a contradiction the researcher is shown and
  * then invited to save. The two layers must therefore be one function, escape
@@ -305,7 +309,9 @@ export default function Attribute({
     forceShowErrors,
   } = useAssignAttributesContext();
   const intl = useAppIntl();
-  const { protocolContext, identity } = useStageEditorForm();
+  const { hasEdited, markEdited } = useEditedCells();
+  const { identity } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const { openDialog } = useDialog();
   const booleanOptions = useMemo(
     () => [
@@ -346,8 +352,8 @@ export default function Attribute({
     [protocolContext, subject],
   );
 
-  const crossClassValidate = useCallback<RowValidator>(
-    (value) =>
+  const crossClassValidate = useCallback(
+    (value: unknown) =>
       assignAttributeCrossClassIssue(typeof value === 'string' ? value : '', {
         allVariables,
         committedVariableIds,
@@ -363,37 +369,45 @@ export default function Attribute({
     ],
   );
 
-  const variableValidators = useMemo<readonly RowValidator[]>(
-    () => [requiredRow(), crossClassValidate],
-    [crossClassValidate],
+  const variableErrors = cellIssues(
+    requiredCell(variable),
+    crossClassValidate(variable),
   );
+  const valueErrors = cellIssues(requiredCell(item.value));
+  const showVariableErrors =
+    (hasEdited('variable') || forceShowErrors) && variableErrors.length > 0;
+  const showValueErrors =
+    (hasEdited('value') || forceShowErrors) && valueErrors.length > 0;
 
   // Answered rather than fired and forgotten: the picker keeps the name the
   // researcher typed until it hears the attribute exists, because a refusal is
   // about that name.
+  //
+  // Which is why the three things below are `unassigned` and not a refusal.
+  // The codebook write SUCCEEDED in every one of them — only the assignment
+  // did not happen — and a picker told "no" holds on to the name, so the next
+  // press asks the codebook for a name it already stores and comes back
+  // refused for a duplicate the researcher never asked for twice.
   const handleCreateOption = onCreateVariable
-    ? async (variableName: string): Promise<boolean> => {
+    ? async (variableName: string): Promise<CreateOptionOutcome> => {
         // The row this creation was started FROM, as it stands right now.
         // Creating a codebook variable is a round trip through the host, and
-        // the list carries on moving while it runs — a collaborator's
-        // insertion, an undo, a rollback after a lost lease. These rows carry
-        // no id of their own, so `onUpdate` is bound to an internal id
-        // `ArrayField` infers from the row's content when the value is
-        // replaced: a row that has itself been edited meanwhile — or one of
-        // two rows nothing can tell apart — leaves this handle naming a row
-        // the researcher never looked at, and the new variable is stamped onto
-        // that one's attribute.
+        // the list can move while it runs. These rows carry no id of their own,
+        // so `onUpdate` is bound to an internal id `ArrayField` infers from the
+        // row's content when the value is replaced: a row that has itself been
+        // edited meanwhile — or one of two rows nothing can tell apart — leaves
+        // this handle naming a row the researcher never looked at, and the new
+        // variable is stamped onto that one's attribute.
         //
         // Content is the only identity such a row has, and it is enough for
-        // the same reason it is enough in `useConfirmRowRemoval`: two rows the
-        // researcher cannot tell apart are two rows this control described
-        // identically.
+        // the same reason it is enough anywhere a dialog outlives the row it
+        // was opened on: two rows the researcher cannot tell apart are two rows
+        // this control described identically.
         const createdFrom = stripManagedProperties(rowRef.current);
-        // Answered rather than fired and forgotten: the picker keeps the name
-        // the researcher typed until it hears the attribute exists, because a
-        // refusal is about that name.
         const created = await onCreateVariable(variableName);
-        if (created === undefined) return false;
+        // The one answer that is a refusal: nothing was written, so the name
+        // is still the researcher's to correct.
+        if (created === undefined) return { status: 'refused' };
         // Both of these are read when the creation COMPLETES: which row this
         // control now names, and whether the list will still take a write to
         // it. Either can have changed inside the round trip, and neither is
@@ -427,7 +441,7 @@ export default function Attribute({
               { variableName },
             ),
           );
-          return false;
+          return { status: 'unassigned' };
         }
         // The last thing the two guards above cannot see: a row that has
         // left the list while this control was still rendering it, or was
@@ -438,9 +452,9 @@ export default function Attribute({
           await unassigned(
             intl.formatMessage(messages.rowGone, { variableName }),
           );
-          return false;
+          return { status: 'unassigned' };
         }
-        return true;
+        return { status: 'created' };
       }
     : undefined;
 
@@ -448,18 +462,19 @@ export default function Attribute({
     <Surface className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-8">
       {/* Fields carry their own bottom margin, so this column just stacks. */}
       <div>
-        <RowField
+        <UnconnectedField
           name={`${rowFieldName}.variable`}
           label={intl.formatMessage(messages.variableLabel)}
           component={variablePickerComponent}
           value={variable}
-          onChange={(value: unknown) =>
-            onUpdate?.({
-              variable: typeof value === 'string' ? value : undefined,
-            })
-          }
-          validators={variableValidators}
-          forceShowErrors={forceShowErrors}
+          onChange={(value: unknown) => {
+            const next = typeof value === 'string' ? value : undefined;
+            markEdited('variable', next, variable);
+            onUpdate?.({ variable: next });
+          }}
+          errors={variableErrors}
+          showErrors={showVariableErrors}
+          aria-invalid={showVariableErrors}
           options={variableOptions}
           onCreateOption={handleCreateOption}
           entity={subject.entity}
@@ -467,19 +482,20 @@ export default function Attribute({
           disabled={disabled || readOnly}
         />
         {variable && (
-          <RowField
+          <UnconnectedField
             name={`${rowFieldName}.value`}
             label={intl.formatMessage(messages.valueLabel)}
             hint={intl.formatMessage(messages.valueHint)}
             component={FrescoBooleanControl}
             value={item.value}
-            onChange={(value: unknown) =>
-              onUpdate?.({
-                value: typeof value === 'boolean' ? value : undefined,
-              })
-            }
-            validators={REQUIRED_ONLY}
-            forceShowErrors={forceShowErrors}
+            onChange={(value: unknown) => {
+              const next = typeof value === 'boolean' ? value : undefined;
+              markEdited('value', next, item.value);
+              onUpdate?.({ value: next });
+            }}
+            errors={valueErrors}
+            showErrors={showValueErrors}
+            aria-invalid={showValueErrors}
             options={booleanOptions}
             noReset
             disabled={disabled || readOnly}

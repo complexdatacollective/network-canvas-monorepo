@@ -10,15 +10,8 @@ import {
   normalizeForComparison,
   VariableNameSchema,
 } from '@codaco/shared-consts';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
-  canonicalize,
-  contentHash,
-  type Command,
-  type SectionDoc,
-  targetRoot,
-} from '@codaco/studio-sync/apply';
-import {
-  parseSectionId,
   sectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
@@ -27,11 +20,6 @@ import type {
   CodebookSubject,
   ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
-import type {
-  CompoundEditRequest,
-  CompoundEditResult,
-  CompoundSectionEdit,
-} from '../session.ts';
 
 export type { CodebookSubject } from '../protocol-context.ts';
 
@@ -62,10 +50,10 @@ export type CodebookDraftIssue = Readonly<{
  * All of them cross a string-only contract — a `CodebookDraftIssue.message` or
  * an `Error.message` — so they are encoded with `createMessageError` and
  * decoded where they are rendered. The invariants around them stay English on
- * purpose: `AuxiliaryDraftBusyError`, 'the variable draft is invalid', 'the
- * authoritative codebook entity is invalid', 'Entity variables must be a
- * record', 'submission failed' and the `assertNonEmpty` checks all report that
- * a caller wired something wrong, and no researcher action produces them.
+ * purpose: 'the variable draft is invalid', 'the authoritative codebook entity
+ * is invalid', 'Entity variables must be a record' and the `assertNonEmpty`
+ * checks all report that a caller wired something wrong, and no researcher
+ * action produces them.
  */
 const messages = defineMessages({
   optionsIncomplete: {
@@ -151,37 +139,24 @@ export class MissingVariableError extends Error {
   }
 }
 
-export class AuxiliaryDraftBusyError extends Error {
-  constructor() {
-    super('the auxiliary codebook draft is waiting for a submission');
-  }
-}
-
-type EntityEditInput = Readonly<{
-  requestId: string;
-  description: string;
+export type CreateEntityEditInput = Readonly<{
   subject: CodebookSubject;
+  draft: CodebookEntityDraft;
 }>;
 
-export type CreateEntityEditInput = EntityEditInput &
-  Readonly<{ draft: CodebookEntityDraft }>;
+export type UpdateEntityEditInput = Readonly<{
+  subject: CodebookSubject;
+  authoritativeDocument: SectionDoc;
+  /** Only properties owned by the entity form. */
+  draft: CodebookEntityDraft;
+  unsetProperties?: readonly string[];
+}>;
 
-export type UpdateEntityEditInput = EntityEditInput &
-  Readonly<{
-    authoritativeDocument: SectionDoc;
-    /** Only properties owned by the entity form. */
-    draft: CodebookEntityDraft;
-    unsetProperties?: readonly string[];
-  }>;
-
-export type RemoveEntityEditInput = EntityEditInput &
-  Readonly<{ authoritativeDocument: SectionDoc }>;
-
-type VariableEditInput = EntityEditInput &
-  Readonly<{
-    authoritativeDocument: SectionDoc;
-    variableId: string;
-  }>;
+type VariableEditInput = Readonly<{
+  subject: CodebookSubject;
+  authoritativeDocument: SectionDoc;
+  variableId: string;
+}>;
 
 export type CreateVariableEditInput = VariableEditInput &
   Readonly<{
@@ -196,8 +171,6 @@ export type UpdateVariableEditInput = VariableEditInput &
     /** Omit these properties from the prior variable before applying `draft`. */
     replaceProperties?: readonly string[];
   }>;
-
-export type RemoveVariableEditInput = VariableEditInput;
 
 const issuePath = (path: readonly PropertyKey[]): (string | number)[] =>
   path.map((part) => (typeof part === 'symbol' ? String(part) : part));
@@ -261,34 +234,6 @@ const cloneDocument = (
     });
   }
   return clone;
-};
-
-const freezeValue = (value: unknown): unknown => {
-  if (Array.isArray(value)) {
-    for (const child of value) freezeValue(child);
-    return Object.freeze(value);
-  }
-  if (value !== null && typeof value === 'object') {
-    for (const child of Object.values(value)) freezeValue(child);
-    return Object.freeze(value);
-  }
-  return value;
-};
-
-const frozenDocument = (
-  document: Readonly<Record<string, unknown>>,
-): Readonly<SectionDoc> => {
-  const clone = cloneDocument(document);
-  freezeValue(clone);
-  return clone;
-};
-
-const hasSameDocumentContent = (
-  left: Readonly<SectionDoc> | null,
-  right: Readonly<SectionDoc> | null,
-): boolean => {
-  if (left === null || right === null) return left === right;
-  return canonicalize(left) === canonicalize(right);
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -436,140 +381,35 @@ const variablesFromDocument = (
   return cloneDocument(variables);
 };
 
-const commandsFromDocumentChange = (
-  previous: SectionDoc,
-  next: SectionDoc,
-): readonly Command[] => {
-  const commands: Command[] = [];
-  const keys = new Set([...Object.keys(previous), ...Object.keys(next)]);
-  for (const key of [...keys].toSorted()) {
-    if (!Object.hasOwn(next, key)) {
-      commands.push(Object.freeze({ op: 'unset', key }));
-      continue;
-    }
-    if (
-      !Object.hasOwn(previous, key) ||
-      canonicalize(previous[key]) !== canonicalize(next[key])
-    ) {
-      const value = cloneValue(next[key]);
-      freezeValue(value);
-      commands.push(Object.freeze({ op: 'set', key, value }));
-    }
-  }
-  return Object.freeze(commands);
-};
-
-const request = (
-  id: string,
-  description: string,
-  edit: CompoundSectionEdit,
-): CompoundEditRequest => {
-  assertNonEmpty(id, 'compound edit request id');
-  assertNonEmpty(description, 'compound edit description');
-  const immutableEdit = structuredClone(edit);
-  freezeValue(immutableEdit);
-  return Object.freeze({
-    id,
-    description,
-    edits: Object.freeze([immutableEdit]),
-  });
-};
-
-/**
- * Adds the current stage half of a nested codebook action without changing the
- * stable request id. The session and host still validate the complete request;
- * this helper makes the required stage + codebook shape explicit at the call
- * site and prevents a caller from accidentally touching the same section
- * twice.
- */
-export function withStageSectionEdit(
-  requestValue: CompoundEditRequest,
-  stageSectionId: ProtocolSectionId,
-  authoritativeStageDocument: Readonly<SectionDoc>,
-  commands: readonly Command[],
-): CompoundEditRequest {
-  const ref = parseSectionId(stageSectionId);
-  if (ref.kind !== 'stage') {
-    throw new Error('the additional compound section must be a stage');
-  }
-  if (commands.length === 0) {
-    throw new Error('the additional stage edit requires at least one command');
-  }
-  if (
-    commands.some((command) => {
-      const key = targetRoot(command.key);
-      return key === 'id' || key === 'type';
-    })
-  ) {
-    throw new Error('a compound stage edit cannot change stage identity');
-  }
-  if (requestValue.edits.some((edit) => edit.sectionId === stageSectionId)) {
-    throw new Error('the compound request already edits this stage');
-  }
-
-  const stageEdit: CompoundSectionEdit = structuredClone({
-    kind: 'update',
-    sectionId: stageSectionId,
-    expectedContentHash: contentHash(authoritativeStageDocument),
-    commands,
-  });
-  freezeValue(stageEdit);
-  const existingEdits = structuredClone(requestValue.edits);
-  freezeValue(existingEdits);
-  return Object.freeze({
-    ...requestValue,
-    edits: Object.freeze([...existingEdits, stageEdit]),
-  });
-}
-
-export function buildCreateEntityRequest(
-  input: CreateEntityEditInput,
-): CompoundEditRequest {
+/** The whole section document a new node, edge or ego type is created from. */
+export function documentForNewEntity(input: CreateEntityEditInput): SectionDoc {
   const document = cloneDocument(input.draft);
   if (!Object.hasOwn(document, 'variables')) {
     document.variables = Object.create(null);
   }
   validateEntityDocument(input.subject, document);
-  return request(input.requestId, input.description, {
-    kind: 'create',
-    sectionId: sectionIdForCodebookSubject(input.subject),
-    document: frozenDocument(document),
-  });
+  return document;
 }
 
-export function buildUpdateEntityRequest(
+/**
+ * The authoritative section rewritten with the entity form's own properties.
+ *
+ * Variables have their own editor and are never owned by the entity form, so
+ * the authoritative map is kept: an entity save must not erase a variable a
+ * nested editor or a collaborator added.
+ */
+export function documentWithEntityProperties(
   input: UpdateEntityEditInput,
-): CompoundEditRequest {
+): SectionDoc {
   const next = cloneDocument(input.authoritativeDocument);
   for (const [key, value] of Object.entries(input.draft)) {
-    // Variables have their own auxiliary editor and are never owned by the
-    // entity-properties form. Keeping the authoritative map here prevents an
-    // entity save from erasing nested or remotely added variables.
     if (key !== 'variables') defineOwn(next, key, cloneValue(value));
   }
   for (const key of input.unsetProperties ?? []) {
     if (key !== 'variables') delete next[key];
   }
   validateEntityDocument(input.subject, next);
-  return request(input.requestId, input.description, {
-    kind: 'update',
-    sectionId: sectionIdForCodebookSubject(input.subject),
-    expectedContentHash: contentHash(input.authoritativeDocument),
-    commands: commandsFromDocumentChange(input.authoritativeDocument, next),
-  });
-}
-
-export function buildRemoveEntityRequest(
-  input: RemoveEntityEditInput,
-): CompoundEditRequest {
-  if (input.subject.entity === 'ego') {
-    throw new Error('the ego codebook section cannot be removed');
-  }
-  return request(input.requestId, input.description, {
-    kind: 'remove',
-    sectionId: sectionIdForCodebookSubject(input.subject),
-    expectedContentHash: contentHash(input.authoritativeDocument),
-  });
+  return next;
 }
 
 const assertVariableNameAvailable = (
@@ -603,32 +443,20 @@ const variableIdExists = (
   return Object.hasOwn(context.codebook.ego?.variables ?? {}, variableId);
 };
 
-const variableUpdateRequest = (
+const entityDocumentWithVariables = (
   input: VariableEditInput,
   variables: Record<string, unknown>,
-): CompoundEditRequest => {
+): SectionDoc => {
   const next = cloneDocument(input.authoritativeDocument);
   next.variables = variables;
   validateEntityDocument(input.subject, next);
-  const variablesValue = cloneValue(variables);
-  freezeValue(variablesValue);
-  return request(input.requestId, input.description, {
-    kind: 'update',
-    sectionId: sectionIdForCodebookSubject(input.subject),
-    expectedContentHash: contentHash(input.authoritativeDocument),
-    commands: Object.freeze([
-      Object.freeze({
-        op: 'set' as const,
-        key: 'variables',
-        value: variablesValue,
-      }),
-    ]),
-  });
+  return next;
 };
 
-export function buildCreateVariableRequest(
+/** The authoritative section with one more attribute in its variable map. */
+export function documentWithCreatedVariable(
   input: CreateVariableEditInput,
-): CompoundEditRequest {
+): SectionDoc {
   assertNonEmpty(input.variableId, 'variable record id');
   if (variableIdExists(input.protocolContext, input.variableId)) {
     throw new DuplicateVariableIdError(input.variableId);
@@ -640,12 +468,102 @@ export function buildCreateVariableRequest(
   const variable = validateVariableDraft(input.draft);
   assertVariableNameAvailable(variables, variable);
   defineOwn(variables, input.variableId, cloneValue(variable));
-  return variableUpdateRequest(input, variables);
+  return entityDocumentWithVariables(input, variables);
 }
 
-export function buildUpdateVariableRequest(
+/**
+ * One editor's finished document, laid back over the section as the host holds
+ * it NOW.
+ *
+ * A nested codebook editor assembles the whole section — the authoritative
+ * document it was rendered from, with its one attribute written into it — and
+ * the write that carries it takes the section's lock only at that moment. A
+ * collaborator who wrote between the editor's last render and that acquire is
+ * in the document the lock hands back and NOT in the one the editor built, so
+ * submitting the editor's copy whole deletes their attribute without either
+ * researcher seeing anything happen.
+ *
+ * So only what the editor owns comes across: `ownedProperties` are the
+ * attribute's properties this submit set, and everything else — the
+ * attribute's other properties, the other attributes, and the entity's own
+ * properties — is whatever the host holds. An attribute is one record edited
+ * through several surfaces, so carrying the whole of it would undo a
+ * collaborator's rename on a save of the rules and their rules on a save of
+ * the values, in each case from a surface that offers no control for what it
+ * overwrote. Absent only from a CREATE, which authors the whole attribute.
+ *
+ * The name is re-checked against the authoritative attributes for the same
+ * reason: the collaborator may have used it while this editor was open, and
+ * the check the editor made was against a codebook that no longer exists.
+ */
+export function documentWithRebasedVariable(
+  input: VariableEditInput &
+    Readonly<{
+      submittedDocument: SectionDoc;
+      /** Absent where the submit creates the attribute, and so owns all of it. */
+      ownedProperties?: readonly string[];
+    }>,
+): SectionDoc {
+  assertNonEmpty(input.variableId, 'variable record id');
+  const submitted = variablesFromDocument(input.submittedDocument)[
+    input.variableId
+  ];
+  // Absent — or not an attribute at all — is the editor handing back a
+  // document that does not hold what it was opened on, which is the same
+  // nothing-to-write-to that a deleted attribute is.
+  if (!isRecord(submitted)) throw new MissingVariableError(input.variableId);
+  const variables = variablesFromDocument(input.authoritativeDocument);
+  const variable = validateVariableDraft(
+    input.ownedProperties === undefined
+      ? submitted
+      : variableWithOwnedProperties(
+          variables,
+          input.variableId,
+          submitted,
+          input.ownedProperties,
+        ),
+  );
+  assertVariableNameAvailable(variables, variable, input.variableId);
+  defineOwn(variables, input.variableId, cloneValue(variable));
+  return entityDocumentWithVariables(input, variables);
+}
+
+/**
+ * The attribute as the host holds it, with one editor's own properties taken
+ * across from what it submitted.
+ *
+ * A property the submit left off is one the editor cleared — the same
+ * delete-then-write `documentWithUpdatedVariable` performs against
+ * `replaceProperties` — so an owned property absent from the submitted record
+ * is removed rather than kept.
+ *
+ * An attribute that is no longer there is one a collaborator deleted inside
+ * this round trip. Writing it back would recreate it under them, so the save
+ * is refused with the sentence `MissingVariableError` already carries.
+ */
+const variableWithOwnedProperties = (
+  variables: Record<string, unknown>,
+  variableId: string,
+  submitted: Record<string, unknown>,
+  ownedProperties: readonly string[],
+): SectionDoc => {
+  const current = variables[variableId];
+  if (!Object.hasOwn(variables, variableId) || !isRecord(current)) {
+    throw new MissingVariableError(variableId);
+  }
+  const next = cloneDocument(current);
+  for (const property of ownedProperties) {
+    if (Object.hasOwn(submitted, property)) {
+      defineOwn(next, property, cloneValue(submitted[property]));
+    } else delete next[property];
+  }
+  return next;
+};
+
+/** The authoritative section with the draft laid over one of its attributes. */
+export function documentWithUpdatedVariable(
   input: UpdateVariableEditInput,
-): CompoundEditRequest {
+): SectionDoc {
   assertNonEmpty(input.variableId, 'variable record id');
   const variables = variablesFromDocument(input.authoritativeDocument);
   const current = variables[input.variableId];
@@ -661,297 +579,5 @@ export function buildUpdateVariableRequest(
   const variable = validateVariableDraft(nextVariable);
   assertVariableNameAvailable(variables, variable, input.variableId);
   defineOwn(variables, input.variableId, cloneValue(variable));
-  return variableUpdateRequest(input, variables);
-}
-
-export function buildRemoveVariableRequest(
-  input: RemoveVariableEditInput,
-): CompoundEditRequest {
-  assertNonEmpty(input.variableId, 'variable record id');
-  const variables = variablesFromDocument(input.authoritativeDocument);
-  if (!Object.hasOwn(variables, input.variableId)) {
-    throw new MissingVariableError(input.variableId);
-  }
-  delete variables[input.variableId];
-  return variableUpdateRequest(input, variables);
-}
-
-export type AuxiliaryCodebookDraftStatus =
-  | 'editing'
-  | 'submitting'
-  | 'awaiting-authoritative';
-
-type UnappliedCompoundEditResult = Exclude<
-  CompoundEditResult,
-  Readonly<{ status: 'applied'; update: unknown }>
->;
-
-/**
- * A refusal by the surface that asked for the edit, in words it wrote itself.
- *
- * Some things a researcher can ask for are legal to the schema, legal to the
- * host, and still wrong: an attribute whose committed rules require three
- * answers cannot be left with two options to choose from. Nothing downstream
- * refuses that — the codebook schema accepts it, and a host applying a compound
- * edit is not asked to reason about validation rules — so the surface that
- * knows about it has to say so.
- *
- * A separate status rather than a `failed` result, because the whole vocabulary
- * of `CompoundEditFailureReason` is about transport and authority: what went
- * wrong between the editor and the host. Reported as one of those, this arrives
- * carrying a sentence the researcher should read and a reason that means
- * something else, and `compoundFailureMessage` renders the reason — so the
- * contradiction is described as "This change could not be sent" and the
- * sentence explaining it is discarded. A status of its own is what lets the
- * copy module recognise a message that is already written for a researcher and
- * pass it through.
- *
- * NOT part of `CompoundEditResult`: a host answers that, and no host is being
- * asked to detect this.
- */
-export type AuxiliaryCodebookContradiction = Readonly<{
-  status: 'contradiction';
-  /**
-   * Researcher-facing, and shown verbatim: it names the rule and the values
-   * that cannot both hold. `findDraftContradictions` writes these.
-   */
-  message: string;
-}>;
-
-/** What a submit hook may answer a nested codebook editor with. */
-export type AuxiliaryCodebookSubmitResult =
-  | CompoundEditResult
-  | AuxiliaryCodebookContradiction;
-
-export type AuxiliaryCodebookDraftFailure =
-  | Readonly<{ kind: 'result'; result: UnappliedCompoundEditResult }>
-  | Readonly<{ kind: 'contradiction'; message: string }>
-  | Readonly<{ kind: 'error'; message: string }>;
-
-export type AuxiliaryCodebookDraftSnapshot = Readonly<{
-  authoritativeDocument: Readonly<SectionDoc> | null;
-  draft: Readonly<SectionDoc>;
-  status: AuxiliaryCodebookDraftStatus;
-  authoritativeChanged: boolean;
-  lastFailure: AuxiliaryCodebookDraftFailure | null;
-}>;
-
-/**
- * Host-neutral state for a nested codebook editor. It deliberately keeps an
- * invalid draft separate from the authoritative section document. A failed or
- * blocked submit never resets the draft, and an unrelated authoritative
- * update is recorded without attempting a generic rebase.
- */
-export class AuxiliaryCodebookDraftSession {
-  private readonly listeners = new Set<() => void>();
-  private authoritativeGeneration = 0;
-  private snapshot: AuxiliaryCodebookDraftSnapshot;
-
-  constructor(
-    initialDraft: Readonly<SectionDoc>,
-    authoritativeDocument: Readonly<SectionDoc> | null = null,
-  ) {
-    this.snapshot = Object.freeze({
-      authoritativeDocument:
-        authoritativeDocument === null
-          ? null
-          : frozenDocument(authoritativeDocument),
-      draft: frozenDocument(initialDraft),
-      status: 'editing',
-      authoritativeChanged: false,
-      lastFailure: null,
-    });
-  }
-
-  subscribe(listener: () => void): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  }
-
-  getSnapshot(): AuxiliaryCodebookDraftSnapshot {
-    return this.snapshot;
-  }
-
-  replaceDraft(draft: Readonly<SectionDoc>): void {
-    if (this.snapshot.status !== 'editing') throw new AuxiliaryDraftBusyError();
-    this.replaceSnapshot({
-      draft: frozenDocument(draft),
-      lastFailure: null,
-    });
-  }
-
-  reset(): void {
-    if (this.snapshot.status !== 'editing') throw new AuxiliaryDraftBusyError();
-    if (this.snapshot.authoritativeDocument === null) return;
-    this.replaceSnapshot({
-      draft: frozenDocument(this.snapshot.authoritativeDocument),
-      authoritativeChanged: false,
-      lastFailure: null,
-    });
-  }
-
-  /** Returns whether the authoritative content, rather than its identity, changed. */
-  receiveAuthoritative(document: Readonly<SectionDoc>): boolean {
-    const authoritativeDocument = frozenDocument(document);
-    if (
-      hasSameDocumentContent(
-        this.snapshot.authoritativeDocument,
-        authoritativeDocument,
-      )
-    ) {
-      return false;
-    }
-    this.authoritativeGeneration += 1;
-    if (this.snapshot.status === 'awaiting-authoritative') {
-      this.replaceSnapshot({
-        authoritativeDocument,
-        draft: authoritativeDocument,
-        status: 'editing',
-        authoritativeChanged: false,
-        lastFailure: null,
-      });
-      return true;
-    }
-
-    if (this.snapshot.status === 'submitting') {
-      this.replaceSnapshot({
-        authoritativeDocument,
-        authoritativeChanged: true,
-      });
-      return true;
-    }
-
-    const dirty = this.isDirty();
-    const matchesDraft = hasSameDocumentContent(
-      authoritativeDocument,
-      this.snapshot.draft,
-    );
-    if (!dirty || matchesDraft) {
-      this.replaceSnapshot({
-        authoritativeDocument,
-        draft: authoritativeDocument,
-        authoritativeChanged: false,
-        lastFailure: null,
-      });
-      return true;
-    }
-
-    this.replaceSnapshot({
-      authoritativeDocument,
-      authoritativeChanged: true,
-    });
-    return true;
-  }
-
-  isDirty(): boolean {
-    const authoritative = this.snapshot.authoritativeDocument;
-    return (
-      authoritative === null ||
-      !hasSameDocumentContent(authoritative, this.snapshot.draft)
-    );
-  }
-
-  async submit(
-    buildRequest: (
-      draft: Readonly<SectionDoc>,
-      authoritativeDocument: Readonly<SectionDoc> | null,
-    ) => CompoundEditRequest,
-    onSubmit: (
-      request: CompoundEditRequest,
-    ) => Promise<AuxiliaryCodebookSubmitResult> | AuxiliaryCodebookSubmitResult,
-  ): Promise<AuxiliaryCodebookSubmitResult> {
-    if (this.snapshot.status !== 'editing') throw new AuxiliaryDraftBusyError();
-    const draft = frozenDocument(this.snapshot.draft);
-    const authoritativeDocument = this.snapshot.authoritativeDocument;
-    const authoritativeGeneration = this.authoritativeGeneration;
-    this.replaceSnapshot({ status: 'submitting', lastFailure: null });
-
-    try {
-      const result = await onSubmit(buildRequest(draft, authoritativeDocument));
-      // A contradiction keeps its own words. Recorded as a `result` failure it
-      // would be read by `reason` and reported as a transport problem, and the
-      // sentence saying which rule cannot hold would never be shown.
-      const failure =
-        result.status === 'applied'
-          ? null
-          : result.status === 'contradiction'
-            ? Object.freeze({
-                kind: 'contradiction' as const,
-                message: result.message,
-              })
-            : Object.freeze({ kind: 'result' as const, result });
-      if (
-        this.settleWithPendingAuthoritative(
-          draft,
-          authoritativeGeneration,
-          failure,
-        )
-      ) {
-        return result;
-      }
-      if (result.status === 'applied') {
-        this.replaceSnapshot({
-          status: 'awaiting-authoritative',
-          authoritativeChanged: false,
-          lastFailure: null,
-        });
-      } else {
-        this.replaceSnapshot({
-          status: 'editing',
-          lastFailure: failure,
-        });
-      }
-      return result;
-    } catch (error: unknown) {
-      const failure = Object.freeze({
-        kind: 'error' as const,
-        message: error instanceof Error ? error.message : 'submission failed',
-      });
-      if (
-        !this.settleWithPendingAuthoritative(
-          draft,
-          authoritativeGeneration,
-          failure,
-        )
-      ) {
-        this.replaceSnapshot({
-          status: 'editing',
-          lastFailure: failure,
-        });
-      }
-      throw error;
-    }
-  }
-
-  private settleWithPendingAuthoritative(
-    submittedDraft: Readonly<SectionDoc>,
-    submittedAuthoritativeGeneration: number,
-    lastFailure: AuxiliaryCodebookDraftFailure | null,
-  ): boolean {
-    if (this.authoritativeGeneration === submittedAuthoritativeGeneration) {
-      return false;
-    }
-
-    const currentAuthoritative = this.snapshot.authoritativeDocument;
-    const reconciled = hasSameDocumentContent(
-      currentAuthoritative,
-      submittedDraft,
-    );
-    this.replaceSnapshot({
-      ...(reconciled && currentAuthoritative !== null
-        ? { draft: currentAuthoritative }
-        : {}),
-      status: 'editing',
-      authoritativeChanged: !reconciled,
-      lastFailure,
-    });
-    return true;
-  }
-
-  private replaceSnapshot(
-    update: Partial<AuxiliaryCodebookDraftSnapshot>,
-  ): void {
-    this.snapshot = Object.freeze({ ...this.snapshot, ...update });
-    for (const listener of this.listeners) listener();
-  }
+  return entityDocumentWithVariables(input, variables);
 }

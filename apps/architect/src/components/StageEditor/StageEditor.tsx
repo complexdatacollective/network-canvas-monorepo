@@ -314,10 +314,23 @@ const StageEditor = (props: StageEditorProps) => {
   const [isWipProtocolValid, setIsWipProtocolValid] = useState(false);
   const hasValidatedOnce = useRef(false);
 
+  // Nothing to validate means nothing to preview, and the verdict that is on
+  // screen was reached from inputs that have gone. Dropping it is a change in
+  // values we already have, so it is compared during render; the effect below
+  // is left to the one thing it is for, running the validator. A returning
+  // draft therefore stays disabled until its own validation resolves, exactly
+  // as it did when this cleared from inside the effect.
+  const hasWipInputs = Boolean(protocol) && Boolean(formValues);
+  const [previousHasWipInputs, setPreviousHasWipInputs] =
+    useState(hasWipInputs);
+  if (hasWipInputs !== previousHasWipInputs) {
+    setPreviousHasWipInputs(hasWipInputs);
+    if (!hasWipInputs) setIsWipProtocolValid(false);
+  }
+
   useEffect(() => {
     if (!protocol || !formValues) {
-      setIsWipProtocolValid(false);
-      return;
+      return undefined;
     }
 
     let cancelled = false;

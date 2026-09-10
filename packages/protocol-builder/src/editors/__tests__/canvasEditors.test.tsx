@@ -1,0 +1,144 @@
+import { waitFor } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+
+import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
+import type { FixtureStageId } from '../../testing/protocolFixture.ts';
+import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
+import { narrativeStageEditor } from '../narrative/NarrativeStageEditor.ts';
+import { networkComposerStageEditor } from '../network-composer/NetworkComposerStageEditor.ts';
+import { sociogramStageEditor } from '../sociogram/SociogramStageEditor.ts';
+
+shimMarkdownEditorMeasurement();
+
+type CanvasEditorCase = Readonly<{
+  /** Names the case, and is what a failure reports. */
+  interfaceName: string;
+  stageId: FixtureStageId;
+  /** The editor's own registry entry, dispatched through as a host would. */
+  editor: Partial<StageEditorRegistry>;
+  /** The outline a researcher reads down the side of the stage, in order. */
+  sections: readonly string[];
+  /** The top-level stage keys those sections have a field for. */
+  ownedKeys: readonly string[];
+}>;
+
+/**
+ * What each canvas editor is written to compose, said here rather than read
+ * out of the editor.
+ *
+ * A table derived from the section list would agree with it whatever it said,
+ * including after a section was dropped or two of them swapped. These are the
+ * outline entries a researcher reads down the side of the stage, so the
+ * expected list is the interface as they meet it — which is why the subject
+ * picker contributes two of them: choosing a node type and filtering the
+ * network are separate decisions with separate switches.
+ */
+const CANVAS_EDITORS: CanvasEditorCase[] = [
+  {
+    interfaceName: 'Sociogram',
+    stageId: 'sociogram-1',
+    editor: sociogramStageEditor,
+    sections: [
+      'Stage name',
+      'Node type',
+      'Stage filter',
+      'Prompts',
+      'Background',
+      'Node layout',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['background', 'behaviours', 'label', 'prompts', 'subject'],
+  },
+  {
+    interfaceName: 'Narrative',
+    stageId: 'narrative-1',
+    editor: narrativeStageEditor,
+    sections: [
+      'Stage name',
+      'Node type',
+      'Stage filter',
+      'Visualization presets',
+      'Background',
+      'Node layout',
+      'Canvas interaction',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['background', 'behaviours', 'label', 'presets', 'subject'],
+  },
+  {
+    interfaceName: 'NetworkComposer',
+    stageId: 'network-composer-1',
+    editor: networkComposerStageEditor,
+    sections: [
+      'Stage name',
+      'Node type',
+      'Adding and arranging nodes',
+      'Node attributes',
+      'Connections',
+      'Background',
+      'Node layout',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: [
+      'background',
+      'behaviours',
+      'convexHullVariable',
+      'edges',
+      'label',
+      'layoutVariable',
+      'quickAdd',
+      'subject',
+    ],
+  },
+];
+
+/**
+ * The interfaces built on a canvas, each of them a list of sections and
+ * nothing else.
+ *
+ * Opened through the package's dispatcher over the editor's own registry
+ * entry, which is how a host reaches one: what `defineStageEditor` answers
+ * with has to be what the registry composes, or an editor that renders
+ * perfectly is never reached.
+ */
+describe('the canvas editors written as section lists', () => {
+  it.each(CANVAS_EDITORS)(
+    '$interfaceName renders the sections it lists, in that order',
+    async ({ stageId, editor, sections }) => {
+      const harness = renderStageEditor({ stageId, registry: editor });
+
+      // Every section registers itself on mount, and the outline is built from
+      // what is registered — so an outline that is still short has not
+      // finished mounting rather than having lost a section.
+      await waitFor(() =>
+        expect(harness.outline()).toHaveLength(sections.length),
+      );
+      expect(harness.outline().map((section) => section.title)).toEqual([
+        ...sections,
+      ]);
+    },
+  );
+
+  /**
+   * Each editor's own stage out of the shared all-interfaces protocol, opened
+   * and saved without a single edit.
+   *
+   * Two claims, both `roundTrip`'s: the document handed back deep-equals the
+   * one the protocol holds, and every key of it is owned by a section that is
+   * on screen. `unowned` is empty — there is nothing these stages hold that
+   * the researcher cannot see and change.
+   */
+  it.each(CANVAS_EDITORS)(
+    '$interfaceName saves the stage it opened, losing nothing',
+    async ({ stageId, editor, ownedKeys }) => {
+      const harness = renderStageEditor({ stageId, registry: editor });
+
+      await waitFor(() => expect(harness.ownedKeys()).toEqual([...ownedKeys]));
+      await harness.roundTrip({ unowned: [] });
+    },
+  );
+});

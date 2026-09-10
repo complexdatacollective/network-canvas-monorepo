@@ -1,35 +1,53 @@
 /**
- * Where every editor family is wired in, and the only file a family has to
- * change to be wired in.
+ * Where every editor is wired in, and the only file an editor has to change to
+ * be wired in.
  *
- * ADDING A FAMILY IS TWO LINES:
+ * ADDING AN EDITOR IS TWO LINES:
  *
  * 1. Import its part and add it to `REGISTRY_PARTS`.
  * 2. Delete the stage types it claims from `AWAITING_STAGE_EDITORS`.
  *
+ * A part is what `defineStageEditor` answers with: one editor, one interface,
+ * one line here.
+ *
  * Nothing else — `stageEditorRegistry` and every check below are derived from
  * those two lists, and both are checked in both directions at compile time, so
- * a family that adds a part and forgets to remove its types (or removes a type
- * no family covers) fails `typecheck` rather than a review.
+ * a part added without its types being removed (or a type removed that no part
+ * covers) fails `typecheck` rather than a review.
  *
  * Both lists are written to be merged rather than to be read: one entry per
  * line, in alphabetical order, each with a trailing comma, so that families
  * landing on separate branches change separate lines. `__tests__/
  * stageEditorRegistry.test.tsx` holds that shape in place.
  *
- * A FAMILY DECLARES ITS PART IN `stage-editor-contract.ts`, never here. This
- * module imports every family's part, so a part module that imported anything
- * from this one would close a cycle: whichever of the two a program reaches
- * first, the other is half-evaluated, and `REGISTRY_PARTS` reads a binding
- * that does not hold its part yet. The contract is a leaf — it imports the
- * controller and the stage types and nothing else — which is what makes it
- * safe for a part to import, and it is where the rest of what a family writes
- * against already lives. `defineStageEditorPart` is deliberately NOT
- * re-exported from here: a family that reached it through this module would
+ * AN EDITOR DECLARES ITS PART AWAY FROM HERE — through `defineStageEditor`,
+ * in `editors/defineStageEditor.tsx` — never in this module. This module
+ * imports every part, so a part module that imported anything from this one
+ * would close a cycle: whichever of the two a program reaches first, the other
+ * is half-evaluated, and `REGISTRY_PARTS` reads a binding that does not hold
+ * its part yet. That helper's module does not import this one, which is what
+ * makes it safe for an editor to import, and it is deliberately NOT
+ * re-exported from here: an editor that reached it through this module would
  * close the cycle again, and only sometimes.
  */
 import type { StageType } from '@codaco/protocol-validation';
 
+import { alterEdgeFormStageEditor } from './editors/alter-edge-form/AlterEdgeFormStageEditor.ts';
+import { alterFormStageEditor } from './editors/alter-form/AlterFormStageEditor.ts';
+import { categoricalBinStageEditor } from './editors/categorical-bin/CategoricalBinStageEditor.ts';
+import { dyadCensusStageEditor } from './editors/dyad-census/DyadCensusStageEditor.ts';
+import { egoFormStageEditor } from './editors/ego-form/EgoFormStageEditor.ts';
+import { familyPedigreeStageEditor } from './editors/family-pedigree/FamilyPedigreeStageEditor.ts';
+import { informationStageEditor } from './editors/information/InformationStageEditor.ts';
+import { nameGeneratorQuickAddStageEditor } from './editors/name-generator-quick-add/NameGeneratorQuickAddStageEditor.ts';
+import { nameGeneratorRosterStageEditor } from './editors/name-generator-roster/NameGeneratorRosterStageEditor.ts';
+import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
+import { narrativeStageEditor } from './editors/narrative/NarrativeStageEditor.ts';
+import { networkComposerStageEditor } from './editors/network-composer/NetworkComposerStageEditor.ts';
+import { oneToManyDyadCensusStageEditor } from './editors/one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
+import { ordinalBinStageEditor } from './editors/ordinal-bin/OrdinalBinStageEditor.ts';
+import { sociogramStageEditor } from './editors/sociogram/SociogramStageEditor.ts';
+import { tieStrengthCensusStageEditor } from './editors/tie-strength-census/TieStrengthCensusStageEditor.ts';
 import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
 
 /**
@@ -92,16 +110,34 @@ export function composeStageEditorRegistry(
 }
 
 /**
- * Every family, listed once.
+ * Every part, listed once.
  *
  * Written as a tuple rather than as a spread of imports so that the exact key
  * set of each part survives into the type system — which is what makes the
  * checks below compile-time facts rather than comments. Each entry must come
- * from `defineStageEditorPart`, for the reason that function's own comment
- * gives.
+ * from `defineStageEditor`, whose `Record<T, …>` return is what keeps that key
+ * set exact: a part widened to `StageEditorRegistryPart` has every key
+ * optional, so `keyof` it is every stage type, and both checks below then pass
+ * while saying nothing.
  */
 const REGISTRY_PARTS = [
   // One imported part per line, alphabetically, each with a trailing comma.
+  alterEdgeFormStageEditor,
+  alterFormStageEditor,
+  categoricalBinStageEditor,
+  dyadCensusStageEditor,
+  egoFormStageEditor,
+  familyPedigreeStageEditor,
+  informationStageEditor,
+  nameGeneratorQuickAddStageEditor,
+  nameGeneratorRosterStageEditor,
+  nameGeneratorStageEditor,
+  narrativeStageEditor,
+  networkComposerStageEditor,
+  oneToManyDyadCensusStageEditor,
+  ordinalBinStageEditor,
+  sociogramStageEditor,
+  tieStrengthCensusStageEditor,
 ] as const satisfies readonly StageEditorRegistryPart[];
 
 export const stageEditorRegistry: StageEditorRegistryPart =
@@ -194,25 +230,9 @@ export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
  * editor exists for it.
  */
 export const AWAITING_STAGE_EDITORS = [
-  'AlterEdgeForm',
-  'AlterForm',
   'Anonymisation',
-  'CategoricalBin',
-  'DyadCensus',
-  'EgoForm',
-  'FamilyPedigree',
   'Geospatial',
-  'Information',
-  'NameGenerator',
-  'NameGeneratorQuickAdd',
-  'NameGeneratorRoster',
-  'Narrative',
   'NarrativePedigree',
-  'NetworkComposer',
-  'OneToManyDyadCensus',
-  'OrdinalBin',
-  'Sociogram',
-  'TieStrengthCensus',
 ] as const satisfies readonly UnregisteredStageType[];
 
 export type Assert<T extends true> = T;

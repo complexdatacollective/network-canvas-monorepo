@@ -6,7 +6,7 @@ import {
   Upload,
   Users,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -50,6 +50,17 @@ import LibraryPanel from './LibraryPanel';
 import ProtocolLoadingOverlay from './ProtocolLoadingOverlay';
 import { TIMELINE_SCRIPT } from './timelineScript';
 import TransitMap from './TransitMap';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderActionSpan = (chunks: ReactNode[]) => (
+  <span className="text-action">{chunks}</span>
+);
+
+const renderCode = (chunks: ReactNode[]) => (
+  <code className="code">{chunks}</code>
+);
+
 const configMessages = defineMessages({
   docs: {
     id: 'architect.home.home.config.docs',
@@ -363,9 +374,7 @@ const Home = () => {
                     {...routeFocusTargetProps}
                   >
                     {intl.formatMessage(messages.welcomeToArchitect, {
-                      span: (chunks) => (
-                        <span className="text-action">{chunks}</span>
-                      ),
+                      span: renderActionSpan,
                     })}
                   </Heading>
                   <Paragraph
@@ -403,7 +412,7 @@ const Home = () => {
                 <Paragraph className="hint my-0 hidden items-center gap-1.5 [@container_(height>760px)]:flex">
                   <Upload className="h-3.5 w-3.5" />
                   {intl.formatMessage(messages.orDropANetcanvasFileAnywhere, {
-                    code: (chunks) => <code className="code">{chunks}</code>,
+                    code: renderCode,
                   })}
                 </Paragraph>
               </div>

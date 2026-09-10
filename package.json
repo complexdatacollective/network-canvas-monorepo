@@ -13,6 +13,7 @@
     "changeset": "changeset add",
     "check:changesets": "node scripts/check-changeset-app-isolation.mjs",
     "check:compat-protocols": "node packages/protocols/scripts/check-compat-packages.mjs",
+    "check:hydration-flag": "node scripts/check-hydration-flag.mjs",
     "check:mapbox-tokens": "node scripts/check-mapbox-tokens.mjs",
     "verify:publish-exports": "node scripts/verify-publish-exports.mjs",
     "lint": "oxlint && oxfmt --check .",
@@ -24,7 +25,8 @@
     "prepare": "husky",
     "knip": "SKIP_ENV_VALIDATION=true knip",
     "agent:check": "node scripts/agent-hooks/stop-check.mjs --manual",
-    "agent:test": "node scripts/agent-hooks/agent-test.mjs"
+    "agent:test": "node scripts/agent-hooks/agent-test.mjs",
+    "ci:metrics": "node scripts/ci-metrics.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.1",
@@ -51,10 +53,10 @@
   "lint-staged": {
     "*.{js,jsx,mjs,cjs,ts,tsx}": [
       "oxlint --fix --quiet",
-      "oxfmt"
+      "oxfmt --no-error-on-unmatched-pattern"
     ],
     "*.{json,jsonc,md,css,html,yaml,yml}": [
-      "oxfmt"
+      "oxfmt --no-error-on-unmatched-pattern"
     ]
   },
   "packageManager": "pnpm@11.20.0+sha512.9a6f330a95b66446ea088faf1521405a8a01f07fde7124cc9958dfed52d4bb436737e65b08f85f37b46fcba375092558ac51262b816844b22f63406ed166bfee"

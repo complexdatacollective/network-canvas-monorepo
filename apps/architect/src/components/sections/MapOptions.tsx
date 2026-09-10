@@ -5,7 +5,7 @@ import {
 } from '@codaco/app-i18n/messages';
 
 const defaultIntl = createAppIntl({ locale: 'en' });
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -200,6 +200,12 @@ const MAP_SELECTION_PROPERTY_HINT = defineMessages({
 const noSelectablePropertiesGuard = (intl: IntlShape = defaultIntl) =>
   intl.formatMessage(NO_SELECTABLE_PROPERTIES_MESSAGE);
 
+const renderGeospatialLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.geospatialInterface}>
+    {chunks}
+  </ExternalLink>
+);
+
 const MapOptions = () => {
   const intl = useAppIntl();
   // Read the two gating values from their OWN leaf paths, not the parent
@@ -258,11 +264,7 @@ const MapOptions = () => {
               {intl.formatMessage(
                 additionalMessages.thisInterfaceRequiresAnAPIKey,
                 {
-                  ExternalLink: (chunks) => (
-                    <ExternalLink href={documentationLinks.geospatialInterface}>
-                      {chunks}
-                    </ExternalLink>
-                  ),
+                  ExternalLink: renderGeospatialLink,
                 },
               )}
             </>

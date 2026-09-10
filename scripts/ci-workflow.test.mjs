@@ -564,9 +564,24 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
     /if \[\[ "\$GITHUB_EVENT_NAME" == "pull_request" \]\] \\/,
   );
   assert.doesNotMatch(testJob, /pull_request\|merge_group/);
+  // Deliberately not `--affected`. Turbo 2.10.4 ignores every `--filter`
+  // for task selection when `--affected` is present, while still printing a
+  // "Packages in scope" line that honours it — so the Studio-server
+  // exclusion would read as working while that suite ran here as well as in
+  // `test-studio-server`. The explicit `...[<base>]` selector that
+  // `--affected` is sugar for obeys both filters, and was verified
+  // selection-equivalent to `--affected` across several bases. Pin the
+  // explicit form, and refuse any turbo invocation that reaches for
+  // `--affected` again, so the exclusion cannot be quietly re-broken.
   assert.match(
     testJob,
-    /TURBO_SCM_BASE="\$DIFF_BASE_SHA" pnpm exec turbo run test --affected/,
+    /pnpm exec turbo run test --concurrency=1 \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+--filter='!@codaco\/studio-server'/,
+    'the affected path scopes to the PR base and excludes the Studio suite',
+  );
+  assert.doesNotMatch(
+    testJob,
+    /turbo run [^\n]*--affected/,
+    'turbo ignores --filter under --affected, so no invocation here may use it',
   );
   assert.match(
     testJob,
@@ -577,6 +592,29 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
     testJob,
     /':\(exclude\)scripts\/\*\.test\.mjs'/,
     'repository script tests do not invalidate workspace unit tests',
+  );
+});
+
+test('workspace test suites run one at a time', () => {
+  // Every vitest sizes its fork pool to the runner's CPUs, so one suite
+  // already fills the 4-vCPU runner; concurrent suites starve each other
+  // into 20s timeouts without shortening the job (PR #1801).
+  const testJob = job('test');
+  assert.ok(testJob, 'test job exists');
+  const testRuns =
+    testJob.match(/pnpm exec turbo run test\b(?:[^\n]*\\\n)*[^\n]*/g) ?? [];
+  assert.ok(testRuns.length >= 2, 'test job runs turbo test on both branches');
+  for (const run of testRuns) {
+    assert.match(run, /--concurrency=1/, `capped: ${run}`);
+  }
+
+  const seedJob = job('seed-turbo-cache');
+  assert.ok(seedJob, 'seed-turbo-cache job exists');
+  assert.match(seedJob, /pnpm exec turbo run test --concurrency=1/);
+  assert.doesNotMatch(
+    seedJob,
+    /turbo run (?:build|typecheck)[^\n]*\btest\b/,
+    'the seed does not run tests in the same turbo invocation as build or typecheck',
   );
 });
 
