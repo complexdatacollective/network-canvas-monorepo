@@ -8,6 +8,8 @@ import type { FieldValue } from './Field/types';
 import InputField from './fields/InputField';
 import { FieldsDisabled } from './FieldsDisabled';
 import Form from './Form';
+import useFormStore from './hooks/useFormStore';
+import { selectIsFormDirty } from './store/formStoreProvider';
 import SubmitButton from './SubmitButton';
 
 /** Records the values the form actually submitted. */
@@ -307,6 +309,91 @@ describe('a form that is handed the document it edits', () => {
     });
   });
 
+  it('measures every field against the document once it advances', async () => {
+    const user = userEvent.setup();
+
+    function ProtocolDocument() {
+      const [document, setDocument] = useState<Record<string, FieldValue>>({
+        title: 'Household',
+        note: 'As written',
+      });
+      return (
+        <Form onSubmit={submitted()} initialValues={document}>
+          <Field name="title" label="Title" component={InputField} />
+          <Field name="note" label="Note" component={InputField} />
+          <SaveComesBack onStored={setDocument} />
+          <DirtyFlag />
+        </Form>
+      );
+    }
+
+    render(<ProtocolDocument />);
+    const title = screen.getByRole('textbox', { name: 'Title' });
+    await user.clear(title);
+    await user.type(title, 'A renamed page');
+    const note = screen.getByRole('textbox', { name: 'Note' });
+    await user.clear(note);
+    await user.type(note, 'Halfway');
+    expect(screen.getByTestId('form-dirty')).toHaveTextContent('dirty');
+
+    // What the submit carried is on its way. The researcher goes on typing
+    // while it is in flight, so the note the protocol answers with is already
+    // out of date when it arrives.
+    await user.type(note, ' and more');
+    await user.click(
+      screen.getByRole('button', { name: 'the save comes back' }),
+    );
+
+    // The title is what the protocol holds now, so it is not unsaved work.
+    // The note is not, so it is — and the keystrokes since are still on
+    // screen for the researcher to save.
+    expect(note).toHaveValue('Halfway and more');
+    expect(screen.getByTestId('form-dirty')).toHaveTextContent('dirty');
+
+    await user.clear(note);
+    await user.type(note, 'Halfway');
+
+    // Nothing on screen differs from the protocol's own reading now. Measured
+    // against the document it opened on, the title would go on reporting a
+    // rename the researcher has watched the protocol take, and a host asks
+    // them whether to discard it on the way out.
+    await waitFor(() => {
+      expect(screen.getByTestId('form-dirty')).toHaveTextContent('clean');
+    });
+  });
+
+  it('is still dirty when the working document advances without a save', async () => {
+    const user = userEvent.setup();
+
+    function StructuralWrite() {
+      const [document, setDocument] = useState<Record<string, FieldValue>>({
+        title: 'Household',
+        note: 'As written',
+      });
+      return (
+        <Form onSubmit={submitted()} initialValues={document}>
+          <Field name="title" label="Title" component={InputField} />
+          <WriteIntoDocument onWritten={setDocument} />
+          <DirtyFlag />
+        </Form>
+      );
+    }
+
+    render(<StructuralWrite />);
+    const title = screen.getByRole('textbox', { name: 'Title' });
+    await user.clear(title);
+    await user.type(title, 'A renamed page');
+
+    await user.click(
+      screen.getByRole('button', { name: 'write into the document' }),
+    );
+
+    // The rename is still nobody's but the researcher's. A baseline that moved
+    // because the document did would call this form clean, and a host would
+    // let them leave without asking about a rename no protocol has taken.
+    expect(screen.getByTestId('form-dirty')).toHaveTextContent('dirty');
+  });
+
   it('does not put back what a mounted container has been emptied of', async () => {
     const user = userEvent.setup();
 
@@ -337,6 +424,59 @@ describe('a form that is handed the document it edits', () => {
     );
   });
 });
+
+/**
+ * A row added to a list, a subject changed: the host writes into the document
+ * it is editing, over the values on screen — the same reading a save would
+ * carry — and none of it reaches the protocol.
+ */
+function WriteIntoDocument({
+  onWritten,
+}: {
+  onWritten: (document: Record<string, FieldValue>) => void;
+}) {
+  const getFormValues = useFormStore((state) => state.getFormValues);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onWritten({ ...getFormValues(), note: 'Written structurally' });
+      }}
+    >
+      write into the document
+    </button>
+  );
+}
+
+/**
+ * The host answering a save: it stores what the submit carried — not what is
+ * on screen by the time the answer arrives — and says so to the form.
+ */
+function SaveComesBack({
+  onStored,
+}: {
+  onStored: (document: Record<string, FieldValue>) => void;
+}) {
+  const rebaseToDocument = useFormStore((state) => state.rebaseToDocument);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        const stored = { title: 'A renamed page', note: 'Halfway' };
+        onStored(stored);
+        rebaseToDocument(stored);
+      }}
+    >
+      the save comes back
+    </button>
+  );
+}
+
+/** What `selectIsFormDirty` says, which is what a host guards unsaved work on. */
+function DirtyFlag() {
+  const dirty = useFormStore(selectIsFormDirty);
+  return <p data-testid="form-dirty">{dirty ? 'dirty' : 'clean'}</p>;
+}
 
 /** A control that shows the object it is given, so a test can read it. */
 function ShowsValue({ value }: { value?: FieldValue }) {
