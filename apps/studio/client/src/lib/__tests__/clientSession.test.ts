@@ -1,10 +1,12 @@
 // The tab identity a protocol-builder lock belongs to (#1483). It has to be
-// one id for the life of the tab and not one shared with the tab beside it:
-// the server derives the lock owner from it, so a per-load id would lose the
-// section on every reload and a shared one would let two editors write it.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+// one id for the life of the document — the server derives the lock owner from
+// it, so a second id would lose the section the researcher still has open —
+// and it must not be one a second document can present: browsers copy
+// `sessionStorage` into a duplicated tab, and two documents naming one owner
+// would both be granted the same section.
+import { describe, expect, it, vi } from 'vitest';
 
-/** A document that has just loaded this module, as a reload or a new tab is. */
+/** A document that has just loaded this module, as a new or duplicated tab is. */
 async function loaded() {
   vi.resetModules();
   const { clientSessionId } = await import('../clientSession.ts');
@@ -12,51 +14,47 @@ async function loaded() {
 }
 
 describe("a tab's client session id", () => {
-  beforeEach(() => {
-    window.sessionStorage.clear();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('is one id for the life of the tab, and the same one after a reload', async () => {
+  it('is one id for the life of the document', async () => {
     const tab = await loaded();
     const id = tab();
     expect(id).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
     expect(tab()).toBe(id);
-
-    // A reload is a fresh module in a tab whose `sessionStorage` is still
-    // there, so it finds the id the last load kept rather than minting one.
-    const reloaded = await loaded();
-    expect(reloaded()).toBe(id);
+    expect(tab()).toBe(id);
   });
 
-  it('is a different id in a second tab', async () => {
+  it('is a different id in a second tab, whatever the first tab stored', async () => {
     const first = await loaded();
     const id = first();
-    // A second tab is a fresh module with a `sessionStorage` of its own, which
-    // is what makes two tabs of one researcher two lock owners (#1275).
-    window.sessionStorage.clear();
+    // A duplicated tab starts with a copy of the original's `sessionStorage`,
+    // so anything kept there would name the first tab's owner in the second.
+    window.sessionStorage.setItem('studio.clientSessionId', id);
     const second = await loaded();
     expect(second()).not.toBe(id);
   });
 
-  it('still names the tab when the browser refuses to keep it', async () => {
+  it('names the tab in a browser that keeps no site data at all', async () => {
     // A browser configured to block site data throws on access rather than
-    // answering nothing. A per-load id is a worse owner than a per-tab one,
-    // but it is an owner, and the alternative is an editor that cannot lock.
+    // answering nothing, so an id that reached for storage would have to
+    // handle it. This one never does.
     const blocked = () => {
       throw new Error('site data is blocked');
     };
-    vi.spyOn(window.sessionStorage, 'getItem').mockImplementation(blocked);
-    vi.spyOn(window.sessionStorage, 'setItem').mockImplementation(blocked);
+    const getItem = vi
+      .spyOn(window.sessionStorage, 'getItem')
+      .mockImplementation(blocked);
+    const setItem = vi
+      .spyOn(window.sessionStorage, 'setItem')
+      .mockImplementation(blocked);
 
     const tab = await loaded();
     const id = tab();
     expect(id).toHaveLength(36);
     expect(tab()).toBe(id);
+    expect(getItem).not.toHaveBeenCalled();
+    expect(setItem).not.toHaveBeenCalled();
+
+    vi.restoreAllMocks();
   });
 });

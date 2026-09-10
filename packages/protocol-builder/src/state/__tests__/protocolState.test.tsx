@@ -1,9 +1,11 @@
 import { AsyncIteratorClass } from '@orpc/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { StrictMode, useState } from 'react';
+import { Component, StrictMode, useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId,
   type ProtocolSectionId,
@@ -14,6 +16,7 @@ import type { ProtocolEvent } from '../../contract/schemas.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
+import { useProtocolBuilderContext } from '../context.ts';
 import { useEntityTypes, useSection, useSectionMutation } from '../hooks.ts';
 
 /** The edit these calls are made from: one editor, open throughout. */
@@ -506,6 +509,129 @@ describe('the protocol state layer', () => {
     });
   });
 
+  it('repeats a save whose answer was lost under the id that save used', async () => {
+    const host = newHost();
+    const staged = await host.client.resources.stage({
+      protocolId: host.protocolId,
+      editId: EDIT,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Portrait',
+        source: 'portrait.png',
+        contentType: 'image/png',
+        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const lost = lostAnswers(silentChannel(host.client));
+
+    render(
+      <ProtocolBuilder client={lost.client} protocolId={host.protocolId}>
+        <PromotingEditor
+          id={INFORMATION}
+          resourceId={staged.data.descriptor.id}
+        />
+      </ProtocolBuilder>,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'save' })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'save' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('promoted').textContent).toBe('lost');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'save' }));
+
+    // The host made the first write and the answer never arrived. A second id
+    // would be a second operation, and the promotion behind it names a file
+    // that write already committed: the researcher's save would fail for good,
+    // with the picture they imported gone from the editor.
+    await waitFor(() => {
+      expect(screen.getByLabelText('promoted').textContent).toBe(
+        'Portrait: committed',
+      );
+    });
+    expect(lost.requestIds()).toHaveLength(2);
+    expect(new Set(lost.requestIds()).size).toBe(1);
+  });
+
+  it('does not put back a section deleted while its acquire was in flight', async () => {
+    const host = newHost();
+    const gated = gatedAcquire(host.client, INFORMATION);
+    const cache = cacheProbe();
+
+    const view = render(
+      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+        <cache.Probe />
+        <Lock id={INFORMATION} />
+      </ProtocolBuilder>,
+    );
+    await waitFor(() => {
+      expect(gated.waiting()).toBe(1);
+      expect(cache.section(INFORMATION)).toBeDefined();
+    });
+
+    view.rerender(
+      <ProtocolBuilder client={gated.client} protocolId={host.protocolId}>
+        <cache.Probe />
+        <Lock id={EGO_FORM} />
+      </ProtocolBuilder>,
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText('lock').textContent).toBe('yours');
+      expect(host.store.holderOf(INFORMATION)).toBeUndefined();
+    });
+
+    await host.asCollaborator(COLLABORATOR).delete({
+      protocolId: host.protocolId,
+      sectionId: INFORMATION,
+    });
+    await waitFor(() => {
+      expect(cache.section(INFORMATION)).toBeUndefined();
+    });
+
+    gated.release();
+    // The grant this editor no longer wants is handed back by the same handler
+    // that would write the cache, so the second release is that handler having
+    // run.
+    await waitFor(() => {
+      expect(gated.releases(INFORMATION)).toBe(2);
+    });
+    // Nothing in this cache refetches and the removal took the newer state
+    // with it, so a deleted section written back here is one the editors would
+    // go on offering for as long as the protocol is open.
+    expect(cache.section(INFORMATION)).toBeUndefined();
+  });
+
+  it('does not report a fault in its own acquire handler as a host that did not answer', async () => {
+    const host = newHost();
+
+    render(
+      <Boundary>
+        <ProtocolBuilder
+          client={faultyAcquire(silentChannel(host.client), INFORMATION)}
+          protocolId={host.protocolId}
+        >
+          <Lock id={INFORMATION} />
+        </ProtocolBuilder>
+      </Boundary>,
+    );
+
+    // Reported as `unavailable`, a bug in this hook reads to the researcher
+    // exactly like a section the host cannot reach — and to everyone else like
+    // nothing at all.
+    await waitFor(() => {
+      expect(screen.getByLabelText('caught').textContent).toBe(
+        'bug reading the acquired document',
+      );
+    });
+    expect(screen.queryByLabelText('lock')).toBeNull();
+  });
+
   it('names the holder from the acquire, without waiting for a lock event', async () => {
     const host = newHost();
     await host.asCollaborator(COLLABORATOR).acquireLock({
@@ -571,17 +697,24 @@ function PromotingEditor({
           void submit(document, {
             editId: EDIT,
             resourceIds: [resourceId],
-          }).then((result) => {
-            if (result.status !== 'written') {
-              setPromoted(result.status);
-              return;
-            }
-            setPromoted(
-              (result.promoted ?? [])
-                .map((resource) => `${resource.name}: ${resource.status}`)
-                .join(', '),
-            );
-          });
+          }).then(
+            (result) => {
+              if (result.status !== 'written') {
+                setPromoted(result.status);
+                return;
+              }
+              setPromoted(
+                (result.promoted ?? [])
+                  .map((resource) => `${resource.name}: ${resource.status}`)
+                  .join(', '),
+              );
+            },
+            // A save the host never answered, which is what an editor has to
+            // report rather than leave the researcher's click looking ignored.
+            () => {
+              setPromoted('lost');
+            },
+          );
         }}
       >
         save
@@ -606,6 +739,7 @@ function NodeTypes() {
  */
 function gatedAcquire(client: ProtocolBuilderClient, held: ProtocolSectionId) {
   const gates: (() => void)[] = [];
+  const released: string[] = [];
   const acquireLock: ProtocolBuilderClient['acquireLock'] = async (
     input,
     options,
@@ -616,17 +750,127 @@ function gatedAcquire(client: ProtocolBuilderClient, held: ProtocolSectionId) {
     }
     return answer;
   };
+  const releaseLock: ProtocolBuilderClient['releaseLock'] = (
+    input,
+    options,
+  ) => {
+    released.push(input.sectionId);
+    return client.releaseLock(input, options);
+  };
   const wrapped = new Proxy(client, {
     get: (target, property) =>
-      property === 'acquireLock' ? acquireLock : Reflect.get(target, property),
+      property === 'acquireLock'
+        ? acquireLock
+        : property === 'releaseLock'
+          ? releaseLock
+          : Reflect.get(target, property),
   });
   return {
     client: wrapped,
     waiting: () => gates.length,
+    releases: (id: ProtocolSectionId) =>
+      released.filter((section) => section === id).length,
     release: () => {
       for (const open of gates.splice(0)) open();
     },
   };
+}
+
+/**
+ * The host's client with one section's `acquireLock` answered by a result
+ * whose document cannot be read: a bug in what the hook does with an answer,
+ * rather than anything the host said about it.
+ */
+function faultyAcquire(
+  client: ProtocolBuilderClient,
+  faulty: ProtocolSectionId,
+): ProtocolBuilderClient {
+  const acquireLock: ProtocolBuilderClient['acquireLock'] = async (
+    input,
+    options,
+  ) => {
+    const answer = await client.acquireLock(input, options);
+    if (input.sectionId !== faulty) return answer;
+    return {
+      lock: 'held',
+      revision: answer.revision,
+      get document(): SectionDoc {
+        throw new Error('bug reading the acquired document');
+      },
+    };
+  };
+  return new Proxy(client, {
+    get: (target, property) =>
+      property === 'acquireLock' ? acquireLock : Reflect.get(target, property),
+  });
+}
+
+/**
+ * The host's client with the first `submit` answered by a dropped connection.
+ *
+ * The host makes the write and the caller is told only that the call failed,
+ * which is all a client has when a socket closes between a request and its
+ * answer: an oRPC link rejects the calls that were in flight and reconnects
+ * only the ones that follow, so nothing resends this one.
+ */
+function lostAnswers(client: ProtocolBuilderClient) {
+  const requestIds: string[] = [];
+  let lost = false;
+  const submit: ProtocolBuilderClient['submit'] = async (input, options) => {
+    requestIds.push(input.requestId);
+    const answer = await client.submit(input, options);
+    if (lost) return answer;
+    lost = true;
+    throw new Error('WebSocket closed (code 1006)');
+  };
+  const wrapped = new Proxy(client, {
+    get: (target, property) =>
+      property === 'submit' ? submit : Reflect.get(target, property),
+  });
+  return { client: wrapped, requestIds: () => requestIds };
+}
+
+/** The section cache as the hooks leave it, which no rendered output shows. */
+function cacheProbe() {
+  let read: ((id: ProtocolSectionId) => unknown) | undefined;
+  function Probe() {
+    const { protocolId, utils } = useProtocolBuilderContext();
+    const queryClient = useQueryClient();
+    read = (id) =>
+      queryClient.getQueryData(
+        utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
+      );
+    return null;
+  }
+  return {
+    Probe,
+    section: (id: ProtocolSectionId): unknown => {
+      if (read === undefined) throw new Error('the cache probe never rendered');
+      return read(id);
+    },
+  };
+}
+
+/** What a hook's own fault reaches, when it is not swallowed on the way. */
+class Boundary extends Component<
+  Readonly<{ children: ReactNode }>,
+  Readonly<{ message: string }>
+> {
+  override state: Readonly<{ message: string }> = { message: 'none' };
+
+  static getDerivedStateFromError(error: unknown): Readonly<{
+    message: string;
+  }> {
+    return { message: error instanceof Error ? error.message : String(error) };
+  }
+
+  override render(): ReactNode {
+    return this.state.message === 'none' ? (
+      this.props.children
+    ) : (
+      <output aria-label="caught">{this.state.message}</output>
+    );
+  }
 }
 
 /**

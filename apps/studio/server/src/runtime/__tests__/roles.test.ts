@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 import { createORPCClient } from '@orpc/client';
 import { RPCLink } from '@orpc/client/fetch';
+import { RPCLink as WebSocketRPCLink } from '@orpc/client/websocket';
 import type { ContractRouterClient } from '@orpc/contract';
 import pg from 'pg';
 import { describe, expect, it } from 'vitest';
@@ -436,13 +437,26 @@ describe('actual runtime role separation and drain', () => {
         .map((value) => value.split(';')[0])
         .join('; ');
       expect(cookie).not.toBe('');
-      ws = new WebSocket(runtime.origin.replace('http:', 'ws:') + '/ws', {
-        headers: { cookie, origin: runtime.origin },
+      const socket = new WebSocket(
+        runtime.origin.replace('http:', 'ws:') + '/ws',
+        { headers: { cookie, origin: runtime.origin } },
+      );
+      ws = socket;
+      socket.binaryType = 'arraybuffer';
+      await once(socket, 'open');
+      // Positive control that this socket is really serving before SIGTERM:
+      // /ws carries the RPC surface, so a served call is the proof an echo
+      // used to be.
+      const overSocket: ContractRouterClient<typeof contract> =
+        createORPCClient(
+          new WebSocketRPCLink({
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+            connect: () => socket as unknown as globalThis.WebSocket,
+          }),
+        );
+      await expect(overSocket.status()).resolves.toMatchObject({
+        deployment: expect.anything(),
       });
-      await once(ws, 'open');
-      const echo = once(ws, 'message');
-      ws.send('runtime-drain-positive-control');
-      expect(String((await echo)[0])).toBe('runtime-drain-positive-control');
       const wsClosed = once(ws, 'close');
       // This real request is intentionally incomplete so HTTP drain cannot
       // finish until the test releases it; a late worker stop would claim next.

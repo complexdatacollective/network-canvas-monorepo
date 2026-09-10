@@ -201,4 +201,37 @@ describe('a write is made once for its request id', () => {
       expect(await state(host)).toEqual(after);
     });
   }
+
+  it('imports one file when the retry overlaps the attempt it repeats', async () => {
+    const host = fixtureHost();
+
+    // A client whose socket dropped mid-import retries under the id it used,
+    // and the host is still reading the first attempt's bytes: the second
+    // attempt sees no record of the first because there is nothing to record
+    // until the digest is in. Two staged copies is the researcher's one
+    // imported file listed twice, with the id their submit promotes being the
+    // one attempt they never heard about.
+    const [first, again] = await Promise.all([
+      host.client.resources.stage({
+        protocolId: host.protocolId,
+        editId: EDIT,
+        requestId: REQUEST,
+        request: PORTRAIT(),
+      }),
+      host.client.resources.stage({
+        protocolId: host.protocolId,
+        editId: EDIT,
+        requestId: REQUEST,
+        request: PORTRAIT(),
+      }),
+    ]);
+
+    expect(again).toEqual(first);
+    const listed = await host.client.resources.list({
+      protocolId: host.protocolId,
+      editId: EDIT,
+      status: 'staged',
+    });
+    expect(listed.status === 'ok' && listed.data.resources).toHaveLength(1);
+  });
 });

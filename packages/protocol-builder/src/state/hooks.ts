@@ -9,7 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 import type { z } from 'zod';
 
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
   sectionId,
@@ -182,6 +182,13 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   const { client, protocolId, utils } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
   const [access, setAccess] = useState<SectionAccess>('pending');
+  // A fault the acquire's success handler threw, which is a bug in this hook
+  // rather than anything the host did. Re-thrown from render below, where the
+  // nearest error boundary takes it, because the alternative is telling the
+  // researcher the section is unreachable and leaving the fault invisible.
+  const [handlerFault, setHandlerFault] = useState<
+    Readonly<{ error: unknown }> | undefined
+  >(undefined);
   // Which acquire is this editor's. An acquire that settles after its own
   // effect has been cleaned up must not touch the lock, because the next
   // effect for the same section may already hold it.
@@ -191,6 +198,19 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   // editor still wants.
   const wanted = useRef<ProtocolSectionId | undefined>(undefined);
   const released = useRef(false);
+  // The save the current request id was minted for, kept while its answer is
+  // uncertain. A transport that drops after the host committed leaves this
+  // client unable to tell a write that happened from one that did not, and an
+  // oRPC link rejects the calls that were in flight rather than resending
+  // them: only a retry carrying the same id makes the host replay what the
+  // first attempt wrote instead of writing again — or, for a promotion,
+  // refusing it because that attempt already consumed the staged files.
+  //
+  // Keyed by the document, so a save of NEW work is never answered with the
+  // revision the earlier one wrote.
+  const pendingSave = useRef<
+    Readonly<{ requestId: string; document: string }> | undefined
+  >(undefined);
   const section = useSection(id);
   const { data: lock } = useQuery<LockState>({
     queryKey: lockQueryKey(protocolId, id),
@@ -207,20 +227,13 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   useEffect(() => {
     const mine = (acquisition.current += 1);
     wanted.current = id;
+    // The save an id was kept for was of the section this editor is leaving.
+    pendingSave.current = undefined;
     // Nothing has been answered for this section yet, whatever the last one
     // this editor was pointed at said.
     setAccess('pending');
-    void client
-      .acquireLock({ protocolId, sectionId: id })
-      .then((result) => {
-        // The acquire answers with the section as the host holds it now, which
-        // is what this editor has to start from: a cached document from before
-        // a revision this client has not seen yet — the channel is reconnecting,
-        // say — would be submitted back whole over the newer one.
-        queryClient.setQueryData<SectionAtRevision>(
-          utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
-          { document: result.document, revision: result.revision },
-        );
+    void client.acquireLock({ protocolId, sectionId: id }).then(
+      (result) => {
         if (acquisition.current !== mine) {
           // A later effect took over. When it is for this same section — a
           // StrictMode remount — the lock is that editor's and its own cleanup
@@ -239,26 +252,48 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           void safe(client.releaseLock({ protocolId, sectionId: id }));
           return;
         }
-        setAccess(result.lock === 'readOnly' ? 'readOnly' : 'editing');
-        if (result.lock === 'readOnly') {
-          // The refusal already names the holder. Waiting for the channel to say
-          // it again leaves a read-only editor unable to say whose section it is
-          // — and a host whose locks are always granted never says it at all.
-          queryClient.setQueryData<LockState>(lockQueryKey(protocolId, id), {
-            holder: result.holder,
-          });
+        try {
+          // Written only once this acquire is known to be the one this editor
+          // is waiting for. A superseded answer is a document as it was before
+          // the editor moved on, and this is a manual write: the channel may
+          // have REMOVED that section — deleted while the acquire was in
+          // flight — and a cache with nothing in it has no newer revision for
+          // structural sharing to keep, so the deleted section would be put
+          // back and, nothing here refetching, stay.
+          //
+          // For the acquire this editor is waiting for it is what the editor
+          // has to start from: a cached document from before a revision this
+          // client has not seen yet — the channel is reconnecting, say — would
+          // be submitted back whole over the newer one.
+          queryClient.setQueryData<SectionAtRevision>(
+            utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
+            { document: result.document, revision: result.revision },
+          );
+          setAccess(result.lock === 'readOnly' ? 'readOnly' : 'editing');
+          if (result.lock === 'readOnly') {
+            // The refusal already names the holder. Waiting for the channel to
+            // say it again leaves a read-only editor unable to say whose
+            // section it is — and a host whose locks are always granted never
+            // says it at all.
+            queryClient.setQueryData<LockState>(lockQueryKey(protocolId, id), {
+              holder: result.holder,
+            });
+          }
+        } catch (error: unknown) {
+          setHandlerFault({ error });
         }
-      })
-      // The acquire's own rejection, rather than a `catch` on the chain: an
-      // error thrown by the handler above is a bug in this hook and has to
-      // surface, not be reported to the researcher as a host that did not
-      // answer. Nothing here is retried, so the editor is told; leaving it
-      // `pending` would sit on an acquiring state for ever, and the rejection
-      // would go unhandled besides.
-      .then(undefined, () => {
+      },
+      // The acquire's own rejection, as the second argument rather than a
+      // `then` chained after the success handler: chained, it would also catch
+      // an error the handler above threw and report a bug in this hook to the
+      // researcher as a host that did not answer. Nothing here is retried, so
+      // the editor is told; leaving it `pending` would sit on an acquiring
+      // state for ever, and the rejection would go unhandled besides.
+      () => {
         if (acquisition.current !== mine || released.current) return;
         setAccess('unavailable');
-      });
+      },
+    );
     released.current = false;
     return () => {
       released.current = true;
@@ -274,21 +309,34 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       if (section === undefined) {
         throw new Error(`section ${id} was submitted before it was read`);
       }
+      // One id for this save, reused while the same document is still being
+      // saved, so an attempt whose answer was lost is replayed rather than
+      // written again. Per save rather than per edit: the next save is a
+      // different document, and an id shared with the last one would be
+      // answered with the revision that one wrote.
+      const fingerprint = contentHash(document);
+      const requestId =
+        pendingSave.current?.document === fingerprint
+          ? pendingSave.current.requestId
+          : uuid();
+      pendingSave.current = { requestId, document: fingerprint };
       const { data, definedError, isSuccess } = await safe(
         client.submit({
           protocolId,
-          // One id for this save, so a transport that re-sends the request
-          // after a lost answer is told what the first attempt wrote rather
-          // than writing again. Per save rather than per edit: the next save
-          // is a different document, and an id shared with the last one would
-          // be answered with the revision that one wrote.
-          requestId: uuid(),
+          requestId,
           sectionId: id,
           document,
           revision: section.revision,
           ...(promote === undefined ? {} : { promote }),
         }),
       );
+      // The host answered — with the revision it wrote, or with a refusal it
+      // decided on — so this save is settled and the next one is a new
+      // operation. Anything else is an answer that may or may not exist, and
+      // the id is kept for the retry.
+      if (isSuccess || definedError !== null) {
+        pendingSave.current = undefined;
+      }
       if (isSuccess) {
         return {
           status: 'written',
@@ -324,6 +372,8 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   const release = useCallback(() => {
     void safe(client.releaseLock({ protocolId, sectionId: id }));
   }, [client, protocolId, id]);
+
+  if (handlerFault !== undefined) throw handlerFault.error;
 
   return {
     document: section?.document,

@@ -1,6 +1,6 @@
 import { createORPCClient, ORPCError } from '@orpc/client';
 import { RPCLink } from '@orpc/client/websocket';
-import type { ContractRouterClient } from '@orpc/contract';
+import type { RouterContractClient } from '@orpc/contract';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getRouteApi, useBlocker } from '@tanstack/react-router';
 import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
@@ -27,11 +27,12 @@ import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
 import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
-import type { contract as protocolBuilderContract } from '@codaco/protocol-builder/contract';
 import { ProtocolBuilder } from '@codaco/protocol-builder/ProtocolBuilder';
 import type { StageEditorActionContext } from '@codaco/protocol-builder/stage-editor-contract';
 import StageEditor from '@codaco/protocol-builder/StageEditor';
 import { CurrentProtocolSchema } from '@codaco/protocol-validation';
+import type { contract } from '@codaco/studio-rpc';
+import { CLIENT_SESSION_PARAM } from '@codaco/studio-rpc/client-session';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -45,13 +46,12 @@ import { createUuid } from '../lib/createUuid.ts';
 const route = getRouteApi('/app/study/$studyId/editor/');
 
 /**
- * Stands in until the hosts PR nests `@codaco/protocol-builder`'s contract
- * inside `@codaco/studio-rpc`'s own, at which point this is one branch of the
- * client `lib/api.ts` already builds.
+ * The same contract `lib/api.ts` builds its `/rpc` client from, over the other
+ * transport the server serves it on. The protocol builder's host is one branch
+ * of it (`client.protocolBuilder`), so the package and Studio are typed by one
+ * contract and cannot drift apart.
  */
-type StudioHostClient = ContractRouterClient<{
-  protocolBuilder: typeof protocolBuilderContract;
-}>;
+type StudioHostClient = RouterContractClient<typeof contract>;
 
 /**
  * The upgrade URL this tab's socket is opened at.
@@ -60,18 +60,16 @@ type StudioHostClient = ContractRouterClient<{
  * header on a WebSocket handshake, and the server derives the protocol
  * builder's lock owner from it: a tab that reconnects has to still be the
  * holder of the section it has open, and two tabs of one researcher have to be
- * two editors (#1275). The parameter's name is `CLIENT_SESSION_PARAM` in
- * `@codaco/studio-rpc` once the hosts PR lands; until then this spells it.
+ * two editors (#1275). `CLIENT_SESSION_PARAM` is the name the server reads it
+ * under, so the two spellings cannot drift.
  */
 export function hostSocketUrl(): string {
   const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const url = new URL(`${scheme}//${window.location.host}/ws`);
-  url.searchParams.set('clientSession', clientSessionId());
+  url.searchParams.set(CLIENT_SESSION_PARAM, clientSessionId());
   return url.toString();
 }
 
-// Nothing answers this half of `/ws` yet — the host router lands in a later
-// PR, so every call over this link is expected to hang until it does.
 const hostClient: StudioHostClient = createORPCClient(
   new RPCLink({
     connect: () => new WebSocket(hostSocketUrl()),

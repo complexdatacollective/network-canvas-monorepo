@@ -11,6 +11,7 @@ import type {
   ResourceSecretStorageSchema,
   StageResourceInputSchema,
 } from '../../contract/schemas.ts';
+import { readRosterFacts } from '../../resources/rosterFacts.ts';
 
 type Descriptor = z.output<typeof ResourceDescriptorSchema>;
 type Failure = z.output<typeof ResourceGatewayFailureSchema>;
@@ -35,6 +36,8 @@ export type DiscardOutcome =
  * principals.
  */
 export type EditScope = Readonly<{ sessionId: string; editId: string }>;
+
+type StagedResult = Readonly<{ descriptor: Descriptor; handle?: string }>;
 
 type StagedEntry = Readonly<{
   owner: EditScope;
@@ -85,6 +88,14 @@ function requestKey(scope: EditScope, kind: string, requestId: string): string {
 
 function sameEdit(owner: EditScope, scope: EditScope): boolean {
   return owner.sessionId === scope.sessionId && owner.editId === scope.editId;
+}
+
+/** What staging answers with: never the bytes, and never the secret's value. */
+function stagedResult(entry: StagedEntry): StagedResult {
+  return {
+    descriptor: entry.descriptor,
+    ...(entry.handle === undefined ? {} : { handle: entry.handle }),
+  };
 }
 
 /**
@@ -151,6 +162,24 @@ export class InMemoryResourceStore {
   readonly #staged = new Map<string, StagedEntry>();
   readonly #byRequest = new Map<string, string>();
   /**
+   * Staging attempts that have not settled yet, by request key.
+   *
+   * Registered before the digest is awaited, because that await is long enough
+   * for a second attempt of the same intent to arrive: a client whose socket
+   * dropped mid-upload retries under the request id it used the first time,
+   * and the host is still hashing that first attempt's bytes. Both would
+   * otherwise miss the record below and import the file twice, leaving the
+   * researcher with two staged copies and the retry holding the id of the one
+   * its submit will not promote.
+   */
+  readonly #staging = new Map<string, Promise<ResourceOutcome<StagedResult>>>();
+  /**
+   * Attempts whose edit discarded its staging while they were in flight. The
+   * file belongs to an edit that is over, so it is refused rather than
+   * inserted behind the discard that was meant to drop it.
+   */
+  readonly #cancelled = new Set<string>();
+  /**
    * What staging knew about each promoted resource. The asset manifest records
    * a name, a type and a source; the MIME type and the size are the host's to
    * keep, and a committed image previewed as `application/octet-stream` is one
@@ -190,13 +219,11 @@ export class InMemoryResourceStore {
     return descriptors;
   }
 
-  async stage(
+  stage(
     scope: EditScope,
     requestId: string,
     request: StageRequest,
-  ): Promise<
-    ResourceOutcome<Readonly<{ descriptor: Descriptor; handle?: string }>>
-  > {
+  ): Promise<ResourceOutcome<StagedResult>> {
     // The kind is part of the key because the contract asks only that a
     // request id be stable across a retry of one intent, not that it be unique
     // across the pickers an editor has open: a secret answered with an earlier
@@ -206,12 +233,46 @@ export class InMemoryResourceStore {
     const existing =
       existingId === undefined ? undefined : this.#staged.get(existingId);
     if (existing !== undefined) {
-      return { status: 'ok', data: existing };
+      return Promise.resolve({ status: 'ok', data: stagedResult(existing) });
     }
+    // The same intent, still running. Answered with that attempt rather than
+    // started again, so one import is one staged file however many times a
+    // client that lost its answer asks.
+    const running = this.#staging.get(key);
+    if (running !== undefined) return running;
+    const started = this.#import(scope, key, request).finally(() => {
+      this.#staging.delete(key);
+      this.#cancelled.delete(key);
+    });
+    this.#staging.set(key, started);
+    return started;
+  }
+
+  async #import(
+    scope: EditScope,
+    key: string,
+    request: StageRequest,
+  ): Promise<ResourceOutcome<StagedResult>> {
     if (request.kind === 'content' && request.bytes.size === 0) {
       // An empty file promotes into a manifest entry an interview would try to
       // show: an image with no pixels, a roster with no network.
       return failure('invalid-content', 'that file is empty');
+    }
+    // Read before anything is minted, and the cancel checked after: a discard
+    // that landed while these bytes were being hashed is one this file belongs
+    // to.
+    const named =
+      request.kind === 'content'
+        ? await contentName(request.bytes, request.source)
+        : undefined;
+    if (this.#cancelled.has(key)) {
+      // The edit gave up its staging while these bytes were being read.
+      // Inserting the file now would leave the host holding an import behind a
+      // cancel, which is the one thing a discard has to be able to promise.
+      return failure(
+        'not-found',
+        'that edit discarded its staged files while this one was being read',
+      );
     }
     const id = this.#nextId();
     const entry: StagedEntry =
@@ -243,18 +304,12 @@ export class InMemoryResourceStore {
               byteLength: request.bytes.size,
               contentType: request.contentType,
             },
-            contentName: await contentName(request.bytes, request.source),
+            ...(named === undefined ? {} : { contentName: named }),
             bytes: request.bytes,
           };
     this.#staged.set(id, entry);
     this.#byRequest.set(key, id);
-    return {
-      status: 'ok',
-      data: {
-        descriptor: entry.descriptor,
-        ...(entry.handle === undefined ? {} : { handle: entry.handle }),
-      },
-    };
+    return { status: 'ok', data: stagedResult(entry) };
   }
 
   /**
@@ -347,6 +402,12 @@ export class InMemoryResourceStore {
       for (const key of this.#byRequest.keys()) {
         if (key.startsWith(editPrefix(scope))) this.#byRequest.delete(key);
       }
+      // An import this edit started but the host has not finished reading is
+      // staging too: it is refused where it would have been inserted, so a
+      // cancel drops the file whichever side of the digest it lands on.
+      for (const key of this.#staging.keys()) {
+        if (key.startsWith(editPrefix(scope))) this.#cancelled.add(key);
+      }
       return { status: 'ok' };
     }
     if (this.#owned(scope, resourceId) === undefined) {
@@ -356,16 +417,51 @@ export class InMemoryResourceStore {
     return { status: 'ok' };
   }
 
-  inspect(
+  /**
+   * What a picker needs to know about a resource before a stage points at it.
+   *
+   * A network is read, not merely described: a roster the interview runtime
+   * cannot load is one the researcher has to be told about while choosing a
+   * different file is still what they would do, and the variable names and
+   * counts a summary shows are in the bytes and nowhere else. Every other kind
+   * is its descriptor.
+   */
+  async inspect(
     assets: SectionDoc,
     resourceId: string,
     scope: EditScope | undefined,
-  ): ResourceOutcome<Inspection> {
+  ): Promise<ResourceOutcome<Inspection>> {
     const descriptor = this.#descriptor(assets, resourceId, scope);
     if (descriptor === undefined) {
       return failure('not-found', 'no such resource', resourceId);
     }
-    return { status: 'ok', data: { descriptor } };
+    if (descriptor.kind !== 'network') {
+      return { status: 'ok', data: { descriptor } };
+    }
+    const bytes = this.#bytes(descriptor, resourceId, scope);
+    if (bytes === undefined) {
+      return failure(
+        'not-found',
+        'this host holds no bytes for that resource',
+        resourceId,
+      );
+    }
+    const roster = await readRosterFacts({
+      bytes: new Uint8Array(await bytes.arrayBuffer()),
+      contentType: descriptor.contentType ?? '',
+      ...(descriptor.source === undefined ? {} : { source: descriptor.source }),
+    });
+    if ('unreadable' in roster) {
+      return failure('invalid-content', roster.unreadable, resourceId);
+    }
+    return {
+      status: 'ok',
+      data: {
+        descriptor,
+        counts: roster.counts,
+        variableNames: [...roster.variableNames],
+      },
+    };
   }
 
   async preview(
@@ -380,13 +476,7 @@ export class InMemoryResourceStore {
     if (descriptor.kind === 'apikey') {
       return failure('unsupported-kind', 'a secret has no preview', resourceId);
     }
-    const bytes =
-      (scope === undefined
-        ? undefined
-        : this.#owned(scope, resourceId)?.bytes) ??
-      (descriptor.source === undefined
-        ? undefined
-        : this.#content.get(descriptor.source));
+    const bytes = this.#bytes(descriptor, resourceId, scope);
     if (bytes === undefined) {
       return failure(
         'not-found',
@@ -402,6 +492,20 @@ export class InMemoryResourceStore {
         url: `data:${contentType};base64,${await base64(bytes)}`,
       },
     };
+  }
+
+  /** The bytes behind a resource: this edit's staged ones, or the committed. */
+  #bytes(
+    descriptor: Descriptor,
+    resourceId: string,
+    scope: EditScope | undefined,
+  ): Blob | undefined {
+    const staged =
+      scope === undefined ? undefined : this.#owned(scope, resourceId)?.bytes;
+    if (staged !== undefined) return staged;
+    return descriptor.source === undefined
+      ? undefined
+      : this.#content.get(descriptor.source);
   }
 
   #descriptor(
