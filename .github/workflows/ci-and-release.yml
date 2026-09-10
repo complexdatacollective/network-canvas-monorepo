@@ -1021,13 +1021,6 @@ jobs:
         env:
           DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           SHARD: ${{ matrix.shard }}
-          # TEMPORARY MEASUREMENT COMMIT — REVERTED BEFORE THIS PR IS READY.
-          # This branch changes only CI and script files, so every package's
-          # turbo hash matches main's seeded cache and the shards replay
-          # instead of executing. Forcing execution makes this run a
-          # cold full-cascade, directly comparable to the 24m00s-25m56s of
-          # turbo time the unsharded job took on the same task set.
-          TURBO_FORCE: 'true'
         run: |
           # Restrict this runner to its bucket. scripts/test-shards.mjs emits
           # one `--filter=!<pkg>` for every test-carrying workspace package
