@@ -29,36 +29,42 @@ async function selectOrCreateEntityType(
   const existing = picker.getByRole('radio', { name, exact: true });
   if (await existing.count()) {
     const choice = existing.first();
-    await choice.click();
+    // The radio itself is `sr-only` inside its own `<label>`, which is the
+    // chip the researcher sees and clicks; the checked state is still read
+    // from the control.
+    const chip = choice.locator('xpath=ancestor::label[1]');
+    await chip.click();
     await confirmSubjectChange(page, entityType);
     try {
       await expect(choice).toBeChecked({ timeout: 2_000 });
     } catch {
-      // A stage transition can remount the controlled RadioGroup while the
+      // A stage transition can remount the controlled radio group while the
       // click is in flight. Retry the same semantic choice once, then require
       // the form-controlled checked state before driving dependent fields.
-      await choice.click();
+      await chip.click();
       await confirmSubjectChange(page, entityType);
       await expect(choice).toBeChecked();
     }
     return;
   }
-  await page
-    .getByRole('button', { name: `Create a new ${entityType} type` })
-    .click();
-  await page
+  const create = `Create a new ${entityType} type`;
+  await page.getByRole('button', { name: create }).click();
+  const dialog = page.getByRole('dialog', { name: create });
+  await dialog
     .getByRole('textbox', { name: `${entityLabel} type name` })
     .fill(name);
   if (opts.icon) {
     // The icon is named rather than picked from a gallery: the editor takes
     // the icon's own name and refuses one no interface can draw.
-    await page.getByRole('textbox', { name: 'Interface icon' }).fill(opts.icon);
+    await dialog
+      .getByRole('textbox', { name: 'Interface icon' })
+      .fill(opts.icon);
   }
-  const save = page.getByRole('button', { name: 'Save entity' });
-  await save.click();
-  // Wait out the dialog's exit animation before the caller interacts with
-  // controls behind it (see prompts.ts for the shared-dialog-form hazard).
-  await save.waitFor({ state: 'detached' });
+  await dialog.getByRole('button', { name: 'Save entity' }).click();
+  // Waited out on the DIALOG rather than on the submit control: the editor
+  // renames that control while the codebook write is in flight, so a wait on
+  // its name would come back before the type existed.
+  await dialog.waitFor({ state: 'detached' });
   await confirmSubjectChange(page, entityType);
 }
 

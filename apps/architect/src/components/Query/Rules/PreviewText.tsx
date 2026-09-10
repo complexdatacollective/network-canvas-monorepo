@@ -282,20 +282,28 @@ const Value = ({ value = '', plain = false, markdown = false }: ValueProps) => {
     markdown ? getMarkdownLabelText(String(item)).trim() : String(item).trim(),
   );
   let nextValue = 0;
-  return intl.formatListToParts(labels).map((part) => {
-    if (part.type === 'literal') return part.value;
-    const index = nextValue++;
-    const item = values[index];
-    if (item === undefined) return part.value;
-    return (
-      <ValueToken
-        key={`${typeof item}-${String(item)}-${index}`}
-        plain={plain}
-        markdown={markdown}
-        value={item}
-      />
-    );
-  });
+  // Named as one part, so the same assertion reads this list here and in the
+  // stage editor, which renders it from the protocol-builder package: how a
+  // list is written is one fact about a language, and the two surfaces
+  // agreeing about it is the point.
+  return (
+    <span data-rule-part="operand">
+      {intl.formatListToParts(labels).map((part) => {
+        if (part.type === 'literal') return part.value;
+        const index = nextValue++;
+        const item = values[index];
+        if (item === undefined) return part.value;
+        return (
+          <ValueToken
+            key={`${typeof item}-${String(item)}-${index}`}
+            plain={plain}
+            markdown={markdown}
+            value={item}
+          />
+        );
+      })}
+    </span>
+  );
 };
 
 const EgoEntity = () => {

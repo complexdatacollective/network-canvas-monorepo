@@ -6,6 +6,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { ProtocolBuilderClient } from '../../contract/contract.ts';
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
+import type { InMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import {
   expectNoLocaleLeaks,
   protocolStrings,
@@ -150,7 +151,7 @@ type EditorCase = Readonly<{
    * imported data file, and without them every one of those lists offers
    * nothing and judges nothing.
    */
-  client?: (client: ProtocolBuilderClient) => ProtocolBuilderClient;
+  client?: (host: InMemoryHost) => ProtocolBuilderClient;
 }>;
 
 /** The two controls one open sort-order group offers, inside that group. */
