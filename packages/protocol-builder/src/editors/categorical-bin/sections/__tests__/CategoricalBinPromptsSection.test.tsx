@@ -242,6 +242,54 @@ describe('the questions a categorical bin asks', () => {
       screen.getByRole('textbox', { name: 'Follow-up question' }),
     ).toHaveTextContent('Which?');
   });
+
+  /**
+   * And switching it back off takes all three of its fields with it.
+   *
+   * The schema holds the three as one variant: a prompt carries the follow-up
+   * attribute, its bin label and its question, or none of them — half of each
+   * is a prompt it refuses. Saving a row MERGES what the dialog collected over
+   * the row it opened on, so a field the closed group merely stopped
+   * rendering would keep its old value through that merge and leave a prompt
+   * naming a bin the researcher had just taken away.
+   */
+  it('drops the follow-up bin’s three fields together when it is switched off', async () => {
+    const harness = renderStageEditor(
+      binningPeople({
+        id: 'prompt-a',
+        text: 'What kind of contact?',
+        variable: 'contactType',
+        otherVariable: 'relationship_to_ego',
+        otherOptionLabel: 'Other',
+        otherVariablePrompt: 'Which?',
+      }),
+    );
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('dialog');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'A bin for anything else' }),
+      ).toBeChecked(),
+    );
+
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'A bin for anything else' }),
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const request = await harness.submit();
+    expect(prompts(request?.stageDocument ?? {}).at(0)).toEqual({
+      id: 'prompt-a',
+      text: 'What kind of contact?',
+      variable: 'contactType',
+    });
+  });
 });
 
 /**
@@ -333,6 +381,47 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     expect(
       group.queryByRole('button', { name: 'Change this attribute’s values' }),
     ).toBeNull();
+  });
+
+  /**
+   * And the bins' own attribute is offered no rules at all.
+   *
+   * A bin is filled by dragging, which writes the attribute as it stands
+   * without asking the participant anything a form could check — the schema
+   * says so by declaring that reference `unvalidatedAttribute`, and its writer
+   * exclusivity then keeps a form elsewhere from collecting the same
+   * attribute. Rules authored there would never run, so offering them under a
+   * button reading "for this answer" would promise a check nothing performs.
+   * Architect offers them on the follow-up alone, for the same reason.
+   */
+  it('offers no rules on the attribute the bins are, only on the typed answer', async () => {
+    const harness = renderStageEditor(
+      binningPeople({
+        id: 'prompt-a',
+        text: 'What kind of contact?',
+        variable: 'contactType',
+        otherVariable: 'relationship_to_ego',
+        otherOptionLabel: 'Other',
+        otherVariablePrompt: 'Which?',
+      }),
+    );
+    await openFollowUp(harness);
+
+    const bins = within(screen.getByRole('region', { name: 'The bins' }));
+    // The values behind the bins stay editable: those the interview does read.
+    expect(
+      bins.getByRole('button', { name: 'Change this attribute’s values' }),
+    ).toBeInTheDocument();
+    expect(
+      bins.queryByRole('button', { name: 'Set rules for this answer' }),
+    ).toBeNull();
+    // Both attributes are picked in this one dialog, so counting is what says
+    // the remaining control belongs to the follow-up rather than to the bins.
+    expect(
+      within(screen.getByRole('dialog')).getAllByRole('button', {
+        name: 'Set rules for this answer',
+      }),
+    ).toHaveLength(1);
   });
 });
 
