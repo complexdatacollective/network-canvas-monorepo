@@ -32,7 +32,7 @@ describe('Architect catalog contract', () => {
     const extracted = await extractMessages(collectSourceFiles(srcDir));
     expect(checkCatalogFreshness(en, extracted)).toEqual([]);
     // A smoke check that extraction actually walked the tree, not a bound on
-    // the catalog: 868 ids at the time this was set, down from the 1,140 of
+    // the catalog: 848 ids at the time this was set, down from the 1,140 of
     // the app before it handed its stage editors to @codaco/protocol-builder.
     // A floor a real extraction clears with room, and an empty or half-walked
     // one cannot.

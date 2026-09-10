@@ -316,3 +316,61 @@ test('leaving a stage editor does not swallow later codebook edits', async ({
   expect(byName(after, 'ageAfterLeaving')).toBeDefined();
   expect(byName(after, 'age')).toBeUndefined();
 });
+
+/**
+ * The other half of the rule above: a change to the STAGE, made in a stage
+ * the researcher re-opened, is unsaved work — and the editor has to say so.
+ *
+ * Re-opened rather than built in one visit, which is the whole of why this
+ * escaped the rest of the suite: every other case here writes a stage from
+ * scratch, where the document differs from the template before the first
+ * field is added. A saved stage opened again starts out agreeing with the
+ * protocol, so the only thing that can make the save control appear is the
+ * editor's reading of what the researcher has since written into it — and a
+ * reading that missed the form left "Finished Editing" off the toolbar, with
+ * Cancel and the tab-close guard both saying there was nothing to lose.
+ */
+test('a field added to a re-opened stage is unsaved work the editor offers to save', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(emptyProtocol());
+  await gotoProtocol(architectPage);
+
+  const editor = await seedStageWithVariable(architectPage);
+  const committed = await readProtocolJson(architectPage);
+  expect(formFieldsOf(committed.stages[0])).toHaveLength(1);
+
+  await reopenStage(architectPage);
+
+  // Opened on the saved stage and not yet touched: there is nothing to save.
+  await expect(
+    architectPage.getByRole('button', { name: 'Finished Editing' }),
+  ).toBeHidden();
+
+  await addFormField(editor.section('Form fields'), {
+    variableName: 'favouriteColour',
+    promptText: 'What is your favourite colour?',
+  });
+
+  await expect(
+    architectPage.getByRole('button', { name: 'Finished Editing' }),
+  ).toBeVisible();
+
+  await editor.save();
+
+  // Reloaded, so what is asserted is what the researcher would come back to
+  // rather than what the open session is holding.
+  await architectPage.reload();
+  await architectPage
+    .locator('#boot-loader')
+    .waitFor({ state: 'hidden', timeout: 15_000 })
+    .catch(() => {});
+
+  const after = await readProtocolJson(
+    architectPage,
+    (protocol) => formFieldsOf(protocol.stages[0])?.length === 2,
+  );
+  expect(formFieldsOf(after.stages[0])).toHaveLength(2);
+  expect(byName(after, 'favouriteColour')).toBeDefined();
+});
