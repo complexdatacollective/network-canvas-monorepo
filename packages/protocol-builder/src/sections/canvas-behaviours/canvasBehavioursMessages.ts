@@ -53,6 +53,13 @@ export const canvasBehavioursMessages = defineMessages({
     description:
       'Says what the participant sees in manual layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the two wordings of one control together.',
   },
+  layoutModeManualComposerDescription: {
+    id: 'protocolBuilder.networkCanvas.layoutModeManualComposerDescription',
+    defaultMessage:
+      'Places each node where there is room for it as the participant adds it, leaving them to drag it wherever they want.',
+    description:
+      'Says what the participant sees in manual layout mode on a network composer stage, where they add the nodes themselves rather than being given a set of them to place. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the wordings of one control together.',
+  },
   layoutModeAutomaticLabel: {
     id: 'protocolBuilder.networkCanvas.layoutModeAutomaticLabel',
     defaultMessage: 'Automatic mode',
@@ -65,5 +72,12 @@ export const canvasBehavioursMessages = defineMessages({
       'Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.',
     description:
       'Says what the participant sees in automatic layout mode. A stage is one step of an interview; the simulation runs on the canvas while the participant watches.',
+  },
+  layoutModeAutomaticComposerDescription: {
+    id: 'protocolBuilder.networkCanvas.layoutModeAutomaticComposerDescription',
+    defaultMessage:
+      'Starts the stage with the simulation running. The participant can switch it off and on as they work, and the stage reopens the way they left it.',
+    description:
+      'Says what the participant sees in automatic layout mode on a network composer stage, where the setting decides only how the stage starts because the participant has a switch of their own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the wordings of one control together.',
   },
 });

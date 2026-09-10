@@ -6,7 +6,9 @@ import {
   buildExclusiveVariableSlotMap,
   buildVariableRoleMap,
   excludeInterfaceOwned,
+  excludeUnvalidatedUses,
   excludeValidatedUses,
+  type WriterClass,
 } from '../../codebook/variableRoles.ts';
 import type { VariablePickerOption } from '../../fields/VariablePickerField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
@@ -15,6 +17,7 @@ import {
   variablesForSubject,
 } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
+import { TYPE_OPTIONS } from '../collectableTypes.ts';
 
 /** One edge type, as a tick box or a radio option. */
 export type EdgeTypeChoice = Readonly<{ value: string; label: string }>;
@@ -33,6 +36,19 @@ export const BOOLEAN_TYPES: readonly VariableType[] = Object.freeze([
 export const CATEGORICAL_TYPES: readonly VariableType[] = Object.freeze([
   'categorical',
 ]);
+export const TEXT_TYPES: readonly VariableType[] = Object.freeze(['text']);
+
+/**
+ * Every kind of answer a form can ask for, which is the pool a form field's
+ * picker draws from rather than one named type.
+ *
+ * Derived from the shared list of collectable types rather than written out,
+ * so an attribute type the schema teaches a control to render is offered here
+ * the day it gains one.
+ */
+export const COLLECTABLE_TYPES: readonly VariableType[] = Object.freeze(
+  TYPE_OPTIONS.map(({ value }) => value),
+);
 
 const NO_OPTIONS: readonly VariablePickerOption[] = Object.freeze([]);
 const NO_EDGE_TYPES: readonly EdgeTypeChoice[] = Object.freeze([]);
@@ -49,15 +65,22 @@ export type VariableChoiceQuery = Readonly<{
   subject: CodebookSubject | undefined;
   types: readonly VariableType[];
   /**
-   * Whether the interview WRITES this attribute around the codebook's
-   * validation rules — a tap that marks a node does — in which case it may not
-   * share the attribute with a form field, which collects it through them.
+   * What the interview does with this attribute through the control being
+   * offered, which decides what the control may not be pointed at.
    *
-   * `false` for a picker that only READS: a narrative preset positions, groups
+   * `'unvalidated'` writes it around the codebook's validation rules — a tap
+   * that marks a node, a position a node is dragged to — so it may not share
+   * the attribute with anything that collects it through those rules.
+   * `'validated'` collects it through them — a quick-add box, a form field —
+   * so it may not share the attribute with an unvalidated writer either;
+   * an export would otherwise mix checked and unchecked answers under one
+   * name.
+   *
+   * Absent is a picker that only READS: a narrative preset positions, groups
    * and highlights BY attributes, so one a form collects is exactly what it
    * exists to look at. Classed as a writer, the filter dropped precisely those.
    */
-  unvalidatedWriter?: boolean;
+  writerClass?: WriterClass;
   /**
    * What the field currently holds. Always offered back, whatever the filters
    * say: a picker that dropped its own value would blank the control and then
@@ -78,12 +101,12 @@ export type VariableChoiceQuery = Readonly<{
  * attribute a collaborator adds, renames or deletes while the editor is open
  * changes the list without the section using this doing anything.
  *
- * An attribute a form field collects is offered only to a picker that READS
- * it. A sociogram prompt names attributes the interview writes around the
- * codebook's validation rules — a position the participant drags a node to, a
- * mark a tap toggles — and two writers would disagree about whether the value
- * was checked; a narrative preset writes nothing at all, so `unvalidatedWriter`
- * says which of the two this picker is.
+ * An attribute a form field collects is offered only to a picker that READS it
+ * or collects it the same way. A sociogram prompt names attributes the
+ * interview writes around the codebook's validation rules — a position the
+ * participant drags a node to, a mark a tap toggles — and two writers would
+ * disagree about whether the value was checked; a narrative preset writes
+ * nothing at all, so `writerClass` says which of the three this picker is.
  *
  * Ordered by name rather than by the order the codebook happens to hold them
  * in: a researcher looking for an attribute they authored months ago scans an
@@ -94,7 +117,7 @@ export function useVariableChoices(
 ): readonly VariablePickerOption[] {
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
-  const { subject, types, unvalidatedWriter = false, currentValue } = query;
+  const { subject, types, writerClass, currentValue } = query;
 
   // This stage's own committed uses are excluded from the role map: the
   // attribute a picker is already holding is claimed BY this picker, and
@@ -118,9 +141,12 @@ export function useVariableChoices(
         type: variable.type,
       }))
       .toSorted(byLabel);
-    const roleFiltered = unvalidatedWriter
-      ? excludeValidatedUses(roleMap, subject, typed, currentValue)
-      : typed;
+    const roleFiltered =
+      writerClass === 'unvalidated'
+        ? excludeValidatedUses(roleMap, subject, typed, currentValue)
+        : writerClass === 'validated'
+          ? excludeUnvalidatedUses(roleMap, subject, typed, currentValue)
+          : typed;
     return Object.freeze(
       excludeInterfaceOwned(slotMap, subject, roleFiltered, currentValue),
     );
@@ -131,7 +157,7 @@ export function useVariableChoices(
     slotMap,
     subject,
     types,
-    unvalidatedWriter,
+    writerClass,
   ]);
 }
 

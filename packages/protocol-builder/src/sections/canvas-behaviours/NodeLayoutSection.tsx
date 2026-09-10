@@ -28,6 +28,15 @@ export type NodeLayoutSectionProps = Readonly<{
    * default lives with the card it is written on and nowhere else.
    */
   manualDescription?: MessageDescriptor;
+  /**
+   * The sentence under the automatic-mode card, on the same terms.
+   *
+   * Only a network composer needs one: there, automatic layout is where the
+   * stage STARTS and the participant switches it off and on for themselves,
+   * which the shared sentence — a simulation the stage runs when it opens —
+   * does not say.
+   */
+  automaticDescription?: MessageDescriptor;
 }>;
 
 /**
@@ -39,6 +48,7 @@ export type NodeLayoutSectionProps = Readonly<{
  */
 export default function NodeLayoutSection({
   manualDescription,
+  automaticDescription,
 }: NodeLayoutSectionProps) {
   const intl = useAppIntl();
 
@@ -57,6 +67,9 @@ export default function NodeLayoutSection({
         {...(manualDescription === undefined
           ? {}
           : { manualDescription: intl.formatMessage(manualDescription) })}
+        {...(automaticDescription === undefined
+          ? {}
+          : { automaticDescription: intl.formatMessage(automaticDescription) })}
       />
     </BuilderSection>
   );

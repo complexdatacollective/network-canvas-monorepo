@@ -28,6 +28,15 @@ export type LayoutModeFieldProps = Omit<
      * the stages that COLLECT positions do.
      */
     manualDescription?: string;
+    /**
+     * And the same for automatic mode, where what the participant gets is not
+     * what the shared sentence describes.
+     *
+     * A network composer treats automatic layout as the state the stage OPENS
+     * in rather than as how it arranges nodes: the participant has a switch of
+     * their own on the canvas, and whichever way they leave it is remembered.
+     */
+    automaticDescription?: string;
   }>;
 
 /**
@@ -41,6 +50,7 @@ export default function LayoutModeField({
   value,
   onChange,
   manualDescription,
+  automaticDescription,
   ...props
 }: LayoutModeFieldProps) {
   const intl = useAppIntl();
@@ -65,12 +75,14 @@ export default function LayoutModeField({
         label: intl.formatMessage(
           canvasBehavioursMessages.layoutModeAutomaticLabel,
         ),
-        description: intl.formatMessage(
-          canvasBehavioursMessages.layoutModeAutomaticDescription,
-        ),
+        description:
+          automaticDescription ??
+          intl.formatMessage(
+            canvasBehavioursMessages.layoutModeAutomaticDescription,
+          ),
       },
     ],
-    [intl, manualDescription],
+    [automaticDescription, intl, manualDescription],
   );
 
   return (
