@@ -14,8 +14,10 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
+import { categoricalBinStageEditor } from '../categorical-bin/CategoricalBinStageEditor.ts';
 import { dyadCensusStageEditor } from '../dyad-census/DyadCensusStageEditor.ts';
 import { oneToManyDyadCensusStageEditor } from '../one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
+import { ordinalBinStageEditor } from '../ordinal-bin/OrdinalBinStageEditor.ts';
 import { tieStrengthCensusStageEditor } from '../tie-strength-census/TieStrengthCensusStageEditor.ts';
 
 /**
@@ -154,6 +156,31 @@ const ONE_TO_MANY_PROMPT = {
   binSortOrder: BIN_SORT_ORDER,
 };
 
+const ORDINAL_BIN_PROMPT = {
+  id: 'p1',
+  text: 'How often?',
+  variable: 'contactFreq',
+  color: 'ord-color-seq-1',
+  bucketSortOrder: BUCKET_SORT_ORDER,
+  binSortOrder: BIN_SORT_ORDER,
+};
+
+/**
+ * Every key a Categorical Bin prompt allows, which means the follow-up bin
+ * switched on: the schema's own variant rule is that a prompt carries all
+ * three of the fields describing it or none of them.
+ */
+const CATEGORICAL_BIN_PROMPT = {
+  id: 'p1',
+  text: 'What kind of contact?',
+  variable: 'contactType',
+  otherVariable: 'relationship_to_ego',
+  otherOptionLabel: 'Something else',
+  otherVariablePrompt: 'What kind of contact is it?',
+  bucketSortOrder: BUCKET_SORT_ORDER,
+  binSortOrder: BIN_SORT_ORDER,
+};
+
 /**
  * Replaces a rich text field's contents the way a researcher does: into the
  * field, select what is there, type over it.
@@ -286,6 +313,98 @@ const CASES: readonly EditorCase[] = [
       },
     },
   },
+  {
+    interfaceName: 'OrdinalBin',
+    stageId: 'ordinal-bin-1',
+    editor: ordinalBinStageEditor,
+    sections: [
+      'Stage name',
+      'Node type',
+      'Stage filter',
+      'Prompts',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['label', 'prompts', 'subject'],
+    wholeStage: {
+      ...COMMON,
+      label: 'Full ordinal bin',
+      prompts: [ORDINAL_BIN_PROMPT],
+    },
+    prompt: ORDINAL_BIN_PROMPT,
+    authoredBy: {
+      text: [{ role: 'textbox', name: 'Prompt text' }],
+      variable: [{ role: 'combobox', name: 'Attribute' }],
+      // `ord-color-seq-1` is the first swatch of the schema's own sequence.
+      color: [{ role: 'radio', name: 'Sea Green', checked: true }],
+      bucketSortOrder: sortRuleControls(
+        'Order people are handed to the participant in',
+      ),
+      binSortOrder: sortRuleControls('Order within each bin'),
+    },
+    rewrite: {
+      key: 'color',
+      value: 'ord-color-seq-3',
+      write: async (harness) => {
+        await harness.user.click(screen.getByRole('radio', { name: 'Tomato' }));
+      },
+    },
+  },
+  {
+    interfaceName: 'CategoricalBin',
+    stageId: 'categorical-bin-1',
+    editor: categoricalBinStageEditor,
+    sections: [
+      'Stage name',
+      'Node type',
+      'Stage filter',
+      'Prompts',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['label', 'prompts', 'subject'],
+    wholeStage: {
+      ...COMMON,
+      label: 'Full categorical bin',
+      prompts: [CATEGORICAL_BIN_PROMPT],
+    },
+    prompt: CATEGORICAL_BIN_PROMPT,
+    authoredBy: {
+      text: [{ role: 'textbox', name: 'Prompt text' }],
+      variable: [{ role: 'combobox', name: 'Attribute' }],
+      otherVariable: [
+        { role: 'switch', name: 'A bin for anything else', checked: true },
+        {
+          role: 'combobox',
+          name: 'Attribute the answer is stored in',
+          within: 'A bin for anything else',
+        },
+      ],
+      otherOptionLabel: [
+        {
+          role: 'textbox',
+          name: 'Bin label',
+          within: 'A bin for anything else',
+        },
+      ],
+      otherVariablePrompt: [
+        {
+          role: 'textbox',
+          name: 'Follow-up question',
+          within: 'A bin for anything else',
+        },
+      ],
+      bucketSortOrder: sortRuleControls(
+        'Order people are handed to the participant in',
+      ),
+      binSortOrder: sortRuleControls('Order within each bin'),
+    },
+    rewrite: {
+      key: 'otherOptionLabel',
+      value: 'Anything else',
+      write: (harness) => retype(harness, 'Bin label', 'Anything else'),
+    },
+  },
 ];
 
 /** Asserts one named control is mounted, and switched on where it must be. */
@@ -300,7 +419,7 @@ function expectControl(control: Control): void {
   }
 }
 
-describe('the census editors written as section lists', () => {
+describe('the census and bin editors written as section lists', () => {
   it.each(CASES)(
     '$interfaceName renders the sections it lists, in that order',
     async ({ stageId, editor, sections }) => {
@@ -454,7 +573,7 @@ describe('a prompt that uses every optional key its interface allows', () => {
  * It shares its reading with `src/__tests__/localeSweep.test.tsx`, which is
  * where the sweep is itself proved able to fail.
  */
-describe('the census editors, swept under es', () => {
+describe('the census and bin editors, swept under es', () => {
   /** Both the shared optional sections every one of the three offers. */
   const OPTIONAL_SECTIONS = [
     'Filtro de la etapa',
