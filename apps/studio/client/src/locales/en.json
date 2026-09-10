@@ -131,6 +131,10 @@
     "defaultMessage": "The outline could not be refreshed. Reload this editor before moving another screen.",
     "description": "Shown when re-reading the protocol after an unconfirmed screen reorder also failed."
   },
+  "studio.editor.protocolNotChecked": {
+    "defaultMessage": "Protocol not checked",
+    "description": "Button reporting that the protocol could not be checked, because part of it could not be read."
+  },
   "studio.editor.protocolSections": {
     "defaultMessage": "Protocol sections",
     "description": "Heading and accessible name of the editor's own section selector."
@@ -139,9 +143,17 @@
     "defaultMessage": "Protocol settings",
     "description": "Canvas heading of the section holding the settings of the protocol itself."
   },
+  "studio.editor.protocolUnreadable": {
+    "defaultMessage": "Part of this protocol could not be read, so it has not been checked.",
+    "description": "Shown in the validation panel when part of the protocol could not be read at all."
+  },
   "studio.editor.protocolValid": {
     "defaultMessage": "Protocol valid",
     "description": "Button reporting that the protocol currently has no validation problems."
+  },
+  "studio.editor.readingScreens": {
+    "defaultMessage": "Reading the protocol…",
+    "description": "Shown in place of the list of interview screens while the protocol is still being read."
   },
   "studio.editor.refreshOrder": {
     "defaultMessage": "Refresh order",
@@ -158,6 +170,10 @@
   "studio.editor.screens": {
     "defaultMessage": "Screens",
     "description": "Section selector group holding the interview screens of the protocol."
+  },
+  "studio.editor.screensUnreadable": {
+    "defaultMessage": "Part of this protocol could not be read, so its screens are not shown.",
+    "description": "Shown in place of the list of interview screens when part of the protocol could not be read at all."
   },
   "studio.editor.settings": {
     "defaultMessage": "Settings",

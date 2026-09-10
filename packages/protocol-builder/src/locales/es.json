@@ -800,6 +800,7 @@
   "protocolBuilder.networkCanvas.sociogramPromptsEmptyState": "Todavía no hay preguntas. Crea una para indicar qué hace el participante en el lienzo.",
   "protocolBuilder.networkCanvas.sociogramPromptsFieldHint": "El participante las realiza de una en una, en este orden. Cada una decide qué muestra el lienzo y qué ocurre al tocar un nodo.",
   "protocolBuilder.networkCanvas.sociogramPromptsWaitingDescription": "Elige con qué trabaja esta etapa antes de escribir sus preguntas.",
+  "protocolBuilder.networkCanvas.staleControlRefusal": "El atributo «{attributeName}» no se puede preguntar con este control de entrada. Elige otro control, o haz que este campo recoja un atributo distinto.",
   "protocolBuilder.networkCanvas.tapBehaviourLabel": "Comportamiento al tocar",
   "protocolBuilder.networkCanvas.tapCreateEdgeDescription": "Tocar un nodo y luego otro dibuja un vínculo entre ellos.",
   "protocolBuilder.networkCanvas.tapCreateEdgeLabel": "Crear un vínculo",

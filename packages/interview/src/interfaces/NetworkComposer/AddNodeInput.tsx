@@ -51,7 +51,7 @@ function AddNodeField({
   const validateForm = useFormStore((state) => state.validateForm);
   const pathOperations = useFormStore((state) => state.pathOperations);
   const resetField = useFormStore((state) => state.resetField);
-  const [fieldToReset, setFieldToReset] = useState<string>();
+  const [fieldToReset, setFieldToReset] = useState<{ name: string }>();
   const submissionInProgress = useRef(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const shouldRestoreFocus = useRef(false);
@@ -73,14 +73,20 @@ function AddNodeField({
     ...validationProps,
   });
 
+  // The request itself is what gets consumed, not the field it names: two
+  // submissions in a row reset the same field and each still needs its own
+  // reset, while a re-render that only changed `resetField`'s identity does
+  // not.
+  const appliedResetRef = useRef<{ name: string } | undefined>(undefined);
   useEffect(() => {
     if (fieldToReset === undefined) return;
+    if (appliedResetRef.current === fieldToReset) return;
+    appliedResetRef.current = fieldToReset;
     if (pathOperations) {
-      pathOperations.resetField([fieldToReset]);
+      pathOperations.resetField([fieldToReset.name]);
     } else {
-      resetField(fieldToReset);
+      resetField(fieldToReset.name);
     }
-    setFieldToReset(undefined);
   }, [fieldToReset, pathOperations, resetField]);
 
   useEffect(() => {
@@ -116,7 +122,7 @@ function AddNodeField({
           if (name === '') return;
 
           await onCreate(name);
-          setFieldToReset(targetVariable);
+          setFieldToReset({ name: targetVariable });
         } finally {
           submissionInProgress.current = false;
           setIsSubmitting(false);

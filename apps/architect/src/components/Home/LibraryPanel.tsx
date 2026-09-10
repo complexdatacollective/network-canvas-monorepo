@@ -8,7 +8,14 @@ import {
   X,
 } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { createElement, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  createElement,
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import {
@@ -59,6 +66,29 @@ import { getProtocolAssetCount } from '~/utils/assetUtils';
 import { downloadProtocolAsNetcanvas } from '~/utils/bundleProtocol';
 import { documentationLinks } from '~/utils/documentationLinks';
 import { reportError } from '~/utils/reportError';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderCode = (chunks: ReactNode[]) => <code>{chunks}</code>;
+
+const renderProtocolGallerySiteLink = (chunks: ReactNode[]) => (
+  <ExternalLink href="https://protocolgallery.networkcanvas.com/">
+    {chunks}
+  </ExternalLink>
+);
+
+const renderSavingAndBackingUpLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.savingAndBackingUp}>
+    {chunks}
+  </ExternalLink>
+);
+
+const renderProtocolGalleryLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.protocolGallery}>
+    {chunks}
+  </ExternalLink>
+);
+
 const chromeMessages = defineMessages({
   templateCount: {
     id: 'architect.home.libraryPanel.templateCount',
@@ -471,7 +501,6 @@ const PanelRow = ({
       void Promise.resolve()
         .then(() => action(resolveFocus))
         .catch((error: unknown) => {
-          console.error('LibraryPanel action failed', error);
           reportError(error);
         });
     };
@@ -634,11 +663,7 @@ const GalleryCard = () => {
           {intl.formatMessage(
             additionalMessages.moreExamplesOfNetworkCanvasProtocols,
             {
-              ExternalLink: (chunks) => (
-                <ExternalLink href="https://protocolgallery.networkcanvas.com/">
-                  {chunks}
-                </ExternalLink>
-              ),
+              ExternalLink: renderProtocolGallerySiteLink,
             },
           )}
         </Paragraph>
@@ -943,12 +968,8 @@ const LibraryPanel = ({
             {createElement(AppMessage, {
               message: additionalMessages.becauseYourWorkIsStoredLocally,
               values: {
-                code: (chunks) => <code>{chunks}</code>,
-                ExternalLink: (chunks) => (
-                  <ExternalLink href={documentationLinks.savingAndBackingUp}>
-                    {chunks}
-                  </ExternalLink>
-                ),
+                code: renderCode,
+                ExternalLink: renderSavingAndBackingUpLink,
               },
             })}
           </Paragraph>
@@ -957,11 +978,7 @@ const LibraryPanel = ({
               message:
                 additionalMessages.lookingForInspirationBrowseExampleResearch,
               values: {
-                ExternalLink: (chunks) => (
-                  <ExternalLink href={documentationLinks.protocolGallery}>
-                    {chunks}
-                  </ExternalLink>
-                ),
+                ExternalLink: renderProtocolGalleryLink,
               },
             })}
           </Paragraph>

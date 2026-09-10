@@ -224,6 +224,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | undefined;
   return (
     <div
+      // oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook
       className="page-break-marker flex break-before-page flex-col gap-6"
       id={`stage-${id}`}
     >

@@ -1,8 +1,9 @@
 import { AsyncIteratorClass } from '@orpc/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { ProtocolBuilderClient } from '../../contract/contract.ts';
-import type { ProtocolEvent } from '../../contract/schemas.ts';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
+
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import { streamProtocolEvents } from '../channel.ts';
 

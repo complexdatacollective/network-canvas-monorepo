@@ -1,10 +1,9 @@
 import { type createTanstackQueryUtils } from '@orpc/tanstack-query';
 import { createContext, useContext } from 'react';
 
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
-
-import type { ProtocolBuilderClient } from '../contract/contract.ts';
-import type { Presence } from '../contract/schemas.ts';
 
 export type ProtocolQueryUtils = ReturnType<
   typeof createTanstackQueryUtils<ProtocolBuilderClient>

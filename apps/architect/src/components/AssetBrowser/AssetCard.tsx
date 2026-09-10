@@ -151,13 +151,20 @@ const useAssetPreviewUrl = (
   source: string | undefined,
   type: AssetType,
 ) => {
-  const [url, setUrl] = useState<string | null>(null);
+  // The URL is stored against the asset it was read for, so the card that is
+  // rendering now can never show the previous asset's preview: a URL that does
+  // not belong to this asset is simply not used, and there is no clearing
+  // setState racing the read that replaces it.
+  const [loaded, setLoaded] = useState<{
+    id: string;
+    source: string | undefined;
+    type: AssetType;
+    url: string;
+  } | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     let currentUrl: AssetPreviewUrl | null = null;
-
-    setUrl(null);
 
     if (!PREVIEW_URL_TYPES.has(type)) {
       return undefined;
@@ -175,7 +182,7 @@ const useAssetPreviewUrl = (
       }
 
       currentUrl = nextUrl;
-      setUrl(nextUrl.url);
+      setLoaded({ id, source, type, url: nextUrl.url });
     };
 
     void loadPreviewUrl();
@@ -188,7 +195,16 @@ const useAssetPreviewUrl = (
     };
   }, [id, source, type]);
 
-  return url;
+  if (
+    !loaded ||
+    loaded.id !== id ||
+    loaded.source !== source ||
+    loaded.type !== type
+  ) {
+    return null;
+  }
+
+  return loaded.url;
 };
 
 const stopCardSelection = (event: MouseEvent) => {

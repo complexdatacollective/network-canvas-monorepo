@@ -131,6 +131,18 @@ const messages = defineMessages({
   },
 });
 
+// Rich-text chunk formatters for the failure message's links, at module scope
+// so they keep one identity across renders.
+const renderForumLink = (chunks: ReactNode[]) => (
+  <ExternalLink href="https://community.networkcanvas.com">
+    {chunks}
+  </ExternalLink>
+);
+
+const renderEmailLink = (chunks: ReactNode[]) => (
+  <ExternalLink href="mailto:info@networkcanvas.com">{chunks}</ExternalLink>
+);
+
 // One whole string per save mechanism: the description must match the verb on
 // the primary action, and sentence fragments would block localisation.
 const READY_DESCRIPTIONS: Record<SaveAction, MessageDescriptor> = {
@@ -322,16 +334,8 @@ export function ExportDialog({
     children = (
       <Paragraph margin="none" className="mt-2">
         {intl.formatMessage(messages.yourInterviewDataIsUnchangedAndStored, {
-          link: (chunks) => (
-            <ExternalLink href="https://community.networkcanvas.com">
-              {chunks}
-            </ExternalLink>
-          ),
-          link1: (chunks) => (
-            <ExternalLink href="mailto:info@networkcanvas.com">
-              {chunks}
-            </ExternalLink>
-          ),
+          link: renderForumLink,
+          link1: renderEmailLink,
         })}
       </Paragraph>
     );
