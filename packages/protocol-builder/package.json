@@ -44,6 +44,7 @@
     "./resources/components/resourceKinds": "./src/resources/components/resourceKinds.ts",
     "./resources/references": "./src/resources/references.ts",
     "./rules/ruleDescription": "./src/rules/ruleDescription.ts",
+    "./rules/RulePreview": "./src/rules/RulePreview.tsx",
     "./stage-editor-contract": "./src/stage-editor-contract.ts",
     "./stage-types": "./src/stage-types.ts",
     "./stageDocument": "./src/stageDocument.ts",
