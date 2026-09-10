@@ -357,6 +357,7 @@
   "protocolBuilder.networkCanvas.backgroundTitle": "Fondo",
   "protocolBuilder.networkCanvas.canvasInteractionDescription": "Elige lo que el participante puede hacer con la imagen mientras cuenta su historia.",
   "protocolBuilder.networkCanvas.canvasInteractionTitle": "Interacción con el lienzo",
+  "protocolBuilder.networkCanvas.composerCreateEdgeTypeLabel": "Crear un tipo de vínculo nuevo",
   "protocolBuilder.networkCanvas.composerCreateLayoutLabel": "Crear un nuevo atributo de posición",
   "protocolBuilder.networkCanvas.composerEdgeAddLabel": "Añadir un tipo de vínculo",
   "protocolBuilder.networkCanvas.composerEdgeAddTitle": "Añadir un tipo de vínculo",
