@@ -30,6 +30,9 @@ export const LAYOUT_TYPES: readonly VariableType[] = Object.freeze(['layout']);
 export const BOOLEAN_TYPES: readonly VariableType[] = Object.freeze([
   'boolean',
 ]);
+export const CATEGORICAL_TYPES: readonly VariableType[] = Object.freeze([
+  'categorical',
+]);
 
 const NO_OPTIONS: readonly VariablePickerOption[] = Object.freeze([]);
 const NO_EDGE_TYPES: readonly EdgeTypeChoice[] = Object.freeze([]);

@@ -48,6 +48,13 @@ export const canvasBehavioursMessages = defineMessages({
     description:
       'Says what the participant sees in manual layout mode. The "bucket" is the holding area at the foot of the canvas that unplaced nodes wait in; the quotation marks are in the English because it is a nickname for that area rather than a formal name.',
   },
+  layoutModeManualNarrativeDescription: {
+    id: 'protocolBuilder.networkCanvas.layoutModeManualNarrativeDescription',
+    defaultMessage:
+      'Shows every node at the position already stored in the attribute the preset positions by. A node that attribute holds no position for is left off the canvas.',
+    description:
+      'Says what the participant sees in manual layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the two wordings of one control together.',
+  },
   layoutModeAutomaticLabel: {
     id: 'protocolBuilder.networkCanvas.layoutModeAutomaticLabel',
     defaultMessage: 'Automatic mode',

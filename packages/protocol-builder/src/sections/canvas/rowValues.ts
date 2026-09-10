@@ -13,7 +13,8 @@ import { useRef } from 'react';
 export const asText = (value: unknown): string | undefined =>
   typeof value === 'string' && value !== '' ? value : undefined;
 
-const asIdList = (value: unknown): string[] | undefined =>
+/** A list of ids the row holds directly. */
+export const asIdList = (value: unknown): string[] | undefined =>
   Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === 'string')
     : undefined;
