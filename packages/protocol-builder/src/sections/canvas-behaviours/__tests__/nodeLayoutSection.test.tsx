@@ -1,7 +1,6 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { fixtureMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { nodeLayout } from '../nodeLayout.tsx';
 
@@ -37,31 +36,41 @@ describe('how a canvas arranges its nodes when the stage opens', () => {
   });
 
   /**
-   * An interface whose manual mode looks nothing like the shared one says so
-   * in its own words, and says nothing else differently.
-   *
-   * The sentence travels as a `MessageDescriptor` rather than a string, so it
-   * is extracted, translated and guarded like every other; what proves it
-   * reached the card is that the shared sentence is not there instead.
+   * The other two canvas behaviours are expressible on a sociogram — the
+   * schema shares one object with the narrative interface — and no interface
+   * offers them, because the interview honours neither there. A stage
+   * somebody authored by hand carrying one has to keep it: this section
+   * writes the arrangement, not the whole object.
    */
-  it('says what manual mode looks like on the interface that supplied a sentence', async () => {
-    const OwnWording = nodeLayout({
-      manualDescription: fixtureMessage(
-        'Every node is already where the stage put it.',
-      ),
-    });
-    renderStageEditor({
-      stageId: 'sociogram-1',
-      sections: <OwnWording />,
+  it('keeps a behaviour it does not offer', async () => {
+    const harness = renderStageEditor({
+      stage: {
+        type: 'Sociogram' as const,
+        fields: {
+          label: 'Sociogram',
+          subject: { entity: 'node', type: 'person' },
+          background: { concentricCircles: 4 },
+          behaviours: { automaticLayout: true, freeDraw: true },
+          prompts: [
+            {
+              id: 'sociogram-prompt-1',
+              text: 'Place the people you know',
+              layout: { layoutVariable: 'layout' },
+            },
+          ],
+        },
+      },
+      sections: <NodeLayout />,
     });
 
-    expect(
-      await screen.findByText('Every node is already where the stage put it.'),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        'Places all nodes in a "bucket" at the bottom of the screen, from which the participant drags each one to where they want it.',
-      ),
-    ).not.toBeInTheDocument();
+    await harness.user.click(
+      await screen.findByRole('option', { name: /Manual mode/ }),
+    );
+
+    const saved = await harness.submit();
+    expect(saved?.stageDocument.behaviours).toEqual({
+      automaticLayout: false,
+      freeDraw: true,
+    });
   });
 });

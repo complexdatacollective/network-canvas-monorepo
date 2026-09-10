@@ -30,7 +30,7 @@ export const narrativeStageEditor = defineStageEditor('Narrative', [
   stageHeading({ documentation: 'narrative' }),
   subjectPicker({ entity: 'node', filter: true }),
   narrativePresets(),
-  background({ allowsImage: true }),
+  background(),
   nodeLayout({
     manualDescription:
       canvasBehavioursMessages.layoutModeManualNarrativeDescription,

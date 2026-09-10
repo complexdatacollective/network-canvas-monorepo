@@ -15,6 +15,7 @@ import RichSelectGroupField, {
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
+import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 
 import EntityTypePickerField from '../../../../fields/EntityTypePickerField.tsx';
@@ -165,6 +166,9 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
     tapBehaviourOf(item),
   );
 
+  // Both name an attribute the interview writes around the codebook's rules —
+  // a position the participant drags a node to, a mark a tap toggles — so
+  // neither may take one a form field collects.
   const layoutOptions = useVariableChoices({
     subject,
     types: LAYOUT_TYPES,
@@ -486,13 +490,20 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   );
 }
 
-/** How one prompt reads in the list when its dialog is closed. */
+/**
+ * How one prompt reads in the list when its dialog is closed.
+ *
+ * Through the markdown renderer, because the text was WRITTEN through the
+ * markdown editor: a researcher who emphasised a word in the dialog would
+ * otherwise meet their own asterisks in the list, and the prompt lists of
+ * every other interface render the same text the same way.
+ */
 export function SociogramPromptPreview({ item }: RowPreviewProps) {
   const intl = useAppIntl();
   const text = asText(item[TEXT_FIELD]);
   return (
-    <span className="py-2">
+    <RenderMarkdown render={<div />}>
       {text ?? intl.formatMessage(messages.promptEmptyPreview)}
-    </span>
+    </RenderMarkdown>
   );
 }

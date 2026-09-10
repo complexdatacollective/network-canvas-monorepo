@@ -286,13 +286,14 @@ row here as each lands.
 (`sections/background/`) takes none. The area is one family — the canvas
 interfaces, which share their background, their layout mode and their canvas
 permissions — but under one directory per editor its copy is declared in the
-module that renders it, and only the modules that hand words to somebody else
-gather theirs into a file: the layout mode, whose manual-mode sentence a
-narrative stage replaces with its own; the sociogram's prompts and the
-narrative's presets, whose own sentences the shared list sections say; and
-`sections/canvas/`, whose lost-reference label both of those lists render. The
-background section hands nothing over, so its descriptors sit beside its markup
-like every other converted module's.
+module that renders it, and only the modules that say their words somewhere
+other than where they are declared gather theirs into a file: the layout mode,
+whose two cards are written by the section and the control it renders and whose
+manual-mode sentence a narrative stage replaces with its own; the sociogram's
+prompts and the narrative's presets, whose own sentences the shared list
+sections say; and `sections/canvas/`, whose lost-reference label both of those
+lists render. The background section says all of its own, so its descriptors
+sit beside its markup like every other converted module's.
 
 A `*Messages.ts` per family, holding every id the family declares — rather than
 descriptors beside each section's markup, which is the rule everywhere else in

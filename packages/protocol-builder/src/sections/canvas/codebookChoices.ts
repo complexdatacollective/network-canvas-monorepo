@@ -53,15 +53,19 @@ export type VariableChoiceQuery = Readonly<{
    * validation rules — a tap that marks a node does — in which case it may not
    * share the attribute with a form field, which collects it through them.
    *
-   * `false` for a picker that only reads: a preset positions, groups and
-   * highlights BY attributes, so one a form collects is exactly what it exists
-   * to look at.
+   * `false` for a picker that only READS: a narrative preset positions, groups
+   * and highlights BY attributes, so one a form collects is exactly what it
+   * exists to look at. Classed as a writer, the filter dropped precisely those.
    */
   unvalidatedWriter?: boolean;
   /**
    * What the field currently holds. Always offered back, whatever the filters
    * say: a picker that dropped its own value would blank the control and then
    * write the blank over the reference the researcher has to resolve.
+   *
+   * A LIST where the control holds one — a tick list of highlight attributes
+   * keeps every attribute it has ticked, for the same reason a select keeps
+   * the one it has chosen.
    */
   currentValue?: string | readonly string[];
 }>;
@@ -73,6 +77,13 @@ export type VariableChoiceQuery = Readonly<{
  * slots other interfaces claim are all read from the protocol here, so an
  * attribute a collaborator adds, renames or deletes while the editor is open
  * changes the list without the section using this doing anything.
+ *
+ * An attribute a form field collects is offered only to a picker that READS
+ * it. A sociogram prompt names attributes the interview writes around the
+ * codebook's validation rules — a position the participant drags a node to, a
+ * mark a tap toggles — and two writers would disagree about whether the value
+ * was checked; a narrative preset writes nothing at all, so `unvalidatedWriter`
+ * says which of the two this picker is.
  *
  * Ordered by name rather than by the order the codebook happens to hold them
  * in: a researcher looking for an attribute they authored months ago scans an

@@ -10,18 +10,17 @@ import {
   stageWithImageBackground,
 } from './canvasImageFixture.ts';
 
-const ImageCapableBackground = background({ allowsImage: true });
-const CirclesOnlyBackground = background();
+const Background = background();
 
 const openCircles = () => ({
   stageId: 'sociogram-1' as const,
-  sections: <ImageCapableBackground />,
+  sections: <Background />,
   assets: canvasImageAssets,
 });
 
 const openImage = () => ({
   stage: stageWithImageBackground('sociogram-1'),
-  sections: <ImageCapableBackground />,
+  sections: <Background />,
   assets: canvasImageAssets,
 });
 
@@ -53,22 +52,6 @@ describe('what the participant sees behind the nodes', () => {
     await harness.roundTrip({
       unowned: ['label', 'subject', 'prompts', 'behaviours'],
     });
-  });
-
-  it('offers no choice to a canvas that cannot draw an image', async () => {
-    renderStageEditor({
-      stageId: 'sociogram-1',
-      sections: <CirclesOnlyBackground />,
-    });
-
-    expect(
-      await screen.findByRole('spinbutton', {
-        name: 'Number of concentric circles',
-      }),
-    ).toBeVisible();
-    expect(
-      screen.queryByRole('listbox', { name: 'Background type' }),
-    ).not.toBeInTheDocument();
   });
 
   it('changes the number of circles the researcher asked for', async () => {

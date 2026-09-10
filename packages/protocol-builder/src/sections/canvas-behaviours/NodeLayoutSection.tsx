@@ -23,6 +23,9 @@ export type NodeLayoutSectionProps = Readonly<{
    * node in a bucket at the foot of the canvas for the participant to place; a
    * narrative stage collects nothing and shows the positions the preset's
    * attribute already holds. Automatic mode is the same simulation on both.
+   *
+   * Absent means the shared wording, which the control itself supplies: the
+   * default lives with the card it is written on and nowhere else.
    */
   manualDescription?: MessageDescriptor;
 }>;
@@ -33,14 +36,9 @@ export type NodeLayoutSectionProps = Readonly<{
  * `behaviours.automaticLayout` and nothing else. An absent value is Manual
  * mode rather than Automatic: opting a protocol into a force simulation nobody
  * asked for would change what its participants see.
- *
- * Deliberately not the same section as the canvas permissions, which are not
- * about arrangement at all: this decides what the participant is shown before
- * they touch anything, and it is offered by interfaces that grant no
- * permissions whatever.
  */
 export default function NodeLayoutSection({
-  manualDescription = canvasBehavioursMessages.layoutModeManualDescription,
+  manualDescription,
 }: NodeLayoutSectionProps) {
   const intl = useAppIntl();
 
@@ -56,7 +54,9 @@ export default function NodeLayoutSection({
         component={LayoutModeField}
         label={intl.formatMessage(canvasBehavioursMessages.layoutModeLabel)}
         hint={intl.formatMessage(canvasBehavioursMessages.layoutModeHint)}
-        manualDescription={intl.formatMessage(manualDescription)}
+        {...(manualDescription === undefined
+          ? {}
+          : { manualDescription: intl.formatMessage(manualDescription) })}
       />
     </BuilderSection>
   );
