@@ -1,14 +1,12 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 
 /**
- * What the canvas interfaces say about how a stage arranges its nodes and what
- * the participant may do to them.
+ * What a canvas interface says about how it arranges its nodes.
  *
- * One file rather than descriptors beside each section's markup, which is the
- * rule elsewhere in this package, because of the seam: an interface whose
- * manual mode looks nothing like the shared one hands `nodeLayout` its own
- * sentence as a `MessageDescriptor`, and a sentence declared where it is
- * rendered would leave a translator reading half of one decision in two files.
+ * One file rather than descriptors beside the markup, which is the rule
+ * elsewhere in this package, because the section and the control it renders
+ * are two files and the cards' words are one decision: a translator reading
+ * "Manual mode" needs the sentence under it in front of them.
  */
 export const canvasBehavioursMessages = defineMessages({
   nodeLayoutTitle: {

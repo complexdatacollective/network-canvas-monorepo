@@ -1388,12 +1388,8 @@
     "description": "Refusal shown under the number-of-circles box when it holds something that is not a whole number of zero or more. Zero is allowed: it is a canvas with no rings drawn on it."
   },
   "protocolBuilder.networkCanvas.backgroundDescription": {
-    "defaultMessage": "Choose what the participant sees behind the nodes on this canvas.",
-    "description": "Description of the background section on an interface whose canvas can only draw concentric circles, so there is no choice of background kind to make."
-  },
-  "protocolBuilder.networkCanvas.backgroundImageDescription": {
     "defaultMessage": "Choose what the participant sees behind the nodes on this canvas: concentric circles, or a picture of your own.",
-    "description": "Description of the background section on an interface whose canvas can also draw an image, where the researcher chooses between the two kinds of background."
+    "description": "Description of the background section, where the researcher chooses between the two kinds of background a canvas can have."
   },
   "protocolBuilder.networkCanvas.backgroundImageHint": {
     "defaultMessage": "Scaled to fill the canvas. A responsive SVG keeps its labels readable in both portrait and landscape.",

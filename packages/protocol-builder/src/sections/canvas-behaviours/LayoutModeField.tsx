@@ -17,17 +17,6 @@ export type LayoutModeFieldProps = Omit<
   Readonly<{
     value?: boolean;
     onChange?: (value: boolean) => void;
-    /**
-     * What manual mode LOOKS like on this interface, where the shared sentence
-     * would not be true of it.
-     *
-     * Formatted by the section that composes this field rather than passed as
-     * a descriptor, because that is where the choice of words is made and this
-     * control has no interface to choose by. Absent means the shared wording:
-     * every node waiting in a bucket at the foot of the canvas, which is what
-     * the stages that COLLECT positions do.
-     */
-    manualDescription?: string;
   }>;
 
 /**
@@ -40,7 +29,6 @@ export type LayoutModeFieldProps = Omit<
 export default function LayoutModeField({
   value,
   onChange,
-  manualDescription,
   ...props
 }: LayoutModeFieldProps) {
   const intl = useAppIntl();
@@ -54,11 +42,9 @@ export default function LayoutModeField({
         label: intl.formatMessage(
           canvasBehavioursMessages.layoutModeManualLabel,
         ),
-        description:
-          manualDescription ??
-          intl.formatMessage(
-            canvasBehavioursMessages.layoutModeManualDescription,
-          ),
+        description: intl.formatMessage(
+          canvasBehavioursMessages.layoutModeManualDescription,
+        ),
       },
       {
         value: AUTOMATIC,
@@ -70,7 +56,7 @@ export default function LayoutModeField({
         ),
       },
     ],
-    [intl, manualDescription],
+    [intl],
   );
 
   return (

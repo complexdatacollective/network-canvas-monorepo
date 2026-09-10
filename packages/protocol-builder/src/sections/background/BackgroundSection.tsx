@@ -46,16 +46,9 @@ const messages = defineMessages({
   backgroundDescription: {
     id: 'protocolBuilder.networkCanvas.backgroundDescription',
     defaultMessage:
-      'Choose what the participant sees behind the nodes on this canvas.',
-    description:
-      'Description of the background section on an interface whose canvas can only draw concentric circles, so there is no choice of background kind to make.',
-  },
-  backgroundImageDescription: {
-    id: 'protocolBuilder.networkCanvas.backgroundImageDescription',
-    defaultMessage:
       'Choose what the participant sees behind the nodes on this canvas: concentric circles, or a picture of your own.',
     description:
-      'Description of the background section on an interface whose canvas can also draw an image, where the researcher chooses between the two kinds of background.',
+      'Description of the background section, where the researcher chooses between the two kinds of background a canvas can have.',
   },
   backgroundModeLabel: {
     id: 'protocolBuilder.networkCanvas.backgroundModeLabel',
@@ -164,17 +157,6 @@ const circlesValidation = {
   ]),
 };
 
-export type BackgroundSectionProps = Readonly<{
-  /**
-   * Whether this interface can draw an image behind its nodes.
-   *
-   * A semantic capability of the interface rather than a flag read from the
-   * stage type: the section is told what its canvas can do, and offers the
-   * choice only when there is one to make.
-   */
-  allowsImage?: boolean;
-}>;
-
 /**
  * What the participant sees behind the nodes.
  *
@@ -190,9 +172,7 @@ export type BackgroundSectionProps = Readonly<{
  * gateway. This section never sees a file, a URL or a data store: it holds the
  * asset id the schema spells a background image with.
  */
-export default function BackgroundSection({
-  allowsImage = false,
-}: BackgroundSectionProps) {
+export default function BackgroundSection() {
   const intl = useAppIntl();
   const { committedFields, readOnly } = useStageEditorForm();
   const discardStageValues = useDiscardStageValues();
@@ -228,10 +208,8 @@ export default function BackgroundSection({
    * no image chosen yet is indistinguishable from a circles background.
    */
   const [chosenMode, setChosenMode] = useState<BackgroundMode | null>(null);
-  const openedMode = modeOfBackground(committedFields.background);
-  const mode: BackgroundMode = allowsImage
-    ? (chosenMode ?? openedMode)
-    : 'circles';
+  const mode: BackgroundMode =
+    chosenMode ?? modeOfBackground(committedFields.background);
 
   const chooseMode = useCallback(
     (next: string | number | (string | number)[] | undefined) => {
@@ -260,24 +238,18 @@ export default function BackgroundSection({
   return (
     <BuilderSection
       title={intl.formatMessage(messages.backgroundTitle)}
-      description={intl.formatMessage(
-        allowsImage
-          ? messages.backgroundImageDescription
-          : messages.backgroundDescription,
-      )}
+      description={intl.formatMessage(messages.backgroundDescription)}
     >
-      {allowsImage && (
-        <UnconnectedField
-          name="background-type"
-          label={intl.formatMessage(messages.backgroundModeLabel)}
-          component={RichSelectGroupField}
-          value={mode}
-          onChange={chooseMode}
-          options={modeOptions}
-          orientation="horizontal"
-          disabled={readOnly}
-        />
-      )}
+      <UnconnectedField
+        name="background-type"
+        label={intl.formatMessage(messages.backgroundModeLabel)}
+        component={RichSelectGroupField}
+        value={mode}
+        onChange={chooseMode}
+        options={modeOptions}
+        orientation="horizontal"
+        disabled={readOnly}
+      />
       {mode === 'circles' ? (
         <>
           <Field<typeof IntegerFieldControl>

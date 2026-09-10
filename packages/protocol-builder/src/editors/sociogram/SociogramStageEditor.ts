@@ -30,7 +30,7 @@ export const sociogramStageEditor = defineStageEditor('Sociogram', [
   stageHeading({ documentation: 'sociogram' }),
   subjectPicker({ entity: 'node', filter: true }),
   sociogramPrompts(),
-  background({ allowsImage: true }),
+  background(),
   nodeLayout(),
   skipLogic(),
   interviewerGuidance(),

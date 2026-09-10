@@ -10,7 +10,7 @@ import { sociogramPrompts } from '../sociogramPrompts.tsx';
 
 const Prompts = sociogramPrompts();
 const NodeLayout = nodeLayout();
-const Background = background({ allowsImage: true });
+const Background = background();
 
 /** Every section a sociogram composes that is not one of the shared five. */
 export const sociogramSections = (

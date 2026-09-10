@@ -282,13 +282,13 @@ row here as each lands.
 
 `networkCanvas` takes two rows rather than one, and one of its modules
 (`sections/background/`) takes none. The area is one family — the canvas
-interfaces, which share their background, their layout mode and their canvas
-permissions — but under one directory per editor its copy is declared in the
-module that renders it, and only two of those modules hand words to somebody
-else: the layout mode, whose manual-mode sentence a narrative stage replaces
-with its own, and the sociogram's prompts, four of whose sentences the shared
-`PromptsSection` says. The background section hands nothing over, so its
-descriptors sit beside its markup like every other converted module's.
+interfaces, which share their background and their layout mode — but under one
+directory per editor its copy is declared in the module that renders it, and
+only two of those modules say their words somewhere other than where they are
+declared: the layout mode, whose two cards are written by the section and the
+control it renders, and the sociogram's prompts, four of whose sentences the
+shared `PromptsSection` says. The background section says all of its own, so
+its descriptors sit beside its markup like every other converted module's.
 
 A `*Messages.ts` per family, holding every id the family declares — rather than
 descriptors beside each section's markup, which is the rule everywhere else in
