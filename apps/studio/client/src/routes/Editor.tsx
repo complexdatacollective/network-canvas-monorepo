@@ -1,4 +1,5 @@
-import { createORPCClient, ORPCError } from '@orpc/client';
+import { createORPCClient, DynamicLink, ORPCError } from '@orpc/client';
+import type { ClientLink } from '@orpc/client';
 import { RPCLink } from '@orpc/client/websocket';
 import type { RouterContractClient } from '@orpc/contract';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -72,103 +73,115 @@ export function hostSocketUrl(): string {
 }
 
 /**
- * The socket this tab is talking to the protocol builder's host over.
+ * One authenticated session's way of reaching the protocol builder's host.
  *
- * Held, because two things have to be able to reach it. The transport reopens
- * it after a drop, and sign-out has to close it: the server reads the
- * principal ONCE, at the upgrade (`server/src/app.ts`), and authorises and
- * audits every message on that socket as them — so a socket that outlives the
- * session is one the next account to sign in on this tab would edit and be
- * logged as the previous one through.
+ * A session rather than a socket, because closing the socket does not end
+ * either of the things that outlive a sign-out.
+ *
+ * The server reads the principal ONCE, at the upgrade
+ * (`server/src/app.ts`), and authorises and audits every message on that
+ * socket as them — so a socket still open when the next account signs in on
+ * this tab is one they would be editing, and be logged, as the previous
+ * researcher through.
+ *
+ * And the transport reconnects on its own schedule. A call that was in flight
+ * at sign-out is parked inside `getConnectedPeer`, on a socket that is still
+ * connecting or on the delay before the next attempt, and it wakes up after
+ * the sign-out has been decided. Refusing to `connect` does not settle it: an
+ * `RPCLink` with reconnection enabled swallows what `connect` throws and tries
+ * again. So the refusal has to be permanent for THIS session — which is what
+ * ending one means — and the next session is a transport of its own, which the
+ * parked call has no way to reach.
  */
-let hostSocket: WebSocket | undefined;
+type HostSession = Readonly<{
+  link: ClientLink<Record<never, never>>;
+  /** Permanently. Nothing reopens a session; the next call opens another. */
+  end: () => void;
+}>;
+
+/** The session in force, or none because nothing has needed one yet. */
+let hostSession: HostSession | undefined;
 
 /**
- * Whether this tab has an editor session to reach the host through at all.
- *
- * Closing the socket is not on its own enough to end one. The transport's
- * reconnection runs on its OWN schedule: a call that was in flight when the
- * researcher signed out is parked inside `getConnectedPeer`, waiting on a
- * socket that is still connecting or on the two seconds before the next
- * attempt, and it wakes up after the closer has finished and before
- * `authClient.signOut()` has cleared the cookie (`shell/useSignOut.ts` runs
- * them in that order, so the editor's lease is released while the session is
- * still valid). The socket that attempt opens is upgraded as the researcher
- * who just left, is the one `hostSocket` then names, and nothing is left to
- * close it — the very hole closing the socket exists to shut.
- *
- * So the session, rather than the socket, is what ends: no reconnection may
- * open anything until the editor is opened again, by whoever is signed in
- * then.
- */
-let hostSessionEnded = false;
-
-/**
- * How the host client's transport opens and reopens this tab's socket.
+ * A transport for whoever is signed in now.
  *
  * Reconnection is the whole of what makes a dropped socket survivable, and it
  * is off by default in `@orpc/client`: without it the transport keeps the
  * closed peer and answers every later call from it, so one blip leaves the
  * editor unable to lock, save or watch anything until the page is reloaded —
  * and the host's lock-survival grace, which exists exactly for a tab that
- * comes back, can never be reached. Reopening lazily rather than on close, so
- * that closing the socket at sign-out is not immediately undone by a
- * reconnection carrying no cookie.
- *
- * Exported so the suite drives the same options the application runs on.
+ * comes back, can never be reached. Reopening lazily rather than `onClose`, so
+ * that closing the socket at sign-out is not immediately undone.
  */
-export const hostSocketLinkOptions = {
-  connect: (): WebSocket => {
-    // Refused rather than opened: a handshake is what authenticates, so a
-    // socket opened here after the session ended is already the researcher who
-    // left. The transport swallows this and tries again later, which is what
-    // makes the refusal outlast every attempt the parked call has queued.
-    if (hostSessionEnded) {
-      throw new Error('This tab’s editor session has ended.');
-    }
-    hostSocket = new WebSocket(hostSocketUrl());
-    return hostSocket;
-  },
-  reconnect: { enabled: true },
-};
-
-/**
- * Opening a session for whoever is signed in NOW, which is opening the editor.
- *
- * Called from the route rather than from where the socket is used, because it
- * has to be the first thing this screen does: the host is reached only from
- * `ProtocolBuilder` below, which is not mounted until the draft has arrived
- * over `/rpc`, so a mount effect here runs renders before anything can ask for
- * a socket.
- *
- * Exported so the suite drives the same lifecycle the application runs on.
- */
-export function beginHostSocketSession(): void {
-  hostSessionEnded = false;
+function openHostSession(): HostSession {
+  let socket: WebSocket | undefined;
+  let ended = false;
+  const link = new RPCLink({
+    connect: (): WebSocket => {
+      // Refused rather than opened: a handshake is what authenticates, so a
+      // socket opened here after the session ended is already the researcher
+      // who left. `shell/useSignOut.ts` ends the editor's sessions BEFORE
+      // `authClient.signOut()`, on purpose, so the cookie a reconnection
+      // carried in this window would still work.
+      if (ended) throw new Error('This tab’s editor session has ended.');
+      socket = new WebSocket(hostSocketUrl());
+      return socket;
+    },
+    reconnect: { enabled: true },
+  });
+  return {
+    link,
+    end: () => {
+      ended = true;
+      socket?.close();
+      socket = undefined;
+    },
+  };
 }
 
+/**
+ * The session every call goes through, opened by the first call to need one.
+ *
+ * Exported so the suite drives the same sessions the application runs on.
+ */
+export function currentHostSession(): HostSession {
+  hostSession ??= openHostSession();
+  return hostSession;
+}
+
+/**
+ * The host client, whose link is the session in force at the moment of a call.
+ *
+ * One client for the life of the tab, because `ProtocolBuilder` memoises its
+ * whole context on this identity and every lock in the editor is taken from an
+ * effect keyed on it. `DynamicLink` is oRPC's own way of writing that: the
+ * client is fixed and the link behind it is resolved per call, so ending a
+ * session swaps the transport without any of the editor noticing a new object.
+ */
 const hostClient: StudioHostClient = createORPCClient(
-  new RPCLink(hostSocketLinkOptions),
+  new DynamicLink(() => currentHostSession().link),
 );
 
 /**
- * Ending this tab's editor session, which is closing that socket.
+ * Ending this tab's editor session.
  *
- * Registered here rather than from the editor's own effect because of when it
- * is called: sign-out leaves the editor by an ordinary navigation first, so
- * the unsaved-changes blocker runs while the session is still valid, and only
- * then closes the editor's sessions (`shell/useSignOut.ts`) — by which time
- * the route is unmounted and an effect's registration is gone with it.
+ * Registered at module scope rather than from the editor's own effect because
+ * of when it is called: sign-out leaves the editor by an ordinary navigation
+ * first, so the unsaved-changes blocker runs while the session is still valid,
+ * and only then closes the editor's sessions — by which time the route is
+ * unmounted and an effect's registration is gone with it.
+ *
+ * `closeStudioEditorSessions` is the one place this happens, and every way out
+ * of an authenticated session calls it: `shell/useSignOut.ts`, the "use a
+ * different account" sign-out on an invitation, and the app shell's guard,
+ * which is where an expired session and a sign-out in another tab are learnt.
  *
  * Closing is also what gives the sections this tab was holding back to its
- * collaborators, and what makes the next signed-in account open a socket of
- * its own: the transport reconnects on the next call, and that handshake
- * carries whatever cookie the browser holds then.
+ * collaborators.
  */
 registerStudioEditorSession(async () => {
-  hostSessionEnded = true;
-  hostSocket?.close();
-  hostSocket = undefined;
+  hostSession?.end();
+  hostSession = undefined;
 });
 
 /** What `protocols.draft` and every editing procedure are addressed by. */
@@ -560,10 +573,6 @@ export default function Editor() {
   const intl = useAppIntl();
   const { studyId } = route.useParams();
   const target = useEditorTarget(studyId);
-
-  // A session ended by a sign-out stays ended until an editor is opened again,
-  // and this is that moment.
-  useEffect(beginHostSocketSession, []);
 
   if (target.status === 'pending') {
     return (

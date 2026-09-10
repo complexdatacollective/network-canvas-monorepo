@@ -13,6 +13,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 
+import { closeStudioEditorSessions } from '../editor/sessionLifecycle.ts';
 import { rpcClient } from '../lib/api.ts';
 import { authClient } from '../lib/auth.ts';
 import { invalidateMemberships } from '../lib/landing.ts';
@@ -155,6 +156,12 @@ export default function AcceptInvitation(props: { invitationId: string }) {
     setSwitchingAccount(true);
     setError(null);
     try {
+      // This is a sign-out, so it ends the editor's sessions the way
+      // `shell/useSignOut.ts` does: while the cookie still works, so the
+      // sections this tab holds go back to its collaborators, and before
+      // another account can be signed in over a socket the server reads the
+      // principal of once, at the upgrade.
+      await closeStudioEditorSessions();
       const result = await authClient.signOut();
       if (result.error) {
         setError('signOut');

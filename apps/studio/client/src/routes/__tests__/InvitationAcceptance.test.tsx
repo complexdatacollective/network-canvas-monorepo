@@ -10,6 +10,7 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { registerStudioEditorSession } from '../../editor/sessionLifecycle.ts';
 import { createAppRouter } from '../../router.tsx';
 
 const mocks = vi.hoisted(() => ({
@@ -301,6 +302,44 @@ describe('invitation acceptance', () => {
       await screen.findByRole('heading', { level: 1, name: 'Studies' }),
     ).toBeInTheDocument();
     expect(router.state.resolvedLocation?.pathname).toBe('/team/team-a');
+  });
+
+  /**
+   * And this tab's editor session ends with the account, not after it.
+   *
+   * Switching accounts here is a sign-out like the account menu's, and it owes
+   * the same order: the socket the protocol editor talks its host over is
+   * upgraded once, under the account signing out, so it has to be given back
+   * while the cookie still works — both so the sections this tab holds go back
+   * to its collaborators, and so the account signing in next cannot edit, and
+   * be audited, through the socket of the one signing out.
+   */
+  it('ends this tab’s editor session before signing the visitor out', async () => {
+    mocks.getSession.mockResolvedValue({ data: SESSION, error: null });
+    mocks.useSession.mockReturnValue({
+      data: SESSION,
+      isPending: false,
+      error: null,
+    });
+    const order: string[] = [];
+    mocks.signOut.mockImplementation(async () => {
+      order.push('signOut');
+      return { data: { success: true }, error: null };
+    });
+    const unregister = registerStudioEditorSession(async () => {
+      order.push('closeEditorSessions');
+    });
+    try {
+      renderAt(`/invitations/${INVITATION_ID}`);
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Use a different account' }),
+      );
+      await waitFor(() => expect(mocks.signOut).toHaveBeenCalledTimes(1));
+      expect(order).toEqual(['closeEditorSessions', 'signOut']);
+    } finally {
+      unregister();
+    }
   });
 
   it('lets a signed-in visitor switch accounts without losing the invitation', async () => {

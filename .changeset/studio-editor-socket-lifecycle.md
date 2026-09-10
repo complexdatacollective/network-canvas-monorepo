@@ -11,7 +11,10 @@ reconnect, could not be reached at all. The socket also outlived sign-out,
 which matters because the server reads the account once, when the socket is
 opened, and attributes every later message to it: signing in as somebody else
 in the same tab would have edited and been audited as the previous researcher.
-Signing out now ends the tab's editor session rather than only closing the
-socket, because the link reconnects on its own schedule: a reconnection already
-scheduled when the researcher signed out would otherwise open a replacement
-while their session was still valid, and nothing was left to close it.
+Ending a session now ends the tab's connection to the editor rather than only
+closing its socket, because the link reconnects on its own schedule: a
+reconnection already scheduled when the researcher signed out would otherwise
+open a replacement while their session was still valid, and a request left
+waiting for one would have travelled on the next account's socket. Every way
+out of a session does it — signing out, switching accounts from an invitation,
+and a session that expires or is ended in another tab.

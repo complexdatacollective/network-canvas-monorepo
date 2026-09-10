@@ -403,6 +403,37 @@ describe('sign-out', () => {
     );
   });
 
+  /**
+   * And this tab's editor session, which the sign-out path never runs for.
+   *
+   * A session that expires, or that is ended in another tab, never goes
+   * through `shell/useSignOut.ts` — the app shell's guard is where it is
+   * learnt, and where the cache belonging to the researcher who has gone is
+   * dropped. The socket the protocol editor talks its host over belongs to
+   * them just as surely: the server reads the account once, when the socket is
+   * opened, so a socket left behind is one the next account to sign in on this
+   * tab would be editing, and be audited, through.
+   */
+  it('ends this tab’s editor session when a live session expires', async () => {
+    mocked.getSession.mockResolvedValue(signedIn);
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
+    try {
+      const { router } = renderWithClientAt(LANDING);
+      await findAppShell();
+
+      mocked.getSession.mockResolvedValue(signedOut);
+      await act(() => reportUnauthorizedResponse());
+
+      await waitFor(() =>
+        expect(router.state.location.pathname).toBe('/sign-in'),
+      );
+      expect(close).toHaveBeenCalledTimes(1);
+    } finally {
+      unregister();
+    }
+  });
+
   it('closes editor sessions before clearing authentication', async () => {
     mocked.getSession.mockResolvedValue(signedIn);
     const closed = deferred<void>();
