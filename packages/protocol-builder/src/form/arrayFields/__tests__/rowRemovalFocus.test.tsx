@@ -287,13 +287,13 @@ describe('a row removal confirm', () => {
     );
 
     const removes = await screen.findAllByRole('button', {
-      name: 'Remove prompt',
+      name: 'Delete prompt',
     });
     await user.click(removes[1]!);
     await confirmRemoval(removes[1]!);
     await waitFor(() => expect(draft().prompts as unknown[]).toHaveLength(2));
 
-    const remaining = screen.getAllByRole('button', { name: 'Remove prompt' });
+    const remaining = screen.getAllByRole('button', { name: 'Delete prompt' });
     expect(focusTarget()).toBe(remaining[1]);
   });
 

@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { v4 as uuid } from 'uuid';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
@@ -31,6 +32,7 @@ import { composerFormFieldMessages } from '../../../sections/form-fields/compose
 import { ComposerFormFieldsControl } from '../../../sections/form-fields/ComposerFormFields.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { composerMessages as messages } from './composerMessages.ts';
+import CreateConnectionTypeButton from './CreateConnectionTypeButton.tsx';
 import { useSetStageValue } from './useSetStageValue.ts';
 
 const EDGES_FIELD = 'edges';
@@ -98,6 +100,25 @@ export default function ComposerConnectionsSection() {
   const intl = useAppIntl();
   const held = useStageValue(EDGES_FIELD);
   const entries = useMemo(() => rowsOf(held), [held]);
+  const setStageValue = useSetStageValue();
+
+  /**
+   * A type created from here is meant for THIS canvas, so it becomes drawable
+   * at once rather than being left for the researcher to find in a list that
+   * has just grown. The same rule Architect's own composer follows.
+   *
+   * Nothing to refuse: a type the host has only just minted is not one this
+   * stage can already be drawing.
+   */
+  const drawCreatedType = useCallback(
+    (typeId: string) => {
+      setStageValue(EDGES_FIELD, [
+        ...entries,
+        { id: uuid(), subject: { entity: 'edge', type: typeId } },
+      ]);
+    },
+    [entries, setStageValue],
+  );
 
   /**
    * One kind of connection may only be drawable once.
@@ -154,6 +175,7 @@ export default function ComposerConnectionsSection() {
           sortable
         />
       </RowList>
+      <CreateConnectionTypeButton onCreated={drawCreatedType} />
       <ConnectionForms entries={entries} />
     </BuilderSection>
   );

@@ -79,7 +79,7 @@ export const narrativePresetMessages = defineMessages({
     id: 'protocolBuilder.networkCanvas.presetNoun',
     defaultMessage: 'preset',
     description:
-      'What one row of the visualisation preset list is called inside things said ABOUT it — "Edit preset", "Remove this preset?" — so it is lower case and singular. A preset is one saved way of looking at the network.',
+      'What one row of the visualisation preset list is called inside things said ABOUT it — "Edit preset", "Delete this preset?" — so it is lower case and singular. A preset is one saved way of looking at the network.',
   },
   presetUnnamedPreview: {
     id: 'protocolBuilder.networkCanvas.presetUnnamedPreview',
