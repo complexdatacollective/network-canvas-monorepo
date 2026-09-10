@@ -240,6 +240,40 @@ describe('a preset naming what the codebook no longer has', () => {
  * from the protocol rather than from anything the stage carries.
  */
 describe('a codebook change made while a preset dialog is open', () => {
+  /**
+   * The other half of the same rule, on a tick list: an edge type ticked in
+   * this dialog a moment ago and deleted by a collaborator now is a reference
+   * the researcher has to be able to see and untick. Read from the committed
+   * value alone it would leave the list while the id stayed in the field — a
+   * dangling reference, invisible, saved.
+   */
+  it('keeps an edge type ticked here and deleted since, so it can be unticked', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const preset = await openPreset(harness);
+    await harness.user.click(
+      preset.getByRole('checkbox', { name: 'family_edge' }),
+    );
+
+    harness.receiveCodebookUpdate({ edge: { family_edge: null } });
+
+    const lost = await preset.findByRole('checkbox', {
+      name: 'family_edge \u2014 this edge type is no longer in the codebook',
+    });
+    expect(lost).toBeChecked();
+
+    await harness.user.click(lost);
+    await harness.user.click(preset.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = await harness.submit();
+    expect(presetsOf(saved?.stageDocument ?? {})[0]).toMatchObject({
+      edges: { display: ['knows'] },
+    });
+  });
+
   it('reaches the position picker without the dialog asking', async () => {
     const harness = renderStageEditor(openEditor());
 

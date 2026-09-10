@@ -283,22 +283,19 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   };
 
   /**
-   * The connection types on offer, plus the ones this prompt already names and
-   * the codebook has lost.
+   * The connection types on offer, plus the ones this prompt names and the
+   * codebook has lost.
    *
-   * A type ticked in this dialog and deleted by a collaborator a moment later
-   * is lost the same way as one the prompt arrived with, so both are read —
-   * see `useLostReferences`.
+   * Named is read from the field, which starts at the committed value and
+   * carries every tick since, so a type ticked in this dialog and deleted by a
+   * collaborator a moment later is lost the same way as one the prompt arrived
+   * with — see `useLostReferences`.
    */
   const knownEdgeTypes = useMemo(
     () => new Set(edgeChoicesOffered.map((option) => option.value)),
     [edgeChoicesOffered],
   );
-  const namedEdgeTypes = useMemo(
-    () => [...(committedDisplay ?? []), ...displayedEdges],
-    [committedDisplay, displayedEdges],
-  );
-  const lostEdgeTypes = useLostReferences(namedEdgeTypes, knownEdgeTypes);
+  const lostEdgeTypes = useLostReferences(displayedEdges, knownEdgeTypes);
 
   const edgeChoices = useMemo(() => {
     const offered = edgeChoicesOffered.map((option) =>

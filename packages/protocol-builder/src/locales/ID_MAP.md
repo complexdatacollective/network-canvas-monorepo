@@ -284,9 +284,8 @@ row here as each lands.
 
 `networkCanvas` takes four rows rather than one, and one of its modules
 (`sections/background/`) takes none. The area is one family — the canvas
-interfaces, which share their background, their layout mode and their canvas
-permissions — but under one directory per editor its copy is declared in the
-module that renders it, and only the modules that say their words somewhere
+interfaces, which share their background and their layout mode — but under one
+directory per editor its copy is declared in the module that renders it, and only the modules that say their words somewhere
 other than where they are declared gather theirs into a file: the layout mode,
 whose two cards are written by the section and the control it renders and whose
 manual-mode sentence a narrative stage replaces with its own; the sociogram's
