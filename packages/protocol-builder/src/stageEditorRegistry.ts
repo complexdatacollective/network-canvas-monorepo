@@ -39,6 +39,8 @@ import { dyadCensusStageEditor } from './editors/dyad-census/DyadCensusStageEdit
 import { egoFormStageEditor } from './editors/ego-form/EgoFormStageEditor.ts';
 import { familyPedigreeStageEditor } from './editors/family-pedigree/FamilyPedigreeStageEditor.ts';
 import { informationStageEditor } from './editors/information/InformationStageEditor.ts';
+import { nameGeneratorQuickAddStageEditor } from './editors/name-generator-quick-add/NameGeneratorQuickAddStageEditor.ts';
+import { nameGeneratorRosterStageEditor } from './editors/name-generator-roster/NameGeneratorRosterStageEditor.ts';
 import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
 import { oneToManyDyadCensusStageEditor } from './editors/one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
 import { ordinalBinStageEditor } from './editors/ordinal-bin/OrdinalBinStageEditor.ts';
@@ -125,6 +127,8 @@ const REGISTRY_PARTS = [
   egoFormStageEditor,
   familyPedigreeStageEditor,
   informationStageEditor,
+  nameGeneratorQuickAddStageEditor,
+  nameGeneratorRosterStageEditor,
   nameGeneratorStageEditor,
   oneToManyDyadCensusStageEditor,
   ordinalBinStageEditor,
@@ -224,8 +228,6 @@ export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
 export const AWAITING_STAGE_EDITORS = [
   'Anonymisation',
   'Geospatial',
-  'NameGeneratorQuickAdd',
-  'NameGeneratorRoster',
   'Narrative',
   'NarrativePedigree',
   'NetworkComposer',
