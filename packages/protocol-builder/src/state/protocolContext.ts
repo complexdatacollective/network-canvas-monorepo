@@ -17,6 +17,8 @@ export type ProtocolSections = Readonly<Record<string, SectionDoc>>;
 type Derivation = Readonly<{
   sections: ProtocolSections;
   context: ProtocolBuilderProtocolContext;
+  /** Whether every section the protocol lists is in `sections`. */
+  complete: boolean;
 }>;
 
 /**
@@ -40,6 +42,7 @@ const READING_LIMIT = 4;
 function reading(
   results: readonly Readonly<{ data?: SectionAtRevision }>[],
   ids: readonly ProtocolSectionId[],
+  listed: boolean,
 ): Derivation {
   const sections: Record<string, SectionDoc> = {};
   const parts: string[] = [];
@@ -52,13 +55,20 @@ function reading(
   // Escaped rather than written as themselves: two control characters in
   // the source make this a binary file to git and to every tool that reads
   // a diff of it.
-  const revisions = parts.toSorted().join('\u0001');
+  //
+  // How many sections were LISTED is part of the key as well as which of them
+  // have been read, so a reading that is still waiting on half the protocol is
+  // never served the entry a complete reading of those same sections made.
+  const revisions = [listed ? '1' : '0', ids.length, ...parts.toSorted()].join(
+    '\u0001',
+  );
 
   const cached = READINGS.get(revisions);
   if (cached !== undefined) return cached;
   const derived: Derivation = {
     sections,
     context: protocolContextFromSections(sections),
+    complete: listed && parts.length === ids.length,
   };
   READINGS.set(revisions, derived);
   for (const key of READINGS.keys()) {
@@ -79,7 +89,7 @@ function useReading(): Derivation {
     queries: ids.map((id) =>
       utils.getSection.queryOptions({ input: { protocolId, sectionId: id } }),
     ),
-    combine: (results) => reading(results, ids),
+    combine: (results) => reading(results, ids, list !== undefined),
   });
 }
 
@@ -92,6 +102,22 @@ function useReading(): Derivation {
  */
 export function useProtocolSections(): ProtocolSections {
   return useReading().sections;
+}
+
+/**
+ * Every section of the open protocol, once all of them have been read;
+ * `undefined` until then.
+ *
+ * For a reader of the protocol as a WHOLE — validating it, assembling it,
+ * deciding which screen to open on — where a partial reading is not a smaller
+ * protocol but a wrong one: a stage still on its way reads as a stage the
+ * protocol does not have, and the problems reported of it are problems nobody
+ * has. A reader of one section, or of a family of them, wants
+ * `useProtocolSections` and whatever it has.
+ */
+export function useCompleteProtocolSections(): ProtocolSections | undefined {
+  const { sections, complete } = useReading();
+  return complete ? sections : undefined;
 }
 
 /**
