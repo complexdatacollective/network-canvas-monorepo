@@ -1,5 +1,5 @@
 import { Check, Copy } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -111,6 +111,18 @@ export function getProtocolValidationDetailsCopyText({
   return ['Protocol validation failed.', '', ...lines].join('\n');
 }
 
+// Rich-text chunk formatters for the support message's links, at module scope
+// so they keep one identity across renders.
+const renderForumLink = (chunks: ReactNode[]) => (
+  <ExternalLink href="https://community.networkcanvas.com">
+    {chunks}
+  </ExternalLink>
+);
+
+const renderEmailLink = (chunks: ReactNode[]) => (
+  <ExternalLink href="mailto:info@networkcanvas.com">{chunks}</ExternalLink>
+);
+
 export function ProtocolValidationDetailsDialogBody({
   issues,
   message,
@@ -140,16 +152,8 @@ export function ProtocolValidationDetailsDialogBody({
 
       <Paragraph>
         {intl.formatMessage(messages.ifYouWouldLikeSupportPostYour, {
-          link: (chunks) => (
-            <ExternalLink href="https://community.networkcanvas.com">
-              {chunks}
-            </ExternalLink>
-          ),
-          link1: (chunks) => (
-            <ExternalLink href="mailto:info@networkcanvas.com">
-              {chunks}
-            </ExternalLink>
-          ),
+          link: renderForumLink,
+          link1: renderEmailLink,
         })}
       </Paragraph>
     </div>
