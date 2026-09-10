@@ -6,8 +6,11 @@ import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   collectEntityTypeReferencesFromSchema,
+  collectStageReferences,
+  declaredStageReferenceSites,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
+  type StageReferenceHit,
 } from './utils/collectEntityAttributeReferences.ts';
 import { describeProtocolFileError } from './utils/describeProtocolFileError.ts';
 import {
@@ -113,6 +116,8 @@ export {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
   collectEntityTypeReferencesFromSchema,
+  collectStageReferences,
+  declaredStageReferenceSites,
   describeProtocolFileError,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
@@ -132,6 +137,7 @@ export {
   ProtocolValidationError,
   type ProtocolValidationIssue,
   type ProtocolValidationResult,
+  type StageReferenceHit,
   validateNames,
   validateProtocol,
 };

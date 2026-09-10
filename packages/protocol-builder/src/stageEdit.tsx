@@ -10,8 +10,10 @@ import {
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { StageType } from '@codaco/protocol-validation';
+import { contentHash } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
+import { blockedHolders } from './codebook/writes.ts';
 import type { Presence } from './contract/schemas.ts';
 import { getInterfaceTemplate } from './interfaces/templates.ts';
 import { useStagedResources } from './resources/client.tsx';
@@ -29,6 +31,7 @@ import {
   type SectionAccess,
   type SubmitResult,
 } from './state/hooks.ts';
+import { useKeptRequestId } from './state/requestKey.ts';
 
 /**
  * Which stage an editor is open on: one the protocol already holds, or one it
@@ -59,17 +62,16 @@ export type StageEdit = Readonly<{
   /**
    * Whether this editor may write yet.
    *
-   * Three states rather than two, because "not editable" covers a stage
-   * somebody else holds AND one whose acquire has not been answered: they read
-   * differently — only the first has a holder to name — and a form that let
-   * the researcher type before the host had granted the lock would be a draft
-   * the first save loses.
+   * Four states rather than two, because "not editable" covers a stage
+   * somebody else holds, one whose acquire has not been answered, and one the
+   * protocol would not open at all: they read differently — only the first has
+   * a holder to name, and only the last is worth saying rather than waiting
+   * out — and a form that let the researcher type before the host had granted
+   * the lock would be a draft the first save loses.
    */
   access: SectionAccess;
   /** Who is editing this stage, when it is somebody else. */
   holder: Presence | undefined;
-  /** The protocol would not open this stage: it is gone, or out of reach. */
-  unavailable: boolean;
   save(fields: StageFormDraft): Promise<StageSaveOutcome>;
 }>;
 
@@ -148,7 +150,7 @@ function EditingStage({
   const formId = useFormId(requestedFormId);
   const section = useSectionMutation(sectionId);
   const staged = useStagedResources();
-  const { submit, access, holder, unavailable } = section;
+  const { submit, access, holder } = section;
 
   const opened = useMemo(
     () =>
@@ -188,10 +190,9 @@ function EditingStage({
       committedFields: opened?.fields,
       access,
       holder,
-      unavailable,
       save,
     }),
-    [access, formId, holder, identity, opened, save, unavailable],
+    [access, formId, holder, identity, opened, save],
   );
 
   return <StageEditContext value={edit}>{children}</StageEditContext>;
@@ -221,6 +222,7 @@ function CreatingStage({
   const formId = useFormId(requestedFormId);
   const { client, protocolId } = useProtocolBuilderContext();
   const staged = useStagedResources();
+  const addKey = useKeptRequestId();
   const { stageType, position } = target;
   const extraFields = target.fields;
 
@@ -235,23 +237,45 @@ function CreatingStage({
 
   const save = useCallback(
     async (fields: StageFormDraft): Promise<StageSaveOutcome> => {
-      // A promotion rides a section's submit, and a stage that does not exist
-      // yet has none to ride: `create` mints the section and takes no
-      // promotion, so there is nowhere to commit these bytes in the revision
-      // that would name them. Refused rather than saved without them, which is
-      // a stage pointing at a file the protocol never took.
-      if (staged.promotion() !== undefined) {
-        return { status: 'refused', message: IMPORT_BEFORE_ADD_MESSAGE };
-      }
+      // Carried by the create for the reason a submit cannot cover: a stage
+      // being added can hold a file the researcher imported while composing
+      // it, and there is no earlier revision of that stage to have promoted it
+      // with. The section, its place in the stage order and the manifest
+      // entries are one revision.
+      const promotion = staged.promotion();
+      const document = stageDocument(identity, fields);
+      // One id for this attempt to add the stage, so a transport that
+      // re-sends the request after a lost answer — or a researcher pressing
+      // Save again because they were told the add failed — is told which
+      // section the first attempt made rather than adding a second copy of
+      // the stage the client would never learn about. Asked for by the
+      // document, so an add the host REFUSED, which the researcher fixes and
+      // asks for again, is a different intent and gets an id of its own.
+      const requestId = addKey.forAsk(contentHash(document));
       const { data, definedError, isSuccess } = await safe(
         client.create({
           protocolId,
+          requestId,
           kind: 'stage',
-          document: stageDocument(identity, fields),
+          document,
           position,
+          ...(promotion === undefined ? {} : { promote: promotion }),
         }),
       );
+      if (isSuccess || definedError !== null) addKey.settled(requestId);
       if (!isSuccess) {
+        // Every one of these left the protocol exactly as it was, so the draft
+        // stays: the stage was not added, and adding it again once the reason
+        // has passed is what the researcher will do next.
+        if (definedError?.code === 'PROMOTION_FAILED') {
+          return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
+        }
+        if (definedError?.code === 'SECTIONS_LOCKED') {
+          return {
+            status: 'refused',
+            message: blockedMessage(blockedHolders(definedError.data.blocked)),
+          };
+        }
         return {
           status: 'refused',
           message:
@@ -260,10 +284,11 @@ function CreatingStage({
               : ADD_FAILED_MESSAGE,
         };
       }
+      staged.promoted();
       onSaved?.(data.sectionId);
       return { status: 'saved', sectionId: data.sectionId };
     },
-    [client, identity, onSaved, position, protocolId, staged],
+    [addKey, client, identity, onSaved, position, protocolId, staged],
   );
 
   const edit = useMemo<StageEdit>(
@@ -276,8 +301,6 @@ function CreatingStage({
       // call, so a stage being added is editable from its first keystroke.
       access: 'editing',
       holder: undefined,
-      // A stage the protocol does not hold yet cannot have gone.
-      unavailable: false,
       save,
     }),
     [committedFields, creation, formId, identity, save],
@@ -291,17 +314,45 @@ function CreatingStage({
  *
  * A lost lock and a document the section cannot hold are both the end of this
  * draft: the editor may not write, or what it wrote is not a stage. A refused
- * promotion is not — the submit wrote nothing at all, the files are still
- * staged, and saving again is a thing that can work — so the draft stays where
- * the researcher left it.
+ * promotion and a section somebody else is holding are not — the submit wrote
+ * nothing at all, and saving again once they are finished is a thing that can
+ * work — so the draft stays where the researcher left it.
  */
 function refusalFromHost(result: SubmitResult): StageSaveOutcome {
   if (result.status === 'promotionFailed') {
     return { status: 'refused', message: PROMOTION_FAILED_MESSAGE };
   }
+  if (result.status === 'sectionsLocked') {
+    return {
+      status: 'refused',
+      message: blockedMessage(blockedHolders(result.blocked)),
+    };
+  }
   return result.status === 'notLockHolder'
     ? { status: 'lost', message: LOCK_LOST_MESSAGE }
     : { status: 'lost', message: INVALID_SHAPE_MESSAGE };
+}
+
+/**
+ * A save the protocol would not take because somebody else is holding a
+ * section it writes: not this stage — the editor holds that — but the stage
+ * order a new stage is registered in, or the list of files a promotion adds
+ * to.
+ *
+ * The holders are named the way a refused codebook change names them, because
+ * it is the same fact about the same protocol; what differs is that nothing
+ * here is lost, so the sentence says the draft is still on screen.
+ */
+function blockedMessage(holders: readonly string[]): string {
+  const [holder, ...rest] = holders;
+  if (holder === undefined) {
+    return createMessageError(messages.blockedBySomeoneUnnamed);
+  }
+  return rest.length === 0
+    ? createMessageError(messages.blockedBy, { holder })
+    : createMessageError(messages.blockedBySeveral, {
+        holders: { list: [holder, ...rest] },
+      });
 }
 
 const messages = defineMessages({
@@ -333,12 +384,26 @@ const messages = defineMessages({
     description:
       'Shown above a stage editor’s fields when the host would not take the files imported during this edit, so neither they nor the stage were saved. The researcher’s unsaved work is still on screen. A stage is one step of an interview.',
   },
-  importBeforeAdd: {
-    id: 'protocolBuilder.stageEdit.importBeforeAdd',
+  blockedBySomeoneUnnamed: {
+    id: 'protocolBuilder.stageEdit.blockedBySomeoneUnnamed',
     defaultMessage:
-      'A file imported here cannot be saved with a stage that is being added for the first time. Discard the import and add the stage, then reopen it to import the file.',
+      'Another part of the protocol that this save needs is being edited, so nothing was saved and your changes are still here. Try saving again in a moment.',
     description:
-      'Shown above a stage editor’s fields when the researcher imported a file while adding a brand new stage, which the protocol cannot yet take in one step. A stage is one step of an interview.',
+      'Shown above a stage editor’s fields when the save was refused because somebody the host would not name is editing another part of the protocol the save has to write. The researcher’s unsaved work is still on screen. A stage is one step of an interview.',
+  },
+  blockedBy: {
+    id: 'protocolBuilder.stageEdit.blockedBy',
+    defaultMessage:
+      '{holder} is editing another part of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.',
+    description:
+      'Shown above a stage editor’s fields when the save was refused because a named collaborator is editing another part of the protocol the save has to write. holder is that person’s display name, which the host supplies. The researcher’s unsaved work is still on screen. A stage is one step of an interview.',
+  },
+  blockedBySeveral: {
+    id: 'protocolBuilder.stageEdit.blockedBySeveral',
+    defaultMessage:
+      '{holders} are editing other parts of the protocol that this save needs, so nothing was saved and your changes are still here. Try saving again in a moment.',
+    description:
+      'Shown above a stage editor’s fields when the save was refused because several named collaborators are between them editing the other parts of the protocol the save has to write. holders is their display names, which the host supplies, joined as a list. The researcher’s unsaved work is still on screen. A stage is one step of an interview.',
   },
   addFailed: {
     id: 'protocolBuilder.stageEdit.addFailed',
@@ -358,4 +423,3 @@ const LOCK_LOST_MESSAGE = createMessageError(messages.lockLost);
 const INVALID_SHAPE_MESSAGE = createMessageError(messages.invalidShape);
 const ADD_FAILED_MESSAGE = createMessageError(messages.addFailed);
 const PROMOTION_FAILED_MESSAGE = createMessageError(messages.promotionFailed);
-const IMPORT_BEFORE_ADD_MESSAGE = createMessageError(messages.importBeforeAdd);
