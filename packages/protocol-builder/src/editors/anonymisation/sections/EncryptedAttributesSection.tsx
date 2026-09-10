@@ -16,6 +16,7 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { VariableTypes } from '@codaco/protocol-validation';
 
+import { codebookEditingMessages } from '../../../codebook/codebookMessages.ts';
 import { documentWithUpdatedVariable } from '../../../codebook/editing.ts';
 import { useCodebookSectionWrite } from '../../../codebook/writes.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
@@ -131,8 +132,15 @@ export default function EncryptedAttributesSection() {
    * after the reader changes it.
    */
   const [announcement, setAnnouncement] = useState('');
-  /** Why the last change was refused, encoded for the same reason. */
-  const [failure, setFailure] = useState<string | undefined>(undefined);
+  /**
+   * Why the last change was refused, encoded for the same reason, and in which
+   * register to say it: a section somebody else is holding is not a fault —
+   * the change is fine and lands once they are finished — so it is a notice
+   * rather than an error, exactly as every other codebook writer says it.
+   */
+  const [failure, setFailure] = useState<
+    Readonly<{ message: string; held: boolean }> | undefined
+  >(undefined);
   const [busy, setBusy] = useState(false);
 
   const nodeTypes = useMemo<readonly NodeTypeView[]>(() => {
@@ -183,7 +191,10 @@ export default function EncryptedAttributesSection() {
         }),
       );
       if (outcome.status !== 'applied') {
-        setFailure(outcome.message);
+        setFailure({
+          message: outcome.message,
+          held: outcome.refusal.kind === 'held',
+        });
         return;
       }
       setAnnouncement(
@@ -224,9 +235,12 @@ export default function EncryptedAttributesSection() {
       </Alert>
 
       {failure !== undefined && (
-        <Alert variant="destructive" density="compact">
+        <Alert
+          variant={failure.held ? 'warning' : 'destructive'}
+          density="compact"
+        >
           <AlertDescription>
-            {formatMessageError(failure, intl) ?? failure}
+            {formatMessageError(failure.message, intl) ?? failure.message}
           </AlertDescription>
         </Alert>
       )}
@@ -245,6 +259,20 @@ export default function EncryptedAttributesSection() {
           onChange={(next) => handleChange(view, next)}
         />
       ))}
+
+      {/* Every checkbox above is disabled while a codebook write is in flight,
+          so a tick made in that window reaches nothing. Saying the section is
+          saving is what keeps that from being silent: without it a researcher
+          ticks a second attribute, watches the box refuse to move, and is told
+          neither why nor that a change is already on its way. A live region
+          rather than an `aria-busy` one: `aria-busy` tells a screen reader to
+          hold an announcement back until it clears, and this sentence is only
+          ever on screen while it would not. */}
+      {busy && (
+        <Paragraph role="status" margin="none" emphasis="muted">
+          {intl.formatMessage(codebookEditingMessages.saving)}
+        </Paragraph>
+      )}
 
       {/* Mounted with the section rather than with the message, so the first
           announcement updates a region that was already there. */}
