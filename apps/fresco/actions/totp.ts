@@ -1,6 +1,8 @@
 'use server';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { type FormSubmissionResult } from '@codaco/fresco-ui/form/store/types';
+import { getServerIntl } from '~/i18n/server';
 import { addEvent } from '~/lib/activityFeed';
 import { requireApiAuth } from '~/lib/auth/guards';
 import {
@@ -11,14 +13,73 @@ import {
   hashRecoveryCode,
   verifyTotpCode,
 } from '~/lib/auth/totp';
+import {
+  getTwoFactorStatus,
+  isTwoFactorRequired,
+} from '~/lib/auth/twoFactorPolicy';
 import { safeUpdateTag } from '~/lib/cache';
 import { prisma } from '~/lib/db';
-import { disableTotpSchema, verifyTotpSetupSchema } from '~/schemas/totp';
+import { createTotpSchemas } from '~/schemas/totp';
 import { getBaseUrl } from '~/utils/getBaseUrl';
+
+const messages = defineMessages({
+  copyFresco: {
+    id: 'fresco.actions.totp.copyFresco',
+    defaultMessage: 'Fresco ({value1})',
+    description: 'Researcher-facing actions / totp: Fresco (value)',
+  },
+  copyInvalidCode: {
+    id: 'fresco.actions.totp.copyInvalidCode',
+    defaultMessage: 'Invalid code',
+    description: 'Researcher-facing actions / totp: Invalid code',
+  },
+  copyNoPendingTOTPSetupFound: {
+    id: 'fresco.actions.totp.copyNoPendingTOTPSetupFound',
+    defaultMessage: 'No pending TOTP setup found',
+    description:
+      'Researcher-facing actions / totp: No pending TOTP setup found',
+  },
+  copyInvalidVerificationCode: {
+    id: 'fresco.actions.totp.copyInvalidVerificationCode',
+    defaultMessage: 'Invalid verification code',
+    description: 'Researcher-facing actions / totp: Invalid verification code',
+  },
+  copyTwoFactorAuthenticationIsNotEnabled: {
+    id: 'fresco.actions.totp.copyTwoFactorAuthenticationIsNotEnabled',
+    defaultMessage: 'Two-factor authentication is not enabled',
+    description:
+      'Researcher-facing actions / totp: Two-factor authentication is not enabled',
+  },
+  copyInvalidRecoveryCode: {
+    id: 'fresco.actions.totp.copyInvalidRecoveryCode',
+    defaultMessage: 'Invalid recovery code',
+    description: 'Researcher-facing actions / totp: Invalid recovery code',
+  },
+  copyInvalidCodeFormat: {
+    id: 'fresco.actions.totp.copyInvalidCodeFormat',
+    defaultMessage: 'Invalid code format',
+    description: 'Researcher-facing actions / totp: Invalid code format',
+  },
+  copyCannotResetYourOwnTwoFactorAuthentication: {
+    id: 'fresco.actions.totp.copyCannotResetYourOwnTwoFactorAuthentication',
+    defaultMessage: 'Cannot reset your own two-factor authentication',
+    description:
+      'Researcher-facing actions / totp: Cannot reset your own two-factor authentication',
+  },
+  twoFactorRequiredByInstallation: {
+    id: 'fresco.actions.totp.twoFactorRequiredByInstallation',
+    defaultMessage:
+      'This installation of Fresco requires two-factor authentication for every account that signs in with a password, so it cannot be turned off.',
+    description:
+      'Error returned when a researcher tries to disable two-factor authentication while the REQUIRE_TWO_FACTOR environment variable is set.',
+  },
+});
 
 export async function enableTotp() {
   try {
-    const session = await requireApiAuth();
+    // Setting up two-factor authentication is the one thing an account the
+    // "Require Two-Factor Authentication" gate holds is allowed to do.
+    const session = await requireApiAuth({ allowPendingTwoFactorSetup: true });
 
     const secret = generateTotpSecret();
 
@@ -37,7 +98,10 @@ export async function enableTotp() {
     });
 
     const hostname = new URL(getBaseUrl()).hostname;
-    const issuer = `Fresco (${hostname})`;
+    const intl = await getServerIntl();
+    const issuer = intl.formatMessage(messages.copyFresco, {
+      value1: hostname,
+    });
     const qrCodeDataUrl = await generateQrCodeDataUrl(
       generateTotpUri(secret, session.user.username, issuer),
     );
@@ -51,11 +115,13 @@ export async function enableTotp() {
 }
 
 export async function verifyTotpSetup(data: unknown) {
-  const session = await requireApiAuth();
+  const { verifyTotpSetupSchema } = createTotpSchemas(createMessageError);
+
+  const session = await requireApiAuth({ allowPendingTwoFactorSetup: true });
 
   const parsed = verifyTotpSetupSchema.safeParse(data);
   if (!parsed.success) {
-    return { error: 'Invalid code', data: null };
+    return { error: createMessageError(messages.copyInvalidCode), data: null };
   }
 
   const { code } = parsed.data;
@@ -65,11 +131,17 @@ export async function verifyTotpSetup(data: unknown) {
   });
 
   if (!credential || credential.verified) {
-    return { error: 'No pending TOTP setup found', data: null };
+    return {
+      error: createMessageError(messages.copyNoPendingTOTPSetupFound),
+      data: null,
+    };
   }
 
   if (!verifyTotpCode(credential.secret, code)) {
-    return { error: 'Invalid verification code', data: null };
+    return {
+      error: createMessageError(messages.copyInvalidVerificationCode),
+      data: null,
+    };
   }
 
   const recoveryCodes = generateRecoveryCodes();
@@ -90,6 +162,7 @@ export async function verifyTotpSetup(data: unknown) {
   void addEvent(
     'Two-Factor Enabled',
     `User ${session.user.username} enabled two-factor authentication`,
+    { kind: 'twoFactorEnabled', values: { username: session.user.username } },
   );
   safeUpdateTag('activityFeed');
   safeUpdateTag('getUsers');
@@ -112,13 +185,18 @@ export async function verifyCurrentUserTotp(
   if (!credential?.verified) {
     return {
       success: false,
-      formErrors: ['Two-factor authentication is not enabled'],
+      formErrors: [
+        createMessageError(messages.copyTwoFactorAuthenticationIsNotEnabled),
+      ],
     };
   }
 
   if (TOTP_CODE_PATTERN.test(code)) {
     if (!verifyTotpCode(credential.secret, code)) {
-      return { success: false, formErrors: ['Invalid verification code'] };
+      return {
+        success: false,
+        formErrors: [createMessageError(messages.copyInvalidVerificationCode)],
+      };
     }
     return { success: true };
   }
@@ -135,20 +213,28 @@ export async function verifyCurrentUserTotp(
     });
 
     if (!found) {
-      return { success: false, formErrors: ['Invalid recovery code'] };
+      return {
+        success: false,
+        formErrors: [createMessageError(messages.copyInvalidRecoveryCode)],
+      };
     }
     return { success: true };
   }
 
-  return { success: false, formErrors: ['Invalid code format'] };
+  return {
+    success: false,
+    formErrors: [createMessageError(messages.copyInvalidCodeFormat)],
+  };
 }
 
 export async function disableTotp(data: unknown) {
+  const { disableTotpSchema } = createTotpSchemas(createMessageError);
+
   const session = await requireApiAuth();
 
   const parsed = disableTotpSchema.safeParse(data);
   if (!parsed.success) {
-    return { error: 'Invalid code', data: null };
+    return { error: createMessageError(messages.copyInvalidCode), data: null };
   }
 
   const { code } = parsed.data;
@@ -158,12 +244,32 @@ export async function disableTotp(data: unknown) {
   });
 
   if (!credential?.verified) {
-    return { error: 'Two-factor authentication is not enabled', data: null };
+    return {
+      error: createMessageError(
+        messages.copyTwoFactorAuthenticationIsNotEnabled,
+      ),
+      data: null,
+    };
+  }
+
+  // Refused before the code is checked, so a recovery code is not consumed by
+  // an attempt that could never succeed.
+  if (
+    isTwoFactorRequired() &&
+    (await getTwoFactorStatus(session.user.userId)).passwordMode
+  ) {
+    return {
+      error: createMessageError(messages.twoFactorRequiredByInstallation),
+      data: null,
+    };
   }
 
   if (TOTP_CODE_PATTERN.test(code)) {
     if (!verifyTotpCode(credential.secret, code)) {
-      return { error: 'Invalid verification code', data: null };
+      return {
+        error: createMessageError(messages.copyInvalidVerificationCode),
+        data: null,
+      };
     }
   } else if (RECOVERY_CODE_PATTERN.test(code)) {
     const codeHash = hashRecoveryCode(code);
@@ -177,10 +283,16 @@ export async function disableTotp(data: unknown) {
     });
 
     if (count === 0) {
-      return { error: 'Invalid recovery code', data: null };
+      return {
+        error: createMessageError(messages.copyInvalidRecoveryCode),
+        data: null,
+      };
     }
   } else {
-    return { error: 'Invalid code format', data: null };
+    return {
+      error: createMessageError(messages.copyInvalidCodeFormat),
+      data: null,
+    };
   }
 
   await prisma.$transaction([
@@ -195,6 +307,7 @@ export async function disableTotp(data: unknown) {
   void addEvent(
     'Two-Factor Disabled',
     `User ${session.user.username} disabled two-factor authentication`,
+    { kind: 'twoFactorDisabled', values: { username: session.user.username } },
   );
   safeUpdateTag('activityFeed');
   safeUpdateTag('getUsers');
@@ -203,11 +316,13 @@ export async function disableTotp(data: unknown) {
 }
 
 export async function regenerateRecoveryCodes(data: unknown) {
+  const { verifyTotpSetupSchema } = createTotpSchemas(createMessageError);
+
   const session = await requireApiAuth();
 
   const parsed = verifyTotpSetupSchema.safeParse(data);
   if (!parsed.success) {
-    return { error: 'Invalid code', data: null };
+    return { error: createMessageError(messages.copyInvalidCode), data: null };
   }
 
   const credential = await prisma.totpCredential.findUnique({
@@ -215,11 +330,19 @@ export async function regenerateRecoveryCodes(data: unknown) {
   });
 
   if (!credential?.verified) {
-    return { error: 'Two-factor authentication is not enabled', data: null };
+    return {
+      error: createMessageError(
+        messages.copyTwoFactorAuthenticationIsNotEnabled,
+      ),
+      data: null,
+    };
   }
 
   if (!verifyTotpCode(credential.secret, parsed.data.code)) {
-    return { error: 'Invalid verification code', data: null };
+    return {
+      error: createMessageError(messages.copyInvalidVerificationCode),
+      data: null,
+    };
   }
 
   const recoveryCodes = generateRecoveryCodes();
@@ -239,6 +362,10 @@ export async function regenerateRecoveryCodes(data: unknown) {
   void addEvent(
     'Recovery Codes Regenerated',
     `User ${session.user.username} regenerated recovery codes`,
+    {
+      kind: 'recoveryCodesRegenerated',
+      values: { username: session.user.username },
+    },
   );
   safeUpdateTag('activityFeed');
 
@@ -250,7 +377,9 @@ export async function resetTotpForUser(userId: string) {
 
   if (session.user.userId === userId) {
     return {
-      error: 'Cannot reset your own two-factor authentication',
+      error: createMessageError(
+        messages.copyCannotResetYourOwnTwoFactorAuthentication,
+      ),
       data: null,
     };
   }
@@ -272,6 +401,13 @@ export async function resetTotpForUser(userId: string) {
   void addEvent(
     'Two-Factor Reset',
     `User ${session.user.username} reset two-factor authentication for ${targetUser?.username ?? userId}`,
+    {
+      kind: 'twoFactorReset',
+      values: {
+        username: session.user.username,
+        target: targetUser?.username ?? userId,
+      },
+    },
   );
   safeUpdateTag('activityFeed');
   safeUpdateTag('getUsers');

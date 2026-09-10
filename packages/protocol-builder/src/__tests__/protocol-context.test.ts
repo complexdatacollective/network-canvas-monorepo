@@ -9,6 +9,7 @@ import {
   variableForSubject,
   variablesForSubject,
 } from '../protocol-context.ts';
+import { readMessage } from '../testing/i18n.ts';
 
 const FIRST_STAGE = 'stage-first';
 const SECOND_STAGE = 'stage-second';
@@ -151,7 +152,7 @@ describe('protocolContextFromSections', () => {
     );
     expect(
       context.issues.filter(({ message }) =>
-        message.includes('Attribute record key "age"'),
+        readMessage(message).includes('Attribute record key "age"'),
       ),
     ).toEqual([
       expect.objectContaining({
@@ -178,11 +179,71 @@ describe('protocolContextFromSections', () => {
     expect(
       entityForSubject(context, { entity: 'edge', type: 'knows' }),
     ).toMatchObject({ name: 'Person' });
-    expect(context.issues).toContainEqual({
+    expect(
+      context.issues.map((issue) => ({
+        ...issue,
+        message: readMessage(issue.message),
+      })),
+    ).toContainEqual({
       sectionId: edgeId,
       path: ['name'],
       message: expect.stringContaining('Duplicate entity name "Person"'),
     });
+  });
+
+  /**
+   * The stage schema states rules about a stage on its own, not only about a
+   * whole protocol — an external-data panel filtered on a connection is one.
+   * A stage refused by one of them is reported against its own section, with
+   * the schema's own wording and its stage-relative path, and left out of the
+   * read model the way any unreadable section is. The stage order is NOT also
+   * accused of naming a stage that does not exist: the protocol has it, and
+   * the one thing wrong with it has already been said.
+   */
+  it('reports a stage the stage schema refuses against that stage, not the order', () => {
+    const sections = protocolSections();
+    const stageSectionId = sectionId({ kind: 'stage', stageId: FIRST_STAGE });
+    sections[stageSectionId] = {
+      id: FIRST_STAGE,
+      type: 'NameGenerator',
+      label: 'First',
+      subject: { entity: 'node', type: 'person' },
+      form: { title: 'Add', fields: [{ variable: 'name', prompt: 'Name' }] },
+      prompts: [{ id: 'p1', text: 'Who?' }],
+      panels: [
+        {
+          id: 'panel-1',
+          title: 'From a file',
+          dataSource: 'roster-asset',
+          filter: {
+            rules: [
+              {
+                id: 'r1',
+                type: 'edge',
+                options: { type: 'knows', operator: 'EXISTS' },
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const context = protocolContextFromSections(sections);
+
+    expect(
+      context.issues.map((issue) => ({
+        ...issue,
+        message: readMessage(issue.message),
+      })),
+    ).toEqual([
+      {
+        sectionId: stageSectionId,
+        path: ['panels', 0, 'filter', 'rules', 0, 'type'],
+        message:
+          'External-data panel filters cannot use edge rules; rules must target node attributes.',
+      },
+    ]);
+    expect(context.orderedStages.map(({ id }) => id)).toEqual([SECOND_STAGE]);
   });
 
   it('reports stage-order inconsistencies instead of throwing', () => {
@@ -194,7 +255,7 @@ describe('protocolContextFromSections', () => {
     const context = protocolContextFromSections(sections);
 
     expect(context.orderedStages.map(({ id }) => id)).toEqual([SECOND_STAGE]);
-    expect(context.issues.map(({ message }) => message)).toEqual(
+    expect(context.issues.map(({ message }) => readMessage(message))).toEqual(
       expect.arrayContaining([
         'Stage order names missing stage missing-stage.',
         `Stage ${FIRST_STAGE} is missing from the stage order.`,
@@ -216,5 +277,30 @@ describe('protocolContextFromSections', () => {
     expect(
       entityForSubject(context, { entity: 'node', type: '__proto__' }),
     ).toMatchObject({ name: 'Prototype' });
+  });
+
+  it('exposes asset metadata by id, and reports one bad entry without losing the rest', () => {
+    const sections = protocolSections();
+    sections[sectionId({ kind: 'assets' })] = {
+      'asset-image': { name: 'A photo', type: 'image', source: 'photo.png' },
+      // A file asset with no source: the kind of thing an interrupted upload
+      // leaves behind. It must not cost the section its other assets.
+      'asset-broken': { name: 'Half an upload', type: 'image' },
+    };
+
+    const context = protocolContextFromSections(sections);
+
+    expect(context.assets['asset-image']).toMatchObject({ type: 'image' });
+    expect(context.assets['asset-broken']).toBeUndefined();
+    expect(context.issues).toContainEqual(
+      expect.objectContaining({
+        sectionId: sectionId({ kind: 'assets' }),
+        path: ['asset-broken', 'source'],
+      }),
+    );
+  });
+
+  it('has no assets when the protocol has no asset section', () => {
+    expect(protocolContextFromSections(protocolSections()).assets).toEqual({});
   });
 });

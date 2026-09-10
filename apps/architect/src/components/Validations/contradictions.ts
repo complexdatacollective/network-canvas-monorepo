@@ -1,12 +1,21 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import {
   findValidationContradictions,
   VARIABLE_REFERENCE_VALIDATIONS,
   type ValidationContradiction,
 } from '@codaco/protocol-validation';
+import { validationContradictionMessages } from '@codaco/protocol-validation/messages';
 import { getTypeForComponent } from '~/config/variables';
 import type { WriterClass } from '~/selectors/roleFilters';
 
 import { ruleMapPrecheck } from './ruleValue';
+const extraMessages = defineMessages({
+  thisAttribute: {
+    id: 'architect.validation.contradiction.thisAttribute',
+    defaultMessage: 'this attribute',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -723,14 +732,18 @@ export const variableDisplayName = (
  * `unvalidatedElsewhereMessage` below.
  */
 export const validatedElsewhereMessage = (variableName: string): string =>
-  `"${variableName}" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)`;
+  createMessageError(conflictMessages.validatedElsewhereMessage, {
+    variableName,
+  });
 
 /**
  * Bound at save-time when a form field picks a variable a bin/highlight/
  * census/etc. elsewhere already writes without validation.
  */
 export const unvalidatedElsewhereMessage = (variableName: string): string =>
-  `"${variableName}" is written without validation by another stage, so it cannot be used as a form field`;
+  createMessageError(conflictMessages.unvalidatedElsewhereMessage, {
+    variableName,
+  });
 
 /**
  * The refusal a picker earns when the OPPOSITE writer class already claims
@@ -747,12 +760,16 @@ export const crossClassConflictMessage: Record<
 };
 
 export const draftValidatedElsewhereMessage = (variableName: string): string =>
-  `"${variableName}" is collected by this stage's form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)`;
+  createMessageError(conflictMessages.draftValidatedElsewhereMessage, {
+    variableName,
+  });
 
 export const draftUnvalidatedElsewhereMessage = (
   variableName: string,
 ): string =>
-  `"${variableName}" is assigned without validation by a prompt in this stage, so it cannot be used as a form field`;
+  createMessageError(conflictMessages.draftUnvalidatedElsewhereMessage, {
+    variableName,
+  });
 
 /**
  * The save-time exclusivity gate shared by every writer surface (the form
@@ -970,7 +987,20 @@ export const makeFieldEditorValidate = (
       // below through `resolvedViews`.
       stageEffectiveComponents: overlay !== undefined,
     })[0];
-    if (first) return { validation: first.message };
+    if (first)
+      return {
+        validation: describeDraftContradiction(
+          first,
+          currentVariableId
+            ? visibleVariables
+            : {
+                ...visibleVariables,
+                [draftVariableId(visibleVariables)]: {
+                  name: values._createNewVariable,
+                },
+              },
+        ),
+      };
     if (resolvedViews.length > 0) {
       const allResolvedRenderedVariableIds = new Set(
         resolvedRenderedVariableIds,
@@ -1029,7 +1059,19 @@ export const makeFieldEditorValidate = (
           resolvedViewDraftRendering,
         )[0];
         if (contradiction) {
-          return { validation: contradiction.message };
+          return {
+            validation: describeDraftContradiction(
+              contradiction,
+              currentVariableId
+                ? allVariables
+                : {
+                    ...allVariables,
+                    [draftVariableId(allVariables)]: {
+                      name: values._createNewVariable,
+                    },
+                  },
+            ),
+          };
         }
       }
     }
@@ -1061,3 +1103,48 @@ export const makeFieldEditorValidate = (
     return {};
   };
 };
+
+export function describeDraftContradiction(
+  contradiction: ValidationContradiction,
+  variables: UnknownRecord,
+): string {
+  const names = contradiction.variableIds.map((id) => {
+    const variable = variables[id];
+    return isRecord(variable) &&
+      typeof variable.name === 'string' &&
+      variable.name
+      ? variable.name
+      : { messageError: createMessageError(extraMessages.thisAttribute) };
+  });
+  return createMessageError(
+    validationContradictionMessages[contradiction.class],
+    { variables: { list: names } },
+  );
+}
+
+const conflictMessages = defineMessages({
+  validatedElsewhereMessage: {
+    id: 'architect.validation.crossClass.validatedElsewhereMessage',
+    defaultMessage:
+      '"{variableName}" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  unvalidatedElsewhereMessage: {
+    id: 'architect.validation.crossClass.unvalidatedElsewhereMessage',
+    defaultMessage:
+      '"{variableName}" is written without validation by another stage, so it cannot be used as a form field',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  draftValidatedElsewhereMessage: {
+    id: 'architect.validation.crossClass.draftValidatedElsewhereMessage',
+    defaultMessage:
+      '"{variableName}" is collected by this stage\'s form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  draftUnvalidatedElsewhereMessage: {
+    id: 'architect.validation.crossClass.draftUnvalidatedElsewhereMessage',
+    defaultMessage:
+      '"{variableName}" is assigned without validation by a prompt in this stage, so it cannot be used as a form field',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});

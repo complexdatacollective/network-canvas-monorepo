@@ -6,12 +6,16 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 
+import { appI18n } from '@codaco/app-i18n/vite';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   build: {
     lib: {
       entry: {
+        'messages': resolve(__dirname, 'src/messages.ts'),
+        'locales': resolve(__dirname, 'src/locales/catalogs.ts'),
         'pipeline': resolve(__dirname, 'src/pipeline.ts'),
         'options': resolve(__dirname, 'src/options.ts'),
         'input': resolve(__dirname, 'src/input.ts'),
@@ -33,6 +37,7 @@ export default defineConfig({
     },
     rolldownOptions: {
       external: [
+        /^@codaco\/app-i18n(?:\/|$)/,
         '@codaco/protocol-validation',
         '@codaco/shared-consts',
         '@xmldom/xmldom',
@@ -49,6 +54,7 @@ export default defineConfig({
     },
   },
   plugins: [
+    ...appI18n({ build: 'library' }),
     dts({
       insertTypesEntry: false,
       // Multi-entry build: strip `src/` so emitted .d.ts files sit alongside

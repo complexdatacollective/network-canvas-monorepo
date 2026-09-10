@@ -1,49 +1,61 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type {
   ConstraintConflict,
   SyntheticDataConstraintError,
 } from '@codaco/protocol-utilities';
+import { formatConstraintConflictReason } from '@codaco/protocol-utilities/messages';
+import { formatValidationRule } from '@codaco/protocol-validation/messages';
 
-// Mirrors the bullet wording `SyntheticDataConstraintError` composes into its
-// flat, newline-joined message (see
-// packages/protocol-utilities/src/generateNetwork/constraints/error.ts), but
-// renders each conflict as its own list item so the toast stays readable
-// without depending on whitespace being preserved.
+const messages = defineMessages({
+  summary: {
+    id: 'interviewer.generationFailureDescription.summary',
+    defaultMessage:
+      'Synthetic data could not be generated. Review the conflicting rules below and adjust the protocol in Architect.',
+    description:
+      'Actionable summary of synthetic data generation refusal, above the specific conflicting rules and repair guidance.',
+  },
+  conflict: {
+    id: 'interviewer.generationFailureDescription.conflict',
+    defaultMessage:
+      '{entity, select, ego {Participant} node {Node "{entityType}"} edge {Edge "{entityType}"} other {{entityType}}}, {variables} ({rules}): {reason}',
+    description:
+      'One synthetic generation conflict. entity selects the codebook entity; entityType and variable names are unchanged researcher-authored names. rules is a localized list and reason is a complete localized repair explanation.',
+  },
+});
+
 function ConstraintConflictItem({
   conflict,
 }: {
   conflict: ConstraintConflict;
 }) {
-  const subject =
-    conflict.entity === 'ego'
-      ? 'ego'
-      : `${conflict.entity} "${conflict.entityTypeName ?? conflict.entityType}"`;
-  const variables = conflict.variableNames
-    .map((name) => `"${name}"`)
-    .join(' and ');
+  const intl = useAppIntl();
   return (
     <li>
-      {subject}, {variables} ({conflict.rules.join(', ')}): {conflict.reason}
+      {intl.formatMessage(messages.conflict, {
+        entity: conflict.entity,
+        entityType: conflict.entityTypeName ?? conflict.entityType ?? '',
+        variables: intl.formatList(conflict.variableNames),
+        rules: intl.formatList(
+          conflict.rules.map((rule) => formatValidationRule(rule, intl)),
+        ),
+        reason: formatConstraintConflictReason(conflict, intl),
+      })}
     </li>
   );
 }
 
-/**
- * The body of the "Generation failed" toast.
- *
- * A protocol can declare arbitrarily many clashing rules. fresco-ui's `Toast`
- * bounds and scrolls its description internally, so however many conflicts a
- * protocol produces, the toast's own title and Close control stay on screen
- * without this component needing its own scroll handling.
- */
+// Toast bounds and scrolls long descriptions, keeping the title and Close
+// control visible while each refusal retains its actionable repair guidance.
 export function GenerationFailureDescription({
   error,
 }: {
   error: SyntheticDataConstraintError;
 }) {
-  const [summary] = error.message.split('\n');
+  const intl = useAppIntl();
   return (
     <>
-      <p>{summary}</p>
+      <p>{intl.formatMessage(messages.summary)}</p>
       <ul className="list-disc space-y-1 pl-5">
         {error.conflicts.map((conflict, index) => (
           <ConstraintConflictItem

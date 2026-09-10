@@ -613,8 +613,13 @@ class CategoricalBinFixture {
   async getNodeCountInBin(label: string): Promise<number> {
     const bin = this.getBin(label);
     const ariaLabel = await bin.getAttribute('aria-label');
-    const match = /(\d+)\s*items/.exec(ariaLabel ?? '');
-    return match ? Number.parseInt(match[1] ?? '0', 10) : 0;
+    const match = /(\d+)\s*items?\b/.exec(ariaLabel ?? '');
+    if (!match?.[1]) {
+      throw new Error(
+        `Category count is missing from its accessible name: ${ariaLabel}`,
+      );
+    }
+    return Number.parseInt(match[1], 10);
   }
 
   /**

@@ -1,3 +1,4 @@
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
@@ -11,6 +12,7 @@ import {
   type InterfaceOwnedOptionSetKey,
   optionsMatchInterfaceOwnedSet,
   type VariableRoleConflict,
+  type Variables,
 } from '@codaco/protocol-validation';
 
 import type {
@@ -18,16 +20,58 @@ import type {
   ProtocolBuilderProtocolContext,
 } from '../protocol-context.ts';
 
+/**
+ * The two refusals this module writes.
+ *
+ * Encoded rather than formatted: both are returned as a plain `string` to a
+ * caller that puts them in a field's error region, so the words are chosen in
+ * the reader's language where they are rendered rather than where the rule is
+ * decided.
+ */
+const messages = defineMessages({
+  interfaceOwnedPick: {
+    id: 'protocolBuilder.codebookVariable.interfaceOwnedPick',
+    defaultMessage:
+      'This attribute is set by {owner}, so it cannot be used here. Choose a different attribute.',
+    description:
+      'Refusal shown when a researcher picks an attribute (a codebook variable) that one kind of interview step writes for itself. owner is the name of that step, which is the researcher’s own or a built-in interface name and is not translated here.',
+  },
+  draftInterfaceOwnedPick: {
+    id: 'protocolBuilder.codebookVariable.draftInterfaceOwnedPick',
+    defaultMessage:
+      'This attribute is already set by another part of the stage you are editing, so it cannot be used here as well. Choose a different attribute.',
+    description:
+      'Refusal shown when a researcher picks an attribute (a codebook variable) that another control of the interview step they have open has already been set to write, in an edit they have not saved yet. Says "the stage you are editing" rather than naming the interface, because both controls are on the screen in front of them. A stage is one step of an interview.',
+  },
+  interfaceOwnedOptions: {
+    id: 'protocolBuilder.codebookVariable.interfaceOwnedOptions',
+    defaultMessage:
+      'These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.',
+    description:
+      'Refusal shown when a researcher edits the allowed values of an attribute (a codebook variable) whose values one kind of interview step owns. An interface is one kind of interview step.',
+  },
+});
+
 export type WriterClass = 'validated' | 'unvalidated';
 
 export type VariableRoleMap = Readonly<
   Record<string, Readonly<{ validated: number; unvalidated: number }>>
 >;
 
-export type ExclusiveVariableSlotClaim = Readonly<{
-  slot: string;
-  owner: string;
-}>;
+/**
+ * Who has claimed an attribute for an interface slot, and how it is known.
+ *
+ * A `protocol` claim is read out of the saved protocol and names the interface
+ * that made it, in that interface's own words. A `draft` claim is one the
+ * researcher has just made in the editor and not saved: no protocol carries it
+ * yet, so there is no descriptor to name — and naming the interface would be
+ * the wrong thing to say anyway, because the rival control is on the screen in
+ * front of them.
+ */
+export type ExclusiveVariableSlotClaim = Readonly<
+  | { source: 'protocol'; slot: string; owner: string }
+  | { source: 'draft'; slot: string }
+>;
 
 export type ExclusiveVariableSlotMap = Readonly<
   Record<string, ExclusiveVariableSlotClaim>
@@ -216,6 +260,7 @@ export function buildExclusiveVariableSlotMap(
     map.set(
       variableRoleKey(subject, claim.variableId),
       Object.freeze({
+        source: 'protocol' as const,
         slot: claim.descriptor.slot,
         owner: claim.descriptor.owner,
       }),
@@ -261,6 +306,11 @@ export const excludeInterfaceOwned = <T extends VariableOption>(
  * Save-time refusal for a structural attribute owned by another interface
  * slot. There is deliberately no committed-value escape: saving the pick would
  * keep overwriting the owning interface's value.
+ *
+ * A claim the open editor has only DRAFTED is refused in different words: the
+ * saved protocol does not describe it, and the control that made it is one
+ * section away rather than in some other step the researcher has to go and
+ * find.
  */
 export const interfaceOwnedPickIssue = (
   slotMap: ExclusiveVariableSlotMap,
@@ -271,7 +321,57 @@ export const interfaceOwnedPickIssue = (
   if (variableId === '') return undefined;
   const claim = slotMap[variableRoleKey(subject, variableId)];
   if (claim === undefined || claim.slot === ownSlot) return undefined;
-  return `This attribute is set by ${claim.owner}, so it cannot be used here. Choose a different attribute.`;
+  return claim.source === 'draft'
+    ? createMessageError(messages.draftInterfaceOwnedPick)
+    : createMessageError(messages.interfaceOwnedPick, { owner: claim.owner });
+};
+
+/**
+ * An option list an editor must render read-only. Widened over a variable's
+ * own `options` because an interface-owned canonical set is `readonly`, and
+ * both are rendered by the same control.
+ */
+export type LockedOptionList = readonly Readonly<{
+  label: string;
+  value: string | number | boolean;
+}>[];
+
+/**
+ * The options a prompt editor must show read-only for the attribute it binds,
+ * or `undefined` when the researcher may edit them.
+ *
+ * Two independent reasons a list is fixed:
+ *
+ * - an interface both writes the attribute and branches on its exact values,
+ *   so the option set belongs to that interface however the attribute is
+ *   reached. The CANONICAL set is returned rather than the codebook's own
+ *   list, because the canonical set is what the protocol rule enforces — an
+ *   imported protocol whose list has drifted from it must not be shown its
+ *   drift as if it were authoritative.
+ * - the variable carries `readOnly`, which older Architect protocols stamp on
+ *   an attribute created from inside a stage. Absent from most authored
+ *   protocols, so it can never be the only check.
+ *
+ * The literal type comparison (rather than a type guard) is what narrows the
+ * variable union far enough for `options` to exist on it.
+ */
+export const lockedVariableOptions = (
+  variables: Readonly<Variables> | undefined,
+  variableId: string | undefined,
+  interfaceOwnedOptionSet?: InterfaceOwnedOptionSetKey,
+): LockedOptionList | undefined => {
+  if (interfaceOwnedOptionSet !== undefined) {
+    return INTERFACE_OWNED_OPTION_SETS[interfaceOwnedOptionSet].options;
+  }
+  if (variableId === undefined || variableId === '') return undefined;
+  const variable = variables?.[variableId];
+  if (
+    variable === undefined ||
+    (variable.type !== 'categorical' && variable.type !== 'ordinal')
+  ) {
+    return undefined;
+  }
+  return variable.readOnly === true ? variable.options : undefined;
 };
 
 const asOptionList = (
@@ -302,5 +402,5 @@ export const interfaceOwnedOptionsIssue = (
   const canonical = INTERFACE_OWNED_OPTION_SETS[ownedOptionSet].options;
   return optionsMatchInterfaceOwnedSet(asOptionList(draftOptions), canonical)
     ? undefined
-    : 'These options are set by the interface that uses this attribute and cannot be changed here. Close this dialog and reopen it to start from the current options.';
+    : createMessageError(messages.interfaceOwnedOptions);
 };

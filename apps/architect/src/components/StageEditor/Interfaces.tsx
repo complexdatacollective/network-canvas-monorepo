@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 
 import { INTERFACE_NAMES } from '@codaco/protocol-builder/interfaces/interfaceNames';
+import { getInterfaceTemplate } from '@codaco/protocol-builder/interfaces/templates';
 import type { StageType } from '@codaco/protocol-validation';
 import {
   AnonymisationExplanation,
@@ -50,8 +51,6 @@ import SourceStage from '~/components/sections/NarrativePedigree/SourceStage';
 import NodeConfiguration from '~/components/sections/NodeConfiguration/NodeConfiguration';
 import { FilteredNodeType } from '~/components/sections/NodeType';
 import { interfaceDocumentationUrl } from '~/utils/documentationLinks';
-
-import { getInterfaceTemplate } from './interfaceTemplates';
 
 /**
  * Props that are passed to all stage editor section components.

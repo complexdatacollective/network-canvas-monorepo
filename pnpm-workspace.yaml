@@ -22,7 +22,6 @@ allowBuilds:
   unrs-resolver: true
   electron: false
   electron-winstaller: false
-  phantomjs-prebuilt: false
   protobufjs: false
   workerd: false
   '@posthog/cli': false
@@ -45,9 +44,30 @@ catalog:
   '@faker-js/faker': ^10.5.0
   '@fontsource-variable/inclusive-sans': ^5.2.8
   '@fontsource-variable/nunito': ^5.2.7
+  # App-i18n tooling: programmatic message extraction (guards + extract
+  # scripts) and build-time ICU-to-AST compilation for catalog JSON.
+  '@formatjs/cli-lib': ^9.0.9
+  '@formatjs/icu-messageformat-parser': ^3.5.17
+  # oxc-based build transform (no babel) compiling defineMessages
+  # defaultMessage strings to pre-parsed AST in @codaco/app-i18n's vite
+  # integration, keeping the ICU parser out of production bundles.
+  '@formatjs/unplugin': ^1.2.7
+  # BCP 47 best-fit matching for app locale negotiation (@codaco/app-i18n);
+  # the protocol localization design (§7.1) adopts this same entry when
+  # protocol-validation's locale helpers land.
+  '@formatjs/intl-localematcher': ^0.8.13
   '@microsoft/api-extractor': ^7.58.12
-  '@next/bundle-analyzer': ^16.3.2
-  '@next/third-parties': ^16.3.2
+  '@next/bundle-analyzer': ^16.3.4
+  '@next/third-parties': ^16.3.4
+  # oRPC is pre-1.0 and its packages only interoperate at the same beta: the
+  # contract, the server's `implement`, the client's links, and the TanStack
+  # utils share internal symbols. Pin every one to the same exact release.
+  '@orpc/client': 2.0.0-beta.34
+  '@orpc/contract': 2.0.0-beta.34
+  '@orpc/openapi': 2.0.0-beta.34
+  '@orpc/server': 2.0.0-beta.34
+  '@orpc/tanstack-query': 2.0.0-beta.34
+  '@orpc/zod': 2.0.0-beta.34
   # Keep in lock-step with `playwright` below (grouped in .github/dependabot.yml);
   # the interview-e2e Docker image tag is derived from this resolved version.
   '@playwright/test': ^1.62.1
@@ -57,16 +77,17 @@ catalog:
   '@posthog/react': ^1.10.3
   '@radix-ui/react-slot': ^1.2.4
   '@reduxjs/toolkit': ^2.12.0
-  '@storybook/addon-a11y': ^10.5.10
-  '@storybook/addon-docs': ^10.5.10
-  '@storybook/addon-mcp': ^0.7.0
-  '@storybook/addon-vitest': ^10.5.10
-  '@storybook/nextjs-vite': ^10.5.10
-  '@storybook/react-vite': ^10.5.10
+  '@storybook/addon-a11y': ^10.6.0
+  '@storybook/addon-docs': ^10.6.0
+  '@storybook/addon-mcp': ^10.6.0
+  '@storybook/addon-vitest': ^10.6.0
+  '@storybook/nextjs-vite': ^10.6.0
+  '@storybook/react-vite': ^10.6.0
   '@tailwindcss/cli': ^4.3.3
   '@tailwindcss/postcss': ^4.3.3
   '@tailwindcss/typography': ^0.5.20
   '@tailwindcss/vite': ^4.3.3
+  '@tanstack/react-query': ^5.102.8
   '@tanstack/react-table': ^8.21.3
   # Declared so the shared Vitest setup can call `configure()` on the very same
   # module instance the suites' own queries read. React Testing Library depends
@@ -77,7 +98,8 @@ catalog:
   '@total-typescript/ts-reset': ^0.6.1
   '@types/node': ^24.13.3
   '@types/react': ^19.2.18
-  '@types/react-dom': ^19.2.5
+  '@types/react-dom': ^19.2.7
+  '@types/ws': ^8.18.1
   # vite-plugin-dts/unplugin-dts needs the TypeScript JavaScript Compiler API,
   # which TS7 does not ship; it looks for this exact fallback package name.
   '@typescript/typescript6': ^6.0.2
@@ -85,6 +107,10 @@ catalog:
   '@vitest/browser': ^4.1.11
   '@vitest/browser-playwright': ^4.1.11
   '@vitest/coverage-v8': ^4.1.11
+  # The engine behind Storybook's a11y addon, used directly by the
+  # protocol-builder suite so a heading ladder is judged by the same
+  # `heading-order` rule a story is.
+  axe-core: ^4.11.4
   # Pinned: 1.7.1 is the first release whose peer range admits the pinned
   # drizzle-orm 1.0.0 RC (1.6.x pins ^0.45.2).
   better-auth: 1.7.1
@@ -99,15 +125,25 @@ catalog:
   drizzle-orm: 1.0.0-rc.4
   effect: ^3.22.1
   electron: ^43.0.0
-  electron-builder: ^26.15.2
+  electron-builder: ^26.16.1
   electron-vite: ^6.0.0-beta.1
+  # ICU/localisation linting, run under oxlint's jsPlugins (descriptor
+  # hygiene, ICU validity, call-site placeholder checking).
+  eslint-plugin-formatjs: ^6.6.1
   es-toolkit: ^1.50.0
   fuse.js: ^7.5.0
   jsdom: ^30.0.0
   jszip: ^3.10.1
   lucide-react: ^1.27.0
   motion: ^13.1.0
-  next: ^16.3.2
+  next: ^16.3.4
+  # Catalogued so the root's formatter and Architect's cannot drift apart.
+  # Architect's E2E helper formats stage snapshots in-process (see
+  # `apps/architect/e2e/helpers/normalize-stage.ts`) and depends on producing
+  # bytes identical to what the pre-commit hook writes with the root's copy;
+  # two versions means the hook can rewrite a generated baseline that the
+  # subsequent comparison then rejects.
+  oxfmt: ^0.66.0
   # Keep in lock-step with `@playwright/test` above (grouped in dependabot); a
   # mismatch crashes interview-e2e with "two different versions of @playwright/test".
   playwright: ^1.62.1
@@ -116,11 +152,14 @@ catalog:
   react: ^19.2.8
   react-dom: ^19.2.8
   react-dropzone: ^15.0.0
+  # ICU MessageFormat runtime for app UI catalogs; consumed only through
+  # @codaco/app-i18n's curated API, never imported directly.
+  react-intl: ^10.1.26
   react-redux: ^9.3.0
   redux-form: ^8.3.10
   redux-logger: ^3.0.6
   sass: ^1.102.0
-  storybook: ^10.5.10
+  storybook: ^10.6.0
   tailwind-merge: ^3.6.0
   tailwindcss: ^4.3.3
   tsx: ^4.23.1
@@ -136,7 +175,11 @@ catalog:
   vite-plugin-dts: ^5.0.3
   vitest: ^4.1.11
   wrangler: ^4.95.0
-  zod: ^4.4.3
+  ws: ^8.21.2
+  # `@orpc/zod`'s converter declares a `zod >=4.5.0` peer, so the catalog has
+  # to resolve at least that: below it the OpenAPI conversion Studio publishes
+  # runs on a combination the adapter does not support.
+  zod: ^4.5.4
   zustand: ^5.0.14
 overrides:
   # Keep transitive resolutions (vitest, @vitejs/plugin-react, …) on the pinned
@@ -157,14 +200,25 @@ overrides:
   'slate-history>immer': '^5.3.0'
   # Keep security-sensitive transitives on patched versions when upstream
   # manifests still pin vulnerable releases (inherited from fresco).
+  # @prisma/config pins deepmerge-ts to an exact 7.x release; 8.x fixes the
+  # recursive-graph stack exhaustion (GHSA-ggr8-5vv4-36mx) and keeps the
+  # variadic deepmerge() API Prisma's config loader calls.
+  deepmerge-ts: '^8.0.2'
   'effect@3.17.7': 'catalog:'
-  fast-uri: '^3.1.4'
+  # ajv (build and dev tooling only) resolves fast-uri; 3.1.6 closes the
+  # URI-normalisation host-confusion / SSRF family (GHSA-5jgf-p345-68v8,
+  # GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp, GHSA-f65p-4m7j-42xc).
+  fast-uri: '^3.1.6'
   find-my-way: '^9.7.0'
   'immutable@4.3.8': '4.3.9'
+  # prisma pins mysql2 to an exact release below the auth-plugin downgrade fix
+  # (GHSA-3f6p-5ww8-9rcr); nothing here talks to MySQL, so the driver only
+  # needs to resolve to a patched version.
+  mysql2: '^3.22.0'
   # Next pins an exact PostCSS version, so keep transitives on the patched
   # catalog version rather than duplicating the version here.
   postcss: 'catalog:'
-  sharp: '^0.35.3'
+  sharp: '^0.35.4'
   valibot: '^1.4.2'
 autoInstallPeers: true
 linkWorkspacePackages: false
@@ -204,3 +258,14 @@ minimumReleaseAgeExclude:
   - '@changesets/should-skip-package@1.0.0'
   - '@changesets/types@7.0.0'
   - '@changesets/write@1.0.0'
+  - '@formatjs/cli-lib@9.0.9'
+  - '@formatjs/cli-native-darwin-arm64@1.1.17'
+  - '@formatjs/cli-native-linux-arm64-musl@1.0.15'
+  - '@formatjs/cli-native-linux-arm64@1.2.17'
+  - '@formatjs/cli-native-linux-x64-musl@1.0.15'
+  - '@formatjs/cli-native-linux-x64@1.1.17'
+  - '@formatjs/cli-native-win32-x64@1.1.18'
+  - babel-plugin-formatjs@13.0.3
+  - react-intl@10.1.26
+patchedDependencies:
+  drizzle-kit@1.0.0-rc.4: patches/drizzle-kit@1.0.0-rc.4.patch

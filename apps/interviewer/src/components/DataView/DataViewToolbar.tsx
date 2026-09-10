@@ -3,6 +3,8 @@ import { Download, Filter as FilterIcon, Search, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import { DataTableFacetedFilter } from '@codaco/fresco-ui/DataTable/DataTableFacetedFilter';
 import BooleanFilter from '@codaco/fresco-ui/DataTable/filters/BooleanFilter';
@@ -24,6 +26,121 @@ import {
   readStatusArray,
 } from './dataViewUrlState';
 import type { SessionStatusCounts } from './useSessionQuery';
+
+const messages = defineMessages({
+  all: {
+    id: 'interviewer.dataViewToolbar.all',
+    defaultMessage: 'All',
+    description:
+      'Filter option that includes interviews in every completion state.',
+  },
+  inProgress: {
+    id: 'interviewer.dataViewToolbar.inProgress',
+    defaultMessage: 'In progress',
+    description: 'User-facing message in Interviewer Data View Toolbar.',
+  },
+  complete: {
+    id: 'interviewer.dataViewToolbar.complete',
+    defaultMessage: 'Complete',
+    description:
+      'Filter option for interviews marked finished; this is a state, not an instruction to complete a task.',
+  },
+  statusFilter: {
+    id: 'interviewer.dataViewToolbar.statusFilter',
+    defaultMessage: 'Status filter',
+    description: 'The aria-label label in Interviewer Data View Toolbar.',
+  },
+  searchCaseIDOrProtocol: {
+    id: 'interviewer.dataViewToolbar.searchCaseIDOrProtocol',
+    defaultMessage: 'Search case ID or protocol...',
+    description: 'The placeholder label in Interviewer Data View Toolbar.',
+  },
+  searchCaseIDOrProtocol2: {
+    id: 'interviewer.dataViewToolbar.searchCaseIDOrProtocol2',
+    defaultMessage: 'Search case ID or protocol',
+    description: 'The aria-label label in Interviewer Data View Toolbar.',
+  },
+  filters: {
+    id: 'interviewer.dataViewToolbar.filters',
+    defaultMessage: 'Filters',
+    description: 'Visible copy in Interviewer Data View Toolbar.',
+  },
+  caseID: {
+    id: 'interviewer.dataViewToolbar.caseID',
+    defaultMessage: 'Case ID',
+    description: 'Visible copy in Interviewer Data View Toolbar.',
+  },
+  matchByCaseID: {
+    id: 'interviewer.dataViewToolbar.matchByCaseID',
+    defaultMessage: 'Match by Case ID...',
+    description: 'The placeholder label in Interviewer Data View Toolbar.',
+  },
+  protocol: {
+    id: 'interviewer.dataViewToolbar.protocol',
+    defaultMessage: 'Protocol',
+    description: 'Filter field selecting an installed research protocol.',
+  },
+  started: {
+    id: 'interviewer.dataViewToolbar.started',
+    defaultMessage: 'Started',
+    description: 'Date filter for when an interview first began.',
+  },
+  updated: {
+    id: 'interviewer.dataViewToolbar.updated',
+    defaultMessage: 'Updated',
+    description: 'Date filter for the most recent change to an interview.',
+  },
+  exportStatus: {
+    id: 'interviewer.dataViewToolbar.exportStatus',
+    defaultMessage: 'Export status',
+    description: 'Visible copy in Interviewer Data View Toolbar.',
+  },
+  clearAllFilters: {
+    id: 'interviewer.dataViewToolbar.clearAllFilters',
+    defaultMessage: 'Clear all filters',
+    description: 'Visible copy in Interviewer Data View Toolbar.',
+  },
+  deleting: {
+    id: 'interviewer.dataViewToolbar.deleting',
+    defaultMessage: 'Deleting…',
+    description: 'User-facing message in Interviewer Data View Toolbar.',
+  },
+  exporting: {
+    id: 'interviewer.dataViewToolbar.exporting',
+    defaultMessage: 'Exporting…',
+    description: 'User-facing message in Interviewer Data View Toolbar.',
+  },
+  exported: {
+    id: 'interviewer.dataViewToolbar.exported',
+    defaultMessage: 'Exported',
+    description: 'User-facing message in Interviewer Data View Toolbar.',
+  },
+  notExported: {
+    id: 'interviewer.dataViewToolbar.notExported',
+    defaultMessage: 'Not exported',
+    description: 'User-facing message in Interviewer Data View Toolbar.',
+  },
+  filterCount: {
+    id: 'interviewer.dataViewToolbar.filterCount',
+    defaultMessage: '{count, plural, =0 {Filter} other {Filter · #}}',
+    description: 'Administration text in Interviewer DataViewToolbar.',
+  },
+  deleteSelected: {
+    id: 'interviewer.dataViewToolbar.deleteSelected',
+    defaultMessage: 'Delete {count, number} selected',
+    description: 'Administration text in Interviewer DataViewToolbar.',
+  },
+  exportSelected: {
+    id: 'interviewer.dataViewToolbar.exportSelected',
+    defaultMessage: 'Export {count, number} selected',
+    description: 'Administration text in Interviewer DataViewToolbar.',
+  },
+  statusCount: {
+    id: 'interviewer.dataViewToolbar.statusCount',
+    defaultMessage: '{label} · {count, number}',
+    description: 'Administration text in Interviewer DataViewToolbar.',
+  },
+});
 
 type ChipFilter = 'all' | 'in-progress' | 'complete';
 
@@ -94,6 +211,7 @@ export function DataViewToolbar({
   onExport: () => void;
   onDelete: () => void;
 }) {
+  const intl = useAppIntl();
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
 
   const columnFilters = table.getState().columnFilters;
@@ -126,13 +244,21 @@ export function DataViewToolbar({
   };
 
   const chipOptions: { id: ChipFilter; label: string; count: number }[] = [
-    { id: 'all', label: 'All', count: statusCounts.all },
+    {
+      id: 'all',
+      label: intl.formatMessage(messages.all),
+      count: statusCounts.all,
+    },
     {
       id: 'in-progress',
-      label: 'In progress',
+      label: intl.formatMessage(messages.inProgress),
       count: statusCounts.inProgress,
     },
-    { id: 'complete', label: 'Complete', count: statusCounts.complete },
+    {
+      id: 'complete',
+      label: intl.formatMessage(messages.complete),
+      count: statusCounts.complete,
+    },
   ];
 
   const statusOptions: SegmentedOption<ChipFilter>[] = chipOptions.map(
@@ -140,7 +266,10 @@ export function DataViewToolbar({
       value: option.id,
       label: (
         <>
-          {option.label} · {option.count}
+          {intl.formatMessage(messages.statusCount, {
+            label: option.label,
+            count: option.count,
+          })}
         </>
       ),
     }),
@@ -166,7 +295,7 @@ export function DataViewToolbar({
     >
       <motion.div variants={toolbarItemVariants}>
         <SegmentedSwitcher
-          aria-label="Status filter"
+          aria-label={intl.formatMessage(messages.statusFilter)}
           size="md"
           variant="glass"
           value={chipFilter ?? 'all'}
@@ -184,8 +313,8 @@ export function DataViewToolbar({
           prefixComponent={<Search />}
           value={globalFilter}
           onChange={(next) => onGlobalFilterChange(next ?? '')}
-          placeholder="Search case ID or protocol..."
-          aria-label="Search case ID or protocol"
+          placeholder={intl.formatMessage(messages.searchCaseIDOrProtocol)}
+          aria-label={intl.formatMessage(messages.searchCaseIDOrProtocol2)}
           // `control-glass` applies the blur/border/shadow, but InputField paints
           // its own opaque `bg-input`; force the translucent glass fill over it.
           className="control-glass border-outline bg-surface/50! h-12 min-w-[260px]"
@@ -207,8 +336,9 @@ export function DataViewToolbar({
                 selected={isFilterActive}
                 data-testid="data-filter-trigger"
               >
-                Filter
-                {isFilterActive ? ` · ${columnFilters.length}` : ''}
+                {intl.formatMessage(messages.filterCount, {
+                  count: columnFilters.length,
+                })}
               </Button>
             }
             nativeButton
@@ -216,17 +346,19 @@ export function DataViewToolbar({
           <PopoverContent align="end" className="w-md">
             <div className="flex w-full flex-col gap-4 p-1">
               <div className="font-heading text-text/60 text-xs font-extrabold tracking-widest uppercase">
-                Filters
+                {intl.formatMessage(messages.filters)}
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">Case ID</div>
+                <div className="font-heading text-xs font-bold">
+                  {intl.formatMessage(messages.caseID)}
+                </div>
                 <InputField
                   type="text"
                   name="filter-case-id"
                   size="sm"
                   value={caseIdColumnFilter}
-                  placeholder="Match by Case ID..."
+                  placeholder={intl.formatMessage(messages.matchByCaseID)}
                   onChange={(next) =>
                     table.getColumn('caseId')?.setFilterValue(next ?? '')
                   }
@@ -234,16 +366,20 @@ export function DataViewToolbar({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">Protocol</div>
+                <div className="font-heading text-xs font-bold">
+                  {intl.formatMessage(messages.protocol)}
+                </div>
                 <DataTableFacetedFilter
                   column={table.getColumn('protocolName')}
-                  title="Protocol"
+                  title={intl.formatMessage(messages.protocol)}
                   options={protocolOptions}
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">Started</div>
+                <div className="font-heading text-xs font-bold">
+                  {intl.formatMessage(messages.started)}
+                </div>
                 <DateFilter
                   value={startedAtColumnFilter}
                   onChange={(next) =>
@@ -254,7 +390,9 @@ export function DataViewToolbar({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <div className="font-heading text-xs font-bold">Updated</div>
+                <div className="font-heading text-xs font-bold">
+                  {intl.formatMessage(messages.updated)}
+                </div>
                 <DateFilter
                   value={updatedAtColumnFilter}
                   onChange={(next) =>
@@ -266,7 +404,7 @@ export function DataViewToolbar({
 
               <div className="flex flex-col gap-1.5">
                 <div className="font-heading text-xs font-bold">
-                  Export status
+                  {intl.formatMessage(messages.exportStatus)}
                 </div>
                 <BooleanFilter
                   value={exportedColumnFilter}
@@ -275,8 +413,8 @@ export function DataViewToolbar({
                   }
                   config={{
                     type: 'boolean',
-                    trueLabel: 'Exported',
-                    falseLabel: 'Not exported',
+                    trueLabel: intl.formatMessage(messages.exported),
+                    falseLabel: intl.formatMessage(messages.notExported),
                   }}
                 />
               </div>
@@ -287,7 +425,7 @@ export function DataViewToolbar({
                 onClick={() => table.resetColumnFilters()}
                 disabled={columnFilters.length === 0}
               >
-                Clear all filters
+                {intl.formatMessage(messages.clearAllFilters)}
               </Button>
             </div>
           </PopoverContent>
@@ -305,7 +443,11 @@ export function DataViewToolbar({
               disabled={deleting || exporting}
               data-testid="data-delete"
             >
-              {deleting ? 'Deleting…' : `Delete ${selectedCount} selected`}
+              {deleting
+                ? intl.formatMessage(messages.deleting)
+                : intl.formatMessage(messages.deleteSelected, {
+                    count: selectedCount,
+                  })}
             </Button>
           </motion.div>
           <motion.div variants={toolbarItemVariants}>
@@ -317,7 +459,11 @@ export function DataViewToolbar({
               disabled={exporting || deleting}
               data-testid="data-export"
             >
-              {exporting ? 'Exporting…' : `Export ${selectedCount} selected`}
+              {exporting
+                ? intl.formatMessage(messages.exporting)
+                : intl.formatMessage(messages.exportSelected, {
+                    count: selectedCount,
+                  })}
             </Button>
           </motion.div>
         </>

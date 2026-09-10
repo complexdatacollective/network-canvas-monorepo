@@ -59,32 +59,21 @@ import {
   type ValidationContradiction,
 } from './variables/validation-contradictions.ts';
 
-// Operators that expect numeric values for comparison
-const NUMERIC_COMPARISON_OPERATORS = [
-  'GREATER_THAN',
-  'GREATER_THAN_OR_EQUAL',
-  'LESS_THAN',
-  'LESS_THAN_OR_EQUAL',
-];
-// Operators that count array length (expect numeric value)
-const OPTIONS_COUNT_OPERATORS = [
-  'OPTIONS_GREATER_THAN',
-  'OPTIONS_LESS_THAN',
-  'OPTIONS_EQUALS',
-  'OPTIONS_NOT_EQUALS',
-];
-// Operators that expect string values for text matching
-const STRING_VALUE_OPERATORS = ['CONTAINS', 'DOES_NOT_CONTAIN'];
-
 type IssueReporter = (issue: {
   message: string;
   path: (string | number)[];
 }) => void;
 
 /**
- * Validate a set of filter rules: entity/attribute existence, operator validity
- * by variable type, and value-type by operator. Shared between an inline
- * stage.filter, skipLogic.filter and panel filters.
+ * Validate a set of filter rules against the CODEBOOK: entity and attribute
+ * existence, and operator validity for the attribute's variable type. Shared
+ * between an inline stage.filter, skipLogic.filter and panel filters.
+ *
+ * What shape a rule's operand may have needs no codebook, so it is not asked
+ * here: `filterRuleSchema` holds every rule's value to its operator's operand
+ * kind (`FilterOperandKinds`) as the rule is parsed, which is what lets a host
+ * validating a bare filter reach the same verdict as one validating a whole
+ * protocol.
  *
  * `allowEgoRules` is false for stage NODE/EDGE filters, where an ego rule has no
  * meaning as a node/edge filter (it is silently dropped at runtime).
@@ -155,47 +144,6 @@ const validateFilterRules = (
             message: `Operator "${rule.options.operator}" is not valid for attribute type "${variableType}". Valid operators: ${validOperators.join(', ')}`,
             path: [...rulePath, 'options', 'operator'],
           });
-        }
-
-        // Validate value type based on operator
-        if (rule.options.value !== undefined) {
-          const valueType = Array.isArray(rule.options.value)
-            ? 'array'
-            : typeof rule.options.value;
-
-          // Note: INCLUDES/EXCLUDES accept single values (string, number,
-          // boolean) or arrays - they handle conversion at runtime in
-          // predicate.js
-
-          if (
-            NUMERIC_COMPARISON_OPERATORS.includes(rule.options.operator) &&
-            valueType !== 'number'
-          ) {
-            addIssue({
-              message: `Operator "${rule.options.operator}" requires a numeric value, but got ${valueType}`,
-              path: [...rulePath, 'options', 'value'],
-            });
-          }
-
-          if (
-            OPTIONS_COUNT_OPERATORS.includes(rule.options.operator) &&
-            valueType !== 'number'
-          ) {
-            addIssue({
-              message: `Operator "${rule.options.operator}" requires a numeric value (count), but got ${valueType}`,
-              path: [...rulePath, 'options', 'value'],
-            });
-          }
-
-          if (
-            STRING_VALUE_OPERATORS.includes(rule.options.operator) &&
-            valueType !== 'string'
-          ) {
-            addIssue({
-              message: `Operator "${rule.options.operator}" requires a string value, but got ${valueType}`,
-              path: [...rulePath, 'options', 'value'],
-            });
-          }
         }
       }
     }
@@ -1315,35 +1263,8 @@ const ProtocolSchema = z
         });
       }
 
-      // External-data panels: filter rules must target node attributes,
-      // not edges (the panel data source is a flat list of node rows).
-      if ('panels' in stage && stage.panels) {
-        stage.panels.forEach((panel, panelIndex) => {
-          if (panel.dataSource !== 'existing' && panel.filter?.rules) {
-            panel.filter.rules.forEach((rule, ruleIndex) => {
-              if (rule.type === 'edge') {
-                ctx.addIssue({
-                  code: 'custom' as const,
-                  message:
-                    'External-data panel filters cannot use edge rules; rules must target node attributes.',
-                  path: [
-                    'stages',
-                    stageIndex,
-                    'panels',
-                    panelIndex,
-                    'filter',
-                    'rules',
-                    ruleIndex,
-                    'type',
-                  ],
-                });
-              }
-            });
-          }
-        });
-      }
-
-      // Note: Panels duplicate ID validation moved to individual stage schemas
+      // Note: external-data panel edge rules and panels duplicate ID
+      // validation moved to the stage schemas (`common/panels.ts`)
 
       // Note: Items duplicate ID validation moved to individual stage schemas
 

@@ -1,3 +1,5 @@
+'use client';
+
 // Shared canvas auto-layout hook.
 //
 // Drives the shared force worker (autoLayout.worker.ts) for Narrative,

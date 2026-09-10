@@ -21,6 +21,10 @@ import { getEntityTypeReferenceDescriptor } from '../schemas/8/entity-type-refer
 // consumer entered through.
 import CurrentProtocolSchema from '../schemas/8/schema.ts';
 import {
+  getStageReferenceSite,
+  registeredStageReferenceSites,
+} from '../schemas/8/stage-reference.ts';
+import {
   getStageSubjectResolution,
   resolveDeclaredStageSubject,
 } from '../schemas/8/stage-subject-resolution.ts';
@@ -49,11 +53,19 @@ export type AssetReferenceHit = {
   assetId: string;
 };
 
+export type StageReferenceHit = {
+  path: (string | number)[];
+  stageId: string;
+  /** The declared site this hit came from; see `stageReference`. */
+  site: string;
+};
+
 // One walk collects every reference kind; the public collectors filter.
 type ReferenceHit =
   | ({ kind: 'attribute' } & EntityAttributeReferenceHit)
   | ({ kind: 'type' } & EntityTypeReferenceHit)
-  | ({ kind: 'asset' } & AssetReferenceHit);
+  | ({ kind: 'asset' } & AssetReferenceHit)
+  | ({ kind: 'stage' } & StageReferenceHit);
 
 type WalkContext = {
   stageSubject?: StageSubject;
@@ -112,7 +124,8 @@ const hasReference = (schema: z.ZodType): boolean => {
   let result =
     getEntityAttributeReferenceDescriptor(node) !== undefined ||
     getEntityTypeReferenceDescriptor(node) !== undefined ||
-    getAssetReferenceDescriptor(node) !== undefined;
+    getAssetReferenceDescriptor(node) !== undefined ||
+    getStageReferenceSite(node) !== undefined;
   if (!result) {
     if (node instanceof z.ZodObject) {
       result = Object.values(node.shape).some(
@@ -310,6 +323,10 @@ const walk = (
       if (assetDescriptor.ignoreValues?.includes(value)) return [];
       return [{ kind: 'asset', path, assetId: value }];
     }
+    const stageSite = getStageReferenceSite(node);
+    if (stageSite !== undefined) {
+      return [{ kind: 'stage', path, stageId: value, site: stageSite }];
+    }
     return [];
   }
 
@@ -418,6 +435,10 @@ const isAssetHit = (
   hit: ReferenceHit,
 ): hit is { kind: 'asset' } & AssetReferenceHit => hit.kind === 'asset';
 
+const isStageHit = (
+  hit: ReferenceHit,
+): hit is { kind: 'stage' } & StageReferenceHit => hit.kind === 'stage';
+
 /**
  * The walk's root context. `stages` is seeded from the value being walked so a
  * stage whose subject lives on another stage (NarrativePedigree) can resolve
@@ -446,13 +467,29 @@ export const collectEntityAttributeReferences = (
  * `collectEntityAttributeReferences`. Covers stage subjects (including the
  * NetworkComposer's per-edge-type entries), edge creation/display prompt
  * settings, the FamilyPedigree node/edge configs, and filter rules.
+ *
+ * Stated once, over any fragment of the schema and any value shaped like it,
+ * so a caller holding one STAGE rather than a whole protocol — a stage editor,
+ * which never has one — can ask the same question of what it has. Consumers
+ * that need to know which types a stage names must derive it this way rather
+ * than reading the two or three paths they happen to know: a stage type that
+ * names an edge somewhere else (`createEdge` on the census interfaces, beside
+ * the Sociogram's `edges.create`) is then covered the moment its schema is
+ * tagged, instead of being silently invisible.
  */
+export const collectEntityTypeReferencesFromSchema = (
+  schema: z.ZodType,
+  value: unknown,
+): EntityTypeReferenceHit[] =>
+  walk(schema, value, [], rootContext(value))
+    .filter(isTypeHit)
+    .map(({ kind: _kind, ...hit }) => hit);
+
+/** The same question asked of a whole protocol. */
 export const collectEntityTypeReferences = (
   protocol: unknown,
 ): EntityTypeReferenceHit[] =>
-  walk(CurrentProtocolSchema, protocol, [], rootContext(protocol))
-    .filter(isTypeHit)
-    .map(({ kind: _kind, ...hit }) => hit);
+  collectEntityTypeReferencesFromSchema(CurrentProtocolSchema, protocol);
 
 /**
  * Every `assetManifest` entry referenced by a protocol, discovered from the
@@ -473,3 +510,39 @@ export const collectAssetReferences = (
   walk(CurrentProtocolSchema, protocol, [], rootContext(protocol))
     .filter(isAssetHit)
     .map(({ kind: _kind, ...hit }) => hit);
+
+/**
+ * Every other STAGE a protocol's stages name, discovered from the schema's
+ * `stageReference` tags — the stage counterpart of the collectors above.
+ * Covers skip-logic destinations and the FamilyPedigree a NarrativePedigree
+ * describes the people of.
+ *
+ * A consumer deciding whether a stage may be REMOVED must derive its
+ * dependants from here rather than from the two paths it happens to know: a
+ * stage type that gains a pointer at another stage is then covered the moment
+ * its schema is tagged, instead of the removal silently leaving a protocol
+ * that names a stage it no longer has.
+ */
+export const collectStageReferences = (
+  protocol: unknown,
+): StageReferenceHit[] =>
+  walk(CurrentProtocolSchema, protocol, [], rootContext(protocol))
+    .filter(isStageHit)
+    .map(({ kind: _kind, ...hit }) => hit);
+
+/**
+ * Every stage-reference site the CURRENT schema declares, whether or not any
+ * protocol uses it.
+ *
+ * The collector above answers for one protocol, so a site no fixture exercises
+ * is invisible to it; this answers for the schema, which is what a consumer
+ * enumerating the kinds it has to handle needs. Read through this module
+ * rather than from the registry directly, so that the current schema — and
+ * with it every stage type's tags — is loaded before the question is asked.
+ */
+export const declaredStageReferenceSites = (): string[] => {
+  // Referenced so the schema module cannot be tree-shaken away from a consumer
+  // that only asks this question; every tag registers as that module loads.
+  void CurrentProtocolSchema;
+  return registeredStageReferenceSites();
+};

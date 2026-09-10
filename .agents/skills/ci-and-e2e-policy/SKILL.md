@@ -11,12 +11,23 @@ suite deterministic.
 #### Storybook interaction tests
 
 `test:storybook` (`vitest run --project=storybook`) executes every story's
-play function and assertions in a real browser. Five workspaces define it:
+play function and assertions in a real browser. Six workspaces define it:
 `@codaco/architect`, `@codaco/fresco-ui`, `@codaco/interview`,
-`@codaco/interviewer`, and `fresco`. The `test-storybook` CI job runs them
-through Turbo and the `quality` gate requires it. Chromatic does not replace
-this: it has no project for Architect or Fresco, and TurboSnap only
-re-captures the stories a pull request changed.
+`@codaco/interviewer`, `@codaco/protocol-builder`, and `fresco`. The
+`test-storybook` CI job runs them through Turbo and the `quality` gate requires
+it. Chromatic does not replace this: it has no project for Architect, Fresco or
+Protocol Builder, and TurboSnap only re-captures the stories a pull request
+changed.
+
+A workspace joins that set by declaring the script — nothing lists the projects.
+`turbo.json` defines `test:storybook` generically, and the CI job runs
+`turbo run test:storybook` with no filter, so a new workspace is selected the
+moment its `package.json` gains the script (and under `--affected`, whenever
+its own or a dependency's declared inputs change). Confirm a workspace is in by
+reading the task list rather than the workflow:
+`pnpm exec turbo run test:storybook --dry=json` and keeping the tasks whose
+`command` is a real command — turbo lists a task for every workspace, with
+`<NONEXISTENT>` as the command where the script is absent.
 
 Two constraints keep these suites deterministic, both documented at length in
 the configs themselves. Each project's `optimizeDeps.include` must list every
@@ -46,6 +57,32 @@ Storybook's `--stats-json` option. Its `chromatic` script uploads the prebuilt
 required for TurboSnap. Keep Interview's `.storybook/static/**` directory in
 its Chromatic externals so static-asset changes invalidate the relevant
 stories.
+
+Chromatic captures every story in an unfocused background tab. There
+`document.hasFocus()` is false and `:focus` / `:focus-visible` never match,
+even though `element.focus()` still sets `document.activeElement` and fires
+`focus`. A play function that focuses a trigger and then waits for
+focus-gated UI (Base UI tooltips and popovers open on focus only while the
+trigger matches `:focus-visible`) passes `toHaveFocus()` and then times out
+in Chromatic while staying green under `test:storybook`, whose Playwright
+focus emulation reports every page as focused. Drive such stories through
+hover (JS-dispatched pointer events ignore window focus), or keep the
+keyboard story and exclude it from Chromatic with
+`parameters.chromatic.disableSnapshot`, which also skips its play function.
+
+Hover-first plays race React's passive effects. Storybook starts the play as
+soon as the story has committed, before `useEffect` callbacks run in their
+scheduler task; Base UI attaches a tooltip trigger's `mouseenter` listener in
+one and blocks hover until it fires, so `userEvent.hover` on the first line of
+a play is swallowed and the tooltip never opens. Playwright-driven input in
+`test:storybook` is slow enough to cross the gap; Chromatic's JS-dispatched
+events are not. Await `awaitPassiveEffects()` from
+`packages/fresco-ui/src/storybook-support` before the first synthetic
+interaction of such a play.
+Confirm a Chromatic result really ran before trusting it: a build over the
+account's monthly snapshot limit reports success while running a handful of
+tests or none at all (`Running N tests (skipping M tests)`, or "did not run"
+on the build page).
 
 #### Affected E2E checks
 
@@ -117,7 +154,15 @@ can enter the queue, so merge-group commits deliberately do not repeat lint,
 tests, typechecking, builds, E2E, or Chromatic. GitHub still requires the
 `quality` context to be reported on the merge-group SHA; the acknowledgement
 exists only to satisfy that protocol and does not revalidate the combined
-queue commit.
+queue commit. The one real merge-group check is `version-packages-freshness`:
+it runs on every queue commit, decides by ancestry whether the tree contains
+the open Version Packages PR's head (the queue batches up to five entries and
+a group's ref names only its last PR, so the ref cannot say), and if so fails
+when the merged tree still carries a normal-lane changeset — a stale Version
+Packages merge makes `changesets/action` regenerate the PR instead of
+publishing. An entry that lands a changeset on top of the release PR fails
+and drops out, letting the release PR merge alone. `quality` consults the
+verdict before the merge-group early exit.
 
 The release jobs create and update generated branches with the fine-grained PAT
 stored as `RELEASE_PR_TOKEN`. That causes the normal `pull_request` workflow to

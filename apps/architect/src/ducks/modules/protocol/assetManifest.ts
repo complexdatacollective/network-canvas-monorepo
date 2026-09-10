@@ -6,6 +6,7 @@ import {
 import { omit } from 'es-toolkit/compat';
 import { v4 as uuid } from 'uuid';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
 import type { ExtractedAsset } from '@codaco/protocol-validation';
 import { hasOpenNestedEditor } from '~/components/DialogForm/nestedDraftRegistry';
 import {
@@ -13,8 +14,11 @@ import {
   setStorageUnavailable,
 } from '~/ducks/modules/app';
 import type { RootState } from '~/ducks/modules/root';
+import { getArchitectIntl } from '~/i18n/imperative';
 import { saveAssetWithFallback } from '~/utils/assetUtils';
+import type { LocalizedText } from '~/utils/protocolImportErrors';
 import {
+  refusedCommitDescriptor,
   assetImportSurface,
   refusedCommitMessage,
   type RefusalMessage,
@@ -58,11 +62,15 @@ type AddApiKeyAssetPayload = {
 export type ImportAssetErrorInfo =
   | {
       filename: string;
+      localizedMessage?: LocalizedText;
+      detail?: string;
       message: string;
       code?: string;
     }
   | {
       filename: string;
+      localizedMessage?: LocalizedText;
+      detail?: string;
       /**
        * This tab no longer holds the saved copy. The sentence has to come from
        * `protocolLockMessages` — `RefusalMessage` is producible nowhere else,
@@ -90,26 +98,52 @@ const getImportAssetErrorInfo = (
     error instanceof Error ? error : null;
   const rawCode = codedError?.code;
   const code = typeof rawCode === 'string' ? rawCode : undefined;
+  const message =
+    code === 'NETWORK_EMPTY'
+      ? errorMessages.empty
+      : code === 'VARIABLE_NAME'
+        ? errorMessages.names
+        : code === 'COLUMN_MISMATCHED'
+          ? errorMessages.columns
+          : code === 'UNSUPPORTED_TYPE'
+            ? errorMessages.unsupported
+            : errorMessages.generic;
   return {
     filename,
-    // A code is only ever set on errors whose message was written for a
-    // researcher; everything else is internal and is replaced.
-    message:
-      codedError && code ? codedError.message : GENERIC_IMPORT_FAILURE_MESSAGE,
     code,
+    message: getArchitectIntl().formatMessage(message),
+    localizedMessage: { message },
+    detail: codedError?.message,
   };
 };
 
 // Async thunks. `state` is narrowed to the slice this thunk actually reads, so
 // it stays dispatchable from a store built with only those reducers.
+/**
+ * A file to bring into the protocol, and what to call it.
+ *
+ * `name` is what the researcher sees; the file's own name is what the manifest
+ * records as the entry's `source`, which is the name an export writes the file
+ * under. They are the same thing for a drag-and-drop import, and are not for
+ * the resource lifecycle, which commits bytes under their content hash so that
+ * two imports of different files called `portrait.png` stay two assets.
+ */
+export type AssetImport = {
+  file: File;
+  name?: string;
+};
+
 export const importAssetAsync = createAsyncThunk<
   ImportAssetCompletePayload,
-  File,
+  AssetImport,
   { state: Pick<RootState, 'app'> }
 >(
   'assetManifest/importAssetAsync',
-  async (file, { dispatch, getState, rejectWithValue }) => {
-    const name = file.name;
+  async (
+    { file, name: displayName },
+    { dispatch, getState, rejectWithValue },
+  ) => {
+    const name = displayName ?? file.name;
     const assetId = uuid();
 
     // The asset blob is written into a store keyed by protocol id, with no
@@ -136,12 +170,19 @@ export const importAssetAsync = createAsyncThunk<
       const refusal = refusedCommitMessage(
         getProtocolLockState(getState()),
         assetImportSurface(hasOpenNestedEditor()),
+        getArchitectIntl(),
       );
       return refusal
         ? ({
-            filename: name,
+            filename: file.name,
             code: 'PROTOCOL_NOT_OWNED_HERE',
             message: refusal,
+            localizedMessage: {
+              message: refusedCommitDescriptor(
+                getProtocolLockState(getState()),
+                assetImportSurface(hasOpenNestedEditor()),
+              )!,
+            },
           } satisfies ImportAssetErrorInfo)
         : null;
     };
@@ -215,7 +256,7 @@ export const importAssetAsync = createAsyncThunk<
       // `pending`/`rejected` lifecycle actions are excluded from it
       // (`ducks/modules/root.ts`), and the rejection value below is what the
       // caller shows the researcher.
-      return rejectWithValue(getImportAssetErrorInfo(error, name));
+      return rejectWithValue(getImportAssetErrorInfo(error, file.name));
     }
   },
 );
@@ -307,3 +348,33 @@ export type { Asset };
 
 // Export the reducer as default
 export default assetManifestSlice.reducer;
+
+const errorMessages = defineMessages({
+  empty: {
+    id: 'architect.resourceImport.empty',
+    defaultMessage: "This network file doesn't contain any nodes or edges.",
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  names: {
+    id: 'architect.resourceImport.names',
+    defaultMessage:
+      'Some attribute names in this file are invalid. Use only letters, numbers, and the symbols ._-: in column headers, then import the file again.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  columns: {
+    id: 'architect.resourceImport.columns',
+    defaultMessage:
+      'Some rows have a different number of columns. Make each row match the column headers, then import the file again.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  unsupported: {
+    id: 'architect.resourceImport.unsupported',
+    defaultMessage: 'That file type is not supported as a resource.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  generic: {
+    id: 'architect.resourceImport.generic',
+    defaultMessage: 'Check that it is a supported file type, and try again.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});

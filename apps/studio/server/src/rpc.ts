@@ -4,6 +4,16 @@ import type pg from 'pg';
 import { AUDIT_FACET_LIMIT, contract } from '@codaco/studio-rpc';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
+import { updateUserLocale } from './account/commands.ts';
+import type { AssetStore } from './assets.ts';
+import {
+  acknowledgeAuditAlert,
+  AuditAlertError,
+  listAuditAlerts,
+  markAuditAlertRead,
+  readAuditAlertSettings,
+  updateAuditAlertSettings,
+} from './audit/alerts.ts';
 import {
   appendAuditedEvent,
   auditActorEventContext,
@@ -15,6 +25,7 @@ import {
   reserveDeniedAuditAttempt,
 } from './audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
+import type { AuditEventInput } from './audit/events.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
   authorizeAuditRead,
@@ -27,16 +38,33 @@ import {
 import { AuditStore, clampAuditListLimit } from './audit/store.ts';
 import { runNoAuditTenantTransaction } from './audit/transaction.ts';
 import type { AuthService, Principal } from './auth/service.ts';
-import { type AuthCapabilities, getInstanceStatus } from './domain.ts';
+import {
+  type AuthCapabilities,
+  type DeploymentStatus,
+  getInstanceStatus,
+} from './domain.ts';
+import {
+  completeSetup,
+  getSetupStatus,
+  SetupError,
+} from './instance/bootstrap.ts';
+import {
+  correlateAuthorizedTeam,
+  logOperational,
+} from './observability/logger.ts';
+import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
+import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import {
   addAuditedInformationStage,
-  commitAuditedProtocolSection,
   createAuditedProtocol,
   moveAuditedProtocolStage,
   ProtocolCommandAuthorizationError,
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
-import { createProtocolSyncServer } from './protocol/sync.ts';
+import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
+import { readStudyCounts } from './study/counts.ts';
+import { StudyStore } from './study/store.ts';
+import { resolveStudy, seesEveryTeamStudy } from './study/tenancy.ts';
 import {
   acceptTeamInvitation,
   cancelTeamInvitation,
@@ -44,6 +72,7 @@ import {
   TeamCommandError,
   updateTeamMemberRole,
 } from './team/commands.ts';
+import { roleGrantsTeamAdministration } from './team/roles.ts';
 
 // The SPA's internal surface: unpublished and free-moving within the
 // deploy-compatibility rules on #1245 — its only client is the Studio SPA.
@@ -51,6 +80,19 @@ import {
 export type RpcContext = {
   principal: Principal | null;
   requestId: string;
+  /**
+   * The WebSocket this call arrived on, when it arrived on one. This is the
+   * protocol-builder host's presence identity: a colleague's cursor belongs to
+   * a connection and goes when the connection does.
+   */
+  connectionId?: string;
+  /**
+   * The browser tab behind this call, when it named one — see
+   * `@codaco/studio-rpc/client-session`. A protocol-builder lock belongs to
+   * this rather than to the connection, so two tabs of one researcher are two
+   * lock owners and one tab's reconnection is not a third.
+   */
+  clientSessionId?: string;
 };
 
 const os = implement(contract).$context<RpcContext>();
@@ -64,7 +106,10 @@ type TeamRpcContext = {
   tenantDb: TenantDb;
 };
 
-type AuditReadProcedure = 'audit.list' | 'audit.get' | 'audit.filterOptions';
+type AuditReadProcedure = Extract<
+  AuditEventInput,
+  { eventType: 'audit.read_denied' }
+>['details']['procedure'];
 
 /**
  * Thrown from inside the read transaction when the caller's locked membership
@@ -128,28 +173,13 @@ async function admitAuditReadDenial(
  */
 function warnAuditReadDenialLost(
   context: TeamRpcContext,
-  procedure: AuditReadProcedure,
-  error: unknown,
+  _procedure: AuditReadProcedure,
+  _error: unknown,
 ): void {
-  const cause =
-    error instanceof Error
-      ? { causeName: error.name, causeMessage: error.message }
-      : { causeName: typeof error, causeMessage: String(error) };
-  process.emitWarning(
-    'Required audit.read_denied event was not recorded; the read stayed denied.',
-    {
-      type: 'StudioAuditError',
-      code: 'STUDIO_AUDIT_DENIAL_EVENT_LOST',
-      detail: JSON.stringify({
-        eventType: 'audit.read_denied',
-        procedure,
-        teamId: context.team.id,
-        actorId: context.principal.userId,
-        requestId: context.requestId,
-        ...cause,
-      }),
-    },
-  );
+  logOperational('STUDIO_AUDIT_DENIAL_EVENT_LOST', {
+    teamId: context.team.id,
+    requestId: context.requestId,
+  });
 }
 
 /**
@@ -227,10 +257,14 @@ async function guardAuditRead<T>(
     reservation?.complete('other');
     return result;
   } catch (error) {
-    if (error instanceof AuditReadDeniedError) {
+    if (
+      error instanceof AuditReadDeniedError ||
+      (error instanceof AuditAlertError && error.code === 'FORBIDDEN')
+    ) {
       return denyAuditRead(context, procedure, reservation);
     }
     reservation?.complete('other');
+    if (error instanceof AuditAlertError) throw new ORPCError(error.code);
     throw error;
   }
 }
@@ -292,55 +326,215 @@ async function handleAuditedProtocolCommand<T>(
   }
 }
 
+async function handleAuditedStudyCommand<T>(
+  work: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof AuditCommandTeamNotFoundError) {
+      throw new ORPCError('NOT_FOUND');
+    }
+    if (!(error instanceof StudyCommandError)) throw error;
+    if (error.code === 'OVERLOADED') throw new ORPCError('TOO_MANY_REQUESTS');
+    if (error.code === 'CONFLICT') throw new ORPCError('CONFLICT');
+    throw new ORPCError('FORBIDDEN');
+  }
+}
+
 export function createRpcRouter(
   caps: AuthCapabilities,
   deps: {
     auth: AuthService;
+    deployment: DeploymentStatus;
+    telemetry: boolean;
     invitationDeliveryAvailable: boolean;
+    bootstrapToken?: string;
     pool?: pg.Pool;
+    protocolBuilder: ProtocolBuilderRuntime;
+    assetStore?: AssetStore;
   },
 ) {
-  const { auth, invitationDeliveryAvailable, pool } = deps;
+  const {
+    auth,
+    deployment,
+    invitationDeliveryAvailable,
+    bootstrapToken,
+    pool,
+  } = deps;
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
   // nonexistent team both read FORBIDDEN, so the check is not an existence
   // oracle; a router wired without a database is a deployment bug, not an
   // authorization refusal.
+  //
+  // Shared by the three team middlewares below rather than repeated in each,
+  // so what "this caller, in this team" means is settled once.
+  const openTeam = async (
+    context: RpcContext,
+    teamId: string,
+  ): Promise<TeamRpcContext> => {
+    const { principal } = context;
+    if (!principal) throw new ORPCError('UNAUTHORIZED');
+    if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+    const membership = await auth.getMembership(principal.userId, teamId);
+    if (!membership) throw new ORPCError('FORBIDDEN');
+    correlateAuthorizedTeam(teamId);
+    return {
+      principal,
+      requestId: context.requestId,
+      team: { id: teamId, role: membership.role },
+      tenantDb: createTenantDb(pool, teamId),
+    };
+  };
+
   const requireTeam = os.middleware(
+    async ({ context, next }, input: { teamId: string }) =>
+      next({ context: await openTeam(context, input.teamId) }),
+  );
+
+  /**
+   * Membership plus the team Admin tier: the rule #1257 gives study creation,
+   * applied to creating a protocol line no study owns. The command re-reads it
+   * from the locked membership row, because this answer is already stale by
+   * the time the transaction opens.
+   */
+  const requireTeamAdministration = os.middleware(
     async ({ context, next }, input: { teamId: string }) => {
+      const team = await openTeam(context, input.teamId);
+      if (!roleGrantsTeamAdministration(team.team.role)) {
+        throw new ORPCError('FORBIDDEN');
+      }
+      return next({ context: team });
+    },
+  );
+
+  /**
+   * Membership plus #1257's visibility rule, carried from the study tier to
+   * every procedure addressed by a protocol line (`protocol/store.ts`). A
+   * Member reaches a line only through a study they hold a grant on, so what
+   * `studies.list` omits and `studies.get` refuses cannot be read — or
+   * edited — through the protocol behind it.
+   *
+   * The refusal is `studies.get`'s: unreachable for any reason — absent,
+   * another team's, or one this caller's role does not show them — is the same
+   * FORBIDDEN, so this is not an existence oracle either. Which draft belongs
+   * to which line stays each procedure's own check; this one is about the
+   * line.
+   */
+  const requireProtocol = os.middleware(
+    async (
+      { context, next },
+      input: { teamId: string; protocolId: string },
+    ) => {
+      const team = await openTeam(context, input.teamId);
+      const reachable = await new ProtocolStore(
+        team.tenantDb,
+      ).isReachableByCaller(input.protocolId, {
+        actorUserId: team.principal.userId,
+        seesEveryStudy: seesEveryTeamStudy(team.team.role),
+      });
+      if (!reachable) throw new ORPCError('FORBIDDEN');
+      return next({ context: team });
+    },
+  );
+
+  // `requireStudy` (app-shell design §6.3). A study URL names no team, so the
+  // tenant is derived from the caller's own memberships and the pinned
+  // TenantDb comes back with the study the probe found — nothing about the
+  // study is read outside it. Unreachable for any reason — absent, another
+  // team's, or one this caller's team role does not show them — is the same
+  // FORBIDDEN, so this is not an existence oracle.
+  const requireStudy = os.middleware(
+    async ({ context, next }, input: { studyId: string }) => {
       const { principal } = context;
       if (!principal) throw new ORPCError('UNAUTHORIZED');
       if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
-      const membership = await auth.getMembership(
-        principal.userId,
-        input.teamId,
-      );
-      if (!membership) throw new ORPCError('FORBIDDEN');
+      const resolved = await resolveStudy(pool, {
+        studyId: input.studyId,
+        actorUserId: principal.userId,
+        memberships: await auth.listMemberships(principal.userId),
+      });
+      if (!resolved) throw new ORPCError('FORBIDDEN');
+      correlateAuthorizedTeam(resolved.teamId);
       return next({
         context: {
           principal,
           requestId: context.requestId,
-          team: { id: input.teamId, role: membership.role },
-          tenantDb: createTenantDb(pool, input.teamId),
+          team: { id: resolved.teamId, role: resolved.role },
+          tenantDb: resolved.tenantDb,
+          study: resolved.study,
         },
       });
     },
   );
 
   return {
-    status: os.status.handler(() => getInstanceStatus(caps)),
-    me: os.me.use(requireUser).handler(({ context }) => ({
+    status: os.status.handler(() =>
+      getInstanceStatus(caps, deployment, deps.telemetry),
+    ),
+    setup: {
+      status: os.setup.status.handler(() => {
+        if (deployment.mode !== 'self-hosted') throw new ORPCError('NOT_FOUND');
+        return getSetupStatus(pool, caps.enabled ? bootstrapToken : undefined);
+      }),
+      complete: os.setup.complete.handler(async ({ input, context }) => {
+        if (deployment.mode !== 'self-hosted') throw new ORPCError('NOT_FOUND');
+        if (!caps.enabled || !pool) throw new ORPCError('SERVICE_UNAVAILABLE');
+        try {
+          return await completeSetup(
+            pool,
+            bootstrapToken,
+            input,
+            context.requestId,
+          );
+        } catch (error) {
+          if (!(error instanceof SetupError)) throw error;
+          throw new ORPCError(
+            error.code === 'UNAVAILABLE' ? 'SERVICE_UNAVAILABLE' : error.code,
+          );
+        }
+      }),
+    },
+    me: os.me.use(requireUser).handler(async ({ context }) => ({
       userId: context.principal.userId,
       email: context.principal.email,
       emailVerified: context.principal.emailVerified,
       name: context.principal.name,
+      // Already on the principal: the session lookup reads the user row, so
+      // the stored preference costs `me` no query of its own.
+      locale: context.principal.locale,
+      // The same read `requireStudy` resolves a tenant over, and the same
+      // index serves it. Better Auth's own team list drops the role, so this
+      // is the only thing that can tell a researcher what they are in each of
+      // their teams.
+      teams: await auth.listMemberships(context.principal.userId),
     })),
+    account: {
+      updateLocale: os.account.updateLocale
+        .use(requireUser)
+        .handler(async ({ context, input }) => {
+          if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
+          // Deliberately not an audited command (localization design §5.2,
+          // decision 7): the audit log is study/team-scoped by design, and a
+          // personal presentation preference has no tenant — so this writes
+          // through the plain pool, like team.acceptInvitation.
+          const updated = await updateUserLocale(pool, {
+            userId: context.principal.userId,
+            locale: input.locale,
+          });
+          // A session can outlive its user row only by a hard-delete race;
+          // there is nothing left to store a preference on.
+          if (!updated) throw new ORPCError('NOT_FOUND');
+          return updated;
+        }),
+    },
     team: {
       acceptInvitation: os.team.acceptInvitation
         .use(requireUser)
-        .handler(({ context, input }) => {
+        .handler(async ({ context, input }) => {
           if (!pool) throw new ORPCError('INTERNAL_SERVER_ERROR');
-          return handleTeamCommand(() =>
+          const accepted = await handleTeamCommand(() =>
             acceptTeamInvitation(
               {
                 pool,
@@ -350,6 +544,8 @@ export function createRpcRouter(
               input,
             ),
           );
+          correlateAuthorizedTeam(accepted.teamId);
+          return accepted;
         }),
       updateMemberRole: os.team.updateMemberRole
         .use(requireTeam)
@@ -397,9 +593,63 @@ export function createRpcRouter(
           ),
         ),
     },
+    studies: {
+      // Which studies the caller sees is their TEAM role (#1257): an Admin or
+      // Owner sees the team's studies, a Member sees the ones they hold a
+      // study-role grant on. The predicate is the store's, not this handler's,
+      // so `studies.get` refuses exactly what `studies.list` omits.
+      list: os.studies.list.use(requireTeam).handler(({ context }) =>
+        new StudyStore(context.tenantDb).listStudies({
+          actorUserId: context.principal.userId,
+          seesEveryStudy: seesEveryTeamStudy(context.team.role),
+        }),
+      ),
+      get: os.studies.get.use(requireStudy).handler(({ context }) => {
+        const { protocolDraftId, ...study } = context.study;
+        return { teamId: context.team.id, study, protocolDraftId };
+      }),
+      // Resolved like `get`, so the numbers beside the sidebar's destinations
+      // exist for exactly the studies their reader can open, and a study the
+      // caller cannot reach is refused the same way for both.
+      counts: os.studies.counts
+        .use(requireStudy)
+        .handler(async ({ context }) => {
+          const counts = await readStudyCounts(
+            context.tenantDb,
+            context.study.id,
+          );
+          // `requireStudy` found the row inside this tenant a moment ago; a
+          // row missing now is a purge racing the read, not an oracle.
+          if (!counts) throw new ORPCError('NOT_FOUND');
+          return counts;
+        }),
+      create: os.studies.create.use(requireTeam).handler(({ context, input }) =>
+        handleAuditedStudyCommand(() =>
+          createAuditedStudy(
+            {
+              tenantDb: context.tenantDb,
+              principal: context.principal,
+              requestId: context.requestId,
+            },
+            input,
+          ),
+        ),
+      ),
+    },
+    // Every procedure below is addressed by a protocol line, and #1257's rule
+    // decides which lines a caller has: `requireProtocol` refuses the rest,
+    // exactly as `studies.get` refuses the study in front of them. Creating a
+    // line answers to the same rule from the other side — a line no study owns
+    // is reachable only by an Admin or Owner, so only they may make one.
+    protocolBuilder: createProtocolBuilderRouter({
+      auth,
+      runtime: deps.protocolBuilder,
+      ...(pool === undefined ? {} : { pool }),
+      ...(deps.assetStore === undefined ? {} : { assetStore: deps.assetStore }),
+    }),
     protocols: {
       create: os.protocols.create
-        .use(requireTeam)
+        .use(requireTeamAdministration)
         .handler(({ context, input }) =>
           handleAuditedProtocolCommand(() =>
             createAuditedProtocol(
@@ -412,13 +662,17 @@ export function createRpcRouter(
             ),
           ),
         ),
-      list: os.protocols.list
-        .use(requireTeam)
-        .handler(({ context }) =>
-          new ProtocolStore(context.tenantDb).listProtocols(),
-        ),
+      // The list names no protocol, so it takes the same predicate as a query
+      // rather than as a refusal: a Member is shown the lines behind the
+      // studies they hold a grant on, and an Admin or Owner every line.
+      list: os.protocols.list.use(requireTeam).handler(({ context }) =>
+        new ProtocolStore(context.tenantDb).listProtocols({
+          actorUserId: context.principal.userId,
+          seesEveryStudy: seesEveryTeamStudy(context.team.role),
+        }),
+      ),
       draft: os.protocols.draft
-        .use(requireTeam)
+        .use(requireProtocol)
         .handler(async ({ context, input }) => {
           const { protocol, draft } = await new ProtocolStore(
             context.tenantDb,
@@ -432,93 +686,8 @@ export function createRpcRouter(
             sections: draft.sections,
           };
         }),
-      acquireSection: os.protocols.acquireSection
-        .use(requireTeam)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          const syncServer = createProtocolSyncServer(context.tenantDb);
-          const owner = `${context.principal.userId}:${input.clientId}`;
-          const lease = await syncServer.acquire(
-            input.draftId,
-            input.sectionId,
-            owner,
-          );
-          if (!lease) return { mode: 'readOnly' as const };
-
-          let resume: Awaited<ReturnType<typeof syncServer.resume>>;
-          try {
-            resume = await syncServer.resume(input.draftId, owner);
-          } catch (error) {
-            // Acquisition and resume are separate transactions. If the
-            // sequence lookup fails after the lease commits, expire the exact
-            // epoch so a client that never received it cannot block editors.
-            await syncServer
-              .release(input.draftId, input.sectionId, owner, lease.epoch)
-              .catch(() => undefined);
-            throw error;
-          }
-          const lastApplied = resume.lastApplied[input.sectionId];
-          const nextClientSequence =
-            lastApplied?.epoch === lease.epoch
-              ? lastApplied.clientSeq + 1n
-              : 1n;
-          return {
-            mode: 'editable' as const,
-            leaseEpoch: String(lease.epoch),
-            nextClientSequence: String(nextClientSequence),
-          };
-        }),
-      commitSection: os.protocols.commitSection
-        .use(requireTeam)
-        .handler(({ context, input }) =>
-          handleAuditedProtocolCommand(() =>
-            commitAuditedProtocolSection(
-              {
-                tenantDb: context.tenantDb,
-                principal: context.principal,
-                requestId: context.requestId,
-              },
-              input,
-            ),
-          ),
-        ),
-      renewSection: os.protocols.renewSection
-        .use(requireTeam)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          return {
-            renewed: Boolean(
-              await createProtocolSyncServer(context.tenantDb).renew(
-                input.draftId,
-                input.sectionId,
-                `${context.principal.userId}:${input.clientId}`,
-                BigInt(input.leaseEpoch),
-              ),
-            ),
-          };
-        }),
-      releaseSection: os.protocols.releaseSection
-        .use(requireTeam)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          await createProtocolSyncServer(context.tenantDb).release(
-            input.draftId,
-            input.sectionId,
-            `${context.principal.userId}:${input.clientId}`,
-            BigInt(input.leaseEpoch),
-          );
-        }),
       addInformationStage: os.protocols.addInformationStage
-        .use(requireTeam)
+        .use(requireProtocol)
         .handler(({ context, input }) =>
           handleAuditedProtocolCommand(() =>
             addAuditedInformationStage(
@@ -532,7 +701,7 @@ export function createRpcRouter(
           ),
         ),
       moveStage: os.protocols.moveStage
-        .use(requireTeam)
+        .use(requireProtocol)
         .handler(({ context, input }) =>
           handleAuditedProtocolCommand(() =>
             moveAuditedProtocolStage(
@@ -547,6 +716,53 @@ export function createRpcRouter(
         ),
     },
     audit: {
+      alerts: {
+        settings: os.audit.alerts.settings
+          .use(requireTeam)
+          .handler(({ context }) =>
+            guardAuditRead(context, 'audit.alerts.settings', () =>
+              readAuditAlertSettings(
+                auditedContextFor(context),
+                invitationDeliveryAvailable,
+              ),
+            ),
+          ),
+        updateSettings: os.audit.alerts.updateSettings
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.updateSettings', () =>
+              updateAuditAlertSettings(
+                auditedContextFor(context),
+                input,
+                invitationDeliveryAvailable,
+              ),
+            ),
+          ),
+        list: os.audit.alerts.list
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.list', () =>
+              listAuditAlerts(auditedContextFor(context), input.cursor),
+            ),
+          ),
+        markRead: os.audit.alerts.markRead
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.markRead', () =>
+              markAuditAlertRead(auditedContextFor(context), input.alertId),
+            ),
+          ),
+        acknowledge: os.audit.alerts.acknowledge
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.acknowledge', () =>
+              acknowledgeAuditAlert(
+                auditedContextFor(context),
+                input.deliveryId,
+              ),
+            ),
+          ),
+      },
       list: os.audit.list
         .use(requireTeam)
         .handler(async ({ context, input }) => {

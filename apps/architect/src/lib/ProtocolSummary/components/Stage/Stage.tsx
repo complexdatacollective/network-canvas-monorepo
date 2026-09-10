@@ -1,8 +1,11 @@
-import { isEmpty, sortBy } from 'es-toolkit/compat';
+import { isEmpty } from 'es-toolkit/compat';
 import React, { useContext } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import StageTypeImage from '~/components/StageTypeImage';
+import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
+import { summaryMessages } from '~/lib/ProtocolSummary/summaryMessages';
 
 import DualLink from '../DualLink';
 import EntityBadge from '../EntityBadge';
@@ -11,7 +14,6 @@ import SummaryContext from '../SummaryContext';
 import Anonymisation from './Anonymisation';
 import Behaviours from './Behaviours';
 import DataSource from './DataSource';
-import DiseaseNominationPrompts from './DiseaseNominationPrompts';
 import FamilyTreeVariables from './FamilyTreeVariables';
 import Filter from './Filter';
 import Form from './Form';
@@ -20,6 +22,7 @@ import IntroductionPanel from './IntroductionPanel';
 import Items from './Items';
 import MapOptions from './MapOptions';
 import NameGenerationStep from './NameGenerationStep';
+import NominationPrompts from './NominationPrompts';
 import PageHeading from './PageHeading';
 import Panels from './Panels';
 import Presets from './Presets';
@@ -28,6 +31,21 @@ import QuickAdd from './QuickAdd';
 import ScaffoldingStep from './ScaffoldingStep';
 import SectionFrame from './SectionFrame';
 import SkipLogic from './SkipLogic';
+const messages = defineMessages({
+  networkFiltering: {
+    id: 'architect.protocolSummary.stage.stage.networkFiltering',
+    defaultMessage: 'Network Filtering',
+    description:
+      'The title text in lib / ProtocolSummary / components / Stage / Stage.',
+  },
+  skipLogic: {
+    id: 'architect.protocolSummary.stage.stage.skipLogic',
+    defaultMessage: 'Skip Logic',
+    description:
+      'The title text in lib / ProtocolSummary / components / Stage / Stage.',
+  },
+});
+
 type FormFieldType = {
   prompt: string;
   variable: string;
@@ -57,10 +75,27 @@ type StageProps = {
   type: string;
 };
 const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
+  const intl = useAppIntl();
   const { index } = useContext(SummaryContext);
-  const stageVariables = sortBy(variablesOnStage(index)(id), [
-    (variable) => variable[1].toLowerCase(),
-  ]);
+  const stageVariables = variablesOnStage(index)(id).toSorted((a, b) =>
+    a[1].localeCompare(b[1], intl.locale),
+  );
+  // Format literal names first: opaque React-node tokens hide the initial
+  // sound that selects Spanish "y" versus "e". Consume links by position so
+  // identical authored names still retain their own attribute targets.
+  let nextVariable = 0;
+  const stageVariableList = intl
+    .formatListToParts(stageVariables.map(([, name]) => name))
+    .map((part) => {
+      if (part.type === 'literal') return part.value;
+      const variable = stageVariables[nextVariable++];
+      if (!variable) return part.value;
+      return (
+        <DualLink key={variable[0]} to={`#variable-${variable[0]}`}>
+          {part.value}
+        </DualLink>
+      );
+    });
   const subject = configuration.subject as
     | {
         type: string;
@@ -152,7 +187,10 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         };
       }
     | undefined;
-  const diseaseNominationStep = configuration.diseaseNominationStep as
+  // FamilyPedigree: the attribute nomination steps asked after the family is
+  // built. (`diseaseNominationStep` was the legacy FamilyTreeCensus key; no
+  // current schema stage carries it, so it is not read here.)
+  const nominationPrompts = configuration.nominationPrompts as
     | Array<{
         id: string;
         text: string;
@@ -193,7 +231,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         <div className="me-5 flex-1">
           <div
             className="before:bg-cyber-grape flex items-center text-2xl font-bold before:me-5 before:flex before:size-19 before:flex-none before:items-center before:justify-center before:rounded-full before:[font-family:var(--heading-font)] before:text-white before:content-[attr(data-number)]"
-            data-number={stageNumber}
+            data-number={intl.formatNumber(stageNumber)}
           >
             <Heading level="h1">{label}</Heading>
           </div>
@@ -204,7 +242,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
                 ...(subject
                   ? [
                       [
-                        'Subject',
+                        intl.formatMessage(summaryMessages.subject),
                         <EntityBadge
                           key="subject"
                           small
@@ -219,7 +257,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
                 ...(edgeType
                   ? [
                       [
-                        'Edge Type',
+                        intl.formatMessage(summaryMessages.edgeType),
                         <EntityBadge
                           key="edge-type"
                           small
@@ -234,16 +272,9 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
                 ...(!isEmpty(stageVariables)
                   ? [
                       [
-                        'Attributes',
+                        intl.formatMessage(summaryMessages.attributes),
                         <React.Fragment key="vars">
-                          {stageVariables.map(([variableId, variable], i) => (
-                            <React.Fragment key={`${id}-${variableId}`}>
-                              <DualLink to={`#variable-${variableId}`}>
-                                {variable}
-                              </DualLink>
-                              {i !== stageVariables.length - 1 && ', '}
-                            </React.Fragment>
-                          ))}
+                          {stageVariableList}
                         </React.Fragment>,
                       ],
                     ]
@@ -267,16 +298,21 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
         </div>
       </div>
       {filter && (
-        <SectionFrame title="Network Filtering">
+        <SectionFrame title={intl.formatMessage(messages.networkFiltering)}>
           <MiniTable
             rotated
             wide
-            rows={[['Rules', <Filter key="filter" filter={filter} />]]}
+            rows={[
+              [
+                intl.formatMessage(summaryMessages.rules),
+                <Filter key="filter" filter={filter} />,
+              ],
+            ]}
           />
         </SectionFrame>
       )}
       {skipLogic && (
-        <SectionFrame title="Skip Logic">
+        <SectionFrame title={intl.formatMessage(messages.skipLogic)}>
           <SkipLogic skipLogic={skipLogic} />
         </SectionFrame>
       )}
@@ -300,9 +336,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
       />
       <ScaffoldingStep scaffoldingStep={scaffoldingStep ?? null} />
       <NameGenerationStep nameGenerationStep={nameGenerationStep ?? null} />
-      <DiseaseNominationPrompts
-        diseaseNominationStep={diseaseNominationStep ?? null}
-      />
+      <NominationPrompts nominationPrompts={nominationPrompts ?? null} />
       <Anonymisation
         explanationText={explanationText ?? null}
         validation={validation ?? null}

@@ -1,6 +1,6 @@
 {
   "name": "@codaco/architect",
-  "version": "8.2.4",
+  "version": "8.2.5",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,10 +16,12 @@
     "test:e2e": "./e2e/scripts/run.sh",
     "test:e2e:update-snapshots": "./e2e/scripts/run.sh --grep @visual --update-snapshots",
     "test:e2e:native": "playwright test --config e2e/playwright.config.ts --grep-invert @visual",
-    "test:e2e:headed": "VITE_DISABLE_ANALYTICS=true VITE_DISABLE_ANIMATIONS=true pnpm turbo run build --filter=@codaco/architect && playwright test --config e2e/playwright.config.ts --headed"
+    "test:e2e:headed": "VITE_DISABLE_ANALYTICS=true VITE_DISABLE_ANIMATIONS=true pnpm turbo run build --filter=@codaco/architect && playwright test --config e2e/playwright.config.ts --headed",
+    "i18n:extract": "node scripts/extract-i18n.mjs"
   },
   "dependencies": {
     "@base-ui/react": "catalog:",
+    "@codaco/app-i18n": "workspace:^",
     "@codaco/art": "workspace:^",
     "@codaco/fresco-ui": "workspace:^",
     "@codaco/interface-images": "workspace:^",
@@ -29,8 +31,11 @@
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/protocols": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
+    "@codaco/studio-sync": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@codaco/tsconfig": "workspace:^",
+    "@orpc/client": "catalog:",
+    "@orpc/server": "catalog:",
     "@reduxjs/toolkit": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-table": "catalog:",
@@ -68,6 +73,7 @@
     "@storybook/react-vite": "catalog:",
     "@testing-library/jest-dom": "catalog:",
     "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "^14.6.1",
     "@types/luxon": "^3.7.2",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -77,7 +83,7 @@
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
     "jsdom": "catalog:",
-    "oxfmt": "^0.63.0",
+    "oxfmt": "catalog:",
     "playwright": "catalog:",
     "storybook": "catalog:",
     "tailwindcss": "catalog:",

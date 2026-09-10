@@ -27,8 +27,8 @@ const headingClassMap: Record<number, string> = {
 };
 
 const listClasses = {
-  bullet: 'ml-8 list-disc [&>li]:not-last:mb-2',
-  ordered: 'ml-8 list-decimal [&>li]:not-last:mb-2',
+  bullet: 'ms-8 list-disc [&>li]:not-last:mb-2',
+  ordered: 'ms-8 list-decimal [&>li]:not-last:mb-2',
 };
 
 const linkAttributeWithDefault = (

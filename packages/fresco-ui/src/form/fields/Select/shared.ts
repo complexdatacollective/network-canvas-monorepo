@@ -26,6 +26,12 @@ export type SelectOption = {
   value: string | number;
   label: string;
   disabled?: boolean;
+  /**
+   * BCP 47 tag applied to the rendered `<option>` when its label is in a
+   * different language from the page — e.g. a locale autonym — so screen
+   * readers switch pronunciation per option.
+   */
+  lang?: string;
 };
 
 /**

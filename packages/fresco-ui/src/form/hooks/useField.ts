@@ -1,6 +1,19 @@
+'use client';
+
 import { debounce } from 'es-toolkit';
-import { type ReactNode, useCallback, useEffect, useId, useMemo } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import { useShallow } from 'zustand/react/shallow';
+
+import { formatMessageError } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import {
   type FieldElements,
@@ -19,6 +32,7 @@ import {
   useFieldNamespace,
   useFieldNamespacePath,
 } from '../FieldNamespace';
+import { useFieldsDisabled } from '../FieldsDisabled';
 import { useShouldDiscardFieldOnUnmount } from '../FieldUnmountPolicy';
 import type { FieldState, ValidationContext } from '../store/types';
 import { validationPropKeys } from '../validation/functions';
@@ -203,6 +217,12 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     ...validationProps
   } = config;
 
+  // The field layer is where validation copy becomes text: the rules build
+  // message descriptors, and this formatter (the host's when a provider is
+  // mounted, an English one otherwise) renders them, so what reaches the form
+  // store, `onSubmitInvalid`, and Zod issues stays a plain string.
+  const intl = useAppIntl();
+
   const namespace = useFieldNamespacePath();
   const namespaceName = useFieldNamespace();
   const resolvedPath = useMemo(
@@ -243,18 +263,37 @@ export function useField(config: UseFieldConfig): UseFieldResult {
     validationContext: resolvedValidationContext,
   };
 
-  const validation = useMemo(
-    () => makeValidationFunction(propsWithContext),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [validationPropsJson, resolvedValidationContext],
-  );
+  // A formatter, custom schema or translated hint may change without the
+  // field being unmounted. The registered validator reads the last committed
+  // configuration, so those changes neither unregister the field nor erase
+  // submitted refusals, values or touched/blurred metadata. Its next run uses
+  // the current rules and language, including custom schemas with closures.
+  const validationConfigRef = useRef({ propsWithContext, intl });
+  useLayoutEffect(() => {
+    validationConfigRef.current = { propsWithContext, intl };
+  });
+
+  // Separately remember the formatter used by errors already on screen; an
+  // in-flight old-language validation still needs a corrective run when it
+  // settles after a language switch.
+  const intlRef = useRef(intl);
+
+  const validation = useCallback((formValues: Record<string, FieldValue>) => {
+    const current = validationConfigRef.current;
+    return makeValidationFunction(
+      current.propsWithContext,
+      current.intl,
+    )(formValues);
+  }, []);
 
   // Memoize the validation summary (only compute if showValidationHints is true)
   const validationSummary = useMemo(
     () =>
-      showValidationHints ? makeValidationHints(propsWithContext) : undefined,
+      showValidationHints
+        ? makeValidationHints(propsWithContext, intl)
+        : undefined,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [showValidationHints, validationPropsJson, resolvedValidationContext],
+    [showValidationHints, validationPropsJson, resolvedValidationContext, intl],
   );
 
   const fieldState = useFormStore((state) =>
@@ -263,6 +302,7 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       : state.getFieldState(publicResolvedName),
   );
   const isSubmitting = useFormStore((state) => state.isSubmitting);
+  const isFormValidating = useFormStore((state) => state.isValidating);
 
   const fieldErrors = useFormStore(
     useShallow((state) =>
@@ -278,9 +318,9 @@ export function useField(config: UseFieldConfig): UseFieldResult {
   const setFieldBlurred = useFormStore((store) => store.setFieldBlurred);
   const validateField = useFormStore((store) => store.validateField);
   const shouldDiscardOnUnmount = useShouldDiscardFieldOnUnmount();
+  const fieldsDisabled = useFieldsDisabled();
 
-  // Disable fields while form is submitting
-  const isDisabled = isSubmitting || config.disabled;
+  const isDisabled = isSubmitting || fieldsDisabled || config.disabled;
   const isReadOnly = config.readOnly;
 
   const validateOnChange = config.validateOnChange ?? false;
@@ -299,6 +339,42 @@ export function useField(config: UseFieldConfig): UseFieldResult {
       : validateField(publicResolvedName);
     void request;
   }, [pathOperations, publicResolvedName, resolvedPath, validateField]);
+
+  // Errors reach the store as plain strings, formatted when validation last
+  // ran, so a message already on screen stays in the language it was written
+  // in. Re-run validation once the locale has actually changed to put it into
+  // the new one. Only a field that is already showing something is
+  // revalidated: validating a field nobody has touched yet would write errors
+  // the person has not earned, and a language switch is no reason to accuse
+  // them of anything.
+  //
+  // The ref records the locale the errors ON SCREEN were written in, not the
+  // last locale this effect saw — which is why it only advances when there is
+  // something to re-run. Advancing it on every change made a validation that
+  // was in flight across the switch permanently stale: the effect ran while
+  // `fieldErrors` was still empty, marked the new locale as seen, and then had
+  // nothing left to compare against when the old-language result committed a
+  // moment later. The field kept the previous language until some unrelated
+  // edit revalidated it.
+  // Whole-form validation also blocks field validation requests. Wait for it
+  // to finish before acknowledging the locale, then revalidate any errors its
+  // old-locale snapshot committed.
+  useEffect(() => {
+    if (intlRef.current === intl || isFormValidating) return;
+    if (fieldErrors && fieldErrors.length > 0) {
+      intlRef.current = intl;
+      // Submission errors carry their own descriptors and reformat in the
+      // renderer. Revalidating locally would erase a server refusal even
+      // though the user has not edited or resubmitted the field.
+      if (
+        fieldErrors.some(
+          (error) => formatMessageError(error, intl) !== undefined,
+        )
+      )
+        return;
+      validateResolvedField();
+    }
+  }, [intl, fieldErrors, isFormValidating, validateResolvedField]);
 
   const setResolvedFieldValue = useCallback(
     (value: FieldValue) => {

@@ -1,3 +1,5 @@
+'use client';
+
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import { AnimatePresence } from 'motion/react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -20,6 +22,8 @@ import { ModalOpenerContext } from './ModalOpener';
  *
  * @param open Whether the modal is open.
  * @param onOpenChange Callback when the open state changes.
+ * @param dismissible Whether the user may dismiss this modal by pressing
+ * outside it or pressing Escape. See the prop's own note below.
  * @param forceBackdrop Whether to render the backdrop when this modal is nested
  * within another dialog.
  * @param backdropClassName Additional classes for the modal backdrop.
@@ -30,12 +34,27 @@ import { ModalOpenerContext } from './ModalOpener';
 export default function Modal({
   open,
   onOpenChange,
+  dismissible = true,
   forceBackdrop = false,
   backdropClassName,
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * When false, neither an outside press nor Escape closes this modal, and
+   * `onOpenChange` is not called for either. The surface inside it is
+   * responsible for offering whatever way out it does allow (or none, for a
+   * forced flow) — hiding a close button on its own does not hold a modal
+   * open.
+   *
+   * Two mechanisms, because Base UI 1.7 has a `Dialog.Root` prop for one of
+   * these routes and not the other: `disablePointerDismissal` refuses the
+   * outside press at source, and the Escape key is refused by cancelling the
+   * change event it raises, which returns before Base UI acts on it.
+   * @default true
+   */
+  dismissible?: boolean;
   forceBackdrop?: boolean;
   backdropClassName?: string;
   children: ReactNode;
@@ -106,7 +125,27 @@ export default function Modal({
 
   return (
     <ModalOpenerContext.Provider value={openerRef}>
-      <BaseDialog.Root open={open} onOpenChange={onOpenChange}>
+      <BaseDialog.Root
+        open={open}
+        disablePointerDismissal={!dismissible}
+        onOpenChange={(nextOpen, eventDetails) => {
+          // `disablePointerDismissal` covers the outside press (and, for a
+          // non-modal dialog, focus leaving it); Escape has no equivalent
+          // prop, so it arrives here and is cancelled. Cancelling returns
+          // before Base UI dispatches the change, so nothing downstream —
+          // including the caller's `onOpenChange` — observes a close.
+          if (
+            !nextOpen &&
+            !dismissible &&
+            eventDetails.reason === 'escape-key'
+          ) {
+            eventDetails.cancel();
+            return;
+          }
+
+          onOpenChange(nextOpen);
+        }}
+      >
         <AnimatePresence>
           {open && (
             <BaseDialog.Portal

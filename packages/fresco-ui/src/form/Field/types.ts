@@ -269,8 +269,8 @@ type FieldOwnProps<C extends ValidFieldComponent> = {
    * @default legacy
    */
   nameMode?: FieldNameMode;
-  /** Label text rendered above (or beside when inline) the control. */
-  label: string;
+  /** Strings retain protocol Markdown; React nodes support literal rich labels. */
+  label: ReactNode;
   /** Supplementary text rendered below the label. */
   hint?: ReactNode;
   /**

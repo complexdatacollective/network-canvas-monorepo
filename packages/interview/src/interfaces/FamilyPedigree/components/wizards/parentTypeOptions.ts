@@ -1,10 +1,11 @@
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import type { RelationshipType } from '@codaco/protocol-validation';
 import { entityAttributesProperty, type NcEdge } from '@codaco/shared-consts';
 
 import type { VariableConfig } from '../../store';
 import { getEdgeRelationshipType } from '../../utils/edgeUtils';
 import {
-  PARENT_EDGE_TYPE_OPTIONS_ALTER,
+  parentEdgeTypeOptions,
   type ParentEdgeTypeOption,
 } from '../quickStartWizard/fieldOptions';
 
@@ -59,12 +60,13 @@ export function addableParentTypeOptions(
   nodeId: string,
   edges: Map<string, NcEdge>,
   variableConfig: VariableConfig,
+  intl?: IntlShape,
 ): ParentEdgeTypeOption[] {
   const bothGametesKnown =
     countGeneticParents(nodeId, edges, variableConfig) >= 2;
   const carrierKnown = hasGestationalCarrier(nodeId, edges, variableConfig);
 
-  return PARENT_EDGE_TYPE_OPTIONS_ALTER.filter((option) => {
+  return parentEdgeTypeOptions(intl).filter((option) => {
     if (
       bothGametesKnown &&
       (option.value === 'biological' || option.value === 'donor')

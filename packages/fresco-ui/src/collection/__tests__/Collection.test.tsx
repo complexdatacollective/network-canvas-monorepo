@@ -109,6 +109,39 @@ describe('Collection', () => {
       expect(screen.getByTestId('empty')).toBeDefined();
     });
 
+    // The default empty state is a message descriptor formatted here rather
+    // than a default parameter on the prop, and a default parameter applies
+    // to `undefined` alone. `emptyState` is a ReactNode, and passing `null`
+    // is how a caller says the collection should show nothing at all when it
+    // is empty — a nullish fallback would talk over them.
+    it.each([
+      ['null', null, false],
+      ['nothing', undefined, true],
+    ])(
+      'renders no default text when a caller passes %s',
+      (_label, emptyState, expectsDefault) => {
+        const layout = new ListLayout<Item>({ gap: 2 });
+
+        render(
+          <Collection
+            items={[]}
+            keyExtractor={(item) => item.id}
+            textValueExtractor={(item) => item.name}
+            layout={layout}
+            emptyState={emptyState}
+            renderItem={(item, itemProps) => (
+              <div {...itemProps}>{item.name}</div>
+            )}
+          >
+            {(CollectionElements) => CollectionElements}
+          </Collection>,
+        );
+
+        const defaultText = screen.queryByText('No items to display.');
+        expect(defaultText === null).toBe(!expectsDefault);
+      },
+    );
+
     it('should apply ARIA attributes', () => {
       render(<ControlledCollection />);
 

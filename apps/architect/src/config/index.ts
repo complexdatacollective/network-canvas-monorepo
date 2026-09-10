@@ -1,7 +1,86 @@
 import {
+  createAppIntl,
+  defineMessages,
+  type IntlShape,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
+const defaultIntl = createAppIntl({ locale: 'en' });
+import {
   type ColorReference,
   CURRENT_SCHEMA_VERSION,
 } from '@codaco/protocol-validation';
+const colorMessages = defineMessages({
+  neonCoral: {
+    id: 'architect.config.neonCoral',
+    defaultMessage: 'Neon Coral',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  seaSerpent: {
+    id: 'architect.config.seaSerpent',
+    defaultMessage: 'Sea Serpent',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  purplePizazz: {
+    id: 'architect.config.purplePizazz',
+    defaultMessage: 'Purple Pizazz',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  neonCarrot: {
+    id: 'architect.config.neonCarrot',
+    defaultMessage: 'Neon Carrot',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  kiwi: {
+    id: 'architect.config.kiwi',
+    defaultMessage: 'Kiwi',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  ceruleanBlue: {
+    id: 'architect.config.ceruleanBlue',
+    defaultMessage: 'Cerulean Blue',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  paradisePink: {
+    id: 'architect.config.paradisePink',
+    defaultMessage: 'Paradise Pink',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  mustard: {
+    id: 'architect.config.mustard',
+    defaultMessage: 'Mustard',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  tomato: {
+    id: 'architect.config.tomato',
+    defaultMessage: 'Tomato',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  slateBlue: {
+    id: 'architect.config.slateBlue',
+    defaultMessage: 'Slate Blue',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  seaGreen: {
+    id: 'architect.config.seaGreen',
+    defaultMessage: 'Sea Green',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  barbiePink: {
+    id: 'architect.config.barbiePink',
+    defaultMessage: 'Barbie Pink',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  color: {
+    id: 'architect.config.color',
+    defaultMessage: 'Color {index, number}',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+  protocolNameTooLong: {
+    id: 'architect.config.protocolNameTooLong',
+    defaultMessage: 'Protocol names are limited to {max, number} characters.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 // Color palette sizes, they follow the pattern: ord-color-seq-1...ord-color-seq-n
 // Node/edge sizes must not exceed the schema's Node/EdgeColorSequence (8 each):
@@ -34,52 +113,55 @@ export const COLOR_PALETTE_BY_ENTITY = {
  * Every position the theme defines is named, even when an individual picker
  * deliberately offers only a subset of that sequence.
  */
-export const COLOR_PALETTE_SWATCH_NAMES: Record<string, readonly string[]> = {
+export const COLOR_PALETTE_SWATCH_NAMES: Record<
+  string,
+  readonly MessageDescriptor[]
+> = {
   'node-color-seq': [
-    'Neon Coral',
-    'Sea Serpent',
-    'Purple Pizazz',
-    'Neon Carrot',
-    'Kiwi',
-    'Cerulean Blue',
-    'Paradise Pink',
-    'Mustard',
+    colorMessages.neonCoral,
+    colorMessages.seaSerpent,
+    colorMessages.purplePizazz,
+    colorMessages.neonCarrot,
+    colorMessages.kiwi,
+    colorMessages.ceruleanBlue,
+    colorMessages.paradisePink,
+    colorMessages.mustard,
   ],
   'edge-color-seq': [
-    'Mustard',
-    'Purple Pizazz',
-    'Neon Coral',
-    'Kiwi',
-    'Paradise Pink',
-    'Tomato',
-    'Sea Serpent',
-    'Slate Blue',
-    'Sea Green',
-    'Cerulean Blue',
+    colorMessages.mustard,
+    colorMessages.purplePizazz,
+    colorMessages.neonCoral,
+    colorMessages.kiwi,
+    colorMessages.paradisePink,
+    colorMessages.tomato,
+    colorMessages.seaSerpent,
+    colorMessages.slateBlue,
+    colorMessages.seaGreen,
+    colorMessages.ceruleanBlue,
   ],
   'ord-color-seq': [
-    'Sea Green',
-    'Sea Serpent',
-    'Tomato',
-    'Neon Carrot',
-    'Kiwi',
-    'Cerulean Blue',
-    'Paradise Pink',
-    'Mustard',
-    'Purple Pizazz',
-    'Slate Blue',
+    colorMessages.seaGreen,
+    colorMessages.seaSerpent,
+    colorMessages.tomato,
+    colorMessages.neonCarrot,
+    colorMessages.kiwi,
+    colorMessages.ceruleanBlue,
+    colorMessages.paradisePink,
+    colorMessages.mustard,
+    colorMessages.purplePizazz,
+    colorMessages.slateBlue,
   ],
   'cat-color-seq': [
-    'Sea Serpent',
-    'Purple Pizazz',
-    'Mustard',
-    'Paradise Pink',
-    'Kiwi',
-    'Cerulean Blue',
-    'Neon Carrot',
-    'Barbie Pink',
-    'Tomato',
-    'Slate Blue',
+    colorMessages.seaSerpent,
+    colorMessages.purplePizazz,
+    colorMessages.mustard,
+    colorMessages.paradisePink,
+    colorMessages.kiwi,
+    colorMessages.ceruleanBlue,
+    colorMessages.neonCarrot,
+    colorMessages.barbiePink,
+    colorMessages.tomato,
+    colorMessages.slateBlue,
   ],
 };
 
@@ -90,14 +172,19 @@ const SWATCH_PATTERN = /^(.*)-(\d+)$/;
  *
  * Falls back to the swatch's position if this naming catalogue is incomplete.
  */
-export const getColorSwatchName = (color: ColorReference): string => {
+export const getColorSwatchName = (
+  color: ColorReference,
+  intl: IntlShape = defaultIntl,
+): string => {
   const match = SWATCH_PATTERN.exec(color);
   if (!match) return color;
 
   const [, palette, position] = match;
   const index = Number(position);
   const name = COLOR_PALETTE_SWATCH_NAMES[palette ?? '']?.[index - 1];
-  return name ?? `Color ${index}`;
+  return name
+    ? intl.formatMessage(name)
+    : intl.formatMessage(colorMessages.color, { index });
 };
 
 /**
@@ -135,7 +222,7 @@ export const PROTOCOL_NAME_MAX_LENGTH = 100;
 // One message for both places a researcher can name a protocol — the create
 // dialog and the editor's own name control — so the two surfaces cannot drift
 // into quoting different limits, and there is one whole string to localise.
-export const PROTOCOL_NAME_TOO_LONG_MESSAGE = `Protocol names are limited to ${PROTOCOL_NAME_MAX_LENGTH} characters.`;
+export const PROTOCOL_NAME_TOO_LONG_MESSAGE = colorMessages.protocolNameTooLong;
 
 // Maps for supported asset types within the app. Used by asset chooser.
 export const SUPPORTED_EXTENSION_TYPE_MAP = {

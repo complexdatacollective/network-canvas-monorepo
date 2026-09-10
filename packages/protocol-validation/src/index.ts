@@ -5,8 +5,12 @@ import {
   collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  collectEntityTypeReferencesFromSchema,
+  collectStageReferences,
+  declaredStageReferenceSites,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
+  type StageReferenceHit,
 } from './utils/collectEntityAttributeReferences.ts';
 import { describeProtocolFileError } from './utils/describeProtocolFileError.ts';
 import {
@@ -34,6 +38,7 @@ import validateProtocol, {
   type ProtocolValidationResult,
 } from './validation/validate-protocol.ts';
 
+export { parseAcceptLanguage } from './localization/parseAcceptLanguage.ts';
 export {
   MigrationChain,
   type ProtocolMigration as Migration,
@@ -84,6 +89,17 @@ export {
   type VariableRoleGroup,
   type VariableRoleHit,
 } from './utils/findVariableRoleConflicts.ts';
+// Where a stage document may hold only ONE of several shapes, so that an
+// editor writing part of one can be told to write the whole of it — and
+// whether a container an editor has ASSEMBLED out of two people's work is one
+// the schema refuses, for the places whose members constrain each other
+// without being rivals. Both are read off the stage schemas rather than listed
+// here; the lists that module also derives stay internal to it, for its tests.
+export {
+  isExclusiveVariantContainer,
+  schemaRefusesContainer,
+  VARIANT_ROW_SEGMENT,
+} from './schemas/8/exclusive-variant-containers.ts';
 // `findExclusiveVariableConflicts` stays internal: it exists to feed the
 // protocol schema's own refinement, and a host that wants to know whether a
 // protocol is admissible should call `validateProtocol`.
@@ -99,6 +115,9 @@ export {
   collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
+  collectEntityTypeReferencesFromSchema,
+  collectStageReferences,
+  declaredStageReferenceSites,
   describeProtocolFileError,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
@@ -118,6 +137,7 @@ export {
   ProtocolValidationError,
   type ProtocolValidationIssue,
   type ProtocolValidationResult,
+  type StageReferenceHit,
   validateNames,
   validateProtocol,
 };

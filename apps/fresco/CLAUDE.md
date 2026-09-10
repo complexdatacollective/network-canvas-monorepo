@@ -34,6 +34,37 @@ Releases flow one way:
    mirror**, which builds the container image and pushes it to GHCR tagged with
    the version and `latest`.
 
+The lane is tag-driven and self-healing: `apps-release-detect` releases any
+stable `package.json` version that has no `fresco@<version>` tag yet, so a
+failed or dropped mirror is retried by the next push to main. Because pushes to
+main run concurrently, three guards keep that retry from ever moving the mirror
+backwards — the mirror is a linear append whose newest push becomes `latest`:
+
+- `apps-release-fresco` holds one concurrency group for the app (not one per
+  version), so two runs carrying different untagged versions serialise over
+  the whole check → mirror → tag sequence.
+- Under that lock it runs `.github/scripts/app-release-guard.sh`, which skips
+  when the tag already exists, when the version is older than the newest
+  `fresco@` tag, or when the tree does not contain the newest released commit.
+  A run for a superseded main commit therefore skips with a warning and needs
+  no follow-up; the newer release already covers it. (On 2026-09-02 the lane
+  still had only a tag-exists check, and a run for an older main commit
+  mirrored 4.1.3 on top of the 4.1.4 push.)
+- The `release` job that publishes the `@codaco/*` packages stops if its
+  commit is no longer main's tip (`.github/scripts/superseded-push-guard.sh`),
+  runs one at a time, and when it holds the tip with nothing left to version
+  it closes any Version Packages PR a superseded run regenerated.
+
+The Version Packages PR itself must be current when it merges. If main gains a
+normal-lane changeset after the PR head was generated, the merged tree carries
+both the bumped versions and that changeset, and `changesets/action` regenerates
+the PR instead of publishing — which is why 4.1.3 (and fresco-ui 6.3.0,
+interview 9.0.1) never reached npm on 2026-09-01, and why this lane then failed
+on every push until 4.1.4 shipped: the mirror's lockfile could not resolve
+versions that did not exist. The `version-packages-freshness` job now refuses
+such a merge from the queue; wait for the bot to regenerate the PR and queue
+the new head.
+
 Consequences worth remembering:
 
 - `apps/fresco/.github/` contains only the mirror's Docker publish workflow. CI
@@ -51,6 +82,123 @@ Consequences worth remembering:
   mirror. Code that only works under one bundler will pass locally and fail in
   the released image — see "Workers and bundler portability" below.
 
+## Hotfix releases (when main is ahead)
+
+The normal lane always mirrors `main`, so it can only ship a patch together
+with everything else merged since the last release. When main carries work
+that is not ready to go out, release from the previous tag instead. The
+procedure is the one in `apps/interviewer/RELEASING.md`, with one difference
+that follows from how Fresco ships: the image installs the published
+`@codaco/*` packages, not workspace source, so a library fix cherry-picked onto
+the hotfix branch would never reach the image on its own. The lane therefore
+mirrors the branch with every workspace package in Fresco's dependency closure
+whose built artifact would differ from the release tag's — its own source
+changed, a catalog entry it consumes was re-pinned, a shared build input
+such as a tsconfig changed, or anything its resolution reaches in the root
+lockfile moved, a compiler's own dependency included — and every closure
+package that depends on one,
+packed into `vendor/` as tarballs, with pnpm overrides that
+resolve every range onto them (`scripts/mirror-app.mjs --vendor-changed-since`,
+built on `scripts/vendor-workspace-packages.mjs`, the same mechanism the
+release test uses). Nothing is published to npm. The packages the hotfix did
+not touch install at the exact registry versions the released image used: the
+lane seeds the mirror's lockfile and its generated workspace policy from the
+ones the Fresco repository holds at that release before resolving (bringing
+only the policy's catalog-backed overrides, such as `postcss`, to the branch's
+catalog), so only the vendored packages and the bumped app version are
+re-resolved, and neither a
+library or third-party version published after the release nor a dependency
+policy change that exists only on main can slip in. The corollary: a
+dependency fix that lives only in the branch's own `pnpm-lock.yaml`, or only
+in the root `pnpm-workspace.yaml` outside its catalog (an `overrides` entry,
+say), cannot reach the image, and the lane refuses such a branch — pin the
+fixed version in the affected manifest, or re-pin a catalog entry that package
+consumes, so it becomes a specifier change the mirror carries. After resolving,
+the lane also checks that every resolution the branch changed for a package the
+image installs is present in the mirror's lockfile, so one legitimate
+dependency change cannot mask another that only the branch's lockfile carried.
+
+1. Cut the branch from the released tag and cherry-pick the fix:
+
+   ```bash
+   git switch -c hotfix/fresco-<version> 'fresco@<previous>'
+   git cherry-pick <sha>
+   ```
+
+   Land the same fix on main through the usual pull request as well — the
+   hotfix branch is a delivery vehicle, not the source of truth.
+
+2. Bump `apps/fresco/package.json` to the hotfix version and add the matching
+   `## <version>` section to `apps/fresco/CHANGELOG.md`; `scripts/release-notes.mjs`
+   reads that section for both GitHub releases. Do **not** run
+   `changeset version` on the branch.
+3. Push the branch and open its merge-back pull request into `main` now. Then
+   certify it with the release test — using **main's** tooling, never the
+   branch's own: a branch cut from an older tag carries the release-test
+   harness and mirror scripts as they were then, which would stage a different
+   image from the one the lane ships (the lane itself always runs main's copy
+   from `.hotfix-lane`). Take the current tooling onto the branch first; none
+   of it is part of the release — `release-test/` is excluded from the mirror,
+   and `scripts/` and `.claude/` are never mirrored:
+
+   ```bash
+   git checkout main -- scripts apps/fresco/release-test .claude/workflows/fresco-release-test.js
+   git commit -m 'chore(fresco): refresh release tooling from main for certification'
+   VENDOR_CHANGED_SINCE='fresco@<previous>' bash apps/fresco/release-test/build-image.sh
+   ```
+
+   `VENDOR_CHANGED_SINCE` makes the build stage the tree exactly as the lane
+   does — vendoring what changed since that tag, seeding the lockfile from the
+   released mirror — instead of bundling the pending changesets. Then run
+   `/fresco-release-test` with `{ expectedVersion: "<version>", skipBuild: true }`
+   from that checkout. Proceed only on a full-coverage "go" with `releasable: true`.
+
+4. Run the **Hotfix Release** workflow **from main**, with `app: fresco` and
+   `source_ref` set to the hotfix branch. Its first job runs typecheck and
+   tests across Fresco's whole workspace dependency closure, builds the
+   closure so the changed packages can be packed, and stages the vendored
+   mirror tree. A second job, `fresco-publish`, re-validates the version,
+   claims `fresco@<version>`, pushes that tree to the Fresco repository's
+   `main` — which is what triggers the GHCR image build, exactly as a normal
+   release does — and creates the release on both repositories. The split is
+   deliberate: staging runs code from the hotfix branch (`pnpm pack` runs each
+   vendored package's lifecycle scripts, which could also plant a fake `gh` on
+   that job's `$GITHUB_PATH`), so the job that does it holds no credential at
+   all, and the job that holds the tag-claiming token and the push token runs
+   nothing from the branch. A protected `fresco-hotfix-production` environment
+   therefore asks for approval twice.
+   The GHCR publisher workflow the mirror carries is main's copy, not the
+   branch's (a branch cut from an older tag may predate a publisher change
+   already pre-applied to the Fresco repository). Both jobs check that the
+   staged tree carries exactly that workflow and that the Fresco repository
+   tracks exactly it — the publish job immediately before copying, so nothing
+   a lifecycle script left under `.github/workflows` can be pushed.
+   The lane holds the normal lane's `apps-release-fresco` lock, re-checks the
+   newest tag after building, and refuses a version older than the current
+   release, because the mirror's newest push is what `latest` points at. It
+   also reads the version the Fresco repository's `main` carries and refuses
+   while that is ahead of the tags here: the normal lane pushes the mirror
+   before it tags, so a run that failed between the two left a release the
+   tags do not record, which a hotfix cut from the newest tag would append
+   older code over. Re-run the normal lane for `main` (it re-mirrors and
+   tags) or tag `fresco@<version>` on the commit that produced it, then
+   re-dispatch. As
+   in the normal lane, the push is what starts the Fresco repository's image
+   build, and neither lane waits for it: if that build fails, re-run it from
+   the Fresco repository's Actions tab against the same mirrored commit — the
+   tag and releases already describe that commit, so nothing here needs
+   re-dispatching.
+5. **Merge the hotfix branch into main** with a merge commit, never a squash,
+   after the tag exists: `.github/scripts/app-release-guard.sh` skips main's
+   Fresco release until main contains the released commit. Then remove only
+   `'fresco'` from the changeset the hotfix consumed, deleting the file only if
+   Fresco was its sole target.
+
+The `fresco-hotfix-production` environment needs the same one-time protection
+the Interviewer lane documents (required reviewers, deployment branches
+restricted to `main`); until that is configured, the dispatch itself is the
+only gate. `LEGACY_RELEASE_GH_TOKEN` is the token the mirror pushes with.
+
 ## Release testing
 
 Before a Fresco release is approved (the Version Packages PR merged), the
@@ -59,10 +207,12 @@ pending state of `main` can be release-tested locally with the
 Codex: run the harness scripts below manually). It builds the pending image the
 way a release would — `scripts/mirror-app.mjs` stages the mirrored tree,
 `release-test/scripts/bundle-pending-packages.mjs` swaps the registry
-resolutions of exactly the `@codaco/*` packages the pending changesets will
-publish for tarballs packed from the pending source (the rest of the closure
-stays on registry versions, as the released image will), and the staged tree's
-own `Dockerfile` builds it — then runs two Docker stacks via
+resolutions of exactly the `@codaco/*` packages the pending release will
+publish — those the changesets bump, plus any whose current version npm does
+not have, which `changeset publish` publishes regardless — for tarballs packed
+from the pending source (the rest of the closure stays on registry versions, as
+the released image will), and the staged tree's own `Dockerfile` builds it —
+then runs two Docker stacks via
 `release-test/docker-compose.yml`:
 
 - **Upgrade lane** (ports 3210/5533/9310): seeds the currently released GHCR
@@ -174,8 +324,10 @@ including the early one taken when the build never completes.
 ```
 
 `expectedVersion` is the version the Version Packages PR bumps Fresco to —
-the one `bundle-pending-packages.mjs` bakes into the staged tree, and the one
-both stacks must report from `/api/health`. Other args:
+the one `bundle-pending-packages.mjs` bakes into the staged tree and the one
+the build stamp records. Each lane is bound to that build by the image id
+docker reports for its Fresco container (`/api/health` names no version, on
+purpose). Other args:
 `skipBuild` (reuse the previous image, revalidated against its stamp),
 `keepStack` (leave both stacks up), `releasedImage` (substitute the upgrade
 baseline; never certifying), `allowDirty` (accept an irreproducible image

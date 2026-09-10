@@ -191,7 +191,7 @@ export type EverythingBarProps = {
 const rowVariants = cva({
   base: cx(
     'flex w-full min-w-0 cursor-pointer items-center gap-3 rounded-xs px-4 py-2',
-    'text-surface-popover-contrast text-left text-sm font-semibold no-underline',
+    'text-surface-popover-contrast text-start text-sm font-semibold no-underline',
   ),
   variants: {
     highlighted: {
@@ -568,7 +568,7 @@ export default function EverythingBar({
         })}
       >
         <Search aria-hidden />
-        <span className="text-input-contrast/50 min-w-0 grow basis-0 text-left italic">
+        <span className="text-input-contrast/50 min-w-0 grow basis-0 text-start italic">
           {labels.triggerPlaceholder}
         </span>
         {/* The button's own label already names this binding, so the cap is

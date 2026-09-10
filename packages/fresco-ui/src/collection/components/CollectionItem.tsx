@@ -1,3 +1,5 @@
+'use client';
+
 import { memo, useCallback, useRef } from 'react';
 
 import {

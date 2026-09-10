@@ -3,6 +3,9 @@ import { enableMapSet } from 'immer';
 import { immer } from 'zustand/middleware/immer';
 import { createStore, type Mutate, type StoreApi } from 'zustand/vanilla';
 
+import { defineMessages, type IntlShape } from '@codaco/app-i18n/messages';
+
+import { resolveIntl } from '../../utils/resolveIntl';
 import type { FieldValue } from '../Field/types';
 import {
   createObjectPathWriter,
@@ -22,6 +25,48 @@ import type {
   FormConfig,
   FormSubmitHandler,
 } from './types';
+
+/**
+ * The one key of the throwaway object a container's seed is assembled in.
+ *
+ * The assembly is done through `createObjectPathWriter`, which copies every
+ * container it traverses but writes the LAST segment directly — so the value
+ * being built has to sit one segment down from the root for the document
+ * beneath it to be copied rather than written into.
+ */
+const seedRootKey = 'seed';
+
+const storeMessages = defineMessages({
+  validationFailed: {
+    id: 'frescoUi.formStore.validationFailed',
+    defaultMessage: 'Something went wrong during validation',
+    description:
+      'Error attached to a field whose own validation rule threw, so the rule produced no message of its own.',
+  },
+});
+
+/**
+ * How the store reaches the host's formatter. The store is plain Zustand, not
+ * a component, and it outlives any one render — so it takes a getter rather
+ * than a formatter, and `FormStoreProvider` points that getter at whatever
+ * `useAppIntl` last returned. A language switch is then already reflected the
+ * next time a rule throws, without the store being rebuilt underneath a form
+ * that is mid-edit.
+ */
+export type FormStoreOptions = {
+  getIntl?: () => IntlShape | undefined;
+  /**
+   * The document this form is editing, for fields that carry no
+   * `initialValue` of their own.
+   *
+   * A getter for the same reason `getIntl` is one: the store outlives any one
+   * render, and a form whose document advances while it is open — a list
+   * written structurally, a capability switched back on — has to seed a field
+   * mounting afterwards from the document as it stands then rather than as it
+   * stood when the form opened.
+   */
+  getInitialValues?: () => Record<string, unknown> | undefined;
+};
 
 // Enable Map/Set support in Immer
 enableMapSet();
@@ -530,7 +575,9 @@ export type FormStoreApi = Mutate<
   [['zustand/immer', never]]
 >;
 
-export const createFormStore = (): FormStoreApi => {
+export const createFormStore = (
+  storeOptions: FormStoreOptions = {},
+): FormStoreApi => {
   // Validation tokens are unique by identity, so resetting the form can never
   // make an old request current again (an ABA race). Authoritative state
   // transitions clear all field tokens because a field schema may depend on
@@ -542,6 +589,131 @@ export const createFormStore = (): FormStoreApi => {
   // The last container value handed out per container name, so `getValue` can
   // keep returning it by identity while it stays deep-equal. See `getValue`.
   const containerValues = new Map<string, FieldValue>();
+
+  /**
+   * What a field with no `initialValue` of its own starts out holding.
+   *
+   * The DOCUMENT is the only thing that can give a field a starting value —
+   * a form handed none leaves every such field starting out holding nothing,
+   * exactly as it did before a form could be handed one. What the other
+   * mounted fields have assembled so far is not a starting value: seeding a
+   * container out of the leaves that happen to have registered before it
+   * would hand a compound control a partial copy of its siblings' keys, which
+   * it then answers for and writes back.
+   *
+   * Given a document, two readings of the path, in the order they outrank
+   * each other:
+   *
+   * 1. Beneath a field mounted ABOVE it, the form answers for the whole path,
+   *    absence included. A compound control the person has emptied says there
+   *    is nothing there, and the document must not put it back — that is a
+   *    value they have just deleted reappearing under them.
+   * 2. Otherwise the document at the field's own path, with what the fields
+   *    INSIDE it hold written over the top — so a container mounting over
+   *    leaves already on screen shows their edits, and still carries the keys
+   *    beside them that nothing renders.
+   *
+   * Rule 2 is written key by key rather than settled either way whole. A
+   * container seeded from only the leaves on screen answers for its whole
+   * subtree, so every sibling key the document holds and no field renders is
+   * dropped from the moment it mounts, and a form that never showed those
+   * keys saves them away.
+   *
+   * A document holding nothing at the path is not a shortcut past rule 2. It
+   * says only that the document has nothing to contribute, and the fields
+   * mounted inside still do — an optional container the researcher has just
+   * filled in for the first time is exactly the case, and a compound control
+   * that started on the absence would answer for the path with an emptiness
+   * and take their edit down with it when the leaf that made it went. With
+   * nothing mounted inside, absence is all there is, and the field starts out
+   * holding nothing.
+   */
+  const seedValueAt = (
+    fieldPath: ObjectPath,
+    formValues: Record<string, FieldValue>,
+  ): FieldValue => {
+    const beneathAMountedField = [...fieldRecords.values()].some(
+      (field) =>
+        field.path !== undefined &&
+        field.path.length < fieldPath.length &&
+        field.path.every((segment, index) => fieldPath[index] === segment),
+    );
+    // `getFormValues` assembles its output out of `FieldValue` leaves, and a
+    // caller's document is declared as a map of them, so every node within
+    // either is itself a `FieldValue`.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    if (beneathAMountedField)
+      return readObjectPath(formValues, fieldPath) as FieldValue;
+    const document = storeOptions.getInitialValues?.();
+    if (document === undefined) return undefined;
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    const documented = readObjectPath(document, fieldPath) as FieldValue;
+    return documentWithFieldsInside(fieldPath, documented);
+  };
+
+  /**
+   * The document's own reading of a container, with what the fields inside it
+   * hold written over the top.
+   *
+   * Written at each field's OWN path rather than merged key by key all the way
+   * down, because a field answers for everything beneath it — a compound
+   * control holding `{min: 1}` where the document holds `{min: 1, max: 2}` has
+   * had its `max` deleted, and merging would put it back. Shallowest first,
+   * the order `getFormValues` replays overlapping registrations in, so the
+   * deeper of two nested fields still wins.
+   *
+   * PARKED fields count, and are written before the mounted ones. A value the
+   * form is holding but not showing — a control inside a collapsed group of
+   * advanced options — is still the person's own most recent word on its path,
+   * and the document is by then out of date about it; seeded from the document
+   * alone, a container mounting afterwards would answer for that path with the
+   * value they replaced, and quietly put it back. A field on screen outranks a
+   * parked one, because it is the newer of the two. A field parked holding
+   * nothing was thrown away on purpose, and writing that nothing over the
+   * document is how it stays thrown away.
+   *
+   * Nothing reachable from the document is written to: the writer copies
+   * every container it traverses that it does not already own, and it owns
+   * only the wrapper made here — which is also what turns a `documented` of
+   * `undefined` into the container the fields are written into, so an absent
+   * subtree needs no special case. With no fields inside, `documented` is
+   * handed straight back, absence included.
+   */
+  const documentWithFieldsInside = (
+    containerPath: ObjectPath,
+    documented: FieldValue,
+  ): FieldValue => {
+    const fieldsInside = (
+      records: Map<string, FieldState>,
+    ): { path: ObjectPath; value: FieldValue }[] => {
+      const found: { path: ObjectPath; value: FieldValue }[] = [];
+      records.forEach((field, fieldName) => {
+        const path = resolveStoredFieldPath(fieldName, field);
+        if (isDescendantPath(containerPath, path)) {
+          found.push({ path, value: field.value });
+        }
+      });
+      return found.toSorted((a, b) => a.path.length - b.path.length);
+    };
+
+    const inside = [
+      ...fieldsInside(dormantRecords),
+      ...fieldsInside(fieldRecords),
+    ];
+    if (inside.length === 0) return documented;
+
+    const seedRoot: Record<string, FieldValue> = {};
+    const writeIntoSeed = createObjectPathWriter(seedRoot);
+    writeIntoSeed([seedRootKey], documented);
+    for (const field of inside) {
+      writeIntoSeed(
+        [seedRootKey, ...field.path.slice(containerPath.length)],
+        field.value,
+      );
+    }
+
+    return seedRoot[seedRootKey];
+  };
 
   const invalidateFormValidation = () => {
     formValidationToken = Symbol('form-validation');
@@ -674,6 +846,10 @@ export const createFormStore = (): FormStoreApi => {
           fieldRecords,
           fieldName,
         );
+        const seeded =
+          config.initialValue === undefined
+            ? seedValueAt(fieldPath, get().getFormValues())
+            : config.initialValue;
         invalidateAllValidations();
         set((state) => {
           state.isValidating = false;
@@ -681,7 +857,7 @@ export const createFormStore = (): FormStoreApi => {
 
           const dormant = dormantRecords.get(fieldName);
           const hasDormantValue = dormant !== undefined;
-          const value = hasDormantValue ? dormant.value : config.initialValue;
+          const value = hasDormantValue ? dormant.value : seeded;
           const standingErrors = Object.hasOwn(
             state.errors.fieldErrors,
             fieldName,
@@ -701,7 +877,7 @@ export const createFormStore = (): FormStoreApi => {
               dormant?.submissionErrorKey ??
               config.submissionErrorKey ??
               (publicFieldName === fieldName ? undefined : publicFieldName),
-            initialValue: config.initialValue,
+            initialValue: seeded,
             validation: config.validation,
             value,
             meta: {
@@ -1362,7 +1538,11 @@ export const createFormStore = (): FormStoreApi => {
                 formErrors: form.errors.formErrors,
                 fieldErrors: {
                   ...form.errors.fieldErrors,
-                  [fieldName]: ['Something went wrong during validation'],
+                  [fieldName]: [
+                    resolveIntl(storeOptions.getIntl?.()).formatMessage(
+                      storeMessages.validationFailed,
+                    ),
+                  ],
                 },
               };
 

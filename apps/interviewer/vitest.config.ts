@@ -81,9 +81,22 @@ export default defineConfig({
         // root, so they need Vite's `<owner> > <dep>` form.
         optimizeDeps: {
           include: [
+            // Reached as this app → fresco-ui → app-i18n. Vite's
+            // `<owner> > <dep>` form has to name the owner the whole way
+            // down: a shorter specifier does not resolve from this root,
+            // and an entry Vite cannot resolve is ignored in silence.
+            '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/icu-messageformat-parser',
+            '@codaco/fresco-ui > @codaco/app-i18n > @formatjs/intl-localematcher',
+            '@codaco/fresco-ui > @codaco/app-i18n > react-intl',
+            '@codaco/fresco-ui > @codaco/app-i18n > react-intl/server',
             '@base-ui/react',
             '@base-ui/react/accordion',
             '@base-ui/react/checkbox',
+            // Reached through `Dialog`, which reads the enclosing heading level
+            // a `Section` inside it counts down from — so every dialog these
+            // stories open now pulls in fresco-ui's `Section` and the
+            // Collapsible it is built on.
+            '@base-ui/react/collapsible',
             '@base-ui/react/combobox',
             '@base-ui/react/drawer',
             '@base-ui/react/menu',

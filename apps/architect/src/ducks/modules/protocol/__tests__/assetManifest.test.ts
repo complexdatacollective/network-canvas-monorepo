@@ -105,7 +105,7 @@ describe('protocol/assetManifest', () => {
       mockedSaveAssetWithFallback.mockResolvedValue({ persisted: false });
 
       const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
-      await store.dispatch(importAssetAsync(file));
+      await store.dispatch(importAssetAsync({ file }));
 
       expect(getStorageUnavailable(store.getState())).toBe(true);
       // The asset still landed in the manifest despite storage being unavailable.
@@ -121,7 +121,7 @@ describe('protocol/assetManifest', () => {
       expect(getStorageUnavailable(store.getState())).toBe(true);
 
       const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
-      await store.dispatch(importAssetAsync(file));
+      await store.dispatch(importAssetAsync({ file }));
 
       expect(getStorageUnavailable(store.getState())).toBe(false);
     });
@@ -130,7 +130,7 @@ describe('protocol/assetManifest', () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 3 });
 
       const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
-      const result = await store.dispatch(importAssetAsync(file)).unwrap();
+      const result = await store.dispatch(importAssetAsync({ file })).unwrap();
 
       expect(result.duplicateCount).toBe(3);
     });
@@ -144,7 +144,7 @@ describe('protocol/assetManifest', () => {
       store.dispatch(setProtocolLockState('open-elsewhere'));
 
       const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
-      const result = await store.dispatch(importAssetAsync(file));
+      const result = await store.dispatch(importAssetAsync({ file }));
 
       expect(mockedSaveAssetWithFallback).not.toHaveBeenCalled();
       expect(Object.values(store.getState().assetManifest)).toHaveLength(0);
@@ -176,7 +176,7 @@ describe('protocol/assetManifest', () => {
       store.dispatch(setProtocolLockState('reclaim-blocked'));
 
       const result = await store.dispatch(
-        importAssetAsync(new File(['test'], 'roster.csv')),
+        importAssetAsync({ file: new File(['test'], 'roster.csv') }),
       );
       nestedEditor.unmount();
 
@@ -200,7 +200,7 @@ describe('protocol/assetManifest', () => {
       store.dispatch(setProtocolLockState('reclaim-blocked'));
 
       const result = await store.dispatch(
-        importAssetAsync(new File(['test'], 'roster.csv')),
+        importAssetAsync({ file: new File(['test'], 'roster.csv') }),
       );
 
       expect(mockedSaveAssetWithFallback).not.toHaveBeenCalled();
@@ -226,9 +226,9 @@ describe('protocol/assetManifest', () => {
       });
 
       const result = await store.dispatch(
-        importAssetAsync(
-          new File(['test'], 'roster.csv', { type: 'text/csv' }),
-        ),
+        importAssetAsync({
+          file: new File(['test'], 'roster.csv', { type: 'text/csv' }),
+        }),
       );
 
       // Nothing durable, and nothing in the manifest naming something durable.
@@ -257,9 +257,9 @@ describe('protocol/assetManifest', () => {
       });
 
       const result = await store.dispatch(
-        importAssetAsync(
-          new File(['test'], 'roster.csv', { type: 'text/csv' }),
-        ),
+        importAssetAsync({
+          file: new File(['test'], 'roster.csv', { type: 'text/csv' }),
+        }),
       );
 
       expect(mockedSaveAssetWithFallback).toHaveBeenCalled();
@@ -277,7 +277,7 @@ describe('protocol/assetManifest', () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
 
       const file = new File(['test'], 'roster.csv', { type: 'text/csv' });
-      const result = await store.dispatch(importAssetAsync(file)).unwrap();
+      const result = await store.dispatch(importAssetAsync({ file })).unwrap();
 
       expect(result.duplicateCount).toBe(0);
     });

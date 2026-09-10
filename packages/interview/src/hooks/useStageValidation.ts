@@ -49,6 +49,7 @@ type UseStageValidationOptions = {
 function useStageValidation({ constraints }: UseStageValidationOptions) {
   const registerBeforeNext = useContext(StageMetadataContext);
   const toastContext = useInterviewToastContext();
+  const toastManager = toastContext?.toastManager ?? interviewToastManager;
   const track = useTrack();
 
   const constraintsRef = useRef(constraints);
@@ -79,21 +80,27 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
   const resolvePositionerPropsRef = useRef(resolvePositionerProps);
   resolvePositionerPropsRef.current = resolvePositionerProps;
 
-  const showToast = useCallback((options: InterviewToastOptions): string => {
-    const positionerProps = resolvePositionerPropsRef.current(options.anchor);
+  const showToast = useCallback(
+    (options: InterviewToastOptions): string => {
+      const positionerProps = resolvePositionerPropsRef.current(options.anchor);
 
-    return interviewToastManager.add({
-      type: options.variant,
-      description: options.description,
-      timeout: options.timeout ?? 4000,
-      positionerProps,
-      data: options.icon ? { icon: options.icon } : undefined,
-    });
-  }, []);
+      return toastManager.add({
+        type: options.variant,
+        description: options.description,
+        timeout: options.timeout ?? 4000,
+        positionerProps,
+        data: options.icon ? { icon: options.icon } : undefined,
+      });
+    },
+    [toastManager],
+  );
 
-  const closeToast = useCallback((id: string) => {
-    interviewToastManager.close(id);
-  }, []);
+  const closeToast = useCallback(
+    (id: string) => {
+      toastManager.close(id);
+    },
+    [toastManager],
+  );
 
   // Auto-close toasts when constraints transition from unmet -> met
   useEffect(() => {
@@ -104,14 +111,14 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
       if (constraint.isMet && prevValues[index] === false) {
         const toastId = activeToasts.get(index);
         if (toastId) {
-          interviewToastManager.close(toastId);
+          toastManager.close(toastId);
           activeToasts.delete(index);
         }
       }
     });
 
     prevIsMetRef.current = constraints.map((c) => c.isMet);
-  }, [constraints]);
+  }, [constraints, toastManager]);
 
   // Register the keyed beforeNext handler
   useEffect(() => {
@@ -139,7 +146,7 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
               constraint.toast.anchor,
             );
 
-            const toastId = interviewToastManager.add({
+            const toastId = toastManager.add({
               type: constraint.toast.variant,
               description: constraint.toast.description,
               timeout: constraint.toast.timeout ?? 4000,
@@ -170,11 +177,11 @@ function useStageValidation({ constraints }: UseStageValidationOptions) {
       registerBeforeNext('stageValidation', null);
 
       for (const toastId of activeToasts.values()) {
-        interviewToastManager.close(toastId);
+        toastManager.close(toastId);
       }
       activeToasts.clear();
     };
-  }, [registerBeforeNext]);
+  }, [registerBeforeNext, toastManager]);
 
   return { showToast, closeToast };
 }

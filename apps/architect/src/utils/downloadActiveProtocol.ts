@@ -1,9 +1,44 @@
+import { createElement } from 'react';
+
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { AppErrorMessage, AppMessage } from '@codaco/app-i18n/react';
 import type { DialogContextType } from '@codaco/fresco-ui/dialogs/DialogProvider';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { exportNetcanvas } from '~/ducks/modules/userActions/userActions';
 import type { AppDispatch } from '~/ducks/store';
 
 import { reportError } from './reportError';
+const utilityMessages = defineMessages({
+  someAssetsCouldNotBeExported: {
+    id: 'architect.utility.utils.downloadActiveProtocol.someAssetsCouldNotBeExported',
+    defaultMessage: 'Some assets could not be exported',
+    description: 'The title text in utils / downloadActiveProtocol.',
+  },
+  oK: {
+    id: 'architect.utility.utils.downloadActiveProtocol.oK',
+    defaultMessage: 'OK',
+    description: 'The label text in utils / downloadActiveProtocol.',
+  },
+  yourProtocolCouldNotBeDownloaded: {
+    id: 'architect.utility.utils.downloadActiveProtocol.yourProtocolCouldNotBeDownloaded',
+    defaultMessage: 'Your protocol could not be downloaded',
+    description: 'The title text in utils / downloadActiveProtocol.',
+  },
+  somethingWentWrongWhilePreparingThe: {
+    id: 'architect.utility.utils.downloadActiveProtocol.somethingWentWrongWhilePreparingThe',
+    defaultMessage:
+      'Something went wrong while preparing the file. Please try again.',
+    description: 'The description text in utils / downloadActiveProtocol.',
+  },
+});
+const finalMessages = defineMessages({
+  skippedAssets: {
+    id: 'architect.final.utils.downloadActiveProtocol.skippedAssets',
+    defaultMessage:
+      'Your protocol was downloaded, but these assets could not be included and are missing from the file: {assetList}.',
+    description: 'Researcher-facing Architect control or feedback.',
+  },
+});
 
 /**
  * Downloads the open protocol as a .netcanvas file, reporting both partial and
@@ -23,15 +58,23 @@ export const downloadActiveProtocol = async (
       exportNetcanvas(protocol),
     ).unwrap();
     if (skippedAssets.length > 0) {
-      const assetList = skippedAssets.map((asset) => asset.name).join(', ');
       void openDialog({
         type: 'acknowledge',
         intent: 'warning',
-        title: 'Some assets could not be exported',
-        description:
-          'Your protocol was downloaded, but these assets could not be ' +
-          `included and are missing from the file: ${assetList}.`,
-        actions: { primary: { label: 'OK', value: true } },
+        title: createElement(AppMessage, {
+          message: utilityMessages.someAssetsCouldNotBeExported,
+        }),
+        description: createElement(AppErrorMessage, {
+          error: createMessageError(finalMessages.skippedAssets, {
+            assetList: { list: skippedAssets.map((asset) => asset.name) },
+          }),
+        }),
+        actions: {
+          primary: {
+            label: createElement(AppMessage, { message: utilityMessages.oK }),
+            value: true,
+          },
+        },
       });
     }
     return true;
@@ -43,10 +86,18 @@ export const downloadActiveProtocol = async (
     void openDialog({
       type: 'acknowledge',
       intent: 'destructive',
-      title: 'Your protocol could not be downloaded',
-      description:
-        'Something went wrong while preparing the file. Please try again.',
-      actions: { primary: { label: 'OK', value: true } },
+      title: createElement(AppMessage, {
+        message: utilityMessages.yourProtocolCouldNotBeDownloaded,
+      }),
+      description: createElement(AppMessage, {
+        message: utilityMessages.somethingWentWrongWhilePreparingThe,
+      }),
+      actions: {
+        primary: {
+          label: createElement(AppMessage, { message: utilityMessages.oK }),
+          value: true,
+        },
+      },
     });
     return false;
   }

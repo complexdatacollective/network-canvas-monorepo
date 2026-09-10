@@ -1,3 +1,5 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppErrorMessage, useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { useField } from '@codaco/fresco-ui/form/hooks/useField';
@@ -14,6 +16,52 @@ import {
   HiddenFieldValue,
   useFieldHandlers,
 } from '../sections/Form/withFieldsHandlers';
+const messages = defineMessages({
+  thisAttributeCannotBeSaved: {
+    id: 'architect.editableAttributesList.composerAttributeFields.thisAttributeCannotBeSaved',
+    defaultMessage: 'This attribute cannot be saved',
+    description:
+      'Visible text in components / EditableAttributesList / ComposerAttributeFields.',
+  },
+  createOrSelectACodebookAttribute: {
+    id: 'architect.editableAttributesList.composerAttributeFields.createOrSelectACodebookAttribute',
+    defaultMessage:
+      'Create or select a codebook attribute. If you select an existing attribute, any changes you make to the input control or validation options will also change other uses of this attribute.',
+    description:
+      'The hint text in components / EditableAttributesList / ComposerAttributeFields.',
+  },
+  displayCaption: {
+    id: 'architect.editableAttributesList.composerAttributeFields.displayCaption',
+    defaultMessage: 'Display caption',
+    description:
+      'The title text in components / EditableAttributesList / ComposerAttributeFields.',
+  },
+  optionallyCustomizeHowThisAttributeIs: {
+    id: 'architect.editableAttributesList.composerAttributeFields.optionallyCustomizeHowThisAttributeIs',
+    defaultMessage:
+      'Optionally customize how this attribute is named in the side panel.',
+    description:
+      'The description text in components / EditableAttributesList / ComposerAttributeFields.',
+  },
+  caption: {
+    id: 'architect.editableAttributesList.composerAttributeFields.caption',
+    defaultMessage: 'Caption',
+    description:
+      'The label text in components / EditableAttributesList / ComposerAttributeFields.',
+  },
+  whenLeftEmptyTheAttributeName: {
+    id: 'architect.editableAttributesList.composerAttributeFields.whenLeftEmptyTheAttributeName',
+    defaultMessage: 'When left empty, the attribute name is shown instead.',
+    description:
+      'The hint text in components / EditableAttributesList / ComposerAttributeFields.',
+  },
+  defaultsToTheAttributeName: {
+    id: 'architect.editableAttributesList.composerAttributeFields.defaultsToTheAttributeName',
+    defaultMessage: 'Defaults to the attribute name',
+    description:
+      'The placeholder text in components / EditableAttributesList / ComposerAttributeFields.',
+  },
+});
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
@@ -36,6 +84,7 @@ export const COMPOSER_CONTRADICTION_FIELD = '_contradiction';
  * to. `data-field-name` is what `focusFirstError` scrolls to.
  */
 const ContradictionAlert = () => {
+  const intl = useAppIntl();
   useField({ name: COMPOSER_CONTRADICTION_FIELD });
   const errors = useFormStore((state) =>
     state.getFieldErrors(COMPOSER_CONTRADICTION_FIELD),
@@ -45,8 +94,16 @@ const ContradictionAlert = () => {
     <div data-field-name={COMPOSER_CONTRADICTION_FIELD}>
       {errors && errors.length > 0 && (
         <Alert variant="destructive" className="my-7">
-          <AlertTitle>This attribute cannot be saved</AlertTitle>
-          <AlertDescription>{errors.join(' ')}</AlertDescription>
+          <AlertTitle>
+            {intl.formatMessage(messages.thisAttributeCannotBeSaved)}
+          </AlertTitle>
+          <AlertDescription>
+            {errors.map((error) => (
+              <p key={error}>
+                <AppErrorMessage error={error} />
+              </p>
+            ))}
+          </AlertDescription>
         </Alert>
       )}
     </div>
@@ -76,6 +133,7 @@ const ComposerAttributeFields = ({
   editIndex,
   item = {},
 }: ComposerAttributeFieldsProps) => {
+  const intl = useAppIntl();
   const fields = useFieldHandlers({
     entity: entity ?? '',
     type: type ?? '',
@@ -104,22 +162,24 @@ const ComposerAttributeFields = ({
         item={item}
         fields={fields}
         withSectionTitles
-        hint="Create or select a codebook attribute. If you select an existing attribute, any changes you make to the input control or validation options will also change other uses of this attribute."
+        hint={intl.formatMessage(messages.createOrSelectACodebookAttribute)}
       />
 
       <Section
-        title="Display caption"
-        description="Optionally customize how this attribute is named in the side panel."
+        title={intl.formatMessage(messages.displayCaption)}
+        description={intl.formatMessage(
+          messages.optionallyCustomizeHowThisAttributeIs,
+        )}
         disabled={!fields.variable}
       >
         <ArchitectField
           name="label"
-          label="Caption"
-          hint="When left empty, the attribute name is shown instead."
+          label={intl.formatMessage(messages.caption)}
+          hint={intl.formatMessage(messages.whenLeftEmptyTheAttributeName)}
           component={InputField}
           initialValue={asString(item.label)}
           validation={{}}
-          placeholder="Defaults to the attribute name"
+          placeholder={intl.formatMessage(messages.defaultsToTheAttributeName)}
         />
       </Section>
 

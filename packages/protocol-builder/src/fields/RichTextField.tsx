@@ -25,6 +25,11 @@ type RichTextFieldProps = CreateFormFieldProps<
      * Restricts the editor to a single paragraph of markdown (no headings,
      * lists, links or rules). Named for the markdown mode rather than `inline`,
      * which fresco-ui's `Field` reserves for its label/control layout.
+     *
+     * The editor is told too, not just the markdown conversion: the restriction
+     * is a promise about the value, and a document the editor was free to split
+     * left the serializer joining two paragraphs into one line by inventing a
+     * separator — "Never met" saved as " Never met".
      */
     'singleLine'?: boolean;
     /** Toolbar features to withhold, e.g. `['bold', 'lists']`. */
@@ -75,9 +80,9 @@ const RichTextField = ({
   //
   // So hand the editor back its OWN last document whenever that document
   // still serialises to the markdown this field holds — same content, no
-  // rewrite, no reflow. A value that did NOT come from this editor (undo,
-  // redo, a restored draft, a new stage) does not match and normalises as
-  // before.
+  // rewrite, no reflow. A value that did NOT come from this editor (a write
+  // made elsewhere in the form, a different stage) does not match and
+  // normalises as before.
   const lastEmitted = useRef<{
     markdown: string;
     content: RichTextContent | undefined;
@@ -93,8 +98,8 @@ const RichTextField = ({
     lastEmitted.current = { markdown: nextMarkdown, content: nextContent };
 
     // The editor emits a change as it mounts. Committing a value that
-    // round-trips to the same document would dirty the stage — and add a draft
-    // timeline entry — merely by rendering the field.
+    // round-trips to the same document would dirty the stage merely by
+    // rendering the field.
     if (
       isEqual(
         normalizedContent,
@@ -110,6 +115,7 @@ const RichTextField = ({
   return (
     <RichTextEditorField
       {...props}
+      singleLine={singleLine}
       changeMode="input"
       toolbarOptions={toolbarOptions}
       value={content}

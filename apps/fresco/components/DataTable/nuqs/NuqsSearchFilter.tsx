@@ -1,10 +1,11 @@
 'use client';
-
 import { debounce } from 'es-toolkit';
 import { Search } from 'lucide-react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import { nuqsTableUrlKey, useNuqsTable } from './NuqsTableProvider';
@@ -28,10 +29,13 @@ type NuqsSearchFilterProps = {
  */
 export default function NuqsSearchFilter({
   paramKey,
-  placeholder = 'Filter...',
+  placeholder: placeholderProp,
   className,
   debounceMs = 300,
 }: NuqsSearchFilterProps) {
+  const intl = useAppIntl();
+  const placeholder =
+    placeholderProp ?? intl.formatMessage(messages.NuqsSearchFilterplaceholder);
   const { prefix, startTransition } = useNuqsTable();
   const urlKey = nuqsTableUrlKey(prefix, paramKey);
 
@@ -92,3 +96,11 @@ export default function NuqsSearchFilter({
     />
   );
 }
+
+const messages = defineMessages({
+  NuqsSearchFilterplaceholder: {
+    id: 'fresco.tableFilters.NuqsSearchFilterplaceholder',
+    defaultMessage: 'Filter...',
+    description: 'Researcher-facing tableFilters: Filter...',
+  },
+});

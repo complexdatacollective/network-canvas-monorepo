@@ -6,6 +6,7 @@ import { AnimatePresence, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
+import { useAppIntl } from '@codaco/app-i18n/react';
 import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import Node from '@codaco/fresco-ui/Node';
@@ -44,6 +45,7 @@ import { getCodebook } from '../../store/modules/protocol';
 import { updateNode, updateStageMetadata } from '../../store/modules/session';
 import { useAppDispatch } from '../../store/store';
 import type { StageProps } from '../../types';
+import { interfaceMessages } from '../messages';
 import ComposerCanvas, { type NodeTapModifiers } from './ComposerCanvas';
 import ComposerDrawer from './ComposerDrawer';
 import { nextGridPosition } from './gridPlacement';
@@ -84,6 +86,7 @@ type DrawerEditor = {
 };
 
 const NetworkComposer = (stageProps: NetworkComposerProps) => {
+  const intl = useAppIntl();
   const { stage } = stageProps;
   const dispatch = useAppDispatch();
   const { currentStep } = useCurrentStep();
@@ -675,14 +678,18 @@ const NetworkComposer = (stageProps: NetworkComposerProps) => {
               className="pointer-events-auto w-full max-w-4xl"
             >
               <ScrollArea
-                aria-label="Group membership options"
+                aria-label={intl.formatMessage(
+                  interfaceMessages.groupMembershipOptions,
+                )}
                 orientation="vertical"
                 className="h-auto max-h-64 max-w-full"
                 viewportClassName="px-3"
               >
                 <ToggleGroup
                   multiple
-                  aria-label="Group membership for selected people"
+                  aria-label={intl.formatMessage(
+                    interfaceMessages.groupMembershipPeople,
+                  )}
                   value={selectedGroupValues}
                   onValueChange={handleSelectionGroupValueChange}
                   className="grid w-full auto-rows-fr grid-cols-[repeat(auto-fit,minmax(--spacing(36),1fr))] gap-2"

@@ -4,6 +4,12 @@ import { FileDown, Upload } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { type FileRejection, useDropzone } from 'react-dropzone';
 
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import {
+  AppErrorMessage,
+  AppMessage,
+  useAppIntl,
+} from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import {
   Popover,
@@ -15,12 +21,90 @@ import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import { importParticipants } from '~/actions/participants';
-import { csvDataSchema } from '~/schemas/participant';
+import { createParticipantSchemas } from '~/schemas/participant';
 import parseCSV from '~/utils/parseCSV';
 
 import selectParticipantImportFile from './selectParticipantImportFile';
 
+const messages = defineMessages({
+  copyDropFileHere: {
+    id: 'fresco.participants.ImportParticipants.copyDropFileHere',
+    defaultMessage: 'Drop file here',
+    description:
+      'Researcher-facing participants / ImportParticipants: Drop file here',
+  },
+  copyImportParticipants: {
+    id: 'fresco.participants.ImportParticipants.copyImportParticipants',
+    defaultMessage: 'Import participants',
+    description:
+      'Researcher-facing participants / ImportParticipants: Import participants',
+  },
+  error: {
+    id: 'fresco.participants.ImportParticipants.error',
+    defaultMessage: 'Error',
+    description: 'Researcher-facing participants / ImportParticipants: Error',
+  },
+  fileMustBeAValidCSVWith: {
+    id: 'fresco.participants.ImportParticipants.fileMustBeAValidCSVWith',
+    defaultMessage: 'File must be a valid CSV with label or identifier columns',
+    description:
+      'Researcher-facing participants / ImportParticipants: File must be a valid CSV with label or identifier columns',
+  },
+  importCompletedWithCollisions: {
+    id: 'fresco.participants.ImportParticipants.importCompletedWithCollisions',
+    defaultMessage: 'Import completed with collisions',
+    description:
+      'Researcher-facing participants / ImportParticipants: Import completed with collisions',
+  },
+  yourParticipantsWereImportedSuccessfullyButSome: {
+    id: 'fresco.participants.ImportParticipants.yourParticipantsWereImportedSuccessfullyButSome',
+    defaultMessage:
+      'Your participants were imported successfully, but some identifiers collided with existing participants and were not imported.',
+    description:
+      'Researcher-facing participants / ImportParticipants: Your participants were imported successfully, but some identifiers collided with existing participants and were not impo',
+  },
+  participantsImported: {
+    id: 'fresco.participants.ImportParticipants.participantsImported',
+    defaultMessage: 'Participants imported',
+    description:
+      'Researcher-facing participants / ImportParticipants: Participants imported',
+  },
+  participantsHaveBeenImportedSuccessfully: {
+    id: 'fresco.participants.ImportParticipants.participantsHaveBeenImportedSuccessfully',
+    defaultMessage: 'Participants have been imported successfully',
+    description:
+      'Researcher-facing participants / ImportParticipants: Participants have been imported successfully',
+  },
+  anErrorOccurredWhileImportingParticipants: {
+    id: 'fresco.participants.ImportParticipants.anErrorOccurredWhileImportingParticipants',
+    defaultMessage: 'An error occurred while importing participants',
+    description:
+      'Researcher-facing participants / ImportParticipants: An error occurred while importing participants',
+  },
+  importParticipants: {
+    id: 'fresco.participants.ImportParticipants.importParticipants',
+    defaultMessage: 'Import Participants',
+    description:
+      'Researcher-facing participants / ImportParticipants: Import Participants',
+  },
+  dragDropACsvFileHere: {
+    id: 'fresco.participants.ImportParticipants.dragDropACsvFileHere',
+    defaultMessage: 'Drag & drop a <tag1>.csv</tag1> file here',
+    description:
+      'Researcher-facing participants / ImportParticipants: Drag & drop a .csv file here',
+  },
+  browseFiles: {
+    id: 'fresco.participants.ImportParticipants.browseFiles',
+    defaultMessage: 'Browse files',
+    description:
+      'Researcher-facing participants / ImportParticipants: Browse files',
+  },
+});
+
 export default function ImportParticipants() {
+  const intl = useAppIntl();
+  const { csvDataSchema } = createParticipantSchemas(createMessageError);
+
   const [open, setOpen] = useState(false);
   const { add } = useToast();
 
@@ -32,9 +116,10 @@ export default function ImportParticipants() {
 
         if (!parsed.success) {
           add({
-            title: 'Error',
-            description:
-              'File must be a valid CSV with label or identifier columns',
+            title: <AppMessage message={messages.error} />,
+            description: (
+              <AppMessage message={messages.fileMustBeAValidCSVWith} />
+            ),
             variant: 'destructive',
           });
           return;
@@ -44,8 +129,8 @@ export default function ImportParticipants() {
 
         if (result.error) {
           add({
-            title: 'Error',
-            description: result.error,
+            title: <AppMessage message={messages.error} />,
+            description: <AppErrorMessage error={result.error} />,
             variant: 'destructive',
           });
           return;
@@ -56,13 +141,19 @@ export default function ImportParticipants() {
           result.existingParticipants.length > 0
         ) {
           add({
-            title: 'Import completed with collisions',
+            title: (
+              <AppMessage message={messages.importCompletedWithCollisions} />
+            ),
             description: (
               <>
                 <p>
-                  Your participants were imported successfully, but some
-                  identifiers collided with existing participants and were not
-                  imported.
+                  {
+                    <AppMessage
+                      message={
+                        messages.yourParticipantsWereImportedSuccessfullyButSome
+                      }
+                    />
+                  }
                 </p>
                 {result.existingParticipants.length < 5 && (
                   <ul>
@@ -77,8 +168,12 @@ export default function ImportParticipants() {
           });
         } else {
           add({
-            title: 'Participants imported',
-            description: 'Participants have been imported successfully',
+            title: <AppMessage message={messages.participantsImported} />,
+            description: (
+              <AppMessage
+                message={messages.participantsHaveBeenImportedSuccessfully}
+              />
+            ),
             variant: 'success',
           });
         }
@@ -88,13 +183,17 @@ export default function ImportParticipants() {
         // eslint-disable-next-line no-console
         console.log(e);
         add({
-          title: 'Error',
-          description: 'An error occurred while importing participants',
+          title: <AppMessage message={messages.error} />,
+          description: (
+            <AppMessage
+              message={messages.anErrorOccurredWhileImportingParticipants}
+            />
+          ),
           variant: 'destructive',
         });
       }
     },
-    [add],
+    [csvDataSchema, add],
   );
 
   const handleDrop = useCallback(
@@ -129,9 +228,13 @@ export default function ImportParticipants() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={<Button icon={<FileDown />} />}>
-        Import Participants
+        {intl.formatMessage(messages.importParticipants)}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-full max-w-md">
+      <PopoverContent
+        aria-label={intl.formatMessage(messages.importParticipants)}
+        align="end"
+        className="w-full max-w-md"
+      >
         <div
           {...getRootProps()}
           className={cx(
@@ -156,14 +259,18 @@ export default function ImportParticipants() {
           </div>
           <div>
             <Heading level="h4" margin="none">
-              {isDragActive ? 'Drop file here' : 'Import participants'}
+              {isDragActive
+                ? intl.formatMessage(messages.copyDropFileHere)
+                : intl.formatMessage(messages.copyImportParticipants)}
             </Heading>
             <Paragraph margin="none" emphasis="muted" className="mt-1 text-sm">
-              Drag & drop a <code>.csv</code> file here
+              {intl.formatMessage(messages.dragDropACsvFileHere, {
+                tag1: (chunks) => <code>{chunks}</code>,
+              })}
             </Paragraph>
           </div>
           <Button size="sm" onClick={openFileDialog}>
-            Browse files
+            {intl.formatMessage(messages.browseFiles)}
           </Button>
         </div>
       </PopoverContent>

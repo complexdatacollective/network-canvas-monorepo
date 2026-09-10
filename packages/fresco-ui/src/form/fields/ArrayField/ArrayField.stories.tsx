@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { action } from 'storybook/actions';
 import { useArgs } from 'storybook/preview-api';
 
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+
 import { Button, IconButton, MotionButton } from '../../../Button';
 import Dialog from '../../../dialogs/Dialog';
 import { withDialogProvider } from '../../../storybook-support/withDialogProvider';
@@ -229,7 +231,13 @@ immediately upon creation.
     },
     'itemTemplate': {
       control: false,
-      description: 'Function that returns a new item template when adding',
+      description:
+        'Optional function that returns a new item template when adding. Omitted, a new item starts empty.',
+    },
+    'itemLabel': {
+      control: false,
+      description:
+        'MessageDescriptor for this list’s own noun for one of its rows, used to name the row in the delete confirmation.',
     },
   },
   args: {
@@ -1011,6 +1019,109 @@ export const ManyItems: Story = {
           updateArgs({ value: newValue });
           action('onChange')(newValue);
         }}
+      />
+    );
+  },
+};
+
+// ============================================================================
+// Naming the rows
+// ============================================================================
+
+// Story-only descriptors. Stories are excluded from message extraction, so
+// these are never shipped copy — they stand in for the nouns a real list
+// passes from its own catalog.
+const promptLabel: MessageDescriptor = {
+  id: 'frescoUiStories.arrayField.prompt',
+  defaultMessage: 'prompt',
+};
+
+const contactLabel: MessageDescriptor = {
+  id: 'frescoUiStories.arrayField.contact',
+  defaultMessage: 'contact',
+};
+
+/**
+ * A list that has a word for its rows says what is being deleted.
+ */
+export const NamedRows: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**Naming the rows**
+
+Pass \`itemLabel\` — a \`MessageDescriptor\`, so the word is extracted and
+translated like any other — and the delete confirmation asks "Delete this
+prompt?" instead of the generic "Are you sure?", and its action reads
+"Delete prompt".
+
+Without it the confirmation keeps that generic wording, which is all a list
+with no word for its rows can honestly say.
+        `,
+      },
+    },
+  },
+  render: function Render() {
+    const [prompts, setPrompts] = useState<SimpleItemType[]>([
+      { id: '1', label: 'Who do you turn to for advice?' },
+      { id: '2', label: 'Who have you spent time with recently?' },
+    ]);
+
+    return (
+      <ArrayField<SimpleItemType>
+        sortable
+        itemLabel={promptLabel}
+        addButtonLabel="Add prompt"
+        emptyStateMessage="No prompts yet."
+        value={prompts}
+        onChange={(newValue) => {
+          setPrompts(newValue ?? []);
+          action('onChange')(newValue);
+        }}
+        itemTemplate={() => ({ id: crypto.randomUUID(), label: '' })}
+        itemComponent={SimpleInlineItem}
+      />
+    );
+  },
+};
+
+/**
+ * A list whose every field is answered in the row dialog passes no
+ * `itemTemplate`: adding opens the editor on an empty row.
+ */
+export const DialogEditingWithoutTemplate: Story = {
+  parameters: {
+    docs: {
+      description: {
+        story: `
+**No item template**
+
+\`itemTemplate\` is optional. Omit it when every field of a new row is answered
+in the editor and there is nothing to seed: "Add" opens the editor on an empty
+row, and — with \`immediateAdd\`, or with no \`editorComponent\` — appends an
+empty object instead.
+        `,
+      },
+    },
+  },
+  render: function Render() {
+    const [contacts, setContacts] = useState<ContactItem[]>([
+      { id: '1', name: 'John Doe', email: 'john@example.com' },
+    ]);
+
+    return (
+      <ArrayField<ContactItem>
+        itemLabel={contactLabel}
+        addButtonLabel="Add Contact"
+        emptyStateMessage="No contacts yet. Add your first contact!"
+        value={contacts}
+        onChange={(newValue) => {
+          setContacts(newValue ?? []);
+          action('onChange')(newValue);
+        }}
+        itemComponent={ContactDisplayItem}
+        editorComponent={ContactDialogEditor}
       />
     );
   },

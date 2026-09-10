@@ -3,8 +3,12 @@
 import { Drawer } from '@base-ui/react/drawer';
 import { type ReactNode, useRef, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import CloseButton from '@codaco/fresco-ui/CloseButton';
 import { usePortalContainer } from '@codaco/fresco-ui/PortalContainer';
+
+import { interfaceMessages } from '../messages';
 
 type ComposerDrawerProps = {
   open: boolean;
@@ -35,6 +39,7 @@ export default function ComposerDrawer({
   title,
   children,
 }: ComposerDrawerProps) {
+  const intl = useAppIntl();
   const portalContainer = usePortalContainer();
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const resizeStart = useRef<{ x: number; width: number } | null>(null);
@@ -107,7 +112,7 @@ export default function ComposerDrawer({
             <div
               role="separator"
               aria-orientation="vertical"
-              aria-label="Resize panel"
+              aria-label={intl.formatMessage(interfaceMessages.resizePanel)}
               aria-valuemin={MIN_WIDTH}
               aria-valuemax={MAX_WIDTH}
               aria-valuenow={Math.round(width)}
@@ -122,7 +127,13 @@ export default function ComposerDrawer({
               <Drawer.Title className="truncate text-lg font-semibold">
                 {title}
               </Drawer.Title>
-              <Drawer.Close render={<CloseButton aria-label="Close" />} />
+              <Drawer.Close
+                render={
+                  <CloseButton
+                    aria-label={intl.formatMessage(commonMessages.close)}
+                  />
+                }
+              />
             </div>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               {children}

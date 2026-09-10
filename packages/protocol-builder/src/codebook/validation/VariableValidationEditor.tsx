@@ -1,7 +1,12 @@
 import { useId, useMemo } from 'react';
 
+import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
+import type { IntlShape } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
+import { missingComparisonTargetMessage } from '../codebookMessages.ts';
 import {
   completeRuleValues,
   findLegalReferenceTargets,
@@ -26,6 +31,27 @@ type VariableValidationEditorProps = Readonly<{
   readOnly?: boolean;
   className?: string;
 }>;
+
+const messages = defineMessages({
+  noCompatibleTarget: {
+    id: 'protocolBuilder.variableValidation.noCompatibleTarget',
+    defaultMessage: 'No compatible attribute can satisfy this comparison.',
+    description:
+      'Shown beneath a comparison rule the researcher cannot switch on, because no other attribute of the same kind could satisfy it without contradicting the rules already set. "Attribute" is a codebook variable.',
+  },
+  selectTarget: {
+    id: 'protocolBuilder.variableValidation.selectTarget',
+    defaultMessage: 'Select an attribute',
+    description:
+      'The unchosen entry of the control naming which other attribute a comparison rule judges this one against.',
+  },
+  deletedTarget: {
+    id: 'protocolBuilder.variableValidation.deletedTarget',
+    defaultMessage: 'Deleted attribute ({id})',
+    description:
+      'Entry standing in for the attribute a comparison rule points at after it has been deleted from the codebook, so the researcher can see what the rule still refers to. id is that attribute’s stored record id.',
+  },
+});
 
 type VariableMetadata = Readonly<{ name: string; type: string }>;
 
@@ -76,6 +102,12 @@ const withoutRule = (
   return next;
 };
 
+const readIssue = (
+  issue: string | undefined,
+  intl: IntlShape,
+): string | undefined =>
+  issue === undefined ? undefined : (formatMessageError(issue, intl) ?? issue);
+
 const initialNumericValue = (
   validation: Readonly<ValidationMap>,
   ruleKey: string,
@@ -103,10 +135,11 @@ export default function VariableValidationEditor({
   readOnly = false,
   className,
 }: VariableValidationEditorProps) {
+  const intl = useAppIntl();
   const editorId = useId();
   const groups = useMemo(
-    () => getGroupedValidationsForVariableType(variableType, entity),
-    [entity, variableType],
+    () => getGroupedValidationsForVariableType(variableType, entity, intl),
+    [entity, intl, variableType],
   );
   const candidates = useMemo(
     () =>
@@ -158,14 +191,21 @@ export default function VariableValidationEditor({
       typeof target === 'string' &&
       !Object.hasOwn(allVariables, target),
   )?.[0];
+  // A rule map's verdict is a plain string carrying either this package's own
+  // encoded descriptor or a wording the contradiction analyser wrote, and the
+  // paragraph below is our own markup rather than a field's error region, so
+  // it is decoded here and passed through untouched when it is not one of ours.
   const issue =
     missingTargetRule === undefined
-      ? ruleMapIssue(value, {
-          allVariables: { ...allVariables },
-          currentVariableId,
-          variableType,
-        })
-      : 'The selected comparison attribute no longer exists.';
+      ? readIssue(
+          ruleMapIssue(value, {
+            allVariables: { ...allVariables },
+            currentVariableId,
+            variableType,
+          }),
+          intl,
+        )
+      : intl.formatMessage(missingComparisonTargetMessage);
   const issueId = issue === undefined ? undefined : `${editorId}-issue`;
 
   const toggleRule = (ruleKey: string, enabled: boolean) => {
@@ -225,21 +265,25 @@ export default function VariableValidationEditor({
                 </label>
                 {unavailable && (
                   <p className="text-sm text-current/70">
-                    No compatible attribute can satisfy this comparison.
+                    {intl.formatMessage(messages.noCompatibleTarget)}
                   </p>
                 )}
                 {enabled && isValidationWithNumberValue(rule.value) && (
-                  <InputField
+                  <UnconnectedField
+                    name={`${ruleId}-value`}
+                    // The checkbox beside it already says which rule this is,
+                    // so the field is named for assistive technology only.
+                    label={rule.label}
+                    labelHidden
+                    component={InputField}
                     type="number"
                     value={formatCommitted(selected)}
                     disabled={readOnly}
-                    aria-label={rule.label}
                     aria-invalid={
                       selected === null || selected === undefined
                         ? true
                         : undefined
                     }
-                    aria-describedby={issueId}
                     onChange={(text) =>
                       onChange(
                         withRule(
@@ -269,10 +313,14 @@ export default function VariableValidationEditor({
                       )
                     }
                   >
-                    <option value="">Select an attribute</option>
+                    <option value="">
+                      {intl.formatMessage(messages.selectTarget)}
+                    </option>
                     {selectedMissing && (
                       <option value={selected}>
-                        Deleted attribute ({selected})
+                        {intl.formatMessage(messages.deletedTarget, {
+                          id: selected,
+                        })}
                       </option>
                     )}
                     {candidates
@@ -294,9 +342,7 @@ export default function VariableValidationEditor({
       ))}
       {issue !== undefined && (
         <p id={issueId} role="alert" className="text-destructive mt-2 text-sm">
-          {missingTargetRule === undefined
-            ? issue
-            : 'The selected comparison attribute no longer exists.'}
+          {issue}
         </p>
       )}
     </div>

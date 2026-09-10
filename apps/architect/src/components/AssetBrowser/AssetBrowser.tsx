@@ -1,5 +1,8 @@
-import { useCallback } from 'react';
+import { createElement, useCallback } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage, useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Section from '@codaco/fresco-ui/Section';
 import useExternalDataDownload from '~/components/AssetBrowser/useExternalDataDownload';
@@ -9,6 +12,65 @@ import { deleteAsset } from '~/ducks/modules/protocol/assetManifest';
 
 import Assets from './Assets';
 import NewAsset from './NewAsset';
+const messages = defineMessages({
+  cannotDeleteResource: {
+    id: 'architect.assetBrowser.assetBrowser.cannotDeleteResource',
+    defaultMessage: 'Cannot delete resource',
+    description: 'The title text in components / AssetBrowser / AssetBrowser.',
+  },
+  cannotDeleteThisResourceBecauseIt: {
+    id: 'architect.assetBrowser.assetBrowser.cannotDeleteThisResourceBecauseIt',
+    defaultMessage:
+      'Cannot delete this resource because it is used within your interview. Remove any uses of the resource, and try again.',
+    description:
+      'The description text in components / AssetBrowser / AssetBrowser.',
+  },
+  oK: {
+    id: 'architect.assetBrowser.assetBrowser.oK',
+    defaultMessage: 'OK',
+    description: 'The label text in components / AssetBrowser / AssetBrowser.',
+  },
+  deleteResource: {
+    id: 'architect.assetBrowser.assetBrowser.deleteResource',
+    defaultMessage: 'Delete Resource?',
+    description: 'The title text in components / AssetBrowser / AssetBrowser.',
+  },
+  areYouSureYouWantTo: {
+    id: 'architect.assetBrowser.assetBrowser.areYouSureYouWantTo',
+    defaultMessage:
+      'Are you sure you want to delete this resource? You can restore it with Undo while this protocol remains open.',
+    description:
+      'The description text in components / AssetBrowser / AssetBrowser.',
+  },
+  deleteResourcea742f: {
+    id: 'architect.assetBrowser.assetBrowser.deleteResourcea742f',
+    defaultMessage: 'Delete Resource',
+    description:
+      'The confirmLabel text in components / AssetBrowser / AssetBrowser.',
+  },
+  importResource: {
+    id: 'architect.assetBrowser.assetBrowser.importResource',
+    defaultMessage: 'Import resource',
+    description: 'The title text in components / AssetBrowser / AssetBrowser.',
+  },
+  addANewResourceToThis: {
+    id: 'architect.assetBrowser.assetBrowser.addANewResourceToThis',
+    defaultMessage: 'Add a new resource to this protocol.',
+    description:
+      'The description text in components / AssetBrowser / AssetBrowser.',
+  },
+  resourceLibrary: {
+    id: 'architect.assetBrowser.assetBrowser.resourceLibrary',
+    defaultMessage: 'Resource library',
+    description: 'The title text in components / AssetBrowser / AssetBrowser.',
+  },
+  browseAndManageResourcesStoredIn: {
+    id: 'architect.assetBrowser.assetBrowser.browseAndManageResourcesStoredIn',
+    defaultMessage: 'Browse and manage resources stored in this protocol.',
+    description:
+      'The description text in components / AssetBrowser / AssetBrowser.',
+  },
+});
 
 // Props that the component accepts from outside
 type AssetBrowserOwnProps = {
@@ -24,6 +86,7 @@ const AssetBrowser = ({
   onSelect,
   disableDelete = false,
 }: AssetBrowserOwnProps) => {
+  const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const { confirm, openDialog } = useDialog();
 
@@ -48,20 +111,33 @@ const AssetBrowser = ({
         void openDialog({
           type: 'acknowledge',
           intent: 'info',
-          title: 'Cannot delete resource',
-          description:
-            'Cannot delete this resource because it is used within your interview. Remove any uses of the resource, and try again.',
-          actions: { primary: { label: 'OK', value: true } },
+          title: createElement(AppMessage, {
+            message: messages.cannotDeleteResource,
+          }),
+          description: createElement(AppMessage, {
+            message: messages.cannotDeleteThisResourceBecauseIt,
+          }),
+          actions: {
+            primary: {
+              label: createElement(AppMessage, { message: messages.oK }),
+              value: true,
+            },
+          },
         });
         return;
       }
 
       void confirm({
-        title: 'Delete Resource?',
-        description:
-          'Are you sure you want to delete this resource? You can restore it with Undo while this protocol remains open.',
-        confirmLabel: 'Delete Resource',
-        cancelLabel: 'Cancel',
+        title: createElement(AppMessage, { message: messages.deleteResource }),
+        description: createElement(AppMessage, {
+          message: messages.areYouSureYouWantTo,
+        }),
+        confirmLabel: createElement(AppMessage, {
+          message: messages.deleteResourcea742f,
+        }),
+        cancelLabel: createElement(AppMessage, {
+          message: commonMessages.cancel,
+        }),
         intent: 'destructive',
         onConfirm: () => {
           dispatch(deleteAsset(assetId));
@@ -74,14 +150,16 @@ const AssetBrowser = ({
   return (
     <>
       <Section
-        title="Import resource"
-        description="Add a new resource to this protocol."
+        title={intl.formatMessage(messages.importResource)}
+        description={intl.formatMessage(messages.addANewResourceToThis)}
       >
         <NewAsset onCreate={handleCreate} type={type} />
       </Section>
       <Section
-        title="Resource library"
-        description="Browse and manage resources stored in this protocol."
+        title={intl.formatMessage(messages.resourceLibrary)}
+        description={intl.formatMessage(
+          messages.browseAndManageResourcesStoredIn,
+        )}
       >
         <Assets
           onSelect={onSelect}

@@ -1,5 +1,7 @@
 import { omit } from 'es-toolkit/compat';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import Section from '@codaco/fresco-ui/Section';
 import RichText from '@codaco/protocol-builder/fields/RichTextField';
@@ -18,6 +20,74 @@ import {
   HiddenFieldValue,
   useFieldHandlers,
 } from './withFieldsHandlers';
+const messages = defineMessages({
+  selectAnAttribute: {
+    id: 'architect.sections.form.fieldFields.selectAnAttribute',
+    defaultMessage: 'Select an attribute',
+    description: 'The hint text in components / sections / Form / FieldFields.',
+  },
+  fieldConfiguration: {
+    id: 'architect.sections.form.fieldFields.fieldConfiguration',
+    defaultMessage: 'Field configuration',
+    description:
+      'The title text in components / sections / Form / FieldFields.',
+  },
+  writeTheParticipantFacingPromptAndChoose: {
+    id: 'architect.sections.form.fieldFields.writeTheParticipantFacingPromptAndChoose',
+    defaultMessage:
+      'Write the participant-facing prompt and choose how the response is collected.',
+    description:
+      'The description text in components / sections / Form / FieldFields.',
+  },
+  questionText: {
+    id: 'architect.sections.form.fieldFields.questionText',
+    defaultMessage: 'Question text',
+    description:
+      'The description text in components / sections / Form / FieldFields.',
+  },
+  theQuestionToDisplayToThe: {
+    id: 'architect.sections.form.fieldFields.theQuestionToDisplayToThe',
+    defaultMessage:
+      'The question to display to the participant. Supports markdown formatting.',
+    description: 'The hint text in components / sections / Form / FieldFields.',
+  },
+  whatIsThisPersonSName: {
+    id: 'architect.sections.form.fieldFields.whatIsThisPersonSName',
+    defaultMessage: "What is this person's name?",
+    description:
+      'The placeholder text in components / sections / Form / FieldFields.',
+  },
+  hintText: {
+    id: 'architect.sections.form.fieldFields.hintText',
+    defaultMessage: 'Hint text',
+    description:
+      'The label text in components / sections / Form / FieldFields.',
+  },
+  optionallyDisplayAMarkdownFormattedHintBelow: {
+    id: 'architect.sections.form.fieldFields.optionallyDisplayAMarkdownFormattedHintBelow',
+    defaultMessage:
+      'Optionally display a markdown-formatted hint below the question, to help participants understand how to answer.',
+    description: 'The hint text in components / sections / Form / FieldFields.',
+  },
+  eGSelectAllThatApply: {
+    id: 'architect.sections.form.fieldFields.eGSelectAllThatApply',
+    defaultMessage: 'e.g. Select all that apply...',
+    description:
+      'The placeholder text in components / sections / Form / FieldFields.',
+  },
+  showValidationHints: {
+    id: 'architect.sections.form.fieldFields.showValidationHints',
+    defaultMessage: 'Show validation hints',
+    description:
+      'The label text in components / sections / Form / FieldFields.',
+  },
+  automaticallyDisplayHintsDerivedFromThis: {
+    id: 'architect.sections.form.fieldFields.automaticallyDisplayHintsDerivedFromThis',
+    defaultMessage:
+      "Automatically display hints derived from this field's validation rules, helping participants understand input requirements.",
+    description: 'The hint text in components / sections / Form / FieldFields.',
+  },
+});
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
@@ -52,6 +122,7 @@ const FieldFields = ({
   editIndex,
   item = {},
 }: FieldFieldsProps) => {
+  const intl = useAppIntl();
   const fields = useFieldHandlers({
     entity: entity ?? '',
     type: type ?? '',
@@ -72,38 +143,47 @@ const FieldFields = ({
         type={type}
         item={item}
         fields={fields}
-        hint="Select an attribute"
+        hint={intl.formatMessage(messages.selectAnAttribute)}
       />
 
       <Section
-        title="Field configuration"
-        description="Write the participant-facing prompt and choose how the response is collected."
+        title={intl.formatMessage(messages.fieldConfiguration)}
+        description={intl.formatMessage(
+          messages.writeTheParticipantFacingPromptAndChoose,
+        )}
       >
-        <IssueAnchor fieldName="prompt" description="Question text" />
+        <IssueAnchor
+          fieldName="prompt"
+          description={intl.formatMessage(messages.questionText)}
+        />
         <ArchitectField
           name="prompt"
-          label="Question text"
-          hint="The question to display to the participant. Supports markdown formatting."
+          label={intl.formatMessage(messages.questionText)}
+          hint={intl.formatMessage(messages.theQuestionToDisplayToThe)}
           component={RichText}
           initialValue={asString(item.prompt)}
           validation={{ required: true }}
           singleLine
-          placeholder="What is this person's name?"
+          placeholder={intl.formatMessage(messages.whatIsThisPersonSName)}
         />
         <ArchitectField
           name="hint"
-          label="Hint text"
-          hint="Optionally display a markdown-formatted hint below the question, to help participants understand how to answer."
+          label={intl.formatMessage(messages.hintText)}
+          hint={intl.formatMessage(
+            messages.optionallyDisplayAMarkdownFormattedHintBelow,
+          )}
           component={RichText}
           initialValue={asString(item.hint)}
           validation={{}}
           singleLine
-          placeholder="e.g. Select all that apply..."
+          placeholder={intl.formatMessage(messages.eGSelectAllThatApply)}
         />
         <ArchitectField
           name="showValidationHints"
-          label="Show validation hints"
-          hint="Automatically display hints derived from this field's validation rules, helping participants understand input requirements."
+          label={intl.formatMessage(messages.showValidationHints)}
+          hint={intl.formatMessage(
+            messages.automaticallyDisplayHintsDerivedFromThis,
+          )}
           component={ToggleField}
           inline
           initialValue={item.showValidationHints === true}

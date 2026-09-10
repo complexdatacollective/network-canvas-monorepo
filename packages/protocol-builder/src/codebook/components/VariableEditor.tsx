@@ -1,5 +1,6 @@
 import { Lock, Plus, Trash2 } from 'lucide-react';
 import {
+  createElement,
   type FormEvent,
   useCallback,
   useEffect,
@@ -7,15 +8,25 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from 'react';
 
+import {
+  createMessageError,
+  defineMessages,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button, { IconButton } from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import {
+  EnclosingHeadingLevel,
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
@@ -28,45 +39,272 @@ import {
 import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
-import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
+import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
-  AuxiliaryCodebookDraftSession,
-  buildCreateVariableRequest,
-  buildUpdateVariableRequest,
+  documentWithCreatedVariable,
+  documentWithUpdatedVariable,
+  DuplicateVariableNameError,
   InvalidCodebookDraftError,
-  type AuxiliaryCodebookDraftFailure,
   type CodebookDraftIssue,
   type CodebookSubject,
   type CodebookVariableDraft,
 } from '../editing.ts';
+import {
+  type BooleanAnswer,
+  type BooleanAnswerIssues,
+  hasBooleanAnswerIssues,
+  heldBooleanAnswersReason,
+  optionsForShape,
+  optionsShapeFor,
+  type OptionsShape,
+  readBooleanAnswers,
+  readHeldBooleanAnswers,
+  validateBooleanAnswers,
+} from '../variableOptions.ts';
+import {
+  DEFAULT_DATE_RESOLUTION,
+  hasParameterIssues,
+  parametersForShape,
+  parameterShapeFor,
+  parametersWith,
+  PARAMETERS_BLOCK,
+  readParameters,
+  validateParameters,
+  type ParameterShape,
+} from '../variableParameters.ts';
+import { VARIABLE_TYPE_OPTIONS } from '../variableTypeLabels.ts';
+import type { CodebookWriteOutcome } from '../writes.ts';
+import VariableBooleanAnswerFields from './VariableBooleanAnswerFields.tsx';
+import VariableParameterFields from './VariableParameterFields.tsx';
 
-const VARIABLE_TYPE_OPTIONS = [
-  { label: 'Text', value: VariableTypes.text },
-  { label: 'Number', value: VariableTypes.number },
-  { label: 'Boolean', value: VariableTypes.boolean },
-  { label: 'Ordinal', value: VariableTypes.ordinal },
-  { label: 'Categorical', value: VariableTypes.categorical },
-  { label: 'Scalar', value: VariableTypes.scalar },
-  { label: 'Date', value: VariableTypes.datetime },
-  { label: 'Layout', value: VariableTypes.layout },
-  { label: 'Location', value: VariableTypes.location },
-] as const satisfies readonly Readonly<{
-  label: string;
-  value: VariableType;
-}>[];
+const messages = defineMessages({
+  createTitle: {
+    id: 'protocolBuilder.codebookVariable.createTitle',
+    defaultMessage: 'Create attribute',
+    description:
+      'Heading of the editor while a new attribute (a codebook variable) is being added to an entity.',
+  },
+  editTitle: {
+    id: 'protocolBuilder.codebookVariable.editTitle',
+    defaultMessage: 'Edit attribute',
+    description:
+      'Heading of the editor while an existing attribute (a codebook variable) is being changed.',
+  },
+  description: {
+    id: 'protocolBuilder.codebookVariable.description',
+    defaultMessage:
+      'Define the attribute name, data type, and any available values.',
+    description:
+      'Sentence under the editor heading saying what the researcher decides here. Available values are the options a participant may choose from.',
+  },
+  failureTitle: {
+    id: 'protocolBuilder.codebookVariable.failureTitle',
+    defaultMessage: 'Attribute not saved',
+    description:
+      'Heading of the alert shown when saving an attribute (a codebook variable) was refused. The reason follows underneath.',
+  },
+  submittingStatus: {
+    id: 'protocolBuilder.codebookVariable.submittingStatus',
+    defaultMessage: 'Saving attribute.',
+    description:
+      'Announced to screen reader users while the attribute is being saved. Not shown on screen.',
+  },
+  nameLabel: {
+    id: 'protocolBuilder.codebookVariable.nameLabel',
+    defaultMessage: 'Attribute name',
+    description:
+      'Label of the field holding the researcher’s own name for this attribute (a codebook variable).',
+  },
+  nameHint: {
+    id: 'protocolBuilder.codebookVariable.nameHint',
+    defaultMessage:
+      'This name is used when referring to the attribute and in exported data.',
+    description:
+      'Guidance under the attribute name field. Exported data is the file a researcher analyses after the interviews.',
+  },
+  typeLabel: {
+    id: 'protocolBuilder.codebookVariable.typeLabel',
+    defaultMessage: 'Attribute type',
+    description:
+      'Label of the field choosing what kind of answer this attribute records.',
+  },
+  typePlaceholder: {
+    id: 'protocolBuilder.codebookVariable.typePlaceholder',
+    defaultMessage: 'Select an attribute type',
+    description:
+      'Placeholder shown in the attribute type field before a choice is made.',
+  },
+  typeChangedElsewhere: {
+    id: 'protocolBuilder.codebookVariable.typeChangedElsewhere',
+    defaultMessage:
+      'The attribute type changed elsewhere. Close and reopen this editor before saving.',
+    description:
+      'Refusal shown under the attribute type field when someone else changed the type while this editor was open, which the draft in front of the researcher no longer matches.',
+  },
+  optionsLegend: {
+    id: 'protocolBuilder.codebookVariable.optionsLegend',
+    defaultMessage: 'Allowed values',
+    description:
+      'Heading over the list of answers a participant may choose from for this attribute. A required marker follows it.',
+  },
+  optionsHint: {
+    id: 'protocolBuilder.codebookVariable.optionsHint',
+    defaultMessage:
+      'Add at least two participant-facing labels and their stored values.',
+    description:
+      'Guidance under the allowed values heading. A label is what a participant reads; its stored value is what the export records.',
+  },
+  answersLegend: {
+    id: 'protocolBuilder.codebookVariable.answersLegend',
+    defaultMessage: 'The two answers',
+    description:
+      'Heading over the words on the two answers a yes/no attribute puts in front of a participant.',
+  },
+  answersHint: {
+    id: 'protocolBuilder.codebookVariable.answersHint',
+    defaultMessage:
+      'Write what the participant chooses between. Left empty, they are offered Yes and No. A negative answer is shown in red when it is selected.',
+    description:
+      'Guidance under the heading over a yes/no attribute’s two answers. Naming neither is a real answer: the interview offers its own translated Yes and No when the protocol names none.',
+  },
+  heldAnswersLegend: {
+    id: 'protocolBuilder.codebookVariable.heldAnswersLegend',
+    defaultMessage: 'The answers this attribute offers',
+    description:
+      'Heading over the read-only list of answers a yes/no attribute puts in front of a participant. Shown in place of the two answer fields when the attribute holds some other number of answers.',
+  },
+  heldAnswersCaption: {
+    id: 'protocolBuilder.codebookVariable.heldAnswersCaption',
+    defaultMessage:
+      'A yes/no attribute is written here as two answers, and this one offers a different number of them. They are shown as they are, and saving leaves them unchanged.',
+    description:
+      'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds some number of answers other than the two this editor writes. It says that saving the attribute does not alter them.',
+  },
+  heldAnswerValuesCaption: {
+    id: 'protocolBuilder.codebookVariable.heldAnswerValuesCaption',
+    defaultMessage:
+      'A yes/no attribute is written here as two answers, one recording “true” and the other “false”. This one’s answers record something else, so they are shown as they are, and saving leaves them unchanged.',
+    description:
+      'Caption over the read-only list of answers a yes/no attribute offers, shown when the attribute holds two answers that do not record one “true” and one “false” — both recording the same one, for instance. It says that saving the attribute does not alter them. “true” and “false” are the literal values the protocol stores and stay as they are.',
+  },
+  parametersLegend: {
+    id: 'protocolBuilder.codebookVariable.parametersLegend',
+    defaultMessage: 'What this control accepts',
+    description:
+      'Heading over the settings the input control an attribute is collected with takes — the bounds of a date, the words at each end of a sliding scale.',
+  },
+  parametersHint: {
+    id: 'protocolBuilder.codebookVariable.parametersHint',
+    defaultMessage:
+      'These settings belong to the input control this attribute is collected with, so they apply wherever it is asked for.',
+    description:
+      'Guidance under the heading over an input control’s settings, saying that they follow the attribute into every interview step that asks for it.',
+  },
+  optionLabelField: {
+    id: 'protocolBuilder.codebookVariable.optionLabelField',
+    defaultMessage: 'Option {index} label',
+    description:
+      'Label of the field holding what a participant reads for one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
+  },
+  optionValueField: {
+    id: 'protocolBuilder.codebookVariable.optionValueField',
+    defaultMessage: 'Option {index} value',
+    description:
+      'Label of the field holding what the export records for one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
+  },
+  removeOption: {
+    id: 'protocolBuilder.codebookVariable.removeOption',
+    defaultMessage: 'Remove option {index}',
+    description:
+      'Accessible name of the button that deletes one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name.',
+  },
+  addOption: {
+    id: 'protocolBuilder.codebookVariable.addOption',
+    defaultMessage: 'Add option',
+    description:
+      'Button that adds an empty row to the list of answers a participant may choose from.',
+  },
+  createSubmit: {
+    id: 'protocolBuilder.codebookVariable.createSubmit',
+    defaultMessage: 'Create attribute',
+    description:
+      'Button that saves a newly added attribute (a codebook variable).',
+  },
+  saveSubmit: {
+    id: 'protocolBuilder.codebookVariable.saveSubmit',
+    defaultMessage: 'Save attribute',
+    description:
+      'Button that saves the changes to an existing attribute (a codebook variable).',
+  },
+  lockedOptionsCaption: {
+    id: 'protocolBuilder.codebookVariable.lockedOptionsCaption',
+    defaultMessage:
+      'These values are managed by the interface and cannot be changed.',
+    description:
+      'Caption over the read-only list of allowed answers for an attribute whose answers one kind of interview step owns. An interface is one kind of interview step.',
+  },
+  lockedOptionLabelHeader: {
+    id: 'protocolBuilder.codebookVariable.lockedOptionLabelHeader',
+    defaultMessage: 'Label',
+    description:
+      'Column heading over what a participant reads for each allowed answer, in the read-only list of answers an interview step owns.',
+  },
+  lockedOptionValueHeader: {
+    id: 'protocolBuilder.codebookVariable.lockedOptionValueHeader',
+    defaultMessage: 'Value',
+    description:
+      'Column heading over what the export records for each allowed answer, in the read-only list of answers an interview step owns.',
+  },
+});
 
-const OPTION_TYPES = new Set<VariableType>([
-  VariableTypes.ordinal,
-  VariableTypes.categorical,
-]);
+const VARIABLE_EDITOR_PROPERTIES = ['name', 'type'] as const;
 
-const VARIABLE_EDITOR_PROPERTIES = ['name', 'type', 'options'] as const;
+/**
+ * What the answers surface REPLACES, which is `options` whatever it renders.
+ *
+ * Listed the way `parameters` is, and for the same reason: the document builder
+ * lays the draft OVER the prior variable, so a key the draft no longer carries
+ * would survive being taken away. Unconditional, though, where the parameters
+ * block is not — "this attribute offers no list at all" is one of the answers
+ * `optionsShapeFor` gives, and it is the answer for the control that cannot
+ * show one. A boolean collected with a `Toggle` is the case that matters: its
+ * variable schema has no `options` key, so a pair left behind by the control
+ * that showed them is a variable the codebook refuses outright.
+ */
+const OPTIONS_OWNED_PROPERTIES = ['options'] as const;
+
+/**
+ * Properties a type change invalidates, which are therefore replaced whole
+ * rather than carried over. Only rendered when something else brings them into
+ * this editor's hands: `parameters` are rendered whenever the chosen control
+ * takes any (see `PARAMETER_OWNED_PROPERTIES`), and validation rules belong to
+ * the separate variable-validation surface.
+ */
 const TYPE_OWNED_PROPERTIES = [
   'component',
   'parameters',
   'validation',
   'encrypted',
 ] as const;
+
+/**
+ * What the parameters surface REPLACES when it is rendered.
+ *
+ * Only `parameters`, and only because a block can be emptied: every setting
+ * cleared is an attribute that carries no `parameters` key at all, and the
+ * document builder lays the draft OVER the prior variable — so a key the draft
+ * no longer has would otherwise survive being deleted.
+ *
+ * `component` is not listed because it does not need to be: the surface
+ * renders only for a control that takes settings, so the draft always names
+ * one and always writes it. It is written, though — see
+ * `draftOwnedByVariableEditor`. A host opens this editor on the control the
+ * researcher has just chosen, which may not be the one the codebook still
+ * records, and settings authored for the new control written beside the old
+ * control's name are a variable the schema refuses outright (the two datetime
+ * schemas are strict, and each admits only its own keys).
+ */
+const PARAMETER_OWNED_PROPERTIES = ['parameters'] as const;
 
 type EditableOption = Readonly<{
   label: string;
@@ -76,21 +314,42 @@ type EditableOption = Readonly<{
 type VariableEditorCommonProps = Readonly<{
   /**
    * A stable identity for this opening of the editor. The host must change it
-   * for every open, even when a closing animation has not finished. The keyed
-   * inner editor then receives a fresh auxiliary draft session synchronously.
+   * for every open, even when a closing animation has not finished; the keyed
+   * inner editor then starts a fresh draft synchronously.
    */
   openId: string | number;
   subject: CodebookSubject;
   authoritativeDocument: Readonly<SectionDoc>;
   variableId: string;
   initialDraft: CodebookVariableDraft;
-  description: string;
-  createRequestId(): string;
-  onSubmitRequest(
-    request: CompoundEditRequest,
-  ): Promise<CompoundEditResult> | CompoundEditResult;
-  /** Receives the stable record id after the compound edit is accepted. */
-  onComplete(variableId: string): void;
+  /**
+   * Writes the section, and answers with what became of it.
+   *
+   * A refusal already written for the researcher — one naming the rule and the
+   * values that cannot both hold — is shown as it arrived rather than replaced
+   * by this package's copy for a save that did not happen.
+   *
+   * `ownedProperties` names the attribute's properties this submit set, for a
+   * caller that lays the result back over the section as the host holds it
+   * (`documentWithRebasedVariable`): the rest of the attribute belongs to the
+   * other surfaces over the same record. Absent from a create, which authors
+   * the whole attribute.
+   */
+  onSubmitDocument(
+    document: SectionDoc,
+    ownedProperties?: readonly string[],
+  ): Promise<CodebookWriteOutcome>;
+  /**
+   * Receives the stable record id after the save is accepted, and the
+   * researcher-facing name it was written under.
+   *
+   * The NAME as well as the id, because a caller that can no longer use what
+   * was created has to say where it went, and the id is a record key the
+   * researcher has never seen. Read off the draft this editor submitted rather
+   * than out of the codebook afterwards: what a caller is told is what it
+   * asked the host to write.
+   */
+  onComplete(variableId: string, variableName: string): void;
   onDraftChange?(draft: CodebookVariableDraft): void;
   allowedVariableTypes?: readonly VariableType[];
   lockedOptions?: readonly VariableOption[] | null;
@@ -117,10 +376,19 @@ type VariableEditorInstanceProps = VariableEditorProps extends infer TProps
   : never;
 
 /**
- * Host-neutral editor for a codebook variable's identity, type and options.
+ * Host-neutral editor for a codebook variable's identity, type, options and
+ * the settings its input control takes.
+ *
  * Validation rules deliberately belong to the separate variable-validation
  * surface; any unrendered draft properties are preserved and validated by the
- * request builder rather than silently normalised here.
+ * document builder rather than silently normalised here.
+ *
+ * Which of the optional blocks appears is decided by the attribute rather than
+ * by the host: a list of values for an attribute whose answer is chosen from
+ * one, the two named answers for a boolean the participant chooses between,
+ * and control settings for a control that takes any. Never more than one of
+ * them at a time — a categorical attribute's control takes no settings, and a
+ * date or a scale is not chosen from a list.
  */
 export default function VariableEditor(props: VariableEditorProps) {
   const { openId, ...instanceProps } = props;
@@ -133,20 +401,25 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     authoritativeDocument,
     variableId,
     initialDraft,
-    description,
-    createRequestId,
-    onSubmitRequest,
+    onSubmitDocument,
     onComplete,
     onDraftChange,
     allowedVariableTypes,
     lockedOptions = null,
     readOnly = false,
-    title = props.mode === 'create' ? 'Create attribute' : 'Edit attribute',
   } = props;
+  const intl = useAppIntl();
+  const title =
+    props.title ??
+    intl.formatMessage(
+      props.mode === 'create' ? messages.createTitle : messages.editTitle,
+    );
   // This component is remounted by openId. Changing seeds within one open
   // must not overwrite edits already in progress.
   const [seededDraft] = useState(() =>
-    draftWithLockedOptions(initialDraft, lockedOptions),
+    draftWithSeededResolution(
+      draftWithLockedOptions(initialDraft, lockedOptions),
+    ),
   );
   const [initialAuthoritativeType] = useState(() =>
     props.mode === 'update'
@@ -155,37 +428,22 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
         )
       : null,
   );
-  const [draftSession] = useState(
-    () =>
-      new AuxiliaryCodebookDraftSession(
-        seededDraft,
-        props.mode === 'update'
-          ? variableFromDocument(authoritativeDocument, variableId)
-          : null,
-      ),
-  );
-  const subscribe = useCallback(
-    (listener: () => void) => draftSession.subscribe(listener),
-    [draftSession],
-  );
-  const getSnapshot = useCallback(
-    () => draftSession.getSnapshot(),
-    [draftSession],
-  );
-  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const [draft, setDraft] = useState<CodebookVariableDraft>(seededDraft);
   const [issues, setIssues] = useState<readonly CodebookDraftIssue[]>([]);
-  const activeRequestId = useRef<string | null>(null);
+  // A record rather than the sentence, so a second refusal saying the same
+  // thing is still a new failure for the effect below to move focus to.
+  const [failure, setFailure] =
+    useState<Readonly<{ message: string; held: boolean }>>();
+  const [busy, setBusy] = useState(false);
   const failureRef = useRef<HTMLDivElement>(null);
-  const firstRender = useRef(true);
-  const previousAuthoritativeDocument = useRef(authoritativeDocument);
   const optionKeySequence = useRef(0);
   const [optionKeys, setOptionKeys] = useState(() =>
     readEditableOptions(seededDraft.options).map(
       () => `initial-option-${optionKeySequence.current++}`,
     ),
   );
-  const options = readEditableOptions(snapshot.draft.options);
-  const selectedType = variableTypeFrom(snapshot.draft.type);
+  const options = readEditableOptions(draft.options);
+  const selectedType = variableTypeFrom(draft.type);
   const currentAuthoritativeVariable =
     props.mode === 'update'
       ? variableFromDocument(authoritativeDocument, variableId)
@@ -197,19 +455,42 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     props.mode === 'update' && authoritativeType !== initialAuthoritativeType;
   const typeChanged =
     props.mode === 'update' && selectedType !== authoritativeType;
-  const replaceProperties = variableEditorReplaceProperties(typeChanged);
+  // Which settings the chosen control takes — the whole of what decides
+  // whether this editor renders and writes a `parameters` block at all.
+  const parameterShape = parameterShapeFor(draft.type, draft.component);
+  // Which list of answers this attribute holds, on the same terms.
+  const optionsShape = optionsShapeFor(draft.type, draft.component);
+  const replaceProperties = variableEditorReplaceProperties(
+    typeChanged,
+    parameterShape,
+  );
   const submittedDraft =
     props.mode === 'create'
-      ? snapshot.draft
+      ? draftWithOwnedBlocks(
+          draft,
+          seededDraft.options,
+          parameterShape,
+          optionsShape,
+        )
       : draftOwnedByVariableEditor(
-          snapshot.draft,
+          draft,
+          seededDraft.options,
           lockedOptions !== null,
           typeChanged,
+          parameterShape,
+          optionsShape,
         );
-  const hasOptions = selectedType !== null && OPTION_TYPES.has(selectedType);
-  const optionsLocked =
-    lockedOptions !== null || snapshot.draft.readOnly === true;
-  const interactionDisabled = readOnly || snapshot.status !== 'editing';
+  const hasOptions = optionsShape === 'choice';
+  // Whether the two-answer fieldset is the right editor for what this
+  // attribute holds, or whether its answers are a list to be shown and left
+  // alone — and if so, why, because the researcher is told which it is. See
+  // `heldBooleanAnswersReason`.
+  const heldAnswersReason = heldBooleanAnswersReason(draft.options);
+  const booleanAnswersEditable = heldAnswersReason === null;
+  const booleanAnswers = readBooleanAnswers(draft.options);
+  const heldBooleanAnswers = readHeldBooleanAnswers(draft.options);
+  const optionsLocked = lockedOptions !== null || draft.readOnly === true;
+  const interactionDisabled = readOnly || busy;
   const unchangedUpdate =
     props.mode === 'update' &&
     currentAuthoritativeVariable !== null &&
@@ -219,33 +500,17 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       replaceProperties,
     );
   const statusId = useId();
-
-  useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
-    if (
-      props.mode !== 'update' ||
-      previousAuthoritativeDocument.current === authoritativeDocument
-    ) {
-      return;
-    }
-    const previousDocument = previousAuthoritativeDocument.current;
-    previousAuthoritativeDocument.current = authoritativeDocument;
-    if (
-      canonicalize(previousDocument) !== canonicalize(authoritativeDocument)
-    ) {
-      activeRequestId.current = null;
-    }
-    const authoritativeVariable = variableFromDocument(
-      authoritativeDocument,
-      variableId,
-    );
-    if (authoritativeVariable !== null) {
-      draftSession.receiveAuthoritative(authoritativeVariable);
-    }
-  }, [authoritativeDocument, draftSession, props.mode, variableId]);
+  // The editor writes a title of its own, so it owns a rung of the outline and
+  // has to say which one. Opened from a dialog it is the dialog's title that
+  // is above it; opened as a page of its own there is nothing above it, and
+  // `h3` is the level this title has always carried. Either way the alerts and
+  // sections below count from HERE, which is what stops an alert the editor
+  // raises reading as a peer of the editor's own title.
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const headingTag =
+    enclosingHeadingLevel === null
+      ? 'h3'
+      : headingTagBelow(enclosingHeadingLevel);
 
   useEffect(() => {
     setOptionKeys((current) => {
@@ -263,8 +528,8 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
   }, [options.length]);
 
   useEffect(() => {
-    if (snapshot.lastFailure !== null) failureRef.current?.focus();
-  }, [snapshot.lastFailure]);
+    if (failure !== undefined) failureRef.current?.focus();
+  }, [failure]);
 
   const typeOptions = useMemo(() => {
     const allowed = new Set(
@@ -272,25 +537,24 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     );
     if (selectedType !== null) allowed.add(selectedType);
     return VARIABLE_TYPE_OPTIONS.filter(({ value }) => allowed.has(value)).map(
-      ({ label, value }) => ({ label, value }),
+      ({ label, value }) => ({ label: intl.formatMessage(label), value }),
     );
-  }, [allowedVariableTypes, selectedType]);
+  }, [allowedVariableTypes, intl, selectedType]);
 
   const replaceDraft = useCallback(
     (nextDraft: CodebookVariableDraft) => {
-      activeRequestId.current = null;
       setIssues([]);
-      draftSession.replaceDraft(nextDraft);
+      setDraft(nextDraft);
       onDraftChange?.(nextDraft);
     },
-    [draftSession, onDraftChange],
+    [onDraftChange],
   );
 
   const replaceProperty = useCallback(
     (property: string, value: unknown) => {
-      replaceDraft({ ...snapshot.draft, [property]: value });
+      replaceDraft({ ...draft, [property]: value });
     },
-    [replaceDraft, snapshot.draft],
+    [replaceDraft, draft],
   );
 
   const replaceOptions = useCallback(
@@ -303,83 +567,188 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
     [replaceProperty],
   );
 
+  const replaceAnswer = (index: number, answer: BooleanAnswer) => {
+    replaceProperty(
+      'options',
+      booleanAnswers.map((held, heldIndex) =>
+        heldIndex === index ? answer : held,
+      ),
+    );
+  };
+
+  const replaceParameter = (key: string, value: unknown) => {
+    if (parameterShape === null) return;
+    replaceProperty(
+      'parameters',
+      parametersWith(parameterShape, draft.parameters, key, value),
+    );
+  };
+
   const handleTypeChange = (value: string | number | undefined) => {
     const nextType = variableTypeFrom(value);
     if (nextType === null) return;
-    replaceDraft(draftForType(snapshot.draft, nextType));
+    replaceDraft(draftForType(draft, nextType));
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // Stops at this form: a `Dialog` portals out of the DOM but stays a React
+    // descendant, so React would otherwise hand this submit to the form the
+    // editor was opened from — a prompt row, or the stage itself — and save
+    // that instead. `preventDefault` alone only stops the browser's own
+    // navigation, which is not what propagates here.
+    event.stopPropagation();
     if (interactionDisabled) return;
     if (authoritativeTypeConflict) {
-      activeRequestId.current = null;
+      // Encoded rather than formatted, like every other issue held here: it
+      // stands until the next submission, and `FieldErrors` decodes it where
+      // it renders it, so it follows a change of language while it waits.
       setIssues([
         {
           path: ['type'],
-          message:
-            'The attribute type changed elsewhere. Close and reopen this editor before saving.',
+          message: createMessageError(messages.typeChangedElsewhere),
         },
       ]);
       return;
     }
     if (unchangedUpdate) return;
+    // Judged here for the reason the parameters are, and one of its own: the
+    // schema takes any string as a label, so nothing downstream refuses an
+    // answer with no words on it.
+    if (optionsShape === 'boolean') {
+      const answerIssues = validateBooleanAnswers(draft.options);
+      if (hasBooleanAnswerIssues(answerIssues)) {
+        setIssues(
+          Object.entries(answerIssues).flatMap(([index, refusals]) =>
+            refusals.map((message) => ({
+              path: ['options', Number(index)],
+              message,
+            })),
+          ),
+        );
+        return;
+      }
+    }
+    // Judged here rather than left to the document builder: the builder parses
+    // the whole variable and answers against a path, which cannot say WHICH of
+    // two dates is the one the schema will not take. The same schemas run
+    // either way — this one just knows which control asked.
+    if (parameterShape !== null) {
+      const parameterIssues = validateParameters(
+        parameterShape,
+        draft.parameters,
+      );
+      if (hasParameterIssues(parameterIssues)) {
+        setIssues(
+          Object.entries(parameterIssues).flatMap(([key, refusals]) =>
+            refusals.map((message) => ({
+              path:
+                key === PARAMETERS_BLOCK ? ['parameters'] : ['parameters', key],
+              message,
+            })),
+          ),
+        );
+        return;
+      }
+    }
     setIssues([]);
-    const requestId = activeRequestId.current ?? createRequestId();
-    activeRequestId.current = requestId;
+    setFailure(undefined);
 
-    const buildRequest =
-      props.mode === 'create'
-        ? () =>
-            buildCreateVariableRequest({
-              requestId,
-              description,
+    let document: SectionDoc;
+    try {
+      document =
+        props.mode === 'create'
+          ? documentWithCreatedVariable({
               subject,
               authoritativeDocument,
               variableId,
               protocolContext: props.protocolContext,
               draft: submittedDraft,
             })
-        : () =>
-            buildUpdateVariableRequest({
-              requestId,
-              description,
+          : documentWithUpdatedVariable({
               subject,
               authoritativeDocument,
               variableId,
               draft: submittedDraft,
               replaceProperties,
             });
-
-    try {
-      const result = await draftSession.submit(buildRequest, onSubmitRequest);
-      if (
-        result.status === 'failed' &&
-        (result.reason === 'stale-epoch' ||
-          result.reason === 'lease-lost' ||
-          result.reason === 'stale-base')
-      ) {
-        activeRequestId.current = null;
-      }
-      if (
-        result.status === 'applied' &&
-        !draftSession.getSnapshot().authoritativeChanged
-      ) {
-        onComplete(variableId);
-      }
     } catch (error: unknown) {
-      if (error instanceof InvalidCodebookDraftError) {
-        setIssues(error.issues);
+      // The one refused save the researcher fixes in a FIELD rather than by
+      // reading the alert. The message is already encoded — `editing.ts` writes
+      // it that way so it can be decoded where it is rendered — and the alert
+      // shows it too, at the top of a form they may have scrolled past.
+      if (error instanceof DuplicateVariableNameError) {
+        setIssues([{ path: ['name'], message: error.message }]);
+        setFailure({ message: error.message, held: false });
+        return;
       }
-      // AuxiliaryCodebookDraftSession stores and announces the failure. The
-      // form deliberately remains mounted with the exact rejected draft.
+      if (error instanceof InvalidCodebookDraftError) setIssues(error.issues);
+      setFailure({
+        message: codebookRefusalMessage({ kind: 'unexplained' }),
+        held: false,
+      });
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const outcome = await onSubmitDocument(
+        document,
+        // What `documentWithUpdatedVariable` was just asked to write: the
+        // properties the draft carries, and the ones it clears. A create
+        // authors the whole attribute and so owns all of it.
+        props.mode === 'create'
+          ? undefined
+          : [
+              ...new Set([
+                ...replaceProperties,
+                ...Object.keys(submittedDraft),
+              ]),
+            ],
+      );
+      if (outcome.status === 'applied') {
+        onComplete(
+          variableId,
+          typeof submittedDraft.name === 'string' ? submittedDraft.name : '',
+        );
+        return;
+      }
+      setFailure({
+        message: outcome.message,
+        held: outcome.refusal.kind === 'held',
+      });
+    } catch {
+      setFailure({
+        message: codebookRefusalMessage({ kind: 'unexplained' }),
+        held: false,
+      });
+    } finally {
+      setBusy(false);
     }
   };
 
   const nameErrors = messagesAt(issues, 'name');
   const typeErrors = messagesAt(issues, 'type');
   const optionErrors = messagesAt(issues, 'options');
-  const failurePresentation = failureFrom(snapshot.lastFailure);
+  const answerIssues = booleanAnswerMessages(issues);
+  const parameterIssues = parameterMessages(issues);
+  const blockParameterErrors = parameterIssues[PARAMETERS_BLOCK] ?? [];
+  const contradictions = contradictionMessages(issues);
+  // A contradiction REPLACES the refusal rather than joining it: it names the
+  // rule and the values that cannot both hold, where the package's own copy for
+  // a save that did not happen would tell the researcher to wait and try a save
+  // that cannot succeed until they change something.
+  const refusals =
+    contradictions.length > 0
+      ? contradictions
+      : failure === undefined
+        ? []
+        : [failure.message];
+  // A section somebody else is holding is not a fault: the change is fine and
+  // lands once they are finished, so it is said in the register of a notice
+  // rather than of an error. A contradiction is the researcher's to resolve.
+  const refusalIsANotice =
+    contradictions.length === 0 && failure?.held === true;
 
   return (
     <Surface
@@ -389,200 +758,326 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
       shadow="sm"
       className="w-full overflow-visible!"
       aria-labelledby={`${statusId}-title`}
-      data-status={snapshot.status}
     >
-      <Heading id={`${statusId}-title`} level="h3" margin="none">
+      <Heading
+        id={`${statusId}-title`}
+        level="h3"
+        margin="none"
+        // The element only — `level` still carries the type treatment.
+        {...(headingTag === 'h3' ? {} : { render: createElement(headingTag) })}
+      >
         {title}
       </Heading>
       <Paragraph emphasis="muted" className="mt-2">
-        Define the attribute name, data type, and any available values.
+        {intl.formatMessage(messages.description)}
       </Paragraph>
 
-      {failurePresentation !== null && (
-        <Alert
-          ref={failureRef}
-          tabIndex={-1}
-          variant={failurePresentation.variant}
-          className="focusable"
-        >
-          <AlertTitle>Attribute not saved</AlertTitle>
-          <AlertDescription>{failurePresentation.message}</AlertDescription>
-        </Alert>
-      )}
-      {snapshot.authoritativeChanged && (
-        <Alert variant="warning">
-          <AlertTitle>The codebook changed</AlertTitle>
-          <AlertDescription>
-            A newer version arrived while you were editing. Your draft has been
-            preserved; review it before trying again.
-          </AlertDescription>
-        </Alert>
-      )}
-      {snapshot.status === 'awaiting-authoritative' && (
-        <Alert variant="success">
-          <AlertTitle>Attribute saved</AlertTitle>
-          <AlertDescription>
-            Waiting for the host to publish the authoritative codebook update.
-          </AlertDescription>
-        </Alert>
-      )}
-      {snapshot.status === 'submitting' && (
-        <p role="status" className="sr-only">
-          Saving attribute.
-        </p>
-      )}
-
-      <form className="mt-8" onSubmit={(event) => void handleSubmit(event)}>
-        <UnconnectedField
-          name="variable-name"
-          label="Attribute name"
-          hint="This name is used when referring to the attribute and in exported data."
-          component={InputField}
-          value={
-            typeof snapshot.draft.name === 'string' ? snapshot.draft.name : ''
-          }
-          onChange={(value) => replaceProperty('name', value ?? '')}
-          autoFocus={!readOnly}
-          required
-          readOnly={interactionDisabled}
-          errors={nameErrors}
-          showErrors={nameErrors.length > 0}
-        />
-        <UnconnectedField
-          name="variable-type"
-          label="Attribute type"
-          component={NativeSelectField}
-          placeholder="Select an attribute type"
-          options={typeOptions}
-          value={selectedType ?? ''}
-          onChange={handleTypeChange}
-          required
-          readOnly={interactionDisabled || optionsLocked}
-          errors={typeErrors}
-          showErrors={typeErrors.length > 0}
-        />
-
-        {hasOptions && (
-          <fieldset
-            className="mb-8 min-w-0"
-            aria-invalid={optionErrors.length > 0 || undefined}
-            aria-describedby={
-              optionErrors.length > 0 ? `${statusId}-option-errors` : undefined
-            }
+      <EnclosingHeadingLevel level={headingTag}>
+        {refusals.length > 0 && (
+          <Alert
+            ref={failureRef}
+            tabIndex={-1}
+            variant={refusalIsANotice ? 'warning' : 'destructive'}
+            className="focusable"
           >
-            <legend className="font-heading mb-2 font-bold">
-              Allowed values <span className="text-destructive">*</span>
-            </legend>
-            <p className="text-muted mb-4 text-sm">
-              Add at least two participant-facing labels and their stored
-              values.
-            </p>
-            {optionsLocked ? (
-              <LockedOptions options={options} />
-            ) : (
-              <div className="flex flex-col gap-4">
-                {options.map((option, index) => (
-                  <Surface
-                    key={optionKeys[index] ?? `option-${index}`}
-                    noContainer
-                    spacing="sm"
-                    shadow="xs"
-                    series="accent"
-                    className="w-full overflow-visible!"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="min-w-0 flex-1">
-                        <UnconnectedField
-                          name={`option-${index + 1}-label`}
-                          label={`Option ${index + 1} label`}
-                          component={InputField}
-                          value={option.label}
-                          onChange={(label) => {
-                            const next = [...options];
-                            next[index] = { ...option, label: label ?? '' };
-                            replaceOptions(next);
-                          }}
-                          required
-                          readOnly={interactionDisabled}
-                        />
-                        <UnconnectedField
-                          name={`option-${index + 1}-value`}
-                          label={`Option ${index + 1} value`}
-                          component={InputField}
-                          value={String(option.value)}
-                          onChange={(value) => {
-                            const next = [...options];
-                            next[index] = {
-                              ...option,
-                              value: parseOptionValue(value ?? ''),
-                            };
-                            replaceOptions(next);
-                          }}
-                          required
-                          readOnly={interactionDisabled}
-                        />
-                      </div>
-                      <IconButton
-                        icon={<Trash2 aria-hidden="true" />}
-                        aria-label={`Remove option ${index + 1}`}
-                        color="destructive"
-                        disabled={interactionDisabled}
-                        onClick={() => {
-                          setOptionKeys((current) =>
-                            current.filter((_, keyIndex) => keyIndex !== index),
-                          );
-                          replaceOptions(
-                            options.filter(
-                              (_, optionIndex) => optionIndex !== index,
-                            ),
-                          );
-                        }}
-                      />
-                    </div>
-                  </Surface>
-                ))}
-                <Button
-                  type="button"
-                  variant="dashed"
-                  color="primary"
-                  icon={<Plus aria-hidden="true" />}
-                  disabled={interactionDisabled}
-                  onClick={() => {
-                    setOptionKeys((current) => [
-                      ...current,
-                      `new-option-${optionKeySequence.current++}`,
-                    ]);
-                    replaceOptions([...options, { label: '', value: '' }]);
-                  }}
-                >
-                  Add option
-                </Button>
-              </div>
-            )}
-            {optionErrors.length > 0 && (
-              <ul
-                id={`${statusId}-option-errors`}
-                className="text-destructive mt-3 list-disc pl-5"
-              >
-                {optionErrors.map((message) => (
-                  <li key={message}>{message}</li>
-                ))}
-              </ul>
-            )}
-          </fieldset>
+            <AlertTitle>{intl.formatMessage(messages.failureTitle)}</AlertTitle>
+            <AlertDescription>
+              {/* Decoded here, not where it was raised: a refusal stands until
+                  the next save, so it follows a change of language while it
+                  waits. One already written for a researcher is not ours to
+                  decode and passes through. */}
+              {refusals.length === 1 ? (
+                (formatMessageError(refusals[0] ?? '', intl) ?? refusals[0])
+              ) : (
+                <ul className="list-disc pl-5">
+                  {refusals.map((message) => (
+                    <li key={message}>
+                      {formatMessageError(message, intl) ?? message}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+        {busy && (
+          <p role="status" className="sr-only">
+            {intl.formatMessage(messages.submittingStatus)}
+          </p>
         )}
 
-        <div className="flex justify-end">
-          <Button
-            type="submit"
-            color="primary"
-            disabled={interactionDisabled || unchangedUpdate}
-            aria-busy={snapshot.status === 'submitting'}
-          >
-            {props.mode === 'create' ? 'Create attribute' : 'Save attribute'}
-          </Button>
-        </div>
-      </form>
+        <form className="mt-8" onSubmit={(event) => void handleSubmit(event)}>
+          <UnconnectedField
+            name="variable-name"
+            label={intl.formatMessage(messages.nameLabel)}
+            hint={intl.formatMessage(messages.nameHint)}
+            component={InputField}
+            value={typeof draft.name === 'string' ? draft.name : ''}
+            onChange={(value) => replaceProperty('name', value ?? '')}
+            autoFocus={!readOnly}
+            required
+            readOnly={interactionDisabled}
+            errors={nameErrors}
+            showErrors={nameErrors.length > 0}
+          />
+          <UnconnectedField
+            name="variable-type"
+            label={intl.formatMessage(messages.typeLabel)}
+            component={NativeSelectField}
+            placeholder={intl.formatMessage(messages.typePlaceholder)}
+            options={typeOptions}
+            value={selectedType ?? ''}
+            onChange={handleTypeChange}
+            required
+            readOnly={interactionDisabled || optionsLocked}
+            errors={typeErrors}
+            showErrors={typeErrors.length > 0}
+          />
+
+          {hasOptions && (
+            <fieldset
+              className="mb-8 min-w-0"
+              aria-invalid={optionErrors.length > 0 || undefined}
+              aria-describedby={
+                optionErrors.length > 0
+                  ? `${statusId}-option-errors`
+                  : undefined
+              }
+            >
+              <legend className="font-heading mb-2 font-bold">
+                {intl.formatMessage(messages.optionsLegend)}{' '}
+                <span className="text-destructive">*</span>
+              </legend>
+              <p className="text-muted mb-4 text-sm">
+                {intl.formatMessage(messages.optionsHint)}
+              </p>
+              {optionsLocked ? (
+                <LockedOptions
+                  options={options}
+                  caption={intl.formatMessage(messages.lockedOptionsCaption)}
+                />
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {options.map((option, index) => (
+                    <Surface
+                      key={optionKeys[index] ?? `option-${index}`}
+                      noContainer
+                      spacing="sm"
+                      shadow="xs"
+                      series="accent"
+                      className="w-full overflow-visible!"
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* The strong destructive ink is opted into HERE, on the
+                            field column, and not on the Surface: it is meant for
+                            destructive TEXT drawn on this tinted background —
+                            the required marker and a field's error — and
+                            `--destructive` is also the fill of the destructive
+                            remove button beside it, whose foreground stays
+                            `--destructive-contrast`. Tinting the whole surface
+                            repaints that fill without repainting the icon on
+                            it, which on the default dark theme lands at 2.85:1
+                            against white where the untouched pair reaches
+                            3.85:1 — under the 3:1 WCAG asks of a control. The
+                            button is outside this element, so it keeps its own
+                            pair. */}
+                        <div className="min-w-0 flex-1 [--destructive:var(--destructive-strong)]">
+                          <UnconnectedField
+                            name={`option-${index + 1}-label`}
+                            label={intl.formatMessage(
+                              messages.optionLabelField,
+                              // The one-based position is passed as text, not as
+                              // a number: the researcher reads it as this row's
+                              // name, and a grouped thousands separator would
+                              // make it a different name.
+                              { index: String(index + 1) },
+                            )}
+                            component={InputField}
+                            value={option.label}
+                            onChange={(label) => {
+                              const next = [...options];
+                              next[index] = { ...option, label: label ?? '' };
+                              replaceOptions(next);
+                            }}
+                            required
+                            readOnly={interactionDisabled}
+                          />
+                          <UnconnectedField
+                            name={`option-${index + 1}-value`}
+                            label={intl.formatMessage(
+                              messages.optionValueField,
+                              {
+                                index: String(index + 1),
+                              },
+                            )}
+                            component={InputField}
+                            value={String(option.value)}
+                            onChange={(value) => {
+                              const next = [...options];
+                              next[index] = {
+                                ...option,
+                                value: parseOptionValue(value ?? ''),
+                              };
+                              replaceOptions(next);
+                            }}
+                            required
+                            readOnly={interactionDisabled}
+                          />
+                        </div>
+                        <IconButton
+                          icon={<Trash2 aria-hidden="true" />}
+                          aria-label={intl.formatMessage(
+                            messages.removeOption,
+                            {
+                              index: String(index + 1),
+                            },
+                          )}
+                          color="destructive"
+                          disabled={interactionDisabled}
+                          onClick={() => {
+                            setOptionKeys((current) =>
+                              current.filter(
+                                (_, keyIndex) => keyIndex !== index,
+                              ),
+                            );
+                            replaceOptions(
+                              options.filter(
+                                (_, optionIndex) => optionIndex !== index,
+                              ),
+                            );
+                          }}
+                        />
+                      </div>
+                    </Surface>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="dashed"
+                    color="primary"
+                    icon={<Plus aria-hidden="true" />}
+                    disabled={interactionDisabled}
+                    onClick={() => {
+                      setOptionKeys((current) => [
+                        ...current,
+                        `new-option-${optionKeySequence.current++}`,
+                      ]);
+                      replaceOptions([...options, { label: '', value: '' }]);
+                    }}
+                  >
+                    {intl.formatMessage(messages.addOption)}
+                  </Button>
+                </div>
+              )}
+              {optionErrors.length > 0 && (
+                <ul
+                  id={`${statusId}-option-errors`}
+                  className="text-destructive mt-3 list-disc pl-5"
+                >
+                  {/* An option issue's message is a plain string carrying either
+                      this package's own encoded descriptor or a wording the
+                      schema wrote, and this list is our own markup rather than a
+                      field's error region, so it is decoded here and passed
+                      through untouched when it is not one of ours. */}
+                  {optionErrors.map((message) => (
+                    <li key={message}>
+                      {formatMessageError(message, intl) ?? message}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </fieldset>
+          )}
+          {optionsShape === 'boolean' && booleanAnswersEditable && (
+            <fieldset className="mb-8 min-w-0">
+              <legend className="font-heading mb-2 font-bold">
+                {intl.formatMessage(messages.answersLegend)}
+              </legend>
+              <p className="text-muted mb-4 text-sm">
+                {intl.formatMessage(messages.answersHint)}
+              </p>
+              <VariableBooleanAnswerFields
+                answers={booleanAnswers}
+                onChange={replaceAnswer}
+                issues={answerIssues}
+                readOnly={interactionDisabled || optionsLocked}
+              />
+            </fieldset>
+          )}
+          {optionsShape === 'boolean' && !booleanAnswersEditable && (
+            <fieldset className="mb-8 min-w-0">
+              <legend className="font-heading mb-2 font-bold">
+                {intl.formatMessage(messages.heldAnswersLegend)}
+              </legend>
+              <LockedOptions
+                options={heldBooleanAnswers}
+                caption={intl.formatMessage(
+                  heldAnswersReason === 'values'
+                    ? messages.heldAnswerValuesCaption
+                    : messages.heldAnswersCaption,
+                )}
+              />
+            </fieldset>
+          )}
+
+          {parameterShape !== null && (
+            <fieldset
+              className="mb-8 min-w-0"
+              aria-invalid={blockParameterErrors.length > 0 || undefined}
+              aria-describedby={
+                blockParameterErrors.length > 0
+                  ? `${statusId}-parameter-errors`
+                  : undefined
+              }
+            >
+              <legend className="font-heading mb-2 font-bold">
+                {intl.formatMessage(messages.parametersLegend)}
+              </legend>
+              <p className="text-muted mb-4 text-sm">
+                {intl.formatMessage(messages.parametersHint)}
+              </p>
+              {blockParameterErrors.length > 0 && (
+                <ul
+                  id={`${statusId}-parameter-errors`}
+                  className="text-destructive mb-3 list-disc pl-5"
+                >
+                  {/* Decoded here for the reason the option list above is: a
+                      refusal about the whole block is held as an encoded
+                      descriptor so it follows a change of language, and this
+                      list is our own markup rather than a field's error
+                      region, which decodes its own. */}
+                  {blockParameterErrors.map((message) => (
+                    <li key={message}>
+                      {formatMessageError(message, intl) ?? message}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <VariableParameterFields
+                shape={parameterShape}
+                parameters={draft.parameters}
+                onChange={replaceParameter}
+                issues={parameterIssues}
+                readOnly={interactionDisabled}
+              />
+            </fieldset>
+          )}
+
+          <div className="flex justify-end">
+            <Button
+              type="submit"
+              color="primary"
+              disabled={interactionDisabled || unchangedUpdate}
+              aria-busy={busy}
+            >
+              {intl.formatMessage(
+                props.mode === 'create'
+                  ? messages.createSubmit
+                  : messages.saveSubmit,
+              )}
+            </Button>
+          </div>
+        </form>
+      </EnclosingHeadingLevel>
     </Surface>
   );
 }
@@ -601,8 +1096,11 @@ function draftWithLockedOptions(
 
 function draftOwnedByVariableEditor(
   draft: Readonly<SectionDoc>,
+  storedOptions: unknown,
   persistLockedOptions: boolean,
   includeTypeMetadata: boolean,
+  parameterShape: ParameterShape | null,
+  optionsShape: OptionsShape | null,
 ): CodebookVariableDraft {
   const owned: Record<string, unknown> = Object.create(null);
   const properties = includeTypeMetadata
@@ -611,16 +1109,111 @@ function draftOwnedByVariableEditor(
   for (const property of properties) {
     if (Object.hasOwn(draft, property)) owned[property] = draft[property];
   }
+  const options = optionsForShape(optionsShape, draft.options, storedOptions);
+  if (options === undefined) delete owned.options;
+  else owned.options = options;
+  // Written with them, for the reason the parameters block writes it: the pair
+  // and the control that shows them cannot be committed out of step, and a
+  // host opens this editor on the control the researcher has just chosen
+  // rather than the one the codebook still records.
+  //
+  // Asked of the TYPE rather than of the answer `optionsShapeFor` gives,
+  // because boolean is the one type whose control decides whether the pair
+  // exists at all — so both directions have to land the control with the
+  // answers that depend on it. Written only in the direction that ADDS the
+  // pair, the other direction deletes the words the researcher wrote and
+  // commits a variable still recording the control that showed them: a
+  // participant then meets the default Yes/No where those words used to be.
+  if (
+    draft.type === VariableTypes.boolean &&
+    Object.hasOwn(draft, 'component')
+  ) {
+    owned.component = draft.component;
+  }
+  if (parameterShape !== null) {
+    if (Object.hasOwn(draft, 'component')) owned.component = draft.component;
+    const parameters = parametersForShape(parameterShape, draft.parameters);
+    if (parameters === undefined) delete owned.parameters;
+    else owned.parameters = parameters;
+  }
   if (persistLockedOptions) owned.readOnly = true;
   return owned;
 }
 
+/**
+ * A created variable's draft, with its parameters and its answers narrowed to
+ * the shapes the attribute and its chosen control actually take.
+ *
+ * Create mode submits the draft whole, so a block still holding what the
+ * control before it needed would be sent as authored and refused by the
+ * schema — the same pruning the update path gets from
+ * `draftOwnedByVariableEditor`.
+ */
+function draftWithOwnedBlocks(
+  draft: CodebookVariableDraft,
+  storedOptions: unknown,
+  parameterShape: ParameterShape | null,
+  optionsShape: OptionsShape | null,
+): CodebookVariableDraft {
+  const next: Record<string, unknown> = { ...draft };
+  if (parameterShape !== null) {
+    const parameters = parametersForShape(parameterShape, draft.parameters);
+    if (parameters === undefined) delete next.parameters;
+    else next.parameters = parameters;
+  }
+  // Asked of every shape, the one that holds no list included — the same rule
+  // `draftOwnedByVariableEditor` follows. A control that shows no answers has
+  // to write the attribute without them: a create draft reaches this editor
+  // from the row that authored it, so a boolean moved from `Boolean` to
+  // `Toggle` arrives still carrying the pair, and the toggle's strict schema
+  // has no `options` key to put it under. Left in, the request is refused
+  // against a list the editor renders no fields for, so there is nothing to
+  // clear it with and the attribute can never be created at all.
+  //
+  // A choice list is still passed through as authored, so an unauthored one
+  // reaches the document builder to be refused there — see `optionsForShape`.
+  const options = optionsForShape(optionsShape, draft.options, storedOptions);
+  if (options === undefined) delete next.options;
+  else next.options = options;
+  return next;
+}
+
+/**
+ * A date picker records the resolution its dates are stored at, even when the
+ * researcher never opens the control that chooses it.
+ *
+ * The interview assumes a full date when the protocol declares none, so an
+ * absent resolution is not an open question — it is an unstated answer, and
+ * one every bound the researcher goes on to author is judged against. Seeding
+ * it here means the control opens showing what the runtime will do rather than
+ * showing nothing, and a save from this editor records it.
+ */
+function draftWithSeededResolution(
+  draft: CodebookVariableDraft,
+): CodebookVariableDraft {
+  if (parameterShapeFor(draft.type, draft.component) !== 'datePicker') {
+    return draft;
+  }
+  const parameters = readParameters(draft.parameters);
+  if (typeof parameters.type === 'string') return draft;
+  return {
+    ...draft,
+    parameters: { ...parameters, type: DEFAULT_DATE_RESOLUTION },
+  };
+}
+
 function variableEditorReplaceProperties(
   includeTypeMetadata: boolean,
+  parameterShape: ParameterShape | null,
 ): readonly string[] {
-  return includeTypeMetadata
-    ? [...VARIABLE_EDITOR_PROPERTIES, ...TYPE_OWNED_PROPERTIES]
-    : VARIABLE_EDITOR_PROPERTIES;
+  return [
+    ...new Set([
+      ...VARIABLE_EDITOR_PROPERTIES,
+      ...OPTIONS_OWNED_PROPERTIES,
+      ...(includeTypeMetadata ? TYPE_OWNED_PROPERTIES : []),
+      ...(parameterShape === null ? [] : PARAMETER_OWNED_PROPERTIES),
+    ]),
+  ];
 }
 
 function updateLeavesVariableUnchanged(
@@ -673,9 +1266,12 @@ function draftForType(
   // Encryption round-trips strings and is valid only for node text values.
   if (nextType !== VariableTypes.text) delete next.encrypted;
 
-  if (OPTION_TYPES.has(nextType)) {
-    const previousType = variableTypeFrom(draft.type);
-    if (previousType === null || !OPTION_TYPES.has(previousType)) {
+  // Asked of the type with no control beside it, because the control has just
+  // been deleted above — which is also why a boolean lands here holding no
+  // list: the pair belongs to the control that shows it, and the type change
+  // has left the new type with none.
+  if (optionsShapeFor(nextType, undefined) === 'choice') {
+    if (optionsShapeFor(draft.type, draft.component) !== 'choice') {
       next.options = [];
     }
   } else {
@@ -731,48 +1327,118 @@ function messagesAt(
     .map((issue) => issue.message);
 }
 
-function failureFrom(failure: AuxiliaryCodebookDraftFailure | null): Readonly<{
-  variant: 'warning' | 'destructive';
-  message: string;
-}> | null {
-  if (failure === null) return null;
-  if (failure.kind === 'error') {
-    return { variant: 'destructive', message: failure.message };
+/**
+ * The refusals about one of a boolean's two answers, filed under the answer
+ * they belong to.
+ *
+ * Anchored at the position rather than at the value it records, because that
+ * is where the control the researcher has to fix in is: the pair is rendered
+ * in the order the protocol stores it.
+ */
+function booleanAnswerMessages(
+  issues: readonly CodebookDraftIssue[],
+): BooleanAnswerIssues {
+  const byAnswer: Record<number, string[]> = {};
+  for (const issue of issues) {
+    if (issue.path[0] !== 'options') continue;
+    const index = issue.path[1];
+    if (typeof index !== 'number') continue;
+    (byAnswer[index] ??= []).push(issue.message);
   }
-  if (failure.result.status === 'blocked') {
-    const blockers = failure.result.blockedSections.map(
-      ({ sectionId, holder }) =>
-        holder === undefined
-          ? sectionId
-          : `${holder.displayName} (${sectionId})`,
-    );
-    return {
-      variant: 'warning',
-      message: `The edit is blocked by ${blockers.join(', ')}. Your draft has been preserved.`,
-    };
+  return byAnswer;
+}
+
+/**
+ * The parameter refusals, filed under the control each one belongs to.
+ *
+ * `['parameters']` with nothing after it belongs to the block as a whole and
+ * is filed under `PARAMETERS_BLOCK`, so a complaint about no one setting still
+ * has somewhere to be read.
+ */
+function parameterMessages(
+  issues: readonly CodebookDraftIssue[],
+): Record<string, string[]> {
+  const byControl: Record<string, string[]> = {};
+  for (const issue of issues) {
+    if (issue.path[0] !== 'parameters') continue;
+    const key = issue.path[1];
+    const bucket = typeof key === 'string' ? key : PARAMETERS_BLOCK;
+    (byControl[bucket] ??= []).push(issue.message);
   }
-  return {
-    variant: 'destructive',
-    message: `${failure.result.message} Your draft has been preserved.`,
-  };
+  return byControl;
+}
+
+/**
+ * The refusals in this batch that already read as sentences for a researcher.
+ *
+ * `buildUpdateVariableRequest` parses the whole entity, so its issues arrive
+ * anchored inside the entity document at `variables/<id>/…`, one level deeper
+ * than the ones `VariableSchema` raises about the draft on screen. The ones
+ * anchored at a RULE are the record-level refinements — a validation rule the
+ * attribute's options can no longer satisfy, "answer at least three" with two
+ * options left — and their message names the rule and the values that cannot
+ * both hold, exactly as `findDraftContradictions` writes them for the
+ * validation editor.
+ *
+ * Reported against the form rather than against a control, for two reasons:
+ * validation rules belong to the separate validation surface, so this editor
+ * has no control to hang them on; and the rule that can no longer hold may
+ * belong to a DIFFERENT attribute than the one being edited — `<id>` is
+ * whichever variable the analyser chose to anchor the strip at — in which case
+ * the message names that attribute and nothing on this form is wrong.
+ *
+ * Everything else `validateEntityDocument` can raise is a shape complaint
+ * written for whoever reads a log, and keeps the package's own copy for a save
+ * that did not happen. See `compoundFailureCopy`.
+ */
+function contradictionMessages(
+  issues: readonly CodebookDraftIssue[],
+): string[] {
+  return issues
+    .filter(
+      (issue) =>
+        issue.path[0] === 'variables' && issue.path[2] === 'validation',
+    )
+    .map((issue) => issue.message);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function LockedOptions({ options }: { options: readonly EditableOption[] }) {
+/**
+ * A list of answers as they stand, with the reason they cannot be edited here.
+ *
+ * Two things read it: an option list one kind of interview step owns, and the
+ * answers of a boolean this editor's two-answer fieldset cannot show. Both are
+ * the same thing to the researcher — what a participant will be offered, and
+ * an editor saying it is not theirs to change — so the caption is what differs
+ * between them, and it is passed in rather than chosen from a flag.
+ */
+function LockedOptions({
+  options,
+  caption,
+}: {
+  options: readonly Readonly<{
+    label: string;
+    value: string | number | boolean;
+  }>[];
+  caption: string;
+}) {
+  const intl = useAppIntl();
   return (
     <div className="bg-surface-2 text-surface-2-contrast relative rounded p-4">
       <Lock aria-hidden="true" className="absolute top-4 right-4 size-4" />
       <table className="w-full text-sm">
-        <caption className="pr-8 pb-2 text-left">
-          These values are managed by the interface and cannot be changed.
-        </caption>
+        <caption className="pr-8 pb-2 text-left">{caption}</caption>
         <thead>
           <tr className="text-left">
-            <th className="pb-2 font-bold">Label</th>
-            <th className="pb-2 font-bold">Value</th>
+            <th className="pb-2 font-bold">
+              {intl.formatMessage(messages.lockedOptionLabelHeader)}
+            </th>
+            <th className="pb-2 font-bold">
+              {intl.formatMessage(messages.lockedOptionValueHeader)}
+            </th>
           </tr>
         </thead>
         <tbody>

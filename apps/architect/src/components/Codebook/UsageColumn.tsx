@@ -1,6 +1,16 @@
 import { Link } from 'wouter';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+
 import Tag from './Tag';
+const messages = defineMessages({
+  notInUse: {
+    id: 'architect.codebook.usageColumn.notInUse',
+    defaultMessage: 'not in use',
+    description: 'Visible text in components / Codebook / UsageColumn.',
+  },
+});
 
 type UsageItem = {
   id?: string;
@@ -13,10 +23,11 @@ type UsageColumnProps = {
 };
 
 const UsageColumn = ({ inUse, usage }: UsageColumnProps) => {
+  const intl = useAppIntl();
   if (!inUse) {
     return (
       <Tag key="unused" notUsed>
-        not in use
+        {intl.formatMessage(messages.notInUse)}
       </Tag>
     );
   }

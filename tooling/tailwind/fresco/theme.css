@@ -41,6 +41,25 @@
 
   --text-*: initial; /* Reset TW theme defaults */
 
+  /*
+   * One step below `xs`, for the small uppercase labels that qualify a value
+   * rather than being one — the kicker over a switcher's entity name, and
+   * anything else that has to read as a label at a glance without competing
+   * with what it labels.
+   *
+   * Its ceiling sits just under `xs`'s floor, so the two never converge at
+   * any viewport: the step is a real one at every size, not only at the
+   * extremes. Tracking is wider than `xs` because the sizes this small are
+   * almost always set in caps, where the default fit is too tight to read.
+   */
+  --text-2xs: clamp(
+    calc(0.512 * var(--theme-root-size)),
+    calc(0.586 * var(--theme-root-size) + calc(0.226 * var(--theme-vw, 1vw))),
+    calc(0.632 * var(--theme-root-size))
+  );
+  --text-2xs--line-height: 1.9;
+  --text-2xs--letter-spacing: 0.06em;
+
   --text-xs: clamp(
     calc(0.64 * var(--theme-root-size)),
     calc(0.733 * var(--theme-root-size) + calc(0.283 * var(--theme-vw, 1vw))),
@@ -230,6 +249,47 @@
   /* States */
   --color-destructive: var(--destructive);
   --color-destructive-contrast: var(--destructive-contrast);
+  /*
+   * The destructive ink, moved toward the page's own text colour until it is
+   * legible on a TINTED surface.
+   *
+   * `--destructive` is a fill colour first. As TEXT it is 4.9:1 on the page's
+   * own white — a pass — and 3.8:1 on `--surface-accent`, which is not: a
+   * field error inside an accent surface fails WCAG AA at exactly the moment
+   * it has something to say. (`themes/studio.css` records the same arithmetic
+   * for its own surface.)
+   *
+   * Mixed toward `--text` rather than darkened, because "further from the
+   * surface" is downwards on a light theme and upwards on a dark one, and a
+   * mix is directionally right in both.
+   *
+   * The mix itself is written in each theme file, beside the `--destructive`
+   * and `--text` it reads — NOT here. A custom property's `var()`s are
+   * substituted on the element the declaration sits on, so the same expression
+   * left in this block resolves once against `:root`'s light pair and cascades
+   * that one answer into every dark, studio and interview region below it. It
+   * did: on a dark accent surface the ink landed at 2.04:1, worse than the
+   * plain `--destructive` it was meant to improve on (3.44:1), where a mix
+   * made in the dark scope reaches 4.63:1. `--surface-accent` is redeclared
+   * per theme for exactly this reason and says so.
+   *
+   * Read only where a surface opts in — `[--destructive:var(--destructive-strong)]`
+   * on the destructive TEXT inside a tinted surface — so the colour every
+   * button, badge and page-level error is drawn with does not move. On the
+   * text and not on the surface, because `--destructive` is a fill as well as
+   * an ink: a destructive button paints its background with it and the icon on
+   * top with `--destructive-contrast`, so an override a whole subtree inherits
+   * moves the fill and leaves the foreground where it was. It did: the remove
+   * button on the codebook's option rows landed at 2.85:1 against its own
+   * white icon on the default dark theme, where the untouched pair reaches
+   * 3.85:1 and a control needs 3:1.
+   *
+   * Opting in reads the theme variable rather than this token: this mapping is
+   * inlined into the utilities Tailwind generates (`text-destructive-strong`),
+   * which resolve at the use site, but `var(--color-destructive-strong)`
+   * written out by hand reads the `:root` copy and freezes again.
+   */
+  --color-destructive-strong: var(--destructive-strong);
 
   --color-warning: var(--warning);
   --color-warning-contrast: var(--warning-contrast);
@@ -430,21 +490,33 @@
   --node-font-size-md: clamp(0.875rem, 1.2vw, 1.125rem);
   --node-font-size-lg: clamp(1rem, 1.4vw, 1.25rem);
   --radius-*: initial;
-  --radius-none: 0px; /* 0px */
-  --radius-2xs: calc(var(--radius) * 0.125); /* 3.5px */
-  --radius-xs: calc(var(--radius) * 0.25); /* 7px */
-  --radius-sm: calc(var(--radius) * 0.5); /* 14px */
   /*
-   * Indirection through `--radius-base` so the bare `rounded` utility (which
-   * Tailwind v4's `@theme inline` would otherwise inline as a literal) keeps a
-   * `var()` reference and resolves at the use-site — same as `rounded-sm` /
-   * `rounded-lg` / etc. Theme files declare `--radius-base` (not `--radius`).
+   * EVERY step reads `--radius-base`, and none of them reads `--radius`.
+   *
+   * Under `@theme inline` a utility inlines its token's VALUE, so what a step
+   * is written in terms of decides where it resolves. `var(--radius-base, …)`
+   * inlines a `var()` reference, which resolves against the element — so a
+   * themed region gets its own theme's radius. `var(--radius)` would inline a
+   * reference to a custom property declared once at `:root`, which is
+   * substituted there against whatever `--radius-base` is at `:root` and then
+   * inherits that number everywhere. Deriving these steps from `--radius` did
+   * exactly that: `rounded-sm` was 14px and `rounded-xs` 7px in every theme,
+   * however the theme had set its base, while the bare `rounded` alone
+   * followed it.
+   *
+   * Theme files declare `--radius-base` and nothing else in this scale.
+   * Pixel comments below are the default theme's 1.75rem base; studio's
+   * 0.875rem halves them and interview's 2rem scales them by 8/7.
    */
-  --radius: var(--radius-base, 1.75rem);
-  --radius-lg: calc(var(--radius) * 1.5); /* 42px */
-  --radius-xl: calc(var(--radius) * 2); /* 56px */
-  --radius-2xl: calc(var(--radius) * 3); /* 84px */
-  --radius-3xl: calc(var(--radius) * 4); /* 112px */
+  --radius-none: 0px; /* 0px */
+  --radius-2xs: calc(var(--radius-base, 1.75rem) * 0.125); /* 3.5px */
+  --radius-xs: calc(var(--radius-base, 1.75rem) * 0.25); /* 7px */
+  --radius-sm: calc(var(--radius-base, 1.75rem) * 0.5); /* 14px */
+  --radius: var(--radius-base, 1.75rem); /* 28px */
+  --radius-lg: calc(var(--radius-base, 1.75rem) * 1.5); /* 42px */
+  --radius-xl: calc(var(--radius-base, 1.75rem) * 2); /* 56px */
+  --radius-2xl: calc(var(--radius-base, 1.75rem) * 3); /* 84px */
+  --radius-3xl: calc(var(--radius-base, 1.75rem) * 4); /* 112px */
   --radius-full: 9999px; /* 9999px */
 
   /*

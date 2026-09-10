@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { messageText } from '~/test/messageText';
+
 import { makeFieldEditorValidate } from '../contradictions';
 import {
   completeRuleValues,
@@ -57,20 +59,22 @@ describe('completeRuleValues', () => {
 
 describe('incompleteRuleIssue', () => {
   it('names an unanswered number rule', () => {
-    expect(incompleteRuleIssue({ minValue: null })).toBe(
+    expect(messageText(incompleteRuleIssue({ minValue: null }))).toBe(
       'Enter a value for "Minimum value", or switch the rule off.',
     );
   });
 
   it('names an unanswered comparison rule differently', () => {
-    expect(incompleteRuleIssue({ sameAs: null })).toBe(
-      'Choose a comparison attribute for "Same as", or switch the rule off.',
+    expect(messageText(incompleteRuleIssue({ sameAs: null }))).toBe(
+      'Choose a comparison attribute for "Same as another attribute", or switch the rule off.',
     );
   });
 
   it('says nothing about a finished map', () => {
     expect(
-      incompleteRuleIssue({ minValue: 1, required: true, sameAs: 'other' }),
+      messageText(
+        incompleteRuleIssue({ minValue: 1, required: true, sameAs: 'other' }),
+      ),
     ).toBeUndefined();
   });
 });
@@ -78,7 +82,7 @@ describe('incompleteRuleIssue', () => {
 describe('ruleMapIssue', () => {
   it('accepts a satisfiable map', () => {
     expect(
-      ruleMapIssue({ minValue: 1, maxValue: 10 }, context()),
+      messageText(ruleMapIssue({ minValue: 1, maxValue: 10 }, context())),
     ).toBeUndefined();
   });
 
@@ -86,19 +90,23 @@ describe('ruleMapIssue', () => {
     // The pair is ALSO contradictory, but nothing can be judged until the
     // unanswered rule has a value.
     expect(
-      ruleMapIssue({ minValue: 10, maxValue: 2, sameAs: null }, context()),
+      messageText(
+        ruleMapIssue({ minValue: 10, maxValue: 2, sameAs: null }, context()),
+      ),
     ).toBe(
-      'Choose a comparison attribute for "Same as", or switch the rule off.',
+      'Choose a comparison attribute for "Same as another attribute", or switch the rule off.',
     );
   });
 
   it('reports a value the schema itself would reject', () => {
-    expect(ruleMapIssue({ minValue: 1.5 }, context())).toBe(
-      'minValue must be a whole number',
+    expect(messageText(ruleMapIssue({ minValue: 1.5 }, context()))).toBe(
+      'Minimum value must be a whole number',
     );
     expect(
-      ruleMapIssue({ maxLength: -1 }, context({ variableType: 'text' })),
-    ).toBe('maxLength must be at least 0');
+      messageText(
+        ruleMapIssue({ maxLength: -1 }, context({ variableType: 'text' })),
+      ),
+    ).toBe('Maximum text length must be at least 0');
   });
 
   it.each([
@@ -106,8 +114,10 @@ describe('ruleMapIssue', () => {
     ['number', { minValue: 100, maxValue: 50 }],
     ['categorical', { minSelected: 2, maxSelected: 1 }],
   ])('reports an inverted %s bound pair', (variableType, validation) => {
-    expect(ruleMapIssue(validation, context({ variableType }))).toMatch(
-      /is greater than/,
+    expect(
+      messageText(ruleMapIssue(validation, context({ variableType }))),
+    ).toMatch(
+      /leave no permitted answer. Adjust the bounds or the required-answer rule/,
     );
   });
 
@@ -130,9 +140,9 @@ describe('ruleMapIssue', () => {
   });
 
   it('says nothing about a value that is not a rule map at all', () => {
-    expect(ruleMapIssue(undefined, context())).toBeUndefined();
-    expect(ruleMapIssue('rules', context())).toBeUndefined();
-    expect(ruleMapIssue([], context())).toBeUndefined();
+    expect(messageText(ruleMapIssue(undefined, context()))).toBeUndefined();
+    expect(messageText(ruleMapIssue('rules', context()))).toBeUndefined();
+    expect(messageText(ruleMapIssue([], context()))).toBeUndefined();
   });
 
   // A variable whose type is not yet known (no input control chosen) has no
@@ -140,9 +150,11 @@ describe('ruleMapIssue', () => {
   // that save.
   it('says nothing while the variable type is unknown', () => {
     expect(
-      ruleMapIssue(
-        { minValue: 100, maxValue: 1 },
-        context({ variableType: '' }),
+      messageText(
+        ruleMapIssue(
+          { minValue: 100, maxValue: 1 },
+          context({ variableType: '' }),
+        ),
       ),
     ).toBeUndefined();
   });

@@ -7,7 +7,9 @@ const baseAssetSchema = z.strictObject({
 
 // source is written verbatim as a zip entry name on export, so reject path
 // separators and parent-directory segments to prevent zip-slip entry names.
-const assetSourceSchema = z
+// Exported so a host staging a file can refuse the name before it promotes
+// one the manifest would then reject.
+export const assetSourceSchema = z
   .string()
   .refine(
     (source) =>

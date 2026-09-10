@@ -16,7 +16,9 @@ export function UnlockLayout({
 }) {
   return (
     <div className="phone-landscape:flex-row phone-landscape:items-start phone-landscape:gap-8 phone-landscape:text-left flex flex-col items-center gap-6 text-center">
-      <div className="order-last flex min-w-0 flex-1 flex-col">{children}</div>
+      <div className="order-last flex w-full min-w-0 flex-1 flex-col">
+        {children}
+      </div>
       <div className="phone-landscape:pt-1 order-first shrink-0">{emblem}</div>
     </div>
   );

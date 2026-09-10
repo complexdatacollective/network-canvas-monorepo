@@ -1,6 +1,9 @@
+import type { IntlShape } from '@codaco/app-i18n/messages';
 import { entityAttributesProperty } from '@codaco/shared-consts';
 import type { NcEdge, NcNode } from '@codaco/shared-consts';
 
+import { resolveInterviewIntl } from '../../../i18n/resolveIntl';
+import { messages } from '../messages';
 import type { VariableConfig } from '../store';
 import { getEdgeRelationshipType } from './edgeUtils';
 
@@ -75,7 +78,9 @@ export function evaluateBoundaries(
   variableConfig: VariableConfig,
   boundaries: Boundaries,
   hasNoChildrenAffirmation: boolean,
+  intl?: IntlShape,
 ): ValidationIssue[] {
+  const formatter = resolveInterviewIntl(intl);
   const issues: ValidationIssue[] = [];
 
   if (boundaries.requireGrandparents !== 'off') {
@@ -88,8 +93,8 @@ export function evaluateBoundaries(
     if (isUnmet) {
       issues.push({
         nodeId: egoId,
-        nodeName: 'You',
-        message: 'Each of your parents needs at least two parents recorded.',
+        nodeName: formatter.formatMessage(messages.you),
+        message: formatter.formatMessage(messages.grandparentsRequired),
         severity: boundaries.requireGrandparents,
         boundary: 'requireGrandparents',
       });
@@ -141,9 +146,8 @@ export function evaluateBoundaries(
     if (isUnmet) {
       issues.push({
         nodeId: egoId,
-        nodeName: 'You',
-        message:
-          "Each of your children's other parents needs their own parents and grandparents recorded.",
+        nodeName: formatter.formatMessage(messages.you),
+        message: formatter.formatMessage(messages.contributorsRequired),
         severity: boundaries.requireChildrenContributors,
         boundary: 'requireChildrenContributors',
       });
@@ -159,7 +163,9 @@ export function validatePedigreeCompleteness(
   variableConfig: VariableConfig,
   boundaries: Boundaries,
   hasNoChildrenAffirmation: boolean,
+  intl?: IntlShape,
 ): ValidationIssue[] {
+  const formatter = resolveInterviewIntl(intl);
   const issues: ValidationIssue[] = [];
 
   const egoEntries = [...nodes.entries()].filter(
@@ -176,11 +182,11 @@ export function validatePedigreeCompleteness(
   if (!egoEntry) {
     issues.push({
       nodeId: '',
-      nodeName: 'You',
+      nodeName: formatter.formatMessage(messages.you),
       message:
         egoEntries.length === 0
-          ? 'Your own place in this family tree could not be found. Please ask the person running this interview for help.'
-          : 'More than one person in this family tree is marked as you. Please ask the person running this interview for help.',
+          ? formatter.formatMessage(messages.missingSelf)
+          : formatter.formatMessage(messages.duplicateSelf),
       severity: 'required',
     });
     return issues;
@@ -193,8 +199,8 @@ export function validatePedigreeCompleteness(
   if (egoParentIds.length < 2) {
     issues.push({
       nodeId: egoId,
-      nodeName: 'You',
-      message: 'You must have at least two parents defined.',
+      nodeName: formatter.formatMessage(messages.you),
+      message: formatter.formatMessage(messages.parentsRequired),
       severity: 'required',
     });
   }
@@ -207,6 +213,7 @@ export function validatePedigreeCompleteness(
     variableConfig,
     boundaries,
     hasNoChildrenAffirmation,
+    formatter,
   );
   for (const issue of boundaryIssues) {
     if (issue.severity === 'required') {

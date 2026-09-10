@@ -10,8 +10,8 @@ import {
   RELATIVE_DATE_PICKER_DEFAULT_BEFORE,
 } from '@codaco/shared-consts';
 
-import type { VariableEntry } from '../../types';
-import { toVariableEntry } from '../attributes';
+import type { VariableEntry } from '../../types.ts';
+import { toVariableEntry } from '../attributes.ts';
 import {
   boundResolution,
   type DateResolution,
@@ -20,9 +20,9 @@ import {
   pickerBoundResolution,
   truncateToResolution,
   utcDate,
-} from './dateWindow';
-import type { EntityConstraints, VariableConstraints } from './types';
-import { SCALAR_DOMAIN } from './valueSpace';
+} from './dateWindow.ts';
+import type { EntityConstraints, VariableConstraints } from './types.ts';
+import { SCALAR_DOMAIN } from './valueSpace.ts';
 
 function readNumber(
   source: Record<string, unknown> | undefined,

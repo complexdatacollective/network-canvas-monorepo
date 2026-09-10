@@ -8,6 +8,8 @@ import {
   useRef,
 } from 'react';
 
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { AppMessage } from '@codaco/app-i18n/react';
 import { useToast } from '@codaco/fresco-ui/Toast';
 import type { ExportOptions } from '@codaco/network-exporters/options';
 import { ensureError } from '@codaco/shared-consts';
@@ -16,6 +18,68 @@ import ExportToastContent from '~/components/ExportProgress/ExportToastContent';
 import { useDownload } from '~/hooks/useDownload';
 import { runBatchedExport } from '~/lib/export/runBatchedExport';
 import { captureClientException } from '~/lib/posthog-client';
+
+const messages = defineMessages({
+  exportError: {
+    id: 'fresco.ExportProgressProvider.exportError',
+    defaultMessage: 'The export could not be completed. Please try again.',
+    description:
+      'Researcher-facing ExportProgressProvider: The export could not be completed. Please try again.',
+  },
+
+  copyYourExportHasDownloadedInterviewSCould: {
+    id: 'fresco.ExportProgressProvider.copyYourExportHasDownloadedInterviewSCould',
+    defaultMessage:
+      'Your export has downloaded. {value1, plural, one {# interview could not be exported.} other {# interviews could not be exported.}}',
+    description:
+      'Researcher-facing ExportProgressProvider: Your export has downloaded. value interview(s) could not be exported.',
+  },
+  copyYourExportHasDownloaded: {
+    id: 'fresco.ExportProgressProvider.copyYourExportHasDownloaded',
+    defaultMessage: 'Your export has downloaded.',
+    description:
+      'Researcher-facing ExportProgressProvider: Your export has downloaded.',
+  },
+  exportingInterviews: {
+    id: 'fresco.ExportProgressProvider.exportingInterviews',
+    defaultMessage: 'Exporting interviews',
+    description:
+      'Researcher-facing ExportProgressProvider: Exporting interviews',
+  },
+  exportDownloaded: {
+    id: 'fresco.ExportProgressProvider.exportDownloaded',
+    defaultMessage: 'Export downloaded',
+    description: 'Researcher-facing ExportProgressProvider: Export downloaded',
+  },
+  yourExportDownloadedButItsStatusCould: {
+    id: 'fresco.ExportProgressProvider.yourExportDownloadedButItsStatusCould',
+    defaultMessage:
+      'Your export downloaded, but its status could not be updated. Refresh to see the latest.',
+    description:
+      'Researcher-facing ExportProgressProvider: Your export downloaded, but its status could not be updated. Refresh to see the latest.',
+  },
+  exportComplete: {
+    id: 'fresco.ExportProgressProvider.exportComplete',
+    defaultMessage: 'Export complete',
+    description: 'Researcher-facing ExportProgressProvider: Export complete',
+  },
+  exportCancelled: {
+    id: 'fresco.ExportProgressProvider.exportCancelled',
+    defaultMessage: 'Export cancelled',
+    description: 'Researcher-facing ExportProgressProvider: Export cancelled',
+  },
+  theExportWasCancelled: {
+    id: 'fresco.ExportProgressProvider.theExportWasCancelled',
+    defaultMessage: 'The export was cancelled.',
+    description:
+      'Researcher-facing ExportProgressProvider: The export was cancelled.',
+  },
+  exportFailed: {
+    id: 'fresco.ExportProgressProvider.exportFailed',
+    defaultMessage: 'Export failed',
+    description: 'Researcher-facing ExportProgressProvider: Export failed',
+  },
+});
 
 type ExportContextValue = {
   startExport: (interviewIds: string[], exportOptions: ExportOptions) => void;
@@ -61,7 +125,7 @@ export function ExportProgressProvider({
       exportingRef.current = true;
 
       const toastId = add({
-        title: 'Exporting interviews',
+        title: <AppMessage message={messages.exportingInterviews} />,
         description: (
           <ExportToastContent
             stage="fetching"
@@ -104,18 +168,28 @@ export function ExportProgressProvider({
           close(toastId);
           if (commit.error) {
             add({
-              title: 'Export downloaded',
-              description:
-                'Your export downloaded, but its status could not be updated. Refresh to see the latest.',
+              title: <AppMessage message={messages.exportDownloaded} />,
+              description: (
+                <AppMessage
+                  message={messages.yourExportDownloadedButItsStatusCould}
+                />
+              ),
               timeout: 8000,
             });
           } else {
             add({
-              title: 'Export complete',
+              title: <AppMessage message={messages.exportComplete} />,
               description:
-                failedIds.length > 0
-                  ? `Your export has downloaded. ${String(failedIds.length)} interview(s) could not be exported.`
-                  : 'Your export has downloaded.',
+                failedIds.length > 0 ? (
+                  <AppMessage
+                    message={
+                      messages.copyYourExportHasDownloadedInterviewSCould
+                    }
+                    values={{ value1: failedIds.length }}
+                  />
+                ) : (
+                  <AppMessage message={messages.copyYourExportHasDownloaded} />
+                ),
               variant: 'success',
               timeout: 8000,
             });
@@ -124,8 +198,10 @@ export function ExportProgressProvider({
           if (controller.signal.aborted) {
             close(toastId);
             add({
-              title: 'Export cancelled',
-              description: 'The export was cancelled.',
+              title: <AppMessage message={messages.exportCancelled} />,
+              description: (
+                <AppMessage message={messages.theExportWasCancelled} />
+              ),
               timeout: 5000,
             });
             return;
@@ -135,8 +211,8 @@ export function ExportProgressProvider({
           close(toastId);
           add({
             variant: 'destructive',
-            title: 'Export failed',
-            description: e.message,
+            title: <AppMessage message={messages.exportFailed} />,
+            description: <AppMessage message={messages.exportError} />,
             timeout: 0,
           });
         } finally {

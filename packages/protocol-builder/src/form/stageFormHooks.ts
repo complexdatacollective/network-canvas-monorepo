@@ -1,20 +1,29 @@
-import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useRef, useSyncExternalStore } from 'react';
 
 import {
   type FieldNameMode,
   resolveFieldPath,
-  useFieldNamespacePath,
 } from '@codaco/fresco-ui/form/FieldNamespace';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import {
-  formatObjectPath,
   getValue,
   type ObjectPath,
   omitValue,
 } from '@codaco/fresco-ui/form/utils/objectPath';
 import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
+import {
+  applyCommands,
+  canonicalize,
+  type Command,
+  commandTarget,
+  targetPath,
+} from '@codaco/studio-sync/apply';
 
-import type { StageFormDraft } from '../session.ts';
+import {
+  commandsFromDraftChange,
+  type StageFormDraft,
+} from '../stageDocument.ts';
+import { withoutValueAt } from './absentValues.ts';
 import {
   type StageFormStoreApi,
   useStageEditorForm,
@@ -24,36 +33,175 @@ import {
 type FormStoreState = ReturnType<StageFormStoreApi['getState']>;
 
 /**
- * Where a field actually lives, and what the committed draft holds there.
+ * The value that caused a discard, and where it lives in the stage draft.
  *
- * A field's name is not always its path: an enclosing `FieldNamespace`
- * prefixes it, and `nameMode="opaque"` makes a name containing dots a single
- * segment rather than a route through the document. Both are resolved here
- * exactly as Fresco's `Field` resolves them, so the name the outline asks the
- * store about and the path the committed value is read from are the ones the
- * field is really registered under.
+ * A capability is sometimes emptied by a change somewhere ELSE — a roster's
+ * card details name columns of a data file, so choosing a different file makes
+ * every one of them a reference to something that may not be there. That
+ * change is the discard's cause, and it has to be in the same batch as the
+ * discard itself; see {@link useDiscardStageValues}.
  *
- * The value is memoised because `initialValue` is a dependency of the effect
- * that registers a field: an unstable one re-registers it on every render.
+ * The value is what the FORM holds at `path` now, not a decision this caller
+ * is making: the researcher already chose it, and the batch is where it stops
+ * being form-local.
  */
-export function useResolvedFieldIdentity(
-  name: string,
-  nameMode: FieldNameMode = 'legacy',
-): Readonly<{ registeredName: string; committedValue: unknown }> {
-  const { committedFields } = useStageEditorForm();
-  const namespace = useFieldNamespacePath();
+export type DiscardCause = Readonly<{ path: string; value: unknown }>;
 
-  return useMemo(() => {
-    const path = resolveFieldPath(namespace, name, nameMode);
-    return {
-      registeredName: formatObjectPath(path),
-      committedValue: getValue(committedFields, path),
-    };
-  }, [committedFields, name, nameMode, namespace]);
+/**
+ * Throws everything at these paths away, for good — with, when something else
+ * caused it, the change that did.
+ *
+ * What switching a capability off means, and the one place that decides it.
+ * The document is written first, in ONE batch, and the form is emptied
+ * afterwards.
+ *
+ * **A discard travels with its cause.** A capability cleared because the data
+ * file it described was replaced is only intelligible beside the replacement:
+ * written on its own, the document passes through a state describing the old
+ * file with everything about it gone, which is a stage nobody authored. The
+ * cause is also part of the state the discards are read against — an
+ * exclusive-variant container travels whole, so a discard inside one is a
+ * single `set` of the container, and a container assembled without the cause
+ * would put back the value the researcher has just changed.
+ *
+ * Nothing is written for a cause the document already holds, so the second and
+ * third sections resetting on the same file add no command of their own.
+ *
+ * **The cause travels whether or not anything was thrown away.** A capability
+ * that happened to hold nothing changes what the batch discards and nothing
+ * else: the file was still replaced. So the batch is built first and dispatched
+ * on ITS length rather than on the discards': a lone cause travels, and a reset
+ * with nothing whatever to say writes nothing at all.
+ *
+ * The FORM is emptied either way. A value typed into a capability and not yet
+ * flushed is on screen and in no document, so a reset that left it there would
+ * write it back on the next save under a cause it no longer describes —
+ * **unless the write was refused**, which is what happens when the editor is
+ * read-only. Nothing was thrown away then, so nothing may be emptied either,
+ * and the caller is told so it can leave its own switch where the researcher
+ * left it.
+ */
+export function useDiscardStageValues(): (
+  paths: readonly string[],
+  cause?: DiscardCause,
+) => boolean {
+  const { applyOwnCommands } = useStageEditorForm();
+  const clearStageValue = useClearStageValue();
+
+  return useCallback(
+    (paths: readonly string[], cause?: DiscardCause) => {
+      // `applyOwnCommands([])` is how anything here reads the document as it
+      // stands NOW, rather than the render this callback was built against. An
+      // empty batch writes nothing, so it can never be refused.
+      const { draft: current } = applyOwnCommands([]);
+      const causeBatch = causeCommands(current, cause);
+      /**
+       * The document the discards are read against, WITH the cause already in
+       * it. See above for why the cause cannot be left out of it.
+       */
+      const withCause = applyCommands(current, [...causeBatch]);
+      let next = withCause;
+      for (const path of paths) {
+        const target = safePath(path);
+        if (target === null || target.length === 0) continue;
+        next = withoutValueAt(next, target);
+      }
+      const discards = commandsFromDraftChange(withCause, next);
+      // The cause first, so the batch reads as what happened: this changed, and
+      // therefore these were thrown away.
+      const batch = [
+        ...causeBatch.filter((command) => !carriedBy(discards, command)),
+        ...discards,
+      ];
+      if (batch.length > 0 && applyOwnCommands(batch).refused) return false;
+
+      // The FORM only, and only the discarded paths: the cause is already on
+      // screen, because the researcher chose it.
+      for (const path of paths) clearStageValue(path);
+      return true;
+    },
+    [applyOwnCommands, clearStageValue],
+  );
+}
+
+/**
+ * Whether a discard already writes the cause's own value on its way past.
+ *
+ * Only one shape produces this: a discard inside an exclusive-variant
+ * container is a single `set` of the whole container, and because the cause
+ * was written into the draft that `set` was diffed FROM, the container it
+ * carries already holds it. Sending the cause separately as well would be a
+ * command saying what the next one says again — and a reader of the log would
+ * have to work out that the two do not disagree.
+ *
+ * Asked of the commands rather than of the schema, so it answers for whatever
+ * reason a container comes to travel whole rather than only for the reason
+ * there is today.
+ */
+function carriedBy(discards: readonly Command[], cause: Command): boolean {
+  const causePath = targetPath(cause.key);
+  return discards.some(
+    (command) =>
+      command.op === 'set' && covers(targetPath(command.key), causePath),
+  );
+}
+
+/** Whether writing at `ancestor` writes whatever is at `path`. */
+const covers = (
+  ancestor: readonly string[],
+  path: readonly string[],
+): boolean =>
+  ancestor.length <= path.length &&
+  ancestor.every((segment, index) => segment === path[index]);
+
+/**
+ * The command that puts a discard's cause into the draft, or nothing at all.
+ *
+ * Nothing when the draft already agrees, which is the ordinary case for every
+ * section after the first: they all read the same file, and the first one to
+ * reset writes it.
+ *
+ * **A cause no command can address is refused out loud.** A `CommandTarget`
+ * names keys and never positions — `commandTarget` takes strings, and
+ * positional addressing is what it exists to rule out — so a reset path with an
+ * index in it, or one that is not a path at all, has no command that could
+ * carry it. That is a section describing itself wrongly: `resetOn` is
+ * documented as the path a single FIELD owns. Answering with no command would
+ * be the worst of the three outcomes, because the discards would then be
+ * written without the change that explains them — the whole defect the cause
+ * exists to prevent. So it throws, at the first reset, where the path is a
+ * constant of the section and every test of it says so.
+ */
+function causeCommands(
+  current: StageFormDraft,
+  cause: DiscardCause | undefined,
+): readonly Command[] {
+  if (cause === undefined) return [];
+  const target = safePath(cause.path);
+  const keys = (target ?? []).filter(
+    (segment): segment is string => typeof segment === 'string',
+  );
+  if (target === null || keys.length === 0 || keys.length !== target.length) {
+    throw new Error(
+      `A section resets on "${cause.path}", which no command can address. A reset must name the path one field owns, spelled with keys and no list positions.`,
+    );
+  }
+  const key = commandTarget(keys);
+  const held = getValue(current, target);
+  if (canonicalize(held) === canonicalize(cause.value)) return [];
+  return cause.value === undefined
+    ? [{ op: 'unset', key }]
+    : [{ op: 'set', key, value: cause.value }];
 }
 
 /**
  * Empties a path in the stage form, and everything that reaches it.
+ *
+ * The FORM only. Its caller has already written what it decided into the
+ * document — `useDiscardStageValues` with an unset, `useResetStageOnSubjectChange`
+ * with a batch that also carries the template defaults it is resetting to — and
+ * this brings the controls on screen level with that, immediately, rather than
+ * leaving them showing values the document no longer has.
  *
  * Confirming a deletion has to leave nothing holding the value anywhere, or
  * some later reader finds it again and the deletion undoes itself. Three
@@ -102,7 +250,7 @@ export function useClearStageValue(): (path: string) => void {
           continue;
         }
         const relative = target.slice(ancestor.length);
-        const cleared = clearInside(field.value, relative);
+        const cleared = withoutValueAt(field.value, relative);
         // Identity is `omitValue` reporting that it held nothing there.
         if (cleared === field.value) continue;
         // An ancestor the clear emptied goes too, rather than being parked as
@@ -123,6 +271,94 @@ export function useClearStageValue(): (path: string) => void {
     },
     [storeApi],
   );
+}
+
+/**
+ * What an agreed stage draft holds at one path.
+ *
+ * The one way a draft is read by path outside the form store, so that two
+ * readers asking about the same path can never be asking about two different
+ * values. `useStageValue` falls back to it when the form knows nothing, and
+ * `useOnResearcherChange` reads the agreed draft through it beside that — and
+ * the whole point of THAT pair is comparing them, which is worth nothing if
+ * they resolve the path differently.
+ *
+ * Canonically parsed, like every other path in this package: `a.b` is a route
+ * through the document and `["a.b"]` is one protocol-authored key that happens
+ * to contain a dot. A general-purpose `get` decides between those two readings
+ * by whether the object it is holding happens to have such a key, which makes
+ * the meaning of a section's `resetOn` depend on the content of the stage.
+ *
+ * A path that is no path at all reports `undefined` rather than throwing: this
+ * is a read, and every caller already has to handle a path holding nothing.
+ */
+export function stageDraftValue(
+  fields: StageFormDraft,
+  path: string | undefined,
+): unknown {
+  if (path === undefined) return undefined;
+  const target = safePath(path);
+  return target === null ? undefined : getValue(fields, target);
+}
+
+/**
+ * What the stage draft currently holds at one path.
+ *
+ * The one way anything in this package reads a draft value it does not own a
+ * field for: a filter checking the prompts it might contradict, a proposed
+ * name reading the stage's subject. Sections address values by path and
+ * nothing else — no stage path handed down from a host, no selector, no store
+ * of the host's own.
+ *
+ * Resolution is the form store's own, through `hasValue`/`getValue`: a field
+ * registered AT the path, the values assembled from fields registered above or
+ * below it, then a field parked at it by progressive disclosure. Only when the
+ * form holds none of those does the committed draft answer — before a
+ * section's fields have registered, the draft is the only place the value is,
+ * and a section that has not been opened yet would otherwise read every value
+ * inside it as empty.
+ *
+ * Deliberately not built on `useStageHasAnyValue`'s machinery, which answers a
+ * different question: whether a path holds an ANSWER, where an empty string,
+ * an empty list and a container of blanks are all "nothing". That distinction
+ * decides whether a capability is switched on. This one reports the value as
+ * it is.
+ *
+ * Addressed structurally, so a protocol-authored key containing a dot or a
+ * space is read as one name rather than as a route through the document. Reads
+ * the stage form specifically, so it keeps working inside a dialog that has
+ * mounted a form store of its own.
+ *
+ * No path is an answer in its own right — `undefined`, "there is no such
+ * value" — so a caller whose path is itself optional can still ask
+ * unconditionally, which a hook has to be able to do.
+ */
+export function useStageValue(path: string | undefined): unknown {
+  const { storeApi, committedFields } = useStageEditorForm();
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => storeApi.subscribe(onStoreChange),
+    [storeApi],
+  );
+
+  const getSnapshot = useCallback((): unknown => {
+    if (path === undefined) return undefined;
+    const target = safePath(path);
+    if (target === null) return undefined;
+
+    const state = storeApi.getState();
+    const pathOperations = state.pathOperations;
+    if (pathOperations === undefined) {
+      return state.hasValue(path)
+        ? state.getValue(path)
+        : stageDraftValue(committedFields, path);
+    }
+    return pathOperations.hasValue(target)
+      ? pathOperations.getValue(target)
+      : stageDraftValue(committedFields, path);
+  }, [committedFields, path, storeApi]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 /**
@@ -174,6 +410,32 @@ export function useStageHasAnyValue(paths: readonly string[]): boolean {
 }
 
 /**
+ * The same question, asked at the moment it matters rather than watched.
+ *
+ * For a caller whose paths are not known until something happens — a subject
+ * change, which invalidates whatever the stage happens to be carrying at the
+ * time. Watching them would mean recomputing the set on every render to hand
+ * it to a hook, for an answer nobody has asked for yet.
+ *
+ * The same `pathHasAnswer` either way, deliberately: a capability's switch-off
+ * and a subject change both decide whether to warn the researcher that
+ * something will be lost, and two judgements of "holds something" would let
+ * one of them warn where the other did not.
+ */
+export function useAskStageHasAnyValue(): (
+  paths: readonly string[],
+) => boolean {
+  const { storeApi, committedFields } = useStageEditorForm();
+  return useCallback(
+    (paths) =>
+      paths.some((path) =>
+        pathHasAnswer(storeApi.getState(), committedFields, path),
+      ),
+    [committedFields, storeApi],
+  );
+}
+
+/**
  * Whether anything has actually been entered at this value.
  *
  * A capability may own a CONTAINER path while its controls register the leaves
@@ -206,16 +468,16 @@ function hasAnswer(value: unknown): boolean {
  *    tombstone at its own path, and content entered afterwards reaches this
  *    path from the other two directions, where that tombstone has no standing
  *    to speak for it.
- * 2. A tombstone with nothing beneath it means empty, and stops there:
- *    switching a capability off parks that record ON PURPOSE, and falling
- *    through would report the capability configured again from the draft it
- *    was opened with. A capability owning a container whose controls are all
- *    hidden behind a collapsed group has no field at the container and nothing
- *    in the assembled values, and its content would otherwise be invisible
- *    here — so switching it off would skip the confirmation, skip the clear,
- *    and leave the capability quietly active in the saved stage.
+ * 2. A record at the path holding nothing, with nothing beneath it, means
+ *    empty and stops there. A field the researcher emptied by hand holds `''`,
+ *    which is not an answer, while the draft it was opened with still holds
+ *    the sentence they deleted — and falling through would report the
+ *    capability configured from a value nothing on screen has any more.
  * 3. Whatever the committed draft holds, minus every sub-path the form has
- *    since emptied.
+ *    since emptied. Without this a capability could never open on entry, and
+ *    one whose controls all sit behind a collapsed group would read as empty
+ *    while the stage was configured — so switching it off would skip the
+ *    confirmation and leave the capability quietly active in the saved stage.
  */
 function pathHasAnswer(
   state: FormStoreState,
@@ -248,8 +510,9 @@ function pathHasAnswer(
 
   // A record at exactly this path holding nothing, with nothing above or below
   // it holding anything either. That is the form saying the path is empty, and
-  // it outranks whatever the draft was opened with — otherwise clearing a
-  // capability would be undone by the draft's memory of it.
+  // it outranks whatever the draft was opened with — otherwise a field the
+  // researcher emptied by hand would be answered from the sentence they
+  // deleted, which the draft still remembers until the next save.
   if (exact) return false;
 
   // Every remaining known path is one the form knows is empty, so the draft's
@@ -266,29 +529,6 @@ function readInside(value: unknown, relative: ObjectPath): unknown {
   // Every node reachable inside a container field's value is itself a value.
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion
   return getValue(value as Record<string, unknown>, relative);
-}
-
-/**
- * A copy of `value` with `relative` removed, and with any container that
- * removal emptied removed as well.
- *
- * The same rule the submit merge applies to the stage draft, applied here to
- * one field's value: an emptied object is not a value the schema accepts,
- * while an emptied ROW stays, because removing an array index leaves a hole
- * rather than closing the gap.
- */
-function clearInside(value: unknown, relative: ObjectPath): unknown {
-  const removed = omitValue(value, relative);
-  if (removed === value) return value;
-
-  let next = removed;
-  for (let depth = relative.length - 1; depth >= 1; depth -= 1) {
-    const ancestorPath = relative.slice(0, depth);
-    if (!isEmptyDictionary(readInside(next, ancestorPath))) break;
-    if (typeof ancestorPath.at(-1) === 'number') break;
-    next = omitValue(next, ancestorPath);
-  }
-  return next;
 }
 
 function isEmptyDictionary(value: unknown): boolean {

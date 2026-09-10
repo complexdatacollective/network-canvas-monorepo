@@ -1,58 +1,301 @@
 import {
-  useCallback,
+  createElement,
   useEffect,
-  useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
   type FormEvent,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
+import {
+  createMessageError,
+  defineMessages,
+  formatMessageError,
+} from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
+import ColorPickerField, {
+  type ColorSwatchOption,
+} from '@codaco/fresco-ui/form/fields/ColorPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelect from '@codaco/fresco-ui/form/fields/Select/Native';
 import { isInterviewerIconName } from '@codaco/fresco-ui/Icon';
 import Surface from '@codaco/fresco-ui/layout/Surface';
+import {
+  EnclosingHeadingLevel,
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
 import Heading from '@codaco/fresco-ui/typography/Heading';
-import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
   EdgeColorSequence,
   NodeColorSequence,
+  type NodeShape,
   NodeShapes,
 } from '@codaco/protocol-validation';
 import {
   normalizeForComparison,
   VariableNameSchema,
 } from '@codaco/shared-consts';
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { canonicalize, type SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { CodebookSubject } from '../../protocol-context.ts';
-import type { CompoundEditRequest, CompoundEditResult } from '../../session.ts';
+import { codebookEditingMessages } from '../codebookMessages.ts';
+import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import {
-  AuxiliaryCodebookDraftSession,
-  buildCreateEntityRequest,
-  buildUpdateEntityRequest,
-  type AuxiliaryCodebookDraftFailure,
+  documentForNewEntity,
+  documentWithEntityProperties,
   type CodebookEntityDraft,
 } from '../editing.ts';
+import type { CodebookWriteOutcome } from '../writes.ts';
+
+/**
+ * The names of the shapes a node type can be drawn as.
+ *
+ * One descriptor per shape rather than start-casing the schema's own token:
+ * `circle` is a stored value, not copy, and upper-casing its first letter is
+ * an English rule that produces an English word. The record stays exhaustive
+ * over the schema union, so a shape added there fails to compile until it is
+ * named here.
+ */
+const NODE_SHAPE_LABELS = defineMessages({
+  circle: {
+    id: 'protocolBuilder.codebookEntity.nodeShapeCircle',
+    defaultMessage: 'Circle',
+    description:
+      'Choice offered for the shape a node type is drawn as in the interview. A node is a member of the interview network.',
+  },
+  square: {
+    id: 'protocolBuilder.codebookEntity.nodeShapeSquare',
+    defaultMessage: 'Square',
+    description:
+      'Choice offered for the shape a node type is drawn as in the interview. A node is a member of the interview network.',
+  },
+  diamond: {
+    id: 'protocolBuilder.codebookEntity.nodeShapeDiamond',
+    defaultMessage: 'Diamond',
+    description:
+      'Choice offered for the shape a node type is drawn as in the interview. A node is a member of the interview network.',
+  },
+}) satisfies Record<NodeShape, MessageDescriptor>;
+
+const messages = defineMessages({
+  nodeColorOption: {
+    id: 'protocolBuilder.codebookEntity.nodeColorOption',
+    defaultMessage: 'Node color {index, number}',
+    description:
+      'Choice offered for a node type’s colour, naming its position in the protocol’s node palette rather than the colour itself, because a protocol’s theme decides what each position looks like. index is that position, counting from one.',
+  },
+  edgeColorOption: {
+    id: 'protocolBuilder.codebookEntity.edgeColorOption',
+    defaultMessage: 'Edge color {index, number}',
+    description:
+      'Choice offered for an edge type’s colour, naming its position in the protocol’s edge palette rather than the colour itself, because a protocol’s theme decides what each position looks like. index is that position, counting from one.',
+  },
+  nameRequired: {
+    id: 'protocolBuilder.codebookEntity.nameRequired',
+    defaultMessage: 'Enter a type name.',
+    description:
+      'Refusal shown under the name field of the entity editor when the researcher has left it empty.',
+  },
+  nameInvalid: {
+    id: 'protocolBuilder.codebookEntity.nameInvalid',
+    defaultMessage:
+      '{entity, select, node {Not a valid node type name. Only letters, numbers and the symbols ._-: are supported} edge {Not a valid edge type name. Only letters, numbers and the symbols ._-: are supported} other {Not a valid ego definition name. Only letters, numbers and the symbols ._-: are supported}}',
+    description:
+      'Refusal shown under the name field when the name holds characters the export formats cannot carry. entity is node, edge or ego. The listed symbols are literal characters and must not be translated.',
+  },
+  nameTaken: {
+    id: 'protocolBuilder.codebookEntity.nameTaken',
+    defaultMessage: 'A type named "{name}" already exists.',
+    description:
+      'Refusal shown under the name field when another entity type in this protocol already has that name. name is what the researcher typed.',
+  },
+  colorRequired: {
+    id: 'protocolBuilder.codebookEntity.colorRequired',
+    defaultMessage: 'Choose a color.',
+    description:
+      'Refusal shown under the colour field of the entity editor when the researcher has chosen none.',
+  },
+  shapeRequired: {
+    id: 'protocolBuilder.codebookEntity.shapeRequired',
+    defaultMessage: 'Choose a default shape.',
+    description:
+      'Refusal shown under the shape field of the node type editor when the researcher has chosen none.',
+  },
+  iconRequired: {
+    id: 'protocolBuilder.codebookEntity.iconRequired',
+    defaultMessage: 'Enter an icon name.',
+    description:
+      'Refusal shown under the icon field of the node type editor when the researcher has left it empty.',
+  },
+  iconUnsupported: {
+    id: 'protocolBuilder.codebookEntity.iconUnsupported',
+    defaultMessage: 'Choose an icon supported by Network Canvas.',
+    description:
+      'Refusal shown under the icon field when the name typed is not one of the icons the interview can draw. "Network Canvas" is the product name and stays as it is.',
+  },
+  egoHasNoProperties: {
+    id: 'protocolBuilder.codebookEntity.egoHasNoProperties',
+    defaultMessage:
+      'Ego attributes are edited from the attribute list. There are no entity-level properties to configure.',
+    description:
+      'Shown in place of the property fields when the entity being edited is the ego — the interview participant themselves, who has attributes but no name, colour or shape of their own.',
+  },
+  nameLabel: {
+    id: 'protocolBuilder.codebookEntity.nameLabel',
+    defaultMessage:
+      '{entity, select, node {Node type name} other {Edge type name}}',
+    description:
+      'Label of the field holding the researcher’s own name for this entity type. entity is node or edge; the ego has no type name.',
+  },
+  nameHint: {
+    id: 'protocolBuilder.codebookEntity.nameHint',
+    defaultMessage:
+      '{entity, select, node {This name identifies the node type in the codebook and exported data.} edge {This name identifies the edge type in the codebook and exported data.} other {This name identifies the ego definition in the codebook and exported data.}}',
+    description:
+      'Guidance under the name field, saying where the name is read back. entity is node, edge or ego. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyses afterwards.',
+  },
+  colorLabel: {
+    id: 'protocolBuilder.codebookEntity.colorLabel',
+    defaultMessage: 'Protocol color',
+    description:
+      'Label of the field choosing which position in the protocol’s palette this entity type is drawn in.',
+  },
+  colorHint: {
+    id: 'protocolBuilder.codebookEntity.colorHint',
+    defaultMessage:
+      '{entity, select, node {Choose a color reference for this node type.} edge {Choose a color reference for this edge type.} other {Choose a color reference for this ego definition.}}',
+    description:
+      'Guidance under the colour field. entity is node, edge or ego. A colour reference is a position in the protocol’s palette rather than a literal colour.',
+  },
+  colorOutsidePalette: {
+    id: 'protocolBuilder.codebookEntity.colorOutsidePalette',
+    defaultMessage: 'Current color ({color})',
+    description:
+      'Name of the extra swatch offered when the entity type is already stored with a colour this protocol’s palette does not contain, so the researcher can see and keep what it has. color is the stored reference.',
+  },
+  shapeLabel: {
+    id: 'protocolBuilder.codebookEntity.shapeLabel',
+    defaultMessage: 'Default shape',
+    description:
+      'Label of the field choosing the shape a node type is drawn as when nothing overrides it.',
+  },
+  shapeHint: {
+    id: 'protocolBuilder.codebookEntity.shapeHint',
+    defaultMessage:
+      'Choose the shape used when no dynamic shape mapping applies.',
+    description:
+      'Guidance under the shape field. A dynamic shape mapping is a protocol rule that draws a node differently depending on one of its attributes.',
+  },
+  shapePlaceholder: {
+    id: 'protocolBuilder.codebookEntity.shapePlaceholder',
+    defaultMessage: 'Choose a shape…',
+    description:
+      'Placeholder shown in the shape field of the node type editor before a choice is made.',
+  },
+  iconLabel: {
+    id: 'protocolBuilder.codebookEntity.iconLabel',
+    defaultMessage: 'Interface icon',
+    description:
+      'Label of the field naming the icon shown on the buttons an interview offers for creating this node type. An interface is one kind of interview step.',
+  },
+  iconHint: {
+    id: 'protocolBuilder.codebookEntity.iconHint',
+    defaultMessage:
+      'Enter the Lucide or Network Canvas icon name shown by interfaces that create this type.',
+    description:
+      'Guidance under the icon field. "Lucide" is an icon library and "Network Canvas" the product; both are names and stay as they are. An interface is one kind of interview step.',
+  },
+  createTitle: {
+    id: 'protocolBuilder.codebookEntity.createTitle',
+    defaultMessage:
+      '{entity, select, node {Create node type} edge {Create edge type} other {Create ego definition}}',
+    description:
+      'Heading of the editor while a new codebook entity is being added. entity is node, edge or ego.',
+  },
+  editTitle: {
+    id: 'protocolBuilder.codebookEntity.editTitle',
+    defaultMessage:
+      '{entity, select, node {Edit node type} edge {Edit edge type} other {Edit ego definition}}',
+    description:
+      'Heading of the editor while an existing codebook entity is being changed. entity is node, edge or ego.',
+  },
+  failureTitle: {
+    id: 'protocolBuilder.codebookEntity.failureTitle',
+    defaultMessage: 'Could not save this entity',
+    description:
+      'Heading of the alert shown when the entity editor’s save was refused. The reason follows underneath.',
+  },
+  submit: {
+    id: 'protocolBuilder.codebookEntity.submit',
+    defaultMessage: 'Save entity',
+    description:
+      'Button that saves the codebook entity being edited. Named for the entity because the editor is commonly mounted inside another form that has a save of its own.',
+  },
+});
 
 const NODE_COLOR_OPTIONS = NodeColorSequence.map((value, index) => ({
   value,
-  label: `Node color ${index + 1}`,
+  index: index + 1,
 }));
 
 const EDGE_COLOR_OPTIONS = EdgeColorSequence.map((value, index) => ({
   value,
-  label: `Edge color ${index + 1}`,
+  index: index + 1,
 }));
 
-const NODE_SHAPE_OPTIONS = NodeShapes.map((value) => ({
-  value,
-  label: value[0]?.toUpperCase() + value.slice(1),
-}));
+/**
+ * The palette, plus whatever this entity type is already stored with.
+ *
+ * A colour outside the sequence is offered as a swatch of its own rather than
+ * dropped: the picker would otherwise show nothing selected for a type that
+ * has a colour, and the first swatch the researcher touched would silently
+ * replace a value they never saw.
+ */
+const colorOptions = (
+  sequence: readonly Readonly<{ value: string; index: number }>[],
+  label: MessageDescriptor,
+  current: string,
+  intl: IntlShape,
+): ColorSwatchOption[] => {
+  const palette = sequence.map(({ value, index }) => ({
+    value,
+    label: intl.formatMessage(label, { index }),
+  }));
+  if (current === '' || palette.some(({ value }) => value === current)) {
+    return palette;
+  }
+  return [
+    ...palette,
+    {
+      value: current,
+      label: intl.formatMessage(messages.colorOutsidePalette, {
+        color: current,
+      }),
+    },
+  ];
+};
 
+const shapeOptions = (intl: IntlShape) =>
+  NodeShapes.map((value) => ({
+    value,
+    label: intl.formatMessage(NODE_SHAPE_LABELS[value]),
+  }));
+
+/**
+ * What is wrong with each field, encoded rather than formatted.
+ *
+ * A refusal here stands from one submission until the next, which is longer
+ * than the language it was written in is guaranteed to last: an application
+ * that changes language re-renders this editor without remounting it, and a
+ * sentence formatted when the researcher pressed save would sit under a field
+ * whose label had moved on without it. `FieldErrors` decodes these where it
+ * renders them, so they follow the formatter while they wait.
+ */
 type EntityFieldErrors = Readonly<
   Partial<Record<'name' | 'color' | 'shape' | 'icon', string>>
 >;
@@ -85,12 +328,10 @@ const replaceDefaultShape = (
   });
 };
 
-const entityLabel = (subject: CodebookSubject): string => {
-  if (subject.entity === 'node') return 'node type';
-  if (subject.entity === 'edge') return 'edge type';
-  return 'ego definition';
-};
-
+/**
+ * Takes no formatter: every refusal it produces is encoded, so which words it
+ * is read in is decided where it is rendered rather than where it is decided.
+ */
 const validateFields = (
   subject: CodebookSubject,
   draft: CodebookEntityDraft,
@@ -99,38 +340,33 @@ const validateFields = (
   if (subject.entity === 'ego') return {};
   const errors: Partial<Record<keyof EntityFieldErrors, string>> = {};
   const name = stringValue(draft.name);
-  if (name.trim() === '') errors.name = 'Enter a type name.';
-  else if (!VariableNameSchema.safeParse(name).success) {
-    errors.name = `Not a valid ${entityLabel(subject)} name. Only letters, numbers and the symbols ._-: are supported`;
+  if (name.trim() === '') {
+    errors.name = createMessageError(messages.nameRequired);
+  } else if (!VariableNameSchema.safeParse(name).success) {
+    errors.name = createMessageError(messages.nameInvalid, {
+      entity: subject.entity,
+    });
   } else if (
     existingEntityNames.some(
       (existingName) =>
         normalizeForComparison(existingName) === normalizeForComparison(name),
     )
   ) {
-    errors.name = `A type named "${name}" already exists.`;
+    errors.name = createMessageError(messages.nameTaken, { name });
   }
-  if (stringValue(draft.color) === '') errors.color = 'Choose a color.';
+  if (stringValue(draft.color) === '') {
+    errors.color = createMessageError(messages.colorRequired);
+  }
   if (subject.entity === 'node') {
     const shape = isRecord(draft.shape) ? stringValue(draft.shape.default) : '';
-    if (shape === '') errors.shape = 'Choose a default shape.';
+    if (shape === '') errors.shape = createMessageError(messages.shapeRequired);
     const icon = stringValue(draft.icon);
-    if (icon === '') errors.icon = 'Enter an icon name.';
+    if (icon === '') errors.icon = createMessageError(messages.iconRequired);
     else if (!isInterviewerIconName(icon)) {
-      errors.icon = 'Choose an icon supported by Network Canvas.';
+      errors.icon = createMessageError(messages.iconUnsupported);
     }
   }
   return errors;
-};
-
-const failureMessage = (failure: AuxiliaryCodebookDraftFailure): string => {
-  if (failure.kind === 'error') return failure.message;
-  if (failure.result.status === 'failed') return failure.result.message;
-  const blocker = failure.result.blockedSections[0];
-  if (blocker?.holder !== undefined) {
-    return `${blocker.holder.displayName} is currently editing a section needed for this change.`;
-  }
-  return 'A section needed for this change is currently being edited.';
 };
 
 export type CodebookEntityFieldsProps = Readonly<{
@@ -149,27 +385,44 @@ export function CodebookEntityFields({
   errors = {},
   disabled = false,
 }: CodebookEntityFieldsProps) {
+  const intl = useAppIntl();
+
   if (subject.entity === 'ego') {
     return (
       <Alert variant="info" appearance="soft" density="compact">
         <AlertDescription>
-          Ego attributes are edited from the attribute list. There are no
-          entity-level properties to configure.
+          {intl.formatMessage(messages.egoHasNoProperties)}
         </AlertDescription>
       </Alert>
     );
   }
 
-  const subjectLabel = subject.entity === 'node' ? 'Node' : 'Edge';
-  const colorOptions =
-    subject.entity === 'node' ? NODE_COLOR_OPTIONS : EDGE_COLOR_OPTIONS;
+  const currentColor = stringValue(draft.color);
+  const colors =
+    subject.entity === 'node'
+      ? colorOptions(
+          NODE_COLOR_OPTIONS,
+          messages.nodeColorOption,
+          currentColor,
+          intl,
+        )
+      : colorOptions(
+          EDGE_COLOR_OPTIONS,
+          messages.edgeColorOption,
+          currentColor,
+          intl,
+        );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div>
       <UnconnectedField
         name="name"
-        label={`${subjectLabel} type name`}
-        hint={`This name identifies the ${entityLabel(subject)} in the codebook and exported data.`}
+        label={intl.formatMessage(messages.nameLabel, {
+          entity: subject.entity,
+        })}
+        hint={intl.formatMessage(messages.nameHint, {
+          entity: subject.entity,
+        })}
         component={InputField}
         value={stringValue(draft.name)}
         onChange={(value) =>
@@ -183,15 +436,16 @@ export function CodebookEntityFields({
 
       <UnconnectedField
         name="color"
-        label="Protocol color"
-        hint={`Choose a color reference for this ${entityLabel(subject)}.`}
-        component={NativeSelect}
-        value={stringValue(draft.color)}
+        label={intl.formatMessage(messages.colorLabel)}
+        hint={intl.formatMessage(messages.colorHint, {
+          entity: subject.entity,
+        })}
+        component={ColorPickerField}
+        value={currentColor}
         onChange={(value) =>
           onChange(replaceDraftProperty(draft, 'color', value))
         }
-        options={colorOptions}
-        placeholder="Choose a color…"
+        options={colors}
         required
         disabled={disabled}
         errors={errors.color === undefined ? undefined : [errors.color]}
@@ -202,8 +456,8 @@ export function CodebookEntityFields({
         <>
           <UnconnectedField
             name="shape"
-            label="Default shape"
-            hint="Choose the shape used when no dynamic shape mapping applies."
+            label={intl.formatMessage(messages.shapeLabel)}
+            hint={intl.formatMessage(messages.shapeHint)}
             component={NativeSelect}
             value={
               isRecord(draft.shape) ? stringValue(draft.shape.default) : ''
@@ -211,8 +465,8 @@ export function CodebookEntityFields({
             onChange={(value) =>
               onChange(replaceDefaultShape(draft, String(value)))
             }
-            options={NODE_SHAPE_OPTIONS}
-            placeholder="Choose a shape…"
+            options={shapeOptions(intl)}
+            placeholder={intl.formatMessage(messages.shapePlaceholder)}
             required
             disabled={disabled}
             errors={errors.shape === undefined ? undefined : [errors.shape]}
@@ -221,8 +475,8 @@ export function CodebookEntityFields({
 
           <UnconnectedField
             name="icon"
-            label="Interface icon"
-            hint="Enter the Lucide or Network Canvas icon name shown by interfaces that create this type."
+            label={intl.formatMessage(messages.iconLabel)}
+            hint={intl.formatMessage(messages.iconHint)}
             component={InputField}
             value={stringValue(draft.icon)}
             onChange={(value) =>
@@ -242,18 +496,14 @@ export function CodebookEntityFields({
 type CommonEditorProps = Readonly<{
   /** Must change on every open, even when the same entity is reopened. */
   sessionKey: string;
-  /** Creates a new intent id after the draft changes; unchanged retries reuse it. */
-  createRequestId(): string;
-  description: string;
   subject: CodebookSubject;
   initialDraft: CodebookEntityDraft;
   /** Names of the other entities that this draft must not collide with. */
   existingEntityNames: readonly string[];
   /** Disables editing and submission without discarding the current draft. */
   readOnly?: boolean;
-  onSubmit(
-    request: CompoundEditRequest,
-  ): Promise<CompoundEditResult> | CompoundEditResult;
+  /** Writes the section, and answers with what became of it. */
+  onSubmit(document: SectionDoc): Promise<CodebookWriteOutcome>;
   onCancel?(): void;
 }>;
 
@@ -262,28 +512,26 @@ export type CodebookEntityEditorProps = CommonEditorProps &
     | Readonly<{
         mode: 'create';
         authoritativeDocument?: never;
-        /** Completes navigation after a create, which has no document to reconcile. */
+        /** Completes navigation after a create, whose section id is new. */
         onApplied(
-          result: Extract<CompoundEditResult, { status: 'applied' }>,
+          outcome: Extract<CodebookWriteOutcome, { status: 'applied' }>,
         ): void;
       }>
     | Readonly<{
         mode: 'update';
         authoritativeDocument: SectionDoc;
         onApplied?(
-          result: Extract<CompoundEditResult, { status: 'applied' }>,
+          outcome: Extract<CodebookWriteOutcome, { status: 'applied' }>,
         ): void;
       }>
   );
 
 /**
- * Reusable entity editor with its own auxiliary draft lifecycle. The host owns
- * only request execution and close/navigation chrome.
+ * Reusable entity editor. The host owns only the write and the close or
+ * navigation chrome around it.
  */
 export default function CodebookEntityEditor({
   sessionKey,
-  createRequestId,
-  description,
   subject,
   initialDraft,
   existingEntityNames,
@@ -292,194 +540,187 @@ export default function CodebookEntityEditor({
   onCancel,
   ...modeProps
 }: CodebookEntityEditorProps) {
-  const session = useMemo(
-    () =>
-      new AuxiliaryCodebookDraftSession(
-        initialDraft,
-        modeProps.mode === 'update' ? modeProps.authoritativeDocument : null,
-      ),
-    // A caller-supplied open identity deliberately owns reset semantics. The
-    // initial values may be reconstructed on every render and must not reset a
-    // draft while one editing session remains open.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-    [sessionKey],
-  );
-  const subscribe = useCallback(
-    (listener: () => void) => session.subscribe(listener),
-    [session],
-  );
-  const getSnapshot = useCallback(() => session.getSnapshot(), [session]);
-  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const intl = useAppIntl();
+  const [openKey, setOpenKey] = useState(sessionKey);
+  const [draft, setDraft] = useState<CodebookEntityDraft>(initialDraft);
   const [errors, setErrors] = useState<EntityFieldErrors>({});
+  // A record rather than the sentence, so a second refusal saying the same
+  // thing is still a new failure for the effect below to move focus to.
+  const [failure, setFailure] =
+    useState<Readonly<{ message: string; held: boolean }>>();
+  const [busy, setBusy] = useState(false);
   const failureRef = useRef<HTMLDivElement>(null);
-  const activeRequestId = useRef<string | null>(null);
-  const authoritativeDocument =
-    modeProps.mode === 'update' ? modeProps.authoritativeDocument : null;
 
-  useEffect(() => {
+  // The caller's open identity owns reset semantics: the initial values may be
+  // reconstructed on every render and must not reset a draft while one opening
+  // is still on screen.
+  if (openKey !== sessionKey) {
+    setOpenKey(sessionKey);
+    setDraft(initialDraft);
     setErrors({});
-    activeRequestId.current = null;
-  }, [sessionKey]);
+    setFailure(undefined);
+    setBusy(false);
+  }
 
   useEffect(() => {
-    if (authoritativeDocument !== null) {
-      if (session.receiveAuthoritative(authoritativeDocument)) {
-        activeRequestId.current = null;
-      }
-    }
-  }, [authoritativeDocument, session]);
+    if (failure !== undefined) failureRef.current?.focus();
+  }, [failure]);
 
-  useEffect(() => {
-    if (snapshot.lastFailure !== null) failureRef.current?.focus();
-  }, [snapshot.lastFailure]);
+  const dirty =
+    modeProps.mode === 'create' ||
+    canonicalize(draft) !== canonicalize(modeProps.authoritativeDocument);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (
-      readOnly ||
-      snapshot.status !== 'editing' ||
-      snapshot.authoritativeChanged ||
-      (modeProps.mode === 'update' && !session.isDirty())
-    ) {
-      return;
-    }
-    const nextErrors = validateFields(
-      subject,
-      snapshot.draft,
-      existingEntityNames,
-    );
+    // Stops at this form: a `Dialog` portals out of the DOM but stays a React
+    // descendant, so React would otherwise hand this submit to the form the
+    // editor was opened from — `SubjectSection` mounts it inside the stage
+    // form — and save that instead. `preventDefault` alone only stops the
+    // browser's own navigation, which is not what propagates here.
+    event.stopPropagation();
+    if (readOnly || busy || !dirty) return;
+    const nextErrors = validateFields(subject, draft, existingEntityNames);
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return;
     }
     setErrors({});
-    const requestId = activeRequestId.current ?? createRequestId();
-    activeRequestId.current = requestId;
+    setFailure(undefined);
 
+    let document: SectionDoc;
     try {
-      const result = await session.submit(
-        (draft, latestAuthoritativeDocument) =>
-          modeProps.mode === 'create'
-            ? buildCreateEntityRequest({
-                requestId,
-                description,
-                subject,
-                draft,
-              })
-            : buildUpdateEntityRequest({
-                requestId,
-                description,
-                subject,
-                authoritativeDocument:
-                  latestAuthoritativeDocument ??
-                  modeProps.authoritativeDocument,
-                draft,
-              }),
-        onSubmit,
-      );
-      // A refreshed authority or content base changes the host fingerprint.
-      // Other failures keep the id stable so uncertain retries remain safe.
-      if (
-        result.status === 'failed' &&
-        (result.reason === 'stale-epoch' ||
-          result.reason === 'lease-lost' ||
-          result.reason === 'stale-base')
-      ) {
-        activeRequestId.current = null;
-      }
-      if (
-        result.status === 'applied' &&
-        !session.getSnapshot().authoritativeChanged
-      ) {
-        if (modeProps.mode === 'create') modeProps.onApplied(result);
-        else modeProps.onApplied?.(result);
-      }
+      document =
+        modeProps.mode === 'create'
+          ? documentForNewEntity({ subject, draft })
+          : documentWithEntityProperties({
+              subject,
+              authoritativeDocument: modeProps.authoritativeDocument,
+              draft,
+            });
     } catch {
-      // AuxiliaryCodebookDraftSession owns the visible failure and preserves
-      // the draft. The submit handler must not close or reset the editor.
+      // Everything the entity schema refuses past `validateFields` is written
+      // for whoever reads a log, so the researcher gets the package's own words
+      // for a save that did not happen.
+      setFailure({
+        message: codebookRefusalMessage({ kind: 'unexplained' }),
+        held: false,
+      });
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const outcome = await onSubmit(document);
+      if (outcome.status === 'applied') {
+        if (modeProps.mode === 'create') modeProps.onApplied(outcome);
+        else modeProps.onApplied?.(outcome);
+        return;
+      }
+      setFailure({
+        message: outcome.message,
+        held: outcome.refusal.kind === 'held',
+      });
+    } catch {
+      setFailure({
+        message: codebookRefusalMessage({ kind: 'unexplained' }),
+        held: false,
+      });
+    } finally {
+      setBusy(false);
     }
   };
 
-  const busy = snapshot.status !== 'editing';
   const interactionDisabled = readOnly || busy;
   const canSubmit = modeProps.mode === 'create' || subject.entity !== 'ego';
+  // Every host opens this editor inside a dialog, whose own title is the
+  // heading above it — so writing an `h2` here put the editor's title beside
+  // the dialog's rather than under it, and the alerts below counted from the
+  // dialog too and landed beside this title in turn. Read instead of written
+  // out, so the same editor is also correct on a page of its own, where an
+  // `h2` is what it has always been.
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const headingTag =
+    enclosingHeadingLevel === null
+      ? 'h2'
+      : headingTagBelow(enclosingHeadingLevel);
 
   return (
     <Surface spacing="md" shadow="md" noContainer>
       <form onSubmit={(event) => void handleSubmit(event)} noValidate>
         <div className="flex flex-col gap-6">
-          <div>
-            <Heading level="h2" margin="none">
-              {modeProps.mode === 'create' ? 'Create' : 'Edit'}{' '}
-              {entityLabel(subject)}
-            </Heading>
-            <Paragraph emphasis="muted" margin="none">
-              Changes remain in this editor until every required section can be
-              updated together.
-            </Paragraph>
-          </div>
-
-          {snapshot.authoritativeChanged && (
-            <Alert variant="warning" appearance="soft" density="compact">
-              <AlertTitle>Newer codebook data is available</AlertTitle>
-              <AlertDescription>
-                Your draft has been kept. Close and reopen this editor to load
-                the latest entity before saving.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {snapshot.lastFailure !== null && (
-            <Alert
-              ref={failureRef}
-              variant="destructive"
-              appearance="soft"
-              density="compact"
-              tabIndex={-1}
-            >
-              <AlertTitle>Could not save this entity</AlertTitle>
-              <AlertDescription>
-                {failureMessage(snapshot.lastFailure)}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <CodebookEntityFields
-            subject={subject}
-            draft={snapshot.draft}
-            onChange={(draft) => {
-              activeRequestId.current = null;
-              session.replaceDraft(draft);
-            }}
-            errors={errors}
-            disabled={interactionDisabled}
-          />
-
-          <div className="flex flex-wrap justify-end gap-3">
-            {onCancel !== undefined && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={busy}
-              >
-                Cancel
-              </Button>
+          <Heading
+            level="h2"
+            margin="none"
+            // The element only — `level` still carries the type treatment.
+            {...(headingTag === 'h2'
+              ? {}
+              : { render: createElement(headingTag) })}
+          >
+            {intl.formatMessage(
+              modeProps.mode === 'create'
+                ? messages.createTitle
+                : messages.editTitle,
+              { entity: subject.entity },
             )}
-            {canSubmit && (
-              <Button
-                type="submit"
-                color="primary"
-                disabled={
-                  interactionDisabled ||
-                  snapshot.authoritativeChanged ||
-                  (modeProps.mode === 'update' && !session.isDirty())
-                }
+          </Heading>
+
+          <EnclosingHeadingLevel level={headingTag}>
+            {failure !== undefined && (
+              <Alert
+                ref={failureRef}
+                // A section somebody else is holding is not a fault: the change
+                // is fine and lands once they are finished, so it is said in
+                // the register of a notice rather than of an error.
+                variant={failure.held ? 'warning' : 'destructive'}
+                appearance="soft"
+                density="compact"
+                tabIndex={-1}
               >
-                {snapshot.status === 'submitting' ? 'Saving…' : 'Save entity'}
-              </Button>
+                <AlertTitle>
+                  {intl.formatMessage(messages.failureTitle)}
+                </AlertTitle>
+                <AlertDescription>
+                  {/* Decoded here, not where it was raised: a refusal stands
+                      until the next save, so it follows a change of language
+                      while it waits. One already written for a researcher is
+                      not ours to decode and passes through. */}
+                  {formatMessageError(failure.message, intl) ?? failure.message}
+                </AlertDescription>
+              </Alert>
             )}
-          </div>
+
+            <CodebookEntityFields
+              subject={subject}
+              draft={draft}
+              onChange={setDraft}
+              errors={errors}
+              disabled={interactionDisabled}
+            />
+
+            <div className="flex flex-wrap justify-end gap-3">
+              {onCancel !== undefined && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onCancel}
+                  disabled={busy}
+                >
+                  {intl.formatMessage(commonMessages.cancel)}
+                </Button>
+              )}
+              {canSubmit && (
+                <Button
+                  type="submit"
+                  color="primary"
+                  disabled={interactionDisabled || !dirty}
+                >
+                  {intl.formatMessage(
+                    busy ? codebookEditingMessages.saving : messages.submit,
+                  )}
+                </Button>
+              )}
+            </div>
+          </EnclosingHeadingLevel>
         </div>
       </form>
     </Surface>

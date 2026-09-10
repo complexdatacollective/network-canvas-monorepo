@@ -342,7 +342,9 @@ describe('VariablePicker', () => {
       });
 
       expect(getValue()).toBe('height');
-      expect(screen.queryByTestId('variable-field-error')).toBeNull();
+      await waitFor(() => {
+        expect(screen.queryByTestId('variable-field-error')).toBeNull();
+      });
       expect(
         screen.getByRole('group', { name: 'Attribute' }),
       ).not.toHaveAttribute('aria-invalid', 'true');
@@ -368,7 +370,9 @@ describe('VariablePicker', () => {
 
       // No remount, no second submit — the assertion the filed description
       // would fail.
-      expect(screen.queryByTestId('variable-field-error')).toBeNull();
+      await waitFor(() => {
+        expect(screen.queryByTestId('variable-field-error')).toBeNull();
+      });
     });
   });
 });

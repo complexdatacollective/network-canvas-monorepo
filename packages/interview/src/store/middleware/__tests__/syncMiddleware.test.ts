@@ -68,6 +68,22 @@ let flush: ReturnType<typeof createSyncMiddleware>['flush'];
 // it was provoked by the change, never by waiting.
 const settle = () => act(async () => undefined);
 
+// The batching host is the one thing in this file that does own a timer, and
+// its window has to close because a test says so — never because a starved
+// event loop let the real one fire mid-test. On real timers a loaded CI runner
+// can stretch `settle` past a short window, so the trailing write lands before
+// the burst is even asserted on and the burst reads as two writes. Fake the
+// host's timer alone: `act` schedules through setImmediate/MessageChannel, so
+// `settle` is untouched, and the shared afterEach puts real timers back.
+function createBatchingHost(waitMs: number) {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  const write = vi.fn().mockResolvedValue(undefined);
+  const batching = createSyncMiddleware({
+    onSync: createDebouncedSyncHandler(write, { waitMs }),
+  });
+  return { write, batching, store: createTestStore(batching.middleware) };
+}
+
 beforeEach(() => {
   onSyncMock = vi.fn().mockResolvedValue(undefined);
   vi.spyOn(console, 'error').mockImplementation(vi.fn());
@@ -77,6 +93,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe('syncMiddleware', () => {
@@ -140,11 +157,8 @@ describe('syncMiddleware', () => {
     // automatic-layout settle dispatches one update per node — and rate-limits
     // it to a single write, which must carry the last answer rather than the
     // one that happened to open the window.
-    const write = vi.fn().mockResolvedValue(undefined);
-    const batching = createSyncMiddleware({
-      onSync: createDebouncedSyncHandler(write, { waitMs: 20 }),
-    });
-    const store = createTestStore(batching.middleware);
+    const windowMs = 20;
+    const { write, store } = createBatchingHost(windowMs);
 
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
     await settle();
@@ -159,11 +173,9 @@ describe('syncMiddleware', () => {
     expect(write).toHaveBeenCalledTimes(1);
 
     // ...and no flush here on purpose: a flush re-reads the store and would
-    // carry the newest answer whether or not the host ever saw it. Let the
-    // host's own window close, so what it writes is only what it was told.
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 60));
-    });
+    // carry the newest answer whether or not the host ever saw it. Close the
+    // host's own window instead, so what it writes is only what it was told.
+    await vi.advanceTimersByTimeAsync(windowMs);
 
     expect(write).toHaveBeenCalledTimes(2);
     expect(write).toHaveBeenLastCalledWith(
@@ -329,15 +341,12 @@ describe('syncMiddleware flush', () => {
   });
 
   it('does not wait out a host that is holding changes back', async () => {
-    // A real batching host, on a window long enough that waiting it out would
-    // hang the test. Awaiting the parked write before signalling immediacy is
-    // exactly the mistake this guards: the host only learns it must stop
-    // batching when it is told, so the flush has to say so first.
-    const write = vi.fn().mockResolvedValue(undefined);
-    const batching = createSyncMiddleware({
-      onSync: createDebouncedSyncHandler(write, { waitMs: 60_000 }),
-    });
-    const store = createTestStore(batching.middleware);
+    // A real batching host whose window this test never closes, so a parked
+    // write can only go out because the flush forced it. Awaiting the parked
+    // write before signalling immediacy is exactly the mistake this guards: the
+    // host only learns it must stop batching when it is told, so the flush has
+    // to say so first — get that wrong and it waits on a window that never ends.
+    const { write, batching, store } = createBatchingHost(60_000);
 
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
     await settle();
@@ -358,14 +367,10 @@ describe('syncMiddleware flush', () => {
   });
 
   it('keeps writing when an answer arrives during its own write', async () => {
-    // A batching host on a long window, so the only writes that can happen are
-    // the ones the flush forces. That makes the last answer's fate depend
-    // solely on whether the flush goes round again.
-    const write = vi.fn().mockResolvedValue(undefined);
-    const batching = createSyncMiddleware({
-      onSync: createDebouncedSyncHandler(write, { waitMs: 60_000 }),
-    });
-    const store = createTestStore(batching.middleware);
+    // A batching host whose window never closes here, so the only writes that
+    // can happen are the ones the flush forces. That makes the last answer's
+    // fate depend solely on whether the flush goes round again.
+    const { write, batching, store } = createBatchingHost(60_000);
 
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:01.000Z' }));
     await settle();
@@ -389,8 +394,8 @@ describe('syncMiddleware flush', () => {
     await settle();
 
     // The participant answers again while the flush's write is on the wire.
-    // The background path can only hand this to the host, which parks it for
-    // another 60s — so leaving after one pass would hand the caller a
+    // The background path can only hand this to the host, which parks it
+    // behind its window — so leaving after one pass would hand the caller a
     // "flushed" store still holding the newest answer.
     store.dispatch(mutateSession({ lastUpdated: '2026-01-01T00:00:03.000Z' }));
     await settle();

@@ -2,10 +2,26 @@ import { oc } from '@orpc/contract';
 import { z } from 'zod';
 
 import {
+  AuditAlertAcknowledgeInputSchema,
+  AuditAlertListInputSchema,
+  AuditAlertListSchema,
+  AuditAlertReadInputSchema,
+  AuditAlertSettingsSchema,
+  UpdateAuditAlertSettingsSchema,
+} from './alerts.ts';
+import { protocolBuilderContract } from './protocolBuilder.ts';
+export {
+  AUDIT_ALERT_MAX_RECIPIENTS,
+  AuditAlertPolicySchema,
+  AuditAlertRecipientsSchema,
+  type AuditAlertItem,
+  type AuditAlertRecipient,
+  type AuditAlertSettings,
+} from './alerts.ts';
+
+import {
   AcceptTeamInvitationInputSchema,
   AcceptTeamInvitationResultSchema,
-  AcquireSectionInputSchema,
-  AcquireSectionResultSchema,
   AddInformationStageInputSchema,
   AuditEventDetailSchema,
   AuditFilterOptionsSchema,
@@ -14,36 +30,58 @@ import {
   AuditListOutputSchema,
   CancelTeamInvitationInputSchema,
   CancelTeamInvitationResultSchema,
-  CommitSectionInputSchema,
+  CompleteSetupInputSchema,
+  CompleteSetupResultSchema,
   CreateTeamInvitationInputSchema,
   CreateTeamInvitationResultSchema,
   CreateProtocolInputSchema,
   CreateProtocolResultSchema,
+  CreateStudyInputSchema,
+  CreateStudyResultSchema,
   ManifestRevisionSchema,
   MeSchema,
   MoveStageInputSchema,
   ProtocolDraftInputSchema,
   ProtocolDraftSchema,
   ProtocolSummarySchema,
-  ReleaseSectionInputSchema,
-  RenewSectionInputSchema,
-  RenewSectionResultSchema,
   StatusSchema,
+  SetupStatusSchema,
+  StudyCountsInputSchema,
+  StudyCountsSchema,
+  StudyDetailSchema,
+  StudyGetInputSchema,
+  StudySummarySchema,
   TeamScopedSchema,
+  UpdateAccountLocaleInputSchema,
+  UpdateAccountLocaleResultSchema,
   UpdateTeamMemberRoleInputSchema,
   UpdateTeamMemberRoleResultSchema,
 } from './schemas.ts';
 
 export {
+  SUPPORTED_STUDIO_LOCALES,
+  type SupportedStudioLocale,
+} from './locales.ts';
+
+export {
   AUDIT_CATEGORIES,
   AUDIT_FACET_LIMIT,
   AUDIT_OUTCOMES,
+  BootstrapTokenSchema,
+  CompleteSetupInputSchema,
+  type CompleteSetupInput,
+  type SetupStatus,
   AuditActorKindSchema,
   AuditCategorySchema,
   AuditOutcomeSchema,
   SOCIAL_PROVIDERS,
+  STUDY_PARTICIPATION_MODES,
+  STUDY_STATES,
   TEAM_ROLES,
   ProtocolNameSchema,
+  StudyNameSchema,
+  StudyParticipationModeSchema,
+  StudyStateSchema,
   TeamRoleSchema,
   TeamInvitationIdSchema,
   type AuditActorFilter,
@@ -53,6 +91,9 @@ export {
   type AuditFilterOptions,
   type AuditOutcome,
   type SocialProvider,
+  type StudyCounts,
+  type StudyParticipationMode,
+  type StudyState,
   type TeamRole,
 } from './schemas.ts';
 
@@ -73,8 +114,31 @@ export {
 
 export const contract = {
   status: oc.output(StatusSchema),
+  /** Self-host first-run setup; both procedures are absent in managed mode. */
+  setup: {
+    status: oc.output(SetupStatusSchema),
+    complete: oc
+      .input(CompleteSetupInputSchema)
+      .output(CompleteSetupResultSchema),
+  },
   /** The signed-in researcher; refuses UNAUTHORIZED without a session. */
   me: oc.output(MeSchema),
+  /**
+   * The caller's own account: personal, not team-scoped, so these take no
+   * teamId and need only a signed-in user. Deliberately unaudited (2026-09-04
+   * localization design §5.2, decision 7): the audit log is study/team-scoped
+   * by design, and a personal presentation preference has no tenant and no
+   * research-data significance.
+   */
+  account: {
+    /**
+     * Stores the caller's UI-language preference; null reverts to browser
+     * negotiation ("Automatic"). `me` reports the stored value.
+     */
+    updateLocale: oc
+      .input(UpdateAccountLocaleInputSchema)
+      .output(UpdateAccountLocaleResultSchema),
+  },
   team: {
     acceptInvitation: oc
       .input(AcceptTeamInvitationInputSchema)
@@ -90,6 +154,40 @@ export const contract = {
       .output(CancelTeamInvitationResultSchema),
   },
   /**
+   * The team's studies (#1262): what a researcher picks their work from, and
+   * what `/study/$studyId` addresses.
+   *
+   * Who sees what is #1257's starter matrix, unchanged here: a team Admin or
+   * Owner sees every study their team owns, and a team Member sees only the
+   * studies they hold a study-role grant on. Creation is the Admin/Owner
+   * action that decision narrowed it to, and the creator receives the study's
+   * first Manager grant.
+   */
+  studies: {
+    list: oc.input(TeamScopedSchema).output(z.array(StudySummarySchema)),
+    /**
+     * One study, addressed by study id alone: a study URL is canonical and
+     * has to open from a cold navigation that knows no team, so the server
+     * resolves the tenant (app-shell design §6.3). A study the caller cannot
+     * reach — absent, another team's, or one their team role does not show
+     * them — is FORBIDDEN in every case, so this is not an existence oracle.
+     */
+    get: oc.input(StudyGetInputSchema).output(StudyDetailSchema),
+    /**
+     * How many things are at each countable destination of one study's
+     * sidebar. Addressed and refused exactly like `get`: the sidebar renders
+     * for whoever can open the study, and a count must not say anything about
+     * a study its reader could not open.
+     */
+    counts: oc.input(StudyCountsInputSchema).output(StudyCountsSchema),
+    /**
+     * Creates the study and its protocol line in one transaction, so every
+     * study has something to edit and the editor's address is derivable from
+     * the study alone.
+     */
+    create: oc.input(CreateStudyInputSchema).output(CreateStudyResultSchema),
+  },
+  /**
    * Team-scoped procedures: every input carries a teamId, checked against the
    * caller's membership (FORBIDDEN for non-members and unknown teams alike —
    * no existence oracle).
@@ -100,27 +198,34 @@ export const contract = {
       .output(CreateProtocolResultSchema),
     draft: oc.input(ProtocolDraftInputSchema).output(ProtocolDraftSchema),
     list: oc.input(TeamScopedSchema).output(z.array(ProtocolSummarySchema)),
-    acquireSection: oc
-      .input(AcquireSectionInputSchema)
-      .output(AcquireSectionResultSchema),
-    commitSection: oc
-      .input(CommitSectionInputSchema)
-      .output(ManifestRevisionSchema),
-    renewSection: oc
-      .input(RenewSectionInputSchema)
-      .output(RenewSectionResultSchema),
-    releaseSection: oc.input(ReleaseSectionInputSchema).output(z.void()),
     addInformationStage: oc
       .input(AddInformationStageInputSchema)
       .output(ManifestRevisionSchema),
     moveStage: oc.input(MoveStageInputSchema).output(ManifestRevisionSchema),
   },
   /**
+   * The editing host `@codaco/protocol-builder` is written against, nested
+   * whole so a Studio router client exposes it as `client.protocolBuilder`
+   * typed by the package's own contract. Its inputs name a protocol and never
+   * a team or a draft: the server derives both from the caller's memberships,
+   * the way a `/study/$studyId` URL is resolved.
+   */
+  protocolBuilder: protocolBuilderContract,
+  /**
    * The team's immutable activity record. Reads require the audit.read
    * permission (built-in owner/admin until #1257); ordering and cursors are
    * per-team sequences, never timestamps.
    */
   audit: {
+    alerts: {
+      settings: oc.input(TeamScopedSchema).output(AuditAlertSettingsSchema),
+      updateSettings: oc
+        .input(UpdateAuditAlertSettingsSchema)
+        .output(z.object({ revision: z.uuid() })),
+      list: oc.input(AuditAlertListInputSchema).output(AuditAlertListSchema),
+      markRead: oc.input(AuditAlertReadInputSchema).output(z.void()),
+      acknowledge: oc.input(AuditAlertAcknowledgeInputSchema).output(z.void()),
+    },
     list: oc.input(AuditListInputSchema).output(AuditListOutputSchema),
     get: oc.input(AuditGetInputSchema).output(AuditEventDetailSchema),
     /**

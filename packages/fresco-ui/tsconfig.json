@@ -5,7 +5,10 @@
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
     "outDir": "dist"
   },
-  "include": ["src"],
+  // The catalogs manifest imports src/locales/*.json, and a directory glob
+  // does not add .json to a composite project's root files — the import then
+  // fails with TS6307 even though the file resolves.
+  "include": ["src", "src/**/*.json"],
   "exclude": [
     "node_modules",
     "dist",

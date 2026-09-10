@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { SectionOutlineStore } from '../outlineStore.ts';
+import { readMessage } from '../../testing/i18n.ts';
+import {
+  SectionOutlineStore,
+  sectionOutlineStatus,
+  type OutlineSection,
+  type SectionFieldReader,
+  type SectionValidationIssue,
+} from '../outlineStore.ts';
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -47,5 +54,399 @@ describe('SectionOutlineStore', () => {
 
     // Identity has to hold, or `useSyncExternalStore` would re-render forever.
     expect(store.getSnapshot()).toBe(store.getSnapshot());
+  });
+});
+
+/**
+ * A reader for a form where nothing is wrong and nothing is empty, so the
+ * status these tests read can only have come from a schema issue.
+ */
+const CONTENTED_FORM: SectionFieldReader = {
+  getFieldState: () => ({
+    value: 'something',
+    meta: {
+      isValidating: false,
+      isTouched: true,
+      isBlurred: true,
+      isDirty: false,
+      isValid: true,
+    },
+  }),
+  getFieldErrors: () => null,
+};
+
+/** A form where every field is empty, so a required one reads as unanswered. */
+const EMPTY_FORM: SectionFieldReader = {
+  getFieldState: () => undefined,
+  getFieldErrors: () => null,
+};
+
+/**
+ * The markup a connected field renders around its control, which is where the
+ * outline reads its fields from: the form's own path attribute, the element
+ * the control is named by, and the marker a field that must be answered wears.
+ */
+function fieldMarkup(name: string, required: boolean): HTMLElement {
+  const container = document.createElement('div');
+  container.dataset.fieldPath = name;
+  const label = document.createElement('label');
+  label.id = `${name}-label`;
+  label.textContent = name;
+  container.append(label);
+  if (required) {
+    const marker = document.createElement('span');
+    marker.id = `${name}-required`;
+    container.append(marker);
+  }
+  return container;
+}
+
+function storeWith(
+  fields: Readonly<Record<string, readonly string[]>>,
+  required = false,
+): SectionOutlineStore {
+  const store = new SectionOutlineStore();
+  for (const [sectionId, names] of Object.entries(fields)) {
+    const element = mountSection(sectionId);
+    store.registerSection({ id: sectionId, title: sectionId });
+    store.setSectionElement(sectionId, element);
+    for (const name of names) element.append(fieldMarkup(name, required));
+  }
+  return store;
+}
+
+/**
+ * An issue the outline passes through in the words it was given.
+ *
+ * `custom` is the code every cross-reference rule in the protocol schema
+ * raises, and its messages are written about the protocol rather than about a
+ * shape, so they are the outline's own words already. The attribution tests
+ * below are about WHICH section hears an issue, so they use the one code whose
+ * message survives being reported.
+ */
+const said = (
+  path: readonly (string | number)[],
+  message: string,
+): SectionValidationIssue => ({
+  path,
+  code: 'custom',
+  message,
+  absent: false,
+});
+
+/**
+ * What a section's problems SAY, without the field each is attributed to.
+ *
+ * Which field claims a problem is asserted where it matters — the outline
+ * reads a sentence out unless the control that owns it is already showing one
+ * — and repeating it in every attribution test below would say the section
+ * name twice and the sentence once.
+ */
+const sentences = (section: OutlineSection): string[] =>
+  section.issues.map((issue) => issue.sentence);
+
+const sectionNamed = (
+  store: SectionOutlineStore,
+  id: string,
+): OutlineSection => {
+  const section = store.getSnapshot().find((candidate) => candidate.id === id);
+  if (section === undefined) throw new Error(`no section "${id}"`);
+  return section;
+};
+
+/**
+ * A schema issue is addressed by a path in the stage document, and the only
+ * thing that can turn one into a place on the page is the fields the sections
+ * registered. Getting that wrong in either direction is a real cost: an
+ * unclaimed issue leaves every section reading "Finished" over a stage that
+ * cannot be saved, and a wrongly claimed one sends the researcher to a
+ * section where there is nothing to fix.
+ */
+/**
+ * A problem as the outline RENDERS it.
+ *
+ * The store has no reader, so a sentence this package wrote arrives encoded
+ * and `SectionOutline` decodes it. A plain sentence — the protocol schema's
+ * own, under `custom` — passes through untouched, which is why the cases below
+ * that hand in their own words assert on them directly.
+ */
+const read = (issue: string) => readMessage(issue);
+
+describe('schema issues in the outline', () => {
+  it('claims an issue at a field, inside it, and at the container above it', () => {
+    const store = storeWith({ search: ['searchOptions.fuzziness'] });
+
+    store.setValidationIssues([
+      said(['searchOptions', 'fuzziness'], 'at the field'),
+      said(['searchOptions', 'fuzziness', 0], 'inside it'),
+      said(['searchOptions'], 'the container around it'),
+    ]);
+
+    expect(sentences(sectionNamed(store, 'search'))).toEqual([
+      'at the field',
+      'inside it',
+      'the container around it',
+    ]);
+    expect(
+      sectionOutlineStatus(sectionNamed(store, 'search'), CONTENTED_FORM),
+    ).toBe('error');
+  });
+
+  it('leaves an issue about a sibling key alone', () => {
+    const store = storeWith({ search: ['searchOptions.fuzziness'] });
+
+    // Same container, different value. Nothing mounted here edits it, so
+    // there is nothing for a researcher sent to this section to do.
+    store.setValidationIssues([
+      said(['searchOptions', 'matchProperties', 0], 'a sibling'),
+    ]);
+
+    expect(sentences(sectionNamed(store, 'search'))).toEqual([]);
+    expect(
+      sectionOutlineStatus(sectionNamed(store, 'search'), CONTENTED_FORM),
+    ).toBe('complete');
+  });
+
+  it('gives the issue to the section that edits the exact value', () => {
+    const store = storeWith({
+      card: ['cardOptions'],
+      labels: ['cardOptions.additionalProperties'],
+    });
+
+    store.setValidationIssues([
+      said(
+        ['cardOptions', 'additionalProperties', 0, 'variable'],
+        'a column that is not there',
+      ),
+    ]);
+
+    // Both sections reach it — one owns the whole container — and the deeper
+    // registration wins, because that is the control the researcher changes.
+    expect(sentences(sectionNamed(store, 'card'))).toEqual([]);
+    expect(sentences(sectionNamed(store, 'labels'))).toEqual([
+      'a column that is not there',
+    ]);
+  });
+
+  /**
+   * The outline decides whether to read a sentence out by asking the control
+   * that answers for it whether it is already saying something, so the field
+   * that claimed each problem travels with it. Without the name, the outline
+   * could only ask about the section as a whole — and a section is routinely
+   * wrong in two unrelated ways at once.
+   */
+  it('names the field that answers for each problem', () => {
+    const store = storeWith({
+      card: ['cardOptions'],
+      labels: ['cardOptions.additionalProperties'],
+    });
+
+    store.setValidationIssues([
+      said(['cardOptions', 'sortOrder'], 'a sort nothing can do'),
+      said(
+        ['cardOptions', 'additionalProperties', 0, 'variable'],
+        'a column that is not there',
+      ),
+    ]);
+
+    expect(sectionNamed(store, 'card').issues).toEqual([
+      { fieldName: 'cardOptions', sentence: 'a sort nothing can do' },
+    ]);
+    expect(sectionNamed(store, 'labels').issues).toEqual([
+      {
+        fieldName: 'cardOptions.additionalProperties',
+        sentence: 'a column that is not there',
+      },
+    ]);
+  });
+
+  it('gives a tie to the section that comes first on the page', () => {
+    const store = storeWith({ first: ['behaviours'], second: ['behaviours'] });
+
+    store.setValidationIssues([
+      said(['behaviours', 'minNodes'], 'a limit that cannot hold'),
+    ]);
+
+    // Two sections reach the value equally well, so the researcher is sent to
+    // the one they meet first rather than to whichever registered last.
+    expect(sentences(sectionNamed(store, 'first'))).toEqual([
+      'a limit that cannot hold',
+    ]);
+    expect(sentences(sectionNamed(store, 'second'))).toEqual([]);
+  });
+
+  it('stops reporting an issue that is no longer in the set', () => {
+    const store = storeWith({ search: ['searchOptions.fuzziness'] });
+    store.setValidationIssues([said(['searchOptions'], 'a problem')]);
+    expect(sentences(sectionNamed(store, 'search'))).toEqual(['a problem']);
+
+    store.setValidationIssues([]);
+
+    expect(sentences(sectionNamed(store, 'search'))).toEqual([]);
+    expect(
+      sectionOutlineStatus(sectionNamed(store, 'search'), CONTENTED_FORM),
+    ).toBe('complete');
+  });
+
+  it('says a refusal in the editor’s own words, never the validator’s', () => {
+    const store = storeWith({ zoom: ['mapOptions.initialZoom'] });
+
+    store.setValidationIssues([
+      {
+        path: ['mapOptions', 'initialZoom'],
+        code: 'too_big',
+        message: 'Too big: expected number to be <=22',
+        absent: false,
+      },
+    ]);
+
+    expect(sentences(sectionNamed(store, 'zoom')).map(read)).toEqual([
+      'mapOptions.initialZoom holds more than this stage allows.',
+    ]);
+    expect(
+      sectionOutlineStatus(sectionNamed(store, 'zoom'), CONTENTED_FORM),
+    ).toBe('error');
+  });
+
+  it('says one sentence about a control however many refusals reach it', () => {
+    const store = storeWith({ map: ['mapOptions'] });
+
+    // A compound control owning a sub-document claims every refusal inside it.
+    // Four repetitions of one sentence is not four things to fix.
+    store.setValidationIssues(
+      ['style', 'center', 'initialZoom', 'targetFeatureProperty'].map(
+        (key) => ({
+          path: ['mapOptions', key],
+          code: 'invalid_type',
+          message: 'Invalid input: expected string, received number',
+          absent: false,
+        }),
+      ),
+    );
+
+    expect(sentences(sectionNamed(store, 'map')).map(read)).toEqual([
+      'mapOptions holds the wrong kind of value.',
+    ]);
+  });
+
+  /**
+   * The schema and a required field are saying the same thing about an empty
+   * value, and the field says it in the words the researcher is already
+   * reading everywhere else.
+   */
+  it('leaves a missing value to the required field that owns it', () => {
+    const store = storeWith({ config: ['nodeConfig.egoVariable'] }, true);
+
+    store.setValidationIssues([
+      {
+        path: ['nodeConfig', 'egoVariable'],
+        code: 'invalid_type',
+        message: 'Invalid input: expected string, received undefined',
+        absent: true,
+      },
+    ]);
+
+    expect(sentences(sectionNamed(store, 'config'))).toEqual([]);
+    expect(
+      sectionOutlineStatus(sectionNamed(store, 'config'), EMPTY_FORM),
+    ).toBe('incomplete');
+  });
+
+  /**
+   * Two different controls, described by the same words.
+   *
+   * A cross-reference message names the thing that is wrong rather than the
+   * control that holds it, so two controls with the same fault read alike. The
+   * repetition worth dropping is one CONTROL said twice; dropping the second
+   * control's problem would send the researcher to fix half of what is wrong
+   * and leave the section reading "error" over a fix they had already made.
+   */
+  it('names both controls when the same sentence is true of each', () => {
+    const store = storeWith({
+      sorting: ['sortOptions.sortOrder', 'sortOptions.sortableProperties'],
+    });
+
+    store.setValidationIssues([
+      said(
+        ['sortOptions', 'sortOrder', 0, 'property'],
+        'This stage sorts by an attribute that is no longer in the codebook.',
+      ),
+      said(
+        ['sortOptions', 'sortableProperties', 0, 'variable'],
+        'This stage sorts by an attribute that is no longer in the codebook.',
+      ),
+    ]);
+
+    expect(sentences(sectionNamed(store, 'sorting'))).toEqual([
+      'This stage sorts by an attribute that is no longer in the codebook.',
+      'This stage sorts by an attribute that is no longer in the codebook.',
+    ]);
+  });
+
+  /**
+   * The required-field rule is about the field's OWN emptiness.
+   *
+   * A rule set that holds a rule is not empty, whatever is missing from inside
+   * the rule — so a required control cannot answer for a refusal raised in
+   * there. Silence would leave the researcher with a save the schema refuses
+   * and an outline that says the section is merely unfinished.
+   */
+  it('keeps a missing value found inside a required field', () => {
+    const store = storeWith({ skip: ['skipLogic.filter'] }, true);
+
+    store.setValidationIssues([
+      {
+        path: ['skipLogic', 'filter', 'rules', 0, 'options', 'attribute'],
+        code: 'custom',
+        message:
+          'An ego rule must reference an attribute; a type-level ego rule (no attribute) is not valid.',
+        absent: true,
+      },
+    ]);
+
+    expect(sentences(sectionNamed(store, 'skip'))).toEqual([
+      'An ego rule must reference an attribute; a type-level ego rule (no attribute) is not valid.',
+    ]);
+    expect(sectionOutlineStatus(sectionNamed(store, 'skip'), EMPTY_FORM)).toBe(
+      'error',
+    );
+  });
+
+  /**
+   * The other half of that rule. Nothing on the page says a value is needed
+   * unless a field says it is required, so a section that stayed quiet here
+   * would read "Finished" over a stage the protocol refuses to save.
+   */
+  it('keeps a missing value no required field speaks for', () => {
+    const store = storeWith({ config: ['nodeConfig.egoVariable'] });
+
+    store.setValidationIssues([
+      {
+        path: ['nodeConfig', 'egoVariable'],
+        code: 'invalid_type',
+        message: 'Invalid input: expected string, received undefined',
+        absent: true,
+      },
+    ]);
+
+    expect(sentences(sectionNamed(store, 'config')).map(read)).toEqual([
+      'nodeConfig.egoVariable has no value, and this stage needs one.',
+    ]);
+    expect(
+      sectionOutlineStatus(sectionNamed(store, 'config'), EMPTY_FORM),
+    ).toBe('error');
+  });
+
+  it('hands back the same snapshot when the issues have not changed', () => {
+    const store = storeWith({ search: ['searchOptions.fuzziness'] });
+    const issues = [said(['searchOptions'], 'a problem')];
+    store.setValidationIssues(issues);
+    const snapshot = store.getSnapshot();
+
+    // Every refused save hands the store a fresh array of the same issues,
+    // and one that re-notified would re-render the outline forever.
+    store.setValidationIssues(issues.map((issue) => ({ ...issue })));
+
+    expect(store.getSnapshot()).toBe(snapshot);
   });
 });

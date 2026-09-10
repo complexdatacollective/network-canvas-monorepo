@@ -69,8 +69,13 @@ async function readNarrativePedigreeStage(
 // `packages/protocols/e2e/all-interfaces/protocol.json`'s validated
 // `family-pedigree-1` stage and its referenced `person`/`family_edge` codebook
 // entries (confirmed against that fixture, which Task 7's fixture-validation
-// test already keeps schema-valid), plus one extra boolean node variable
-// (`hasConditionX`) for this spec's own disease binding.
+// test already keeps schema-valid), including the boolean node variable
+// (`hasConditionX`) the pedigree's nomination prompt records and this spec's
+// disease binds. The prompt is not decoration: a Family Pedigree writes a
+// member's disease boolean only through a nomination prompt, so a disease
+// mapped to an attribute no prompt records draws an unmarked family, and the
+// editor rule that keeps such attributes out of the disease picker needs the
+// prompt here to offer `hasConditionX` at all.
 //
 // `nodeConfig`/`edgeConfig`'s variable-reference fields are
 // `entityAttributeReference`-branded strings (`FamilyPedigreeNodeConfigSchema`
@@ -160,6 +165,13 @@ function protocolWithFamilyPedigreeStage(): CurrentProtocol {
           requireChildrenContributors: 'off',
         },
         censusPrompt: 'Who is in your family?',
+        nominationPrompts: [
+          {
+            id: 'nomination-1',
+            text: 'Who in your family has been diagnosed with condition X?',
+            variable: asEntityAttributeReference('hasConditionX'),
+          },
+        ],
       },
     ],
   };
