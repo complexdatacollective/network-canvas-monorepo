@@ -15,7 +15,6 @@
   "protocolBuilder.narrativePedigree.diseaseColorLabel": "Colour",
   "protocolBuilder.narrativePedigree.diseaseColorOption": "Colour {position}",
   "protocolBuilder.narrativePedigree.diseaseColorRequired": "Choose a colour for this disease.",
-  "protocolBuilder.narrativePedigree.diseaseColorUnavailable": "This disease is set to a colour the palette does not have. Choose one of the colours shown.",
   "protocolBuilder.narrativePedigree.sourceDescription": "Choose the Family Pedigree stage whose family this stage visualises.",
   "protocolBuilder.narrativePedigree.sourceNotAPedigree": "The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualise. Choose a Family Pedigree stage instead.",
   "protocolBuilder.networkCanvas.composerEdgeTypeHint": "The kind of connection the participant draws. Its name and colour come from the codebook.",

@@ -76,9 +76,9 @@ export const narrativePedigreeMessages = defineMessages({
   },
   sourceUnusableOption: {
     id: 'protocolBuilder.narrativePedigree.sourceUnusableOption',
-    defaultMessage: '{stageId} — this stage can no longer be used',
+    defaultMessage: '{stageName} — this stage can no longer be used',
     description:
-      'How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageId is the missing stage’s identifier — not a name a person wrote, because there is no longer a stage to read a name from.',
+      'How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier.',
   },
   sourceMissing: {
     id: 'protocolBuilder.narrativePedigree.sourceMissing',
@@ -273,13 +273,6 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one.',
   },
-  diseaseColorUnavailable: {
-    id: 'protocolBuilder.narrativePedigree.diseaseColorUnavailable',
-    defaultMessage:
-      'This disease is set to a color the palette does not have. Choose one of the colors shown.',
-    description:
-      'Refusal shown under the disease-colour control when the row holds a colour that is not one of the ones offered — an import or a merge left it there — so nothing is shown as chosen and the protocol would refuse the stage.',
-  },
   diseaseColorOption: {
     id: 'protocolBuilder.narrativePedigree.diseaseColorOption',
     defaultMessage: 'Color {position}',
@@ -336,13 +329,6 @@ export const narrativePedigreeMessages = defineMessages({
     defaultMessage: 'Choose how this disease is inherited.',
     description:
       'Refusal shown under the inheritance-pattern control when the researcher saves the dialog without choosing one.',
-  },
-  diseaseInheritanceUnavailable: {
-    id: 'protocolBuilder.narrativePedigree.diseaseInheritanceUnavailable',
-    defaultMessage:
-      'This disease is set to an inheritance pattern this editor does not know. Choose one from the list.',
-    description:
-      'Refusal shown under the inheritance-pattern control when the row holds a pattern that is not one of the ones offered — an import or a merge left it there — so the control can only read the stored value back, and the protocol would refuse the stage. An inheritance pattern is how a condition travels from parent to child.',
   },
   diseaseVariableGone: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableGone',

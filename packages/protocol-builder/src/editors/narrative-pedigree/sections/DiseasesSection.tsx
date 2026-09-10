@@ -5,11 +5,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import {
-  diseaseLabelKey,
-  INHERITANCE_PATTERNS,
-  NodeColorSequence,
-} from '@codaco/protocol-validation';
+import { diseaseLabelKey } from '@codaco/protocol-validation';
 
 import { withoutAbsentValues } from '../../../form/absentValues.ts';
 import {
@@ -45,20 +41,14 @@ const DISEASES_FIELD = 'diseases';
 const SOURCE_FIELD = 'sourceStageId';
 
 /**
- * The refusals this list encodes rather than formats.
+ * The refusal this list encodes rather than formats.
  *
- * Each is stated by a rule the field registers, which runs outside React and
- * can see no formatter; the form's own error region decodes it where it is
- * rendered, so a standing refusal follows a change of language.
+ * Stated by a rule the field registers, which runs outside React and can see
+ * no formatter; the form's own error region decodes it where it is rendered,
+ * so a standing refusal follows a change of language.
  */
 const AT_LEAST_ONE_DISEASE = createMessageError(
   narrativePedigreeMessages.diseasesAtLeastOne,
-);
-const COLOR_UNAVAILABLE = createMessageError(
-  narrativePedigreeMessages.diseaseColorUnavailable,
-);
-const INHERITANCE_UNAVAILABLE = createMessageError(
-  narrativePedigreeMessages.diseaseInheritanceUnavailable,
 );
 
 /** What `unrecordedNames` signs as when no row maps anything unrecorded. */
@@ -66,18 +56,6 @@ const NOTHING_UNRECORDED = JSON.stringify([]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/**
- * Whether a stored value is one of a closed list of choices.
- *
- * An ABSENT value is not this rule's business — an unfinished row is what
- * `required` reports, and two refusals on one empty control say the same thing
- * twice.
- */
-const outsideChoices = (value: unknown, choices: readonly string[]): boolean =>
-  typeof value === 'string' &&
-  value !== '' &&
-  !choices.some((choice) => choice === value);
 
 /**
  * The conditions this stage draws on the family it reads.
@@ -136,17 +114,6 @@ export default function DiseasesSection() {
   const beforeSave = useCallback(
     (row: RowValues, context: { editIndex?: number }): RowSaveOutcome => {
       const fieldErrors: Record<string, string[]> = {};
-
-      // The two counted choices, judged on what the row HOLDS rather than on
-      // what the researcher touched: neither control can show a value from
-      // outside its list, so a row an import or a merge left holding one reads
-      // as unfinished while carrying something the schema refuses.
-      if (outsideChoices(row.color, NodeColorSequence)) {
-        fieldErrors.color = [COLOR_UNAVAILABLE];
-      }
-      if (outsideChoices(row.inheritancePattern, INHERITANCE_PATTERNS)) {
-        fieldErrors.inheritancePattern = [INHERITANCE_UNAVAILABLE];
-      }
 
       const variable = typeof row.variable === 'string' ? row.variable : '';
       const liveRows = Array.isArray(rows) ? rows : [];
