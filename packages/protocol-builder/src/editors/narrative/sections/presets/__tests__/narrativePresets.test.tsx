@@ -136,10 +136,10 @@ describe('the ways of looking at the network a narrative stage offers', () => {
  * A narrative preset stores four references and writes none of them: the
  * runtime restores positions from the layout attribute with `persist: false`,
  * reads the grouping attribute to draw hulls, and reads the highlight
- * attributes to colour nodes. Classed as an unvalidated WRITER, the pickers
- * would run the exclusivity that keeps a bin or a stamp off an attribute a
- * form collects — and drop exactly the attributes a narrative stage exists to
- * look at.
+ * attributes to show those nodes highlighted. Classed as an unvalidated
+ * WRITER, the pickers would run the exclusivity that keeps a bin or a stamp
+ * off an attribute a form collects — and drop exactly the attributes a
+ * narrative stage exists to look at.
  *
  * `flagged` is the case: the fixture's alter form collects it, which is the
  * normal way a true/false attribute about a person comes to exist. A committed
