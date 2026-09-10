@@ -54,8 +54,15 @@ const messages = defineMessages({
 
 // Row background reads `--rule-bg` so callers (e.g. Validations error state)
 // can flip it without re-defining the row layout.
+//
+// White text rather than Architect's `text-sortable-contrast`: that utility is
+// built from `--color-sortable-contrast`, which only Architect's own theme
+// declares, so in every other host — Storybook, Studio — Tailwind emitted no
+// rule at all and the row's labels inherited the page's dark text over a
+// slate-blue row: 2.67:1. Architect's token IS white, so this renders what
+// Architect already renders, and the package stops depending on an app theme.
 const MULTI_SELECT_RULE_CLASSES =
-  'flex items-center py-5 bg-(--rule-bg) publish-colors text-sortable-contrast rounded z-1 transition-colors duration-300 ease-in-out';
+  'flex items-center py-5 bg-(--rule-bg) publish-colors text-white rounded z-1 transition-colors duration-300 ease-in-out';
 const MULTI_SELECT_CONTROL_CLASSES = 'flex grow-0 items-center gap-2 px-5';
 const MULTI_SELECT_OPTIONS_CLASSES = 'flex-1 flex items-center px-5';
 const MULTI_SELECT_OPTION_CLASSES = 'flex flex-1 items-start ml-5 first:ml-0';
@@ -267,7 +274,7 @@ function MultiSelectRow({
               position: String(index + 1),
               count: itemCount,
             })}
-            className="text-sortable-contrast"
+            className="text-white"
           />
         </div>
       )}
