@@ -75,6 +75,20 @@ describe('composing the registry from family parts', () => {
     ]);
   });
 
+  /**
+   * The state PR 3 reaches, asserted rather than inferred from the pair above.
+   *
+   * Those two hold the runtime list, the type-level list and the schema to each
+   * other — which they would go on doing if a merge dropped an editor and its
+   * stage type reappeared in `AWAITING_STAGE_EDITORS` together. This says the
+   * only thing that pair cannot: there is nothing in either list.
+   */
+  it('leaves no interface without an editor', () => {
+    expect([...AWAITING_STAGE_EDITORS]).toEqual([]);
+    expect(missingStageEditors(stageEditorRegistry)).toEqual([]);
+    expect(Object.keys(stageEditorRegistry)).toHaveLength(STAGE_TYPES.length);
+  });
+
   it('accounts for every schema stage type exactly once', () => {
     expect(
       [
@@ -304,27 +318,22 @@ describe('dispatching to a named editor', () => {
    * Thrown rather than reported: there is no editor to fall back to, and
    * rendering nothing would leave a researcher on an empty page with no
    * account of why.
+   *
+   * Read off the error rather than off a mounted dispatch, because there is no
+   * longer an interface to mount that reaches it. Every stage type the schema
+   * declares has an editor (`AWAITING_STAGE_EDITORS` is empty, asserted just
+   * above), a host registry is merged OVER the package's rather than replacing
+   * it, and an entry a host leaves empty claims nothing — so nothing a host can
+   * pass takes an interface away. What survives is the contract the message
+   * keeps for the report a host collects: it names the interface, and the error
+   * carries it as a field.
    */
   it('names the interface nothing is registered for', () => {
-    const consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
+    const error = new UnregisteredStageTypeError('Sociogram');
 
-    try {
-      // `Information` will not do here once a family lands: an explicit `{}`
-      // is merged OVER the package's own registry rather than replacing it,
-      // so an interface a landed family already claims stays claimed no
-      // matter what a host passes. `sociogram-1` is still awaiting its
-      // family, so nothing — package or host — has claimed it.
-      expect(() =>
-        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
-      ).toThrow(UnregisteredStageTypeError);
-      expect(() =>
-        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
-      ).toThrow(/"Sociogram" interface/);
-    } finally {
-      consoleError.mockRestore();
-    }
+    expect(error.stageType).toBe('Sociogram');
+    expect(error.message).toMatch(/"Sociogram" interface/);
+    expect(error).toBeInstanceOf(Error);
   });
 
   it('is the package registry when a host does not supply one', () => {
@@ -340,11 +349,11 @@ describe('dispatching to a named editor', () => {
         'Information',
       );
 
-      // An interface still awaiting its family says so rather than rendering a
-      // blank page.
-      expect(() => renderStageEditor({ stageId: 'sociogram-1' })).toThrow(
-        UnregisteredStageTypeError,
-      );
+      // And every OTHER interface too, which is the half that used to be an
+      // interface still awaiting its family throwing instead. No stage type is
+      // left to throw for, so the reading is inverted: the package's own
+      // registry claims all of them.
+      expect(missingStageEditors(stageEditorRegistry)).toEqual([]);
     } finally {
       consoleError.mockRestore();
     }

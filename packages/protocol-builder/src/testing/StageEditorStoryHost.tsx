@@ -15,6 +15,7 @@ import type { StageEditorActions } from '../stage-editor-contract.ts';
 import type { StageEditTarget } from '../stageEdit.tsx';
 import { createInMemoryHost } from './host/createInMemoryHost.ts';
 import {
+  fixtureAssetContentFor,
   fixtureAssetManifest,
   fixtureProtocolSections,
 } from './protocolFixture.ts';
@@ -99,14 +100,13 @@ export function StageEditorStoryHost({
 }: StageEditorStoryHostProps) {
   const [saved, setSaved] = useState<SectionDoc | null>(null);
   const [host] = useState(() => {
+    const manifest = { ...fixtureAssetManifest(), ...assets };
     const built = createInMemoryHost({
       sections: {
         ...fixtureProtocolSections(),
-        [sectionId({ kind: 'assets' })]: {
-          ...fixtureAssetManifest(),
-          ...assets,
-        },
+        [sectionId({ kind: 'assets' })]: manifest,
       },
+      assetContent: fixtureAssetContentFor(manifest),
       ...(createResourceId === undefined ? {} : { nextId: createResourceId }),
     });
     if (readOnly) {

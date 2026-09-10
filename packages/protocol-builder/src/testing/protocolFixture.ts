@@ -230,6 +230,46 @@ export function fixtureAssetContent(source: string): Uint8Array | undefined {
 }
 
 /**
+ * The bytes a host has to hold for one asset manifest, keyed by the filename
+ * the manifest names.
+ *
+ * An asset the fixture ships a file for is seeded with that file; everything
+ * else gets a placeholder body, because the editors that reference those read
+ * only a resource's kind, name and size.
+ *
+ * One function for both harnesses: the tests' and the stories' hosts serve the
+ * same protocol, so a story whose host held no bytes rendered every "what is
+ * inside this file" control in its failure state while the same editor under
+ * test rendered itself.
+ *
+ * `extra` is the text a test wants served for a `source` of its own — a layer
+ * with no feature properties, a roster with a column the fixture's has not.
+ * A file the protocol does not ship is the only way to reach the states an
+ * editor has for one, and they are researcher-visible states.
+ */
+export function fixtureAssetContentFor(
+  manifest: Readonly<Record<string, unknown>>,
+  extra: Readonly<Record<string, string>> = {},
+): Record<string, Blob> {
+  const content: Record<string, Blob> = {};
+  for (const entry of Object.values(manifest)) {
+    if (!isRecord(entry)) continue;
+    const source = entry.source;
+    if (typeof source !== 'string') continue;
+    const text = extra[source];
+    const bytes =
+      text === undefined
+        ? fixtureAssetContent(source)
+        : new TextEncoder().encode(text);
+    content[source] = new Blob(
+      [(bytes ?? new TextEncoder().encode('{}')) as BlobPart],
+      { type: 'application/json' },
+    );
+  }
+  return content;
+}
+
+/**
  * Every file the fixture ships beside its protocol, keyed by the `source` its
  * manifest names, and holding the file's own text.
  *

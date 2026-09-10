@@ -34,16 +34,22 @@ import type { StageType } from '@codaco/protocol-validation';
 
 import { alterEdgeFormStageEditor } from './editors/alter-edge-form/AlterEdgeFormStageEditor.ts';
 import { alterFormStageEditor } from './editors/alter-form/AlterFormStageEditor.ts';
+import { anonymisationStageEditor } from './editors/anonymisation/AnonymisationStageEditor.ts';
 import { categoricalBinStageEditor } from './editors/categorical-bin/CategoricalBinStageEditor.ts';
 import { dyadCensusStageEditor } from './editors/dyad-census/DyadCensusStageEditor.ts';
 import { egoFormStageEditor } from './editors/ego-form/EgoFormStageEditor.ts';
 import { familyPedigreeStageEditor } from './editors/family-pedigree/FamilyPedigreeStageEditor.ts';
+import { geospatialStageEditor } from './editors/geospatial/GeospatialStageEditor.ts';
 import { informationStageEditor } from './editors/information/InformationStageEditor.ts';
 import { nameGeneratorQuickAddStageEditor } from './editors/name-generator-quick-add/NameGeneratorQuickAddStageEditor.ts';
 import { nameGeneratorRosterStageEditor } from './editors/name-generator-roster/NameGeneratorRosterStageEditor.ts';
 import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
+import { narrativePedigreeStageEditor } from './editors/narrative-pedigree/NarrativePedigreeStageEditor.ts';
+import { narrativeStageEditor } from './editors/narrative/NarrativeStageEditor.ts';
+import { networkComposerStageEditor } from './editors/network-composer/NetworkComposerStageEditor.ts';
 import { oneToManyDyadCensusStageEditor } from './editors/one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
 import { ordinalBinStageEditor } from './editors/ordinal-bin/OrdinalBinStageEditor.ts';
+import { sociogramStageEditor } from './editors/sociogram/SociogramStageEditor.ts';
 import { tieStrengthCensusStageEditor } from './editors/tie-strength-census/TieStrengthCensusStageEditor.ts';
 import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
 
@@ -121,16 +127,22 @@ const REGISTRY_PARTS = [
   // One imported part per line, alphabetically, each with a trailing comma.
   alterEdgeFormStageEditor,
   alterFormStageEditor,
+  anonymisationStageEditor,
   categoricalBinStageEditor,
   dyadCensusStageEditor,
   egoFormStageEditor,
   familyPedigreeStageEditor,
+  geospatialStageEditor,
   informationStageEditor,
   nameGeneratorQuickAddStageEditor,
   nameGeneratorRosterStageEditor,
   nameGeneratorStageEditor,
+  narrativePedigreeStageEditor,
+  narrativeStageEditor,
+  networkComposerStageEditor,
   oneToManyDyadCensusStageEditor,
   ordinalBinStageEditor,
+  sociogramStageEditor,
   tieStrengthCensusStageEditor,
 ] as const satisfies readonly StageEditorRegistryPart[];
 
@@ -224,12 +236,10 @@ export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
  * editor exists for it.
  */
 export const AWAITING_STAGE_EDITORS = [
-  'Anonymisation',
-  'Geospatial',
-  'Narrative',
-  'NarrativePedigree',
-  'NetworkComposer',
-  'Sociogram',
+  // Empty: every interface the schema declares has an editor. The list keeps
+  // its own line-per-entry shape so the next stage type the schema gains has
+  // somewhere to be written, and so `__tests__/stageEditorRegistry.test.tsx`
+  // still reads it as a list rather than as a collapsed literal.
 ] as const satisfies readonly UnregisteredStageType[];
 
 export type Assert<T extends true> = T;

@@ -7,5 +7,18 @@
   "protocolBuilder.codebookEntity.colorRequired": "Choose a colour.",
   "protocolBuilder.codebookEntity.edgeColorOption": "Edge colour {index, number}",
   "protocolBuilder.codebookEntity.nodeColorOption": "Node colour {index, number}",
+  "protocolBuilder.geospatial.colorHint": "Selectable areas are outlined in this colour, and the area a participant chooses is filled with it.",
+  "protocolBuilder.geospatial.colorLabel": "Highlight colour",
+  "protocolBuilder.geospatial.colorOptionLabel": "Highlight colour {position}",
+  "protocolBuilder.geospatial.styleHint": "The map drawn beneath the selectable areas. Check that place names on it stay readable under the highlight colour.",
+  "protocolBuilder.narrativePedigree.diseaseColorHint": "The colour this disease is drawn in on the pedigree.",
+  "protocolBuilder.narrativePedigree.diseaseColorLabel": "Colour",
+  "protocolBuilder.narrativePedigree.diseaseColorOption": "Colour {position}",
+  "protocolBuilder.narrativePedigree.diseaseColorRequired": "Choose a colour for this disease.",
+  "protocolBuilder.narrativePedigree.diseaseColorUnavailable": "This disease is set to a colour the palette does not have. Choose one of the colours shown.",
+  "protocolBuilder.narrativePedigree.sourceDescription": "Choose the Family Pedigree stage whose family this stage visualises.",
+  "protocolBuilder.narrativePedigree.sourceNotAPedigree": "The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualise. Choose a Family Pedigree stage instead.",
+  "protocolBuilder.networkCanvas.composerEdgeTypeHint": "The kind of connection the participant draws. Its name and colour come from the codebook.",
+  "protocolBuilder.networkCanvas.presetsTitle": "Visualisation presets",
   "protocolBuilder.pedigree.dependentStagesDescription": "These stages visualise this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have."
 }

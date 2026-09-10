@@ -1,0 +1,90 @@
+import { defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
+
+import BuilderSection from '../../../../sections/BuilderSection.tsx';
+
+const FREE_DRAW_FIELD = 'behaviours.freeDraw';
+const ALLOW_REPOSITIONING_FIELD = 'behaviours.allowRepositioning';
+
+const messages = defineMessages({
+  canvasInteractionTitle: {
+    id: 'protocolBuilder.networkCanvas.canvasInteractionTitle',
+    defaultMessage: 'Canvas interaction',
+    description:
+      'Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology.',
+  },
+  canvasInteractionDescription: {
+    id: 'protocolBuilder.networkCanvas.canvasInteractionDescription',
+    defaultMessage:
+      'Choose what the participant may do to the picture while they tell their story.',
+    description:
+      'Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it.',
+  },
+  freeDrawLabel: {
+    id: 'protocolBuilder.networkCanvas.freeDrawLabel',
+    defaultMessage: 'Allow drawing on the canvas',
+    description:
+      'Label of the switch letting the participant draw on the canvas.',
+  },
+  freeDrawHint: {
+    id: 'protocolBuilder.networkCanvas.freeDrawHint',
+    defaultMessage:
+      'The participant can draw freehand annotations over the canvas, and erase them again.',
+    description: 'Guidance under the drawing switch.',
+  },
+  repositioningLabel: {
+    id: 'protocolBuilder.networkCanvas.repositioningLabel',
+    defaultMessage: 'Allow moving nodes',
+    description:
+      'Label of the switch letting the participant drag the network members around the canvas.',
+  },
+  repositioningHint: {
+    id: 'protocolBuilder.networkCanvas.repositioningHint',
+    defaultMessage:
+      'The participant can drag nodes around while they talk. Nothing is recorded: the attribute the preset positions by is left as it is, and the nodes are back where the preset put them the next time the stage is opened.',
+    description:
+      'Guidance under the moving-nodes switch on a narrative stage. It says the move is temporary because a narrative stage reads positions and never writes them, so a researcher does not plan a study around movements that are never collected.',
+  },
+});
+
+/**
+ * What the participant may do to the canvas while they talk over it.
+ *
+ * Two independent permissions, held at `behaviours.freeDraw` and
+ * `behaviours.allowRepositioning`. Deliberately not the same section as the
+ * layout mode, which is not a permission at all: that decides how the stage
+ * arranges nodes before the participant touches anything, and it is offered by
+ * interfaces that grant neither of these.
+ *
+ * The narrative interface is the only one of the nineteen that honours either,
+ * so this section lives with it. `Sociogram.tsx` reads no drawing flag and
+ * repositions unconditionally, and the network composer's `behaviours` holds
+ * `automaticLayout` alone.
+ */
+export default function CanvasPermissionsSection() {
+  const intl = useAppIntl();
+
+  return (
+    <BuilderSection
+      title={intl.formatMessage(messages.canvasInteractionTitle)}
+      description={intl.formatMessage(messages.canvasInteractionDescription)}
+    >
+      <Field<typeof ToggleField>
+        name={FREE_DRAW_FIELD}
+        component={ToggleField}
+        label={intl.formatMessage(messages.freeDrawLabel)}
+        hint={intl.formatMessage(messages.freeDrawHint)}
+        inline
+      />
+      <Field<typeof ToggleField>
+        name={ALLOW_REPOSITIONING_FIELD}
+        component={ToggleField}
+        label={intl.formatMessage(messages.repositioningLabel)}
+        hint={intl.formatMessage(messages.repositioningHint)}
+        inline
+      />
+    </BuilderSection>
+  );
+}

@@ -3,7 +3,21 @@ import type { Stage } from '@codaco/protocol-validation';
 import { stagePlacement } from '../../../fields/stageDestination.ts';
 import type { ProtocolBuilderProtocolContext } from '../../../protocol-context.ts';
 
-export type SourceStageOption = Readonly<{ value: string; label: string }>;
+export type SourceStageOption = Readonly<{
+  value: string;
+  label: string;
+  /**
+   * The number the researcher will see against this stage once the stage
+   * being edited exists, counting from one.
+   *
+   * A stage label is required to be non-empty and is not required to be
+   * unique, and the host proposes the same name for every stage of an
+   * interface — so two Family Pedigree stages read identically in a list of
+   * their names alone. Numbered, they cannot; the same fact, and the same
+   * phrasing, as the skip-logic destination control.
+   */
+  position: number;
+}>;
 
 /**
  * Why a narrative pedigree's chosen source is not one it may use.
@@ -59,10 +73,22 @@ export function resolveSourceStages(
   const stages = context.orderedStages;
   const placement = stagePlacement(stages, thisStageId, position);
 
-  const options = stages
-    .slice(0, placement.index)
-    .filter(isPedigree)
-    .map((stage) => ({ value: stage.id, label: stage.label }));
+  const options = stages.slice(0, placement.index).flatMap((stage, index) =>
+    isPedigree(stage)
+      ? [
+          {
+            value: stage.id,
+            label: stage.label,
+            // One higher than today's for every stage a new stage is about
+            // to be inserted in front of — which is none of these, since
+            // they all precede it. Said the same way regardless, so the
+            // numbers here and the ones the destination control shows are
+            // the same numbers.
+            position: index + 1 + (placement.isNew ? 1 : 0),
+          },
+        ]
+      : [],
+  );
 
   if (typeof currentSourceStageId !== 'string' || currentSourceStageId === '') {
     return { options, problem: null };
@@ -77,16 +103,98 @@ export function resolveSourceStages(
   return { options, problem: 'afterThisStage' };
 }
 
+/** The source pedigree itself, or nothing when the reference resolves to none. */
+const sourceStageOf = (
+  context: ProtocolBuilderProtocolContext,
+  sourceStageId: unknown,
+): Extract<Readonly<Stage>, { type: 'FamilyPedigree' }> | undefined => {
+  if (typeof sourceStageId !== 'string') return undefined;
+  const stage = context.orderedStages.find(
+    (candidate) => candidate.id === sourceStageId,
+  );
+  return stage !== undefined && stage.type === 'FamilyPedigree'
+    ? stage
+    : undefined;
+};
+
 /** The node type a narrative pedigree's diseases are attributes of. */
 export function sourceStageNodeType(
   context: ProtocolBuilderProtocolContext,
   sourceStageId: unknown,
 ): string | undefined {
-  if (typeof sourceStageId !== 'string') return undefined;
-  const stage = context.orderedStages.find(
-    (candidate) => candidate.id === sourceStageId,
-  );
-  if (stage === undefined || stage.type !== 'FamilyPedigree') return undefined;
+  const stage = sourceStageOf(context, sourceStageId);
+  if (stage === undefined) return undefined;
   const nodeType = stage.nodeConfig.type;
   return typeof nodeType === 'string' ? nodeType : undefined;
+}
+
+/**
+ * The attributes the source pedigree actually RECORDS about a family member.
+ *
+ * A disease mapping only reads: it colours the family tree from an attribute
+ * the interview has already written. The Family Pedigree writes a boolean onto
+ * a family member in exactly one place — a nomination prompt, where the
+ * participant is asked who the question applies to and everyone they pick is
+ * marked. Its member form is the other surface that collects an attribute, and
+ * it is deliberately not counted here: a form field is a VALIDATED writer and
+ * a disease mapping an unvalidated one, so the protocol reports a role
+ * conflict for an attribute both name, and the cross-class exclusion drops
+ * those from this picker with a refusal of its own.
+ *
+ * So an attribute no nomination prompt of the source pedigree records is one
+ * nothing ever sets to `true`, and the genetics engine treats only an explicit
+ * `true` as affected: a disease mapped to it draws an unmarked family, in
+ * every interview, with no error anywhere to say so. That is what this set
+ * exists to keep out of the picker and out of the save.
+ *
+ * Read from the protocol context rather than passed down, so a nomination
+ * prompt a collaborator adds to the source pedigree appears here without this
+ * stage doing anything.
+ */
+export function sourceStageRecordedVariables(
+  context: ProtocolBuilderProtocolContext,
+  sourceStageId: unknown,
+): ReadonlySet<string> {
+  const prompts = sourceStageOf(context, sourceStageId)?.nominationPrompts;
+  if (!Array.isArray(prompts)) return new Set();
+  // Read defensively rather than trusted from the type: the context holds the
+  // protocol as the host last sent it, which is a document a collaborator can
+  // leave half-written.
+  return new Set(
+    prompts.flatMap((prompt: unknown) =>
+      typeof prompt === 'object' &&
+      prompt !== null &&
+      'variable' in prompt &&
+      typeof prompt.variable === 'string'
+        ? [prompt.variable]
+        : [],
+    ),
+  );
+}
+
+/**
+ * Whether one disease row maps an attribute the source pedigree never records.
+ *
+ * The same question `sourceStageRecordedVariables` answers for the picker,
+ * asked of a row that is already there. A row an import brought in, or one a
+ * collaborator invalidated by deleting the nomination prompt behind it, never
+ * went through the picker at all — and the mapping it leaves behind draws an
+ * unmarked family in every interview, because nothing ever sets the attribute
+ * to `true`.
+ *
+ * A row with no attribute yet is not this rule's business: an unfinished row
+ * is what `required` reports, and complaining that a blank marks nobody would
+ * put two refusals on one empty control.
+ */
+export function diseaseMarksNobody(
+  row: unknown,
+  recorded: ReadonlySet<string>,
+): boolean {
+  if (typeof row !== 'object' || row === null || Array.isArray(row)) {
+    return false;
+  }
+  const variable: unknown = Reflect.get(row, 'variable');
+  return (
+    typeof variable === 'string' && variable !== '' && !recorded.has(variable)
+  );
 }
