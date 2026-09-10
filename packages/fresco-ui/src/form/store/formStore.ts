@@ -593,53 +593,53 @@ export const createFormStore = (
   /**
    * What a field with no `initialValue` of its own starts out holding.
    *
-   * Three readings of the same path, in the order they outrank each other:
+   * The DOCUMENT is the only thing that can give a field a starting value —
+   * a form handed none leaves every such field starting out holding nothing,
+   * exactly as it did before a form could be handed one. What the other
+   * mounted fields have assembled so far is not a starting value: seeding a
+   * container out of the leaves that happen to have registered before it
+   * would hand a compound control a partial copy of its siblings' keys, which
+   * it then answers for and writes back.
+   *
+   * Given a document, two readings of the path, in the order they outrank
+   * each other:
    *
    * 1. Beneath a field mounted ABOVE it, the form answers for the whole path,
    *    absence included. A compound control the person has emptied says there
    *    is nothing there, and the document must not put it back — that is a
    *    value they have just deleted reappearing under them.
-   * 2. Otherwise, whatever the mounted fields hold beneath the path, so a
-   *    container mounting over leaves already on screen shows their edits
-   *    rather than the document they were opened from.
-   * 3. Otherwise the document, which is the only account of a path nothing
-   *    mounted has anything to say about.
+   * 2. Otherwise the document at the field's own path, with what the fields
+   *    mounted INSIDE it hold written over the top — so a container mounting
+   *    over leaves already on screen shows their edits, and still carries the
+   *    keys beside them that nothing renders.
    *
-   * 2 and 3 apply TOGETHER to one container, rather than 2 settling it
-   * whenever anything at all is mounted inside. A container seeded from only
-   * the leaves that happen to be on screen answers for its whole subtree, so
-   * every sibling key the document holds and no field renders is dropped from
-   * the moment it mounts — and a form that never showed those keys saves them
-   * away. Rule 2 is therefore written key by key, over the document.
+   * Rule 2 is written key by key rather than settled either way whole. A
+   * container seeded from only the leaves on screen answers for its whole
+   * subtree, so every sibling key the document holds and no field renders is
+   * dropped from the moment it mounts, and a form that never showed those
+   * keys saves them away.
    */
   const seedValueAt = (
     fieldPath: ObjectPath,
     formValues: Record<string, FieldValue>,
   ): FieldValue => {
-    // `getFormValues` assembles its output out of `FieldValue` leaves, and a
-    // caller's document is declared as a map of them, so every node within
-    // either is itself a `FieldValue`.
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    const assembled = readObjectPath(formValues, fieldPath) as FieldValue;
     const beneathAMountedField = [...fieldRecords.values()].some(
       (field) =>
         field.path !== undefined &&
         field.path.length < fieldPath.length &&
         field.path.every((segment, index) => fieldPath[index] === segment),
     );
-    if (beneathAMountedField) return assembled;
-    // A value standing at the field's OWN path with nothing registered inside
-    // it is the field's own — a remount re-registering the name it already
-    // holds — rather than a container assembled out of its descendants, so
-    // there is nothing for the document to fill in around.
-    if (assembled !== undefined && !hasDescendantField(fieldRecords, fieldPath))
-      return assembled;
+    // `getFormValues` assembles its output out of `FieldValue` leaves, and a
+    // caller's document is declared as a map of them, so every node within
+    // either is itself a `FieldValue`.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+    if (beneathAMountedField)
+      return readObjectPath(formValues, fieldPath) as FieldValue;
     const document = storeOptions.getInitialValues?.();
-    if (document === undefined) return assembled;
+    if (document === undefined) return undefined;
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const documented = readObjectPath(document, fieldPath) as FieldValue;
-    if (documented === undefined) return assembled;
-    if (assembled === undefined) return documented;
+    if (documented === undefined) return undefined;
     return documentWithMountedDescendants(fieldPath, documented);
   };
 
@@ -662,10 +662,6 @@ export const createFormStore = (
     containerPath: ObjectPath,
     documented: FieldValue,
   ): FieldValue => {
-    const seedRoot: Record<string, FieldValue> = {};
-    const writeIntoSeed = createObjectPathWriter(seedRoot);
-    writeIntoSeed([seedRootKey], documented);
-
     const descendants: { path: ObjectPath; value: FieldValue }[] = [];
     fieldRecords.forEach((field, fieldName) => {
       const path = resolveStoredFieldPath(fieldName, field);
@@ -673,7 +669,11 @@ export const createFormStore = (
         descendants.push({ path, value: field.value });
       }
     });
+    if (descendants.length === 0) return documented;
 
+    const seedRoot: Record<string, FieldValue> = {};
+    const writeIntoSeed = createObjectPathWriter(seedRoot);
+    writeIntoSeed([seedRootKey], documented);
     for (const descendant of descendants.toSorted(
       (a, b) => a.path.length - b.path.length,
     )) {

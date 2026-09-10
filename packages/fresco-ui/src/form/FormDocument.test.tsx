@@ -140,6 +140,71 @@ describe('a form that is handed the document it edits', () => {
     });
   });
 
+  it('shows a container mounting later the edit made inside it, and the keys beside it', async () => {
+    const user = userEvent.setup();
+
+    function RevealedContainer() {
+      const [open, setOpen] = useState(false);
+      return (
+        <Form
+          onSubmit={submitted()}
+          initialValues={{ settings: { min: 1, max: 2 } }}
+        >
+          <Field name="settings.min" label="Minimum" component={InputField} />
+          <button type="button" onClick={() => setOpen(true)}>
+            open
+          </button>
+          {open && (
+            <Field name="settings" label="Settings" component={ShowsValue} />
+          )}
+        </Form>
+      );
+    }
+
+    render(<RevealedContainer />);
+    const minimum = screen.getByRole('textbox', { name: 'Minimum' });
+    await user.clear(minimum);
+    await user.type(minimum, '9');
+    await user.click(screen.getByRole('button', { name: 'open' }));
+
+    // Both halves at once: the edit the researcher has just made to the leaf,
+    // and the key beside it that only the document knows about. Seeded from
+    // the document alone the control would show the 1 they replaced; seeded
+    // from the mounted leaf alone it would have lost `max`.
+    expect(await screen.findByTestId('shown-value')).toHaveTextContent(
+      '{"min":"9","max":2}',
+    );
+  });
+
+  it('gives a container nothing when there is no document to give it', async () => {
+    const user = userEvent.setup();
+    const onSubmit = submitted();
+    render(
+      // No document at all: Architect's stage forms register a compound
+      // control at `mapOptions` alongside the `mapOptions.*` leaves beside it,
+      // and hand the store nothing.
+      <Form onSubmit={onSubmit}>
+        <Field name="settings.style" label="Style" component={InputField} />
+        <Field name="settings" label="View" component={ViewField} />
+        <SubmitButton>Save</SubmitButton>
+      </Form>,
+    );
+
+    await user.type(screen.getByRole('textbox', { name: 'Style' }), 'streets');
+    await user.click(screen.getByRole('button', { name: 'set the view' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    // The compound control contributes `zoom` and nothing else. Started on the
+    // partial object its leaf sibling had assembled, it would answer for
+    // `style` as well — carrying a copy of a key it does not own, and putting
+    // it back in an order its caller never wrote.
+    expect(Object.keys(submittedSettings(onSubmit))).toEqual(['zoom', 'style']);
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      settings: { zoom: 2, style: 'streets' },
+    });
+  });
+
   it('does not put back what a mounted container has been emptied of', async () => {
     const user = userEvent.setup();
 
@@ -170,6 +235,45 @@ describe('a form that is handed the document it edits', () => {
     );
   });
 });
+
+/** A control that shows the object it is given, so a test can read it. */
+function ShowsValue({ value }: { value?: FieldValue }) {
+  return <span data-testid="shown-value">{JSON.stringify(value)}</span>;
+}
+
+/** What the form put at `settings`, for a test reading its key order. */
+function submittedSettings(
+  onSubmit: ReturnType<typeof submitted>,
+): Record<string, FieldValue> {
+  const settings = onSubmit.mock.calls[0]?.[0].settings;
+  if (settings === null || typeof settings !== 'object') {
+    throw new Error('the form submitted no settings object');
+  }
+  return settings as Record<string, FieldValue>;
+}
+
+/** A compound control that owns two keys of the object it is given. */
+function ViewField({
+  value,
+  onChange,
+}: {
+  value?: FieldValue;
+  onChange?: (value: FieldValue) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        onChange?.({
+          ...(value !== null && typeof value === 'object' ? value : {}),
+          zoom: 2,
+        })
+      }
+    >
+      set the view
+    </button>
+  );
+}
 
 /** A control that owns a whole object, and can be told to hold nothing. */
 function ContactField({
