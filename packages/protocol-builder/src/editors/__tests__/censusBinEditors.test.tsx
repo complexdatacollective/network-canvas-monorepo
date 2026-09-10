@@ -16,13 +16,16 @@ import {
 } from '../../testing/renderStageEditor.tsx';
 import { categoricalBinStageEditor } from '../categorical-bin/CategoricalBinStageEditor.ts';
 import { dyadCensusStageEditor } from '../dyad-census/DyadCensusStageEditor.ts';
+import { nameGeneratorQuickAddStageEditor } from '../name-generator-quick-add/NameGeneratorQuickAddStageEditor.ts';
+import { nameGeneratorRosterStageEditor } from '../name-generator-roster/NameGeneratorRosterStageEditor.ts';
 import { oneToManyDyadCensusStageEditor } from '../one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
 import { ordinalBinStageEditor } from '../ordinal-bin/OrdinalBinStageEditor.ts';
 import { tieStrengthCensusStageEditor } from '../tie-strength-census/TieStrengthCensusStageEditor.ts';
 
 /**
- * The census and bin editors, asked the four questions every one of them owes
- * its schema and its researcher.
+ * Family 3a's editors — the three censuses, the two bins and the two name
+ * generators that are not the form-based one — asked the four questions every
+ * one of them owes its schema and its researcher.
  *
  * One table rather than a file per editor, because the questions are the same
  * for all of them and the answers are data: which sections the editor
@@ -31,6 +34,10 @@ import { tieStrengthCensusStageEditor } from '../tie-strength-census/TieStrength
  * optional keys is authored through a control of its own, and that a Spanish
  * researcher reads no English. What only one interface can be asked lives in
  * that editor's own test beside it.
+ *
+ * The file keeps the name it was opened under so the family's three steps
+ * merge line by line; it now covers the whole family rather than the censuses
+ * and bins alone.
  */
 
 const SUBJECT = { entity: 'node', type: 'person' };
@@ -114,6 +121,17 @@ type EditorCase = Readonly<{
   editor: Partial<StageEditorRegistry>;
   /** The outline a researcher reads down the side of the stage, in order. */
   sections: readonly string[];
+  /**
+   * The capabilities this editor offers, named in Spanish, for the locale
+   * sweep to switch on.
+   *
+   * Named rather than found, so a section that stopped saying its own name in
+   * Spanish fails the sweep instead of quietly dropping out of it — and per
+   * case rather than shared, because the family's editors do not all offer the
+   * same ones: neither name generator has a stage filter, and only the roster
+   * has three lists chosen out of a data file.
+   */
+  optionalSections: readonly string[];
   /** The top-level stage keys those sections have a field for. */
   ownedKeys: readonly string[];
   /** A stage of this type using every key its schema allows. */
@@ -161,6 +179,66 @@ const ORDINAL_BIN_PROMPT = {
   color: 'ord-color-seq-1',
   bucketSortOrder: BUCKET_SORT_ORDER,
   binSortOrder: BIN_SORT_ORDER,
+};
+
+/**
+ * What the two name generators in this family hold that the censuses do not.
+ *
+ * Neither has a `filter`: the schema gives one to every census and bin here
+ * and to neither generator, which is Architect's `FilteredNodeType` /
+ * `NodeType` split.
+ */
+const WITHOUT_FILTER: SectionDoc = {
+  interviewScript: COMMON.interviewScript,
+  subject: SUBJECT,
+  skipLogic: SKIP_LOGIC,
+};
+
+/**
+ * A side panel offering the people the interview has already named.
+ *
+ * It carries its own `id`, as every row in this builder's lists does: the list
+ * is addressed by row identity rather than by position, and a panel without
+ * one is not a row the section can render.
+ */
+const PANEL = {
+  id: 'panel-1',
+  title: 'People you already named',
+  dataSource: 'existing',
+};
+
+/**
+ * Both generators' prompts are the same shape in the schema — a question and
+ * the fixed values it stamps on everyone named under it — so they are asked
+ * about the same prompt and the same controls.
+ */
+const NAME_GENERATOR_PROMPT = {
+  id: 'p1',
+  text: 'Who are the people you know?',
+  additionalAttributes: [{ variable: 'highlighted', value: true }],
+};
+
+const NAME_GENERATOR_PROMPT_CONTROLS: Readonly<
+  Record<string, readonly Control[]>
+> = {
+  text: [{ role: 'textbox', name: 'Prompt text' }],
+  additionalAttributes: [
+    { role: 'combobox', name: 'Create or select an attribute' },
+    { role: 'radio', name: 'True', checked: true },
+  ],
+};
+
+/**
+ * The stamp's VALUE, rewritten through the control that authors it. The
+ * attribute cell of the same row would do as well; the value is the half a
+ * researcher changes without changing what the prompt is about.
+ */
+const REWRITE_A_STAMP: Rewrite = {
+  key: 'additionalAttributes',
+  value: [{ variable: 'highlighted', value: false }],
+  write: async (harness) => {
+    await harness.user.click(screen.getByRole('radio', { name: 'False' }));
+  },
 };
 
 /**
@@ -215,6 +293,11 @@ const CASES: readonly EditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
+    optionalSections: [
+      'Filtro de la etapa',
+      'Lógica de salto',
+      'Guía para quien realiza la entrevista',
+    ],
     ownedKeys: ['introductionPanel', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
@@ -250,6 +333,11 @@ const CASES: readonly EditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
+    optionalSections: [
+      'Filtro de la etapa',
+      'Lógica de salto',
+      'Guía para quien realiza la entrevista',
+    ],
     ownedKeys: ['introductionPanel', 'label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
@@ -282,6 +370,11 @@ const CASES: readonly EditorCase[] = [
       'Node availability',
       'Skip logic',
       'Interviewer guidance',
+    ],
+    optionalSections: [
+      'Filtro de la etapa',
+      'Lógica de salto',
+      'Guía para quien realiza la entrevista',
     ],
     ownedKeys: ['behaviours', 'label', 'prompts', 'subject'],
     wholeStage: {
@@ -323,6 +416,11 @@ const CASES: readonly EditorCase[] = [
       'Skip logic',
       'Interviewer guidance',
     ],
+    optionalSections: [
+      'Filtro de la etapa',
+      'Lógica de salto',
+      'Guía para quien realiza la entrevista',
+    ],
     ownedKeys: ['label', 'prompts', 'subject'],
     wholeStage: {
       ...COMMON,
@@ -359,6 +457,11 @@ const CASES: readonly EditorCase[] = [
       'Prompts',
       'Skip logic',
       'Interviewer guidance',
+    ],
+    optionalSections: [
+      'Filtro de la etapa',
+      'Lógica de salto',
+      'Guía para quien realiza la entrevista',
     ],
     ownedKeys: ['label', 'prompts', 'subject'],
     wholeStage: {
@@ -402,6 +505,94 @@ const CASES: readonly EditorCase[] = [
       value: 'Anything else',
       write: (harness) => retype(harness, 'Bin label', 'Anything else'),
     },
+  },
+  {
+    interfaceName: 'NameGeneratorQuickAdd',
+    stageId: 'name-generator-quick-add-1',
+    editor: nameGeneratorQuickAddStageEditor,
+    sections: [
+      'Stage name',
+      'Node type',
+      'Quick add',
+      'Prompts',
+      'Side panels',
+      'Nomination limits',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    // No `panels` or `behaviours`: the fixture stage has neither, and both are
+    // capabilities whose fields only exist once they are switched on.
+    optionalSections: [
+      'Paneles laterales',
+      'Límites de nominación',
+      'Lógica de salto',
+      'Guía para quien realiza la entrevista',
+    ],
+    ownedKeys: ['label', 'prompts', 'quickAdd', 'subject'],
+    wholeStage: {
+      ...WITHOUT_FILTER,
+      label: 'Full quick-add name generator',
+      quickAdd: 'name',
+      panels: [PANEL],
+      behaviours: { minNodes: 1, maxNodes: 8 },
+      prompts: [NAME_GENERATOR_PROMPT],
+    },
+    prompt: NAME_GENERATOR_PROMPT,
+    authoredBy: NAME_GENERATOR_PROMPT_CONTROLS,
+    rewrite: REWRITE_A_STAMP,
+  },
+  {
+    interfaceName: 'NameGeneratorRoster',
+    stageId: 'name-generator-roster-1',
+    editor: nameGeneratorRosterStageEditor,
+    sections: [
+      'Stage name',
+      'Node type',
+      'Roster source',
+      'Prompts',
+      'Card details',
+      'Roster order',
+      'Roster search',
+      'Nomination limits',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    optionalSections: [
+      'Detalles de las tarjetas',
+      'Orden de la lista',
+      'Búsqueda en la lista',
+      'Límites de nominación',
+      'Lógica de salto',
+      'Guía para quien realiza la entrevista',
+    ],
+    ownedKeys: [
+      'behaviours',
+      'cardOptions',
+      'dataSource',
+      'label',
+      'prompts',
+      'searchOptions',
+      'sortOptions',
+      'subject',
+    ],
+    wholeStage: {
+      ...WITHOUT_FILTER,
+      label: 'Full roster name generator',
+      dataSource: 'roster_data',
+      cardOptions: {
+        additionalProperties: [{ label: 'Age', variable: 'age' }],
+      },
+      sortOptions: {
+        sortOrder: [{ property: 'age', direction: 'desc' }],
+        sortableProperties: [{ label: 'Age', variable: 'age' }],
+      },
+      searchOptions: { fuzziness: 0.5, matchProperties: ['name', 'age'] },
+      behaviours: { minNodes: 1, maxNodes: 8 },
+      prompts: [NAME_GENERATOR_PROMPT],
+    },
+    prompt: NAME_GENERATOR_PROMPT,
+    authoredBy: NAME_GENERATOR_PROMPT_CONTROLS,
+    rewrite: REWRITE_A_STAMP,
   },
 ];
 
@@ -571,14 +762,7 @@ describe('a prompt that uses every optional key its interface allows', () => {
  * It shares its reading with `src/__tests__/localeSweep.test.tsx`, which is
  * where the sweep is itself proved able to fail.
  */
-describe('the census and bin editors, swept under es', () => {
-  /** Both the shared optional sections every one of the three offers. */
-  const OPTIONAL_SECTIONS = [
-    'Filtro de la etapa',
-    'Lógica de salto',
-    'Guía para quien realiza la entrevista',
-  ] as const;
-
+describe('the family’s editors, swept under es', () => {
   const switchOn = async (
     harness: StageEditorHarness,
     control: HTMLElement,
@@ -653,6 +837,7 @@ describe('the census and bin editors, swept under es', () => {
   const sweepEditor = async (
     family: string,
     harness: StageEditorHarness,
+    optionalSections: readonly string[],
   ): Promise<void> => {
     await screen.findByRole('textbox', { name: 'Nombre de la etapa' });
     await waitFor(() =>
@@ -664,7 +849,7 @@ describe('the census and bin editors, swept under es', () => {
 
     // Named rather than found, so a section that stopped saying its own name in
     // Spanish fails here instead of quietly dropping out of the sweep.
-    for (const section of OPTIONAL_SECTIONS) {
+    for (const section of optionalSections) {
       await switchOn(harness, screen.getByRole('switch', { name: section }));
     }
     await switchEverythingOn(harness);
@@ -705,10 +890,14 @@ describe('the census and bin editors, swept under es', () => {
     );
   };
 
-  it.each(CASES)('sweeps a $interfaceName', async ({ stageId, editor }) => {
-    await sweepEditor(
-      stageId,
-      renderStageEditor({ stageId, locale: 'es', registry: editor }),
-    );
-  });
+  it.each(CASES)(
+    'sweeps a $interfaceName',
+    async ({ stageId, editor, optionalSections }) => {
+      await sweepEditor(
+        stageId,
+        renderStageEditor({ stageId, locale: 'es', registry: editor }),
+        optionalSections,
+      );
+    },
+  );
 });
