@@ -361,6 +361,42 @@ describe('the fields a form collects', () => {
     await harness.roundTrip({ unowned: ['label', 'introductionPanel'] });
   });
 
+  /**
+   * A protocol nobody has recorded anything about the participant in has no
+   * `codebook.ego` at all — the section is written by the first attribute put
+   * into it. The controls that open the codebook's own editor are offered
+   * against a section that EXISTS, which is the right rule for a node or edge
+   * type (an absent one has been deleted) and the wrong one here: it left the
+   * kinds that can only be made in that editor — a list of answers, a scale —
+   * with no way in at all on the first ego form of a new protocol.
+   */
+  it('offers to invent the first attribute the participant has', async () => {
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      sections: <FormFieldsSection subject="ego" />,
+    });
+    await harness.opened();
+    act(() => {
+      harness.receiveCodebookUpdate({ ego: null });
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      CREATE_NEW_ATTRIBUTE,
+    );
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Kind of answer' }),
+      'categorical',
+    );
+
+    expect(
+      await dialog.findByRole('button', {
+        name: 'Create this attribute and its values',
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("collects a relationship's attributes on an alter edge form", async () => {
     const harness = renderStageEditor({
       stageId: 'alter-edge-form-1',

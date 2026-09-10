@@ -1587,6 +1587,7 @@
   "protocolBuilder.variableValidation.sameAsLabel": "Igual que",
   "protocolBuilder.variableValidation.selectTarget": "Selecciona un atributo",
   "protocolBuilder.variableValidation.submit": "Guardar validación",
+  "protocolBuilder.variableValidation.thisAttribute": "este atributo",
   "protocolBuilder.variableValidation.title": "Editar la validación de {name}",
   "protocolBuilder.variableValidation.typeChangedDescription": "El tipo de atributo ha cambiado mientras este borrador de validación estaba abierto. Tu borrador sigue visible, pero no se puede guardar. Cierra y vuelve a abrir este editor para configurar la validación del nuevo tipo de atributo.",
   "protocolBuilder.variableValidation.typeChangedIssue": "El tipo de atributo ha cambiado mientras este borrador de validación estaba abierto.",
