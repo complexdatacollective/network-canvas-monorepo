@@ -60,7 +60,8 @@ type TickChoice = Readonly<{ value: string; label: string }>;
  * is what a preset IS. The narrative runtime restores positions from the
  * layout attribute with `persist: false` and passes no drag handler, reads the
  * grouping attribute to draw hulls, and reads the highlight attributes to
- * colour nodes; there is no path on which it stores a value under any of them.
+ * highlight nodes; there is no path on which it stores a value under any of
+ * them.
  * Classed as a writer, the exclusivity rule would drop exactly the attributes
  * a narrative stage exists to look at — the boolean an alter form collects,
  * the categorical a form asks about.

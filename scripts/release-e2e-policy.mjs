@@ -363,9 +363,23 @@ export async function equivalentValidatedSuites({
             jobsListingDoubt = true;
             break;
           }
-          const halves = E2E_JOB_NAMES[key].map((name) =>
-            jobs.find((candidate) => candidate.name === name),
-          );
+          // A half may be sharded, and GitHub renders a matrix job as
+          // `<key> (<matrix values>)` — `architect-e2e-native` reaches this
+          // listing as `architect-e2e-native (1/2)` and
+          // `architect-e2e-native (2/2)`. An exact-name lookup finds neither,
+          // which would leave every Architect verdict inconclusive and
+          // silently disable reuse for that suite, exactly the way this
+          // file's comment below warns about. Match the bare name or any of
+          // its shards, and keep every shard in the list so the conclusive
+          // and all-green checks below have to hold for each one.
+          const halves = E2E_JOB_NAMES[key].flatMap((name) => {
+            const matches = jobs.filter(
+              (candidate) =>
+                candidate.name === name ||
+                candidate.name.startsWith(`${name} (`),
+            );
+            return matches.length > 0 ? matches : [undefined];
+          });
           // Only judge a run where EVERY half reported conclusively. A missing
           // half — a run predating the lane split, say — is not a verdict, so
           // the suite re-runs rather than inheriting a partial one.

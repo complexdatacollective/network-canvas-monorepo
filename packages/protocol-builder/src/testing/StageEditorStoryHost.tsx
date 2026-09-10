@@ -89,13 +89,19 @@ export function StageEditorStoryHost({
 }: StageEditorStoryHostProps) {
   const [saved, setSaved] = useState<SectionDoc | null>(null);
   const [host] = useState(() => {
-    const manifest = { ...fixtureAssetManifest(), ...assets };
+    const assetManifest = { ...fixtureAssetManifest(), ...assets };
     const built = createInMemoryHost({
       sections: {
         ...fixtureProtocolSections(),
-        [sectionId({ kind: 'assets' })]: manifest,
+        [sectionId({ kind: 'assets' })]: assetManifest,
       },
-      assetContent: fixtureAssetContentFor(manifest),
+      // Both places a resource has to exist to be referenced, as
+      // `renderStageEditor` seeds them: the manifest says a file is there, and
+      // the gateway holds its bytes. `inspect` reads a network file rather than
+      // merely describing it, so a manifest with no bytes behind it answers
+      // "this host holds no bytes for that resource" — and every section a
+      // roster chooses from its columns would render its empty state.
+      assetContent: fixtureAssetContentFor(assetManifest),
       ...(createResourceId === undefined ? {} : { nextId: createResourceId }),
     });
     if (readOnly) {
@@ -105,7 +111,6 @@ export function StageEditorStoryHost({
   });
 
   const stage = sectionId({ kind: 'stage', stageId });
-
   return (
     <DialogProvider>
       <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
