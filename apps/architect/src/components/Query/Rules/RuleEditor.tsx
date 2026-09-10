@@ -48,6 +48,19 @@ import {
   RuleValueField,
 } from './RuleValueField';
 import validateRule, { type Rule, type RuleOptions } from './validateRule';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderSkipLogicLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.skipLogic}>{chunks}</ExternalLink>
+);
+
+const renderNetworkFilteringLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.networkFiltering}>
+    {chunks}
+  </ExternalLink>
+);
+
 const chromeMessages = defineMessages({
   enterTheValueToCompareAgainst: {
     id: 'architect.chrome.query.rules.ruleEditor.enterTheValueToCompareAgainst',
@@ -871,17 +884,9 @@ const RuleEditor = ({
           <>
             {intl.formatMessage(additionalMessages.rulesAreUsedToFilterThe, {
               value1: intl.formatMessage(messages.skipLogic),
-              ExternalLink: (chunks) => (
-                <ExternalLink href={documentationLinks.skipLogic}>
-                  {chunks}
-                </ExternalLink>
-              ),
+              ExternalLink: renderSkipLogicLink,
               value3: intl.formatMessage(messages.networkFiltering),
-              ExternalLink2: (chunks) => (
-                <ExternalLink href={documentationLinks.networkFiltering}>
-                  {chunks}
-                </ExternalLink>
-              ),
+              ExternalLink2: renderNetworkFilteringLink,
             })}
           </>
         }

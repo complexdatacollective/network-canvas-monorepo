@@ -95,7 +95,12 @@ export function useStoredProtocolMigration(
   enabled: boolean,
 ): StoredProtocolMigrationPhase {
   const toast = useToast();
-  const [phase, setPhase] = useState<StoredProtocolMigrationPhase>('pending');
+  // Each readable window gets its own epoch, and a sweep records the epoch it
+  // ran for. The reported phase compares the two, so a result that lands after
+  // the vault re-locked can never be read as an answer about the window that
+  // follows it — the reason this is not a plain 'pending' | 'settled' flag.
+  const [epoch, setEpoch] = useState(0);
+  const [settledEpoch, setSettledEpoch] = useState<number | null>(null);
   // The sweep in flight for the current unlocked session, held as the promise
   // itself rather than an "already started" flag so a remount (StrictMode runs
   // every effect twice) re-attaches to the same run instead of either starting
@@ -111,12 +116,22 @@ export function useStoredProtocolMigration(
     toastRef.current = toast;
   });
 
+  // Readability changing in either direction opens a new window: losing it
+  // puts the answer back out of reach, and regaining it can change the key
+  // rows are readable under. Counted during render, so the frame that reports
+  // the change already reports 'pending' — that is the frame the caller gates
+  // routes on.
+  const [wasEnabled, setWasEnabled] = useState(enabled);
+  if (wasEnabled !== enabled) {
+    setWasEnabled(enabled);
+    setEpoch((current) => current + 1);
+  }
+
   useEffect(() => {
     if (!enabled) {
       // Locking drops the session key, so the next unlock has to look again.
       run.current = null;
       notified.current = false;
-      setPhase('pending');
       return;
     }
 
@@ -151,13 +166,13 @@ export function useStoredProtocolMigration(
             });
           }
         }
-        if (active) setPhase('settled');
+        if (active) setSettledEpoch(epoch);
       });
 
     return () => {
       active = false;
     };
-  }, [enabled]);
+  }, [enabled, epoch]);
 
-  return phase;
+  return enabled && settledEpoch === epoch ? 'settled' : 'pending';
 }

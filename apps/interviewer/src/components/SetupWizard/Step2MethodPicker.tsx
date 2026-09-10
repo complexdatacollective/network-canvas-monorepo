@@ -92,6 +92,19 @@ function isWizardSelectedMethod(value: unknown): value is WizardSelectedMethod {
   return typeof value === 'string' && WIZARD_METHODS.some((m) => m === value);
 }
 
+// The "no security" confirmation's localised nodes, built at module scope so
+// the picker's change handler stays a plain callback rather than an element
+// factory re-created on every render.
+const noSecurityTitle = (
+  <AppMessage message={messages.continueWithoutSecurity} />
+);
+const noSecurityDescription = (
+  <AppMessage message={messages.yourDataWillNotBeProtectedBy} />
+);
+const noSecurityConfirmLabel = (
+  <AppMessage message={messages.continueWithoutSecurity2} />
+);
+
 export default function Step2MethodPicker({
   lockCommittedMethod = false,
 }: {
@@ -148,13 +161,9 @@ export default function Step2MethodPicker({
           if (methodLocked && value !== selectedMethod) return;
           if (value === 'none') {
             void confirm({
-              title: <AppMessage message={messages.continueWithoutSecurity} />,
-              description: (
-                <AppMessage message={messages.yourDataWillNotBeProtectedBy} />
-              ),
-              confirmLabel: (
-                <AppMessage message={messages.continueWithoutSecurity2} />
-              ),
+              title: noSecurityTitle,
+              description: noSecurityDescription,
+              confirmLabel: noSecurityConfirmLabel,
               intent: 'warning',
               onConfirm: () => {
                 commitMethod('none');

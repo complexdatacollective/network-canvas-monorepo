@@ -105,6 +105,15 @@ const directionLabel = (direction: string, intl: IntlShape) =>
     direction === 'desc' ? extraMessages.descending : extraMessages.ascending,
   );
 
+// Rich-text tag renderers are built at module scope so no JSX-returning
+// function is defined inside a render body. `renderProperty` is a factory
+// because the tag it fills is per-rule, and the message's `<property>` tag is
+// authored empty — the rule's property supplies the content.
+const renderProperty = (property: string) => () =>
+  property === '*' ? property : <Variable id={property} />;
+
+const renderSmall = (chunks: ReactNode[]) => <small>{chunks}</small>;
+
 type SortOrderProps = {
   rules: Array<{
     property: string;
@@ -119,9 +128,8 @@ const SortOrder = ({ rules }: SortOrderProps) => {
   const result = rules.map(({ property, direction }) => (
     <li key={property}>
       {intl.formatMessage(extraMessages.sortOrder, {
-        property: () =>
-          property === '*' ? property : <Variable id={property} />,
-        direction: (children) => <small>{children}</small>,
+        property: renderProperty(property),
+        direction: renderSmall,
         directionLabel: directionLabel(direction, intl),
       })}
     </li>

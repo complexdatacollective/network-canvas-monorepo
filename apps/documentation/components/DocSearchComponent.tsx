@@ -1,10 +1,14 @@
 'use client';
 
-import { DocSearch } from '@docsearch/react';
+import {
+  DocSearch,
+  type InternalDocSearchHit,
+  type StoredDocSearchHit,
+} from '@docsearch/react';
 import '@docsearch/css';
 import { Search } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useCallback, useLayoutEffect, useRef } from 'react';
+import { type ReactNode, useCallback, useLayoutEffect, useRef } from 'react';
 
 import { usePageBackgroundTargetRef } from '@codaco/art';
 import { inputFieldControlVariants } from '@codaco/fresco-ui/form/fields/InputField';
@@ -36,6 +40,43 @@ const getSectionSlug = (url: string): string | undefined => {
 
 const openDocSearch = () => {
   document.querySelector<HTMLButtonElement>('.DocSearch-Button')?.click();
+};
+
+// Renders one search result. Hoisted to module scope (rather than defined
+// inline as DocSearchComponent's `hitComponent` prop) so DocSearch's internal
+// `React.createElement(hitComponent, ...)` mounts a stable component instead
+// of a fresh function identity on every DocSearchComponent render — it reads
+// its own section translations rather than closing over the parent's.
+const SearchResultHit = ({
+  hit,
+  children,
+}: {
+  hit: InternalDocSearchHit | StoredDocSearchHit;
+  children: ReactNode;
+}) => {
+  const tSection = useTranslations('SectionSwitcher');
+  const slug = getSectionSlug(hit.url);
+  const colorClass = slug ? getSectionColorClass(slug) : undefined;
+  const sectionLabel = (segment: string) =>
+    tSection.has(`${segment}.label`)
+      ? tSection(`${segment}.label`)
+      : segment.replace(/-/g, ' ');
+
+  return (
+    <a href={hit.url}>
+      {slug && colorClass ? (
+        <span
+          className={cx(
+            'mr-2 shrink-0 self-center rounded-full px-2 py-0.5 text-[0.625rem] font-semibold tracking-wide text-white uppercase',
+            colorClass,
+          )}
+        >
+          {sectionLabel(slug)}
+        </span>
+      ) : null}
+      {children}
+    </a>
+  );
 };
 
 const useDocSearchTranslations = () => {
@@ -104,7 +145,6 @@ const DocSearchComponent = ({
 }) => {
   const locale = useLocale();
   const t = useTranslations('DocSearch');
-  const tSection = useTranslations('SectionSwitcher');
   const translations = useDocSearchTranslations();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const backgroundTargetRef = usePageBackgroundTargetRef();
@@ -150,11 +190,6 @@ const DocSearchComponent = ({
   const boostSection = getSectionColorClass(currentSection)
     ? currentSection
     : undefined;
-
-  const sectionLabel = (slug: string) =>
-    tSection.has(`${slug}.label`)
-      ? tSection(`${slug}.label`)
-      : slug.replace(/-/g, ' ');
 
   return (
     <>
@@ -235,25 +270,7 @@ const DocSearchComponent = ({
             apiKey={docSearchConfig.apiKey}
             insights={true}
             placeholder="Search documentation"
-            hitComponent={({ hit, children }) => {
-              const slug = getSectionSlug(hit.url);
-              const colorClass = slug ? getSectionColorClass(slug) : undefined;
-              return (
-                <a href={hit.url}>
-                  {slug && colorClass ? (
-                    <span
-                      className={cx(
-                        'mr-2 shrink-0 self-center rounded-full px-2 py-0.5 text-[0.625rem] font-semibold tracking-wide text-white uppercase',
-                        colorClass,
-                      )}
-                    >
-                      {sectionLabel(slug)}
-                    </span>
-                  ) : null}
-                  {children}
-                </a>
-              );
-            }}
+            hitComponent={SearchResultHit}
           />
         </div>
       ) : null}

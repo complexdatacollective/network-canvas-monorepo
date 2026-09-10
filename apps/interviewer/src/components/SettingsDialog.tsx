@@ -499,6 +499,16 @@ const NAV_ITEMS: {
 
 const NARROW_SETTINGS_QUERY = '(max-width: 639px)';
 
+// Localised nodes for the synthetic-data delete confirmation, built at module
+// scope so the confirm callbacks that hand them over stay plain callbacks
+// rather than element factories re-created on every render.
+const describeDeleteSyntheticFailure = () => (
+  <AppMessage message={messages.deleteFailedHelp} />
+);
+
+const deletedSyntheticToastTitle = (count: number) =>
+  createElement(AppMessage, { message: messages.deleted, values: { count } });
+
 export function SettingsDialog({
   open,
   onClose,
@@ -603,6 +613,10 @@ export function SettingsDialog({
     }
   }, [reloadSynthetic]);
 
+  // Opening the dialog is what triggers a read of IndexedDB and the browser's
+  // storage estimate. Nothing here is derivable during render: the values live
+  // outside React and only arrive asynchronously, so the effect is the right
+  // tool and the state it writes is the response landing.
   useEffect(() => {
     if (!open) return;
     void reload();
@@ -723,7 +737,7 @@ export function SettingsDialog({
       confirmLabel: createElement(AppMessage, {
         message: commonMessages.delete,
       }),
-      describeError: () => <AppMessage message={messages.deleteFailedHelp} />,
+      describeError: describeDeleteSyntheticFailure,
       intent: 'destructive',
       onConfirm: async () => {
         setIsDeleting(true);
@@ -740,10 +754,7 @@ export function SettingsDialog({
         try {
           const deleted = await deleteSyntheticSessions();
           toast.add({
-            title: createElement(AppMessage, {
-              message: messages.deleted,
-              values: { count: deleted },
-            }),
+            title: deletedSyntheticToastTitle(deleted),
             variant: 'success',
           });
         } finally {

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { shallowEqual } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -171,6 +171,8 @@ const messages = defineMessages({
       'The placeholder text in components / sections / CategoricalBinPrompts / PromptFields.',
   },
 });
+
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
 
 type VariableOption = {
   label: string;
@@ -352,7 +354,7 @@ const PromptFields = ({
             <AlertDescription>
               {intl.formatMessage(
                 messages.theCategoricalBinInterfaceIsDesigned,
-                { strong: (chunks) => <strong>{chunks}</strong> },
+                { strong: renderStrong },
               )}
             </AlertDescription>
           </Alert>
