@@ -4,30 +4,35 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * The `exports` map, in both directions, because nothing else checks it.
+ * The `exports` maps of both protocol-builder halves, in both directions,
+ * because nothing else checks them.
  *
  * `scripts/verify-publish-exports.mjs` — the guard that proves every published
- * package's map resolves into its tarball — skips this one: it has no
- * `publishConfig` swap and is `private`, so there is no pack step and no
- * `dist/` for it to walk. That is correct, and it leaves a 60-entry
- * hand-written map with nothing looking at it at all. A subpath pointing at a
- * file that has moved fails only when a consumer imports it, and a module a
- * consumer imports that is NOT in the map fails only in that consumer's build.
+ * package's map resolves into its tarball — skips both: neither has a
+ * `publishConfig` swap and both are `private`, so there is no pack step and no
+ * `dist/` for it to walk. That is correct, and it leaves hand-written maps with
+ * nothing looking at them at all. A subpath pointing at a file that has moved
+ * fails only when a consumer imports it, and a module a consumer imports that
+ * is NOT in the map fails only in that consumer's build.
  *
- * Both are asked here instead:
+ * Both are asked here instead, of each package:
  *
  * - every declared subpath resolves to a file that exists under `src/`, and
- * - every `@codaco/protocol-builder/…` specifier written anywhere in a
- *   workspace that depends on this package names a subpath the map declares.
+ * - every `<package>/…` specifier written anywhere in a workspace that depends
+ *   on it names a subpath the map declares.
  *
  * The consumers are discovered from their manifests rather than listed, so a
- * fourth workspace taking a dependency on this package is scanned the day it
+ * further workspace taking a dependency on either package is scanned the day it
  * does.
+ *
+ * `@codaco/protocol-builder-core` is covered from here rather than from its own
+ * package because the two maps are one surface split in half: #1842 moved the
+ * contract out of this package, and the three `./contract*` subpaths that used
+ * to be checked by the walk below are now core's. Checking only the half left
+ * behind would have made that move silently drop the guard.
  */
 const packageRoot = process.cwd();
 const repoRoot = join(packageRoot, '..', '..');
-
-const PACKAGE_NAME = '@codaco/protocol-builder';
 
 const DEPENDENCY_FIELDS = [
   'dependencies',
@@ -63,9 +68,9 @@ const readManifest = (path: string): Record<string, unknown> => {
   return parsed;
 };
 
-const manifest = readManifest(join(packageRoot, 'package.json'));
-
-const exportsMap = (): Readonly<Record<string, string>> => {
+const exportsMapOf = (
+  manifest: Record<string, unknown>,
+): Readonly<Record<string, string>> => {
   const map = manifest.exports;
   if (!isRecord(map)) {
     throw new Error('This package declares no `exports` map.');
@@ -104,15 +109,15 @@ const workspaceDirectories = (): string[] => {
   });
 };
 
-/** Every workspace whose manifest takes a dependency on this package. */
-const consumingWorkspaces = (): string[] =>
+/** Every workspace whose manifest takes a dependency on the named package. */
+const consumingWorkspaces = (packageName: string): string[] =>
   workspaceDirectories().filter((directory) => {
     const manifestPath = join(directory, 'package.json');
     if (!existsSync(manifestPath)) return false;
     const consumer = readManifest(manifestPath);
     return DEPENDENCY_FIELDS.some((field) => {
       const declared = consumer[field];
-      return isRecord(declared) && PACKAGE_NAME in declared;
+      return isRecord(declared) && packageName in declared;
     });
   });
 
@@ -127,7 +132,7 @@ const sourceFilesUnder = (directory: string): string[] =>
   });
 
 /**
- * Every specifier naming this package, in the positions a resolver reads.
+ * Every specifier naming a package, in the positions a resolver reads.
  *
  * The import forms rather than any quoted occurrence, and the distinction is
  * not academic: `apps/studio/client/vite.config.ts` lists the package's bare
@@ -135,85 +140,127 @@ const sourceFilesUnder = (directory: string): string[] =>
  * than a module to resolve, and a plain string search reports it as an
  * undeclared `.` subpath. The shape mirrors `packageImportBoundaries.test.ts`'s
  * specifier pattern, and catches the CSS `@import` too.
+ *
+ * `@codaco/protocol-builder` is a prefix of `@codaco/protocol-builder-core`, so
+ * the name is followed by an explicit end — a subpath `/` or the closing quote
+ * — rather than left open. Without it every core specifier would also be read
+ * as a `@codaco/protocol-builder` one, and reported against the wrong map.
  */
-const PACKAGE_SPECIFIER = new RegExp(
-  String.raw`(?:from|import|require)\s*\(?\s*['"]${PACKAGE_NAME}(/[^'"]*)?['"]`,
-  'g',
-);
+const specifierPattern = (packageName: string): RegExp =>
+  new RegExp(
+    String.raw`(?:from|import|require)\s*\(?\s*['"]${packageName}(/[^'"]*)?['"]`,
+    'g',
+  );
 
 type Usage = Readonly<{ subpath: string; file: string }>;
 
-const specifiersInConsumers = (): Usage[] =>
-  consumingWorkspaces().flatMap((workspace) =>
+const specifiersInConsumers = (packageName: string): Usage[] =>
+  consumingWorkspaces(packageName).flatMap((workspace) =>
     sourceFilesUnder(workspace).flatMap((file) => {
       const contents = readFileSync(file, 'utf8');
-      return [...contents.matchAll(PACKAGE_SPECIFIER)].map((match) => ({
-        subpath: match[1] === undefined ? '.' : `.${match[1]}`,
-        file,
-      }));
+      return [...contents.matchAll(specifierPattern(packageName))].map(
+        (match) => ({
+          subpath: match[1] === undefined ? '.' : `.${match[1]}`,
+          file,
+        }),
+      );
     }),
   );
 
-describe('the package exports map', () => {
-  /**
-   * Every reading below is a file-system walk from the runner's working
-   * directory, so a runner that moved would find no consumers, no specifiers
-   * and no defects. Asserted against landmarks each half needs, rather than
-   * assumed.
-   */
-  it('is looking at this package inside this repository', () => {
-    expect(manifest.name).toBe(PACKAGE_NAME);
-    expect(manifest.private).toBe(true);
-    expect(existsSync(join(repoRoot, 'pnpm-workspace.yaml'))).toBe(true);
+/**
+ * The two halves, each with the landmark that proves the walk reached it.
+ *
+ * `root` is derived from the runner's working directory for this package and
+ * from the repository for its sibling; both are checked against the manifest
+ * name below, so a package that moved fails here rather than reporting an empty
+ * map that passes.
+ */
+const PACKAGES = [
+  {
+    name: '@codaco/protocol-builder',
+    root: packageRoot,
     // Studio and Architect both depend on it today; the count is a floor, so
     // this stays true as consumers are added.
-    expect(consumingWorkspaces().length).toBeGreaterThanOrEqual(2);
-  });
+    consumerFloor: 2,
+  },
+  {
+    name: '@codaco/protocol-builder-core',
+    root: join(repoRoot, 'packages', 'protocol-builder-core'),
+    // This package, `@codaco/studio-rpc`, Architect and the Studio server take
+    // the contract from it today. A floor, for the same reason.
+    consumerFloor: 2,
+  },
+] as const;
 
-  /**
-   * `verify-publish-exports.mjs` is N/A for this package and always will be
-   * while it is private: it skips a manifest with no `publishConfig` swap.
-   * Pinned here so the exemption is a fact somebody checked rather than an
-   * omission nobody noticed.
-   */
-  it('is exempt from the publish-exports guard for a reason that still holds', () => {
-    expect(manifest.publishConfig).toBeUndefined();
-    expect(manifest.scripts).not.toHaveProperty('build');
-  });
+describe.each(PACKAGES)(
+  '$name exports map',
+  ({ name, root, consumerFloor }) => {
+    const manifest = readManifest(join(root, 'package.json'));
 
-  it('points every subpath at a file that exists under src/', () => {
-    const broken = Object.entries(exportsMap()).flatMap(([subpath, target]) => {
-      if (!target.startsWith('./src/')) {
-        return [`${subpath} → ${target} is outside src/`];
-      }
-      return existsSync(join(packageRoot, target))
-        ? []
-        : [`${subpath} → ${target} does not exist`];
+    /**
+     * Every reading below is a file-system walk from a path this file computes,
+     * so a package that moved would find no consumers, no specifiers and no
+     * defects. Asserted against landmarks each half needs, rather than assumed.
+     */
+    it('is looking at this package inside this repository', () => {
+      expect(manifest.name).toBe(name);
+      expect(manifest.private).toBe(true);
+      expect(existsSync(join(repoRoot, 'pnpm-workspace.yaml'))).toBe(true);
+      expect(consumingWorkspaces(name).length).toBeGreaterThanOrEqual(
+        consumerFloor,
+      );
     });
 
-    expect(broken).toEqual([]);
-  });
+    /**
+     * `verify-publish-exports.mjs` is N/A for these packages and always will be
+     * while they are private: it skips a manifest with no `publishConfig` swap.
+     * Pinned here so the exemption is a fact somebody checked rather than an
+     * omission nobody noticed.
+     */
+    it('is exempt from the publish-exports guard for a reason that still holds', () => {
+      expect(manifest.publishConfig).toBeUndefined();
+      expect(manifest.scripts).not.toHaveProperty('build');
+    });
 
-  /**
-   * And the other direction: a module a consumer imports through a subpath the
-   * map does not declare.
-   *
-   * This is the failure the map's hand-written 60 entries invite — a family
-   * adds a component, a host imports it, and it works locally through whatever
-   * resolution the consumer's bundler happens to allow while `exports` says
-   * the subpath does not exist.
-   */
-  it('declares every subpath a consuming workspace imports', () => {
-    const declared = exportsMap();
-    const used = specifiersInConsumers();
+    it('points every subpath at a file that exists under src/', () => {
+      const declared = exportsMapOf(manifest);
 
-    // A walk that found nothing would report no undeclared subpaths and pass.
-    expect(used.length).toBeGreaterThan(0);
+      // A map read as empty would report no broken subpaths and pass.
+      expect(Object.keys(declared).length).toBeGreaterThan(0);
 
-    const undeclared = used
-      .filter(({ subpath }) => declared[subpath] === undefined)
-      .map(({ subpath, file }) => `${subpath} (${file})`);
+      const broken = Object.entries(declared).flatMap(([subpath, target]) => {
+        if (!target.startsWith('./src/')) {
+          return [`${subpath} → ${target} is outside src/`];
+        }
+        return existsSync(join(root, target))
+          ? []
+          : [`${subpath} → ${target} does not exist`];
+      });
 
-    expect([...new Set(undeclared)]).toEqual([]);
-  });
-});
+      expect(broken).toEqual([]);
+    });
+
+    /**
+     * And the other direction: a module a consumer imports through a subpath the
+     * map does not declare.
+     *
+     * This is the failure a hand-written map invites — a family adds a component,
+     * a host imports it, and it works locally through whatever resolution the
+     * consumer's bundler happens to allow while `exports` says the subpath does
+     * not exist.
+     */
+    it('declares every subpath a consuming workspace imports', () => {
+      const declared = exportsMapOf(manifest);
+      const used = specifiersInConsumers(name);
+
+      // A walk that found nothing would report no undeclared subpaths and pass.
+      expect(used.length).toBeGreaterThan(0);
+
+      const undeclared = used
+        .filter(({ subpath }) => declared[subpath] === undefined)
+        .map(({ subpath, file }) => `${subpath} (${file})`);
+
+      expect([...new Set(undeclared)]).toEqual([]);
+    });
+  },
+);

@@ -155,6 +155,10 @@
     "defaultMessage": "Passphrase rules",
     "description": "Label of the control inside the passphrase-rules section that holds the rules themselves. Deliberately the same words as the section heading above it — the section holds this one control — but a separate message, because a translator may need to distinguish a heading from the name of a form control."
   },
+  "protocolBuilder.anonymisation.passphraseRulesMaximumBelowOne": {
+    "defaultMessage": "The longest passphrase you allow must be at least one character.",
+    "description": "Refusal shown on the passphrase-rules control when the researcher has set the longest allowed passphrase to zero. The interview asks every participant for a passphrase and will not accept an empty one, so a maximum of zero is a length no passphrase can have and the interview could never be finished."
+  },
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": {
     "defaultMessage": "The shortest passphrase you allow cannot be longer than the longest one.",
     "description": "Refusal shown on the passphrase-rules control when the minimum length the researcher set is greater than the maximum, so no passphrase could satisfy both."
@@ -162,10 +166,6 @@
   "protocolBuilder.anonymisation.passphraseRulesTitle": {
     "defaultMessage": "Passphrase rules",
     "description": "Heading of the section where a researcher decides what a participant’s passphrase has to look like. The requirements are lengths only: a shortest and a longest."
-  },
-  "protocolBuilder.anonymisation.passphraseRulesUnreadable": {
-    "defaultMessage": "These passphrase rules could not be read. Switch them off and set them again.",
-    "description": "Refusal shown on the passphrase-rules control when the rules stored on this stage are not in a shape the editor can read at all — a protocol edited by hand, or written by a newer version. Switching the section off discards them so they can be set again."
   },
   "protocolBuilder.anonymisation.storageNotice": {
     "defaultMessage": "An encrypted attribute is stored so that only the passphrase can unlock it. It cannot be read, exported, or recovered without it.",

@@ -121,3 +121,49 @@ test('fails when a never-released package rides along with a normal-lane app', (
   assert.match(res.stderr, /ride-along\.md/);
   assert.match(res.stderr, /never released: @codaco\/protocol-builder/);
 });
+
+test('fails when a changeset names the never-released core half', () => {
+  // The half #1842 split out. It arrived with no CHANGELOG, no publishConfig
+  // and no lane, exactly like the package it came from, so a changeset naming
+  // it is the same announcement of a release nobody can install — but it
+  // inherited none of the protection, and a list naming only the original
+  // would have let this one through.
+  //
+  // Anchored at the end of the line because `@codaco/protocol-builder` is a
+  // prefix of this name: an unanchored match would be satisfied by the guard
+  // reporting the other half instead.
+  const cwd = fixture({
+    'core-package.md': `---\n"@codaco/protocol-builder-core": patch\n---\n\ncore package`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /core-package\.md/);
+  assert.match(res.stderr, /never released: @codaco\/protocol-builder-core$/m);
+});
+
+test('fails when a changeset names a tooling workspace nothing releases', () => {
+  // Nothing about `@codaco/protocol-builder` is special here: every workspace
+  // that is private, unpublished, carries no CHANGELOG and sits in no gated
+  // lane is refused, because `changeset version` would bump every one of them
+  // the same way. A hand-written list of names would have let this through.
+  const cwd = fixture({
+    'tooling.md': `---\n"@codaco/tsconfig": patch\n---\n\nshared tsconfig`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /tooling\.md/);
+  assert.match(res.stderr, /never released: @codaco\/tsconfig$/m);
+});
+
+test('names both halves when one changeset releases the pair', () => {
+  const cwd = fixture({
+    'both-halves.md': `---\n"@codaco/protocol-builder": minor\n"@codaco/protocol-builder-core": minor\n---\n\nsplit`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /both-halves\.md/);
+  assert.match(
+    res.stderr,
+    /never released: @codaco\/protocol-builder, @codaco\/protocol-builder-core$/m,
+  );
+});

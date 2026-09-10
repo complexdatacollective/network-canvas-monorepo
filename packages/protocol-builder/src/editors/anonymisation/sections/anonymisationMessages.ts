@@ -96,19 +96,19 @@ export const anonymisationMessages = defineMessages({
     description:
       'Guidance under the passphrase-rules control, naming the trade-off a researcher is making when they set a minimum length.',
   },
-  passphraseRulesUnreadable: {
-    id: 'protocolBuilder.anonymisation.passphraseRulesUnreadable',
-    defaultMessage:
-      'These passphrase rules could not be read. Switch them off and set them again.',
-    description:
-      'Refusal shown on the passphrase-rules control when the rules stored on this stage are not in a shape the editor can read at all — a protocol edited by hand, or written by a newer version. Switching the section off discards them so they can be set again.',
-  },
   passphraseRulesMinimumAboveMaximum: {
     id: 'protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum',
     defaultMessage:
       'The shortest passphrase you allow cannot be longer than the longest one.',
     description:
       'Refusal shown on the passphrase-rules control when the minimum length the researcher set is greater than the maximum, so no passphrase could satisfy both.',
+  },
+  passphraseRulesMaximumBelowOne: {
+    id: 'protocolBuilder.anonymisation.passphraseRulesMaximumBelowOne',
+    defaultMessage:
+      'The longest passphrase you allow must be at least one character.',
+    description:
+      'Refusal shown on the passphrase-rules control when the researcher has set the longest allowed passphrase to zero. The interview asks every participant for a passphrase and will not accept an empty one, so a maximum of zero is a length no passphrase can have and the interview could never be finished.',
   },
   passphraseRulesClearTitle: {
     id: 'protocolBuilder.anonymisation.passphraseRulesClearTitle',

@@ -10,20 +10,20 @@ import { hostResponsibilities } from './hostResponsibilities.ts';
  * What a host has to serve for the editors in this Storybook to work at all.
  *
  * Every row is a procedure `@codaco/protocol-builder-core/contract` declares,
- * found by asking the contract rather than by anybody writing the list down —
- * so a procedure added to the contract appears here, and one removed
- * disappears. See `hostResponsibilities.ts` for why that matters more than it
- * sounds.
+ * found by asking
+ * the contract rather than by anybody writing the list down — so a procedure
+ * added to the contract appears here, and one removed disappears. See
+ * `hostResponsibilities.ts` for why that matters more than it sounds.
  */
 function HostResponsibilities() {
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 p-6">
       <Heading level="h1">What a host must serve</Heading>
       <Paragraph>
-        Every procedure the contract in{' '}
-        <code>@codaco/protocol-builder-core</code> declares. The in-memory host
-        in <code>src/testing/host/</code> serves all of them; Studio serves them
-        over its transport, and Architect in-process.
+        Every procedure the <code>@codaco/protocol-builder-core</code> contract
+        declares. The in-memory host in <code>src/testing/host/</code> serves
+        all of them; Studio serves them over its transport, and Architect
+        in-process.
       </Paragraph>
       <dl className="flex flex-col gap-4">
         {hostResponsibilities().map(({ path, responsibility }) => (
@@ -47,7 +47,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The minimum a host must serve, read off the oRPC contract every host implements. The list is derived at render time from `@codaco/protocol-builder-core/contract`, so it cannot describe a host the package does not actually ask for: a procedure the contract gains appears here with nothing edited, and a sentence left behind for a procedure the contract has dropped is a thrown error rather than a stale line.',
+          'The minimum a host must serve, read off the package’s own oRPC contract. The list is derived at render time from `@codaco/protocol-builder-core/contract`, so it cannot describe a host the package does not actually ask for: a procedure the contract gains appears here with nothing edited, and a sentence left behind for a procedure the contract has dropped is a thrown error rather than a stale line.',
       },
     },
   },

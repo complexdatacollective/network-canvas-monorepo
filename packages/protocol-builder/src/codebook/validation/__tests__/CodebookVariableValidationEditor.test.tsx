@@ -151,6 +151,9 @@ describe('CodebookVariableValidationEditor', () => {
     await user.clear(input);
 
     expect(input).toHaveValue(null);
+    // The dialog is not a form field and has no error region of its own, so
+    // the rule editor is what states the refusal here — `getByRole` also
+    // pinning it to exactly one alert.
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Enter a value for "Minimum value", or switch the rule off.',
     );

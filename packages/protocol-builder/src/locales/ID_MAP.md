@@ -127,16 +127,6 @@ after the fact is marked in place.
 | `alterLimits`               | `sections/alter-limits/AlterLimitsSection.tsx`                                                                                                                                                                                                                        | family D  |
 | `nameGeneratorPrompts`      | `sections/name-generator-prompts/NameGeneratorPromptsSection.tsx`                                                                                                                                                                                                     | family D  |
 | `nodePanels`                | `sections/panels/NodePanelsSection.tsx`                                                                                                                                                                                                                               | family D  |
-| `censusPrompts`             | `editors/{dyad-census,tie-strength-census,one-to-many-dyad-census,ordinal-bin,categorical-bin}/sections/`                                                                                                                                                             | family E  |
-| `ordinalColor`              | `editors/ordinal-bin/sections/ordinalColors.ts`                                                                                                                                                                                                                       | family E  |
-| `promptAttribute`           | `editors/ordinal-bin/sections/binMessages.ts`                                                                                                                                                                                                                         | family E  |
-| `removeAfterConsideration`  | `editors/one-to-many-dyad-census/sections/RemoveAfterConsiderationSection.tsx`                                                                                                                                                                                        | family E  |
-| `quickAdd`                  | `editors/name-generator-quick-add/sections/QuickAddSection.tsx`                                                                                                                                                                                                       | family E  |
-| `externalDataSource`        | `editors/name-generator-roster/sections/ExternalDataSourceSection.tsx`                                                                                                                                                                                                | family E  |
-| `cardDisplay`               | `editors/name-generator-roster/sections/CardDisplaySection.tsx`                                                                                                                                                                                                       | family E  |
-| `sortOptions`               | `editors/name-generator-roster/sections/SortOptionsSection.tsx`                                                                                                                                                                                                       | family E  |
-| `searchOptions`             | `editors/name-generator-roster/sections/SearchOptionsSection.tsx`                                                                                                                                                                                                     | family E  |
-| `rosterColumns`             | `editors/name-generator-roster/sections/rosterColumns.ts`                                                                                                                                                                                                             | family E  |
 | `pedigree`                  | `editors/family-pedigree/sections/`                                                                                                                                                                                                                                   | family F  |
 | `censusPrompts`             | `editors/{dyad-census,tie-strength-census,one-to-many-dyad-census,ordinal-bin,categorical-bin}/sections/`                                                                                                                                                             | family E  |
 | `ordinalColor`              | `editors/ordinal-bin/sections/ordinalColors.ts`                                                                                                                                                                                                                       | family E  |
@@ -293,11 +283,10 @@ wherever one reaches the screen.
 
 Named here so a later split takes the name rather than inventing a synonym.
 
-| `<area>`               | Will own the copy in                   | Expected in |
-| ---------------------- | -------------------------------------- | ----------- |
-| `nodePanels`           | `sections/NodePanelsSection`           | family D    |
-| `alterLimits`          | `sections/AlterLimitsSection`          | family D    |
-| `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection` | family D    |
+Empty, and the table is gone with it: every name that was reserved has been
+converted, and each one now has a row in the converted table above saying which
+file owns it. A conversion that needs a name not listed there brings this table
+back with that name in it, in the same pull request.
 
 ### One file per family — the interface families
 

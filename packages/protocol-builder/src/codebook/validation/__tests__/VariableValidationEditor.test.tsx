@@ -113,6 +113,64 @@ describe('VariableValidationEditor', () => {
     ).not.toBeInTheDocument();
   });
 
+  /**
+   * `aria-invalid` says the field refuses this rule map; it does not say the
+   * field is stating a sentence about it. A host may mark the control invalid
+   * for the outline and for `focusFirstError` and state nothing, and standing
+   * the editor down for that would leave a researcher with no sentence at all.
+   */
+  it('keeps its verdict when the host marks it invalid but states nothing', () => {
+    const { container } = render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="number"
+        currentVariableId="age"
+        allVariables={variables}
+        value={{ minValue: null }}
+        onChange={() => undefined}
+        aria-invalid
+      />,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Enter a value for "Minimum value", or switch the rule off.',
+    );
+    expect(
+      container.querySelector('[aria-invalid="true"]'),
+    ).toHaveAccessibleDescription(
+      'Enter a value for "Minimum value", or switch the rule off.',
+    );
+  });
+
+  /**
+   * And where the field IS stating one, the editor says nothing of its own —
+   * but the refused control still describes the field's error region, which is
+   * where the sentence a researcher reads now lives.
+   */
+  it('stands its verdict down for the refusal the field states, and describes it', () => {
+    const { container } = render(
+      <>
+        <p id="host-error">The rules contradict each other.</p>
+        <VariableValidationEditor
+          entity="node"
+          variableType="number"
+          currentVariableId="age"
+          allVariables={variables}
+          value={{ minValue: null }}
+          onChange={() => undefined}
+          aria-invalid
+          fieldIssue="The rules contradict each other."
+          aria-describedby="host-error"
+        />
+      </>,
+    );
+
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(
+      container.querySelector('[aria-invalid="true"]'),
+    ).toHaveAccessibleDescription('The rules contradict each other.');
+  });
+
   it('is fully read-only when the host cannot edit the section', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

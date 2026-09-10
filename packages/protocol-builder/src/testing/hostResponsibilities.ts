@@ -16,9 +16,9 @@ export type HostResponsibility = Readonly<{
  *
  * A leaf is a contract procedure — `@orpc/contract` marks each one with its
  * own `~orpc` property — and everything else is a group of them. So the list
- * is what `@codaco/protocol-builder-core/contract` says it is at the moment it is asked,
- * rather than a copy of it: a procedure added to the contract appears here
- * with nothing done to this file, and one removed disappears.
+ * is what `@codaco/protocol-builder-core/contract` says it is at the moment
+ * it is asked, rather than a copy of it: a procedure added to the contract
+ * appears here with nothing done to this file, and one removed disappears.
  *
  * That is the whole reason it is derived. The list this replaces was written
  * out by hand against a host model that has since been cut, and by the time

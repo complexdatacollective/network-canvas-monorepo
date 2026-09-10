@@ -22,14 +22,55 @@ import {
 } from '../variableValidation.ts';
 
 type VariableValidationEditorProps = Readonly<{
-  entity: 'node' | 'edge' | 'ego';
-  variableType: string;
-  currentVariableId: string;
-  allVariables: Readonly<Record<string, unknown>>;
-  value: Readonly<ValidationMap>;
-  onChange(value: ValidationMap): void;
-  readOnly?: boolean;
-  className?: string;
+  'entity': 'node' | 'edge' | 'ego';
+  'variableType': string;
+  'currentVariableId': string;
+  'allVariables': Readonly<Record<string, unknown>>;
+  'value': Readonly<ValidationMap>;
+  'onChange'(value: ValidationMap): void;
+  'readOnly'?: boolean;
+  'className'?: string;
+  /**
+   * Whether the field mounting this editor has refused what it holds.
+   *
+   * Carried on the editor's own root because the editor IS the field's
+   * rendered control: a refusal the field raises — one about the rule map as a
+   * whole, which this editor's per-rule verdicts do not cover — is otherwise
+   * announced by the field's error region and invisible to everything that
+   * finds a refused field by looking for `aria-invalid` (the stage outline's
+   * observer, `focusFirstError`).
+   *
+   * It says only that: what the field is refusing, and whether it is stating a
+   * sentence about it, is `fieldIssue`.
+   */
+  'aria-invalid'?: boolean;
+  /**
+   * The refusal the field mounting this editor is stating for this rule map,
+   * when it is stating one.
+   *
+   * The editor's own `role="alert"` paragraph stands down for it: the field
+   * announces its refusal in an `aria-live` error region beside the control,
+   * that region's message is written in the reader's language, and a second
+   * sentence at the rules about the same rule map would say it twice. A caller
+   * with no error region of its own — the codebook dialog — passes nothing and
+   * keeps the editor's alert.
+   *
+   * Keyed on the refusal rather than on `aria-invalid` because they are not
+   * the same fact: a host may mark this control invalid — for the outline, for
+   * `focusFirstError` — without stating anything, and the editor going silent
+   * there would leave a researcher with no sentence at all.
+   */
+  'fieldIssue'?: string;
+  /**
+   * The description list the mounting field injects into its control, naming
+   * the field's own hint and error region.
+   *
+   * Passed through to the editor's root — the element the field's
+   * `aria-invalid` lands on — rather than dropped, so the refused control
+   * still describes the sentence a researcher can read. The editor's own
+   * message is added to it while the editor is stating one.
+   */
+  'aria-describedby'?: string;
 }>;
 
 const messages = defineMessages({
@@ -134,6 +175,9 @@ export default function VariableValidationEditor({
   onChange,
   readOnly = false,
   className,
+  'aria-invalid': ariaInvalid,
+  fieldIssue,
+  'aria-describedby': fieldDescribedBy,
 }: VariableValidationEditorProps) {
   const intl = useAppIntl();
   const editorId = useId();
@@ -206,7 +250,15 @@ export default function VariableValidationEditor({
           intl,
         )
       : intl.formatMessage(missingComparisonTargetMessage);
-  const issueId = issue === undefined ? undefined : `${editorId}-issue`;
+  // Not while the field mounting this editor is stating a refusal of this same
+  // rule map: see the `fieldIssue` prop.
+  const announceIssue = issue !== undefined && fieldIssue === undefined;
+  const issueId = announceIssue ? `${editorId}-issue` : undefined;
+  // Whatever the field named, plus this editor's own message while it is
+  // stating one — so the element the field's `aria-invalid` lands on always
+  // describes the sentence on screen rather than nothing at all.
+  const describedBy =
+    [fieldDescribedBy, issueId].filter(Boolean).join(' ') || undefined;
 
   const toggleRule = (ruleKey: string, enabled: boolean) => {
     if (readOnly) return;
@@ -226,7 +278,11 @@ export default function VariableValidationEditor({
   };
 
   return (
-    <div className={className} aria-describedby={issueId}>
+    <div
+      className={className}
+      aria-describedby={describedBy}
+      aria-invalid={ariaInvalid}
+    >
       {groups.map((group) => (
         <fieldset
           key={group.id}
@@ -299,7 +355,7 @@ export default function VariableValidationEditor({
                   <select
                     aria-label={rule.label}
                     aria-invalid={selectedMissing || selected === null}
-                    aria-describedby={issueId}
+                    aria-describedby={describedBy}
                     value={typeof selected === 'string' ? selected : ''}
                     disabled={readOnly}
                     className="border-input bg-input text-input-contrast focusable w-full rounded border-2 px-3 py-2"
@@ -340,7 +396,7 @@ export default function VariableValidationEditor({
           })}
         </fieldset>
       ))}
-      {issue !== undefined && (
+      {announceIssue && (
         <p id={issueId} role="alert" className="text-destructive mt-2 text-sm">
           {issue}
         </p>
