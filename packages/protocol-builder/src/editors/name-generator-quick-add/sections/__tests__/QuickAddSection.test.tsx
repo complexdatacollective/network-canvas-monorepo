@@ -163,13 +163,10 @@ describe('what a quick-add name generator records', () => {
       if (entry === undefined) throw new Error('nothing was created yet');
       return entry;
     });
-    // Created with the rule its role requires: the typed value is the only
-    // thing the participant gave, so it may not be left empty.
-    expect(created[1]).toMatchObject({
-      name: 'nickname',
-      type: 'text',
-      validation: { required: true },
-    });
+    // The attribute and nothing else. What quick add needs of it is offered
+    // as a rule below rather than written here: this attribute belongs to the
+    // codebook and is read by every other stage that uses it.
+    expect(created[1]).toEqual({ name: 'nickname', type: 'text' });
 
     await waitFor(() => expect(picker()).toHaveValue(created[0]));
     const request = await harness.submit();

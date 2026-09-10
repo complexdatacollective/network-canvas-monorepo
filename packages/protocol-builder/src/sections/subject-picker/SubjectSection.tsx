@@ -7,6 +7,10 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import Dialog from '@codaco/fresco-ui/dialogs/Dialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import {
+  EdgeColorSequence,
+  NodeColorSequence,
+} from '@codaco/protocol-validation';
 import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
 import CodebookEntityEditor from '../../codebook/components/CodebookEntityEditor.tsx';
@@ -243,18 +247,36 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
  * Every property the schema requires is pre-filled, because the point of
  * creating a type from inside a stage is to get back to configuring the stage:
  * the colour, shape and icon are all editable afterwards from the codebook.
+ *
+ * The colour is the next one along the palette, counting the types the
+ * codebook already holds — two types drawn in the same colour are two a
+ * participant cannot tell apart on a canvas, and picking one out of a palette
+ * is not what creating a type from inside a stage is for. It wraps once the
+ * palette runs out, which is the point at which no distinct colour is left to
+ * give.
  */
-export const NEW_ENTITY_DRAFT: Readonly<
-  Record<SubjectEntity, CodebookEntityDraft>
-> = Object.freeze({
-  node: Object.freeze({
+export function newEntityDraft(
+  entity: SubjectEntity,
+  existingTypes: number,
+): CodebookEntityDraft {
+  if (entity === 'edge') {
+    const palette = EdgeColorSequence;
+    return {
+      name: '',
+      color: palette[existingTypes % palette.length] ?? palette[0],
+    };
+  }
+  const palette = NodeColorSequence;
+  return {
     name: '',
-    color: 'node-color-seq-1',
+    color: palette[existingTypes % palette.length] ?? palette[0],
     shape: { default: 'circle' },
-    icon: 'Circle',
-  }),
-  edge: Object.freeze({ name: '', color: 'edge-color-seq-1' }),
-});
+    // The icon an interface draws on the control that adds one of these. A
+    // node type is a member of the network, and this is the one every
+    // interface has always shown for one.
+    icon: 'add-a-person',
+  };
+}
 
 export type SubjectSectionProps = Readonly<{
   entity: SubjectEntity;
@@ -540,7 +562,10 @@ function CreateSubjectType({
                 ? { entity: 'node', type: session.typeId }
                 : { entity: 'edge', type: session.typeId }
             }
-            initialDraft={NEW_ENTITY_DRAFT[entity]}
+            initialDraft={newEntityDraft(
+              entity,
+              Object.keys(codebook[entity] ?? {}).length,
+            )}
             readOnly={readOnly}
             existingEntityNames={existingEntityNames}
             onSubmit={async (document) => {
