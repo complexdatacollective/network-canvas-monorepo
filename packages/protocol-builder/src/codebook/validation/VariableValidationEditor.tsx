@@ -22,14 +22,25 @@ import {
 } from '../variableValidation.ts';
 
 type VariableValidationEditorProps = Readonly<{
-  entity: 'node' | 'edge' | 'ego';
-  variableType: string;
-  currentVariableId: string;
-  allVariables: Readonly<Record<string, unknown>>;
-  value: Readonly<ValidationMap>;
-  onChange(value: ValidationMap): void;
-  readOnly?: boolean;
-  className?: string;
+  'entity': 'node' | 'edge' | 'ego';
+  'variableType': string;
+  'currentVariableId': string;
+  'allVariables': Readonly<Record<string, unknown>>;
+  'value': Readonly<ValidationMap>;
+  'onChange'(value: ValidationMap): void;
+  'readOnly'?: boolean;
+  'className'?: string;
+  /**
+   * Whether the field mounting this editor has refused what it holds.
+   *
+   * Carried on the editor's own root because the editor IS the field's
+   * rendered control: a refusal the field raises — one about the rule map as a
+   * whole, which this editor's per-rule verdicts do not cover — is otherwise
+   * announced by the field's error region and invisible to everything that
+   * finds a refused field by looking for `aria-invalid` (the stage outline's
+   * observer, `focusFirstError`).
+   */
+  'aria-invalid'?: boolean;
 }>;
 
 const messages = defineMessages({
@@ -134,6 +145,7 @@ export default function VariableValidationEditor({
   onChange,
   readOnly = false,
   className,
+  'aria-invalid': ariaInvalid,
 }: VariableValidationEditorProps) {
   const intl = useAppIntl();
   const editorId = useId();
@@ -226,7 +238,11 @@ export default function VariableValidationEditor({
   };
 
   return (
-    <div className={className} aria-describedby={issueId}>
+    <div
+      className={className}
+      aria-describedby={issueId}
+      aria-invalid={ariaInvalid}
+    >
       {groups.map((group) => (
         <fieldset
           key={group.id}

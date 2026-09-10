@@ -283,12 +283,10 @@ wherever one reaches the screen.
 
 Named here so a later split takes the name rather than inventing a synonym.
 
-| `<area>`               | Will own the copy in                   | Expected in |
-| ---------------------- | -------------------------------------- | ----------- |
-| `nodePanels`           | `sections/NodePanelsSection`           | family D    |
-| `alterLimits`          | `sections/AlterLimitsSection`          | family D    |
-| `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection` | family D    |
-| `anonymisation`        | `sections/anonymisation/`              | family F    |
+Empty, and the table is gone with it: every name that was reserved has been
+converted, and each one now has a row in the converted table above saying which
+file owns it. A conversion that needs a name not listed there brings this table
+back with that name in it, in the same pull request.
 
 ### One file per family — the interface families
 
@@ -303,9 +301,12 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `networkCanvas`     | the composer's form-field list                       | `sections/form-fields/composerFormFieldMessages.ts`                |
 | `geospatial`        | `editors/geospatial/sections/`, `fields/geospatial/` | `fields/geospatial/geospatialMessages.ts`                          |
 | `narrativePedigree` | `editors/narrative-pedigree/sections/`               | `editors/narrative-pedigree/sections/narrativePedigreeMessages.ts` |
+| `anonymisation`     | `editors/anonymisation/sections/`                    | `editors/anonymisation/sections/anonymisationMessages.ts`          |
 
-`anonymisation` keeps its reserved name above and adds a row here when it
-lands.
+`anonymisation` was reserved for `sections/anonymisation/`, and its copy is
+declared under `editors/anonymisation/sections/` instead: one directory per
+editor, and no editor but this one has an anonymisation section. The `<area>`
+segment is unchanged, so no id moved.
 
 `geospatial` declares its whole family in one file under `fields/` rather
 than beside the editor, which is where the other families keep theirs. Two
