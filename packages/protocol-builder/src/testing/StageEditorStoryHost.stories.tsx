@@ -126,6 +126,28 @@ export const Spectating: Story = {
     // keyboard cannot reach either.
     await expect(name).toBeDisabled();
 
+    // Every one of them, not that one. The shell disables its fields through a
+    // React context rather than a `<fieldset disabled>`, so each control has to
+    // read it — and one that forgets stays live beside a page that says it
+    // cannot be changed. Read off the DOM rather than by role because the
+    // question is which controls EXIST: a role query answers for the roles it
+    // is asked about, which is the wrong shape for "and nothing else".
+    //
+    // The outline is the exception, and is meant to be: a spectator still
+    // moves around the stage they are reading.
+    const outline = canvas.getByRole('navigation', { name: 'Stage sections' });
+    const controls = [
+      ...canvasElement.querySelectorAll<HTMLElement>(
+        'input, textarea, select, button',
+      ),
+    ].filter((control) => !outline.contains(control));
+
+    // A page that rendered no controls would satisfy the loop by vacuity.
+    await expect(controls.length).toBeGreaterThan(1);
+    for (const control of controls) {
+      await expect(control).toBeDisabled();
+    }
+
     const save = canvas.getByRole('button', { name: 'Save stage' });
     await expect(save).toBeInTheDocument();
     await expect(save).toBeDisabled();
