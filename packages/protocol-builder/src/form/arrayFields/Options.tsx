@@ -243,8 +243,8 @@ export default function Options({
   );
 
   const itemTemplate = useCallback(() => ({}), []);
-  // Options carry no id of their own, so identity falls back to position while
-  // the list is unchanged and to content otherwise — see `resolveRowIndex`.
+  // Options carry no id of their own, so `ArrayField` issues each row a managed
+  // one and strips it again on submit.
 
   return (
     <OptionsContext value={context}>

@@ -30,5 +30,5 @@ export const DEFAULT_ITEM_LABEL = defineMessage({
   id: 'protocolBuilder.arrayField.itemNoun',
   defaultMessage: 'item',
   description:
-    'Generic noun for one row of an editable list in a stage editor, used where the list has no more specific word for its rows. Interpolated mid-sentence into things said ABOUT a row ("Remove this item?", "This item was not saved."), so it is lower case and singular.',
+    'Generic noun for one row of an editable list in a stage editor, used where the list has no more specific word for its rows. Interpolated mid-sentence into things said ABOUT a row ("Delete this item?", "This item was not saved."), so it is lower case and singular.',
 });

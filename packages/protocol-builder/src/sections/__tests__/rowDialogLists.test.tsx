@@ -26,7 +26,7 @@ import {
 /**
  * Every list a stage editor edits one row at a time, asked the same questions.
  *
- * They are one mechanism now — Fresco's `ArrayField` as the `component` of a
+ * They are one mechanism — Fresco's `ArrayField` as the `component` of a
  * `<Field>`, with a row dialog in the canonical shape — so what they promise a
  * researcher is asked of all of them together rather than list by list, where
  * a list that quietly lost one of these would go on passing its own suite.
@@ -36,12 +36,11 @@ import {
  */
 type ListCase = Readonly<{
   list: string;
-  /** The list's own noun for one of its rows. */
   noun: string;
   addLabel: string;
   /** Where the list lives in the stage document. */
   read: (stage: SectionDoc) => RowValues[];
-  /** A saved row holding `text`, under `id`, at `index` in the list. */
+  /** A saved row of this list, as the stage document holds it. */
   row: (id: string, text: string, index: number) => SectionDoc;
   open: (rows: SectionDoc[]) => RenderStageEditorOptions;
   /** Writes the text that names a row into an open dialog. */
@@ -50,7 +49,7 @@ type ListCase = Readonly<{
     dialog: ReturnType<typeof within>,
     text: string,
   ) => Promise<void>;
-  /** What a saved row is called. */
+  /** What the list shows for a saved row when its dialog is closed. */
   label: (row: RowValues) => unknown;
   /** Everything a NEW row needs beyond its text before it can be saved. */
   complete?: (
@@ -274,7 +273,7 @@ describe.each(lists)('$list', (listCase) => {
     const harness = renderStageEditor(listCase.open(seeded(listCase)));
 
     const removes = await screen.findAllByRole('button', {
-      name: `Remove ${noun}`,
+      name: `Delete ${noun}`,
     });
     await harness.user.click(removes[0]!);
 

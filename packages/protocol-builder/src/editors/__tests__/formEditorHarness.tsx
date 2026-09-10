@@ -74,7 +74,7 @@ const openLastField = async (harness: Harness, name: string) => {
  * asks, and the confirmation the list raises names what is going.
  */
 export const removeRow = async (harness: Harness, itemLabel: string) => {
-  const name = `Remove ${itemLabel}`;
+  const name = `Delete ${itemLabel}`;
   const [rowControl] = screen.getAllByRole('button', { name });
   if (rowControl === undefined) throw new Error(`There is no "${name}".`);
   await harness.user.click(rowControl);
