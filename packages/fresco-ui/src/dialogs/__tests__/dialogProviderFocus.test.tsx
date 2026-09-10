@@ -80,6 +80,30 @@ describe('useDialog focus return', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it('keeps the opener on cancel even when the caller named a fallback', async () => {
+    // A caller names `finalFocus` for the CONFIRM branch, where its action has
+    // just destroyed the opener. A row's removal confirmation names the row
+    // that takes the removed one's place — so a fallback that also answered
+    // the cancel branch would move the researcher to a different row for
+    // declining to delete this one.
+    const Host = () => {
+      const fallback = () => document.getElementById('first-tabbable');
+      return (
+        <DialogProvider>
+          <Opener finalFocus={fallback} />
+        </DialogProvider>
+      );
+    };
+
+    render(<Host />);
+    const trigger = await openConfirm();
+
+    screen.getByTestId('dialog-cancel').click();
+    await settle();
+
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it('uses the caller’s fallback when the action removed the trigger', async () => {
     // The confirm branch of a destructive dialog: `onConfirm` destroys the very
     // control that opened it, so the opener is a detached node by the time focus
