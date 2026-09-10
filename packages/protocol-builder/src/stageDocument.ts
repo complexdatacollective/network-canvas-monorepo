@@ -79,9 +79,13 @@ function assertNoIdentityFields(fields: StageFormDraft): void {
 }
 
 /**
- * How deep a command may address. The wire refuses a longer path
- * (`@codaco/studio-rpc`'s `CommandTargetSchema` bounds it at sixteen segments),
- * so a diff that walked deeper would emit a command a host rejects.
+ * How deep a command may address.
+ *
+ * A bound rather than none, because the diff walks a document a researcher's
+ * own values shape: a deeply nested value would otherwise make it recurse as
+ * far as that value goes. Past this depth the difference is said as one `set`
+ * of the whole container, which is always a correct command and never a
+ * deeper walk.
  */
 const MAX_COMMAND_PATH_SEGMENTS = 16;
 

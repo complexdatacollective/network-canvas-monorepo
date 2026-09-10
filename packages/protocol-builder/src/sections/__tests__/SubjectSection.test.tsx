@@ -4,6 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolBuilderClient } from '../../contract/contract.ts';
+import type {
+  InMemoryClient,
+  InMemoryHost,
+} from '../../testing/host/createInMemoryHost.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import IntroductionSection from '../IntroductionSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
@@ -609,28 +614,36 @@ describe('a codebook that changes while the editor is open', () => {
  */
 describe('dismissing the create dialog while it is submitting', () => {
   /**
-   * Holds the create the host is running, and hands back the release.
+   * Holds the create on its way to the host, and hands back the release.
    *
-   * The write goes out over the real client and through the real router; only
-   * the protocol store answers late, and what the caller finally gets is what
-   * the real store produced. Answering late is the one thing the store's own
-   * signature cannot say — an in-memory host has nothing to wait for — so the
-   * cast is what says it.
+   * Between the editor and the host rather than inside it: an in-memory host
+   * answers in a microtask, so a request that is still in flight is something
+   * only the transport can be. The call goes on to the real router when the
+   * release comes, and what the editor is finally told is the host's own
+   * answer.
    */
-  const holdTheCreate = (harness: Harness): (() => void) => {
-    const create = harness.host.store.create.bind(harness.host.store);
-    let release: () => void = () => undefined;
+  const gateTheCreate = (): Readonly<{
+    client: (host: InMemoryHost) => ProtocolBuilderClient;
+    release: () => void;
+  }> => {
+    let open: () => void = () => undefined;
     const held = new Promise<void>((resolve) => {
-      release = resolve;
+      open = resolve;
     });
-    const answerLate = (
-      ...args: Parameters<typeof create>
-    ): Promise<ReturnType<typeof create>> => held.then(() => create(...args));
-    vi.spyOn(harness.host.store, 'create').mockImplementation(
-      answerLate as unknown as typeof create,
-    );
-    return () => {
-      release();
+    return {
+      client: ({ client }) =>
+        new Proxy(client, {
+          get: (target, property) =>
+            property === 'create'
+              ? async (...args: Parameters<InMemoryClient['create']>) => {
+                  await held;
+                  return client.create(...args);
+                }
+              : Reflect.get(target, property),
+        }),
+      release: () => {
+        open();
+      },
     };
   };
 
@@ -648,11 +661,12 @@ describe('dismissing the create dialog while it is submitting', () => {
   };
 
   it('refuses every way out until the request has answered', async () => {
+    const gate = gateTheCreate();
     const harness = renderStageEditor({
       stageId: 'name-generator-1',
       sections: nodeSubjectAndPrompts,
+      client: gate.client,
     });
-    const release = holdTheCreate(harness);
     await startTheCreate(harness);
 
     // Escape, a press outside and the close button are the three routes the
@@ -665,7 +679,7 @@ describe('dismissing the create dialog while it is submitting', () => {
     // than offered and inert.
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
 
-    release();
+    gate.release();
     await waitFor(() => expect(nodeTypeNames(harness)).toContain('Place'));
     await useTheCreatedType(harness);
     expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
