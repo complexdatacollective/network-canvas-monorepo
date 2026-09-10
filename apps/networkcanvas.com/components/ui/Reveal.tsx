@@ -13,8 +13,9 @@ import {
   isValidElement,
   type ReactNode,
   useRef,
-  useSyncExternalStore,
 } from 'react';
+
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 
 type RevealDirection = 'left' | 'right' | 'up' | 'zoom';
 
@@ -38,10 +39,6 @@ type RevealContentProps = Omit<RevealProps, 'scrollLinked' | 'scrollStagger'>;
 type ScrollLinkedRevealProps = RevealContentProps & {
   scrollStagger: number;
 };
-
-const subscribeToHydration = () => () => undefined;
-const getClientHydrationSnapshot = () => true;
-const getServerHydrationSnapshot = () => false;
 
 function RevealContent({ content }: { content: ReactNode }) {
   return Children.map(content, (child, index) => (
@@ -72,11 +69,7 @@ function ScrollLinkedReveal({
 }: ScrollLinkedRevealProps) {
   const targetRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
-  const hasHydrated = useSyncExternalStore(
-    subscribeToHydration,
-    getClientHydrationSnapshot,
-    getServerHydrationSnapshot,
-  );
+  const hasHydrated = useHasHydrated();
   const motionEnabled = hasHydrated && shouldReduceMotion === false;
   const { scrollYProgress } = useScroll({
     target: targetRef,

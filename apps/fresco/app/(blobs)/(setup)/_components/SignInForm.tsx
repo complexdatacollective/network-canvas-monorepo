@@ -19,6 +19,7 @@ import SegmentedCodeField from '@codaco/fresco-ui/form/fields/SegmentedCodeField
 import Form from '@codaco/fresco-ui/form/Form';
 import { type FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { login, recoveryCodeLogin, type LoginResult } from '~/actions/auth';
 import { verifyTwoFactor } from '~/actions/twoFactor';
@@ -227,17 +228,15 @@ export const SignInForm = () => {
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
   const [useRecovery, setUseRecovery] = useState(false);
 
-  const [webauthnSupported, setWebauthnSupported] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyError, setPasskeyError] = useState<string | null>(null);
   const [showRecovery, setShowRecovery] = useState(false);
 
-  // Capability detection has to happen after hydration: the server has no
-  // WebAuthn API, so reading it during the first render would make the client
-  // markup disagree with the server's.
-  useEffect(() => {
-    setWebauthnSupported(browserSupportsWebAuthn());
-  }, []);
+  // The server has no WebAuthn API, so the capability check can only run once
+  // there is a browser to ask. `useHasHydrated` is false through the hydrating
+  // render — matching the server's markup — and true afterwards.
+  const hasHydrated = useHasHydrated();
+  const webauthnSupported = hasHydrated && browserSupportsWebAuthn();
 
   useEffect(() => {
     if (retryAfter === null || retryAfter <= 0) {
