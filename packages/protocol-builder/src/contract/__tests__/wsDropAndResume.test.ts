@@ -11,6 +11,10 @@ import {
 } from '../../testing/host/websocketHost.ts';
 import type { ProtocolEvent } from '../schemas.ts';
 
+/** A fresh idempotency key: every write below is its own intent. */
+let writes = 0;
+const nextRequestId = (): string => `write-${++writes}`;
+
 const FIXTURE: Record<string, unknown> = allInterfaces;
 const INFORMATION = sectionId({ kind: 'stage', stageId: 'information-1' });
 const EGO_FORM = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
@@ -71,6 +75,7 @@ describe('an event iterator over a socket that drops mid-stream', () => {
     const write = async (label: string) => {
       await writer.submit({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...held.document, label },
         revision: held.revision,
@@ -137,6 +142,7 @@ describe('an event iterator over a socket that drops mid-stream', () => {
     const write = async (label: string) => {
       await writer.submit({
         protocolId: host.protocolId,
+        requestId: nextRequestId(),
         sectionId: EGO_FORM,
         document: { ...other.document, label },
         revision: other.revision,
@@ -156,6 +162,7 @@ describe('an event iterator over a socket that drops mid-stream', () => {
     // behind it never stopped holding its draft, so its save is still taken.
     const written = await client.submit({
       protocolId: host.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Saved after the drop' },
       revision: held.revision,

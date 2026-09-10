@@ -164,12 +164,25 @@ export function withSubmitsCounted(
   return { client: counted, submits: () => submits };
 }
 
-/** What the host says is staged right now, for a test asserting on residue. */
+/**
+ * What the host says this edit is holding staged, for a test asserting on
+ * residue.
+ *
+ * The edit is named because staged files belong to it: a list that did not
+ * name one is answered with the protocol's committed resources alone, so
+ * `status: 'staged'` would come back empty however much the edit was holding —
+ * which is what a discard having worked looks like.
+ */
 export async function stagedResources(
   client: ProtocolBuilderClient,
   protocolId: string,
+  editId: string,
 ): Promise<readonly ResourceDescriptor[]> {
-  const listed = await client.resources.list({ protocolId, status: 'staged' });
+  const listed = await client.resources.list({
+    protocolId,
+    editId,
+    status: 'staged',
+  });
   if (listed.status !== 'ok') throw new Error('the host refused to list');
   return listed.data.resources;
 }
