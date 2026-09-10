@@ -38,6 +38,7 @@ import { egoFormStageEditor } from './editors/ego-form/EgoFormStageEditor.ts';
 import { familyPedigreeStageEditor } from './editors/family-pedigree/FamilyPedigreeStageEditor.ts';
 import { informationStageEditor } from './editors/information/InformationStageEditor.ts';
 import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
+import { sociogramStageEditor } from './editors/sociogram/SociogramStageEditor.ts';
 import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
 
 /**
@@ -118,6 +119,7 @@ const REGISTRY_PARTS = [
   familyPedigreeStageEditor,
   informationStageEditor,
   nameGeneratorStageEditor,
+  sociogramStageEditor,
 ] as const satisfies readonly StageEditorRegistryPart[];
 
 export const stageEditorRegistry: StageEditorRegistryPart =
@@ -221,7 +223,6 @@ export const AWAITING_STAGE_EDITORS = [
   'NetworkComposer',
   'OneToManyDyadCensus',
   'OrdinalBin',
-  'Sociogram',
   'TieStrengthCensus',
 ] as const satisfies readonly UnregisteredStageType[];
 

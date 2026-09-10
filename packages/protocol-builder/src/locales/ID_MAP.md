@@ -128,6 +128,7 @@ after the fact is marked in place.
 | `nameGeneratorPrompts`      | `sections/name-generator-prompts/NameGeneratorPromptsSection.tsx`                                                                                                                             | family D  |
 | `nodePanels`                | `sections/panels/NodePanelsSection.tsx`                                                                                                                                                       | family D  |
 | `pedigree`                  | `editors/family-pedigree/sections/`                                                                                                                                                           | family F  |
+| `networkCanvas`             | `sections/background/`, `sections/canvas-behaviours/`, `editors/sociogram/sections/prompts/`                                                                                                  | family F  |
 
 Family D added a second-level segment the reserved list did not hold. One line,
 because a closed list is only closed if adding to it is argued:
@@ -263,20 +264,31 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `censusPrompts`            | `sections/prompts/`                          | family E    |
 | `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection`   | family E    |
 | `ordinalColor`             | `fields/OrdinalColorField`                   | family E    |
-| `networkCanvas`            | `sections/network/`                          | family F    |
 | `narrativePedigree`        | `editors/narrative-pedigree/sections/`       | family F    |
 | `geospatial`               | `sections/geospatial/`, geospatial `fields/` | family F    |
 | `anonymisation`            | `sections/anonymisation/`                    | family F    |
 
 ### One file per family — the interface families
 
-| `<area>`   | Owns the copy in                    | Declared in                                            |
-| ---------- | ----------------------------------- | ------------------------------------------------------ |
-| `pedigree` | `editors/family-pedigree/sections/` | `editors/family-pedigree/sections/pedigreeMessages.ts` |
+| `<area>`        | Owns the copy in                      | Declared in                                                     |
+| --------------- | ------------------------------------- | --------------------------------------------------------------- |
+| `pedigree`      | `editors/family-pedigree/sections/`   | `editors/family-pedigree/sections/pedigreeMessages.ts`          |
+| `networkCanvas` | `sections/canvas-behaviours/`         | `sections/canvas-behaviours/canvasBehavioursMessages.ts`        |
+| `networkCanvas` | `editors/sociogram/sections/prompts/` | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts` |
 
-The remaining four families of the same series — `narrativePedigree`,
-`networkCanvas`, `geospatial` and `anonymisation` — keep their reserved names
-above and add a row here as each lands.
+The remaining three families of the same series — `narrativePedigree`,
+`geospatial` and `anonymisation` — keep their reserved names above and add a
+row here as each lands.
+
+`networkCanvas` takes two rows rather than one, and one of its modules
+(`sections/background/`) takes none. The area is one family — the canvas
+interfaces, which share their background, their layout mode and their canvas
+permissions — but under one directory per editor its copy is declared in the
+module that renders it, and only two of those modules hand words to somebody
+else: the layout mode, whose manual-mode sentence a narrative stage replaces
+with its own, and the sociogram's prompts, four of whose sentences the shared
+`PromptsSection` says. The background section hands nothing over, so its
+descriptors sit beside its markup like every other converted module's.
 
 A `*Messages.ts` per family, holding every id the family declares — rather than
 descriptors beside each section's markup, which is the rule everywhere else in
