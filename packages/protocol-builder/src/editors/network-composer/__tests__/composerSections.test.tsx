@@ -366,6 +366,50 @@ describe('what a network composer lets the participant build', () => {
     expect(dialog.getByRole('option', { name: 'age' })).toBeInTheDocument();
   });
 
+  /**
+   * And the grouping picked in THIS edit, which nothing has saved yet: the
+   * row's picker reads the stage form as well as the protocol, so an attribute
+   * the researcher chose as the grouping a moment ago is already out of the
+   * list a form field is chosen from — before either half of the conflict
+   * reaches the protocol for the schema to refuse.
+   */
+  it('stops offering a grouping attribute chosen in this edit', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ nodeForm: { fields: [] } }),
+    );
+    // An attribute NO stage in the protocol claims, so the only thing that can
+    // take it out of the form's list is the pick made here. The fixture's two
+    // categorical attributes are each claimed by a bin stage already, which
+    // would leave the case passing whether the grouping was picked or not.
+    addPersonVariable(harness, 'circle', {
+      name: 'circle',
+      type: 'categorical',
+      options: [
+        { label: 'Inner', value: 'inner' },
+        { label: 'Outer', value: 'outer' },
+      ],
+    });
+
+    const grouping = await screen.findByRole('combobox', {
+      name: 'Grouping attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(grouping).getByRole('option', { name: 'circle' }),
+      ).toBeInTheDocument(),
+    );
+    await harness.user.selectOptions(grouping, 'circle');
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute field');
+    expect(
+      dialog.queryByRole('option', { name: 'circle' }),
+    ).not.toBeInTheDocument();
+    // And something nothing on this stage claims still is, so the case is
+    // about the pick rather than about an empty list.
+    expect(dialog.getByRole('option', { name: 'age' })).toBeInTheDocument();
+  });
+
   it('stops offering an attribute the node form collects to the grouping', async () => {
     const harness = renderStageEditor(
       composerHolding({
@@ -594,6 +638,40 @@ describe('an attribute another stage starts writing mid-edit', () => {
       readMessage(unvalidatedElsewhereMessage('flagged')),
     );
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * And the row that ARRIVED on such an attribute saves again untouched.
+   *
+   * The gate judges the pick this edit made against the pick the row opened
+   * on, so a conflict the researcher did not make here is reported against the
+   * protocol rather than trapped in this dialog. Refused, a field authored
+   * before another stage claimed its attribute could never have anything else
+   * about it changed — the researcher would have to delete it to edit it.
+   */
+  it('saves a field that arrived on such an attribute, untouched', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            { id: 'field-1', variable: 'highlighted', component: 'Boolean' },
+          ],
+        },
+      }),
+    );
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const saved = await harness.submit();
+    expect(nodeFormFieldsOf(saved?.stageDocument ?? {})[0]).toEqual({
+      id: 'field-1',
+      variable: 'highlighted',
+      component: 'Boolean',
+    });
   });
 });
 
