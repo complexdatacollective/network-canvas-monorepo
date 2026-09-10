@@ -24,7 +24,7 @@ const Nodes = composerNodes();
 const Connections = composerConnections();
 
 /** Every section a network composer composes that is not one of the shared six. */
-export const composerSections = (
+const composerSections = (
   <>
     <Nodes />
     <Connections />
