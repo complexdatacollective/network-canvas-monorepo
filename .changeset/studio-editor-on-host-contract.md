@@ -1,5 +1,7 @@
 ---
 '@codaco/studio-client': patch
+'@codaco/studio-server': patch
+'@codaco/studio-rpc': patch
 ---
 
 The protocol editor runs on the `@codaco/protocol-builder` host contract. The
@@ -15,3 +17,15 @@ selected screen is, over one channel per open protocol. Studio keeps what is
 Studio's: the outline and its reordering, the section selector, the validation
 panel, and the save control — which is rendered through the editor's action
 slot and still asks before unsaved values are discarded.
+
+With the editing session gone, so are the RPC procedures only it called:
+`protocols.acquireSection`, `commitSection`, `renewSection` and
+`releaseSection`, their input and result schemas, and the command-patch wire
+format they carried. Sections are locked and written through `protocolBuilder`
+alone, which takes a whole section document rather than a list of commands, so
+there is no second way to write a draft and no second lock model to keep in
+step with the first. The audit properties those procedures carried — the event
+a write records, that a retried write records no second one, that no
+researcher value reaches the audit details, and that a failed audit insert
+rolls the write back with it — are asserted against `protocolBuilder.submit`
+instead of being dropped.

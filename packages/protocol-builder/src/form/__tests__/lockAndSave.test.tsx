@@ -1,7 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -17,6 +16,7 @@ import BuilderSection from '../../sections/BuilderSection.tsx';
 import { StageEditSession } from '../../stageEdit.tsx';
 import {
   createInMemoryHost,
+  type InMemoryClient,
   type InMemoryHost,
 } from '../../testing/host/createInMemoryHost.ts';
 import {
@@ -29,6 +29,7 @@ import StageEditorShell from '../StageEditorShell.tsx';
 
 const STAGE_ID = 'information-1';
 const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
+const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
 /** One section owning one value, so a save can be compared key by key. */
 const nameSection = (
@@ -57,20 +58,12 @@ describe('a stage somebody else is editing', () => {
 
 describe('a stage the protocol has not answered for yet', () => {
   it('is read but not typed into, and says nothing about a holder', async () => {
-    const host = createInMemoryHost({ sections: fixtureProtocolSections() });
-    const acquire = gatedAcquire(host.client);
-
-    render(
-      <DialogProvider>
-        <ProtocolBuilder client={acquire.client} protocolId={host.protocolId}>
-          <ResourceClientProvider>
-            <StageEditSession target={{ sectionId: STAGE_SECTION }}>
-              <StageEditorShell>{nameSection}</StageEditorShell>
-            </StageEditSession>
-          </ResourceClientProvider>
-        </ProtocolBuilder>
-      </DialogProvider>,
-    );
+    const gate = gatedAcquire();
+    renderStageEditor({
+      stageId: STAGE_ID,
+      sections: nameSection,
+      client: gate.client,
+    });
 
     const field = await screen.findByRole('textbox', { name: 'Stage name' });
     expect(field).toBeDisabled();
@@ -81,7 +74,7 @@ describe('a stage the protocol has not answered for yet', () => {
     ).not.toBeInTheDocument();
 
     await act(async () => {
-      acquire.answer();
+      gate.release();
     });
 
     await waitFor(() => {
@@ -117,6 +110,181 @@ describe('what a save writes', () => {
     expect(Object.keys(written?.stageDocument ?? {}).toSorted()).toEqual(
       ['id', 'type', ...Object.keys(seeded.fields)].toSorted(),
     );
+  });
+});
+
+/**
+ * A transport that loses the answer to the first write it carries and sends
+ * the identical request again — a socket that drops between the host writing
+ * and the client reading it, which is the one case a client cannot tell from
+ * a write that never happened.
+ *
+ * Proxied rather than spread: a contract client's procedures are reached
+ * through property access rather than held as own properties, so a spread copy
+ * of one has no procedures on it at all.
+ */
+function withTheFirstAnswerLost(): Readonly<{
+  client: (host: InMemoryHost) => ProtocolBuilderClient;
+  resends: () => number;
+}> {
+  let resends = 0;
+  return {
+    client: ({ client }) => {
+      const resent = new Map<PropertyKey, unknown>();
+      const resend = <TArgs extends unknown[], TAnswer>(
+        call: (...args: TArgs) => Promise<TAnswer>,
+      ) => {
+        let lost = false;
+        return async (...args: TArgs): Promise<TAnswer> => {
+          const answer = await call(...args);
+          if (lost) return answer;
+          lost = true;
+          resends += 1;
+          // The first answer never reaches the client, so the very same
+          // request goes out again.
+          return call(...args);
+        };
+      };
+      resent.set(
+        'submit',
+        resend((...args: Parameters<InMemoryClient['submit']>) =>
+          client.submit(...args),
+        ),
+      );
+      resent.set(
+        'create',
+        resend((...args: Parameters<InMemoryClient['create']>) =>
+          client.create(...args),
+        ),
+      );
+      return new Proxy(client, {
+        get: (target, property) =>
+          resent.get(property) ?? Reflect.get(target, property),
+      });
+    },
+    resends: () => resends,
+  };
+}
+
+describe('a save whose answer is lost on the way back', () => {
+  it('is written once, however many times the request reaches the host', async () => {
+    const lost = withTheFirstAnswerLost();
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: nameSection,
+      client: lost.client,
+    });
+    const before = harness.host.store.read(STAGE_SECTION).revision.sequence;
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Saved through a dropped socket');
+
+    expect(await harness.submit()).not.toBeNull();
+
+    // The request really was made twice — otherwise this proves nothing about
+    // a retry — and the protocol advanced by exactly one revision, because the
+    // second attempt was answered with what the first wrote rather than
+    // writing a revision of its own that changed nothing.
+    expect(lost.resends()).toBe(1);
+    expect(harness.host.store.read(STAGE_SECTION).revision.sequence).toBe(
+      before + 1n,
+    );
+    expect(harness.protocolSections()[STAGE_SECTION]).toMatchObject({
+      label: 'Saved through a dropped socket',
+    });
+  });
+
+  it('is a different write from the save the researcher makes next', async () => {
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: nameSection,
+    });
+    const before = harness.host.store.read(STAGE_SECTION).revision.sequence;
+
+    const field = () => screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field());
+    await harness.user.type(field(), 'Saved once');
+    expect(await harness.submit()).not.toBeNull();
+
+    await harness.user.clear(field());
+    await harness.user.type(field(), 'Saved again');
+    expect(await harness.submit()).not.toBeNull();
+
+    // Two revisions, and the protocol holds the second draft. A key shared
+    // between the two saves would have the host answer the second with what
+    // the first wrote: the editor would report a save that was never made,
+    // and the researcher's second draft would be nowhere.
+    expect(harness.host.store.read(STAGE_SECTION).revision.sequence).toBe(
+      before + 2n,
+    );
+    expect(harness.protocolSections()[STAGE_SECTION]).toMatchObject({
+      label: 'Saved again',
+    });
+  });
+
+  it('adds a stage once, however many times the request reaches the host', async () => {
+    const before = fixtureStageIds();
+    const lost = withTheFirstAnswerLost();
+    const harness = renderStageEditor({
+      create: {
+        type: 'Information',
+        position: 1,
+        fields: loadFixtureStage(STAGE_ID).fields,
+      },
+      sections: nameSection,
+      client: lost.client,
+    });
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Added through a dropped socket');
+
+    const written = await harness.submit();
+    expect(written).not.toBeNull();
+
+    // One stage in the order, not two: a create that minted a second section
+    // for the retry would leave the protocol holding the stage twice and tell
+    // the editor about only one of them, which nothing could then repair.
+    expect(lost.resends()).toBe(1);
+    const order = orderOf(harness.protocolSections());
+    expect(order.length).toBe(before.length + 1);
+    expect(order).toContain(written?.sectionId.split(':').at(-1));
+  });
+
+  it('adds it once when the researcher, told the add failed, saves again', async () => {
+    const before = fixtureStageIds();
+    const lost = withTheFirstAnswerSwallowed();
+    const harness = renderStageEditor({
+      create: {
+        type: 'Information',
+        position: 1,
+        fields: loadFixtureStage(STAGE_ID).fields,
+      },
+      sections: nameSection,
+      client: lost.client,
+    });
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Added through a dropped socket');
+
+    // The host wrote; the researcher is told nothing was added and that they
+    // should try again, and the draft is still on screen for them to do it.
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(/This stage could not be added/),
+    ).toBeInTheDocument();
+
+    expect(await harness.submit()).not.toBeNull();
+
+    // The same key both times, so the second attempt was answered with the
+    // section the first one minted. A key minted per attempt leaves the
+    // protocol holding the stage twice, and the editor is told about only one
+    // of them.
+    expect(new Set(lost.keys()).size).toBe(1);
+    expect(lost.keys()).toHaveLength(2);
+    expect(orderOf(harness.protocolSections()).length).toBe(before.length + 1);
   });
 });
 
@@ -308,7 +476,7 @@ describe('a file imported while the stage is open', () => {
     // The staged file leaves the host behind this editor's back — swept up
     // after a restart, discarded from another window — and nothing tells the
     // edit, which submits still naming it.
-    await discardStagedFilesAtTheHost(harness.host);
+    await discardStagedFilesAtTheHost(harness);
 
     expect(await harness.submit()).toBeNull();
 
@@ -336,6 +504,46 @@ describe('a file imported while the stage is open', () => {
     );
   });
 
+  it('leaves the draft on screen when somebody else is holding the file list', async () => {
+    const seeded = loadFixtureStage(STAGE_ID);
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: stagedProbe,
+      // The manifest the promotion writes, not the stage: this editor holds
+      // the stage, and a save that promotes has to write both.
+      heldSections: [
+        { sectionId: sectionId({ kind: 'assets' }), displayName: 'Robin' },
+      ],
+    });
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Import a file' }),
+    );
+    expect(await screen.findByText('A roster')).toBeInTheDocument();
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Renamed behind a held manifest');
+
+    expect(await harness.submit()).toBeNull();
+
+    expect(
+      await screen.findByText(
+        /Robin is editing another part of the protocol that this save needs/,
+      ),
+    ).toBeInTheDocument();
+    // Nothing was written, so there is nothing to start again from: the draft
+    // is the researcher's to save once Robin has finished.
+    expect(harness.protocolSections()[STAGE_SECTION]).toEqual({
+      id: STAGE_ID,
+      type: seeded.type,
+      ...seeded.fields,
+    });
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+      'Renamed behind a held manifest',
+    );
+  });
+
   it('is dropped when the researcher closes the stage without saving', async () => {
     const harness = renderStageEditor({
       stageId: STAGE_ID,
@@ -359,7 +567,51 @@ describe('a file imported while the stage is open', () => {
 });
 
 describe('a file imported while a stage is being added', () => {
-  it('is refused rather than left behind by the stage it belongs to', async () => {
+  it('is committed with the stage, its place in the order, and nothing in between', async () => {
+    const harness = renderStageEditor({
+      create: {
+        type: 'Information',
+        position: 1,
+        fields: loadFixtureStage(STAGE_ID).fields,
+      },
+      sections: stagedProbe,
+    });
+    const orderBefore = harness.host.store.read(STAGE_ORDER).revision.sequence;
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Import a file' }),
+    );
+    expect(await screen.findByText('A roster')).toBeInTheDocument();
+
+    const written = await harness.submit();
+    if (written === null) {
+      throw new Error(
+        `The stage was not added, so nothing was committed. The editor is showing: ${document.body.textContent ?? ''}`,
+      );
+    }
+
+    const manifest = harness.protocolSections()[
+      sectionId({ kind: 'assets' })
+    ] as Record<string, { name?: unknown }>;
+    expect(
+      Object.values(manifest).some((entry) => entry.name === 'A roster'),
+    ).toBe(true);
+
+    // One revision for all three: the stage, the order that now holds it, and
+    // the manifest entry it names. Two would leave a protocol in between where
+    // a stage names a file nothing committed, or the bytes are committed and
+    // no stage names them.
+    const orderAfter = harness.host.store.read(STAGE_ORDER).revision.sequence;
+    expect(orderAfter).toBe(orderBefore + 1n);
+    expect(harness.host.store.read(written.sectionId).revision.sequence).toBe(
+      orderAfter,
+    );
+    expect(
+      harness.host.store.read(sectionId({ kind: 'assets' })).revision.sequence,
+    ).toBe(orderAfter);
+  });
+
+  it('leaves the protocol without the stage when it cannot be committed', async () => {
     const before = fixtureStageIds();
     const harness = renderStageEditor({
       create: {
@@ -375,63 +627,83 @@ describe('a file imported while a stage is being added', () => {
     );
     expect(await screen.findByText('A roster')).toBeInTheDocument();
 
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Never added');
+
+    // The staged file leaves the host behind this editor's back, and nothing
+    // tells the edit: it creates the stage still naming it.
+    await discardStagedFilesAtTheHost(harness);
+
     expect(await harness.submit()).toBeNull();
 
     expect(
       await screen.findByText(
-        /A file imported here cannot be saved with a stage that is being added/,
+        /The files you imported could not be saved with this stage/,
       ),
     ).toBeInTheDocument();
-    // A promotion rides a section's submit, and `create` takes none, so the
-    // stage is not added at all: adding it would name a file the protocol
-    // never took.
+    // Neither half was written: no stage in the order, and no manifest entry.
     expect(orderOf(harness.protocolSections())).toEqual(before);
+    const manifest = harness.protocolSections()[
+      sectionId({ kind: 'assets' })
+    ] as Record<string, { name?: unknown }>;
+    expect(
+      Object.values(manifest).some((entry) => entry.name === 'A roster'),
+    ).toBe(false);
+    // And the draft is still the researcher's to add again.
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+      'Never added',
+    );
   });
 });
 
 /**
- * The host's client with its answer to `acquireLock` held until the test lets
- * it through, which is every host for as long as it takes to answer.
+ * Holds every answer to `acquireLock` until the test lets it through, which is
+ * every host for as long as it takes to answer.
  *
  * Proxied rather than spread: a contract client's procedures are reached
  * through property access rather than held as own properties, so a spread copy
  * of one has no procedures on it at all.
  */
-function gatedAcquire(
-  client: ProtocolBuilderClient,
-): Readonly<{ client: ProtocolBuilderClient; answer: () => void }> {
+function gatedAcquire(): Readonly<{
+  client: (host: InMemoryHost) => ProtocolBuilderClient;
+  release: () => void;
+}> {
   const gates: (() => void)[] = [];
-  const acquireLock: ProtocolBuilderClient['acquireLock'] = async (
-    input,
-    options,
-  ) => {
-    const answer = await client.acquireLock(input, options);
-    await new Promise<void>((open) => gates.push(open));
-    return answer;
-  };
   return {
-    client: new Proxy(client, {
-      get: (target, property) =>
-        property === 'acquireLock'
-          ? acquireLock
-          : Reflect.get(target, property),
-    }),
-    answer: () => {
+    client: ({ client }) =>
+      new Proxy(client, {
+        get: (target, property) =>
+          property === 'acquireLock'
+            ? async (...args: Parameters<InMemoryClient['acquireLock']>) => {
+                const answer = await client.acquireLock(...args);
+                await new Promise<void>((open) => gates.push(open));
+                return answer;
+              }
+            : Reflect.get(target, property),
+      }),
+    release: () => {
       for (const open of gates.splice(0)) open();
     },
   };
 }
 
 /**
- * Everything this protocol is holding staged, dropped at the host.
+ * Everything this edit is holding staged, dropped at the host.
  *
  * Through the contract rather than through the editor's own client: the point
  * is that the edit does NOT know, and goes on to submit a promotion for bytes
- * the host no longer has.
+ * the host no longer has. The edit is named because that is the only way to
+ * reach its staging at all — one edit's files are not another's to drop — so
+ * this stands in for the host losing them rather than for a collaborator
+ * taking them.
  */
-async function discardStagedFilesAtTheHost(host: InMemoryHost): Promise<void> {
-  const discarded = await host.client.resources.discard({
-    protocolId: host.protocolId,
+async function discardStagedFilesAtTheHost(
+  harness: Readonly<{ host: InMemoryHost; editId: string }>,
+): Promise<void> {
+  const discarded = await harness.host.client.resources.discard({
+    protocolId: harness.host.protocolId,
+    editId: harness.editId,
   });
   expect(discarded.status).toBe('ok');
 }
@@ -445,4 +717,40 @@ function orderOf(sections: Readonly<Record<string, unknown>>): string[] {
   return Array.isArray(stages)
     ? stages.filter((entry): entry is string => typeof entry === 'string')
     : [];
+}
+
+/**
+ * A host that WRITES and whose answer never arrives — the socket dropped
+ * between the write and the reply, and the transport rejected the call in
+ * flight rather than resending it.
+ *
+ * What the researcher then does is the retry: they are told the add failed and
+ * they press Save again, over a socket that has come back. Only the request id
+ * tells the host that this is the same intent as the write it already made.
+ */
+function withTheFirstAnswerSwallowed(): Readonly<{
+  client: (host: InMemoryHost) => ProtocolBuilderClient;
+  keys: () => readonly string[];
+}> {
+  const keys: string[] = [];
+  let swallowed = false;
+  return {
+    keys: () => keys,
+    client: (host) => {
+      const create = async (
+        ...args: Parameters<InMemoryClient['create']>
+      ): Promise<Awaited<ReturnType<InMemoryClient['create']>>> => {
+        const [input] = args;
+        keys.push(input.requestId);
+        const answer = await host.client.create(...args);
+        if (swallowed) return answer;
+        swallowed = true;
+        throw new Error('the socket dropped before the answer arrived');
+      };
+      return new Proxy(host.client, {
+        get: (target, property) =>
+          property === 'create' ? create : Reflect.get(target, property),
+      });
+    },
+  };
 }

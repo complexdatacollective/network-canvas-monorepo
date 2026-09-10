@@ -8,7 +8,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { z } from 'zod';
 
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
   sectionId,
@@ -17,9 +17,11 @@ import {
 
 import type {
   Presence,
+  ResourceDescriptor,
   ResourceGatewayFailureSchema,
   ResourcePromotionRequestSchema,
   Revision,
+  SectionHolderSchema,
   SectionIssueSchema,
 } from '../contract/schemas.ts';
 import {
@@ -27,6 +29,7 @@ import {
   useProtocolBuilderContext,
   type LockState,
 } from './context.ts';
+import { useKeptRequestId } from './requestKey.ts';
 
 export type SectionAtRevision = Readonly<{
   document: SectionDoc;
@@ -36,6 +39,7 @@ export type SectionAtRevision = Readonly<{
 export type SectionIssue = z.output<typeof SectionIssueSchema>;
 export type ResourcePromotion = z.output<typeof ResourcePromotionRequestSchema>;
 export type ResourceFailure = z.output<typeof ResourceGatewayFailureSchema>;
+export type SectionHolder = z.output<typeof SectionHolderSchema>;
 
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
 
@@ -127,8 +131,19 @@ export function useStageIndex(): readonly StageSummary[] {
 }
 
 export type SubmitResult =
-  | Readonly<{ status: 'written'; revision: Revision }>
+  /**
+   * `promoted` describes what the submit's promotion committed — the host's
+   * own metadata for each resource, which staging did not know — so an editor
+   * can settle the staged rows it was holding. Absent when nothing was
+   * promoted.
+   */
+  | Readonly<{
+      status: 'written';
+      revision: Revision;
+      promoted?: readonly ResourceDescriptor[];
+    }>
   | Readonly<{ status: 'notLockHolder'; holder?: Presence }>
+  | Readonly<{ status: 'sectionsLocked'; blocked: readonly SectionHolder[] }>
   | Readonly<{ status: 'invalidShape'; issues: readonly SectionIssue[] }>
   | Readonly<{ status: 'promotionFailed'; failure: ResourceFailure }>;
 
@@ -137,24 +152,19 @@ export type SubmitResult =
  * acquire, since a section a collaborator holds is indistinguishable from one
  * nobody holds while the answer is on its way, and an editable form the host
  * will refuse to take is a draft the researcher loses.
+ *
+ * `unavailable` is an acquire the host did not answer at all — the section was
+ * deleted while this editor was opening it, or the transport dropped. There is
+ * no retry: an editor that stayed `pending` would sit on an acquiring state
+ * for ever, which is the one thing a researcher cannot act on.
  */
-export type SectionAccess = 'pending' | 'editing' | 'readOnly';
+export type SectionAccess = 'pending' | 'editing' | 'readOnly' | 'unavailable';
 
 export type SectionMutation = Readonly<{
   document: SectionDoc | undefined;
   revision: Revision | undefined;
   access: SectionAccess;
   holder: Presence | undefined;
-  /**
-   * The host would not open this section at all: it is gone, or it could not
-   * be reached.
-   *
-   * Answered rather than thrown, because it arrives after the component has
-   * rendered and there is nothing to retry. An editor that never learned of it
-   * waits for a document that is not coming, which on screen is a blank page
-   * that never resolves.
-   */
-  unavailable: boolean;
   submit(
     document: SectionDoc,
     promote?: ResourcePromotion,
@@ -174,12 +184,29 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   const { client, protocolId, utils } = useProtocolBuilderContext();
   const queryClient = useQueryClient();
   const [access, setAccess] = useState<SectionAccess>('pending');
-  const [unavailable, setUnavailable] = useState(false);
+  // A fault the acquire's success handler threw, which is a bug in this hook
+  // rather than anything the host did. Re-thrown from render below, where the
+  // nearest error boundary takes it, because the alternative is telling the
+  // researcher the section is unreachable and leaving the fault invisible.
+  const [handlerFault, setHandlerFault] = useState<
+    Readonly<{ error: unknown }> | undefined
+  >(undefined);
   // Which acquire is this editor's. An acquire that settles after its own
   // effect has been cleaned up must not touch the lock, because the next
   // effect for the same section may already hold it.
   const acquisition = useRef(0);
+  // The section the newest effect is for. An acquire that settles after the
+  // editor moved on has to know whether the lock it was granted is one this
+  // editor still wants.
+  const wanted = useRef<ProtocolSectionId | undefined>(undefined);
   const released = useRef(false);
+  // The id this editor's save carries while its answer is uncertain — see
+  // `useKeptRequestId`. Asked for by the document, so a save of NEW work is
+  // never answered with the revision the earlier one wrote, and a retry after
+  // a dropped socket makes the host replay what the first attempt wrote
+  // instead of writing again — or, for a promotion, refusing it because that
+  // attempt already consumed the staged files.
+  const saveKey = useKeptRequestId();
   const section = useSection(id);
   const { data: lock } = useQuery<LockState>({
     queryKey: lockQueryKey(protocolId, id),
@@ -189,37 +216,30 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     initialData: {},
   });
 
+  // Giving a lock back is best effort, which is why every one of them goes
+  // through `safe`: a host that will not take it — the section has gone, the
+  // socket dropped — leaves the editor nothing to do and the researcher nothing
+  // to act on, and a bare promise would make it an unhandled rejection instead.
   useEffect(() => {
     const mine = (acquisition.current += 1);
+    wanted.current = id;
+    // The save an id was kept for was of the section this editor is leaving.
+    saveKey.forget();
     // Nothing has been answered for this section yet, whatever the last one
     // this editor was pointed at said.
     setAccess('pending');
-    released.current = false;
-    // Through `safe`, because an acquire the host refuses is an ordinary thing
-    // for it to answer — a section a collaborator deleted while it was still
-    // listed in an outline — and a bare promise makes it an unhandled
-    // rejection instead: nothing on screen, nothing for the editor to say, and
-    // the researcher left on a page that never finishes opening.
-    void safe(client.acquireLock({ protocolId, sectionId: id })).then(
-      ({ data: result, isSuccess }) => {
-        if (!isSuccess) {
-          if (acquisition.current === mine && !released.current) {
-            setUnavailable(true);
-          }
-          return;
-        }
-        // The acquire answers with the section as the host holds it now, which
-        // is what this editor has to start from: a cached document from before
-        // a revision this client has not seen yet — the channel is
-        // reconnecting, say — would be submitted back whole over the newer one.
-        queryClient.setQueryData<SectionAtRevision>(
-          utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
-          { document: result.document, revision: result.revision },
-        );
+    void client.acquireLock({ protocolId, sectionId: id }).then(
+      (result) => {
         if (acquisition.current !== mine) {
-          // A later mount of this section owns the lock now. Locks are held by
-          // the session, so handing this one back would take that editor's:
-          // its own cleanup is what releases it.
+          // A later effect took over. When it is for this same section — a
+          // StrictMode remount — the lock is that editor's and its own cleanup
+          // is what releases it; handing it back here would take it away from
+          // an editor that is using it. When it is for a DIFFERENT section, the
+          // cleanup's release went out before the host granted this one, so
+          // nothing else will ever give it back.
+          if (wanted.current !== id && result.lock === 'held') {
+            void safe(client.releaseLock({ protocolId, sectionId: id }));
+          }
           return;
         }
         if (released.current) {
@@ -228,23 +248,54 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           void safe(client.releaseLock({ protocolId, sectionId: id }));
           return;
         }
-        setAccess(result.lock === 'readOnly' ? 'readOnly' : 'editing');
-        if (result.lock === 'readOnly') {
-          // The refusal already names the holder. Waiting for the channel to
-          // say it again leaves a read-only editor unable to say whose section
-          // it is — and a host whose locks are always granted never says it at
-          // all.
-          queryClient.setQueryData<LockState>(lockQueryKey(protocolId, id), {
-            holder: result.holder,
-          });
+        try {
+          // Written only once this acquire is known to be the one this editor
+          // is waiting for. A superseded answer is a document as it was before
+          // the editor moved on, and this is a manual write: the channel may
+          // have REMOVED that section — deleted while the acquire was in
+          // flight — and a cache with nothing in it has no newer revision for
+          // structural sharing to keep, so the deleted section would be put
+          // back and, nothing here refetching, stay.
+          //
+          // For the acquire this editor is waiting for it is what the editor
+          // has to start from: a cached document from before a revision this
+          // client has not seen yet — the channel is reconnecting, say — would
+          // be submitted back whole over the newer one.
+          queryClient.setQueryData<SectionAtRevision>(
+            utils.getSection.queryKey({ input: { protocolId, sectionId: id } }),
+            { document: result.document, revision: result.revision },
+          );
+          setAccess(result.lock === 'readOnly' ? 'readOnly' : 'editing');
+          if (result.lock === 'readOnly') {
+            // The refusal already names the holder. Waiting for the channel to
+            // say it again leaves a read-only editor unable to say whose
+            // section it is — and a host whose locks are always granted never
+            // says it at all.
+            queryClient.setQueryData<LockState>(lockQueryKey(protocolId, id), {
+              holder: result.holder,
+            });
+          }
+        } catch (error: unknown) {
+          setHandlerFault({ error });
         }
       },
+      // The acquire's own rejection, as the second argument rather than a
+      // `then` chained after the success handler: chained, it would also catch
+      // an error the handler above threw and report a bug in this hook to the
+      // researcher as a host that did not answer. Nothing here is retried, so
+      // the editor is told; leaving it `pending` would sit on an acquiring
+      // state for ever, and the rejection would go unhandled besides.
+      () => {
+        if (acquisition.current !== mine || released.current) return;
+        setAccess('unavailable');
+      },
     );
+    released.current = false;
     return () => {
       released.current = true;
       void safe(client.releaseLock({ protocolId, sectionId: id }));
     };
-  }, [client, protocolId, id, queryClient, utils]);
+  }, [client, protocolId, id, queryClient, saveKey, utils]);
 
   const submit = useCallback(
     async (
@@ -254,16 +305,30 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       if (section === undefined) {
         throw new Error(`section ${id} was submitted before it was read`);
       }
+      // One id for this save, reused while the same document is still being
+      // saved, so an attempt whose answer was lost is replayed rather than
+      // written again. Per save rather than per edit: the next save is a
+      // different document, and an id shared with the last one would be
+      // answered with the revision that one wrote.
+      const requestId = saveKey.forAsk(contentHash(document));
       const { data, definedError, isSuccess } = await safe(
         client.submit({
           protocolId,
+          requestId,
           sectionId: id,
           document,
           revision: section.revision,
           ...(promote === undefined ? {} : { promote }),
         }),
       );
-      if (isSuccess) return { status: 'written', revision: data.revision };
+      if (isSuccess || definedError !== null) saveKey.settled(requestId);
+      if (isSuccess) {
+        return {
+          status: 'written',
+          revision: data.revision,
+          ...(data.promoted === undefined ? {} : { promoted: data.promoted }),
+        };
+      }
       if (definedError?.code === 'NOT_LOCK_HOLDER') {
         return {
           status: 'notLockHolder',
@@ -271,6 +336,9 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
             ? {}
             : { holder: definedError.data.holder }),
         };
+      }
+      if (definedError?.code === 'SECTIONS_LOCKED') {
+        return { status: 'sectionsLocked', blocked: definedError.data.blocked };
       }
       if (definedError?.code === 'INVALID_SHAPE') {
         return { status: 'invalidShape', issues: definedError.data.issues };
@@ -283,19 +351,20 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       }
       throw definedError ?? new Error(`submit of ${id} failed`);
     },
-    [client, protocolId, id, section],
+    [client, protocolId, id, saveKey, section],
   );
 
   const release = useCallback(() => {
     void safe(client.releaseLock({ protocolId, sectionId: id }));
   }, [client, protocolId, id]);
 
+  if (handlerFault !== undefined) throw handlerFault.error;
+
   return {
     document: section?.document,
     revision: section?.revision,
     access,
     holder: lock?.holder,
-    unavailable,
     submit,
     release,
   };

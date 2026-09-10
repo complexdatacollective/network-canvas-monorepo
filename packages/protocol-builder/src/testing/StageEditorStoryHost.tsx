@@ -13,7 +13,10 @@ import type { ProtocolBuilderClient } from '../contract/contract.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import type { StageEditorActions } from '../stage-editor-contract.ts';
 import type { StageEditTarget } from '../stageEdit.tsx';
-import { createInMemoryHost } from './host/createInMemoryHost.ts';
+import {
+  createInMemoryHost,
+  type InMemoryHost,
+} from './host/createInMemoryHost.ts';
 import {
   fixtureAssetContentFor,
   fixtureAssetManifest,
@@ -71,7 +74,7 @@ export type StageEditorStoryHostProps = Readonly<{
    * file. See `RenderStageEditorOptions.client`, which is the same seam for
    * the same reason.
    */
-  client?: (client: ProtocolBuilderClient) => ProtocolBuilderClient;
+  client?: (host: InMemoryHost) => ProtocolBuilderClient;
 }>;
 
 /**
@@ -116,9 +119,7 @@ export function StageEditorStoryHost({
   });
 
   const stage = sectionId({ kind: 'stage', stageId });
-  const [editorClient] = useState(() =>
-    client === undefined ? host.client : client(host.client),
-  );
+  const [editorClient] = useState(() => client?.(host) ?? host.client);
 
   return (
     <DialogProvider>

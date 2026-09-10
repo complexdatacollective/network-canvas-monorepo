@@ -173,10 +173,18 @@ export const ResourceDescriptorSchema = z.object({
   kind: ResourceKindSchema,
   name: z.string(),
   status: ResourceStatusSchema,
+  /**
+   * The file these bytes are held as: the one the researcher picked while the
+   * resource is staged, and the name the asset manifest records once it is
+   * committed. A host derives the committed one from the content, so two
+   * imports of different bytes under one filename stay two assets.
+   */
   source: z.string().optional(),
   byteLength: z.number().int().nonnegative().optional(),
   contentType: z.string().optional(),
 });
+
+export type ResourceDescriptor = z.output<typeof ResourceDescriptorSchema>;
 
 export const ResourceFailureReasonSchema = z.enum([
   'invalid-content',
@@ -207,21 +215,56 @@ export function resourceResult<TData extends z.ZodType>(data: TData) {
 }
 
 /**
+ * One edit: a stage editor or a codebook dialog, from the moment it opens to
+ * its submit or its cancel.
+ *
+ * Staging belongs to the edit rather than to the connection, because a session
+ * can have two open at once — a codebook dialog over a stage editor, or two
+ * tabs — and one edit's cancel must not take away the file the other is about
+ * to submit, nor its submit promote a file the other imported. An edit also
+ * outlives a dropped socket, which a session identity does not.
+ */
+const EditIdSchema = z.string().min(1);
+
+/**
+ * An idempotency key: stable across an uncertain retry, so a host makes the
+ * write once and tells a client whose answer was lost what that attempt wrote.
+ *
+ * Bounded because a host files the key: Studio's `protocol_write_receipts`
+ * holds it in a column checked `BETWEEN 1 AND 512`, so a longer one would
+ * reach the database and come back as a server fault rather than as the bad
+ * request it is. The bound belongs here, where every host inherits it, rather
+ * than in the one host that happens to have a column.
+ */
+const RequestIdSchema = z.string().min(1).max(512);
+
+/**
  * The staged resources a submit commits along with the section naming them.
  *
  * The bytes and the manifest entries for them are written in the section's own
  * revision: a refused submit promotes nothing, and a written section never
- * names a resource whose promotion failed.
+ * names a resource whose promotion failed. The promotion carries no key of its
+ * own: it is part of the write, and the write's `requestId` is what a retry
+ * repeats.
+ *
+ * A promotion names at least one resource. A save with nothing staged omits
+ * `promote` — which is what the editors' own resource lifecycle already does —
+ * because an empty one is not a promotion that commits nothing: it makes the
+ * write touch the asset manifest, so a collaborator holding that section is
+ * enough to refuse an ordinary save, and a save that is not refused publishes
+ * a manifest revision with nothing in it changed. Refused here rather than
+ * ignored by each host, so no host can be the one that forgets.
  */
 export const ResourcePromotionRequestSchema = z.object({
-  /** Stable across an uncertain retry, so a host promotes the intent once. */
-  promotionId: z.string().min(1),
-  resourceIds: z.array(z.string().min(1)),
+  /** The edit these resources were staged for; only its own can be promoted. */
+  editId: EditIdSchema,
+  resourceIds: z.array(z.string().min(1)).min(1),
   secretHandles: z.array(z.string().min(1)).optional(),
 });
 
 export const SubmitInputSchema = z.object({
   protocolId: ProtocolIdSchema,
+  requestId: RequestIdSchema,
   sectionId: SectionIdSchema,
   document: SectionDocumentSchema,
   /**
@@ -249,15 +292,24 @@ export const CreatableSectionKindSchema = z.enum([
 
 export const CreateInputSchema = z.object({
   protocolId: ProtocolIdSchema,
+  requestId: RequestIdSchema,
   kind: CreatableSectionKindSchema,
   document: SectionDocumentSchema,
   /** Where a created stage lands in the stage order; appended when absent. */
   position: z.number().int().nonnegative().optional(),
+  /**
+   * The staged resources the created section names, on the same terms as a
+   * submit's: a stage being ADDED can carry an imported file, and there is no
+   * revision of it to submit them with afterwards.
+   */
+  promote: ResourcePromotionRequestSchema.optional(),
 });
 
 export const CreateResultSchema = z.object({
   sectionId: SectionIdSchema,
   revision: RevisionSchema,
+  /** What `promote` committed; absent when the create promoted nothing. */
+  promoted: z.array(ResourceDescriptorSchema).optional(),
 });
 
 export const CodebookSubjectSchema = z.discriminatedUnion('entity', [
@@ -303,6 +355,8 @@ export const SectionChangeResultSchema = z.object({
 
 export const ResourceListInputSchema = z.object({
   protocolId: ProtocolIdSchema,
+  /** Absent lists only what the protocol has committed. */
+  editId: EditIdSchema.optional(),
   kinds: z.array(ResourceKindSchema).optional(),
   status: ResourceStatusSchema.optional(),
 });
@@ -319,8 +373,9 @@ export const ResourceListSchema = z.object({
 
 export const StageResourceInputSchema = z.object({
   protocolId: ProtocolIdSchema,
-  /** Stable across an uncertain retry, so a host stages the intent once. */
-  requestId: z.string().min(1),
+  /** The edit importing the file, which is what holds it until it is used. */
+  editId: EditIdSchema,
+  requestId: RequestIdSchema,
   request: z.discriminatedUnion('kind', [
     z.object({
       kind: z.literal('content'),
@@ -360,7 +415,8 @@ export const StagedResourceSchema = z.object({
 
 export const ResourceDiscardInputSchema = z.object({
   protocolId: ProtocolIdSchema,
-  /** Absent discards every resource staged in this edit. */
+  editId: EditIdSchema,
+  /** Absent discards every resource staged in this edit, and only in it. */
   resourceId: z.string().min(1).optional(),
 });
 
@@ -381,6 +437,8 @@ export const ResourceDiscardResultSchema = z.discriminatedUnion('status', [
 
 export const ResourceScopedInputSchema = z.object({
   protocolId: ProtocolIdSchema,
+  /** Absent reaches only what the protocol has committed. */
+  editId: EditIdSchema.optional(),
   resourceId: z.string().min(1),
 });
 
