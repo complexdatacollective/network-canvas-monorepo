@@ -85,6 +85,36 @@ describe('the sections of an anonymisation stage', () => {
   });
 
   /**
+   * A rule switched on and left empty is kept as `null` rather than quietly
+   * dropped, so the researcher can go back and finish it — which means
+   * something has to refuse the SAVE while it is there. The rule editor states
+   * the problem at the control for itself; this section passes the same
+   * verdict through as the field's own validation, which is what marks the
+   * control invalid, blocks the submit and lets the outline name the section
+   * to go back to. Without the passthrough the stage saves, and the protocol
+   * schema rejects it afterwards against a path.
+   */
+  it('refuses a passphrase rule that was switched on and left empty', async () => {
+    const harness = openEditor();
+
+    await harness.user.clear(
+      await screen.findByRole('spinbutton', { name: 'Minimum length' }),
+    );
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      harness.outline().find((section) => section.title === 'Passphrase rules'),
+    ).toEqual({ title: 'Passphrase rules', state: 'Has a problem' });
+    // Twice on screen: the rule editor's own alert at the control, and the
+    // field's error region, which is the one this section writes.
+    expect(
+      await screen.findAllByText(
+        'Enter a value for "Minimum length", or switch the rule off.',
+      ),
+    ).toHaveLength(2);
+  });
+
+  /**
    * Absence is how the schema spells "no rules", so switching the capability
    * off has to remove the key rather than store an empty object.
    */
