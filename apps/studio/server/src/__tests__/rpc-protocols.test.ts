@@ -179,11 +179,10 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
     });
     expect(opened.protocol.id).toBe(granted.protocolId);
 
-    // Four ways to be unable to reach a line, one answer: a line behind a
+    // Three ways to be unable to reach a line, one answer: a line behind a
     // study this Member holds no grant on, a line no study references at all,
-    // a line that does not exist, and a lease on one of them. Distinguishing
-    // them would make the protocol surface the existence oracle `studies.get`
-    // refuses to be.
+    // and a line that does not exist. Distinguishing them would make the
+    // protocol surface the existence oracle `studies.get` refuses to be.
     const refusals = await Promise.all([
       safe(
         asClient(MEMBER).protocols.draft({
@@ -206,18 +205,31 @@ describe.skipIf(!db)('the protocol RPC surface', () => {
           draftId: randomUUID(),
         }),
       ),
-      safe(
-        asClient(MEMBER).protocols.acquireSection({
-          teamId: TEAM_ID,
-          protocolId: ungranted.protocolId,
-          draftId: ungranted.draftId,
-          sectionId: 'settings',
-          clientId: randomUUID(),
-        }),
-      ),
     ]);
     for (const { error } of refusals) {
       expect(error).toMatchObject({ code: 'FORBIDDEN' });
+    }
+
+    // The same rule on the editing surface. The protocol-builder host takes no
+    // teamId — it derives the tenant from the caller's own memberships — so it
+    // answers in its own words, and the words have to be the same for a line
+    // this Member holds no grant on as for a protocol id nobody ever made.
+    const locks = await Promise.all([
+      safe(
+        asClient(MEMBER).protocolBuilder.acquireLock({
+          protocolId: ungranted.protocolId,
+          sectionId: 'settings',
+        }),
+      ),
+      safe(
+        asClient(MEMBER).protocolBuilder.acquireLock({
+          protocolId: randomUUID(),
+          sectionId: 'settings',
+        }),
+      ),
+    ]);
+    for (const { error } of locks) {
+      expect(error).toMatchObject({ code: 'PROTOCOL_NOT_FOUND' });
     }
   });
 

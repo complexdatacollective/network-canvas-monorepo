@@ -10,8 +10,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { contract } from '../../contract/contract.ts';
+import type { ResourceDescriptor } from '../../contract/schemas.ts';
+import { OperationLedger } from './operationLedger.ts';
 import { InMemoryProtocolStore, type HostPrincipal } from './protocolStore.ts';
-import { InMemoryResourceStore } from './resourceStore.ts';
+import { InMemoryResourceStore, type EditScope } from './resourceStore.ts';
 
 export type InMemoryHostContext = Readonly<{ principal: HostPrincipal }>;
 
@@ -59,7 +61,12 @@ export function createInMemoryHost(seed: InMemoryHostSeed): InMemoryHost {
   const nextId = seed.nextId ?? uuid;
   const store = new InMemoryProtocolStore(seed.sections, nextId);
   const resources = new InMemoryResourceStore(nextId, seed.assetContent ?? {});
-  const router = buildRouter(protocolId, store, resources);
+  const router = buildRouter(
+    protocolId,
+    store,
+    resources,
+    new OperationLedger(),
+  );
   const clientFor = (principal: HostPrincipal): InMemoryClient =>
     createRouterClient(router, { context: { principal } });
   return {
@@ -75,6 +82,7 @@ function buildRouter(
   protocolId: string,
   store: InMemoryProtocolStore,
   resources: InMemoryResourceStore,
+  ledger: OperationLedger,
 ) {
   const assets = (): SectionDoc => store.read(ASSETS).document;
   // Resources are scoped by protocol like everything else here: this host's
@@ -82,6 +90,12 @@ function buildRouter(
   // naming another one is asking a host that does not exist.
   const elsewhere = (input: Readonly<{ protocolId: string }>): boolean =>
     input.protocolId !== protocolId;
+  // Staging belongs to an edit in a session: the edit says which of a
+  // researcher's open editors imported the file, the session says whose.
+  const scopeOf = (
+    context: InMemoryHostContext,
+    editId: string,
+  ): EditScope => ({ sessionId: context.principal.sessionId, editId });
 
   return {
     acquireLock: os.acquireLock.handler(({ input, context, errors }) => {
@@ -128,7 +142,11 @@ function buildRouter(
       if (input.protocolId !== protocolId) {
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
       }
-      const since = input.since ?? lastEventId;
+      // `lastEventId` is where this connection actually got to; `since` is
+      // where it asked to start. A transport resuming a dropped socket
+      // re-invokes with the same input, so starting from the input would hand
+      // the client everything it had already been given.
+      const since = laterCursor(input.since, lastEventId);
       for await (const entry of store.watch(context.principal, since, signal)) {
         yield withEventMeta(entry.event, { id: entry.cursor });
       }
@@ -141,18 +159,31 @@ function buildRouter(
       if (!store.has(input.sectionId)) {
         throw errors.SECTION_NOT_FOUND({ data: input });
       }
+      const key = {
+        sessionId: context.principal.sessionId,
+        operation: 'submit',
+        requestId: input.requestId,
+      } as const;
+      // This request id's attempt is already committed, so this call is the
+      // retry of an answer that was lost: it is told what that attempt wrote.
+      const already = ledger.completed(key);
+      if (already !== undefined) {
+        return {
+          revision: already.revision,
+          ...(already.promoted === undefined
+            ? {}
+            : { promoted: [...already.promoted] }),
+        };
+      }
       // The manifest is worked out before anything is written and committed
       // in the section's own revision, so a refused submit leaves the staged
       // resources staged and the protocol as it was.
       const promotion = input.promote;
-      const already =
-        promotion === undefined
-          ? undefined
-          : resources.completedPromotion(promotion.promotionId);
       let entries: Record<string, unknown> | undefined;
-      let promoted = already;
-      if (promotion !== undefined && already === undefined) {
+      let promoted: ResourceDescriptor[] | undefined;
+      if (promotion !== undefined) {
         const manifest = resources.manifestFor(
+          scopeOf(context, promotion.editId),
           promotion.resourceIds,
           promotion.secretHandles,
         );
@@ -181,40 +212,103 @@ function buildRouter(
           },
         });
       }
+      if (outcome.status === 'blocked') {
+        throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
+      }
       if (outcome.status === 'invalidShape') {
         throw errors.INVALID_SHAPE({
           data: { sectionId: input.sectionId, issues: outcome.issues },
         });
       }
-      if (promotion !== undefined && entries !== undefined) {
-        resources.completePromotion(
-          promotion.promotionId,
-          promoted ?? [],
-          promotion.resourceIds,
-        );
+      if (promotion !== undefined) {
+        resources.commitPromotion(promoted ?? [], promotion.resourceIds);
       }
+      ledger.record(key, {
+        revision: outcome.revision,
+        ...(promoted === undefined ? {} : { promoted }),
+      });
       return {
         revision: outcome.revision,
         ...(promoted === undefined ? {} : { promoted }),
       };
     }),
 
-    create: os.create.handler(({ input, errors }) => {
+    create: os.create.handler(({ input, context, errors }) => {
       if (input.protocolId !== protocolId) {
         throw errors.PROTOCOL_NOT_FOUND({ data: input });
       }
-      const outcome = store.create(input.kind, input.document, input.position);
+      const key = {
+        sessionId: context.principal.sessionId,
+        operation: 'create',
+        requestId: input.requestId,
+      } as const;
+      // This request id's attempt is already committed, so this call is the
+      // retry of an answer that was lost: it is told what that attempt made.
+      // The section is named from the record rather than minted again, because
+      // a second create would put a second copy of the stage in the protocol
+      // and the retry would never learn about the first.
+      const already = ledger.completed(key);
+      if (already?.createdSection !== undefined) {
+        return {
+          sectionId: already.createdSection,
+          revision: already.revision,
+          ...(already.promoted === undefined
+            ? {}
+            : { promoted: [...already.promoted] }),
+        };
+      }
+      // The manifest is worked out before anything is written, so a promotion
+      // that cannot be committed leaves the protocol without the section and
+      // the staged resources staged.
+      const promotion = input.promote;
+      let entries: Record<string, unknown> | undefined;
+      let promoted: ResourceDescriptor[] | undefined;
+      if (promotion !== undefined) {
+        const manifest = resources.manifestFor(
+          scopeOf(context, promotion.editId),
+          promotion.resourceIds,
+          promotion.secretHandles,
+        );
+        if (manifest.status === 'failed') {
+          throw errors.PROMOTION_FAILED({
+            data: { failure: manifest.failure },
+          });
+        }
+        entries = manifest.data.entries;
+        promoted = manifest.data.promoted;
+      }
+      const outcome = store.create(
+        input.kind,
+        input.document,
+        input.position,
+        entries,
+      );
       if (outcome.status === 'exists') {
         throw errors.SECTION_EXISTS({
           data: { sectionId: outcome.sectionId },
         });
+      }
+      if (outcome.status === 'blocked') {
+        throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
       }
       if (outcome.status === 'invalidShape') {
         throw errors.INVALID_SHAPE({
           data: { sectionId: outcome.sectionId, issues: outcome.issues },
         });
       }
-      return outcome;
+      if (promotion !== undefined) {
+        resources.commitPromotion(promoted ?? [], promotion.resourceIds);
+      }
+      ledger.record(key, {
+        revision: outcome.revision,
+        createdSection: outcome.sectionId,
+        ...(promoted === undefined ? {} : { promoted }),
+      });
+      return {
+        sectionId: outcome.sectionId,
+        revision: outcome.revision,
+        ...(promoted === undefined ? {} : { promoted }),
+      };
     }),
 
     delete: os.delete.handler(({ input, context, errors }) => {
@@ -232,8 +326,15 @@ function buildRouter(
       if (outcome.status === 'blocked') {
         throw errors.SECTIONS_LOCKED({ data: { blocked: outcome.blocked } });
       }
+      if (outcome.status === 'notFound') {
+        throw errors.SECTION_NOT_FOUND({
+          data: { sectionId: outcome.sectionId },
+        });
+      }
       if (outcome.status === 'referenced') {
-        throw new Error('deleting a stage cannot leave references behind');
+        throw errors.REFERENCES_REMAIN({
+          data: { remaining: outcome.remaining },
+        });
       }
       return outcome;
     }),
@@ -252,6 +353,11 @@ function buildRouter(
           if (outcome.status === 'blocked') {
             throw errors.SECTIONS_LOCKED({
               data: { blocked: outcome.blocked },
+            });
+          }
+          if (outcome.status === 'notFound') {
+            throw errors.SECTION_NOT_FOUND({
+              data: { sectionId: outcome.sectionId },
             });
           }
           if (outcome.status === 'referenced') {
@@ -277,6 +383,11 @@ function buildRouter(
               data: { blocked: outcome.blocked },
             });
           }
+          if (outcome.status === 'notFound') {
+            throw errors.SECTION_NOT_FOUND({
+              data: { sectionId: outcome.sectionId },
+            });
+          }
           if (outcome.status === 'referenced') {
             throw errors.REFERENCES_REMAIN({
               data: { remaining: outcome.remaining },
@@ -288,11 +399,16 @@ function buildRouter(
     },
 
     resources: {
-      list: os.resources.list.handler(({ input, errors }) => {
+      list: os.resources.list.handler(({ input, context, errors }) => {
         if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
+        // Committed resources are the protocol's; staged ones are this edit's,
+        // and another editor's imports are no more part of this protocol than
+        // the draft that will name them.
         const all = [
           ...resources.committedDescriptors(assets()),
-          ...resources.stagedDescriptors(),
+          ...(input.editId === undefined
+            ? []
+            : resources.stagedDescriptors(scopeOf(context, input.editId))),
         ].filter(
           (descriptor) =>
             (input.kinds === undefined ||
@@ -305,25 +421,57 @@ function buildRouter(
         };
       }),
 
-      stage: os.resources.stage.handler(({ input, errors }) => {
+      stage: os.resources.stage.handler(({ input, context, errors }) => {
         if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.stage(input.requestId, input.request);
+        return resources.stage(
+          scopeOf(context, input.editId),
+          input.requestId,
+          input.request,
+        );
       }),
 
-      discard: os.resources.discard.handler(({ input, errors }) => {
+      discard: os.resources.discard.handler(({ input, context, errors }) => {
         if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.discard(input.resourceId);
+        return resources.discard(
+          scopeOf(context, input.editId),
+          input.resourceId,
+        );
       }),
 
-      inspect: os.resources.inspect.handler(({ input, errors }) => {
+      inspect: os.resources.inspect.handler(({ input, context, errors }) => {
         if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.inspect(assets(), input.resourceId);
+        return resources.inspect(
+          assets(),
+          input.resourceId,
+          input.editId === undefined
+            ? undefined
+            : scopeOf(context, input.editId),
+        );
       }),
 
-      preview: os.resources.preview.handler(({ input, errors }) => {
+      preview: os.resources.preview.handler(({ input, context, errors }) => {
         if (elsewhere(input)) throw errors.PROTOCOL_NOT_FOUND({ data: input });
-        return resources.preview(assets(), input.resourceId);
+        return resources.preview(
+          assets(),
+          input.resourceId,
+          input.editId === undefined
+            ? undefined
+            : scopeOf(context, input.editId),
+        );
       }),
     },
   };
+}
+
+/**
+ * The later of two cursors, either of which may be absent. This host's cursors
+ * are its own event counter, which is what makes them comparable.
+ */
+function laterCursor(
+  since: string | undefined,
+  lastEventId: string | undefined,
+): string | undefined {
+  if (since === undefined) return lastEventId;
+  if (lastEventId === undefined) return since;
+  return Number(lastEventId) > Number(since) ? lastEventId : since;
 }
