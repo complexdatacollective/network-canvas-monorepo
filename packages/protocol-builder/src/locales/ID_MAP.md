@@ -283,11 +283,10 @@ wherever one reaches the screen.
 
 Named here so a later split takes the name rather than inventing a synonym.
 
-| `<area>`               | Will own the copy in                   | Expected in |
-| ---------------------- | -------------------------------------- | ----------- |
-| `nodePanels`           | `sections/NodePanelsSection`           | family D    |
-| `alterLimits`          | `sections/AlterLimitsSection`          | family D    |
-| `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection` | family D    |
+Empty, and the table is gone with it: every name that was reserved has been
+converted, and each one now has a row in the converted table above saying which
+file owns it. A conversion that needs a name not listed there brings this table
+back with that name in it, in the same pull request.
 
 ### One file per family — the interface families
 
