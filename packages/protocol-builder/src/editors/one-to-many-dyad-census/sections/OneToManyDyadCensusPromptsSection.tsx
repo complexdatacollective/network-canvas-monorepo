@@ -242,10 +242,11 @@ function OneToManyDyadCensusPromptEditor({ item }: RowEditorProps) {
 /**
  * The questions a One-to-Many Dyad Census asks about one person and the group.
  *
- * A prompt that orders nobody in particular carries no sort keys at all: the
- * optional groups clear their own fields when the researcher closes them, and
- * what is left holding nothing is dropped here rather than saved as an empty
- * list saying what its absence already says.
+ * A prompt that orders nobody in particular carries no sort keys at all, and
+ * this section does nothing to arrange that: closing an optional group clears
+ * the fields inside it, and `OptionalList` answers `undefined` rather than an
+ * empty array for a list the researcher emptied — so both routes already leave
+ * the prompt in the state the schema recognises.
  */
 export default function OneToManyDyadCensusPromptsSection() {
   const codebook = useProtocolContext().codebook;
@@ -268,30 +269,8 @@ export default function OneToManyDyadCensusPromptsSection() {
       PromptEditor={OneToManyDyadCensusPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
-      collapseRow={collapseEmptySortOrders}
       description={messages.description}
       fieldHint={messages.fieldHint}
     />
   );
 }
-
-/**
- * Drops a sort order the researcher emptied rather than saving `[]`.
- *
- * The shared absent-value rule deliberately keeps empty arrays — it cannot
- * tell "emptied on purpose" from "never used" — so this is the field's own to
- * decide, and for a sort order the answer is that no rules and no key mean the
- * same thing: the people are handed over in the order they were added.
- *
- * Runs as `PromptsSection`'s `collapseRow`, which applies the shared rule AFTER
- * this returns, so this reads the raw row.
- */
-const collapseEmptySortOrders = (row: unknown): unknown => {
-  if (typeof row !== 'object' || row === null) return row;
-  const collapsed: Record<string, unknown> = { ...(row as RowValues) };
-  for (const key of ['bucketSortOrder', 'binSortOrder']) {
-    const rules = collapsed[key];
-    if (Array.isArray(rules) && rules.length === 0) delete collapsed[key];
-  }
-  return collapsed;
-};

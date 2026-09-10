@@ -193,3 +193,36 @@ describe('the questions a one-to-many dyad census asks', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
+
+/**
+ * A prompt saved over a connection type the codebook no longer defines.
+ *
+ * The picker keeps a deleted type on offer so the reference the researcher has
+ * to repair is visible rather than blanked and written back, which means the
+ * only thing that can refuse it is a save. Without this section's own gate the
+ * dialog closes and the refusal arrives at the whole-stage save instead, in
+ * the schema's words about a codebook the researcher is no longer looking at.
+ */
+describe('a one-to-many prompt whose connection type is no longer in the codebook', () => {
+  it('refuses the save, and says so on the control', async () => {
+    const harness = renderStageEditor(openSection());
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('radio', { name: 'knows' });
+
+    harness.receiveCodebookUpdate({ edge: { knows: null } });
+    await screen.findByText(
+      'This type is no longer in the codebook. Choose another one.',
+    );
+
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(
+        'The connection type this prompt records is no longer in the codebook. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});
