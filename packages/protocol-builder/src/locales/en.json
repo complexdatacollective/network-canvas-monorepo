@@ -203,6 +203,62 @@
     "defaultMessage": "Change this attribute’s values",
     "description": "Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens."
   },
+  "protocolBuilder.cardDisplay.addLabel": {
+    "defaultMessage": "Add new card detail",
+    "description": "Button that adds one more attribute to what a roster card shows. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.cardDisplay.attributeColumn": {
+    "defaultMessage": "Attribute",
+    "description": "Heading of the column of the card-details list holding which attribute of the data file a row shows."
+  },
+  "protocolBuilder.cardDisplay.clearConfirm": {
+    "defaultMessage": "Clear card details",
+    "description": "Action that confirms switching the roster card details off and discarding them."
+  },
+  "protocolBuilder.cardDisplay.clearDescription": {
+    "defaultMessage": "This will remove every extra attribute your roster cards show, along with the labels you gave them. Do you want to continue?",
+    "description": "Body of the dialog confirming that switching off the card details discards the chosen attributes and their labels. A roster is a list of people imported from a data file; an attribute is one field the protocol records about a person."
+  },
+  "protocolBuilder.cardDisplay.clearTitle": {
+    "defaultMessage": "This will clear the card details",
+    "description": "Title of the dialog asking a researcher to confirm switching off the section that chooses what the cards in a roster show about each person."
+  },
+  "protocolBuilder.cardDisplay.description": {
+    "defaultMessage": "Show extra attributes on each roster card, so the participant can tell two similar people apart.",
+    "description": "Description of the card-details section. An attribute is one field the data file records about a person."
+  },
+  "protocolBuilder.cardDisplay.emptyState": {
+    "defaultMessage": "No extra attributes are shown on a card.",
+    "description": "Shown in place of the list while a roster card shows nothing but the person’s name."
+  },
+  "protocolBuilder.cardDisplay.fieldHint": {
+    "defaultMessage": "Each attribute appears beneath the name, under the label you give it here.",
+    "description": "Guidance under the list of extra attributes shown on a roster card."
+  },
+  "protocolBuilder.cardDisplay.fieldLabel": {
+    "defaultMessage": "Attributes shown on a card",
+    "description": "Label of the list of extra attributes each roster card shows beneath the person’s name."
+  },
+  "protocolBuilder.cardDisplay.labelColumn": {
+    "defaultMessage": "Label",
+    "description": "Heading of the column of the card-details list holding the words the participant reads beside the attribute’s value on a card."
+  },
+  "protocolBuilder.cardDisplay.labelPlaceholder": {
+    "defaultMessage": "Age",
+    "description": "Example label shown in an empty label cell of the card-details list. An example rather than an instruction, so a translation should be an equally ordinary thing a study records about a person."
+  },
+  "protocolBuilder.cardDisplay.title": {
+    "defaultMessage": "Card details",
+    "description": "Heading of the section choosing what each card in a roster shows about a person besides their name. A roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.cardDisplay.titledByName": {
+    "defaultMessage": "Every card is titled with the person’s <strong>name</strong> from the data file. These attributes appear beneath it.",
+    "description": "Notice above the list saying which column titles a card, so a researcher does not add the name a second time. The strong tag emphasises the word for the column the interview reads as a person’s name; move the tag with the word it marks."
+  },
+  "protocolBuilder.cardDisplay.waitingDescription": {
+    "defaultMessage": "Choose a roster data file before deciding what its cards show.",
+    "description": "Shown in place of the card-details section’s description while no data file has been chosen, so there are no columns for a card to show."
+  },
   "protocolBuilder.censusPrompts.affirmativeRequired": {
     "defaultMessage": "Choose the type of connection an affirmative answer creates.",
     "description": "Refusal shown when a researcher saves a census prompt without saying what a yes from the participant records."
@@ -1347,6 +1403,46 @@
     "defaultMessage": "Node type",
     "description": "Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place."
   },
+  "protocolBuilder.externalDataSource.columnsDescription": {
+    "defaultMessage": "The people in it carry these attributes: {names}.",
+    "description": "Body of the notice listing the attributes the chosen data file’s people carry. names is the column headings read out of the file, already joined into a list in the reader’s own language; they are the researcher’s own words and are never translated."
+  },
+  "protocolBuilder.externalDataSource.columnsTitle": {
+    "defaultMessage": "What this data file holds",
+    "description": "Heading of the notice listing the attributes the chosen data file’s people carry."
+  },
+  "protocolBuilder.externalDataSource.description": {
+    "defaultMessage": "Choose the data file listing the people this stage offers the participant.",
+    "description": "Description of the roster-source section. A stage is one step of an interview."
+  },
+  "protocolBuilder.externalDataSource.fieldHint": {
+    "defaultMessage": "A CSV or JSON file of people. Everything else on this stage is chosen from its columns.",
+    "description": "Guidance under the roster data-file control. CSV and JSON are file formats and are not translated. A stage is one step of an interview."
+  },
+  "protocolBuilder.externalDataSource.fieldLabel": {
+    "defaultMessage": "Roster data file",
+    "description": "Label of the control choosing which imported data file the roster lists people from."
+  },
+  "protocolBuilder.externalDataSource.fieldRequired": {
+    "defaultMessage": "Choose the data file this roster lists people from.",
+    "description": "Refusal shown when a researcher saves a roster stage without choosing a data file, which leaves the stage with nobody to offer."
+  },
+  "protocolBuilder.externalDataSource.noColumnsDescription": {
+    "defaultMessage": "The people in it carry no attributes, so there is nothing to show on a card, sort by, or search. Check that the file is formatted as Network Canvas expects.",
+    "description": "Warning body shown when the chosen data file’s people carry no attributes, naming the three things the rest of the stage would have chosen from them. Network Canvas is the product name and is not translated."
+  },
+  "protocolBuilder.externalDataSource.noColumnsTitle": {
+    "defaultMessage": "This data file has no attributes",
+    "description": "Warning heading shown when the chosen data file was read and its people carry no attributes at all. An attribute is one field the file records about a person."
+  },
+  "protocolBuilder.externalDataSource.title": {
+    "defaultMessage": "Roster source",
+    "description": "Heading of the section choosing the data file a roster stage lists people from. A roster is a list of people imported from a data file rather than named by the participant."
+  },
+  "protocolBuilder.externalDataSource.unreadableTitle": {
+    "defaultMessage": "This data file could not be read",
+    "description": "Warning heading shown when the chosen data file could not be opened. The reason underneath comes from the application hosting this editor."
+  },
   "protocolBuilder.field.required": {
     "defaultMessage": "This field is required.",
     "description": "Shown under any unanswered required control in a stage editor when the researcher tries to save the stage. Addresses the researcher authoring the protocol, not a participant answering it."
@@ -1603,6 +1699,326 @@
     "defaultMessage": "Choose what this stage works with before writing its form.",
     "description": "Shown in place of the form-fields section’s description while the researcher has not yet chosen which node or edge type the stage is about."
   },
+  "protocolBuilder.geospatial.accessDescription": {
+    "defaultMessage": "This stage draws a Mapbox map, which needs an API key from your Mapbox account.",
+    "description": "Description of the map-access section. Mapbox is the third-party map provider, and the researcher holds their own account with it."
+  },
+  "protocolBuilder.geospatial.accessTitle": {
+    "defaultMessage": "Map access",
+    "description": "Heading of the section where a researcher chooses the stored Mapbox API key a geospatial stage draws its map with. \"Access\" is about being allowed to draw a map at all, not about accessibility."
+  },
+  "protocolBuilder.geospatial.appearanceDescription": {
+    "defaultMessage": "Choose how the map looks to the participant.",
+    "description": "Description of the map-appearance section."
+  },
+  "protocolBuilder.geospatial.appearanceTitle": {
+    "defaultMessage": "Map appearance",
+    "description": "Heading of the section holding how the map looks: which basemap is drawn, what colour selectable areas are, and what else is shown on it."
+  },
+  "protocolBuilder.geospatial.centerHint": {
+    "defaultMessage": "Enter the coordinates, or set them by panning a map. Longitude runs from -180 to 180, latitude from -90 to 90.",
+    "description": "Guidance under the starting-centre controls. The ranges are degrees and are the same in every language."
+  },
+  "protocolBuilder.geospatial.centerIncomplete": {
+    "defaultMessage": "Enter both a longitude and a latitude for the starting view.",
+    "description": "Refusal shown under the starting-centre controls when only one of the two coordinates reads as a number. A centre is one value, so half of it is not a centre."
+  },
+  "protocolBuilder.geospatial.centerLabel": {
+    "defaultMessage": "Starting center",
+    "description": "Label of the pair of controls holding the longitude and latitude the map is centred on when the stage opens."
+  },
+  "protocolBuilder.geospatial.colorHint": {
+    "defaultMessage": "Selectable areas are outlined in this color, and the area a participant chooses is filled with it.",
+    "description": "Guidance under the highlight-colour control."
+  },
+  "protocolBuilder.geospatial.colorLabel": {
+    "defaultMessage": "Highlight color",
+    "description": "Label of the control that chooses the colour selectable areas are outlined and filled with."
+  },
+  "protocolBuilder.geospatial.colorOptionLabel": {
+    "defaultMessage": "Highlight color {position}",
+    "description": "Name of one swatch in the highlight-colour control. position is that colour’s place in the theme’s ordinal palette, counting from 1 — the protocol stores the position rather than a colour value, so the colours have no names of their own. Named rather than only shown because a colour has to be sayable by people who are not looking at the control."
+  },
+  "protocolBuilder.geospatial.createAttributeLabel": {
+    "defaultMessage": "Create a new location attribute",
+    "description": "Button inside the geospatial prompt dialog that adds an attribute holding a place to the codebook without leaving the stage, and the title of the dialog it opens. Whole rather than a generic \"Create\", because the dialog around it already has several buttons."
+  },
+  "protocolBuilder.geospatial.latitudeDecrease": {
+    "defaultMessage": "Decrease latitude",
+    "description": "Accessible name of the button that steps the latitude down by one."
+  },
+  "protocolBuilder.geospatial.latitudeIncrease": {
+    "defaultMessage": "Increase latitude",
+    "description": "Accessible name of the button that steps the latitude up by one."
+  },
+  "protocolBuilder.geospatial.latitudeLabel": {
+    "defaultMessage": "Latitude",
+    "description": "Label of the control holding the north-south half of the map’s starting centre."
+  },
+  "protocolBuilder.geospatial.latitudeOutOfRange": {
+    "defaultMessage": "Latitude must be between {min, number} and {max, number}.",
+    "description": "Refusal shown under the starting-centre controls when the latitude names no place on Earth. min and max are the ends of the latitude range in degrees, -90 and 90."
+  },
+  "protocolBuilder.geospatial.layerDescription": {
+    "defaultMessage": "The areas a participant can choose between come from a GeoJSON layer.",
+    "description": "Description of the map-layer section. GeoJSON is the file format the areas are drawn from and stays untranslated."
+  },
+  "protocolBuilder.geospatial.layerHint": {
+    "defaultMessage": "Each feature in the layer is one area a participant can select. Large layers, and areas outside the study region, make the map slow to open.",
+    "description": "Guidance under the map-layer control. A \"feature\" is GeoJSON’s own word for one shape in the file."
+  },
+  "protocolBuilder.geospatial.layerLabel": {
+    "defaultMessage": "Map layer",
+    "description": "Label of the control that chooses the stored GeoJSON layer. The same words as the section heading, and translated once for each: the heading names the part of the stage, and this names the control."
+  },
+  "protocolBuilder.geospatial.layerTitle": {
+    "defaultMessage": "Map layer",
+    "description": "Heading of the section where a researcher chooses the GeoJSON file whose areas a participant can select on the map."
+  },
+  "protocolBuilder.geospatial.longitudeDecrease": {
+    "defaultMessage": "Decrease longitude",
+    "description": "Accessible name of the button that steps the longitude down by one."
+  },
+  "protocolBuilder.geospatial.longitudeIncrease": {
+    "defaultMessage": "Increase longitude",
+    "description": "Accessible name of the button that steps the longitude up by one. Named for its own coordinate: a screen reader announces a button by its name alone, and three numbers describe one starting view, so a shared \"Increase value\" would be six buttons nobody could tell apart."
+  },
+  "protocolBuilder.geospatial.longitudeLabel": {
+    "defaultMessage": "Longitude",
+    "description": "Label of the control holding the east-west half of the map’s starting centre. Named rather than positioned, because longitude and latitude cannot be told apart by which box comes first."
+  },
+  "protocolBuilder.geospatial.longitudeOutOfRange": {
+    "defaultMessage": "Longitude must be between {min, number} and {max, number}.",
+    "description": "Refusal shown under the starting-centre controls when the longitude names no place on Earth. min and max are the ends of the longitude range in degrees, -180 and 180."
+  },
+  "protocolBuilder.geospatial.openPreviewLabel": {
+    "defaultMessage": "Set the starting view on a map",
+    "description": "Button that opens a real, pannable map for a researcher who knows the place but not its coordinates. The typed coordinate controls beside it stay the only way to set an exact centre."
+  },
+  "protocolBuilder.geospatial.previewAcceptLabel": {
+    "defaultMessage": "Use this view",
+    "description": "Button that takes the centre and zoom the researcher has panned the map to and stores them as the stage’s starting view. Offered only once the map is readable and has actually been moved."
+  },
+  "protocolBuilder.geospatial.previewInstructions": {
+    "defaultMessage": "Pan and zoom to the view participants should see when the map first opens.",
+    "description": "Guidance at the top of the dialog that sets a stage’s starting view by moving a real map. Panning is dragging the map to move it."
+  },
+  "protocolBuilder.geospatial.previewLoadFailure": {
+    "defaultMessage": "The map could not be drawn. Check that the API key is still valid, then try again.",
+    "description": "Shown in the starting-view dialog when Mapbox itself refused to draw the map — most often an API key that has been revoked or has run out of quota."
+  },
+  "protocolBuilder.geospatial.previewLoading": {
+    "defaultMessage": "Loading the map.",
+    "description": "Announced to screen readers only, while the host is asked for a map that can be drawn for the stored API key. Never shown on screen."
+  },
+  "protocolBuilder.geospatial.previewMapLabel": {
+    "defaultMessage": "Interactive map",
+    "description": "Accessible name of the region holding the pannable map inside the starting-view dialog, so it is reachable and identifiable without sight of it."
+  },
+  "protocolBuilder.geospatial.previewMissingKey": {
+    "defaultMessage": "Choose a Mapbox API key before setting the starting view on a map.",
+    "description": "Shown in the starting-view dialog when the stage has no API key yet, so no map can be drawn. The coordinates can still be typed in the section behind the dialog."
+  },
+  "protocolBuilder.geospatial.previewRetryLabel": {
+    "defaultMessage": "Try loading the map again",
+    "description": "Button that asks the host again for a map it could not serve. Whole rather than a generic \"Try again\", because a screen reader announces a button by its name alone."
+  },
+  "protocolBuilder.geospatial.previewUnavailable": {
+    "defaultMessage": "This host cannot draw a map here, because it never hands an API key back once it has been stored. Type the coordinates instead.",
+    "description": "Shown in the starting-view dialog when the host refuses to resolve a map for the stored key. Says why — the key is write-only to this editor — and what to do instead, which is the pair of coordinate boxes in the section behind the dialog."
+  },
+  "protocolBuilder.geospatial.promptPreviewEmpty": {
+    "defaultMessage": "This prompt has no question yet.",
+    "description": "Shown in place of one row of the geospatial prompt list while that prompt’s question has not been written."
+  },
+  "protocolBuilder.geospatial.promptTextHint": {
+    "defaultMessage": "The question the participant reads while the map is open.",
+    "description": "Guidance under the geospatial prompt-text field."
+  },
+  "protocolBuilder.geospatial.promptTextLabel": {
+    "defaultMessage": "Prompt text",
+    "description": "Label of the field holding the question a geospatial prompt asks. A prompt is one question a participant is asked; this is the wording they read."
+  },
+  "protocolBuilder.geospatial.promptTextRequired": {
+    "defaultMessage": "Write the question this prompt asks.",
+    "description": "Refusal shown under the prompt-text field when a researcher saves a geospatial prompt without writing its question."
+  },
+  "protocolBuilder.geospatial.promptVariableDuplicateRefusal": {
+    "defaultMessage": "Another prompt on this stage already records this attribute, and the later answer would replace the earlier one. Choose a different attribute, or edit the existing prompt instead.",
+    "description": "Refusal shown under the location-attribute control when two prompts of one geospatial stage would store the participant’s chosen area in the same attribute. A prompt is one question a participant is asked; a stage is one step of an interview."
+  },
+  "protocolBuilder.geospatial.promptVariableEmptyState": {
+    "defaultMessage": "No location attribute is free for this prompt. Create one to record where the participant chooses.",
+    "description": "Shown in place of the location-attribute control when there is nothing for this prompt to choose: the node or edge type the stage works with has no attribute that can hold a place, or every one it has is already recorded by another prompt on this stage. \"Type\" is the kind of network member the stage is about."
+  },
+  "protocolBuilder.geospatial.promptVariableHint": {
+    "defaultMessage": "The attribute the participant's chosen area is stored in.",
+    "description": "Guidance under the location-attribute control."
+  },
+  "protocolBuilder.geospatial.promptVariableLabel": {
+    "defaultMessage": "Location attribute",
+    "description": "Label of the control that chooses which codebook attribute this prompt records the participant’s chosen area in. A location attribute is one that holds a place; it is the only kind a map selection can be stored in."
+  },
+  "protocolBuilder.geospatial.promptVariableRequired": {
+    "defaultMessage": "Choose the attribute this prompt records.",
+    "description": "Refusal shown under the location-attribute control when a researcher saves a geospatial prompt without saying where its answer goes."
+  },
+  "protocolBuilder.geospatial.promptsDescription": {
+    "defaultMessage": "Write the questions this stage asks about places, and drag them into the order the participant answers them.",
+    "description": "Description of the prompts section on a geospatial stage, whose prompts ask about locations on a map. Replaces the generic prompts description."
+  },
+  "protocolBuilder.geospatial.promptsEmptyState": {
+    "defaultMessage": "No prompts yet. Create one to ask the participant where something is.",
+    "description": "Shown in place of the geospatial prompt list while the stage asks nothing yet."
+  },
+  "protocolBuilder.geospatial.promptsFieldHint": {
+    "defaultMessage": "Each prompt asks for one place and records it in one location attribute. Add at least one.",
+    "description": "Guidance under the geospatial prompt list. A location attribute is the codebook variable the chosen place is stored in."
+  },
+  "protocolBuilder.geospatial.promptsWaitingDescription": {
+    "defaultMessage": "Choose the type this stage works with before writing its prompts.",
+    "description": "Shown in place of the geospatial prompts description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
+  },
+  "protocolBuilder.geospatial.propertyHint": {
+    "defaultMessage": "The value of this property is what gets stored when a participant selects an area, so choose one that is filled in and unique for every feature — a census tract, a postcode, or a neighborhood name.",
+    "description": "Guidance under the recorded-property control. The three examples are kinds of area identifier; a language may replace them with identifiers its own readers would recognise."
+  },
+  "protocolBuilder.geospatial.propertyLabel": {
+    "defaultMessage": "Recorded property",
+    "description": "Label of the control that chooses which property of a selected area is stored as the participant’s answer. A property is one named field a GeoJSON feature carries."
+  },
+  "protocolBuilder.geospatial.propertyLayerReading": {
+    "defaultMessage": "The map layer is still being read, so this property cannot be checked against it yet. Save again in a moment.",
+    "description": "Refusal shown under the recorded-property control when a researcher saves while the chosen map layer is still being read. Nothing is wrong with what they chose: the check simply cannot be made until the layer arrives, and saying so is what stops a property the layer may not have from being saved unchecked."
+  },
+  "protocolBuilder.geospatial.propertyLoading": {
+    "defaultMessage": "Reading the map layer.",
+    "description": "Announced to screen readers only, while the chosen GeoJSON layer is being fetched and parsed to find out which properties it offers. Never shown on screen."
+  },
+  "protocolBuilder.geospatial.propertyMissingOptionLabel": {
+    "defaultMessage": "{property} — this property is not in the chosen layer",
+    "description": "Label of the choice left standing for a stage that records a property the current map layer does not have. property is the stored property name, which the researcher chose against an earlier layer. Rendered inside a plain dropdown option, which can carry no styling, so the explanation is part of the label."
+  },
+  "protocolBuilder.geospatial.propertyMissingRefusal": {
+    "defaultMessage": "This property is not in the chosen map layer. Choose one that is.",
+    "description": "Shown under the recorded-property control when the property the stage already records is not in the layer now chosen. The control looks answered and is not, so both the problem and the way out are named."
+  },
+  "protocolBuilder.geospatial.propertyNoLayer": {
+    "defaultMessage": "Choose a map layer first. Its features are where these properties come from.",
+    "description": "Shown in place of the recorded-property control while no GeoJSON layer has been chosen, so there are no properties to offer."
+  },
+  "protocolBuilder.geospatial.propertyNoProperties": {
+    "defaultMessage": "The features in this layer carry no properties, so there is nothing to record a selection as. Choose a layer whose features are labeled.",
+    "description": "Shown in place of the recorded-property control when the chosen GeoJSON layer was read but its features carry no named fields."
+  },
+  "protocolBuilder.geospatial.propertyRetryLabel": {
+    "defaultMessage": "Try reading the map layer again",
+    "description": "Button that re-reads a GeoJSON layer whose bytes could not be fetched. Whole rather than a generic \"Try again\", because a stage editor can show several failed things at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.geospatial.propertyUnreadable": {
+    "defaultMessage": "This layer could not be read as GeoJSON, so its properties cannot be listed.",
+    "description": "Shown in place of the recorded-property control when the chosen file’s bytes are not a GeoJSON document this can parse."
+  },
+  "protocolBuilder.geospatial.searchHint": {
+    "defaultMessage": "Let participants search for an address, a neighborhood, or a landmark instead of panning to it.",
+    "description": "Guidance under the map-search switch. Panning is dragging the map to move it."
+  },
+  "protocolBuilder.geospatial.searchLabel": {
+    "defaultMessage": "Allow searching the map",
+    "description": "Label of the switch that lets a participant search the map by place name instead of panning to somewhere."
+  },
+  "protocolBuilder.geospatial.styleDark": {
+    "defaultMessage": "Dark",
+    "description": "Name of one basemap: a dark, low-contrast map meant to sit under coloured overlays."
+  },
+  "protocolBuilder.geospatial.styleHint": {
+    "defaultMessage": "The map drawn beneath the selectable areas. Check that place names on it stay readable under the highlight color.",
+    "description": "Guidance under the basemap control. The highlight colour is the colour chosen just below it, which the selectable areas are drawn in."
+  },
+  "protocolBuilder.geospatial.styleLabel": {
+    "defaultMessage": "Basemap",
+    "description": "Label of the control that chooses which Mapbox map style is drawn beneath the selectable areas. A basemap is the background map itself — streets, terrain, satellite imagery."
+  },
+  "protocolBuilder.geospatial.styleLight": {
+    "defaultMessage": "Light",
+    "description": "Name of one basemap: a pale, low-contrast map meant to sit under coloured overlays."
+  },
+  "protocolBuilder.geospatial.styleNavigationDay": {
+    "defaultMessage": "Navigation day",
+    "description": "Name of one basemap: Mapbox’s driving-directions map in its daytime colours."
+  },
+  "protocolBuilder.geospatial.styleNavigationNight": {
+    "defaultMessage": "Navigation night",
+    "description": "Name of one basemap: Mapbox’s driving-directions map in its night-time colours."
+  },
+  "protocolBuilder.geospatial.styleOutdoors": {
+    "defaultMessage": "Outdoors",
+    "description": "Name of one basemap: terrain, contours and trails, for open country rather than streets."
+  },
+  "protocolBuilder.geospatial.styleSatellite": {
+    "defaultMessage": "Satellite",
+    "description": "Name of one basemap: satellite imagery on its own, with no labels."
+  },
+  "protocolBuilder.geospatial.styleSatelliteStreets": {
+    "defaultMessage": "Satellite streets",
+    "description": "Name of one basemap: satellite imagery with street and place names drawn over it."
+  },
+  "protocolBuilder.geospatial.styleStandard": {
+    "defaultMessage": "Standard",
+    "description": "Name of one basemap a geospatial stage can be drawn on: Mapbox’s general-purpose map. Mapbox publishes these style names in English only, so a language may either translate the name or keep the published one — the stored value is a style URL and never changes."
+  },
+  "protocolBuilder.geospatial.styleStandardSatellite": {
+    "defaultMessage": "Standard satellite",
+    "description": "Name of one basemap: the general-purpose map drawn over satellite imagery."
+  },
+  "protocolBuilder.geospatial.styleStreets": {
+    "defaultMessage": "Streets",
+    "description": "Name of one basemap: a detailed street map with road and place names."
+  },
+  "protocolBuilder.geospatial.tokenHint": {
+    "defaultMessage": "The key is stored with the protocol and is never shown again once it is saved.",
+    "description": "Guidance under the Mapbox API key control. The protocol is the interview document the researcher is building; the key travels inside it and this editor can never read the value back."
+  },
+  "protocolBuilder.geospatial.tokenLabel": {
+    "defaultMessage": "Mapbox API key",
+    "description": "Label of the control that chooses which stored API key this stage draws its map with. \"Mapbox\" is the provider’s name and stays untranslated."
+  },
+  "protocolBuilder.geospatial.transitHint": {
+    "defaultMessage": "Draw transit routes and stations on the map.",
+    "description": "Guidance under the public-transport switch."
+  },
+  "protocolBuilder.geospatial.transitLabel": {
+    "defaultMessage": "Show public transport",
+    "description": "Label of the switch that draws transit routes and stations on the participant’s map."
+  },
+  "protocolBuilder.geospatial.viewDescription": {
+    "defaultMessage": "Where the map is centered, and how far in it is zoomed, when the stage opens.",
+    "description": "Description of the starting-map-view section. A stage is one step of an interview."
+  },
+  "protocolBuilder.geospatial.viewTitle": {
+    "defaultMessage": "Starting map view",
+    "description": "Heading of the section holding where the map is centred and how far in it is zoomed when the stage opens — and the title of the dialog that sets those two things by panning a real map. The same thing named in both places, so it is translated once."
+  },
+  "protocolBuilder.geospatial.zoomDecrease": {
+    "defaultMessage": "Decrease zoom",
+    "description": "Accessible name of the button that steps the starting zoom down by one."
+  },
+  "protocolBuilder.geospatial.zoomHint": {
+    "defaultMessage": "{min, number} shows the whole world; {max, number} is street level.",
+    "description": "Guidance under the starting-zoom control. min and max are the two ends of Mapbox’s own zoom scale, 0 and 22, which the protocol schema also enforces."
+  },
+  "protocolBuilder.geospatial.zoomIncrease": {
+    "defaultMessage": "Increase zoom",
+    "description": "Accessible name of the button that steps the starting zoom up by one. Named for the number it moves, for the same reason as the two coordinate steppers beside it."
+  },
+  "protocolBuilder.geospatial.zoomLabel": {
+    "defaultMessage": "Starting zoom",
+    "description": "Label of the control holding how far in the map is zoomed when the stage opens."
+  },
+  "protocolBuilder.geospatial.zoomOutOfRange": {
+    "defaultMessage": "Starting zoom must be between {min, number} and {max, number}.",
+    "description": "Refusal shown under the starting-zoom control when it holds a zoom level Mapbox has no such thing as. min and max are the ends of Mapbox’s own zoom scale, 0 and 22. A zoom between two whole numbers is ordinary — a map panned into place hands back a fraction — so only the ends are named."
+  },
   "protocolBuilder.integerField.notAWholeNumber": {
     "defaultMessage": "This has to be a whole number of people.",
     "description": "Refusal shown against a box that counts people when the researcher has typed something that is not a whole number — a decimal on its way to being one, or a stray character. Every control this rule guards counts people, which is why the sentence names them rather than saying \"a whole number\"."
@@ -1803,6 +2219,290 @@
     "defaultMessage": "Write the question this prompt asks.",
     "description": "Refusal shown when a researcher saves a name-generator prompt with no question in it."
   },
+  "protocolBuilder.narrativePedigree.atRiskDescription": {
+    "defaultMessage": "Choose whether the pedigree also shows inferred risk alongside recorded status.",
+    "description": "Description of the at-risk statuses section. Inferred risk is worked out from the family structure; recorded status is what someone actually entered. A pedigree is a family tree."
+  },
+  "protocolBuilder.narrativePedigree.atRiskFieldHint": {
+    "defaultMessage": "Off by default. At-risk symbols are inferred rather than observed, and are intended for clinician-directed use.",
+    "description": "Guidance under the at-risk switch, saying in one line why it starts off. The prose below the switch says the same thing at length."
+  },
+  "protocolBuilder.narrativePedigree.atRiskFieldLabel": {
+    "defaultMessage": "Show possible (at-risk) statuses",
+    "description": "Label of the switch turning inferred risk on. The bracketed words name what these are called on the family tree itself."
+  },
+  "protocolBuilder.narrativePedigree.atRiskHowConstrained": {
+    "defaultMessage": "Two rules constrain how risk travels through a family. Only <em>biological</em> and <em>donor</em> relationships pass conditions on; social, adoptive, surrogate and partner links do not. And where a person’s biological sex is not known, sex-linked inheritance through that person is left uncertain rather than guessed.",
+    "description": "Says the two limits on inference. The named relationship kinds — biological, donor, social, adoptive, surrogate, partner — are the ones a Family Pedigree stage records, so they should read the same here as they do there."
+  },
+  "protocolBuilder.narrativePedigree.atRiskHowHeading": {
+    "defaultMessage": "How it is worked out",
+    "description": "Heading over the paragraphs explaining where an inferred at-risk status comes from."
+  },
+  "protocolBuilder.narrativePedigree.atRiskHowInferred": {
+    "defaultMessage": "At-risk statuses are not observed or diagnosed. They are inferred from the family structure together with each condition’s inheritance pattern — the child of a parent affected by a dominant condition and the child of two carriers of a recessive condition are both shown as <em>may develop</em> it, while a child with only one carrier parent is shown as <em>may carry</em> it.",
+    "description": "Says what an at-risk status is worked out from, with the examples the pedigree itself draws that way: a child of two carriers of a recessive condition inherits both copies in a quarter of cases, so it is drawn as \"may develop\" rather than as \"may carry\", which is what a child with one carrier parent is drawn as. The <em> tags mark the two phrases drawn from standard pedigree nomenclature; a carrier holds a condition without developing it."
+  },
+  "protocolBuilder.narrativePedigree.atRiskMeaning": {
+    "defaultMessage": "When this is on, the pedigree also shows a person who <em>may develop</em> a condition or <em>may carry</em> it. These are drawn as the usual status symbol with a question mark (“?”) added. A solid, filled symbol always means a clinically <em>affected</em> individual, so at-risk relatives always appear as unfilled symbols marked with a “?”.",
+    "description": "First paragraph of the prose explaining at-risk statuses to a researcher. The <em> tags mark the three phrases drawn from standard pedigree nomenclature; the quoted question mark is the symbol drawn on the family tree, so it stays a question mark whatever quotation marks the language uses around it."
+  },
+  "protocolBuilder.narrativePedigree.atRiskTitle": {
+    "defaultMessage": "At-risk statuses",
+    "description": "Heading of the section deciding whether the family tree also marks people who MIGHT develop or carry a condition, as well as those recorded as having it."
+  },
+  "protocolBuilder.narrativePedigree.atRiskWhyOff": {
+    "defaultMessage": "At-risk symbols are a strong visual signal that can be read as established fact rather than inferred risk. They are intended for <strong>clinician-directed use</strong>, where the result is interpreted in context. Standard pedigree nomenclature deliberately does not encode probabilistic risk, so leave this off unless a clinician is guiding interpretation.",
+    "description": "The argument for leaving inferred risk off. The <strong> tag marks the condition under which showing it is appropriate: a clinician deciding to, and reading the result. \"Standard pedigree nomenclature\" is the published convention for drawing family trees in clinical genetics."
+  },
+  "protocolBuilder.narrativePedigree.atRiskWhyOffHeading": {
+    "defaultMessage": "Why this is off by default",
+    "description": "Heading over the paragraph explaining why inferred risk is not shown unless a researcher asks for it."
+  },
+  "protocolBuilder.narrativePedigree.diseaseColorHint": {
+    "defaultMessage": "The color this disease is drawn in on the pedigree.",
+    "description": "Guidance under the disease-colour control. A pedigree is a family tree."
+  },
+  "protocolBuilder.narrativePedigree.diseaseColorLabel": {
+    "defaultMessage": "Color",
+    "description": "Label of the control choosing which colour one condition is drawn in on the family tree."
+  },
+  "protocolBuilder.narrativePedigree.diseaseColorOption": {
+    "defaultMessage": "Color {position}",
+    "description": "How one entry of the disease-colour list is named. The palette’s colours have no names of their own — they are the study’s own theme colours — so they are counted instead. position identifies which one, counting from 1."
+  },
+  "protocolBuilder.narrativePedigree.diseaseColorRequired": {
+    "defaultMessage": "Choose a color for this disease.",
+    "description": "Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one."
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
+    "defaultMessage": "How the disease is passed on. Mendelian patterns let the pedigree infer carrier and at-risk statuses from biological relationships and recorded sex; multifactorial and unknown show affected status only.",
+    "description": "Guidance under the inheritance-pattern control. \"Mendelian\" describes the classical single-gene patterns; a carrier holds a condition without developing it; \"multifactorial\" and \"unknown\" are two of the choices in the list, and are written here in lower case because they are named inside a sentence."
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritanceLabel": {
+    "defaultMessage": "Inheritance pattern",
+    "description": "Label of the control choosing how one condition travels from parent to child."
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritancePlaceholder": {
+    "defaultMessage": "Select an inheritance pattern...",
+    "description": "Placeholder shown in the inheritance-pattern control while none has been chosen. The trailing dots are an ellipsis written as three full stops."
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritanceRequired": {
+    "defaultMessage": "Choose how this disease is inherited.",
+    "description": "Refusal shown under the inheritance-pattern control when the researcher saves the dialog without choosing one."
+  },
+  "protocolBuilder.narrativePedigree.diseaseMarksNobody": {
+    "defaultMessage": "Nothing records this attribute",
+    "description": "Badge shown on a collapsed row of the disease list when that disease maps an attribute the source Family Pedigree stage does not record, so the disease would mark nobody. Terse because it sits inside a row beside the disease’s name."
+  },
+  "protocolBuilder.narrativePedigree.diseaseNameHint": {
+    "defaultMessage": "Shown to the participant in the pedigree's key, so it should be a name they recognize.",
+    "description": "Guidance under the disease-name field. The key is the legend drawn beside the family tree, naming what each colour means."
+  },
+  "protocolBuilder.narrativePedigree.diseaseNameLabel": {
+    "defaultMessage": "Disease name",
+    "description": "Label of the field holding what one condition is called in the key the participant reads."
+  },
+  "protocolBuilder.narrativePedigree.diseaseNamePlaceholder": {
+    "defaultMessage": "Enter a name for this disease...",
+    "description": "Placeholder shown in the empty disease-name field. The trailing dots are an ellipsis written as three full stops."
+  },
+  "protocolBuilder.narrativePedigree.diseaseNameRequired": {
+    "defaultMessage": "Give this disease a name.",
+    "description": "Refusal shown under the disease-name field when the researcher saves the dialog having left it empty."
+  },
+  "protocolBuilder.narrativePedigree.diseaseNoun": {
+    "defaultMessage": "disease",
+    "description": "What one row of the disease list is called inside things said ABOUT it — \"Edit disease\", \"Delete this disease?\" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree."
+  },
+  "protocolBuilder.narrativePedigree.diseaseUnnamed": {
+    "defaultMessage": "Unnamed disease",
+    "description": "Stands in for the name in the collapsed row of the disease list while the researcher has not written one, so the row can still be told apart and opened."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableEmpty": {
+    "defaultMessage": "There is no attribute for this disease to map. A disease can only map an attribute that a nomination prompt of the source pedigree records and that no other disease already maps. Add a nomination prompt to that pedigree asking who has this condition, and it can be mapped here.",
+    "description": "Said in place of the affected-status list when the source Family Pedigree stage leaves this disease nothing to map — either because no nomination prompt of it records an attribute this stage could draw, or because every attribute it does record is already mapped by another disease. It states the rule and what to do rather than which of the two it is, because the remedy is the same nomination prompt either way. \"Nomination prompts\" is the name of that part of the pedigree editor."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableGone": {
+    "defaultMessage": "The attribute this disease maps ({attributeName}) is no longer in the codebook, so nothing can record who is affected. Choose another attribute.",
+    "description": "Refusal shown on the attribute control of a disease whose attribute has been deleted from the codebook while the researcher had the row open. attributeName is the stored identifier — there is no name left to show, because the definition has gone. An attribute is a codebook variable."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableHint": {
+    "defaultMessage": "Only attributes a nomination prompt of the source pedigree records are offered. This stage draws what that prompt collected; it collects nothing itself.",
+    "description": "Guidance under the affected-status control, saying why the list is as short as it is. A nomination prompt is the part of a Family Pedigree stage that asks the participant who in the family a question applies to and marks everyone they name; \"Nomination prompts\" is what that part of the pedigree editor is called, so the two should read the same. The source pedigree is the earlier stage that collected the family."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableLabel": {
+    "defaultMessage": "Affected-status attribute",
+    "description": "Label of the control choosing which recorded field of a family member says whether they have this condition. An attribute is one field of data recorded about a person."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableRequired": {
+    "defaultMessage": "Choose the attribute that records who is affected.",
+    "description": "Refusal shown under the affected-status control when the researcher saves the dialog without choosing one."
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableTypeChanged": {
+    "defaultMessage": "{attributeName} no longer records a yes-or-no answer, so it cannot say who is affected. Choose another attribute.",
+    "description": "Refusal shown on the attribute control of a disease whose attribute has been changed to another type while the researcher had the row open. attributeName is the attribute’s own name and is not translated. A disease is drawn from a true-or-false answer."
+  },
+  "protocolBuilder.narrativePedigree.diseasesAddLabel": {
+    "defaultMessage": "Create new disease",
+    "description": "Button that opens the dialog for describing one more condition. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.narrativePedigree.diseasesAddTitle": {
+    "defaultMessage": "Create disease",
+    "description": "Title of the dialog a researcher fills in to describe one more condition."
+  },
+  "protocolBuilder.narrativePedigree.diseasesAtLeastOne": {
+    "defaultMessage": "Add at least one disease. A narrative pedigree with none shows the participant an unmarked family.",
+    "description": "Refusal shown above the disease list when a researcher saves a stage that would draw nothing. \"Narrative pedigree\" is the name of this kind of interview step."
+  },
+  "protocolBuilder.narrativePedigree.diseasesDescription": {
+    "defaultMessage": "Define the conditions this stage draws on the family, and how each is inherited.",
+    "description": "Description of the diseases section. A stage is one step of an interview."
+  },
+  "protocolBuilder.narrativePedigree.diseasesDuplicateLabel": {
+    "defaultMessage": "Another disease already uses this name. Give this one a name participants can tell apart.",
+    "description": "Refusal shown under the name control in the disease dialog when a sibling disease already carries that name. The name is what the participant reads in the key beside the family tree, so two the same are indistinguishable on screen."
+  },
+  "protocolBuilder.narrativePedigree.diseasesDuplicateVariable": {
+    "defaultMessage": "This attribute is already mapped by another disease. Choose a different one, or edit the existing disease instead.",
+    "description": "Refusal shown under the attribute control in the disease dialog when a sibling disease already records who is affected under the attribute just chosen. An attribute is one field of data recorded about a person."
+  },
+  "protocolBuilder.narrativePedigree.diseasesEditTitle": {
+    "defaultMessage": "Edit disease",
+    "description": "Title of the dialog a researcher fills in to change a condition they have already described."
+  },
+  "protocolBuilder.narrativePedigree.diseasesEmptyState": {
+    "defaultMessage": "No diseases yet. Create one to mark who in the family is affected.",
+    "description": "Shown in place of the disease list while this stage would draw nothing on the family."
+  },
+  "protocolBuilder.narrativePedigree.diseasesFieldHint": {
+    "defaultMessage": "Each disease maps one boolean attribute of the source pedigree's family members. Drag to reorder them in the key.",
+    "description": "Guidance under the list of diseases. An attribute is one field of data recorded about a person; boolean is a yes/no attribute; the key is the legend the participant reads beside the family tree."
+  },
+  "protocolBuilder.narrativePedigree.diseasesFieldLabel": {
+    "defaultMessage": "Diseases",
+    "description": "Label of the list of conditions inside the diseases section. The same word as the section heading, and translated once for each: the heading names the part of the stage, and this names the control."
+  },
+  "protocolBuilder.narrativePedigree.diseasesMarkNobody": {
+    "defaultMessage": "{count, plural, one {{diseaseNames} maps an attribute the source pedigree does not record, so nobody in the family would be marked with it. Add a nomination prompt to that pedigree asking who has it, or remove the disease.} other {{diseaseNames} map attributes the source pedigree does not record, so nobody in the family would be marked with them. Add a nomination prompt to that pedigree for each of them, or remove those diseases.}}",
+    "description": "Refusal shown above the disease list when one or more diseases already in it map an attribute no nomination prompt of the source Family Pedigree stage records — usually because a collaborator deleted that prompt, or the protocol was imported that way. count is how many such diseases there are; diseaseNames is their names, already joined into one phrase in the reader’s language. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name."
+  },
+  "protocolBuilder.narrativePedigree.diseasesNotRecorded": {
+    "defaultMessage": "Nothing records this attribute, so nobody would be marked with it. Add a nomination prompt to the source pedigree asking who has this condition, then map it here.",
+    "description": "Refusal shown under the attribute control in the disease dialog when the chosen attribute is one no nomination prompt of the source Family Pedigree stage records — a mapping to it draws an unmarked family in every interview. A nomination prompt asks the participant who in the family a question applies to and marks everyone they name; \"Nomination prompts\" is the name of that part of the pedigree editor."
+  },
+  "protocolBuilder.narrativePedigree.diseasesTitle": {
+    "defaultMessage": "Diseases",
+    "description": "Heading of the section listing the conditions this step of the interview draws onto the family tree."
+  },
+  "protocolBuilder.narrativePedigree.diseasesWaitingDescription": {
+    "defaultMessage": "Choose the Family Pedigree stage this one reads before defining its diseases.",
+    "description": "Said instead of the diseases section’s description while no source stage has been chosen, so there is no family and no set of attributes to describe a disease against."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceAutosomalDominant": {
+    "defaultMessage": "Autosomal dominant",
+    "description": "One choice in the inheritance-pattern list: a condition on a non-sex chromosome that one affected parent is enough to pass on. Standard clinical genetics terminology."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceAutosomalRecessive": {
+    "defaultMessage": "Autosomal recessive",
+    "description": "One choice in the inheritance-pattern list: a condition on a non-sex chromosome that needs a copy from both parents. Standard clinical genetics terminology."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceMitochondrial": {
+    "defaultMessage": "Mitochondrial",
+    "description": "One choice in the inheritance-pattern list: a condition passed on through the mother’s mitochondria. Standard clinical genetics terminology."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceMultifactorial": {
+    "defaultMessage": "Multifactorial",
+    "description": "One choice in the inheritance-pattern list: a condition arising from several genes and the environment together, so nothing can be inferred from the family tree alone."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceUnknown": {
+    "defaultMessage": "Unknown",
+    "description": "One choice in the inheritance-pattern list, said of the condition rather than of the researcher: how it is inherited has not been established, so only recorded status is drawn."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceXLinkedDominant": {
+    "defaultMessage": "X-linked dominant",
+    "description": "One choice in the inheritance-pattern list: a dominant condition carried on the X chromosome. Standard clinical genetics terminology; \"X\" is the chromosome’s letter and is not translated."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceXLinkedRecessive": {
+    "defaultMessage": "X-linked recessive",
+    "description": "One choice in the inheritance-pattern list: a recessive condition carried on the X chromosome. Standard clinical genetics terminology; \"X\" is the chromosome’s letter and is not translated."
+  },
+  "protocolBuilder.narrativePedigree.inheritanceYLinked": {
+    "defaultMessage": "Y-linked",
+    "description": "One choice in the inheritance-pattern list: a condition carried on the Y chromosome. Standard clinical genetics terminology; \"Y\" is the chromosome’s letter and is not translated."
+  },
+  "protocolBuilder.narrativePedigree.sourceAfterThisStage": {
+    "defaultMessage": "The Family Pedigree stage this one reads now runs after it, so the family would still be empty. Move it earlier in the interview, or choose a pedigree that runs before this stage.",
+    "description": "Shown when the stage this one draws its family from has been moved to run later in the interview, so the participant would not have built the family yet."
+  },
+  "protocolBuilder.narrativePedigree.sourceChangeConfirm": {
+    "defaultMessage": "Change the pedigree",
+    "description": "Button that confirms pointing a narrative pedigree at a different Family Pedigree stage and discarding every disease that described the previous one."
+  },
+  "protocolBuilder.narrativePedigree.sourceChangeDescription": {
+    "defaultMessage": "Each disease names an attribute of the family members the current pedigree collects, so none of them would still describe the new one. Choosing a different pedigree removes them all, and choosing this one again does not bring them back.",
+    "description": "Body of the confirmation shown before a narrative pedigree’s source changes, saying what the change discards and that reversing the choice does not undo it."
+  },
+  "protocolBuilder.narrativePedigree.sourceChangeTitle": {
+    "defaultMessage": "This will remove every disease",
+    "description": "Title of the confirmation shown before a researcher points this stage at a different Family Pedigree stage. Every disease it draws names an attribute of the current pedigree’s family members, so changing the pedigree discards all of them."
+  },
+  "protocolBuilder.narrativePedigree.sourceDescription": {
+    "defaultMessage": "Choose the Family Pedigree stage whose family this stage visualizes.",
+    "description": "Description of the pedigree-source section. \"Family Pedigree\" is the name of another kind of interview step, the one in which the participant builds their family tree; a stage is one step of an interview."
+  },
+  "protocolBuilder.narrativePedigree.sourceEmptyMessage": {
+    "defaultMessage": "This interview has no Family Pedigree stage before this one. Add one, or move this stage later, before configuring it.",
+    "description": "Body of the notice shown above the source-stage control when nothing in the interview qualifies; the control itself stays on screen, disabled. \"Family Pedigree\" names the kind of interview step that collects a family tree."
+  },
+  "protocolBuilder.narrativePedigree.sourceEmptyTitle": {
+    "defaultMessage": "No pedigree to read",
+    "description": "Heading of the notice shown above the source-stage control when the interview holds no family tree this stage could draw. The control itself stays on screen, disabled."
+  },
+  "protocolBuilder.narrativePedigree.sourceGone": {
+    "defaultMessage": "The pedigree you chose is no longer one of the options here, so nothing has changed and no disease has been removed. Choose again.",
+    "description": "Body of the message refusing a confirmed change of source pedigree whose chosen stage is no longer offered. Addressed to the researcher authoring the protocol, and it says what did NOT happen: the change was not applied and the disease mappings beside it were not thrown away."
+  },
+  "protocolBuilder.narrativePedigree.sourceGoneTitle": {
+    "defaultMessage": "That pedigree is no longer available",
+    "description": "Title of the message shown when a researcher agrees to change which family tree this step draws, and the stage they picked stopped being one this control offers while the question was open — a collaborator deleted it, changed what kind of step it is, or moved it later in the interview. The change is refused."
+  },
+  "protocolBuilder.narrativePedigree.sourceHint": {
+    "defaultMessage": "Only Family Pedigree stages that run before this one are listed: the family has to be drawn before it can be shown.",
+    "description": "Guidance under the source-stage control, explaining why the list is shorter than the interview. \"Family Pedigree\" names another kind of interview step; a stage is one step of an interview."
+  },
+  "protocolBuilder.narrativePedigree.sourceLabel": {
+    "defaultMessage": "Source stage",
+    "description": "Label of the control naming which earlier step of the interview collected the family this one draws on."
+  },
+  "protocolBuilder.narrativePedigree.sourceMissing": {
+    "defaultMessage": "The Family Pedigree stage this one reads is no longer part of the interview. Choose another one, or restore it, before this stage can be saved.",
+    "description": "Shown when the stage this one draws its family from has been deleted or dropped out of the interview — usually by a collaborator, while this editor was open."
+  },
+  "protocolBuilder.narrativePedigree.sourceNotAPedigree": {
+    "defaultMessage": "The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualize. Choose a Family Pedigree stage instead.",
+    "description": "Shown when the stage this one draws its family from has been changed to a different kind of interview step, so it no longer collects a family tree."
+  },
+  "protocolBuilder.narrativePedigree.sourcePlaceholder": {
+    "defaultMessage": "Select a Family Pedigree stage...",
+    "description": "Placeholder shown in the source-stage control while no stage has been chosen. The trailing dots are an ellipsis written as three full stops."
+  },
+  "protocolBuilder.narrativePedigree.sourceProblemTitle": {
+    "defaultMessage": "This stage has no family to show",
+    "description": "Heading of the warning shown when the stage this one was pointed at can no longer be used. The sentence under it says which of the three things went wrong."
+  },
+  "protocolBuilder.narrativePedigree.sourceStageOption": {
+    "defaultMessage": "Stage {position, number} — {stageLabel}",
+    "description": "One Family Pedigree stage offered as the one this stage draws its family from. position is where that stage will sit in the finished interview, counting from one; stageLabel is the researcher’s own name for it and is not translated. The number is shown because two stages may carry the same name."
+  },
+  "protocolBuilder.narrativePedigree.sourceTitle": {
+    "defaultMessage": "Pedigree source",
+    "description": "Heading of the section where a researcher chooses which earlier step of the interview collected the family this step draws on. A pedigree is a family tree."
+  },
+  "protocolBuilder.narrativePedigree.sourceUnusableOption": {
+    "defaultMessage": "{stageName} — this stage can no longer be used",
+    "description": "How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier."
+  },
   "protocolBuilder.networkCanvas.backgroundCirclesHint": {
     "defaultMessage": "The rings drawn behind the nodes. Participants often use them to place people closer to or further from themselves.",
     "description": "Guidance under the number-of-circles box."
@@ -1859,6 +2559,254 @@
     "defaultMessage": "Background",
     "description": "Heading of the section deciding what is drawn behind the nodes on a canvas. Also names the section in the editor outline and to assistive technology."
   },
+  "protocolBuilder.networkCanvas.canvasInteractionDescription": {
+    "defaultMessage": "Choose what the participant may do to the picture while they tell their story.",
+    "description": "Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it."
+  },
+  "protocolBuilder.networkCanvas.canvasInteractionTitle": {
+    "defaultMessage": "Canvas interaction",
+    "description": "Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.composerCreateEdgeTypeLabel": {
+    "defaultMessage": "Create a new connection type",
+    "description": "Button opening the codebook editor to define a kind of connection the protocol does not have yet, from inside a network composer. The new kind becomes drawable on this canvas as soon as it is created."
+  },
+  "protocolBuilder.networkCanvas.composerCreateLayoutLabel": {
+    "defaultMessage": "Create a new position attribute",
+    "description": "Button that creates an attribute holding a position in the codebook and uses it for this stage."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeAddLabel": {
+    "defaultMessage": "Add a connection type",
+    "description": "Button that adds a kind of connection to those a network composer lets the participant draw."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeAddTitle": {
+    "defaultMessage": "Add a connection type",
+    "description": "Title of the dialog a researcher fills in to let a network composer draw a NEW kind of connection."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeDescription": {
+    "defaultMessage": "Choose the kinds of connection the participant can draw between nodes on this canvas.",
+    "description": "Description of the connections section of a network composer. A connection is a relationship between two members of the network."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeDuplicateRefusal": {
+    "defaultMessage": "This canvas already draws this kind of connection. Edit the existing one instead.",
+    "description": "Refusal shown when two rows of a network composer’s connection list would name the same kind of connection."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeEditTitle": {
+    "defaultMessage": "Edit connection type",
+    "description": "Title of the dialog a researcher fills in when changing a kind of connection a network composer already draws."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeEmpty": {
+    "defaultMessage": "The participant cannot draw connections on this canvas yet. Add a connection type to let them.",
+    "description": "Shown in place of the list of connection types while a network composer allows none."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeFieldHint": {
+    "defaultMessage": "The participant can draw a connection of any kind listed here. Leave the list empty to build a network of nodes alone.",
+    "description": "Guidance under the list of connection types a network composer lets the participant draw."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeFieldLabel": {
+    "defaultMessage": "Connection types",
+    "description": "Label of the list holding the kinds of connection a network composer lets the participant draw."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeNoun": {
+    "defaultMessage": "connection type",
+    "description": "What one row of a network composer’s connection list is called, used in the accessible names of its edit, delete and reorder controls and in the confirmation that deletes it."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeTitle": {
+    "defaultMessage": "Connections",
+    "description": "Heading of the section deciding which kinds of connection a participant may draw between nodes on a composer canvas. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeTypeHint": {
+    "defaultMessage": "The kind of connection the participant draws. Its name and color come from the codebook.",
+    "description": "Guidance under the connection-type control of a network composer. The codebook is where a protocol defines the kinds of connection its network holds."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeTypeLabel": {
+    "defaultMessage": "Connection type",
+    "description": "Label of the control choosing which kind of connection one row of a network composer’s connection list stands for."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeTypeRequired": {
+    "defaultMessage": "Choose the kind of connection this draws.",
+    "description": "Refusal shown when a row of a network composer’s connection list is saved without naming a connection type."
+  },
+  "protocolBuilder.networkCanvas.composerEdgeUnnamedPreview": {
+    "defaultMessage": "No connection type chosen",
+    "description": "How a row of a network composer’s connection list reads before a kind of connection has been chosen for it."
+  },
+  "protocolBuilder.networkCanvas.composerLayoutEmpty": {
+    "defaultMessage": "This type has no position attributes yet. Create one to store where the participant puts each node.",
+    "description": "Shown in place of the position-attribute list when the node type this stage builds has no attribute that can hold a position."
+  },
+  "protocolBuilder.networkCanvas.composerLayoutHint": {
+    "defaultMessage": "The attribute that stores each node’s position. Stages sharing an attribute carry the participant’s placements between them.",
+    "description": "Guidance under the position-attribute control of a network composer. A stage is one step of an interview."
+  },
+  "protocolBuilder.networkCanvas.composerLayoutLabel": {
+    "defaultMessage": "Position attribute",
+    "description": "Label of the control choosing which codebook attribute stores where each node sits on a composer canvas."
+  },
+  "protocolBuilder.networkCanvas.composerNodeDescription": {
+    "defaultMessage": "How the participant adds nodes to the canvas, where those nodes sit, and how they group them.",
+    "description": "Description of the node section of a network composer. A node is one member of the network the participant is building."
+  },
+  "protocolBuilder.networkCanvas.composerNodeTitle": {
+    "defaultMessage": "Adding and arranging nodes",
+    "description": "Heading of the section deciding how a participant adds members to the network on a composer canvas, where those members are remembered, and how they are grouped. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.composerNodeWaitingDescription": {
+    "defaultMessage": "Choose what this stage works with before configuring how its nodes behave.",
+    "description": "Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.networkCanvas.createHullLabel": {
+    "defaultMessage": "Create a new grouping attribute",
+    "description": "Button that creates an attribute with a fixed set of values in the codebook and groups nodes by it."
+  },
+  "protocolBuilder.networkCanvas.createQuickAddLabel": {
+    "defaultMessage": "Create a new attribute to fill in",
+    "description": "Button that creates a text attribute in the codebook and uses it as the one filled in when a node is added."
+  },
+  "protocolBuilder.networkCanvas.duplicateVariableRefusal": {
+    "defaultMessage": "Another field on this form already records this attribute. Choose a different one, or edit the existing field instead.",
+    "description": "Refusal shown when two fields of one network composer form would record their answers in the same attribute."
+  },
+  "protocolBuilder.networkCanvas.edgeFormAddLabel": {
+    "defaultMessage": "Create new attribute field for “{typeName}” connections",
+    "description": "Button that adds a question to the form shown for one kind of connection. typeName is the researcher-facing name of that connection type."
+  },
+  "protocolBuilder.networkCanvas.edgeFormEmptyState": {
+    "defaultMessage": "No attributes yet for this connection type. Create one to ask the participant something about each connection they draw.",
+    "description": "Shown in place of the list of questions about one kind of connection while it holds none."
+  },
+  "protocolBuilder.networkCanvas.edgeFormFieldsHint": {
+    "defaultMessage": "The participant answers these in the panel that opens when they select a connection of this kind. Drag to reorder them.",
+    "description": "Guidance under the list of questions asked about one kind of connection."
+  },
+  "protocolBuilder.networkCanvas.edgeFormHeading": {
+    "defaultMessage": "Attributes for “{typeName}” connections",
+    "description": "Label of the list of questions asked about one kind of connection. typeName is the researcher-facing name of that connection type."
+  },
+  "protocolBuilder.networkCanvas.edgeFormsDescription": {
+    "defaultMessage": "Optionally ask the participant more about each connection they draw. Each kind of connection is asked about separately, because each records its own attributes.",
+    "description": "Description of the connection-attributes section of a network composer."
+  },
+  "protocolBuilder.networkCanvas.edgeFormsTitle": {
+    "defaultMessage": "Connection attributes",
+    "description": "Heading of the section holding the questions a network composer asks about each connection the participant draws. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.fieldParametersHint": {
+    "defaultMessage": "These settings belong to this field rather than to the attribute, so the same attribute can be asked for differently on another stage.",
+    "description": "Guidance under the settings group of a network composer form field. A stage is one step of an interview."
+  },
+  "protocolBuilder.networkCanvas.fieldParametersInherited": {
+    "defaultMessage": "These come from the “{attributeName}” attribute, and this field follows them. Change any of them and this field keeps a set of its own.",
+    "description": "Said above the settings group when this field has none of its own and is showing the codebook attribute’s. attributeName is the researcher-facing name of that attribute."
+  },
+  "protocolBuilder.networkCanvas.fieldParametersLabel": {
+    "defaultMessage": "What this field accepts",
+    "description": "Label of the group of settings the chosen input control takes — the two ends of a scale, the window a date must fall in."
+  },
+  "protocolBuilder.networkCanvas.formFieldAddTitle": {
+    "defaultMessage": "Add a form field",
+    "description": "Title of the dialog a researcher fills in for a NEW field of a network composer form."
+  },
+  "protocolBuilder.networkCanvas.formFieldControlHint": {
+    "defaultMessage": "How the participant answers. Only controls that can render this attribute are listed, and the choice belongs to this field alone — the same attribute can be asked for differently on another stage.",
+    "description": "Guidance under the input-control chooser of a network composer form field. A stage is one step of an interview. Says both which controls are offered and that the choice is not written back to the codebook, which is what makes this interface different from every other form in the protocol."
+  },
+  "protocolBuilder.networkCanvas.formFieldControlLabel": {
+    "defaultMessage": "Input control",
+    "description": "Label of the control choosing how the participant answers one field of a network composer form — a text box, a slider, a set of buttons."
+  },
+  "protocolBuilder.networkCanvas.formFieldControlRequired": {
+    "defaultMessage": "Choose how the participant answers this field.",
+    "description": "Refusal shown when a network composer form field is saved without an input control."
+  },
+  "protocolBuilder.networkCanvas.formFieldEditTitle": {
+    "defaultMessage": "Edit form field",
+    "description": "Title of the dialog a researcher fills in when changing an existing field of a network composer form."
+  },
+  "protocolBuilder.networkCanvas.formFieldEmptyPreview": {
+    "defaultMessage": "Empty field",
+    "description": "How a network composer form field with no question and no attribute reads in the list when its dialog is closed."
+  },
+  "protocolBuilder.networkCanvas.formFieldHelpHint": {
+    "defaultMessage": "Shown under the question, for anything the participant might need explained. Optional.",
+    "description": "Guidance under the help-text box of a network composer form field."
+  },
+  "protocolBuilder.networkCanvas.formFieldHelpLabel": {
+    "defaultMessage": "Help text",
+    "description": "Label of the box holding the explanation shown under one field of a network composer form."
+  },
+  "protocolBuilder.networkCanvas.formFieldHelpPlaceholder": {
+    "defaultMessage": "Enter help text…",
+    "description": "Placeholder inside the empty help-text box of a network composer form field."
+  },
+  "protocolBuilder.networkCanvas.formFieldNoun": {
+    "defaultMessage": "form field",
+    "description": "What one row of a network composer’s form list is called, used in the accessible names of its edit, delete and reorder controls and in the confirmation that deletes it."
+  },
+  "protocolBuilder.networkCanvas.formFieldQuestionHint": {
+    "defaultMessage": "What the participant is asked. Leave it empty to use the attribute’s own name.",
+    "description": "Guidance under the question box of a network composer form field. The attribute’s name is the researcher-facing name the codebook records it under."
+  },
+  "protocolBuilder.networkCanvas.formFieldQuestionLabel": {
+    "defaultMessage": "Question",
+    "description": "Label of the box holding what the participant is asked for one field of a network composer form."
+  },
+  "protocolBuilder.networkCanvas.formFieldQuestionPlaceholder": {
+    "defaultMessage": "Enter your question…",
+    "description": "Placeholder inside the empty question box of a network composer form field."
+  },
+  "protocolBuilder.networkCanvas.formFieldRecordsAttribute": {
+    "defaultMessage": "Records the attribute “{attributeName}”",
+    "description": "Badge under one network composer form field in the list, naming what its answer is recorded in. attributeName is the researcher-facing name of the codebook attribute."
+  },
+  "protocolBuilder.networkCanvas.formFieldValidationHintsHint": {
+    "defaultMessage": "Tells the participant what a valid answer looks like, derived from the attribute’s own rules.",
+    "description": "Guidance under the validation-hints switch of a network composer form field. The rules belong to the codebook attribute rather than to this field."
+  },
+  "protocolBuilder.networkCanvas.formFieldValidationHintsLabel": {
+    "defaultMessage": "Show validation hints",
+    "description": "Label of the switch that tells the participant what a valid answer to one field of a network composer form looks like."
+  },
+  "protocolBuilder.networkCanvas.formFieldVariableEmpty": {
+    "defaultMessage": "This type has no attributes a form can collect yet. Create one in the codebook to continue.",
+    "description": "Shown in place of the attribute list when the type this form is about has nothing a form could ask for. The codebook is where a protocol defines the kinds of member its network holds and the attributes recorded about each."
+  },
+  "protocolBuilder.networkCanvas.formFieldVariableHint": {
+    "defaultMessage": "The attribute each answer is recorded in. Only attributes a form can collect are listed: a position or a location is written by the canvas rather than answered.",
+    "description": "Guidance under the attribute control of a network composer form field. A position is where a node sits on the canvas; a location is a point on a map. Both are written by the participant moving something rather than by answering a question, so no control can collect them."
+  },
+  "protocolBuilder.networkCanvas.formFieldVariableLabel": {
+    "defaultMessage": "Attribute",
+    "description": "Label of the control choosing which codebook attribute one field of a network composer form records the answer in. An attribute is one piece of information recorded about a member of the network."
+  },
+  "protocolBuilder.networkCanvas.formFieldVariableRequired": {
+    "defaultMessage": "Choose the attribute this field records.",
+    "description": "Refusal shown when a network composer form field is saved without naming the attribute its answer is recorded in."
+  },
+  "protocolBuilder.networkCanvas.freeDrawHint": {
+    "defaultMessage": "The participant can draw freehand annotations over the canvas, and erase them again.",
+    "description": "Guidance under the drawing switch."
+  },
+  "protocolBuilder.networkCanvas.freeDrawLabel": {
+    "defaultMessage": "Allow drawing on the canvas",
+    "description": "Label of the switch letting the participant draw on the canvas."
+  },
+  "protocolBuilder.networkCanvas.hullEmpty": {
+    "defaultMessage": "This type has no attributes with a fixed set of values, so there is nothing to group nodes by.",
+    "description": "Shown in place of the grouping-attribute list when the node type this stage builds has no categorical attribute this stage may take."
+  },
+  "protocolBuilder.networkCanvas.hullHint": {
+    "defaultMessage": "Nodes sharing a value of this attribute are drawn inside a shaded outline. The participant sets those values on the canvas, so they are written without being checked against the attribute’s rules.",
+    "description": "Guidance under the grouping-attribute control of a network composer. The shaded outline is drawn around every node that shares a value; the participant assigns those values by lassoing or tapping nodes, which does not run the codebook’s validation."
+  },
+  "protocolBuilder.networkCanvas.hullLabel": {
+    "defaultMessage": "Grouping attribute",
+    "description": "Label of the control choosing which codebook attribute the participant groups nodes by on a composer canvas."
+  },
+  "protocolBuilder.networkCanvas.layoutModeAutomaticComposerDescription": {
+    "defaultMessage": "Starts the stage with the simulation running. The participant can switch it off and on as they work, and the stage reopens the way they left it.",
+    "description": "Says what the participant sees in automatic layout mode on a network composer stage, where the setting decides only how the stage starts because the participant has a switch of their own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the wordings of one control together."
+  },
   "protocolBuilder.networkCanvas.layoutModeAutomaticDescription": {
     "defaultMessage": "Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.",
     "description": "Says what the participant sees in automatic layout mode. A stage is one step of an interview; the simulation runs on the canvas while the participant watches."
@@ -1866,6 +2814,10 @@
   "protocolBuilder.networkCanvas.layoutModeAutomaticLabel": {
     "defaultMessage": "Automatic mode",
     "description": "Name of the choice where the stage arranges the nodes itself before the participant touches them. Offered as one of two cards; the sentence under it is layoutModeAutomaticDescription."
+  },
+  "protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription": {
+    "defaultMessage": "Arranges the nodes by simulating physical forces such as attraction and repulsion. Only the nodes the attribute the preset positions by holds a position for are arranged; the rest are left off the canvas, as in manual mode. The participant can pause and resume the simulation, and can move nodes by hand only if “Allow moving nodes” is switched on.",
+    "description": "Says what the participant sees in automatic layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the two wordings of one control together. “Allow moving nodes” is the switch named by repositioningLabel, and is quoted because it is being named as a control the researcher can go and find."
   },
   "protocolBuilder.networkCanvas.layoutModeHint": {
     "defaultMessage": "How the stage arranges nodes before the participant moves any of them.",
@@ -1875,6 +2827,10 @@
     "defaultMessage": "Layout mode",
     "description": "Label of the control choosing between manual and automatic node layout."
   },
+  "protocolBuilder.networkCanvas.layoutModeManualComposerDescription": {
+    "defaultMessage": "Places each node where there is room for it as the participant adds it, leaving them to drag it wherever they want.",
+    "description": "Says what the participant sees in manual layout mode on a network composer stage, where they add the nodes themselves rather than being given a set of them to place. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the wordings of one control together."
+  },
   "protocolBuilder.networkCanvas.layoutModeManualDescription": {
     "defaultMessage": "Places all nodes in a \"bucket\" at the bottom of the screen, from which the participant drags each one to where they want it.",
     "description": "Says what the participant sees in manual layout mode. The \"bucket\" is the holding area at the foot of the canvas that unplaced nodes wait in; the quotation marks are in the English because it is a nickname for that area rather than a formal name."
@@ -1883,6 +2839,46 @@
     "defaultMessage": "Manual mode",
     "description": "Name of the choice where the stage does not arrange nodes at all and the participant places every one of them by hand. Offered as one of two cards; the sentence under it is layoutModeManualDescription."
   },
+  "protocolBuilder.networkCanvas.layoutModeManualNarrativeDescription": {
+    "defaultMessage": "Shows every node at the position already stored in the attribute the preset positions by. A node that attribute holds no position for is left off the canvas.",
+    "description": "Says what the participant sees in manual layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the two wordings of one control together."
+  },
+  "protocolBuilder.networkCanvas.nodeFormAddLabel": {
+    "defaultMessage": "Create new node attribute field",
+    "description": "Button that adds a question to the form a network composer shows for a selected node."
+  },
+  "protocolBuilder.networkCanvas.nodeFormClearConfirm": {
+    "defaultMessage": "Delete the form",
+    "description": "Button that confirms switching off the form a network composer shows for a selected node."
+  },
+  "protocolBuilder.networkCanvas.nodeFormClearDescription": {
+    "defaultMessage": "Every field you have added to it will be removed, and the panel that opens when a participant selects a node will have nothing in it.",
+    "description": "Description of the confirmation shown before switching off the form a network composer shows for a selected node."
+  },
+  "protocolBuilder.networkCanvas.nodeFormClearTitle": {
+    "defaultMessage": "This will delete the node form",
+    "description": "Title of the confirmation shown before switching off the form a network composer shows for a selected node."
+  },
+  "protocolBuilder.networkCanvas.nodeFormDescription": {
+    "defaultMessage": "Optionally let the participant fill in more about each node after they have added it.",
+    "description": "Description of the node-attributes section of a network composer."
+  },
+  "protocolBuilder.networkCanvas.nodeFormEmptyState": {
+    "defaultMessage": "No node attributes yet. Create one to ask the participant something about each node.",
+    "description": "Shown in place of the list of questions about each node while it holds none."
+  },
+  "protocolBuilder.networkCanvas.nodeFormFieldsHint": {
+    "defaultMessage": "The participant answers these in the panel that opens when they select a node. Drag to reorder them.",
+    "description": "Guidance under the list of questions asked about each node of a network composer."
+  },
+  "protocolBuilder.networkCanvas.nodeFormFieldsLabel": {
+    "defaultMessage": "Form fields",
+    "description": "Label of the list holding the questions asked about each node of a network composer."
+  },
+  "protocolBuilder.networkCanvas.nodeFormTitle": {
+    "defaultMessage": "Node attributes",
+    "description": "Heading of the section holding the questions a network composer asks about each node the participant has added. Also names the section in the editor outline and to assistive technology."
+  },
   "protocolBuilder.networkCanvas.nodeLayoutDescription": {
     "defaultMessage": "Choose how nodes are arranged when this stage opens.",
     "description": "Description of the node-layout section. A stage is one step of an interview."
@@ -1890,6 +2886,162 @@
   "protocolBuilder.networkCanvas.nodeLayoutTitle": {
     "defaultMessage": "Node layout",
     "description": "Heading of the section deciding how a canvas arranges its nodes when the stage opens. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.presetConnectionsDescription": {
+    "defaultMessage": "The kinds of connection this preset draws between nodes.",
+    "description": "Description of the preset connections group."
+  },
+  "protocolBuilder.networkCanvas.presetConnectionsTitle": {
+    "defaultMessage": "Connections",
+    "description": "Heading of the group inside the preset dialog deciding which kinds of relationship are drawn between the nodes. A connection is an edge."
+  },
+  "protocolBuilder.networkCanvas.presetCreateLayoutLabel": {
+    "defaultMessage": "Create a new position attribute",
+    "description": "Button beside the preset position-attribute picker that adds a layout attribute to the codebook without leaving the stage. Also the title of the dialog it opens."
+  },
+  "protocolBuilder.networkCanvas.presetDisplayEdgesHint": {
+    "defaultMessage": "Leave every type unticked to show no connections at all.",
+    "description": "Guidance under the preset connection-types tick list, saying that ticking nothing is a real answer rather than an unfinished one."
+  },
+  "protocolBuilder.networkCanvas.presetDisplayEdgesLabel": {
+    "defaultMessage": "Connection types shown",
+    "description": "Label of the tick list choosing which edge types a preset draws."
+  },
+  "protocolBuilder.networkCanvas.presetGroupEmpty": {
+    "defaultMessage": "This type has no attributes with a fixed set of values, so there is nothing to group by.",
+    "description": "Shown in place of the preset grouping-attribute picker when the node type this stage is about has no categorical attribute in the codebook. \"This type\" is that node type."
+  },
+  "protocolBuilder.networkCanvas.presetGroupHint": {
+    "defaultMessage": "Nodes sharing a value of this attribute are outlined together. A node with several values appears in several overlapping outlines.",
+    "description": "Guidance under the preset grouping-attribute picker."
+  },
+  "protocolBuilder.networkCanvas.presetGroupLabel": {
+    "defaultMessage": "Grouping attribute",
+    "description": "Label of the picker naming the codebook attribute a preset groups nodes by. A categorical attribute holds one or more of a fixed set of values."
+  },
+  "protocolBuilder.networkCanvas.presetGroupingDescription": {
+    "defaultMessage": "Draw a shaded outline around the nodes that share a value.",
+    "description": "Description of the preset node-grouping group."
+  },
+  "protocolBuilder.networkCanvas.presetGroupingTitle": {
+    "defaultMessage": "Node grouping",
+    "description": "Heading of the group inside the preset dialog deciding which nodes are drawn inside a shared outline."
+  },
+  "protocolBuilder.networkCanvas.presetHighlightDescription": {
+    "defaultMessage": "Make some nodes stand out from the rest.",
+    "description": "Description of the preset highlighted-nodes group."
+  },
+  "protocolBuilder.networkCanvas.presetHighlightHint": {
+    "defaultMessage": "The interviewer picks one of these attributes at a time, and the nodes it is true of are shown highlighted.",
+    "description": "Guidance under the preset highlight-attributes tick list. It says what the interview does with the list, because ticking several attributes does not highlight by all of them at once: the interview offers the ticked attributes as a set of radio buttons and highlights by the one chosen."
+  },
+  "protocolBuilder.networkCanvas.presetHighlightLabel": {
+    "defaultMessage": "Highlight attributes",
+    "description": "Label of the tick list choosing which true-or-false codebook attributes make a node stand out."
+  },
+  "protocolBuilder.networkCanvas.presetHighlightTitle": {
+    "defaultMessage": "Highlighted nodes",
+    "description": "Heading of the group inside the preset dialog deciding which nodes are drawn so as to stand out."
+  },
+  "protocolBuilder.networkCanvas.presetIdentityDescription": {
+    "defaultMessage": "Name this way of looking at the network.",
+    "description": "Description of the preset-identity group."
+  },
+  "protocolBuilder.networkCanvas.presetIdentityTitle": {
+    "defaultMessage": "Preset identity",
+    "description": "Heading of the group inside the preset dialog holding what this saved view is called."
+  },
+  "protocolBuilder.networkCanvas.presetLayoutEmpty": {
+    "defaultMessage": "This type has no position attributes yet. Create one to lay this preset out.",
+    "description": "Shown in place of the preset position-attribute picker when the node type this stage is about has no layout attribute in the codebook. \"This type\" is that node type."
+  },
+  "protocolBuilder.networkCanvas.presetLayoutHint": {
+    "defaultMessage": "The attribute that stores each node's position. Presets sharing an attribute share their positions.",
+    "description": "Guidance under the preset position-attribute picker."
+  },
+  "protocolBuilder.networkCanvas.presetLayoutLabel": {
+    "defaultMessage": "Position attribute",
+    "description": "Label of the picker naming the codebook attribute a preset reads each node’s position from. A layout attribute holds a pair of coordinates."
+  },
+  "protocolBuilder.networkCanvas.presetLayoutRequired": {
+    "defaultMessage": "Choose the attribute this preset positions nodes with.",
+    "description": "Refusal shown under the preset position-attribute picker when the researcher saves a preset without choosing one."
+  },
+  "protocolBuilder.networkCanvas.presetNameHint": {
+    "defaultMessage": "Shown to the participant when they switch between presets, so name it in their words.",
+    "description": "Guidance under the preset-name box, warning the researcher that this name is participant-facing rather than an internal label."
+  },
+  "protocolBuilder.networkCanvas.presetNameLabel": {
+    "defaultMessage": "Preset name",
+    "description": "Label of the box holding what this saved view is called."
+  },
+  "protocolBuilder.networkCanvas.presetNamePlaceholder": {
+    "defaultMessage": "Enter a name for this preset...",
+    "description": "Placeholder shown in the empty preset-name box. The trailing dots are an ellipsis written as three full stops."
+  },
+  "protocolBuilder.networkCanvas.presetNameRequired": {
+    "defaultMessage": "Give this preset a name.",
+    "description": "Refusal shown under the preset-name box when the researcher saves a preset without naming it."
+  },
+  "protocolBuilder.networkCanvas.presetNoun": {
+    "defaultMessage": "preset",
+    "description": "What one row of the visualisation preset list is called inside things said ABOUT it — \"Edit preset\", \"Delete this preset?\" — so it is lower case and singular. A preset is one saved way of looking at the network."
+  },
+  "protocolBuilder.networkCanvas.presetPositionsDescription": {
+    "defaultMessage": "Where this preset puts each node on the canvas.",
+    "description": "Description of the preset node-positions group."
+  },
+  "protocolBuilder.networkCanvas.presetPositionsTitle": {
+    "defaultMessage": "Node positions",
+    "description": "Heading of the group inside the preset dialog deciding where this saved view puts each node."
+  },
+  "protocolBuilder.networkCanvas.presetUnavailableHighlightAttribute": {
+    "defaultMessage": "{attributeId} — this attribute is not available here",
+    "description": "Name of the tick-list choice standing for an attribute a preset still highlights by and the list can no longer offer — it may have been deleted from the protocol’s codebook, or changed to a kind of attribute that is not true-or-false. Worded for what the list knows: it is handed the true-or-false attributes and a stored choice, and cannot tell those two cases apart. attributeId is the raw stored identifier, which is not translated."
+  },
+  "protocolBuilder.networkCanvas.presetUnnamedPreview": {
+    "defaultMessage": "Unnamed preset",
+    "description": "Stands in for a preset’s name in the collapsed row of the preset list while the researcher has not written one yet."
+  },
+  "protocolBuilder.networkCanvas.presetsAddLabel": {
+    "defaultMessage": "Create new preset",
+    "description": "Button that opens the dialog for building one more saved view. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.networkCanvas.presetsAddTitle": {
+    "defaultMessage": "Create preset",
+    "description": "Title of the dialog a researcher fills in to build one more saved view."
+  },
+  "protocolBuilder.networkCanvas.presetsAtLeastOne": {
+    "defaultMessage": "Create at least one preset. A narrative stage with no presets shows the participant nothing.",
+    "description": "Refusal shown above the preset list when a researcher saves a narrative stage that offers no way of looking at the network. A preset is one saved view; a stage is one step of an interview."
+  },
+  "protocolBuilder.networkCanvas.presetsDescription": {
+    "defaultMessage": "Build the ways of looking at the network that can be switched between during the interview.",
+    "description": "Description of the visualisation-presets section."
+  },
+  "protocolBuilder.networkCanvas.presetsEditTitle": {
+    "defaultMessage": "Edit preset",
+    "description": "Title of the dialog a researcher fills in to change a saved view they have already built."
+  },
+  "protocolBuilder.networkCanvas.presetsEmptyState": {
+    "defaultMessage": "No presets yet. Create one to say how the network should look.",
+    "description": "Shown in place of the preset list while the stage offers no saved view yet."
+  },
+  "protocolBuilder.networkCanvas.presetsFieldHint": {
+    "defaultMessage": "Each preset is a whole picture of the network. They are offered in this order, so drag them into the order you want to talk through.",
+    "description": "Guidance under the list of presets. Addressed to the researcher."
+  },
+  "protocolBuilder.networkCanvas.presetsFieldLabel": {
+    "defaultMessage": "Presets",
+    "description": "Label of the list of saved views inside the presets section. The same word as the section heading, and translated once for each: the heading names the part of the stage, and this names the control."
+  },
+  "protocolBuilder.networkCanvas.presetsTitle": {
+    "defaultMessage": "Visualization presets",
+    "description": "Heading of the section holding the saved ways of looking at the network. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.presetsWaitingDescription": {
+    "defaultMessage": "Choose what this stage works with before building its presets.",
+    "description": "Shown in place of the presets description while the researcher has not yet chosen which node type the stage is about, so every picker inside a preset would have nothing to offer."
   },
   "protocolBuilder.networkCanvas.promptCreateEdgeHint": {
     "defaultMessage": "The kind of connection tapping two nodes draws between them.",
@@ -2023,6 +3175,26 @@
     "defaultMessage": "Participant prompt",
     "description": "Heading of the group inside the sociogram prompt dialog holding the words the participant reads. A prompt is one task the participant is set."
   },
+  "protocolBuilder.networkCanvas.quickAddEmpty": {
+    "defaultMessage": "This type has no free-text attributes available, so there is nothing for the quick-add box to fill in.",
+    "description": "Shown in place of the quick-add attribute list when the node type this stage builds has no text attribute this stage may take."
+  },
+  "protocolBuilder.networkCanvas.quickAddHint": {
+    "defaultMessage": "The participant types one thing to add a node — usually a name. It is stored in this attribute, and checked against that attribute’s own rules.",
+    "description": "Guidance under the quick-add attribute control of a network composer. The rules are the validation the codebook records for the attribute."
+  },
+  "protocolBuilder.networkCanvas.quickAddLabel": {
+    "defaultMessage": "Attribute filled in when a node is added",
+    "description": "Label of the control choosing which codebook attribute the participant fills in as they add a member to the network — usually a name."
+  },
+  "protocolBuilder.networkCanvas.repositioningHint": {
+    "defaultMessage": "The participant can drag nodes around while they talk. Nothing is recorded: the attribute the preset positions by is left as it is, and the nodes are back where the preset put them the next time the stage is opened.",
+    "description": "Guidance under the moving-nodes switch on a narrative stage. It says the move is temporary because a narrative stage reads positions and never writes them, so a researcher does not plan a study around movements that are never collected."
+  },
+  "protocolBuilder.networkCanvas.repositioningLabel": {
+    "defaultMessage": "Allow moving nodes",
+    "description": "Label of the switch letting the participant drag the network members around the canvas."
+  },
   "protocolBuilder.networkCanvas.sociogramPromptsDescription": {
     "defaultMessage": "Write the tasks the participant works through on the canvas, and drag them into the order they do them.",
     "description": "Description of the prompts section on a sociogram stage, which sets tasks performed on a canvas rather than asking questions to be answered in words. Replaces the generic prompts description."
@@ -2038,6 +3210,10 @@
   "protocolBuilder.networkCanvas.sociogramPromptsWaitingDescription": {
     "defaultMessage": "Choose what this stage works with before writing its prompts.",
     "description": "Shown in place of the sociogram prompts description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
+  },
+  "protocolBuilder.networkCanvas.staleControlRefusal": {
+    "defaultMessage": "The “{attributeName}” attribute cannot be asked for with this input control. Choose another control, or record this field in a different attribute.",
+    "description": "Refusal shown when a network composer form field is saved with an input control that cannot collect the kind of answer its attribute holds — because a collaborator changed that attribute while this field was open. attributeName is the researcher-facing name of the codebook attribute. Both ways out are offered because an attribute can be changed to a kind no control at all can ask for."
   },
   "protocolBuilder.networkCanvas.tapBehaviourLabel": {
     "defaultMessage": "Tap behavior",
@@ -3139,6 +4315,54 @@
     "defaultMessage": "Attribute record key \"{variableId}\" is reused across entity types (first declared in {firstOwnerSectionId}).",
     "description": "Why part of the codebook could not be read: two entity types store an attribute under the same key. variableId is the key; firstOwnerSectionId identifies the part of the protocol that used it first."
   },
+  "protocolBuilder.quickAdd.canBeEmptyDescription": {
+    "defaultMessage": "What the participant types here is the only thing they gave, so a “{typeName}” added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.",
+    "description": "Warning body offering to make the quick-add attribute one that has to be answered, and saying that the change reaches every other stage using the same attribute. typeName is the researcher’s own name for the node type this stage adds and is not translated."
+  },
+  "protocolBuilder.quickAdd.canBeEmptyTitle": {
+    "defaultMessage": "This attribute can be left empty",
+    "description": "Warning heading shown when the attribute quick add fills in does not have to be answered, so a network member could be created with no name."
+  },
+  "protocolBuilder.quickAdd.description": {
+    "defaultMessage": "Choose the attribute the participant fills in when they add a “{typeName}” with a single box.",
+    "description": "Description of the quick-add section. typeName is the researcher’s own name for the node type this stage adds — a person, an organisation, a place — and is not translated."
+  },
+  "protocolBuilder.quickAdd.fieldHint": {
+    "defaultMessage": "What the participant types goes here. Use the attribute holding the name unless you have a reason not to — the interview labels what it creates by it.",
+    "description": "Guidance under the quick-add attribute control. Said without naming what is created, because this interface can add any kind of network member and the control is shown before the researcher has chosen which."
+  },
+  "protocolBuilder.quickAdd.fieldLabel": {
+    "defaultMessage": "Attribute filled in",
+    "description": "Label of the control choosing which attribute receives what the participant types into the quick-add box."
+  },
+  "protocolBuilder.quickAdd.fieldRequired": {
+    "defaultMessage": "Choose the attribute quick add fills in.",
+    "description": "Refusal shown when a researcher saves a quick-add stage without saying which attribute receives what the participant types, which would create network members with no name at all."
+  },
+  "protocolBuilder.quickAdd.noTextAttribute": {
+    "defaultMessage": "This type has no text attribute quick add could fill in. Create one below.",
+    "description": "Shown in place of the quick-add attribute list when the chosen node type has no attribute holding typed text. Points at the control beneath, which invents one."
+  },
+  "protocolBuilder.quickAdd.nowRequired": {
+    "defaultMessage": "This attribute now has to be answered, everywhere the protocol uses it.",
+    "description": "Confirmation shown to the researcher who just asked for the quick-add attribute to be required, because focus has moved to a control that says nothing about what changed."
+  },
+  "protocolBuilder.quickAdd.nowRequiredElsewhere": {
+    "defaultMessage": "“{variableName}” now has to be answered, everywhere the protocol uses it. It is not the attribute this stage fills in any more.",
+    "description": "Confirmation shown to a researcher who asked for the quick-add attribute to be required, when the stage moved off that attribute while the change was being made — they chose a different node type, or a different attribute. The change was still made, so it is said rather than swallowed. variableName is the attribute’s own name and is not translated."
+  },
+  "protocolBuilder.quickAdd.requireAnswer": {
+    "defaultMessage": "Require an answer",
+    "description": "Action that adds \"must be answered\" to the rules of the attribute quick add fills in."
+  },
+  "protocolBuilder.quickAdd.title": {
+    "defaultMessage": "Quick add",
+    "description": "Heading of the section choosing which attribute a participant fills in when they add a network member with a single box. An attribute is one field the protocol records about that member, which may be a person, an organisation, a place, or anything else the study is about."
+  },
+  "protocolBuilder.quickAdd.waitingDescription": {
+    "defaultMessage": "Choose what this stage works with before setting up quick add.",
+    "description": "Shown in place of the quick-add section’s description while the researcher has not yet chosen which node type the stage is about, so there are no attributes to choose from."
+  },
   "protocolBuilder.removeAfterConsideration.description": {
     "defaultMessage": "Decide what happens to a person once the participant has finished considering them.",
     "description": "Description of the section named above."
@@ -3594,6 +4818,22 @@
   "protocolBuilder.resourceUpload.unreadable": {
     "defaultMessage": "That file could not be read. Choose it again, or try a different file.",
     "description": "Refusal shown when the browser could not read the bytes of the file a researcher chose — it was moved, renamed, or is unreadable."
+  },
+  "protocolBuilder.rosterColumns.missingColumn": {
+    "defaultMessage": "{column} — this attribute is not in the data file",
+    "description": "Label of the only choice left standing for a roster list that names a column the chosen data file does not carry. column is the heading the stage still holds, which is the researcher’s own word and is never translated. Rendered inside a plain dropdown option, which can carry no styling, so the explanation is part of the label."
+  },
+  "protocolBuilder.rosterColumns.missingColumnRefusal": {
+    "defaultMessage": "This row points at an attribute that is not in the data file. Choose another or delete the row.",
+    "description": "Shown above a roster list when one of its rows names a column the chosen data file does not carry. Names both ways out, because the row looks complete and is not."
+  },
+  "protocolBuilder.rosterColumns.missingSearchColumnRefusal": {
+    "defaultMessage": "This search matches an attribute that is not in the data file. Uncheck it and choose another.",
+    "description": "Shown above the roster-search checkboxes when a checked column is not in the chosen data file. Names the one way out — unchecking — because a checkbox has no row to delete and no cell to repoint."
+  },
+  "protocolBuilder.rosterColumns.unreadableDescription": {
+    "defaultMessage": "The chosen data file could not be read, so there is nothing to choose from. The settings this stage already holds are kept.",
+    "description": "Shown in place of a roster section’s description when the chosen data file could not be read, so its attributes are not known. Says both why the section offers nothing and that what the stage holds is not lost, because the section is showing empty controls over settings that are still there. The reason the file could not be read is shown by the roster-source section, in the host’s own words."
   },
   "protocolBuilder.ruleCodebook.operatorNoLongerOffered": {
     "defaultMessage": "{operator} (no longer offered)",
@@ -4291,6 +5531,78 @@
     "defaultMessage": "{fieldLabel} holds settings this stage does not have.",
     "description": "Shown beside one section of a stage editor when the saved stage carries settings this kind of stage knows nothing about — usually a stage imported from an older or newer protocol. fieldLabel is the control’s own name and starts the sentence."
   },
+  "protocolBuilder.searchOptions.clearConfirm": {
+    "defaultMessage": "Turn off search",
+    "description": "Action that confirms switching roster search off and discarding how it was configured."
+  },
+  "protocolBuilder.searchOptions.clearDescription": {
+    "defaultMessage": "This will remove the attributes a participant’s search is matched against, and the tolerance you set. Do you want to continue?",
+    "description": "Body of the dialog confirming that switching roster search off discards the searchable attributes and the fuzziness setting. A roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.searchOptions.clearTitle": {
+    "defaultMessage": "This will turn off roster search",
+    "description": "Title of the dialog asking a researcher to confirm switching off the section that lets a participant search a roster."
+  },
+  "protocolBuilder.searchOptions.description": {
+    "defaultMessage": "Let the participant find someone by typing, and choose what their typing is matched against.",
+    "description": "Description of the roster-search section."
+  },
+  "protocolBuilder.searchOptions.keystrokeNotice": {
+    "defaultMessage": "Every attribute you choose is searched on each keystroke, so a long roster searches faster with fewer of them.",
+    "description": "Notice above the checkboxes, saying why choosing fewer attributes makes a long roster feel faster to the participant."
+  },
+  "protocolBuilder.searchOptions.matchHint": {
+    "defaultMessage": "What the participant types is compared against these. Choose the ones they would actually search for.",
+    "description": "Guidance under the checkboxes choosing what a participant’s search is matched against."
+  },
+  "protocolBuilder.searchOptions.matchLabel": {
+    "defaultMessage": "Attributes a search matches",
+    "description": "Label of the checkboxes choosing which attributes of the data file a participant’s typing is compared against."
+  },
+  "protocolBuilder.searchOptions.matchRequired": {
+    "defaultMessage": "Choose at least one attribute for a search to match against.",
+    "description": "Refusal shown against the checkboxes when roster search is switched on and nothing is checked, which would find nobody whatever the participant types."
+  },
+  "protocolBuilder.searchOptions.title": {
+    "defaultMessage": "Roster search",
+    "description": "Heading of the section letting a participant find someone in a roster by typing. A roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.searchOptions.toleranceClose": {
+    "defaultMessage": "Close matches only",
+    "description": "The second of four search tolerances, between \"Exact\" and \"Allow small differences\"."
+  },
+  "protocolBuilder.searchOptions.toleranceExact": {
+    "defaultMessage": "Exact",
+    "description": "The strictest of four search tolerances: only what the participant typed, exactly, is a match."
+  },
+  "protocolBuilder.searchOptions.toleranceHint": {
+    "defaultMessage": "A stricter setting narrows a roster of similar people; a looser one forgives typos.",
+    "description": "Guidance under the scale choosing how closely a participant’s search must match."
+  },
+  "protocolBuilder.searchOptions.toleranceLabel": {
+    "defaultMessage": "How closely a search must match",
+    "description": "Label of the scale choosing how much difference between what a participant types and what the data file holds still counts as a match."
+  },
+  "protocolBuilder.searchOptions.toleranceRequired": {
+    "defaultMessage": "Choose how closely a search must match.",
+    "description": "Refusal shown against the tolerance scale when roster search is switched on and no tolerance has been chosen."
+  },
+  "protocolBuilder.searchOptions.toleranceSaved": {
+    "defaultMessage": "Saved setting ({value, number})",
+    "description": "Label of the extra position the tolerance scale offers when the stage was saved with a tolerance that is not one of the four named ones — an older protocol, or one authored elsewhere. value is the number the stage holds, which is what the researcher has to be able to see and keep. Kept short: it is read as one tick label beside the four named ones."
+  },
+  "protocolBuilder.searchOptions.toleranceSmallDifferences": {
+    "defaultMessage": "Allow small differences",
+    "description": "The third of four search tolerances, between \"Close matches only\" and \"Allow typos and misspellings\"."
+  },
+  "protocolBuilder.searchOptions.toleranceTypos": {
+    "defaultMessage": "Allow typos and misspellings",
+    "description": "The loosest of four search tolerances: a word the participant spelled wrongly still finds the person."
+  },
+  "protocolBuilder.searchOptions.waitingDescription": {
+    "defaultMessage": "Choose a roster data file before setting up its search.",
+    "description": "Shown in place of the roster-search section’s description while no data file has been chosen, so there are no columns for a search to match against."
+  },
   "protocolBuilder.shell.formUnavailableRefusal": {
     "defaultMessage": "This stage could not be saved because its form is no longer available. Reopen the stage and try again.",
     "description": "Shown above a stage editor’s fields when a save arrives after the editor’s own form has been taken down, so there are no values left to save."
@@ -4418,6 +5730,78 @@
   "protocolBuilder.skipLogicDestination.untitledStageOption": {
     "defaultMessage": "Stage {position, number} — Untitled stage",
     "description": "The same offered destination as stageOption, for a stage the researcher has not named yet, so there is no name to show. position is where that stage will sit in the finished interview, counting from one."
+  },
+  "protocolBuilder.sortOptions.attributeColumn": {
+    "defaultMessage": "Attribute",
+    "description": "Heading of the column of either roster-order list holding which attribute of the data file a row is about."
+  },
+  "protocolBuilder.sortOptions.clearConfirm": {
+    "defaultMessage": "Clear sorting",
+    "description": "Action that confirms switching roster sorting off and discarding it."
+  },
+  "protocolBuilder.sortOptions.clearDescription": {
+    "defaultMessage": "This will remove the roster’s starting order and every attribute the participant could sort by. Do you want to continue?",
+    "description": "Body of the dialog confirming that switching roster sorting off discards both the starting order and the attributes offered to the participant. A roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.sortOptions.clearTitle": {
+    "defaultMessage": "This will clear your sorting",
+    "description": "Title of the dialog asking a researcher to confirm switching off the section that decides the order a roster is shown in and what a participant may reorder it by."
+  },
+  "protocolBuilder.sortOptions.description": {
+    "defaultMessage": "Decide the order people appear in, and which attributes the participant may reorder them by.",
+    "description": "Description of the roster-order section. An attribute is one field the data file records about a person."
+  },
+  "protocolBuilder.sortOptions.directionColumn": {
+    "defaultMessage": "Direction",
+    "description": "Heading of the column of the starting-order rule holding whether the roster is sorted upwards or downwards by the chosen attribute."
+  },
+  "protocolBuilder.sortOptions.labelColumn": {
+    "defaultMessage": "Label",
+    "description": "Heading of the column of the sortable-attribute list holding the words the participant reads on the control that reorders the roster."
+  },
+  "protocolBuilder.sortOptions.labelPlaceholder": {
+    "defaultMessage": "Age",
+    "description": "Example label shown in an empty label cell of the sortable-attribute list. An example rather than an instruction, so a translation should be an equally ordinary thing a study records about a person."
+  },
+  "protocolBuilder.sortOptions.orderAddLabel": {
+    "defaultMessage": "Add new sort rule",
+    "description": "Button that adds the roster’s starting-order rule. Whole rather than a generic \"Add\", because this section shows two lists and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.sortOptions.orderEmptyState": {
+    "defaultMessage": "People appear in the order the data file lists them.",
+    "description": "Shown in place of the starting-order rule while the roster has none, saying what that means rather than that nothing is there."
+  },
+  "protocolBuilder.sortOptions.orderHint": {
+    "defaultMessage": "How the roster is sorted before the participant changes anything. Without a rule, people keep the order the data file lists them in.",
+    "description": "Guidance under the roster’s starting-order rule."
+  },
+  "protocolBuilder.sortOptions.orderLabel": {
+    "defaultMessage": "Starting order",
+    "description": "Label of the rule deciding how the roster is sorted before the participant changes anything."
+  },
+  "protocolBuilder.sortOptions.sortableAddLabel": {
+    "defaultMessage": "Add new sortable attribute",
+    "description": "Button that offers the participant one more attribute to reorder the roster by. Whole rather than a generic \"Add\", because this section shows two lists and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
+  },
+  "protocolBuilder.sortOptions.sortableEmptyState": {
+    "defaultMessage": "The participant cannot reorder the roster.",
+    "description": "Shown in place of the sortable-attribute list while none is offered, saying what that means rather than that nothing is there."
+  },
+  "protocolBuilder.sortOptions.sortableHint": {
+    "defaultMessage": "Each becomes a control above the roster, under the label you give it here.",
+    "description": "Guidance under the list of attributes the participant may reorder the roster by."
+  },
+  "protocolBuilder.sortOptions.sortableLabel": {
+    "defaultMessage": "Attributes the participant may sort by",
+    "description": "Label of the list of attributes offered to the participant as ways to reorder the roster."
+  },
+  "protocolBuilder.sortOptions.title": {
+    "defaultMessage": "Roster order",
+    "description": "Heading of the section deciding the order a roster’s people appear in and what a participant may reorder them by. A roster is a list of people imported from a data file."
+  },
+  "protocolBuilder.sortOptions.waitingDescription": {
+    "defaultMessage": "Choose a roster data file before deciding how its people are ordered.",
+    "description": "Shown in place of the roster-order section’s description while no data file has been chosen, so there are no columns to order by."
   },
   "protocolBuilder.sortOrder.ascending": {
     "defaultMessage": "Ascending",

@@ -17,6 +17,20 @@ export type LayoutModeFieldProps = Omit<
   Readonly<{
     value?: boolean;
     onChange?: (value: boolean) => void;
+    /**
+     * What manual mode LOOKS like on this interface, formatted by the section
+     * that composes this field. Absent means the wording on the card below.
+     */
+    manualDescription?: string;
+    /**
+     * And the same for automatic mode, where what the participant gets is not
+     * what the shared sentence describes: a narrative stage simulates only the
+     * nodes its preset holds a position for, and a network composer treats
+     * automatic layout as the state the stage OPENS in rather than as how it
+     * arranges nodes — the participant has a switch of their own on the
+     * canvas, and whichever way they leave it is remembered.
+     */
+    automaticDescription?: string;
   }>;
 
 /**
@@ -29,6 +43,8 @@ export type LayoutModeFieldProps = Omit<
 export default function LayoutModeField({
   value,
   onChange,
+  manualDescription,
+  automaticDescription,
   ...props
 }: LayoutModeFieldProps) {
   const intl = useAppIntl();
@@ -42,21 +58,25 @@ export default function LayoutModeField({
         label: intl.formatMessage(
           canvasBehavioursMessages.layoutModeManualLabel,
         ),
-        description: intl.formatMessage(
-          canvasBehavioursMessages.layoutModeManualDescription,
-        ),
+        description:
+          manualDescription ??
+          intl.formatMessage(
+            canvasBehavioursMessages.layoutModeManualDescription,
+          ),
       },
       {
         value: AUTOMATIC,
         label: intl.formatMessage(
           canvasBehavioursMessages.layoutModeAutomaticLabel,
         ),
-        description: intl.formatMessage(
-          canvasBehavioursMessages.layoutModeAutomaticDescription,
-        ),
+        description:
+          automaticDescription ??
+          intl.formatMessage(
+            canvasBehavioursMessages.layoutModeAutomaticDescription,
+          ),
       },
     ],
-    [intl],
+    [intl, manualDescription, automaticDescription],
   );
 
   return (

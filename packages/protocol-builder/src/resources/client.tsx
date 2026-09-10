@@ -10,8 +10,8 @@ import {
 import { v4 as uuid } from 'uuid';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 
-import type { ProtocolBuilderClient } from '../contract/contract.ts';
 import { useProtocolBuilderContext } from '../state/context.ts';
 import type { ResourcePromotion } from '../state/hooks.ts';
 import { resourceFailureMessages } from './resourceMessages.ts';
@@ -26,7 +26,6 @@ import {
   type ResourceSecretStorage,
   type StageSecretRequest,
   type StageUploadRequest,
-  type StagedSecret,
   type StagedSecretHandle,
 } from './types.ts';
 
@@ -69,9 +68,17 @@ export type ResourceClient = Readonly<{
   stageUpload(
     request: StageUploadRequest,
   ): Promise<ResourceResult<ResourceDescriptor>>;
+  /**
+   * Stages an API key and answers with the id a stage field holds.
+   *
+   * The handle the host answers with — the one thing that can promote the
+   * secret behind that id — is kept HERE and handed only to the submit that
+   * promotes it. Answering a control with it would put the credential in a
+   * component that has no use for it.
+   */
   stageSecret(
     request: StageSecretRequest,
-  ): Promise<ResourceResult<StagedSecret>>;
+  ): Promise<ResourceResult<ResourceDescriptor>>;
   resolvePreview(resourceId: string): Promise<ResourceResult<ResourcePreview>>;
   inspect(resourceId: string): Promise<ResourceResult<ResourceInspection>>;
   discardStaged(resourceId: string): Promise<ResourceResult<undefined>>;
@@ -379,7 +386,7 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
         }
         deps.handles.set(descriptor.id, handle);
         recordStaged(descriptor);
-        return resourceOk({ descriptor, handle });
+        return resourceOk(descriptor);
       }),
 
     resolvePreview: (resourceId) =>

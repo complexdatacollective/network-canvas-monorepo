@@ -2,9 +2,9 @@ import { render } from '@testing-library/react';
 import { useEffect, type ReactNode } from 'react';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
 import {
   useStageEditorForm,
   type StageFormStoreApi,

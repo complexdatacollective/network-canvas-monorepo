@@ -15,10 +15,13 @@ import type {
 } from '../../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../../form/stageEditorContext.ts';
 import { variablesForSubject } from '../../../../protocol-context.ts';
+import {
+  asNestedBoolean,
+  asNestedText,
+} from '../../../../sections/canvas/rowValues.ts';
 import PromptsSection from '../../../../sections/PromptsSection.tsx';
 import { useStageSubject } from '../../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../../state/protocolContext.ts';
-import { asNestedBoolean, asNestedText } from '../../canvas/rowValues.ts';
 import {
   HIGHLIGHT_VARIABLE_FIELD,
   SociogramPromptFields,

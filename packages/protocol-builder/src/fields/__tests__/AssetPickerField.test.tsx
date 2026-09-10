@@ -5,9 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { ProtocolBuilderClient } from '../../contract/contract.ts';
 import { REQUIRED } from '../../form/requiredField.ts';
 import {
   deferred,

@@ -5,6 +5,10 @@ import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
 import type { FixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
+import { geospatialStageEditor } from '../geospatial/GeospatialStageEditor.ts';
+import { narrativePedigreeStageEditor } from '../narrative-pedigree/NarrativePedigreeStageEditor.ts';
+import { narrativeStageEditor } from '../narrative/NarrativeStageEditor.ts';
+import { networkComposerStageEditor } from '../network-composer/NetworkComposerStageEditor.ts';
 import { sociogramStageEditor } from '../sociogram/SociogramStageEditor.ts';
 
 shimMarkdownEditorMeasurement();
@@ -48,6 +52,89 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Interviewer guidance',
     ],
     ownedKeys: ['background', 'behaviours', 'label', 'prompts', 'subject'],
+  },
+  {
+    interfaceName: 'Narrative',
+    stageId: 'narrative-1',
+    editor: narrativeStageEditor,
+    sections: [
+      'Stage name',
+      'Node type',
+      'Stage filter',
+      'Visualization presets',
+      'Background',
+      'Node layout',
+      'Canvas interaction',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['background', 'behaviours', 'label', 'presets', 'subject'],
+  },
+  {
+    interfaceName: 'NetworkComposer',
+    stageId: 'network-composer-1',
+    editor: networkComposerStageEditor,
+    sections: [
+      'Stage name',
+      'Node type',
+      'Adding and arranging nodes',
+      'Node attributes',
+      'Connections',
+      'Background',
+      'Node layout',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: [
+      'background',
+      'behaviours',
+      'convexHullVariable',
+      'edges',
+      'label',
+      'layoutVariable',
+      'quickAdd',
+      'subject',
+    ],
+  },
+  {
+    interfaceName: 'Geospatial',
+    stageId: 'geospatial-1',
+    editor: geospatialStageEditor,
+    // The map is four decisions a researcher makes at different times, each
+    // finishable on its own — and the prompts sit between the two halves,
+    // because what the map IS has to be settled before there is anything to
+    // ask about it, and how it looks and where it opens are settled once the
+    // questions are written.
+    sections: [
+      'Stage name',
+      'Node type',
+      'Stage filter',
+      'Map access',
+      'Map layer',
+      'Prompts',
+      'Map appearance',
+      'Starting map view',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['label', 'mapOptions', 'prompts', 'subject'],
+  },
+  {
+    interfaceName: 'NarrativePedigree',
+    stageId: 'narrative-pedigree-1',
+    editor: narrativePedigreeStageEditor,
+    // No subject picker: this stage draws a family somebody else collected, so
+    // the node type its diseases are attributes of is the source pedigree's,
+    // resolved through the stage it names rather than chosen here.
+    sections: [
+      'Stage name',
+      'Pedigree source',
+      'Diseases',
+      'At-risk statuses',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['diseases', 'label', 'showAtRiskStatuses', 'sourceStageId'],
   },
 ];
 

@@ -1,5 +1,11 @@
 import { get } from 'es-toolkit/compat';
-import { type ComponentProps, useEffect, useRef, useState } from 'react';
+import {
+  type ComponentProps,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useStore } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -150,6 +156,12 @@ const interfacesWithBackgroundImages: readonly StageType[] = [
 export const allowsBackgroundImage = (interfaceType: StageType): boolean =>
   interfacesWithBackgroundImages.includes(interfaceType);
 
+const renderResponsiveSvgLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.responsiveSvgBackgrounds}>
+    {chunks}
+  </ExternalLink>
+);
+
 /**
  * `InputField` always emits the raw typed string (fresco-ui has no
  * `parse`/`format` hook), so the number the stage schema expects has to be
@@ -205,6 +217,10 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
   );
   const showImage = imageAllowed && useImage;
 
+  // This effect synchronises with an external system — the Redux draft-history
+  // store — rather than deriving a value React already holds, so an effect is
+  // the right tool here despite the shape.
+  //
   // Undo/redo writes the background's LEAVES and nothing else, so without this
   // a step is a visible no-op: the obsolete group stays on screen, the
   // restored values land in the unmounted sibling's dormant storage where
@@ -333,13 +349,7 @@ const Background = ({ interfaceType }: StageEditorSectionProps) => {
                     value1: intl.formatMessage(
                       messages.learnHowToCreateAResponsive,
                     ),
-                    ExternalLink: (chunks) => (
-                      <ExternalLink
-                        href={documentationLinks.responsiveSvgBackgrounds}
-                      >
-                        {chunks}
-                      </ExternalLink>
-                    ),
+                    ExternalLink: renderResponsiveSvgLink,
                   },
                 )}
               </Paragraph>

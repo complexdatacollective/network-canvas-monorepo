@@ -298,6 +298,7 @@ const EgoFormInner = (props: EgoFormProps) => {
             shadow="xs"
             role="status"
             aria-live="polite"
+            // oxlint-disable-next-line tailwindcss/no-unknown-classes -- semantic marker matching e2e scenario ids
             className="scroll-nudge mx-auto mt-2 mb-4 flex shrink-0"
             initial={{ y: '100%' }}
             animate={{

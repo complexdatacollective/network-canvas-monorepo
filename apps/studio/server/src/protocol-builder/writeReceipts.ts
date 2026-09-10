@@ -20,7 +20,7 @@ import type pg from 'pg';
 import type {
   ResourceDescriptor,
   Revision,
-} from '@codaco/protocol-builder/contract/schemas';
+} from '@codaco/protocol-builder-core/contract/schemas';
 import {
   sectionId as makeSectionId,
   parseSectionId,

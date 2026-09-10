@@ -10,7 +10,7 @@ import type {
   ResourcePreviewSchema,
   ResourceSecretStorageSchema,
   ResourceStatusSchema,
-} from '../contract/schemas.ts';
+} from '@codaco/protocol-builder-core/contract/schemas';
 
 /**
  * The resource vocabulary the editor's controls speak, taken from the contract
@@ -42,12 +42,6 @@ export type ResourceResult<T> =
  * without the editor ever seeing it.
  */
 export type StagedSecretHandle = string;
-
-export type StagedSecret = Readonly<{
-  /** Carries the asset id a stage field references; never the value. */
-  descriptor: ResourceDescriptor;
-  handle: StagedSecretHandle;
-}>;
 
 export type ResourceListOptions = Readonly<{
   kinds?: readonly ResourceKind[];

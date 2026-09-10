@@ -332,6 +332,9 @@ export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationR
   try {
     await healSupersededSessionReferences();
   } catch (cause) {
+    // No other signal: this healing step is silently skipped for this launch,
+    // and the next launch retries it. Only the console records why.
+    // oxlint-disable-next-line no-console -- only diagnostic for a healing-step failure that is otherwise silently skipped
     console.error('Could not heal superseded session references', cause);
   }
 
@@ -348,6 +351,10 @@ export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationR
     });
     outdatedIds = ids;
   } catch (cause) {
+    // No other signal: the caller only sees an empty result, indistinguishable
+    // from "nothing needed migrating". Only the console records why the scan
+    // itself failed.
+    // oxlint-disable-next-line no-console -- only diagnostic for a scan failure the caller cannot otherwise distinguish from "nothing to migrate"
     console.error(
       'Could not read stored protocols to check their schema version',
       cause,
@@ -370,10 +377,12 @@ export async function migrateStoredProtocols(): Promise<StoredProtocolMigrationR
       if (cause instanceof SourceChangedError) {
         // Not a failure: a peer's write superseded this row mid-migration and
         // nothing was changed. The next launch sweep re-evaluates it.
-        console.info(cause.message);
         continue;
       }
       const name = row?.name ?? id;
+      // `failed.reason` below is only `cause.message`, not the full error/stack
+      // — the console call is the only place that survives for debugging.
+      // oxlint-disable-next-line no-console -- keeps the full error/stack; `failed.reason` only carries the message string
       console.error(`Could not migrate stored protocol "${name}"`, cause);
       failed.push({
         name,
