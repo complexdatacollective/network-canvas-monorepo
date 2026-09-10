@@ -201,6 +201,15 @@ export function useCodebookSectionWrite(): (
         ) {
           return createEgoCodebook(client, protocolId, egoKey, next);
         }
+        if (acquired.definedError === null) {
+          // An acquire with no refusal on it never reached an answer: the
+          // socket dropped, and the host may well have granted the lock before
+          // it did. Studio's lease is renewed for as long as the tab is there,
+          // so a lock nobody knows about is one the section's collaborators
+          // wait out until the tab closes. Best effort, like every other
+          // release: a host that will not take it leaves nothing to act on.
+          await safe(client.releaseLock({ protocolId, sectionId: id }));
+        }
         return refused(protocolRefusal(acquired.definedError?.code));
       }
       if (acquired.data.lock === 'readOnly') {

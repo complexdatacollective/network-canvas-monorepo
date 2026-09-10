@@ -436,3 +436,70 @@ describe('a codebook write whose section a collaborator is holding', () => {
     expect(after.lock).toBe('held');
   });
 });
+
+/**
+ * A host that grants the codebook lock and whose answer never arrives, with
+ * the channel unchanged: the client cannot tell a lock it was given from one
+ * it was not, which is exactly what a socket dropping between the two looks
+ * like.
+ */
+function withTheAcquireAnswerSwallowed(
+  host: InMemoryHost,
+): Readonly<{ client: ProtocolBuilderClient }> {
+  let swallowed = false;
+  const acquireLock: ProtocolBuilderClient['acquireLock'] = async (
+    input,
+    options,
+  ) => {
+    const answer = await host.client.acquireLock(input, options);
+    if (swallowed) return answer;
+    swallowed = true;
+    throw new Error('the socket dropped before the answer arrived');
+  };
+  return {
+    client: new Proxy(host.client, {
+      get: (target, property) =>
+        property === 'acquireLock'
+          ? acquireLock
+          : Reflect.get(target, property),
+    }),
+  };
+}
+
+describe('a codebook lock whose acquire answer is lost', () => {
+  it('is given back, rather than held against everyone else until the tab closes', async () => {
+    const user = userEvent.setup();
+    const host = createInMemoryHost({
+      sections: sectionsFromProtocol(FIXTURE),
+    });
+    const lost = withTheAcquireAnswerSwallowed(host);
+    const collaborator = host.asCollaborator(ANA);
+    const before = personVariableNames(host);
+
+    render(
+      <ProtocolBuilder client={lost.client} protocolId={host.protocolId}>
+        <AttributeInventor />
+      </ProtocolBuilder>,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Invent an attribute' }),
+    );
+
+    // The researcher is told the change could not be sent, and nothing was
+    // written — the lock was granted, but the write that needed it never
+    // learnt so.
+    const answer = screen.getByLabelText('What happened');
+    await waitFor(() => expect(answer).toHaveTextContent(/could not be sent/));
+    expect(personVariableNames(host)).toEqual(before);
+
+    // And the section is free. Studio renews this tab's lease for as long as
+    // the tab is there, so a lock left behind by an unanswered acquire is one
+    // the collaborators of that section wait out until it closes.
+    const after = await collaborator.acquireLock({
+      protocolId: host.protocolId,
+      sectionId: PERSON,
+    });
+    expect(after.lock).toBe('held');
+  });
+});

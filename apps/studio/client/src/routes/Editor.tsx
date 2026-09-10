@@ -37,6 +37,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { registerStudioEditorSession } from '../editor/sessionLifecycle.ts';
 import { orpc, rpcClient } from '../lib/api.ts';
 import { clientSessionId } from '../lib/clientSession.ts';
 import { createUuid } from '../lib/createUuid.ts';
@@ -70,11 +71,62 @@ export function hostSocketUrl(): string {
   return url.toString();
 }
 
+/**
+ * The socket this tab is talking to the protocol builder's host over.
+ *
+ * Held, because two things have to be able to reach it. The transport reopens
+ * it after a drop, and sign-out has to close it: the server reads the
+ * principal ONCE, at the upgrade (`server/src/app.ts`), and authorises and
+ * audits every message on that socket as them — so a socket that outlives the
+ * session is one the next account to sign in on this tab would edit and be
+ * logged as the previous one through.
+ */
+let hostSocket: WebSocket | undefined;
+
+/**
+ * How the host client's transport opens and reopens this tab's socket.
+ *
+ * Reconnection is the whole of what makes a dropped socket survivable, and it
+ * is off by default in `@orpc/client`: without it the transport keeps the
+ * closed peer and answers every later call from it, so one blip leaves the
+ * editor unable to lock, save or watch anything until the page is reloaded —
+ * and the host's lock-survival grace, which exists exactly for a tab that
+ * comes back, can never be reached. Reopening lazily rather than on close, so
+ * that closing the socket at sign-out is not immediately undone by a
+ * reconnection carrying no cookie.
+ *
+ * Exported so the suite drives the same options the application runs on.
+ */
+export const hostSocketLinkOptions = {
+  connect: (): WebSocket => {
+    hostSocket = new WebSocket(hostSocketUrl());
+    return hostSocket;
+  },
+  reconnect: { enabled: true },
+};
+
 const hostClient: StudioHostClient = createORPCClient(
-  new RPCLink({
-    connect: () => new WebSocket(hostSocketUrl()),
-  }),
+  new RPCLink(hostSocketLinkOptions),
 );
+
+/**
+ * Ending this tab's editor session, which is closing that socket.
+ *
+ * Registered here rather than from the editor's own effect because of when it
+ * is called: sign-out leaves the editor by an ordinary navigation first, so
+ * the unsaved-changes blocker runs while the session is still valid, and only
+ * then closes the editor's sessions (`shell/useSignOut.ts`) — by which time
+ * the route is unmounted and an effect's registration is gone with it.
+ *
+ * Closing is also what gives the sections this tab was holding back to its
+ * collaborators, and what makes the next signed-in account open a socket of
+ * its own: the transport reconnects on the next call, and that handshake
+ * carries whatever cookie the browser holds then.
+ */
+registerStudioEditorSession(async () => {
+  hostSocket?.close();
+  hostSocket = undefined;
+});
 
 /** What `protocols.draft` and every editing procedure are addressed by. */
 type DraftAddress = {

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { ORPCError } from '@orpc/client';
+import { WebSocketLinkTransport } from '@orpc/client/websocket';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import {
@@ -267,6 +268,10 @@ beforeEach(() => {
     sequence: '3',
     hash: 'r3',
   });
+  // Nothing in jsdom serves `/ws`, and the socket tests below are about which
+  // sockets the transport opens rather than about what a host answers.
+  FakeSocket.opened = [];
+  vi.stubGlobal('WebSocket', FakeSocket);
 });
 
 function renderEditor() {
@@ -729,4 +734,119 @@ describe('the socket the editor opens', () => {
     expect(url.searchParams.get('clientSession')).toBe(clientSessionId());
     expect(clientSessionId()).not.toBe('');
   });
+
+  /**
+   * A socket that has dropped is opened again, rather than answered from.
+   *
+   * `@orpc/client` does not reconnect unless it is told to: without it the
+   * transport hands every later call the peer of the closed socket, so one
+   * blip leaves the researcher unable to lock, save or watch anything until
+   * they reload — and the host's grace for a tab that comes back, which is
+   * what keeps the section they are editing theirs across a drop, is never
+   * reached.
+   */
+  it('opens a new one after a drop, rather than answering from the closed one', async () => {
+    const { hostSocketLinkOptions } = await import('../Editor.tsx');
+    const transport = new WebSocketLinkTransport(hostSocketLinkOptions);
+
+    ask(transport);
+    const dropped = await socketNumber(1);
+    dropped.close();
+
+    ask(transport);
+    await socketNumber(2);
+  });
+
+  /**
+   * And it is closed when the session ends.
+   *
+   * The server reads the principal once, at the upgrade, and authorises and
+   * audits every message on the socket as them: a socket left open across
+   * sign-out is one the next account to sign in on this tab would be editing
+   * through, under the previous researcher's name.
+   */
+  it('is closed when the editor sessions end, so the next account opens its own', async () => {
+    const { hostSocketLinkOptions } = await import('../Editor.tsx');
+    const { closeStudioEditorSessions } =
+      await import('../../editor/sessionLifecycle.ts');
+    const transport = new WebSocketLinkTransport(hostSocketLinkOptions);
+
+    ask(transport);
+    const signedIn = await socketNumber(1);
+
+    await closeStudioEditorSessions();
+
+    expect(signedIn.readyState).toBe(FakeSocket.CLOSED);
+    // The next call opens a socket of its own, whose handshake carries
+    // whatever cookie the browser holds by then.
+    ask(transport);
+    await socketNumber(2);
+  });
 });
+
+/**
+ * A call over the transport, which is what opens the socket.
+ *
+ * Nothing answers it — there is no host on the other end of a stubbed socket —
+ * so the promise is abandoned rather than awaited, and its rejection when the
+ * socket closes is swallowed here so it is not reported as an unhandled one.
+ */
+function ask(transport: WebSocketLinkTransport<Record<never, never>>): void {
+  void transport
+    .send(
+      {
+        method: 'POST',
+        url: '/ws',
+        headers: {},
+        body: undefined,
+        signal: undefined,
+      },
+      [],
+      { context: {} },
+    )
+    .catch(() => undefined);
+}
+
+/** The nth socket the transport has opened, once it has opened it. */
+async function socketNumber(count: number): Promise<FakeSocket> {
+  await waitFor(() => expect(FakeSocket.opened).toHaveLength(count));
+  const socket = FakeSocket.opened.at(-1);
+  if (socket === undefined) throw new Error('no socket was opened');
+  return socket;
+}
+
+/**
+ * A WebSocket that connects to nothing, so the transport's own behaviour is
+ * what these tests watch: which sockets it opens, and when.
+ */
+class FakeSocket {
+  static readonly CLOSED = 3;
+  static opened: FakeSocket[] = [];
+  readyState = 1;
+  readonly #listeners = new Map<string, Set<(event: unknown) => void>>();
+
+  constructor() {
+    FakeSocket.opened.push(this);
+  }
+
+  addEventListener(type: string, listener: (event: unknown) => void): void {
+    const listeners = this.#listeners.get(type) ?? new Set();
+    listeners.add(listener);
+    this.#listeners.set(type, listeners);
+  }
+
+  removeEventListener(type: string, listener: (event: unknown) => void): void {
+    this.#listeners.get(type)?.delete(listener);
+  }
+
+  send(): void {
+    // The host is what would answer, and there is none.
+  }
+
+  close(): void {
+    this.readyState = FakeSocket.CLOSED;
+    for (const listener of this.#listeners.get('close') ?? []) {
+      listener({ code: 1000, reason: 'the socket dropped' });
+    }
+  }
+}

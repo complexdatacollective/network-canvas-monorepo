@@ -18,7 +18,10 @@ import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import VariableEditor from '../codebook/components/VariableEditor.tsx';
-import { sectionIdForCodebookSubject } from '../codebook/editing.ts';
+import {
+  documentWithRebasedVariable,
+  sectionIdForCodebookSubject,
+} from '../codebook/editing.ts';
 import {
   useCodebookSectionDocument,
   useWhereTheAnswerLands,
@@ -579,12 +582,27 @@ export default function AttributeCodebookControls({
    *
    * Bound to the subject the editor OPENED on, so a write cannot land on the
    * type a repointed stage has moved to since.
+   *
+   * And bound to the attribute it is editing, because that is all of the
+   * editor's document the write takes: `useCodebookSectionWrite` hands the
+   * section back as the host holds it at the moment the lock is taken, and
+   * only the one attribute is laid over it. Handing back the whole assembled
+   * document instead would carry the codebook as this editor last rendered it,
+   * deleting whatever a collaborator wrote in between.
    */
   const submitEdit =
-    (target: CodebookSubject) => async (document: SectionDoc) => {
+    (target: CodebookSubject, variableId: string) =>
+    async (document: SectionDoc) => {
       setSubmitting(true);
       try {
-        return await writeCodebookSection(target, () => document);
+        return await writeCodebookSection(target, (authoritativeDocument) =>
+          documentWithRebasedVariable({
+            subject: target,
+            authoritativeDocument,
+            variableId,
+            submittedDocument: document,
+          }),
+        );
       } finally {
         setSubmitting(false);
       }
@@ -757,7 +775,10 @@ export default function AttributeCodebookControls({
             allowedVariableTypes={[inventingType]}
             readOnly={editorReadOnly}
             title={editorTitle}
-            onSubmitDocument={submitEdit(openEditor.subject)}
+            onSubmitDocument={submitEdit(
+              openEditor.subject,
+              openEditor.variableId,
+            )}
             onComplete={(variableId, variableName) => {
               // Which codebook the attribute was written into, and which field
               // it was going to fill in, were both decided when this editor
@@ -850,7 +871,10 @@ export default function AttributeCodebookControls({
             }
             readOnly={editorReadOnly}
             title={editorTitle}
-            onSubmitDocument={submitEdit(openEditor.subject)}
+            onSubmitDocument={submitEdit(
+              openEditor.subject,
+              openEditor.variableId,
+            )}
             onComplete={close}
           />
         </Dialog>
@@ -871,7 +895,10 @@ export default function AttributeCodebookControls({
             authoritativeEntityDocument={openEditor.document}
             allSubjectVariables={editorVariables}
             readOnly={editorReadOnly}
-            onSubmitDocument={submitEdit(openEditor.subject)}
+            onSubmitDocument={submitEdit(
+              openEditor.subject,
+              openEditor.variableId,
+            )}
             onComplete={close}
           />
         </Dialog>

@@ -13,6 +13,7 @@ import { draftAdditionalAttributeVariableIds } from '../../codebook/variableVali
 import ProtocolField from '../../form/ProtocolField.tsx';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolContextFromSections } from '../../protocol-context.ts';
+import type { InMemoryClient } from '../../testing/host/createInMemoryHost.ts';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
@@ -1495,6 +1496,9 @@ const collectNotesInATextArea = (
 /** The id the seeded categorical attribute below is filed under. */
 const SEEDED_CONTACT_SETTING = 'seeded-contact-setting';
 
+/** What a collaborator adds to the same type while an editor is open on it. */
+const COLLABORATORS_ATTRIBUTE = 'collaborators-attribute';
+
 /**
  * The same categorical attribute, already in the protocol.
  *
@@ -1789,6 +1793,85 @@ describe('the codebook an attribute a form field collects lives in', () => {
       { label: 'At work', value: 'work' },
       { label: 'Somewhere else', value: 'elsewhere' },
     ]);
+  });
+
+  /**
+   * And a save from that editor writes the attribute it was opened on, not the
+   * codebook as this tab last saw it.
+   *
+   * The editor assembles the whole section — every attribute of the type, as
+   * of the render the researcher pressed Save in — while the write takes the
+   * section's lock only afterwards. A collaborator who wrote in between is in
+   * the document the lock hands back and not in this editor's copy, so
+   * submitting that copy whole deletes their attribute with nothing on either
+   * screen to say it happened.
+   */
+  it('keeps an attribute a collaborator added while the values editor was open', async () => {
+    const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+      client: (host) => {
+        let raced = false;
+        const acquireLock: InMemoryClient['acquireLock'] = async (
+          ...args: Parameters<InMemoryClient['acquireLock']>
+        ) => {
+          const [input] = args;
+          if (!raced && input.sectionId === person) {
+            raced = true;
+            // Between the editor's last render and the lock it is asking for
+            // here, which is the whole of the window this is about.
+            const current = host.store.read(person).document;
+            host.store.applyAsCollaborator(person, {
+              ...current,
+              variables: {
+                ...asRecord(current.variables),
+                [COLLABORATORS_ATTRIBUTE]: {
+                  name: 'metThrough',
+                  type: 'text',
+                  component: 'Text',
+                },
+              },
+            });
+          }
+          return host.client.acquireLock(...args);
+        };
+        return new Proxy(host.client, {
+          get: (target, property) =>
+            property === 'acquireLock'
+              ? acquireLock
+              : Reflect.get(target, property),
+        });
+      },
+    });
+
+    const variableId = seedContactSetting(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      variableId,
+    );
+    await harness.user.click(
+      await dialog.findByRole('button', {
+        name: 'Change this attribute’s values',
+      }),
+    );
+    await addValue(harness, 3, 'Somewhere else', 'elsewhere');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        asRecord(personVariables(harness)[variableId]).options,
+      ).toHaveLength(3),
+    );
+    // The researcher's own change landed, and the collaborator's is still
+    // there beside it.
+    expect(
+      asRecord(personVariables(harness)[COLLABORATORS_ATTRIBUTE]).name,
+    ).toBe('metThrough');
   });
 
   /**
