@@ -5,7 +5,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
  *
  * One file for the family rather than descriptors beside each section's
  * markup, because several of these ids are rendered somewhere else entirely:
- * the row noun `DialogArrayField` builds "Edit …", "Remove this …?" and its
+ * the row noun the shared row list builds "Edit …", "Delete this …?" and its
  * write refusals around, and the refusals the disease list encodes for a form's
  * error region to decode. A translator reading this file sees the whole of what
  * a narrative pedigree says, wherever it is said.
@@ -178,7 +178,7 @@ export const narrativePedigreeMessages = defineMessages({
     id: 'protocolBuilder.narrativePedigree.diseaseNoun',
     defaultMessage: 'disease',
     description:
-      'What one row of the disease list is called inside things said ABOUT it — "Edit disease", "Remove this disease?" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree.',
+      'What one row of the disease list is called inside things said ABOUT it — "Edit disease", "Delete this disease?" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree.',
   },
   diseasesEmptyState: {
     id: 'protocolBuilder.narrativePedigree.diseasesEmptyState',

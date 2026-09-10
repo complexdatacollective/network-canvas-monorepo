@@ -197,6 +197,12 @@ export const composerMessages = defineMessages({
     description:
       'Button that adds a kind of connection to those a network composer lets the participant draw.',
   },
+  createConnectionTypeLabel: {
+    id: 'protocolBuilder.networkCanvas.composerCreateEdgeTypeLabel',
+    defaultMessage: 'Create a new connection type',
+    description:
+      'Button opening the codebook editor to define a kind of connection the protocol does not have yet, from inside a network composer. The new kind becomes drawable on this canvas as soon as it is created.',
+  },
   connectionsEmptyState: {
     id: 'protocolBuilder.networkCanvas.composerEdgeEmpty',
     defaultMessage:

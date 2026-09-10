@@ -72,6 +72,34 @@ describe('the network composer stage editor', () => {
   });
 
   /**
+   * Both sentences under the layout control are this interface's own, and the
+   * shared pair they replace is not on screen.
+   *
+   * The shared wording is written for a stage that is GIVEN its nodes: manual
+   * mode leaves every one of them in a bucket at the foot of the canvas, and
+   * automatic mode is how the stage arranges them. A composer's nodes arrive
+   * one at a time as the participant adds them, and the participant has a
+   * layout switch of their own — so the setting decides only how the stage
+   * opens.
+   */
+  it('describes both layout modes as a composer performs them', async () => {
+    openFixture();
+
+    expect(
+      await screen.findByText(
+        /Places each node where there is room for it as the participant adds it/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Starts the stage with the simulation running/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/bucket/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/simulating physical forces/),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
    * A composer's own minimum: a name, the type the participant builds with,
    * somewhere to put what they type when they add one, somewhere to remember
    * where they put it, and something behind the canvas.

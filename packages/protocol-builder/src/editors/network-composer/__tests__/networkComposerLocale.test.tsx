@@ -2,7 +2,11 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
-import { composerHolding, openRow } from './composerFixtures.tsx';
+import {
+  composerEditor,
+  composerHolding,
+  openRow,
+} from './composerFixtures.tsx';
 
 const KNOWS_ENTRY = {
   id: 'composer-edge-1',
@@ -48,6 +52,31 @@ describe('the network composer sections, read in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('combobox', { name: 'Atributo de agrupación' }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The two sentences this interface writes for the SHARED layout control,
+   * which the editor hands over as descriptors. Resolved to English where the
+   * editor declares them, they would sit in English under a control named in
+   * Spanish — which is exactly the seam a replacement sentence crosses.
+   */
+  it('reads the composer’s own layout sentences in Spanish', async () => {
+    renderStageEditor({
+      stageId: 'network-composer-1',
+      locale: 'es',
+      editor: composerEditor,
+    });
+
+    expect(
+      await screen.findByText(
+        'Coloca cada nodo donde hay sitio para él a medida que el participante lo añade, y deja que lo arrastre a donde quiera.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Inicia la etapa con la simulación en marcha. El participante puede apagarla y encenderla mientras trabaja, y la etapa se reabre tal como la dejó.',
+      ),
     ).toBeInTheDocument();
   });
 

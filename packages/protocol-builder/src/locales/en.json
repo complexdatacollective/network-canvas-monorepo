@@ -163,10 +163,6 @@
     "defaultMessage": "Passphrase rules",
     "description": "Heading of the section where a researcher decides what a participant’s passphrase has to look like. The requirements are lengths only: a shortest and a longest."
   },
-  "protocolBuilder.anonymisation.passphraseRulesUnreadable": {
-    "defaultMessage": "These passphrase rules could not be read. Switch them off and set them again.",
-    "description": "Refusal shown on the passphrase-rules control when the rules stored on this stage are not in a shape the editor can read at all — a protocol edited by hand, or written by a newer version. Switching the section off discards them so they can be set again."
-  },
   "protocolBuilder.anonymisation.storageNotice": {
     "defaultMessage": "An encrypted attribute is stored so that only the passphrase can unlock it. It cannot be read, exported, or recovered without it.",
     "description": "Notice at the top of the encrypted-attributes section, warning the researcher that encryption applies to their own copy of the data too: an answer whose passphrase is lost cannot be exported or recovered by anyone."
@@ -2405,7 +2401,7 @@
   },
   "protocolBuilder.narrativePedigree.diseaseNoun": {
     "defaultMessage": "disease",
-    "description": "What one row of the disease list is called inside things said ABOUT it — \"Edit disease\", \"Remove this disease?\" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree."
+    "description": "What one row of the disease list is called inside things said ABOUT it — \"Edit disease\", \"Delete this disease?\" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree."
   },
   "protocolBuilder.narrativePedigree.diseaseUnnamed": {
     "defaultMessage": "Unnamed disease",
@@ -2659,6 +2655,10 @@
     "defaultMessage": "Canvas interaction",
     "description": "Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology."
   },
+  "protocolBuilder.networkCanvas.composerCreateEdgeTypeLabel": {
+    "defaultMessage": "Create a new connection type",
+    "description": "Button opening the codebook editor to define a kind of connection the protocol does not have yet, from inside a network composer. The new kind becomes drawable on this canvas as soon as it is created."
+  },
   "protocolBuilder.networkCanvas.composerCreateLayoutLabel": {
     "defaultMessage": "Create a new position attribute",
     "description": "Button that creates an attribute holding a position in the codebook and uses it for this stage."
@@ -2742,10 +2742,6 @@
   "protocolBuilder.networkCanvas.composerNodeWaitingDescription": {
     "defaultMessage": "Choose what this stage works with before configuring how its nodes behave.",
     "description": "Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview."
-  },
-  "protocolBuilder.networkCanvas.composerUnvalidatedOnThisStageRefusal": {
-    "defaultMessage": "“{variableName}” is written directly by another control on this stage, so a question here would check values that control does not.",
-    "description": "Refusal shown when the quick-add box or a form field on a network composer picks an attribute the same stage’s position or grouping control writes straight onto the node. The shared refusal names another STAGE or a prompt; this one names a control on the stage the researcher is looking at, which is the thing they can act on. variableName is the researcher’s own name for the attribute."
   },
   "protocolBuilder.networkCanvas.createHullLabel": {
     "defaultMessage": "Create a new grouping attribute",
@@ -3073,7 +3069,7 @@
   },
   "protocolBuilder.networkCanvas.presetNoun": {
     "defaultMessage": "preset",
-    "description": "What one row of the visualisation preset list is called inside things said ABOUT it — \"Edit preset\", \"Remove this preset?\" — so it is lower case and singular. A preset is one saved way of looking at the network."
+    "description": "What one row of the visualisation preset list is called inside things said ABOUT it — \"Edit preset\", \"Delete this preset?\" — so it is lower case and singular. A preset is one saved way of looking at the network."
   },
   "protocolBuilder.networkCanvas.presetPositionsDescription": {
     "defaultMessage": "Where this preset puts each node on the canvas.",

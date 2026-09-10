@@ -51,14 +51,23 @@ const pedigreeRecordingNothing = () => {
 };
 
 /**
- * The source pedigree recording a SECOND condition, and a codebook that has
- * the attribute behind it.
+ * The source pedigree recording MORE than the one condition it starts with,
+ * and a codebook that has the attributes behind them.
  *
  * The fixture pedigree records exactly one, which its one disease already
  * maps — so a picker asked what else it would offer has nothing to answer
  * with, and every exclusion below would read as vacuously true.
+ *
+ * `added` names attributes the codebook does not carry yet, by the type each
+ * one records. `alsoPrompted` names attributes it already carries: a prompt
+ * writing one of those is how an exclusion that is NOT about being recorded —
+ * the type, the pedigree's own slots — is asked a question it can fail.
  */
-const alsoRecording = (harness: StageEditorHarness, variableId: string) => {
+const alsoRecording = (
+  harness: StageEditorHarness,
+  added: Readonly<Record<string, string>>,
+  alsoPrompted: readonly string[] = [],
+) => {
   const pedigree = sourcePedigreeDocument();
   const prompts = Array.isArray(pedigree.nominationPrompts)
     ? pedigree.nominationPrompts
@@ -67,13 +76,22 @@ const alsoRecording = (harness: StageEditorHarness, variableId: string) => {
     ...pedigree,
     nominationPrompts: [
       ...prompts,
-      { id: `nomination-${variableId}`, text: 'Who?', variable: variableId },
+      ...[...Object.keys(added), ...alsoPrompted].map((variableId) => ({
+        id: `nomination-${variableId}`,
+        text: 'Who?',
+        variable: variableId,
+      })),
     ],
   });
   harness.receiveCodebookUpdate({
     node: {
       family_member: familyMemberCodebook({
-        add: { [variableId]: { name: variableId, type: 'boolean' } },
+        add: Object.fromEntries(
+          Object.entries(added).map(([variableId, type]) => [
+            variableId,
+            { name: variableId, type },
+          ]),
+        ),
       }),
     },
   });
@@ -195,21 +213,46 @@ describe('a source pedigree that stops being usable', () => {
 });
 
 describe('the diseases a narrative pedigree defines', () => {
+  /**
+   * A nomination prompt is put on `is_ego` deliberately. Without one it is an
+   * attribute the pedigree does not record, and the recorded rule alone keeps
+   * it out — so the claim this case is named for would hold with the
+   * interface-slot exclusion deleted.
+   */
   it('never offers an attribute the source pedigree derives for itself', async () => {
     const harness = openFixture();
-    alsoRecording(harness, 'hasConditionZ');
+    alsoRecording(harness, { hasConditionZ: 'boolean' }, ['is_ego']);
 
     const dialog = await addDisease(harness);
     const picker = await dialog.findByRole('combobox', {
       name: 'Affected-status attribute',
     });
-    // `is_ego` is the pedigree's participant marker, so a disease mapped to it
-    // would paint the participant as affected in every interview.
     await waitFor(() => expect(optionsOf(picker)).toContain('hasConditionZ'));
-    // `is_ego` is the pedigree's participant marker; `hasConditionX` is
-    // already mapped by the disease this stage holds.
+    // `is_ego` is the pedigree's participant marker, so a disease mapped to it
+    // would paint the participant as affected in every interview;
+    // `hasConditionX` is already mapped by the disease this stage holds.
     expect(optionsOf(picker)).not.toContain('is_ego');
     expect(optionsOf(picker)).not.toContain('hasConditionX');
+  });
+
+  /**
+   * A disease is drawn from an affected-or-not answer, and a recorded
+   * attribute that is not one cannot carry it. The prompt is what makes the
+   * type the only thing keeping it out of the list.
+   */
+  it('never offers a recorded attribute that cannot hold a yes-or-no answer', async () => {
+    const harness = openFixture();
+    alsoRecording(harness, {
+      hasConditionZ: 'boolean',
+      conditionNotes: 'text',
+    });
+
+    const dialog = await addDisease(harness);
+    const picker = await dialog.findByRole('combobox', {
+      name: 'Affected-status attribute',
+    });
+    await waitFor(() => expect(optionsOf(picker)).toContain('hasConditionZ'));
+    expect(optionsOf(picker)).not.toContain('conditionNotes');
   });
 
   /**
@@ -265,6 +308,39 @@ describe('the diseases a narrative pedigree defines', () => {
     expect(await harness.submit()).not.toBeNull();
   });
 
+  /**
+   * The picker never offers an attribute a sibling row already maps, so this
+   * state cannot be reached by choosing one: it arrives with an import, or
+   * with a row a collaborator wrote. The save-time twin of that exclusion is
+   * the only thing standing between it and a saved stage that gives the
+   * pedigree two inheritance patterns for one affected set.
+   */
+  it('refuses a second disease that reuses an attribute', async () => {
+    const harness = renderStageEditor(
+      narrativePedigreeHolding({
+        diseases: [
+          fixtureDisease(),
+          {
+            id: 'disease-2',
+            label: 'Condition X, again',
+            color: 'node-color-seq-2',
+            variable: 'hasConditionX',
+            inheritancePattern: 'unknown',
+          },
+        ],
+      }),
+    );
+
+    const dialog = await openDisease(harness, 1);
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    expect(
+      await screen.findByText(
+        /This attribute is already mapped by another disease/,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('refuses a second disease that reuses a name', async () => {
     const harness = renderStageEditor(
       narrativePedigreeHolding({
@@ -280,7 +356,7 @@ describe('the diseases a narrative pedigree defines', () => {
         ],
       }),
     );
-    alsoRecording(harness, 'hasConditionZ');
+    alsoRecording(harness, { hasConditionZ: 'boolean' });
 
     const dialog = await openDisease(harness, 1);
     const name = dialog.getByRole('textbox', { name: 'Disease name' });
@@ -307,6 +383,32 @@ describe('a disease the source pedigree stopped recording', () => {
     expect(await harness.submit()).toBeNull();
     expect(
       screen.getByText(/Condition X maps an attribute the source pedigree/),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The dialog lets the row be saved, and the LIST is what refuses the stage.
+   * A mapping a collaborator invalidated is not the researcher's mistake to
+   * be trapped by: they may still be renaming it, or recolouring it, on their
+   * way to adding the nomination prompt that repairs it. The row's own
+   * committed attribute is what escapes the dialog's rule — everything the
+   * researcher picks anew is still judged by it.
+   */
+  it('lets a row the pedigree stopped recording be saved, and refuses the stage', async () => {
+    const harness = openFixture();
+    await screen.findByText('Condition X');
+    receiveSection(harness, SOURCE_STAGE_SECTION, pedigreeRecordingNothing());
+
+    const dialog = await openDisease(harness);
+    const name = dialog.getByRole('textbox', { name: 'Disease name' });
+    await harness.user.clear(name);
+    await harness.user.type(name, 'Condition Y');
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(/Condition Y maps an attribute the source pedigree/),
     ).toBeInTheDocument();
   });
 
