@@ -4,10 +4,10 @@ import { draftAdditionalAttributeVariableIds } from '../../codebook/variableVali
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { interfaceDocumentationUrl } from '../../interfaces/documentation.ts';
 import AlterLimitsSection from '../../sections/AlterLimitsSection.tsx';
-import FormFieldsSection from '../../sections/FormFieldsSection.tsx';
+import FormFieldsSection from '../../sections/form-fields/FormFieldsSection.tsx';
 import NameGeneratorPromptsSection from '../../sections/NameGeneratorPromptsSection.tsx';
 import NodePanelsSection from '../../sections/NodePanelsSection.tsx';
-import SubjectSection from '../../sections/SubjectSection.tsx';
+import SubjectSection from '../../sections/subject-picker/SubjectSection.tsx';
 import type { StageEditorProps } from '../../stage-editor-contract.ts';
 import NameGeneratorFrame from './NameGeneratorFrame.tsx';
 

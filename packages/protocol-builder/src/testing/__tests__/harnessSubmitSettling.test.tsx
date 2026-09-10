@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import type { StageEditorActionContext } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../renderStageEditor.tsx';
 

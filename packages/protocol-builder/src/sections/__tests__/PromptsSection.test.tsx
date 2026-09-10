@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import PromptsSection from '../PromptsSection.tsx';
-import StageNameSection from '../StageNameSection.tsx';
+import StageNameSection from '../stage-heading/StageNameSection.tsx';
 import {
   dropUnusedAssignments,
   ExplodingRowEditor,

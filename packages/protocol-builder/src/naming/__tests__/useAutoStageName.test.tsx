@@ -21,7 +21,7 @@ import {
 import StageEditorShell from '../../form/StageEditorShell.tsx';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { ResourceClientProvider } from '../../resources/client.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import { StageEditSession, type StageEditTarget } from '../../stageEdit.tsx';
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import {

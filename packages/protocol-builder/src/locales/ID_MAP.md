@@ -75,7 +75,7 @@ after the fact is marked in place.
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | `interface`                 | `interfaces/interfaceNames.ts`                                                                                                                                                                | #1702     |
 | `stageTypeImage`            | `interfaces/StageTypeImage.tsx`                                                                                                                                                               | #1702     |
-| `stageName`                 | `sections/StageNameSection.tsx`                                                                                                                                                               | #1702     |
+| `stageName`                 | `sections/stage-heading/StageNameSection.tsx`                                                                                                                                                 | #1702     |
 | `operators`                 | `rules/operators.ts`                                                                                                                                                                          | i18n-1a   |
 | `ruleEditor`                | `rules/RuleEditorDialog.tsx`, `rules/ruleMessages.ts`                                                                                                                                         | i18n-1a   |
 | `ruleSet`                   | `rules/ruleSet.ts`, `rules/RuleSetField.tsx`                                                                                                                                                  | i18n-1a   |
@@ -108,20 +108,20 @@ after the fact is marked in place.
 | `entitySelect`              | `fields/EntityTypePickerField.tsx`                                                                                                                                                            | i18n-2b   |
 | `variablePicker`            | `fields/VariablePickerField.tsx`                                                                                                                                                              | i18n-2b   |
 | `skipLogicDestination`      | `fields/stageDestination.ts`                                                                                                                                                                  | i18n-2b   |
-| `networkFilter`             | `sections/NetworkFilterSection.tsx`                                                                                                                                                           | i18n-2b   |
-| `skipLogic`                 | `sections/SkipLogicSection.tsx`                                                                                                                                                               | i18n-2b   |
-| `interviewerGuidance`       | `sections/InterviewerGuidanceSection.tsx`                                                                                                                                                     | i18n-2b   |
+| `networkFilter`             | `sections/network-filter/NetworkFilterSection.tsx`                                                                                                                                            | i18n-2b   |
+| `skipLogic`                 | `sections/skip-logic/SkipLogicSection.tsx`                                                                                                                                                    | i18n-2b   |
+| `interviewerGuidance`       | `sections/interviewer-guidance/InterviewerGuidanceSection.tsx`                                                                                                                                | i18n-2b   |
 | `schemaProblem`             | `form/schemaProblems.ts`                                                                                                                                                                      | sections  |
 | `variableParameters`        | `codebook/variableParameters.ts`, `codebook/components/VariableParameterFields.tsx`                                                                                                           | sections  |
 | `compoundFailure`           | `codebook/compoundFailureCopy.ts`                                                                                                                                                             | sections  |
 | `stageEdit`                 | `stageEdit.tsx`                                                                                                                                                                               | rework    |
 | `sortOrder`                 | `fields/sortOrderOptions.ts`, `sections/prompts/SortOrderRows.tsx`                                                                                                                            | sections  |
-| `formFields`                | `sections/FormFieldsSection.tsx`, `sections/collectableTypes.ts`                                                                                                                              | sections  |
+| `formFields`                | `sections/form-fields/FormFieldsSection.tsx`, `sections/collectableTypes.ts`                                                                                                                  | sections  |
 | `attributeCodebookControls` | `sections/AttributeCodebookControls.tsx`                                                                                                                                                      | sections  |
-| `subjectSection`            | `sections/SubjectSection.tsx`                                                                                                                                                                 | sections  |
-| `introduction`              | `sections/IntroductionSection.tsx`                                                                                                                                                            | sections  |
-| `pageContent`               | `sections/PageContentSection.tsx`                                                                                                                                                             | sections  |
-| `contentBlock`              | `sections/contentBlocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                                            | sections  |
+| `subjectSection`            | `sections/subject-picker/SubjectSection.tsx`                                                                                                                                                  | sections  |
+| `introduction`              | `sections/introduction/IntroductionSection.tsx`                                                                                                                                               | sections  |
+| `pageContent`               | `sections/page-content/PageContentSection.tsx`                                                                                                                                                | sections  |
+| `contentBlock`              | `sections/content-blocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                                           | sections  |
 | `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                                 | sections  |
 | `integerField`              | `fields/IntegerField.tsx`                                                                                                                                                                     | family D  |
 | `alterLimits`               | `sections/AlterLimitsSection.tsx`                                                                                                                                                             | family D  |
@@ -336,8 +336,8 @@ for something else or reopens a decision that has been made:
   changed, so the only surface that can tell a researcher what actually
   happened is the one that knows which attribute the editor was opened on.
 
-`sections/StageHeading.tsx` holds no copy either: it composes
-`StageNameSection` from the protocol's own stage order.
+`sections/stage-heading/StageHeadingSection.tsx` holds no copy either: it
+composes `StageNameSection` from the protocol's own stage order.
 
 `sections/collectableTypes.ts` DOES hold copy, and used not to. It was a list
 of schema tokens offered as their own labels — a researcher choosing what kind

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import {
   renderStageEditor,
   type RenderStageEditorOptions,

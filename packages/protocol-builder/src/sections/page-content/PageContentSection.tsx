@@ -1,0 +1,477 @@
+import { useMemo } from 'react';
+
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import Field from '@codaco/fresco-ui/form/Field/Field';
+import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import type { StageType } from '@codaco/protocol-validation';
+
+import { withoutAbsentValues } from '../../form/absentValues.ts';
+import { REQUIRED } from '../../form/requiredField.ts';
+import {
+  RowDialog,
+  RowList,
+  RowListItem,
+  rowId,
+  rowTemplate,
+  type RowEditorComponent,
+  type RowListConfig,
+  type RowPreviewComponent,
+  type RowValues,
+} from '../../form/rowDialog.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
+import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
+import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
+
+/**
+ * What a page of content IS to the stage around it.
+ *
+ * Not a pair of paths a caller passes in. Where the blocks live, whether there
+ * is a heading above them, and whether the whole thing can be switched off are
+ * three answers to one question — is this stage a page, or does a page precede
+ * the task it does — and letting a family answer them separately would let it
+ * ask for combinations the schema has no room for.
+ *
+ * - `page`: the stage IS the page. Its heading and its blocks are the stage's
+ *   own `title` and `items`, the heading is required, and there is nothing to
+ *   switch off — a page with no content is not a stage.
+ * - `introScreen`: a page shown BEFORE a task, at `introScreen.items`. No
+ *   heading, because the task's own name is already above it, and switchable:
+ *   a pedigree that opens straight into the task is an ordinary thing to want.
+ */
+export type PageContentVariant = 'page' | 'introScreen';
+
+const messages = defineMessages({
+  atLeastOne: {
+    id: 'protocolBuilder.pageContent.atLeastOne',
+    defaultMessage:
+      'Add at least one block. A page with no content shows the participant nothing.',
+    description:
+      'Refusal shown above the list of blocks when a researcher saves a page that shows nothing. A block is one piece of a page — a passage of text, a picture, a video.',
+  },
+  headingLabel: {
+    id: 'protocolBuilder.pageContent.headingLabel',
+    defaultMessage: 'Page heading',
+    description:
+      'Label of the field holding the large heading at the top of a page a participant reads.',
+  },
+  headingHint: {
+    id: 'protocolBuilder.pageContent.headingHint',
+    defaultMessage: 'The large heading shown at the top of the page.',
+    description: 'Guidance under the page-heading field.',
+  },
+  headingPlaceholder: {
+    id: 'protocolBuilder.pageContent.headingPlaceholder',
+    defaultMessage: 'Enter a heading...',
+    description:
+      'Placeholder shown in the empty page-heading field. The trailing dots are an ellipsis written as three full stops.',
+  },
+  pageTitle: {
+    id: 'protocolBuilder.pageContent.pageTitle',
+    defaultMessage: 'Page content',
+    description:
+      'Heading of the section where a researcher builds a page of text and media that a participant reads instead of doing a task.',
+  },
+  pageDescription: {
+    id: 'protocolBuilder.pageContent.pageDescription',
+    defaultMessage:
+      'Write the page heading and build the sequence of blocks the participant reads.',
+    description: 'Description of the page-content section.',
+  },
+  pageItemsLabel: {
+    id: 'protocolBuilder.pageContent.pageItemsLabel',
+    defaultMessage: 'Content blocks',
+    description:
+      'Label of the ordered list of pieces a page is built from — passages of text, pictures, videos.',
+  },
+  pageItemsHint: {
+    id: 'protocolBuilder.pageContent.pageItemsHint',
+    defaultMessage:
+      'The participant scrolls through these in order, so add as many as you need. Drag to reorder them.',
+    description: 'Guidance under the list of blocks on a page.',
+  },
+  pageAddLabel: {
+    id: 'protocolBuilder.pageContent.pageAddLabel',
+    defaultMessage: 'Create new content block',
+    description:
+      'Button that opens the dialog for adding one more piece to a page. Whole rather than a generic "Add", because a stage editor shows several lists at once.',
+  },
+  pageAddTitle: {
+    id: 'protocolBuilder.pageContent.pageAddTitle',
+    defaultMessage: 'Create content block',
+    description:
+      'Title of the dialog a researcher fills in to add one more piece to a page.',
+  },
+  pageEditTitle: {
+    id: 'protocolBuilder.pageContent.pageEditTitle',
+    defaultMessage: 'Edit content block',
+    description:
+      'Title of the dialog a researcher fills in to change a piece of a page.',
+  },
+  pageItemNoun: {
+    id: 'protocolBuilder.pageContent.pageItemNoun',
+    defaultMessage: 'block',
+    description:
+      'What one piece of a page is called inside things said ABOUT it — "Edit block", "Delete this block?" — so it is lower case and singular.',
+  },
+  pageEmptyState: {
+    id: 'protocolBuilder.pageContent.pageEmptyState',
+    defaultMessage:
+      'No blocks yet. Create one to put text or media on this page.',
+    description:
+      'Shown in place of the list of blocks while a page holds nothing yet.',
+  },
+  introTitle: {
+    id: 'protocolBuilder.pageContent.introTitle',
+    defaultMessage: 'Introduction screen',
+    description:
+      'Heading of the section where a researcher builds a page of text and media shown before this step of the interview’s own task begins.',
+  },
+  introDescription: {
+    id: 'protocolBuilder.pageContent.introDescription',
+    defaultMessage:
+      'Show the participant a screen of text and media before this task begins.',
+    description: 'Description of the introduction-screen section.',
+  },
+  introItemsLabel: {
+    id: 'protocolBuilder.pageContent.introItemsLabel',
+    defaultMessage: 'Introduction blocks',
+    description:
+      'Label of the ordered list of pieces the introduction screen is built from.',
+  },
+  introItemsHint: {
+    id: 'protocolBuilder.pageContent.introItemsHint',
+    defaultMessage:
+      'The participant scrolls through these in order before starting the task. Drag to reorder them.',
+    description: 'Guidance under the list of blocks on an introduction screen.',
+  },
+  introAddLabel: {
+    id: 'protocolBuilder.pageContent.introAddLabel',
+    defaultMessage: 'Create new introduction block',
+    description:
+      'Button that opens the dialog for adding one more piece to an introduction screen.',
+  },
+  introAddTitle: {
+    id: 'protocolBuilder.pageContent.introAddTitle',
+    defaultMessage: 'Create introduction block',
+    description:
+      'Title of the dialog a researcher fills in to add one more piece to an introduction screen.',
+  },
+  introEditTitle: {
+    id: 'protocolBuilder.pageContent.introEditTitle',
+    defaultMessage: 'Edit introduction block',
+    description:
+      'Title of the dialog a researcher fills in to change a piece of an introduction screen.',
+  },
+  introItemNoun: {
+    id: 'protocolBuilder.pageContent.introItemNoun',
+    defaultMessage: 'introduction block',
+    description:
+      'What one piece of an introduction screen is called inside things said ABOUT it — "Edit introduction block" — so it is lower case and singular.',
+  },
+  introEmptyState: {
+    id: 'protocolBuilder.pageContent.introEmptyState',
+    defaultMessage:
+      'No blocks yet. Create one to explain this task before the participant starts it.',
+    description:
+      'Shown in place of the list of blocks while an introduction screen holds nothing yet.',
+  },
+  introClearTitle: {
+    id: 'protocolBuilder.pageContent.introClearTitle',
+    defaultMessage: 'This will remove the introduction screen',
+    description:
+      'Title of the confirmation asked before switching the introduction screen off, which throws every block on it away.',
+  },
+  introClearDescription: {
+    id: 'protocolBuilder.pageContent.introClearDescription',
+    defaultMessage:
+      'This will delete every block on the introduction screen, and the participant will start the task straight away. Do you want to continue?',
+    description:
+      'Body of the confirmation asked before switching the introduction screen off, which throws every block on it away.',
+  },
+  introClearConfirm: {
+    id: 'protocolBuilder.pageContent.introClearConfirm',
+    defaultMessage: 'Remove the introduction screen',
+    description:
+      'Action that confirms switching the introduction screen off and discarding its blocks.',
+  },
+});
+
+const AT_LEAST_ONE_ITEM = createMessageError(messages.atLeastOne);
+
+const itemsValidation = {
+  custom: messageRuleValidation([
+    (value: unknown) =>
+      Array.isArray(value) && value.length > 0 ? undefined : AT_LEAST_ONE_ITEM,
+  ]),
+};
+
+/**
+ * The words each variant uses, per variant rather than per key.
+ *
+ * A page and a task's introduction screen are the same control and different
+ * things: one IS the step of the interview, the other precedes the task the
+ * step does. Whole sentences per variant rather than a noun swapped into a
+ * shared frame, because the two read differently in any language that inflects
+ * around the noun.
+ *
+ * Formatted with no values, like every named descriptor a shared section
+ * takes: one carrying a placeholder renders the pattern on screen, and nothing
+ * in the types can refuse it. See `PromptsSection`'s own note and
+ * `sections/__tests__/namedDescriptorProps.test.tsx`, which lands with the
+ * form-fields section — the first surface to take a whole set of them. This
+ * section's own words come from the table below rather than from a prop, so
+ * what would break the rule here is an edit to this package's catalog, which
+ * the locale sweep sees.
+ */
+const WORDS: Readonly<
+  Record<
+    PageContentVariant,
+    Readonly<{
+      title: MessageDescriptor;
+      description: MessageDescriptor;
+      itemsLabel: MessageDescriptor;
+      itemsHint: MessageDescriptor;
+      addLabel: MessageDescriptor;
+      addTitle: MessageDescriptor;
+      editTitle: MessageDescriptor;
+      itemNoun: MessageDescriptor;
+      emptyState: MessageDescriptor;
+      /**
+       * What the researcher is asked before switching this page off — for the
+       * variant that HAS a switch.
+       *
+       * Absent for a page that must exist. Words nothing can render are words
+       * a translator is asked for and a native review pass is asked to check,
+       * and a page whose `PLACEMENT` names no `capabilityField` has no switch
+       * to confirm: its three sentences were declared, translated, and dead.
+       */
+      clear?: Readonly<{
+        title: MessageDescriptor;
+        description: MessageDescriptor;
+        confirm: MessageDescriptor;
+      }>;
+    }>
+  >
+> = Object.freeze({
+  page: Object.freeze({
+    title: messages.pageTitle,
+    description: messages.pageDescription,
+    itemsLabel: messages.pageItemsLabel,
+    itemsHint: messages.pageItemsHint,
+    addLabel: messages.pageAddLabel,
+    addTitle: messages.pageAddTitle,
+    editTitle: messages.pageEditTitle,
+    itemNoun: messages.pageItemNoun,
+    emptyState: messages.pageEmptyState,
+  }),
+  introScreen: Object.freeze({
+    title: messages.introTitle,
+    description: messages.introDescription,
+    itemsLabel: messages.introItemsLabel,
+    itemsHint: messages.introItemsHint,
+    addLabel: messages.introAddLabel,
+    addTitle: messages.introAddTitle,
+    editTitle: messages.introEditTitle,
+    itemNoun: messages.introItemNoun,
+    emptyState: messages.introEmptyState,
+    clear: Object.freeze({
+      title: messages.introClearTitle,
+      description: messages.introClearDescription,
+      confirm: messages.introClearConfirm,
+    }),
+  }),
+});
+
+/** Where each variant's heading and blocks live in the stage document. */
+const PLACEMENT: Readonly<
+  Record<
+    PageContentVariant,
+    Readonly<{
+      /** `undefined` for a page whose heading the stage already provides. */
+      titleField?: string;
+      itemsField: string;
+      /** The path a switch clears, or `undefined` for a page that must exist. */
+      capabilityField?: string;
+    }>
+  >
+> = Object.freeze({
+  page: Object.freeze({ titleField: 'title', itemsField: 'items' }),
+  introScreen: Object.freeze({
+    itemsField: 'introScreen.items',
+    capabilityField: 'introScreen',
+  }),
+});
+
+export type PageContentSectionProps = Readonly<{
+  /**
+   * The family's own block fields, rendered inside the row dialog.
+   *
+   * What a block CAN be — text, an image, a video — is the interface's
+   * business, and choosing a media file needs a resource picker this section
+   * knows nothing about. What every page has in common is an ordered list of
+   * blocks, and that is all this section owns.
+   */
+  ItemEditor: RowEditorComponent;
+  /** How one block reads in the list when its dialog is closed. */
+  ItemPreview: RowPreviewComponent;
+  variant?: PageContentVariant;
+  /**
+   * The private shape a family's block editor works on, and how it is removed
+   * again.
+   *
+   * A block's `content` is one key whose MEANING depends on its `type`: prose
+   * for a text block, a resource id for every other kind. Edited through a
+   * single control, changing the type has to destroy the value — and until it
+   * does, the incoming type's control is showing the outgoing type's value, an
+   * image id sitting in a rich text editor one save away from becoming what a
+   * participant reads. So a family gives each type a slot of its own,
+   * `expand`s `content` into the slot its type names, and `collapse`s the
+   * active slot back into `content` on the way out.
+   *
+   * ONE prop rather than two, because they are two halves of one contract and
+   * the second half is the one the saved protocol depends on: every per-type
+   * slot is editor state, and both saved block schemas are strict, so a slot
+   * left on the row does not merely take up space — it makes the protocol
+   * invalid. A family that could declare `expand` alone would compile, send
+   * the host an editor-only key, and hold the researcher at the save with an
+   * error naming a key that is nowhere in the schema and nowhere on their
+   * screen. Requiring both is what makes that unwritable.
+   *
+   * `collapse` is composed with, not substituted for, this section's own rule
+   * that an unanswered value is spelled by the key not being there.
+   */
+  slots?: Readonly<{
+    expand: (
+      context: ProtocolBuilderProtocolContext,
+      row: RowValues,
+    ) => RowValues;
+    /**
+     * Takes the stage the page is on as well as the row, because what a saved
+     * block may carry is not the same on every page: an Information stage's
+     * items hold a display size and a task's introduction items are a strict
+     * object without one. A family reading that from the row alone would
+     * restore a key the page it is on has no room for, and the researcher
+     * would meet a refusal naming something nowhere on their screen.
+     */
+    collapse: (value: unknown, stageType: StageType) => unknown;
+  }>;
+}>;
+
+/**
+ * A page of content the participant reads, rather than a task they do.
+ *
+ * Deliberately not the same section as the task introduction, which the two
+ * were nearly merged into: an introduction is one heading and one passage of
+ * prose held inside `introductionPanel`, while a page is an ordered list of
+ * blocks. Merging them would have meant one section owning two different sets
+ * of paths and choosing between them from a prop.
+ *
+ * Where THIS section's own page lives is `variant`, which is a statement about
+ * what the page is rather than a pair of paths: see `PageContentVariant`.
+ */
+export default function PageContentSection({
+  ItemEditor,
+  ItemPreview,
+  variant = 'page',
+  slots,
+}: PageContentSectionProps) {
+  const intl = useAppIntl();
+  const { identity } = useStageEditorForm();
+  // Read here rather than inside the block editor, because opening a saved
+  // block on the right controls is a question about the asset manifest and the
+  // editor is handed the row already answered.
+  const protocolContext = useProtocolContext();
+  const words = WORDS[variant];
+  const placement = PLACEMENT[variant];
+  // The family's collapse runs FIRST: it decides what `content` becomes, and
+  // an emptied slot has to be able to clear it. Stripping absent values first
+  // would hide the empty slot from the collapse and leave the old content
+  // standing.
+  const collapse = slots?.collapse;
+  const expand = slots?.expand;
+  const stageType = identity.type;
+  const rowList = useMemo<RowListConfig>(
+    () => ({
+      Preview: ItemPreview,
+      Editor: ItemEditor,
+      addTitle: words.addTitle,
+      editTitle: words.editTitle,
+      formId: 'content-block-editor',
+      name: placement.itemsField,
+      ...(expand === undefined
+        ? {}
+        : { expand: (row: RowValues) => expand(protocolContext, row) }),
+      normalize: (row) =>
+        withoutAbsentValues(
+          collapse === undefined ? row : collapse(row, stageType),
+        ) as RowValues,
+    }),
+    [
+      ItemEditor,
+      ItemPreview,
+      collapse,
+      expand,
+      placement.itemsField,
+      protocolContext,
+      stageType,
+      words.addTitle,
+      words.editTitle,
+    ],
+  );
+
+  const capability = useMemo<SectionCapability | undefined>(
+    () =>
+      placement.capabilityField === undefined || words.clear === undefined
+        ? undefined
+        : {
+            fields: [placement.capabilityField],
+            confirmClear: {
+              title: words.clear.title,
+              description: words.clear.description,
+              confirmLabel: words.clear.confirm,
+            },
+          },
+    [placement.capabilityField, words.clear],
+  );
+
+  return (
+    <BuilderSection
+      title={intl.formatMessage(words.title)}
+      description={intl.formatMessage(words.description)}
+      {...(capability === undefined ? {} : { capability })}
+    >
+      {placement.titleField !== undefined && (
+        <Field<typeof InputField>
+          name={placement.titleField}
+          component={InputField}
+          label={intl.formatMessage(messages.headingLabel)}
+          hint={intl.formatMessage(messages.headingHint)}
+          placeholder={intl.formatMessage(messages.headingPlaceholder)}
+          required={REQUIRED}
+        />
+      )}
+      <RowList config={rowList}>
+        <Field<typeof ArrayField<RowValues>>
+          name={placement.itemsField}
+          label={intl.formatMessage(words.itemsLabel)}
+          hint={intl.formatMessage(words.itemsHint)}
+          component={ArrayField}
+          getId={rowId}
+          addButtonLabel={intl.formatMessage(words.addLabel)}
+          itemLabel={words.itemNoun}
+          emptyStateMessage={intl.formatMessage(words.emptyState)}
+          itemComponent={RowListItem}
+          editorComponent={RowDialog}
+          itemTemplate={rowTemplate()}
+          sortable
+          {...itemsValidation}
+        />
+      </RowList>
+    </BuilderSection>
+  );
+}

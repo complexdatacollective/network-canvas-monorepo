@@ -10,9 +10,9 @@ import {
   type RenderStageEditorOptions,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
-import FormFieldsSection from '../FormFieldsSection.tsx';
+import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import NodePanelsSection from '../NodePanelsSection.tsx';
-import PageContentSection from '../PageContentSection.tsx';
+import PageContentSection from '../page-content/PageContentSection.tsx';
 import { familyPedigreeStageWith } from '../pedigree/__tests__/pedigreeFixtures.tsx';
 import NominationPromptsSection from '../pedigree/NominationPromptsSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';

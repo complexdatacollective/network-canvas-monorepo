@@ -6,7 +6,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { formStageEditors } from '../formStageEditors.ts';
+import { alterEdgeFormStageEditor } from '../alter-edge-form/AlterEdgeFormStageEditor.ts';
+import { alterFormStageEditor } from '../alter-form/AlterFormStageEditor.ts';
+import { egoFormStageEditor } from '../ego-form/EgoFormStageEditor.ts';
+import { informationStageEditor } from '../information/InformationStageEditor.ts';
 import { nameGeneratorStageEditors } from '../nameGeneratorStageEditors.ts';
 
 /** See each editor's own test for why the rich-text editor is stood in for. */
@@ -76,7 +79,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'Information',
     type: 'Information',
-    registry: formStageEditors,
+    registry: informationStageEditor,
     fields: {
       label: 'Information',
       title: 'Welcome',
@@ -103,7 +106,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'EgoForm',
     type: 'EgoForm',
-    registry: formStageEditors,
+    registry: egoFormStageEditor,
     fields: {
       label: 'Ego Form',
       interviewScript: 'Ask about them.',
@@ -126,7 +129,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'AlterForm',
     type: 'AlterForm',
-    registry: formStageEditors,
+    registry: alterFormStageEditor,
     fields: {
       label: 'Alter Form',
       interviewScript: 'Ask about each person.',
@@ -151,7 +154,7 @@ const MAXIMAL_STAGES: MaximalStage[] = [
   {
     interfaceName: 'AlterEdgeForm',
     type: 'AlterEdgeForm',
-    registry: formStageEditors,
+    registry: alterEdgeFormStageEditor,
     fields: {
       label: 'Alter Edge Form',
       interviewScript: 'Ask about each relationship.',

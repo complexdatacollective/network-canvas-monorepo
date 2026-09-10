@@ -7,11 +7,11 @@ import {
   TestPromptEditor,
   TestPromptPreview,
 } from '../sections/__tests__/rowFixtures.tsx';
-import FormFieldsSection from '../sections/FormFieldsSection.tsx';
-import InterviewerGuidanceSection from '../sections/InterviewerGuidanceSection.tsx';
-import IntroductionSection from '../sections/IntroductionSection.tsx';
-import NetworkFilterSection from '../sections/NetworkFilterSection.tsx';
-import PageContentSection from '../sections/PageContentSection.tsx';
+import FormFieldsSection from '../sections/form-fields/FormFieldsSection.tsx';
+import InterviewerGuidanceSection from '../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
+import IntroductionSection from '../sections/introduction/IntroductionSection.tsx';
+import NetworkFilterSection from '../sections/network-filter/NetworkFilterSection.tsx';
+import PageContentSection from '../sections/page-content/PageContentSection.tsx';
 import BoundaryOptionsSection from '../sections/pedigree/BoundaryOptionsSection.tsx';
 import CensusPromptSection from '../sections/pedigree/CensusPromptSection.tsx';
 import FramingConfigSection from '../sections/pedigree/FramingConfigSection.tsx';
@@ -19,9 +19,9 @@ import NominationPromptsSection from '../sections/pedigree/NominationPromptsSect
 import PedigreeEdgeConfigurationSection from '../sections/pedigree/PedigreeEdgeConfigurationSection.tsx';
 import PedigreeNodeConfigurationSection from '../sections/pedigree/PedigreeNodeConfigurationSection.tsx';
 import PromptsSection from '../sections/PromptsSection.tsx';
-import SkipLogicSection from '../sections/SkipLogicSection.tsx';
-import StageNameSection from '../sections/StageNameSection.tsx';
-import SubjectSection from '../sections/SubjectSection.tsx';
+import SkipLogicSection from '../sections/skip-logic/SkipLogicSection.tsx';
+import StageNameSection from '../sections/stage-heading/StageNameSection.tsx';
+import SubjectSection from '../sections/subject-picker/SubjectSection.tsx';
 import {
   expectNoLocaleLeaks,
   localeLeaks,

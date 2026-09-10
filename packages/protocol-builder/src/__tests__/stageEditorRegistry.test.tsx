@@ -159,7 +159,7 @@ describe('composing the registry from family parts', () => {
 });
 
 /**
- * Families are still landing, on branches of their own, and each of them
+ * Editors are still landing, on branches of their own, and each of them
  * edits the same two lists in `stageEditorRegistry.ts`. Written as one
  * entry per line in a fixed alphabetical order, three concurrent one-line
  * changes touch three different lines and merge; written any other way — a
@@ -195,8 +195,8 @@ describe('the two lists a family edits', () => {
   it.each([
     {
       name: 'REGISTRY_PARTS',
-      // An imported part, never an inline object: a family's part is declared
-      // in the family's own module, and one identifier is one line.
+      // An imported part, never an inline object: a part is declared in the
+      // editor's own module, and one identifier is one line.
       entry: /^[A-Za-z_$][\w$]*,$/,
       shape: 'an imported part name followed by a comma',
     },
@@ -219,10 +219,10 @@ describe('the two lists a family edits', () => {
     },
   );
 
-  it('says how to add a family, where a family will look', () => {
+  it('says how to add an editor, where whoever adds one will look', () => {
     // Two lines, and which two. A recipe that stops matching the file is worse
     // than none, so it is checked rather than trusted.
-    expect(source).toMatch(/ADDING A FAMILY IS TWO LINES/);
+    expect(source).toMatch(/ADDING AN EDITOR IS TWO LINES/);
     expect(source).toMatch(/add it to `REGISTRY_PARTS`/);
     expect(source).toMatch(/from `AWAITING_STAGE_EDITORS`/);
   });
