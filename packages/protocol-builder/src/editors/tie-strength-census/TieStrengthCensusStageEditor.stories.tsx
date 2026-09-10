@@ -5,6 +5,7 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 
 import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
+import { storyDialogVisible } from '../dyad-census/storyDialogVisible.ts';
 import { tieStrengthCensusStageEditor } from './TieStrengthCensusStageEditor.ts';
 
 const meta = {
@@ -47,7 +48,9 @@ export const EditingAPrompt: Story = {
 
     // The row dialog is portalled out of the canvas, so it is found on the
     // document rather than inside the editor that opened it.
-    const dialog = within(await screen.findByRole('dialog'));
+    const panel = await screen.findByRole('dialog');
+    const dialog = within(panel);
+    await storyDialogVisible(panel);
     await waitFor(async () => {
       await expect(dialog.getByRole('radio', { name: 'knows' })).toBeChecked();
     });
