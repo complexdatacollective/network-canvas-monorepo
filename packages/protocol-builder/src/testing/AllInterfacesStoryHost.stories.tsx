@@ -38,7 +38,14 @@ export const EveryInterface: Story = {
     const canvas = within(canvasElement);
     const stages = fixtureStageIds().map((stageId) => {
       const { type, fields } = loadFixtureStage(stageId);
-      return { stageId, name: INTERFACE_NAMES[type], label: fields.label };
+      const { label } = fields;
+      // A section document holds `unknown`s. Thrown rather than compared as
+      // it is: a stage with no name would be compared against `undefined`,
+      // which an editor that rendered nothing at all would satisfy.
+      if (typeof label !== 'string') {
+        throw new TypeError(`The fixture stage "${stageId}" has no name.`);
+      }
+      return { stageId, name: INTERFACE_NAMES[type], label };
     });
 
     // Nothing else here can fail if this list is empty, so it is asked first

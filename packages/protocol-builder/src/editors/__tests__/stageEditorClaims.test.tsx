@@ -171,9 +171,22 @@ const CLAIMS = [
   editor: unknown;
 }>[];
 
-/** What the fixture calls that stage, which is what its editor must show. */
-const labelOf = (stageId: FixtureStageId): unknown =>
-  loadFixtureStage(stageId).fields.label;
+/**
+ * What the fixture calls that stage, which is what its editor must show.
+ *
+ * Thrown rather than compared as-is: a section document holds `unknown`s, and
+ * a stage with no name would otherwise be compared against `undefined` — which
+ * an editor that rendered nothing at all would satisfy.
+ */
+const labelOf = (stageId: FixtureStageId): string => {
+  const label = loadFixtureStage(stageId).fields.label;
+  if (typeof label !== 'string') {
+    throw new TypeError(
+      `The fixture stage "${stageId}" has no name, so there is nothing for its editor to be checked against.`,
+    );
+  }
+  return label;
+};
 
 /**
  * What a host gets for each interface the package owns.
