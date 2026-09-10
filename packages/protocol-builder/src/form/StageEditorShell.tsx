@@ -45,16 +45,16 @@ import {
 } from '../stageDocument.ts';
 import { NOT_READY_MESSAGE, useStageEdit } from '../stageEdit.tsx';
 import {
+  dormantFieldsOf,
+  mountedPathsOf,
+  documentFromSubmission,
+} from './documentFromSubmission.ts';
+import {
   SectionOutlineStore,
   type SectionValidationIssue,
 } from './outlineStore.ts';
 import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
 import SectionOutline from './SectionOutline.tsx';
-import {
-  dormantFieldsOf,
-  mountedPathsOf,
-  stageDraftFromSubmission,
-} from './stageDraftFromSubmission.ts';
 import {
   type OwnCommandsResult,
   StageEditorFormContext,
@@ -244,7 +244,7 @@ function StageEditorFormBody({
     for (const [name, field] of storeApi.getState().fields) {
       submittedValues[name] = field.value;
     }
-    return stageDraftFromSubmission({
+    return documentFromSubmission({
       currentFields: working.current,
       submittedValues,
       mountedPaths: mountedPathsOf(storeApi),
@@ -287,7 +287,7 @@ function StageEditorFormBody({
         return { success: false, formErrors: [writeRefusal] };
       }
 
-      const fields = stageDraftFromSubmission({
+      const fields = documentFromSubmission({
         currentFields: working.current,
         submittedValues: values as Record<string, FieldValue>,
         mountedPaths: mountedPathsOf(storeApi),

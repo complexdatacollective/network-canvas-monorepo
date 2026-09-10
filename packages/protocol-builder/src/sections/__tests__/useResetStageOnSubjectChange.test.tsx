@@ -8,11 +8,10 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import { DialogFormField } from '../../form/DialogForm.tsx';
+import type { RowPreviewProps } from '../../form/rowDialog.tsx';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import BuilderSection from '../BuilderSection.tsx';
 import PromptsSection from '../PromptsSection.tsx';
-import type { RowPreviewProps } from '../rowRenderers.tsx';
 import SubjectSection from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
 
@@ -47,13 +46,13 @@ function RemoveAfterConsiderationSection() {
 function CensusPromptEditor() {
   return (
     <>
-      <DialogFormField
+      <Field
         name="text"
         label="Prompt text"
         component={InputField}
         required="Enter the question this prompt asks."
       />
-      <DialogFormField
+      <Field
         name="createEdge"
         label="Edge type"
         component={InputField}

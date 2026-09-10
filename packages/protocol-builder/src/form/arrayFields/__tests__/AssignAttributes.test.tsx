@@ -267,17 +267,19 @@ describe('a stage document holding something that is not a list', () => {
   /**
    * Each shape, and the list the editor holds after one row is added over it.
    *
-   * A value that is not a list at all is replaced by the empty list the editor
-   * drew and never salvaged for rows. A list with a hole in it draws no rows,
-   * so the rows the editor can account for are the ones it could read — the
-   * hole is not one of them, and does not survive the first thing written.
+   * Every one of them is the list the researcher was LOOKING at plus the row
+   * they added, which for a value the list could not draw rows out of is a
+   * list of one. A hole makes the value one `ArrayField` renders as no rows at
+   * all, so nothing beside the hole is on screen to be kept either: writing
+   * back a row the researcher never saw would be the editor authoring it for
+   * them.
    */
   const foreignValues = {
     'a bare string': ['highlighted', [{}]],
     'a single record': [{ variable: 'highlighted', value: true }, [{}]],
     'a list with a hole in it': [
       [null, { variable: 'highlighted', value: true }],
-      [{ variable: 'highlighted', value: true }, {}],
+      [{}],
     ],
   } as const satisfies Record<string, readonly [unknown, unknown[]]>;
 
@@ -309,15 +311,9 @@ describe('a stage document holding something that is not a list', () => {
 
       // Rendering a foreign value as an empty list is only half the contract:
       // the list shows an ENABLED Add, so the write behind it has to reach the
-      // list the researcher was looking at. Addressed at the foreign value
-      // instead, `insertItem` throws `ApplyError("Field additionalAttributes
-      // is not a list")` from the click handler, and the editor goes down
-      // instead of the edit being declined.
-      // The rows the editor could account for, plus the new one LAST. The
-      // position an operation names is a position among the rows DRAWN, and
-      // the command carries a position in the document: reading one as the
-      // other lands the new row in front of entries the researcher could not
-      // see.
+      // list the researcher was looking at — which is the rows on screen plus
+      // the new one, and never an entry the foreign value was carrying where
+      // they could not see it.
       await waitFor(() => expect(attributes()).toEqual(added));
       // And the editor is still alive, with a row on screen for the
       // researcher to fill in. How many rows a foreign value rendered as

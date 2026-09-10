@@ -14,6 +14,7 @@ import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
@@ -45,8 +46,21 @@ import VariablePickerField, {
   createdUnassigned,
 } from '../fields/VariablePickerField.tsx';
 import { withoutAbsentValues } from '../form/absentValues.ts';
-import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
 import { useDialogFormSubmissionBlock } from '../form/DialogForm.tsx';
+import {
+  RowDialog,
+  RowList,
+  RowListItem,
+  rowId,
+  rowsOf,
+  rowTemplate,
+  type RowEditorProps,
+  type RowListConfig,
+  type RowPreviewProps,
+  type RowSaveContext,
+  type RowSaveOutcome,
+  type RowValues,
+} from '../form/rowDialog.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
@@ -63,11 +77,6 @@ import {
   needsCodebookEditorToCreate,
   TYPE_OPTIONS,
 } from './collectableTypes.ts';
-import {
-  type RowEditorProps,
-  type RowPreviewProps,
-  useRowRenderers,
-} from './rowRenderers.tsx';
 import { type SubjectEntity, useStageSubject } from './useStageSubject.ts';
 
 /**
@@ -235,7 +244,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.formFields.itemNoun',
     defaultMessage: 'field',
     description:
-      'What one row of a form’s list of questions is called inside things said ABOUT it — "Edit field", "Remove this field?" — so it is lower case and singular.',
+      'What one row of a form’s list of questions is called inside things said ABOUT it — "Edit field", "Delete this field?" — so it is lower case and singular.',
   },
   emptyState: {
     id: 'protocolBuilder.formFields.emptyState',
@@ -471,9 +480,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
-const rowsOf = (value: unknown): Record<string, unknown>[] =>
-  Array.isArray(value) ? value.filter(isRecord) : [];
-
 /**
  * The rules that can actually refuse a save.
  *
@@ -584,21 +590,17 @@ type FormFieldsScope = Readonly<{
    */
   answeredFor: string | undefined;
   /**
-   * The attribute the row being edited COLLECTS, as the list holds it now.
+   * The attribute the row being edited COLLECTS, as its picker names it now.
    *
-   * Not what the dialog is showing: the row on screen is a draft, and the row
-   * the save commits is that draft re-seated on whatever has arrived for it
-   * (`reseatEditedRow`) — so a field the researcher never touched is the
-   * list's, however long the dialog has been open. That is the attribute every
-   * codebook write this row makes is ABOUT, and the one
-   * `useWhereTheAnswerLands` reads when the write comes back.
+   * That is the attribute every codebook write this row makes is ABOUT, and
+   * the one `useWhereTheAnswerLands` reads when the write comes back.
    *
    * A ref, and one for the whole section rather than one per row, because the
-   * save handler belongs to the LIST — it is the list field's `onBeforeSave`,
-   * made once for every row it will ever open — while the live row is known
-   * only to the editor mounted inside the open dialog. One row's dialog is
-   * open at a time, so one cell is unambiguous; the editor fills it while it
-   * is mounted and empties it as it goes.
+   * save gate belongs to the LIST — it is the list's `beforeSave`, made once
+   * for every row it will ever open — while the live row is known only to the
+   * editor mounted inside the open dialog. One row's dialog is open at a time,
+   * so one cell is unambiguous; the editor fills it while it is mounted and
+   * empties it as it goes.
    */
   rowUnderEdit: RefObject<RowUnderEdit | undefined>;
 }>;
@@ -791,10 +793,6 @@ export default function FormFieldsSection({
   const intl = useAppIntl();
   const codebookSubject = useStageSubject(subject, subjectTypePath);
   const waiting = codebookSubject === undefined;
-  const { editorFieldsComponent, previewComponent } = useRowRenderers(
-    FormFieldEditor,
-    FormFieldPreview,
-  );
   const draftUnvalidated = useMemo(
     () => new Set(draftUnvalidatedVariables ?? []),
     [draftUnvalidatedVariables],
@@ -854,8 +852,12 @@ export default function FormFieldsSection({
   // See `FormFieldsScope.rowUnderEdit`: the open row fills this in, and the
   // list's save handler reads it when a codebook write comes back.
   const rowUnderEdit = useRef<RowUnderEdit | undefined>(undefined);
-  const onBeforeSave = useCommitFormField(codebookSubject, rowUnderEdit, intl);
-  const editorValidate = useFormFieldValidate(
+  const commitCodebookHalf = useCommitFormField(
+    codebookSubject,
+    rowUnderEdit,
+    intl,
+  );
+  const refuseRowIssue = useFormFieldValidate(
     codebookSubject,
     fieldsPath,
     draftUnvalidated,
@@ -863,6 +865,26 @@ export default function FormFieldsSection({
     reservedVariableRefusal,
     answeredFor,
     intl,
+  );
+  // The row's own rules first, then the codebook write they gate: a write is
+  // the half that cannot be taken back, so nothing reaches it until everything
+  // that can be answered from the draft alone has been.
+  const rowList = useMemo<RowListConfig>(
+    () => ({
+      Preview: FormFieldPreview,
+      Editor: FormFieldEditor,
+      addTitle: messages.addTitle,
+      editTitle: messages.editTitle,
+      formId: 'form-field-editor',
+      name: fieldsPath,
+      beforeSave: async (row, context) => {
+        const issues = refuseRowIssue(row, context);
+        if (issues !== undefined) return { refused: { fieldErrors: issues } };
+        return commitCodebookHalf(row);
+      },
+      normalize: normalizeFormField,
+    }),
+    [commitCodebookHalf, fieldsPath, refuseRowIssue],
   );
   const scope = useMemo(
     () => ({
@@ -896,25 +918,23 @@ export default function FormFieldsSection({
         />
       )}
       <FormFieldsScopeContext value={scope}>
-        <Field<typeof DialogArrayField>
-          name={fieldsPath}
-          label={intl.formatMessage(fieldLabel)}
-          hint={intl.formatMessage(fieldHint)}
-          component={DialogArrayField}
-          addButtonLabel={intl.formatMessage(addLabel)}
-          addTitle={intl.formatMessage(messages.addTitle)}
-          editorTitle={intl.formatMessage(messages.editTitle)}
-          itemLabel={messages.itemNoun}
-          emptyStateMessage={intl.formatMessage(emptyState)}
-          editorFieldsComponent={editorFieldsComponent}
-          previewComponent={previewComponent}
-          editorDialogSize="editor"
-          editorValidate={editorValidate}
-          onBeforeSave={onBeforeSave}
-          normalizeItem={normalizeFormField}
-          sortable
-          {...fieldsValidation}
-        />
+        <RowList config={rowList}>
+          <Field<typeof ArrayField<RowValues>>
+            name={fieldsPath}
+            label={intl.formatMessage(fieldLabel)}
+            hint={intl.formatMessage(fieldHint)}
+            component={ArrayField}
+            getId={rowId}
+            addButtonLabel={intl.formatMessage(addLabel)}
+            itemLabel={messages.itemNoun}
+            emptyStateMessage={intl.formatMessage(emptyState)}
+            itemComponent={RowListItem}
+            editorComponent={RowDialog}
+            itemTemplate={rowTemplate()}
+            sortable
+            {...fieldsValidation}
+          />
+        </RowList>
       </FormFieldsScopeContext>
     </BuilderSection>
   );
@@ -932,9 +952,9 @@ export default function FormFieldsSection({
  * the schema's own default, and stamping it on every field in every form says
  * nothing its absence did not already say.
  */
-function normalizeFormField(value: unknown): unknown {
+function normalizeFormField(value: RowValues): RowValues {
   const cleaned = withoutAbsentValues(value);
-  if (!isRecord(cleaned)) return cleaned;
+  if (!isRecord(cleaned)) return value;
   const {
     [NEW_VARIABLE_NAME]: _name,
     [NEW_VARIABLE_TYPE]: _type,
@@ -960,22 +980,21 @@ function useCommitFormField(
   codebookSubject: CodebookSubject | undefined,
   rowUnderEdit: RefObject<RowUnderEdit | undefined>,
   intl: IntlShape,
-): (value: unknown) => Promise<unknown> {
+): (row: RowValues) => Promise<RowSaveOutcome> {
   const protocolContext = useProtocolContext();
   const createVariable = useCreateCodebookVariable(codebookSubject);
   const setComponent = useSetVariableComponent(codebookSubject);
   // Both writes below are round trips, and both are ABOUT the attribute the
-  // row's picker names — which is the attribute the row commits, because
-  // `useAttributeThatFollowsTheRow` keeps it so. One reading for both, and the
-  // same one the codebook editors' own create uses.
+  // row's picker names, which is the attribute the row commits: the dialog is
+  // the only thing that can change a row of a stage this editor holds. One
+  // reading for both, and the same one the codebook editors' own create uses.
   const whereTheAnswerLands = useWhereTheAnswerLands(
     codebookSubject,
     () => rowUnderEdit.current?.variable,
   );
 
   return useCallback(
-    async (value: unknown) => {
-      if (!isRecord(value)) return value;
+    async (value: RowValues): Promise<RowSaveOutcome> => {
       // An attribute the codebook editor has to author is only ever made
       // there, so nothing here can create one from a name and a type. Said in
       // its own words rather than left to the schema, which would answer a
@@ -988,11 +1007,12 @@ function useCommitFormField(
         needsCodebookEditorToCreate(inventedType)
       ) {
         return {
-          success: false,
-          fieldErrors: {
-            [NEW_VARIABLE_TYPE]: isOptionType(inventedType)
-              ? CREATE_WITH_VALUES_FIRST
-              : CREATE_WITH_SETTINGS_FIRST,
+          refused: {
+            fieldErrors: {
+              [NEW_VARIABLE_TYPE]: isOptionType(inventedType)
+                ? CREATE_WITH_VALUES_FIRST
+                : CREATE_WITH_SETTINGS_FIRST,
+            },
           },
         };
       }
@@ -1006,7 +1026,7 @@ function useCommitFormField(
       // one route a researcher can take here.
       const component = asString(value[INPUT_CONTROL]) ?? '';
       if (component === '') {
-        return { success: false, formErrors: [NO_INPUT_CONTROL] };
+        return { refused: { formErrors: [NO_INPUT_CONTROL] } };
       }
 
       if (value.variable !== NEW_VARIABLE) {
@@ -1024,10 +1044,11 @@ function useCommitFormField(
           // instead.
           return rowUnderEdit.current?.offersAControl === true
             ? {
-                success: false,
-                fieldErrors: { [INPUT_CONTROL]: outcome.message },
+                refused: {
+                  fieldErrors: { [INPUT_CONTROL]: outcome.message },
+                },
               }
-            : { success: false, formErrors: [outcome.message] };
+            : { refused: { formErrors: [outcome.message] } };
         }
         // The control belongs to the attribute rather than to the field, so
         // this write reaches every form that collects it — and the row it was
@@ -1050,18 +1071,19 @@ function useCommitFormField(
           }) !== 'here'
         ) {
           return {
-            success: false,
-            formErrors: [
-              createMessageError(messages.controlLandedElsewhere, {
-                variableName: variableDisplayName(
-                  variablesForSubject(protocolContext, codebookSubject),
-                  variableId,
-                ),
-              }),
-            ],
+            refused: {
+              formErrors: [
+                createMessageError(messages.controlLandedElsewhere, {
+                  variableName: variableDisplayName(
+                    variablesForSubject(protocolContext, codebookSubject),
+                    variableId,
+                  ),
+                }),
+              ],
+            },
           };
         }
-        return value;
+        return { row: value };
       }
 
       const name = asString(value[NEW_VARIABLE_NAME])?.trim() ?? '';
@@ -1078,9 +1100,10 @@ function useCommitFormField(
       // whose error region is blank while the sentence sat on the other one.
       if (!isCollectableType(type)) {
         return {
-          success: false,
-          fieldErrors: {
-            [NEW_VARIABLE_TYPE]: intl.formatMessage(messages.newTypeRequired),
+          refused: {
+            fieldErrors: {
+              [NEW_VARIABLE_TYPE]: intl.formatMessage(messages.newTypeRequired),
+            },
           },
         };
       }
@@ -1088,8 +1111,7 @@ function useCommitFormField(
       const outcome = await createVariable({ name, type, component });
       if (outcome.status === 'refused') {
         return {
-          success: false,
-          fieldErrors: { [NEW_VARIABLE_NAME]: outcome.message },
+          refused: { fieldErrors: { [NEW_VARIABLE_NAME]: outcome.message } },
         };
       }
       // Which codebook the attribute went into was decided when the researcher
@@ -1119,15 +1141,16 @@ function useCommitFormField(
         }) !== 'here'
       ) {
         return {
-          success: false,
-          formErrors: [
-            createMessageError(createdUnassigned, {
-              variableName: name,
-            }),
-          ],
+          refused: {
+            formErrors: [
+              createMessageError(createdUnassigned, {
+                variableName: name,
+              }),
+            ],
+          },
         };
       }
-      return { ...value, variable: outcome.variableId };
+      return { row: { ...value, variable: outcome.variableId } };
     },
     [
       codebookSubject,
@@ -1201,16 +1224,16 @@ function useFormFieldValidate(
     );
 
     return (
-      values: Record<string, unknown>,
-      context?: { editIndex?: number; initialValues?: unknown },
-    ): Record<string, unknown> | undefined => {
+      values: RowValues,
+      context: RowSaveContext,
+    ): Readonly<Record<string, string>> | undefined => {
       const variable = asString(values.variable) ?? '';
       // Read from the LIVE rows: a field added in this editing session is not
       // in the committed list yet, so a committed list would let the same
       // attribute be picked a second time — and one freed by a row just
       // deleted would go on being refused.
       const siblings = rowsOf(fields).filter(
-        (_row, index) => index !== context?.editIndex,
+        (_row, index) => index !== context.editIndex,
       );
       if (
         variable !== '' &&
@@ -1245,12 +1268,9 @@ function useFormFieldValidate(
       // codebook holding a one-value categorical attribute drops that entity
       // type out of the protocol context altogether and the picker has no
       // attributes at all.
-      const issues = validateVariable(
-        values,
-        context?.initialValues === undefined
-          ? {}
-          : { initialValues: context.initialValues },
-      );
+      const issues = validateVariable(values, {
+        initialValues: context.openedOn,
+      });
       return issues.variable === undefined
         ? undefined
         : { variable: issues.variable };
@@ -1352,13 +1372,6 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
   // control invented in the codebook editor is back on screen, and what the
   // control is an answer about has to be remembered across that gap.
   const control = useAttributeControl(item);
-  // Before the control, because the control is an answer ABOUT the attribute:
-  // a row that follows an arrival to another attribute has to be showing that
-  // attribute before anything is derived from it.
-  useAttributeThatFollowsTheRow(
-    asString(item.variable) ?? '',
-    asString(useRowValue('variable')),
-  );
   useControlThatFollowsTheAttribute(
     control.binding,
     control.seeded,
@@ -1570,63 +1583,6 @@ function InputControlField({
       initialValue={seeded}
     />
   );
-}
-
-/**
- * Keeps the picker saying what the ROW collects, until the researcher answers
- * it themselves.
- *
- * The dialog holds a draft of one row, and the row it commits is that draft
- * re-seated on whatever arrived for the row while it was open
- * (`reseatEditedRow`): a field the researcher never touched is the list's, not
- * the dialog's. The attribute is the one field of a form-field row where a
- * dialog that goes on showing the old answer is not merely stale — everything
- * else in the dialog is an answer ABOUT it. The kind of answer offered, which
- * input controls exist, which codebook editors are on offer, and above all
- * WHICH ATTRIBUTE this row's save writes a control onto are all derived from
- * what the picker says, so a picker left behind by a collaborator's rebind
- * turns a save into a change to an attribute the researcher never looked at,
- * recorded against a field that collects a different one.
- *
- * `initialValue` cannot follow it, for the reason
- * `useControlThatFollowsTheAttribute` gives below: a field keeps its value
- * across a change of initial value by design, and keeps it across an unmount
- * as well. So the arrival is written through the store, exactly as the
- * codebook's own answer is.
- *
- * Answered ONCE and it is theirs: a researcher who has chosen an attribute —
- * or asked for one to be invented — has answered the question the row asks,
- * and their answer wins the re-seat as any contested leaf does. This is the
- * same rule `reseedStageForm` states for the stage's own controls, said for a
- * row: a key the arrival moved is written, a key it left alone is the
- * researcher's. The first render records what it found without writing
- * anything, because the picker has just registered from the same value.
- *
- * A row still being written has no committed attribute at all (`committed` is
- * empty), and nothing arrives for it: a new row is in no list yet.
- */
-function useAttributeThatFollowsTheRow(
-  committed: string,
-  live: string | undefined,
-): void {
-  const setFieldValue = useFormStore((state) => state.setFieldValue);
-  const shown = useRef({ committed, answered: false });
-
-  useEffect(() => {
-    const previous = shown.current;
-    // Nothing is registered yet, so there is nothing anyone can have answered
-    // and nothing to write over.
-    if (live === undefined) return;
-    const answered = previous.answered || live !== previous.committed;
-    shown.current = { committed, answered };
-    // An empty arrival is not an answer: the schema refuses a field that
-    // collects nothing, and blanking the picker would take away the very
-    // reference the researcher has to resolve.
-    if (answered || committed === '' || committed === previous.committed) {
-      return;
-    }
-    setFieldValue('variable', committed);
-  }, [committed, live, setFieldValue]);
 }
 
 /**

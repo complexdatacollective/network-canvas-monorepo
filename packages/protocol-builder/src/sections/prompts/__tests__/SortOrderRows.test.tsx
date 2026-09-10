@@ -3,12 +3,16 @@ import type userEvent from '@testing-library/user-event';
 import { useMemo } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { SortableProperty } from '../../../fields/sortOrderOptions.ts';
-import { DialogFormField } from '../../../form/DialogForm.tsx';
+import type {
+  RowEditorProps,
+  RowPreviewProps,
+} from '../../../form/rowDialog.tsx';
 import { variablesForSubject } from '../../../protocol-context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import {
@@ -16,7 +20,6 @@ import {
   type SavedStage,
 } from '../../../testing/renderStageEditor.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
-import type { RowEditorProps, RowPreviewProps } from '../../rowRenderers.tsx';
 import SortOrderRows from '../SortOrderRows.tsx';
 
 const SUBJECT = { entity: 'node', type: 'person' } as const;
@@ -96,7 +99,7 @@ const makeEditor =
   (properties: readonly SortableProperty[] | undefined) =>
   ({ item }: RowEditorProps) => (
     <>
-      <DialogFormField
+      <Field
         name="text"
         label="Prompt text"
         component={InputField}
@@ -129,7 +132,7 @@ function CodebookPromptEditor({ item }: RowEditorProps) {
 
   return (
     <>
-      <DialogFormField
+      <Field
         name="text"
         label="Prompt text"
         component={InputField}

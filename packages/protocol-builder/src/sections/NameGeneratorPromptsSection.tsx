@@ -24,12 +24,12 @@ import AssignAttributes, {
   type AttributeValue,
   type VariableOption,
 } from '../form/arrayFields/AssignAttributes.tsx';
+import type { RowEditorProps, RowPreviewProps } from '../form/rowDialog.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import { variablesForSubject } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import PromptsSection from './PromptsSection.tsx';
-import type { RowEditorProps, RowPreviewProps } from './rowRenderers.tsx';
 import { useStageSubject } from './useStageSubject.ts';
 
 /**
@@ -328,11 +328,9 @@ function AdditionalAttributes({
       description={intl.formatMessage(messages.attributesGroupDescription)}
     >
       {/*
-        Nested inside a row dialog, so `ListBinding` tells this list it is
-        NOT bound to a document key. The prompt list around it is, and its
-        binding reaches here through React context — so a list that took that
-        binding would commit "add a row" straight into the stage's `prompts`
-        array while the researcher is still editing one prompt of it.
+        A field of the prompt DIALOG's form, so a stamp added here reaches the
+        stage when the prompt does and a cancelled prompt takes its stamps with
+        it.
       */}
       <Field<typeof AssignAttributes>
         name="additionalAttributes"

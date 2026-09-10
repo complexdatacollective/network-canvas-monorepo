@@ -4,14 +4,11 @@ import { getValue, setValue } from '@codaco/fresco-ui/form/utils/objectPath';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import {
-  EditedRowContext,
-  type EditedRowScope,
-} from '../../form/arrayFields/editedRow.ts';
-import {
   dormantFieldsOf,
   mountedPathsOf,
-  stageDraftFromSubmission,
-} from '../../form/stageDraftFromSubmission.ts';
+  documentFromSubmission,
+} from '../../form/documentFromSubmission.ts';
+import { EditedRowContext, type EditedRowScope } from '../../form/editedRow.ts';
 import { StageEditorFormContext } from '../../form/stageEditorContext.ts';
 import { stageDocument } from '../../stageDocument.ts';
 import { collectStageResourceReferences } from '../references.ts';
@@ -31,7 +28,7 @@ import { collectStageResourceReferences } from '../references.ts';
  * parked in one is a reference the saved stage really has. Counting only
  * mounted fields would let a visible picker discard bytes the very next submit
  * goes on to name, which is a dangling reference nothing can then repair. So
- * the count asks {@link stageDraftFromSubmission} exactly what the submit
+ * the count asks {@link documentFromSubmission} exactly what the submit
  * asks it, and it is the same answer.
  *
  * The references are discovered through the protocol schema's own
@@ -72,7 +69,7 @@ export function useStageResourceUsage(): (resourceId: string) => number {
       const draft = stageDocument(
         identity,
         withEditedRow(
-          stageDraftFromSubmission({
+          documentFromSubmission({
             currentFields: committedFields ?? {},
             submittedValues: storeApi.getState().getFormValues(),
             mountedPaths: mountedPathsOf(storeApi),

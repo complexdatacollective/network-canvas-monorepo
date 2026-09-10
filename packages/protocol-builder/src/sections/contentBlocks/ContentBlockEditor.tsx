@@ -4,6 +4,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -11,10 +12,9 @@ import Section from '@codaco/fresco-ui/Section';
 
 import AssetPickerField from '../../fields/AssetPickerField.tsx';
 import RichTextField from '../../fields/RichTextField.tsx';
-import { DialogFormField } from '../../form/DialogForm.tsx';
+import type { RowEditorProps } from '../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
-import type { RowEditorProps } from '../rowRenderers.tsx';
 import {
   CONTENT_BLOCK_SLOTS,
   contentBlockKindOptions,
@@ -293,7 +293,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
           ? ''
           : contentKindAnnouncement(announced, intl)}
       </span>
-      <DialogFormField<typeof RadioGroupField>
+      <Field<typeof RadioGroupField>
         name="type"
         component={RadioGroupField}
         label={intl.formatMessage(messages.kindLabel)}
@@ -308,7 +308,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
         </Alert>
       )}
       {kind === 'text' && (
-        <DialogFormField<typeof RichTextField>
+        <Field<typeof RichTextField>
           name={CONTENT_BLOCK_SLOTS.text}
           component={RichTextField}
           label={intl.formatMessage(messages.contentLabel)}
@@ -319,7 +319,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
       )}
       {kind !== undefined && kind !== 'text' && (
         <>
-          <DialogFormField<typeof ResourcePicker>
+          <Field<typeof ResourcePicker>
             name={CONTENT_BLOCK_SLOTS[kind]}
             component={ResourcePicker}
             label={intl.formatMessage(messages.contentLabel)}
@@ -333,7 +333,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
               name and needs neither a slot nor a place in the collapse. An
               empty one is spelled by the key being absent, which the section's
               own normaliser does for every control that holds nothing. */}
-          <DialogFormField<typeof InputField>
+          <Field<typeof InputField>
             name="description"
             component={InputField}
             label={intl.formatMessage(messages.descriptionLabel)}
@@ -344,7 +344,7 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
       )}
       {pageBlocksCarrySize(identity.type) &&
         (kind === 'image' || kind === 'video') && (
-          <DialogFormField<typeof RadioGroupField>
+          <Field<typeof RadioGroupField>
             name="size"
             component={RadioGroupField}
             label={intl.formatMessage(messages.sizeLabel)}

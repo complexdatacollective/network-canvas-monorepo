@@ -6,6 +6,7 @@ import { action } from 'storybook/actions';
 import { useArgs } from 'storybook/preview-api';
 
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
 
 import { Button, IconButton, MotionButton } from '../../../Button';
 import Dialog from '../../../dialogs/Dialog';
@@ -572,12 +573,18 @@ function ContactDisplayItem({
   isBeingEdited,
   onEdit,
   onDelete,
+  deleteTriggerRef,
+  itemLabel,
   dragControls,
   index,
   itemCount,
   onMove,
   disabled,
 }: ArrayFieldItemProps<ContactItem>) {
+  const intl = useAppIntl();
+  // The list's own word for a row, so this row's affordances are named for the
+  // researcher rather than being one more "Remove" among several lists.
+  const noun = itemLabel ? intl.formatMessage(itemLabel) : 'contact';
   // Hide when being edited (dialog takes over) or when it's a new draft
   if (isBeingEdited || item._draft) {
     return null;
@@ -611,17 +618,20 @@ function ContactDisplayItem({
           className="text-current"
           color="primary"
           onClick={onEdit}
-          aria-label="Edit contact"
+          aria-label={`Edit ${noun}`}
           icon={<PencilIcon />}
         />
         <IconButton
+          // Registered so the removal confirmation can hand focus to the row
+          // that takes this one's place instead of to the add button.
+          ref={deleteTriggerRef}
           variant="text"
           className="text-current"
           color="destructive"
           size="sm"
           onClick={onDelete}
           icon={<X />}
-          aria-label="Remove contact"
+          aria-label={`Remove ${noun}`}
         />
       </div>
     </motion.div>
@@ -788,6 +798,7 @@ For complex forms, use a separate \`editorComponent\`:
         addButtonLabel="Add Contact"
         emptyStateMessage="No contacts yet. Add your first contact!"
         value={contacts}
+        itemLabel={contactLabel}
         onChange={(newValue) => {
           setContacts(newValue ?? []);
           action('onChange')(newValue);

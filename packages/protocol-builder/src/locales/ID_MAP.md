@@ -101,7 +101,7 @@ after the fact is marked in place.
 | `field`                     | `form/requiredField.ts`                                                                                                                                                                       | i18n-2b   |
 | `outline`                   | `form/SectionOutline.tsx`                                                                                                                                                                     | i18n-2b   |
 | `dialogForm`                | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                                            | i18n-2b   |
-| `arrayField`                | `form/arrayFields/DialogArrayField.tsx`, `rowValidators.ts`, `arrayWriteRefusal.ts`, `useConfirmRowRemoval.ts`, `arrayFields/arrayMessages.ts`, `RowEditorBoundary.tsx`                       | i18n-2b   |
+| `arrayField`                | `form/rowDialog.tsx`, `form/DialogForm.tsx` (the row-editor failure), `form/arrayFields/rowValidators.ts`, `useConfirmRowRemoval.ts`, `arrayFields/arrayMessages.ts`                          | i18n-2b   |
 | `assignAttributes`          | `form/arrayFields/AssignAttributes.tsx`, `form/arrayFields/Attribute.tsx`                                                                                                                     | i18n-2b   |
 | `multiSelect`               | `form/arrayFields/MultiSelect.tsx`                                                                                                                                                            | i18n-2b   |
 | `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                                 | i18n-2b   |
@@ -165,8 +165,9 @@ has to have exactly one:
   home of each id. A refused save is NOT here: every refused codebook change,
   one held by a collaborator included, is read once by
   `codebook/compoundFailureCopy.ts`.
-- `form/arrayFields/arrayMessages.ts` — the generic row noun every array-field
-  sentence is built around.
+- `form/arrayFields/arrayMessages.ts` — the generic row noun a list with no
+  word for its rows falls back to, in the row's own affordances and in a
+  removal it refuses.
 - `sections/pedigree/pedigreeMessages.ts` — one file per interface family,
   holding EVERYTHING that family says rather than only its shared strings. See
   "One file per family", below.
@@ -281,7 +282,8 @@ A `*Messages.ts` per family, holding every id the family declares — rather tha
 descriptors beside each section's markup, which is the rule everywhere else in
 this package. The reason is the seam. Much of what these families say is
 rendered somewhere ELSE: in `BuilderSection`'s confirmation before a capability
-is switched off, in `DialogArrayField`'s row affordances and write refusals, in
+is switched off, in a row's own affordances and the confirmation a removal
+raises, in
 the sentences `PromptsSection` and `FormFieldsSection` say for one interface.
 Splitting a family's words between the file that renders them and the file that
 hands them to somebody else would leave a translator answering half a question

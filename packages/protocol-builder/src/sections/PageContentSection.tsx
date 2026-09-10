@@ -4,21 +4,28 @@ import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 import type { StageType } from '@codaco/protocol-validation';
 
 import { withoutAbsentValues } from '../form/absentValues.ts';
-import type { DialogArrayItemSelector } from '../form/arrayFields/DialogArrayField.tsx';
-import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
 import { REQUIRED } from '../form/requiredField.ts';
-import { useStageEditorForm } from '../form/stageEditorContext.ts';
-import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 import {
+  RowDialog,
+  RowList,
+  RowListItem,
+  rowId,
+  rowTemplate,
   type RowEditorComponent,
+  type RowListConfig,
   type RowPreviewComponent,
-  useRowRenderers,
-} from './rowRenderers.tsx';
+  type RowValues,
+} from '../form/rowDialog.tsx';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
+import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
 
 /**
  * What a page of content IS to the stage around it.
@@ -109,7 +116,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.pageContent.pageItemNoun',
     defaultMessage: 'block',
     description:
-      'What one piece of a page is called inside things said ABOUT it — "Edit block", "Remove this block?" — so it is lower case and singular.',
+      'What one piece of a page is called inside things said ABOUT it — "Edit block", "Delete this block?" — so it is lower case and singular.',
   },
   pageEmptyState: {
     id: 'protocolBuilder.pageContent.pageEmptyState',
@@ -339,7 +346,10 @@ export type PageContentSectionProps = Readonly<{
    * that an unanswered value is spelled by the key not being there.
    */
   slots?: Readonly<{
-    expand: DialogArrayItemSelector;
+    expand: (
+      context: ProtocolBuilderProtocolContext,
+      row: RowValues,
+    ) => RowValues;
     /**
      * Takes the stage the page is on as well as the row, because what a saved
      * block may carry is not the same on every page: an Information stage's
@@ -372,29 +382,46 @@ export default function PageContentSection({
 }: PageContentSectionProps) {
   const intl = useAppIntl();
   const { identity } = useStageEditorForm();
+  // Read here rather than inside the block editor, because opening a saved
+  // block on the right controls is a question about the asset manifest and the
+  // editor is handed the row already answered.
+  const protocolContext = useProtocolContext();
   const words = WORDS[variant];
   const placement = PLACEMENT[variant];
-  const { editorFieldsComponent, previewComponent } = useRowRenderers(
-    ItemEditor,
-    ItemPreview,
-  );
-
   // The family's collapse runs FIRST: it decides what `content` becomes, and
   // an emptied slot has to be able to clear it. Stripping absent values first
   // would hide the empty slot from the collapse and leave the old content
   // standing.
-  //
-  // Keyed on the function rather than on `slots`, so a family writing the pair
-  // inline does not hand the list a new normaliser — and so a new row
-  // renderer — on every render.
   const collapse = slots?.collapse;
+  const expand = slots?.expand;
   const stageType = identity.type;
-  const normalize = useMemo(
-    () =>
-      collapse === undefined
-        ? withoutAbsentValues
-        : (value: unknown) => withoutAbsentValues(collapse(value, stageType)),
-    [collapse, stageType],
+  const rowList = useMemo<RowListConfig>(
+    () => ({
+      Preview: ItemPreview,
+      Editor: ItemEditor,
+      addTitle: words.addTitle,
+      editTitle: words.editTitle,
+      formId: 'content-block-editor',
+      name: placement.itemsField,
+      ...(expand === undefined
+        ? {}
+        : { expand: (row: RowValues) => expand(protocolContext, row) }),
+      normalize: (row) =>
+        withoutAbsentValues(
+          collapse === undefined ? row : collapse(row, stageType),
+        ) as RowValues,
+    }),
+    [
+      ItemEditor,
+      ItemPreview,
+      collapse,
+      expand,
+      placement.itemsField,
+      protocolContext,
+      stageType,
+      words.addTitle,
+      words.editTitle,
+    ],
   );
 
   const capability = useMemo<SectionCapability | undefined>(
@@ -428,24 +455,23 @@ export default function PageContentSection({
           required={REQUIRED}
         />
       )}
-      <Field<typeof DialogArrayField>
-        name={placement.itemsField}
-        label={intl.formatMessage(words.itemsLabel)}
-        hint={intl.formatMessage(words.itemsHint)}
-        component={DialogArrayField}
-        addButtonLabel={intl.formatMessage(words.addLabel)}
-        addTitle={intl.formatMessage(words.addTitle)}
-        editorTitle={intl.formatMessage(words.editTitle)}
-        itemLabel={words.itemNoun}
-        emptyStateMessage={intl.formatMessage(words.emptyState)}
-        editorFieldsComponent={editorFieldsComponent}
-        previewComponent={previewComponent}
-        editorDialogSize="editor"
-        {...(slots === undefined ? {} : { itemSelector: slots.expand })}
-        normalizeItem={normalize}
-        sortable
-        {...itemsValidation}
-      />
+      <RowList config={rowList}>
+        <Field<typeof ArrayField<RowValues>>
+          name={placement.itemsField}
+          label={intl.formatMessage(words.itemsLabel)}
+          hint={intl.formatMessage(words.itemsHint)}
+          component={ArrayField}
+          getId={rowId}
+          addButtonLabel={intl.formatMessage(words.addLabel)}
+          itemLabel={words.itemNoun}
+          emptyStateMessage={intl.formatMessage(words.emptyState)}
+          itemComponent={RowListItem}
+          editorComponent={RowDialog}
+          itemTemplate={rowTemplate()}
+          sortable
+          {...itemsValidation}
+        />
+      </RowList>
     </BuilderSection>
   );
 }

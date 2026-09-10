@@ -1,5 +1,5 @@
-import { get, isEqual } from 'es-toolkit/compat';
-import { useCallback, useRef } from 'react';
+import { get } from 'es-toolkit/compat';
+import { useCallback } from 'react';
 
 import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
@@ -10,7 +10,6 @@ import {
   useStageEditorForm,
 } from '../form/stageEditorContext.ts';
 import {
-  stageDraftValue,
   useAskStageHasAnyValue,
   useClearStageValue,
 } from '../form/stageFormHooks.ts';
@@ -82,7 +81,7 @@ const parkedStageKey = (name: string): string | undefined => {
  * researcher answered and then unmounted contributes nothing to it, and an
  * answer that has not been saved is not in `committedFields` either. That key
  * is in neither place and is still on its way into the saved stage —
- * `stageDraftFromSubmission` replays parked values on purpose — so the names
+ * `documentFromSubmission` replays parked values on purpose — so the names
  * the store is parking are read as well.
  */
 const heldStageKeys = (
@@ -132,57 +131,34 @@ export function useSubjectChangeDiscards(): () => boolean {
  *
  * The hard part is telling the researcher picking a different type apart from
  * the subject moving for some other reason — the create dialog selecting the
- * type it has just made, this hook putting a refused pick back. That is
- * `useOnResearcherChange`, which is the one place the distinction is made.
+ * type it has just made. That is `useOnResearcherChange`, which is the one
+ * place the distinction is made.
  *
- * The reset reaches the DOCUMENT as well as the form, as one batch. Ordinary
- * typing waits for the submit that flushes it, but a bound list does not: it
- * resolves every insertion, removal and reorder against the document as it
- * stands (`applyOwnCommands([])`). A reset that lived only in the form store
- * would therefore be undone by the next row a researcher adds — the list would
- * rebuild itself from the old subject's rows and save them.
- *
- * The same rule a capability's switch-off follows (`useDiscardStageValues`),
- * for the same reason. It is spelled out here rather than shared with it
- * because this reset also writes the new subject and the interface template's
- * defaults.
+ * The reset reaches the DOCUMENT as well as the form, as one batch, so that
+ * everything reading the stage between here and the next save — the outline,
+ * a section deciding whether it has anything to show — sees a stage that
+ * describes one subject rather than two. The same rule a capability's
+ * switch-off follows (`useDiscardStageValues`); it is spelled out here rather
+ * than shared with it because this reset also writes the new subject and the
+ * interface template's defaults.
  */
 export function useResetStageOnSubjectChange(): void {
   const { storeApi, committedFields, identity, applyOwnCommands } =
     useStageEditorForm();
   const clearStageValue = useClearStageValue();
 
-  /**
-   * The subject this hook has just written back into the picker after a
-   * refusal, held until the observation it causes has been read.
-   *
-   * Putting the picker back moves the value this hook is watching, and
-   * `useOnResearcherChange` has no way to tell that from the researcher
-   * picking the old type on purpose — it would call the reset again, this time
-   * to throw away the configuration that describes the subject just restored.
-   * A box rather than the value itself, because `undefined` is a subject a
-   * stage really has, and cleared by whichever observation arrives next
-   * whether or not it matches: a foreign arrival landing in that gap is the
-   * researcher's own change again as far as anything here can tell, and
-   * `useOnResearcherChange` already resolves that ambiguity the same way.
-   */
-  const putBack = useRef<{ value: unknown } | null>(null);
-
   useOnResearcherChange('subject', (subject) => {
-    const restored = putBack.current;
-    putBack.current = null;
-    if (restored !== null && isEqual(restored.value, subject)) return;
-
     const template = getInterfaceTemplate(identity.type);
     const resets = subjectDependentResets(
       heldStageKeys(storeApi, committedFields),
       template,
     );
 
-    // The document first, and in one batch. Everything below writes into the
-    // form store, which a bound list never reads on its own: it asks for the
-    // document it is editing.
-    const { draft, refused } = applyOwnCommands([
+    // The document first, and in one batch, so nothing reading the stage
+    // between here and the next save sees half a reset. Only the researcher
+    // can reach this — a stage somebody else holds opens with its subject
+    // picker disabled — so there is no refusal to answer for.
+    applyOwnCommands([
       subject === undefined
         ? { op: 'unset', key: 'subject' }
         : { op: 'set', key: 'subject', value: subject },
@@ -192,36 +168,6 @@ export function useResetStageOnSubjectChange(): void {
           : { op: 'set', key: reset.key, value: reset.value },
       ),
     ]);
-    // A refusal means nothing was thrown away, so nothing may be emptied
-    // either — the rule `useDiscardStageValues` follows, for the same reason.
-    // A form emptied here would leave the stage looking unconfigured with
-    // nothing left to fill it back in, and the next save would write that
-    // emptiness. `applyOwnCommands` has already said so on screen.
-    //
-    // The PICK goes back too. The refusal is of the whole batch, subject
-    // included, so the document still holds the old type and everything left
-    // standing here still describes it; a picker showing the new one is the
-    // only part of the stage saying otherwise. Left there it would be a choice
-    // the researcher could not make again — the control already shows it, so
-    // re-picking it moves nothing and no reset could follow — while picking the
-    // type the stage actually has would read as a fresh change and throw away
-    // the configuration that belongs to it.
-    if (refused) {
-      const agreed = stageDraftValue(draft, 'subject');
-      putBack.current = { value: agreed };
-      // A subject the picker cannot show — a stage being filled in for the
-      // first time, which holds none, or a document whose `subject` is not the
-      // object one is — puts it back to holding nothing.
-      // Cleared rather than set to `undefined`, for the reason the reset loop
-      // below gives: a tombstone would outlive the refusal and delete the key
-      // again on the next save.
-      if (agreed !== undefined && isFieldValue(agreed)) {
-        storeApi.getState().setFieldValue('subject', agreed);
-      } else {
-        clearStageValue('subject');
-      }
-      return;
-    }
 
     for (const reset of resets) {
       // Clears the path itself, everything beneath it, and every registered or

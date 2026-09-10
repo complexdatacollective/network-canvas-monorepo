@@ -9,9 +9,9 @@ import { createContext } from 'react';
  * using this resource?" is the one that matters — therefore cannot read the
  * stage form alone, because the row on screen is not in it yet.
  *
- * Provided by `DialogArrayField`'s editor, which is the only thing that knows
- * both halves: `listPath` comes from the list's own document binding, and
- * `read` is the same merge the save commits, so the two cannot answer
+ * Provided by the row dialog, which is the only thing that knows both halves:
+ * `listPath` is the name the section mounts its list under, and `read`
+ * assembles the row exactly as the save commits it, so the two cannot answer
  * differently about the same draft.
  *
  * Where in the list the row sits is deliberately NOT here. A dialog outlives
@@ -22,9 +22,7 @@ import { createContext } from 'react';
  * instead: what a save would leave and what a cancel would leave are both
  * futures the stage still has.
  *
- * Absent outside a row dialog, and for a list that has no place in the stage
- * document of its own — a list nested inside another row, whose rows reach the
- * stage through the dialog around IT.
+ * Absent outside a row dialog.
  */
 export type EditedRowScope = Readonly<{
   /** Where the list holding this row lives in the stage document. */

@@ -4,6 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
@@ -17,14 +18,22 @@ import {
   validatedElsewhereMessage,
   variableDisplayName,
 } from '../../form/arrayFields/crossClassPick.ts';
-import DialogArrayField from '../../form/arrayFields/DialogArrayField.tsx';
+import {
+  RowDialog,
+  RowList,
+  RowListItem,
+  rowId,
+  rowTemplate,
+  type RowListConfig,
+  type RowSaveOutcome,
+  type RowValues,
+} from '../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import BuilderSection from '../BuilderSection.tsx';
-import { useRowRenderers } from '../rowRenderers.tsx';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
 import {
   NominationPromptEditor,
@@ -122,11 +131,11 @@ export default function NominationPromptsSection() {
 
   /** This row's own saved attribute, found by the row's stable id. */
   const committedVariableFor = useCallback(
-    (rowId: unknown): string => {
+    (id: unknown): string => {
       const committed: unknown = get(committedFields, PROMPTS_FIELD);
-      if (!Array.isArray(committed) || typeof rowId !== 'string') return '';
+      if (!Array.isArray(committed) || typeof id !== 'string') return '';
       const row = committed.find(
-        (candidate) => isRecord(candidate) && candidate.id === rowId,
+        (candidate) => isRecord(candidate) && candidate.id === id,
       );
       const variable = isRecord(row) ? row.variable : undefined;
       return typeof variable === 'string' ? variable : '';
@@ -134,9 +143,9 @@ export default function NominationPromptsSection() {
     [committedFields],
   );
 
-  const onBeforeSave = useCallback(
-    (value: unknown) => {
-      if (subject === null || !isRecord(value)) return value;
+  const beforeSave = useCallback(
+    (value: RowValues): RowSaveOutcome => {
+      if (subject === null) return { row: value };
       const variable = typeof value.variable === 'string' ? value.variable : '';
 
       // The attribute itself, before anything about who else writes it: a
@@ -146,14 +155,14 @@ export default function NominationPromptsSection() {
       // seeing a nonempty value and letting the row close.
       const unusable = unusableVariableIssue(allVariables, variable, 'boolean');
       if (unusable !== undefined) {
-        return { success: false, fieldErrors: { variable: [unusable] } };
+        return { refused: { fieldErrors: { variable: [unusable] } } };
       }
 
       const ownedIssue =
         interfaceOwnedPickIssue(slotMap, subject, variable) ??
         interfaceOwnedPickIssue(draftSlotMap, subject, variable);
       if (ownedIssue !== undefined) {
-        return { success: false, fieldErrors: { variable: [ownedIssue] } };
+        return { refused: { fieldErrors: { variable: [ownedIssue] } } };
       }
 
       const committed = committedVariableFor(value.id);
@@ -166,13 +175,14 @@ export default function NominationPromptsSection() {
         draftFormVariables.includes(variable)
       ) {
         return {
-          success: false,
-          fieldErrors: {
-            variable: [
-              draftValidatedElsewhereMessage(
-                variableDisplayName(allVariables, variable),
-              ),
-            ],
+          refused: {
+            fieldErrors: {
+              variable: [
+                draftValidatedElsewhereMessage(
+                  variableDisplayName(allVariables, variable),
+                ),
+              ],
+            },
           },
         };
       }
@@ -186,9 +196,9 @@ export default function NominationPromptsSection() {
         message: validatedElsewhereMessage,
       });
       if (issue !== undefined) {
-        return { success: false, fieldErrors: { variable: [issue] } };
+        return { refused: { fieldErrors: { variable: [issue] } } };
       }
-      return value;
+      return { row: value };
     },
     [
       allVariables,
@@ -213,9 +223,18 @@ export default function NominationPromptsSection() {
     [],
   );
 
-  const { editorFieldsComponent, previewComponent } = useRowRenderers(
-    NominationPromptEditor,
-    NominationPromptPreview,
+  const rowList = useMemo<RowListConfig>(
+    () => ({
+      Preview: NominationPromptPreview,
+      Editor: NominationPromptEditor,
+      addTitle: pedigreeMessages.nominationAddTitle,
+      editTitle: pedigreeMessages.nominationEditTitle,
+      formId: 'nomination-prompt-editor',
+      name: PROMPTS_FIELD,
+      beforeSave,
+      normalize: (row) => withoutAbsentValues(row) as RowValues,
+    }),
+    [beforeSave],
   );
 
   return (
@@ -237,30 +256,30 @@ export default function NominationPromptsSection() {
         },
       }}
     >
-      <Field<typeof DialogArrayField>
-        name={PROMPTS_FIELD}
-        label={intl.formatMessage(pedigreeMessages.nominationFieldLabel)}
-        hint={intl.formatMessage(pedigreeMessages.nominationFieldHint)}
-        component={DialogArrayField}
-        addButtonLabel={intl.formatMessage(pedigreeMessages.nominationAddLabel)}
-        addTitle={intl.formatMessage(pedigreeMessages.nominationAddTitle)}
-        editorTitle={intl.formatMessage(pedigreeMessages.nominationEditTitle)}
-        // A DESCRIPTOR rather than a word: `DialogArrayField` formats the row
-        // noun where the sentence around it is read, or encodes it for a
-        // reader further on, so resolving it here would put an English noun
-        // into a Spanish sentence.
-        itemLabel={pedigreeMessages.nominationPromptNoun}
-        emptyStateMessage={intl.formatMessage(
-          pedigreeMessages.nominationEmptyState,
-        )}
-        editorFieldsComponent={editorFieldsComponent}
-        previewComponent={previewComponent}
-        editorDialogSize="editor"
-        normalizeItem={withoutAbsentValues}
-        onBeforeSave={onBeforeSave}
-        sortable
-        {...promptsValidation}
-      />
+      <RowList config={rowList}>
+        <Field<typeof ArrayField<RowValues>>
+          name={PROMPTS_FIELD}
+          label={intl.formatMessage(pedigreeMessages.nominationFieldLabel)}
+          hint={intl.formatMessage(pedigreeMessages.nominationFieldHint)}
+          component={ArrayField}
+          getId={rowId}
+          addButtonLabel={intl.formatMessage(
+            pedigreeMessages.nominationAddLabel,
+          )}
+          // A DESCRIPTOR rather than a word: every sentence the noun goes into
+          // is formatted where it is read, so resolving it here would put an
+          // English noun into a Spanish sentence.
+          itemLabel={pedigreeMessages.nominationPromptNoun}
+          emptyStateMessage={intl.formatMessage(
+            pedigreeMessages.nominationEmptyState,
+          )}
+          itemComponent={RowListItem}
+          editorComponent={RowDialog}
+          itemTemplate={rowTemplate()}
+          sortable
+          {...promptsValidation}
+        />
+      </RowList>
     </BuilderSection>
   );
 }

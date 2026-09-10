@@ -23,7 +23,7 @@ import MultiSelect, { type MultiSelectProps } from './MultiSelect.tsx';
  *
  * `undefined` is what every reader downstream already treats as "the stage
  * holds nothing here": `withoutValueAt` prunes the container the key leaves
- * empty, `stageDraftFromSubmission` removes rather than writes it, and
+ * empty, `documentFromSubmission` removes rather than writes it, and
  * `useStageHasAnyValue` reads it as an unconfigured capability. What it is NOT
  * is a switch-off — see `BuilderSection`, which keeps the researcher's switch
  * where they left it while they are still editing.

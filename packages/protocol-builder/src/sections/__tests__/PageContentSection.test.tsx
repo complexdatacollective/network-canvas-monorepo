@@ -78,10 +78,10 @@ describe('a page of content rather than a task', () => {
     const harness = renderStageEditor(openEditor());
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Remove block' }),
+      screen.getByRole('button', { name: 'Delete block' }),
     );
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove block' }),
+      await screen.findByRole('button', { name: 'Delete block' }),
     );
     await waitFor(() =>
       expect(

@@ -80,7 +80,6 @@ const messages = defineMessages({
   },
 });
 
-import type { DialogArrayItemSelector } from '../../form/arrayFields/DialogArrayField.tsx';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
 
 /**
@@ -229,7 +228,10 @@ export function contentBlockKind(
  * `asset` type, gets no slot, and so gets no content control at all — which is
  * what stops a resource id being offered as prose.
  */
-const expandContentBlock: DialogArrayItemSelector = (context, { item }) => {
+const expandContentBlock = (
+  context: ProtocolBuilderProtocolContext,
+  item: Record<string, unknown>,
+): Record<string, unknown> => {
   const kind = contentBlockKind(context, item);
   if (kind === undefined) return item;
   return { ...item, type: kind, [CONTENT_BLOCK_SLOTS[kind]]: item.content };

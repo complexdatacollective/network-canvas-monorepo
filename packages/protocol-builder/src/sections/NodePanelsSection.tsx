@@ -13,6 +13,7 @@ import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { FormStoreContext } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
@@ -21,7 +22,18 @@ import type { Asset } from '@codaco/protocol-validation';
 
 import AssetPickerField from '../fields/AssetPickerField.tsx';
 import { withoutAbsentValues } from '../form/absentValues.ts';
-import DialogArrayField from '../form/arrayFields/DialogArrayField.tsx';
+import {
+  RowDialog,
+  RowList,
+  RowListItem,
+  rowId,
+  rowsOf,
+  rowTemplate,
+  type RowListConfig,
+  type RowValues,
+  type RowEditorProps,
+  type RowPreviewProps,
+} from '../form/rowDialog.tsx';
 import { useStagedResources } from '../resources/client.tsx';
 import { acceptsResourceKind } from '../resources/components/resourceKinds.ts';
 import type { ResourceDescriptor, ResourceKind } from '../resources/types.ts';
@@ -36,11 +48,6 @@ import { FilterRuleSetField } from '../rules/RuleSetField.tsx';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { useRowValue } from './AttributeCodebookControls.tsx';
 import BuilderSection, { type SectionCapability } from './BuilderSection.tsx';
-import {
-  type RowEditorProps,
-  type RowPreviewProps,
-  useRowRenderers,
-} from './rowRenderers.tsx';
 import { useStageSubject } from './useStageSubject.ts';
 
 /** Where every name generator that offers side panels keeps them. */
@@ -114,7 +121,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.nodePanels.itemNoun',
     defaultMessage: 'panel',
     description:
-      'What one row of the side-panel list is called inside things said ABOUT it — "Edit panel", "Remove this panel?" — so it is lower case and singular. A side panel lists people beside a name generator for the participant to nominate from.',
+      'What one row of the side-panel list is called inside things said ABOUT it — "Edit panel", "Delete this panel?" — so it is lower case and singular. A side panel lists people beside a name generator for the participant to nominate from.',
   },
   emptyState: {
     id: 'protocolBuilder.nodePanels.emptyState',
@@ -361,9 +368,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
-const rowsOf = (value: unknown): Record<string, unknown>[] =>
-  Array.isArray(value) ? value.filter(isRecord) : [];
-
 /** Which rules a panel's filter may be about, given where it reads from. */
 type PanelRuleSetVariant = Extract<
   RuleSetVariant,
@@ -498,10 +502,6 @@ export default function NodePanelsSection() {
   // is nothing for a panel to be about, and offering rules over an empty
   // codebook would be offering nothing at all.
   const waiting = subject === undefined;
-  const { editorFieldsComponent, previewComponent } = useRowRenderers(
-    PanelEditor,
-    PanelPreview,
-  );
   const panelsValidation = usePanelsValidation();
 
   return (
@@ -513,25 +513,24 @@ export default function NodePanelsSection() {
       disabled={waiting}
       capability={PANELS_CAPABILITY}
     >
-      <Field<typeof DialogArrayField>
-        name={PANELS}
-        label={intl.formatMessage(messages.fieldLabel)}
-        hint={intl.formatMessage(messages.fieldHint)}
-        component={DialogArrayField}
-        addButtonLabel={intl.formatMessage(messages.addLabel)}
-        addTitle={intl.formatMessage(messages.addTitle)}
-        editorTitle={intl.formatMessage(messages.editTitle)}
-        itemLabel={messages.itemNoun}
-        emptyStateMessage={intl.formatMessage(messages.emptyState)}
-        editorFieldsComponent={editorFieldsComponent}
-        previewComponent={previewComponent}
-        editorDialogSize="editor"
-        itemTemplate={newPanel}
-        normalizeItem={withoutAbsentValues}
-        maxItems={MAX_PANELS}
-        sortable
-        {...panelsValidation}
-      />
+      <RowList config={PANEL_ROWS}>
+        <Field<typeof ArrayField<RowValues>>
+          name={PANELS}
+          label={intl.formatMessage(messages.fieldLabel)}
+          hint={intl.formatMessage(messages.fieldHint)}
+          component={ArrayField}
+          getId={rowId}
+          addButtonLabel={intl.formatMessage(messages.addLabel)}
+          itemLabel={messages.itemNoun}
+          emptyStateMessage={intl.formatMessage(messages.emptyState)}
+          itemComponent={RowListItem}
+          editorComponent={RowDialog}
+          itemTemplate={rowTemplate(newPanel)}
+          maxItems={MAX_PANELS}
+          sortable
+          {...panelsValidation}
+        />
+      </RowList>
     </BuilderSection>
   );
 }
@@ -542,6 +541,24 @@ export default function NodePanelsSection() {
  * a half-configured panel still describes something real.
  */
 const newPanel = () => ({ dataSource: INTERVIEW_NETWORK });
+
+/**
+ * Everything about this list that is not the field's own: what one panel reads
+ * as when its dialog is closed, and the fields the dialog holds.
+ *
+ * A module constant, because nothing in it varies with the stage — see
+ * `RowListConfig` for why an identity that moved would cost the researcher the
+ * dialog they had open.
+ */
+const PANEL_ROWS: RowListConfig = {
+  Preview: PanelPreview,
+  Editor: PanelEditor,
+  addTitle: messages.addTitle,
+  editTitle: messages.editTitle,
+  formId: 'panel-editor',
+  name: PANELS,
+  normalize: (row) => withoutAbsentValues(row) as RowValues,
+};
 
 /**
  * One panel: what it is called, who it lists, and which of them it shows.

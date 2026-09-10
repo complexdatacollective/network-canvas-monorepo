@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animations-enabled';
@@ -11,8 +12,14 @@ import { withAnimationsEnabled } from '@codaco/vitest-config/modern/with-animati
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { createStageDraftProbe } from '../../__tests__/stageDraftProbe.tsx';
-import { DialogFormField } from '../../DialogForm.tsx';
-import DialogArrayField from '../DialogArrayField.tsx';
+import {
+  RowDialog,
+  RowList,
+  RowListItem,
+  rowId,
+  type RowListConfig,
+  type RowValues,
+} from '../../rowDialog.tsx';
 import MultiSelect, {
   makeMultiSelectValidation,
   type PropertyField,
@@ -136,15 +143,22 @@ const SORT_PROPERTIES: PropertyField[] = [
 const SORT_VALIDATION = makeMultiSelectValidation(SORT_PROPERTIES);
 const NO_OPTIONS = () => [];
 
-function PromptPreview({ text }: Record<string, unknown>) {
-  return <span>{typeof text === 'string' ? text : ''}</span>;
+function PromptPreview({ item }: { item: RowValues }) {
+  return <span>{typeof item.text === 'string' ? item.text : ''}</span>;
 }
 
 function PromptFields() {
-  return (
-    <DialogFormField name="text" label="Prompt text" component={InputField} />
-  );
+  return <Field name="text" label="Prompt text" component={InputField} />;
 }
+
+const PROMPT_ROWS: RowListConfig = {
+  Preview: PromptPreview,
+  Editor: PromptFields,
+  addTitle: { id: 'test.addPrompt', defaultMessage: 'Create prompt' },
+  editTitle: { id: 'test.editPrompt', defaultMessage: 'Edit prompt' },
+  formId: 'prompt-editor',
+  name: 'prompts',
+};
 
 describe('a row removal confirm', () => {
   it('names the option that takes the removed one’s place', async () => {
@@ -279,26 +293,28 @@ describe('a row removal confirm', () => {
           { id: 'c', text: 'Charlie' },
         ],
       },
-      <Field
-        name="prompts"
-        label="Prompts"
-        component={DialogArrayField}
-        addButtonLabel="Create new prompt"
-        editorTitle="Edit prompt"
-        itemLabel={promptItemLabel}
-        previewComponent={PromptPreview}
-        editorFieldsComponent={PromptFields}
-      />,
+      <RowList config={PROMPT_ROWS}>
+        <Field<typeof ArrayField<RowValues>>
+          name="prompts"
+          label="Prompts"
+          component={ArrayField}
+          getId={rowId}
+          addButtonLabel="Create new prompt"
+          itemLabel={promptItemLabel}
+          itemComponent={RowListItem}
+          editorComponent={RowDialog}
+        />
+      </RowList>,
     );
 
     const removes = await screen.findAllByRole('button', {
-      name: 'Remove prompt',
+      name: 'Delete prompt',
     });
     await user.click(removes[1]!);
     await confirmRemoval(removes[1]!);
     await waitFor(() => expect(draft().prompts as unknown[]).toHaveLength(2));
 
-    const remaining = screen.getAllByRole('button', { name: 'Remove prompt' });
+    const remaining = screen.getAllByRole('button', { name: 'Delete prompt' });
     expect(focusTarget()).toBe(remaining[1]);
   });
 

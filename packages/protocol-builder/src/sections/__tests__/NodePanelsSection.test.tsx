@@ -410,11 +410,11 @@ describe('the side panels a name generator shows', () => {
 
     // And it is a refusal the researcher can act on: every panel on screen
     // has a remove beside it, the extra one included.
-    const remove = screen.getAllByRole('button', { name: 'Remove panel' })[2];
+    const remove = screen.getAllByRole('button', { name: 'Delete panel' })[2];
     if (remove === undefined) throw new Error('the third panel has no remove');
     await harness.user.click(remove);
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove panel' }),
+      await screen.findByRole('button', { name: 'Delete panel' }),
     );
     await waitFor(() =>
       expect(screen.queryByText('Third panel')).not.toBeInTheDocument(),

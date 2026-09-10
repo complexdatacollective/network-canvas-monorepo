@@ -70,31 +70,18 @@ const openLastField = async (harness: Harness, name: string) => {
 /**
  * Removes one row from a list the editor mounts.
  *
- * Two clicks, because the removal is confirmed first — and the confirmation's
- * own button carries the same name as the control that opened it, so the
- * second click has to name the one the dialog added rather than the one still
- * sitting in the row.
+ * Two clicks, because the removal is confirmed first: the row's own control
+ * asks, and the confirmation the list raises names what is going.
  */
 export const removeRow = async (harness: Harness, itemLabel: string) => {
-  const name = `Remove ${itemLabel}`;
+  const name = `Delete ${itemLabel}`;
   const [rowControl] = screen.getAllByRole('button', { name });
   if (rowControl === undefined) throw new Error(`There is no "${name}".`);
   await harness.user.click(rowControl);
 
-  // The row's own control is hidden from assistive technology while the modal
-  // is open, so the confirmation is whichever control with that name is NOT
-  // the one just clicked — asked that way rather than by count, so a
-  // confirmation that never opened is waited for rather than clicked past.
-  const confirmation = await waitFor(() => {
-    const [confirm] = screen
-      .getAllByRole('button', { name })
-      .filter((control) => control !== rowControl);
-    if (confirm === undefined) {
-      throw new Error(`Nothing asked whether to ${name.toLowerCase()}.`);
-    }
-    return confirm;
-  });
-  await harness.user.click(confirmation);
+  await harness.user.click(
+    await screen.findByRole('button', { name: `Delete ${itemLabel}` }),
+  );
 };
 
 /**

@@ -282,6 +282,30 @@ export type ArrayFieldItemProps<T extends Record<string, unknown>> = {
    */
   editTriggerRef?: (element: HTMLElement | null) => void;
   /**
+   * Attach to the control that invokes `onDelete`.
+   *
+   * It is how the list's own delete confirmation finds the row that takes this
+   * one's place: on confirm, both this row and the control that opened the
+   * confirmation are gone, and focus has to land on a control the researcher
+   * can carry on from rather than on `<body>`, which Base UI resolves to the
+   * first tabbable element in the whole document. A ref rather than an element
+   * captured when the confirmation opened, for the reason `editTriggerRef`
+   * gives.
+   *
+   * An item component that runs its own confirmation instead does not need it.
+   */
+  deleteTriggerRef?: (element: HTMLElement | null) => void;
+  /**
+   * This list's own noun for one of its rows, as the list declared it.
+   *
+   * A DESCRIPTOR, formatted where the sentence around it is read: a row's
+   * affordances are named for the researcher ("Edit prompt", "Delete prompt"),
+   * and a list that mounts several of these at once is otherwise a row of
+   * identically named buttons to anyone navigating by them. Undefined for a
+   * list that has no word for its rows.
+   */
+  itemLabel?: MessageDescriptor;
+  /**
    * Resolves the list's own add control — the one control that survives this
    * row being destroyed.
    *
@@ -560,6 +584,8 @@ type ArrayFieldItemWrapperProps<T extends Record<string, unknown>> = {
   onDragEndItem: () => void;
   ItemComponent: ComponentType<ArrayFieldItemProps<T>>;
   editTriggerRef: (element: HTMLElement | null) => void;
+  deleteTriggerRef: (element: HTMLElement | null) => void;
+  itemLabel?: MessageDescriptor;
   getAddTrigger: () => HTMLElement | null;
   disabled: boolean;
   readOnly: boolean;
@@ -592,6 +618,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
     onUpdateItem,
     ItemComponent,
     editTriggerRef,
+    deleteTriggerRef,
+    itemLabel,
     getAddTrigger,
     itemClasses,
     disabled,
@@ -681,6 +709,8 @@ function ArrayFieldItemWrapperInner<T extends Record<string, unknown>>(
         readOnly={readOnly}
         dragControls={dragControls}
         editTriggerRef={editTriggerRef}
+        deleteTriggerRef={deleteTriggerRef}
+        itemLabel={itemLabel}
         getAddTrigger={getAddTrigger}
       />
     </Surface>
@@ -786,6 +816,13 @@ export default function ArrayField<T extends Record<string, unknown>>({
    * `editingItem` is already null.
    */
   const editTriggerElements = useRef(new Map<string, HTMLElement>());
+  /**
+   * The same register for the control that opens each row's DELETE, so the
+   * confirmation can hand focus to the row that takes the removed one's place
+   * rather than sending the researcher back out to the add button from the
+   * middle of a list.
+   */
+  const deleteTriggerElements = useRef(new Map<string, HTMLElement>());
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const lastEditingRef = useRef<{ internalId: string; isNew: boolean } | null>(
     null,
@@ -804,6 +841,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
   const editTriggerCallbacks = useRef(
     new Map<string, (element: HTMLElement | null) => void>(),
   );
+  const deleteTriggerCallbacks = useRef(
+    new Map<string, (element: HTMLElement | null) => void>(),
+  );
 
   const registerEditTrigger = useCallback((internalId: string) => {
     const cached = editTriggerCallbacks.current.get(internalId);
@@ -817,6 +857,21 @@ export default function ArrayField<T extends Record<string, unknown>>({
       }
     };
     editTriggerCallbacks.current.set(internalId, callback);
+    return callback;
+  }, []);
+
+  const registerDeleteTrigger = useCallback((internalId: string) => {
+    const cached = deleteTriggerCallbacks.current.get(internalId);
+    if (cached) return cached;
+
+    const callback = (element: HTMLElement | null) => {
+      if (element) {
+        deleteTriggerElements.current.set(internalId, element);
+      } else {
+        deleteTriggerElements.current.delete(internalId);
+      }
+    };
+    deleteTriggerCallbacks.current.set(internalId, callback);
     return callback;
   }, []);
 
@@ -972,6 +1027,29 @@ export default function ArrayField<T extends Record<string, unknown>>({
     ],
   );
 
+  /**
+   * The delete control focus should land on once the row at `position` among
+   * the committed rows is gone: the row that takes its place, the last row
+   * when it was itself the last, and the add button when the list is emptied.
+   *
+   * Named by id rather than found in the document, so the row on its way out —
+   * which stays mounted, `inert` and `aria-hidden`, until its exit animation
+   * ends — cannot be the answer.
+   */
+  const surviving = useCallback(
+    (removedId: string, position: number): HTMLElement | null => {
+      const remaining = latestItemsRef.current.filter(
+        (item) => !item._draft && item._internalId !== removedId,
+      );
+      const neighbour = remaining[Math.min(position, remaining.length - 1)];
+      const control = neighbour
+        ? deleteTriggerElements.current.get(neighbour._internalId)
+        : undefined;
+      return control?.isConnected ? control : addButtonRef.current;
+    },
+    [],
+  );
+
   // Handle delete with optional confirmation for non-draft items
   const requestDelete = useCallback(
     async (internalId: string) => {
@@ -1025,10 +1103,18 @@ export default function ArrayField<T extends Record<string, unknown>>({
           ),
           onConfirm: removeAndAnnounce,
           // On confirm the row — and the Delete control that opened this — is
-          // gone, so focus has nowhere to return to. The add button is the
-          // surviving control for this list. (Cancel still returns to the row's
-          // own Delete control, which is untouched.)
-          finalFocus: () => addButtonRef.current,
+          // gone, so focus goes to the row that has taken its place, and to
+          // the add button when the row removed was the last one, that being
+          // the only control an emptied list still has. Sending it to the add
+          // button either way walks the researcher out of the middle of a list
+          // they were working down. (Cancel still returns to the row's own
+          // Delete control, which is untouched.)
+          //
+          // Resolved when focus is being RETURNED rather than now, and by row
+          // IDENTITY rather than by asking the document: the removed row stays
+          // mounted for its exit animation, so a search of the list would find
+          // its control and hand focus to a node about to be destroyed.
+          finalFocus: () => surviving(internalId, position - 1),
         });
       } else {
         removeAndAnnounce();
@@ -1045,6 +1131,7 @@ export default function ArrayField<T extends Record<string, unknown>>({
       itemLabel,
       items,
       removeItem,
+      surviving,
     ],
   );
 
@@ -1157,6 +1244,8 @@ export default function ArrayField<T extends Record<string, unknown>>({
                   onCancel={cancelEditing}
                   ItemComponent={ItemComponent}
                   editTriggerRef={registerEditTrigger(item._internalId)}
+                  deleteTriggerRef={registerDeleteTrigger(item._internalId)}
+                  itemLabel={itemLabel}
                   getAddTrigger={getAddTrigger}
                   itemClasses={itemClasses}
                   disabled={disabled ?? false}
