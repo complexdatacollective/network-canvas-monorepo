@@ -6,19 +6,19 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { storyDialogVisible } from '../dyad-census/storyDialogVisible.ts';
-import { tieStrengthCensusStageEditor } from './TieStrengthCensusStageEditor.ts';
+import { categoricalBinStageEditor } from './CategoricalBinStageEditor.ts';
 
 const meta = {
-  title: 'Protocol Builder/Stage editors/Tie-Strength Census',
+  title: 'Protocol Builder/Stage editors/Categorical Bin',
   component: StageEditorStoryHost,
   args: {
-    stageId: 'tie-strength-census-1',
+    stageId: 'categorical-bin-1',
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (
       <StageEditor
         {...editor}
-        registry={tieStrengthCensusStageEditor}
+        registry={categoricalBinStageEditor}
         actions={actions}
       />
     ),
@@ -28,7 +28,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The stage a participant rates every pair of people in. The same composition as the Dyad Census, and a prompt that records one more thing: the attribute of the connection whose ordered values are the scale the answer is given on.',
+          'The stage a participant sorts every person into named bins in. The same composition as the Ordinal Bin, with one more thing a prompt can hold: a bin for the people none of the attribute’s values describe, and the question asked as soon as someone lands in it.',
       },
     },
   },
@@ -38,8 +38,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Opening a prompt: the question, the connection it rates, and the scale. */
-export const EditingAPrompt: Story = {
+/** Opening a prompt, and adding the bin for everything else. */
+export const AddingTheBinForEverythingElse: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
@@ -52,12 +52,21 @@ export const EditingAPrompt: Story = {
     const dialog = within(panel);
     await storyDialogVisible(panel);
     await waitFor(async () => {
-      await expect(dialog.getByRole('radio', { name: 'knows' })).toBeChecked();
+      await expect(
+        dialog.getByRole('combobox', { name: 'Attribute' }),
+      ).toHaveValue('contactType');
     });
-    // The scale is the CONNECTION's attribute, not the person's.
+
+    // Offered only once the bins themselves are chosen, and off until the
+    // researcher asks for it.
+    const followUp = dialog.getByRole('switch', {
+      name: 'A bin for anything else',
+    });
+    await expect(followUp).not.toBeChecked();
+    await userEvent.click(followUp);
     await expect(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-    ).toHaveValue('closeness');
+      await dialog.findByRole('textbox', { name: 'Follow-up question' }),
+    ).toBeInTheDocument();
   },
 };
 

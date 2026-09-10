@@ -33,8 +33,8 @@ export type PromptTextFieldProps = Readonly<{
  *
  * An ordinary connected field of the DIALOG's form, so the question reaches
  * the stage when the prompt does and a cancelled prompt takes it with it.
- * Shared by the three censuses, which differ only in the sentence above the
- * box and the example inside it.
+ * Shared by the three censuses and the two bins, which differ only in the
+ * sentence above the box and the example inside it.
  */
 export function PromptTextField({
   item,
