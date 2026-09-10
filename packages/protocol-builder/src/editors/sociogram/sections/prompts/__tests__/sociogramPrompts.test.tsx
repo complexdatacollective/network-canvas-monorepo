@@ -570,6 +570,24 @@ describe('what tapping a node does, against what the prompt already said', () =>
       taps: [MARK, NOTHING],
       expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
     },
+    /**
+     * And a prompt that never wrote the flag at all goes on not writing it.
+     *
+     * The row above arrived saying `false`, so putting back what it opened
+     * with and writing `false` are the same edit, and every other cell of this
+     * table says `false` too — which leaves the difference between the flag a
+     * prompt HOLDS and the flag it is treated as holding untested. This prompt
+     * holds no `allowHighlighting` key, and visiting the marking option and
+     * leaving again must not add one: `false` is the interview's answer to
+     * "does tapping mark this node", and a protocol that never answered it
+     * still has not.
+     */
+    'a highlighting prompt with no flag at all, visited on marking and left alone again':
+      {
+        committed: { variable: HIGHLIGHT_ATTRIBUTE },
+        taps: [MARK, NOTHING],
+        expected: { variable: HIGHLIGHT_ATTRIBUTE },
+      },
     'a highlighting prompt visited on marking and set to draw instead': {
       committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
       taps: [MARK, CREATE_EDGE],
@@ -656,6 +674,12 @@ describe('what tapping a node does, against what the prompt already said', () =>
       return;
     }
     expect(saved?.highlight).toEqual(scenario.expected);
+    // `toEqual` reads a key holding `undefined` as one that is not there, and
+    // the rows above turn on which keys a saved prompt HAS: a flag written as
+    // `false` and a flag never written are different protocols.
+    expect(Object.keys(saved?.highlight ?? {}).sort()).toEqual(
+      Object.keys(scenario.expected).sort(),
+    );
   });
 });
 
