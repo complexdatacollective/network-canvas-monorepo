@@ -76,6 +76,32 @@ export function missingBundlingApps(
     .filter((entry) => entry.missingApps.length > 0);
 }
 
+// Workspaces with no release path at all: never published, never deployed, and
+// in no gated lane. A changeset must not name one.
+//
+// The default is the other way round, which is why this needs a guard rather
+// than a convention. `privatePackages.version` is `true` and these are not in
+// the config `ignore` list, so `changeset version` does not reject a changeset
+// naming one — it bumps the package and writes it a `CHANGELOG.md` in the
+// normal lane's Version Packages PR, announcing a release of something nobody
+// can install.
+//
+// Being private is NOT the qualifying property, so this list cannot be derived
+// from the manifests alone: `@codaco/architect`, `@codaco/interviewer`,
+// `fresco` and `@codaco/background-creator` are private and deploy from the
+// normal lane; `@codaco/art` and `@codaco/interface-images` are private and
+// versioned in it on purpose (both carry a `CHANGELOG.md`); and the Studio
+// packages are private and released by the Studio lane. What these have is
+// none of the three. `changeset-app-utils.test.mjs` holds each entry to that
+// standard, so a package that gains a release path leaves the list rather than
+// being silently over-protected.
+export const UNRELEASED_PACKAGES = ['@codaco/protocol-builder'];
+
+export function unreleasedReleases(cs, unreleased = UNRELEASED_PACKAGES) {
+  const names = new Set(unreleased);
+  return cs.releases.filter((release) => names.has(release.name));
+}
+
 export function parseChangeset(contents) {
   const m = contents.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/);
   if (!m) return { releases: [], summary: contents.trim() };

@@ -1,8 +1,11 @@
 # Rework `@codaco/protocol-builder` around locked sections and plain forms
 
 **Date:** 2026-09-09
-**Last updated:** 2026-09-09
-**Status:** Agreed 2026-09-09; implementation not started
+**Last updated:** 2026-09-10
+**Status:** PRs 1, 2 and 3 landed — the package's contract, state, form layer,
+section lists and all nineteen stage editors, with the proof-host stories and
+the package's release gates. PRs 4 (#1491, Architect adopts the package) and 5
+(#1492, Architect's app-local editors are removed) remain.
 **Scope:** the `@codaco/protocol-builder` package: its host contract, state
 and subscriptions, form primitives, and the nineteen named stage editors; the
 Studio proof host; the Architect and Studio hosts as far as the contract
