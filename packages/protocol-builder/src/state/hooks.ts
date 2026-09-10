@@ -130,6 +130,71 @@ export function useStageIndex(): readonly StageSummary[] {
   });
 }
 
+/**
+ * How far through the protocol's history this client has been brought.
+ *
+ * Every section carries the revision it was last written at, so the newest of
+ * them is the last revision the channel delivered — which is what a host
+ * command fenced on the protocol's revision has to quote, and what tells a
+ * caller whether the protocol it is looking at is the one the host holds.
+ * `undefined` until a section has been read.
+ */
+export function useProtocolRevision(): bigint | undefined {
+  const { protocolId, utils } = useProtocolBuilderContext();
+  const { data: list } = useQuery(
+    utils.listSections.queryOptions({ input: { protocolId } }),
+  );
+  const ids = list?.sectionIds ?? [];
+
+  return useQueries({
+    queries: ids.map((id) => ({
+      ...utils.getSection.queryOptions({
+        input: { protocolId, sectionId: id },
+      }),
+      select: (section: SectionAtRevision): bigint => section.revision.sequence,
+    })),
+    combine: (results) =>
+      results.reduce<bigint | undefined>(
+        (newest, result) =>
+          result.data !== undefined &&
+          (newest === undefined || result.data > newest)
+            ? result.data
+            : newest,
+        undefined,
+      ),
+  });
+}
+
+/**
+ * Reads the whole protocol again from the host.
+ *
+ * For a write made through a surface of the host's OWN, beside this contract:
+ * Studio's `protocols.addInformationStage` and `protocols.moveStage` advance
+ * the draft without publishing a revision, so nothing about them reaches the
+ * channel and this is the only way the cache learns what they wrote. A change
+ * made through this contract arrives on the channel and needs none of it.
+ *
+ * The list is read first and awaited, so a section the write ADDED is one the
+ * readers of the protocol then observe for themselves. Rejects when the host
+ * cannot be re-read, which leaves the caller holding a write whose result it
+ * could not see.
+ */
+export function useRereadProtocol(): () => Promise<void> {
+  const { protocolId, utils } = useProtocolBuilderContext();
+  const queryClient = useQueryClient();
+
+  return useCallback(async () => {
+    await queryClient.invalidateQueries(
+      { queryKey: utils.listSections.key({ input: { protocolId } }) },
+      { throwOnError: true },
+    );
+    await queryClient.invalidateQueries(
+      { queryKey: utils.getSection.key({ input: { protocolId } }) },
+      { throwOnError: true },
+    );
+  }, [protocolId, queryClient, utils]);
+}
+
 export type SubmitResult =
   /**
    * `promoted` describes what the submit's promotion committed — the host's
