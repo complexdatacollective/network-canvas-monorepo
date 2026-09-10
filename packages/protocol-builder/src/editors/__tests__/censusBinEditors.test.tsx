@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
-import type { ProtocolBuilderClient } from '../../contract/contract.ts';
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
 import {
   expectNoLocaleLeaks,
@@ -19,7 +18,6 @@ import { categoricalBinStageEditor } from '../categorical-bin/CategoricalBinStag
 import { dyadCensusStageEditor } from '../dyad-census/DyadCensusStageEditor.ts';
 import { nameGeneratorQuickAddStageEditor } from '../name-generator-quick-add/NameGeneratorQuickAddStageEditor.ts';
 import { nameGeneratorRosterStageEditor } from '../name-generator-roster/NameGeneratorRosterStageEditor.ts';
-import { withRosterColumns } from '../name-generator-roster/rosterInspection.ts';
 import { oneToManyDyadCensusStageEditor } from '../one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
 import { ordinalBinStageEditor } from '../ordinal-bin/OrdinalBinStageEditor.ts';
 import { tieStrengthCensusStageEditor } from '../tie-strength-census/TieStrengthCensusStageEditor.ts';
@@ -143,14 +141,6 @@ type EditorCase = Readonly<{
   /** Which control authors each of that prompt's keys. */
   authoredBy: Readonly<Record<string, readonly Control[]>>;
   rewrite: Rewrite;
-  /**
-   * The host's client, wrapped before the editor is mounted over it — for an
-   * interface configured out of something only a host can read. The roster's
-   * card, sort and search sections are all chosen from the columns of an
-   * imported data file, and without them every one of those lists offers
-   * nothing and judges nothing.
-   */
-  client?: (client: ProtocolBuilderClient) => ProtocolBuilderClient;
 }>;
 
 /** The two controls one open sort-order group offers, inside that group. */
@@ -603,7 +593,6 @@ const CASES: readonly EditorCase[] = [
     prompt: NAME_GENERATOR_PROMPT,
     authoredBy: NAME_GENERATOR_PROMPT_CONTROLS,
     rewrite: REWRITE_A_STAMP,
-    client: withRosterColumns,
   },
 ];
 
@@ -622,8 +611,8 @@ function expectControl(control: Control): void {
 describe('the census and bin editors written as section lists', () => {
   it.each(CASES)(
     '$interfaceName renders the sections it lists, in that order',
-    async ({ stageId, editor, sections, client }) => {
-      const harness = renderStageEditor({ stageId, registry: editor, client });
+    async ({ stageId, editor, sections }) => {
+      const harness = renderStageEditor({ stageId, registry: editor });
 
       // Every section registers itself on mount and the outline is built from
       // what is registered — so an outline that is still short has not finished
@@ -648,8 +637,8 @@ describe('the census and bin editors written as section lists', () => {
    */
   it.each(CASES)(
     '$interfaceName saves the fixture stage it opened, losing nothing',
-    async ({ stageId, editor, ownedKeys, client }) => {
-      const harness = renderStageEditor({ stageId, registry: editor, client });
+    async ({ stageId, editor, ownedKeys }) => {
+      const harness = renderStageEditor({ stageId, registry: editor });
 
       await waitFor(() => expect(harness.ownedKeys()).toEqual([...ownedKeys]));
       await harness.roundTrip({ unowned: [] });
@@ -668,11 +657,10 @@ describe('the census and bin editors written as section lists', () => {
    */
   it.each(CASES)(
     '$interfaceName saves a whole $interfaceName unchanged, every key owned by a section',
-    async ({ interfaceName, editor, wholeStage, client }) => {
+    async ({ interfaceName, editor, wholeStage }) => {
       const harness = renderStageEditor({
         stage: { type: interfaceName, fields: wholeStage },
         registry: editor,
-        client,
       });
 
       await harness.roundTrip();
@@ -716,12 +704,10 @@ describe('a prompt that uses every optional key its interface allows', () => {
       prompt,
       authoredBy,
       rewrite,
-      client,
     }) => {
       const harness = renderStageEditor({
         stage: { type: interfaceName, fields: wholeStage },
         registry: editor,
-        client,
       });
 
       await harness.user.click(
@@ -906,10 +892,10 @@ describe('the family’s editors, swept under es', () => {
 
   it.each(CASES)(
     'sweeps a $interfaceName',
-    async ({ stageId, editor, optionalSections, client }) => {
+    async ({ stageId, editor, optionalSections }) => {
       await sweepEditor(
         stageId,
-        renderStageEditor({ stageId, locale: 'es', registry: editor, client }),
+        renderStageEditor({ stageId, locale: 'es', registry: editor }),
         optionalSections,
       );
     },

@@ -421,21 +421,6 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      */
     assetBytes?: Readonly<Record<string, string>>;
     /**
-     * The host's own client, wrapped before the editor is mounted over it.
-     *
-     * For the facts a host KNOWS about a protocol that this in-memory one does
-     * not work out for itself. The only one so far is what is inside an
-     * imported data file: `inspect` answers with the manifest entry, and a
-     * roster stage's card, sort and search sections are all chosen from that
-     * file's columns — so a test about one of them has to say what the file
-     * holds, exactly as `AssetPickerField.test.tsx` already does for the
-     * picker's own summary.
-     *
-     * Everything else stays the real host: the wrapper is handed the client
-     * and answers with one, so what it does not override is unchanged.
-     */
-    client?: (client: ProtocolBuilderClient) => ProtocolBuilderClient;
-    /**
      * The host's action chrome, as a host would give it to the editor.
      *
      * Given, it is what gets rendered in the editor's slot, whichever of the
@@ -482,13 +467,21 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
     }>[];
     /**
      * Wraps the seeded host's own client, the way `renderResourceEditor` does,
-     * for a test about a host that holds its answer.
+     * for a test about a host that holds its answer, or about a fact a real
+     * host KNOWS that this in-memory one does not work out for itself.
      *
      * Between the editor and the host rather than inside it: this host answers
      * in a microtask, so a request that is still in flight is something only
      * the transport can be. A stubbed store method would be answering for a
      * write the host decides, and would go on compiling after the host stopped
      * asking it the same question.
+     *
+     * The fact so far is what is inside an imported data file: `inspect`
+     * answers with the manifest entry, and a roster stage's card, sort and
+     * search sections are all chosen from that file's columns — so a test about
+     * one of them has to say what the file holds, exactly as
+     * `AssetPickerField.test.tsx` already does for the picker's own summary.
+     * Everything the wrapper does not override stays the real host's.
      */
     client?: (host: InMemoryHost) => ProtocolBuilderClient;
   }> &

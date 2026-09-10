@@ -14,9 +14,11 @@ import {
   flushPendingWork,
 } from '../../resources/components/__tests__/asyncControls.ts';
 import { renderResourceEditor } from '../../resources/components/__tests__/renderResourceEditor.tsx';
-import type { CommittedResource } from '../../resources/components/__tests__/resourceHost.ts';
+import {
+  withResourceProcedures,
+  type CommittedResource,
+} from '../../resources/components/__tests__/resourceHost.ts';
 import type { InMemoryHost } from '../../testing/host/createInMemoryHost.ts';
-import { withResourceProcedures } from '../../testing/withResourceProcedures.ts';
 import AssetPickerField from '../AssetPickerField.tsx';
 
 const HOST_UNAVAILABLE = 'the resource host is temporarily unavailable';
