@@ -126,8 +126,21 @@ jobs:
             // keep one per language and delete the rest. Be conservative: an
             // entry whose key does not match this exact shape is left alone
             // rather than guessed at.
+            //
+            // Group on the components hash AND the language, not the
+            // language alone. That hash is derived from the analysis's
+            // automation ID, and CodeQL only ever restores a base within its
+            // own hash prefix, so two analysis configurations covering the
+            // same language (a second `category`, an advanced-setup workflow
+            // beside default setup, a matrix leg) own two independent bases.
+            // Grouping by language would treat them as rivals and delete
+            // whichever ran less recently, every day, forever -- each config
+            // then rebuilding ~604 MB from scratch on every run while this
+            // job reported that it was keeping the newest. Only one hash per
+            // language exists today, so that is latent rather than live, but
+            // it is latent in the direction of silent permanent cost.
             const CODEQL_KEY_RE =
-              /^codeql-overlay-base-database-\d+-[0-9a-f]+-([a-z]+)-[^-]+-[0-9a-f]{40}-\d+-\d+$/;
+              /^codeql-overlay-base-database-\d+-([0-9a-f]+)-([a-z]+)-[^-]+-[0-9a-f]{40}-\d+-\d+$/;
 
             const byLanguage = new Map();
             const unparsedCodeql = [];
@@ -138,7 +151,7 @@ jobs:
                 unparsedCodeql.push(c);
                 continue;
               }
-              const lang = m[1];
+              const lang = `${m[1]}-${m[2]}`;
               if (!byLanguage.has(lang)) byLanguage.set(lang, []);
               byLanguage.get(lang).push(c);
             }

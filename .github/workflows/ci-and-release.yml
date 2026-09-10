@@ -479,7 +479,30 @@ jobs:
         # a no-op restore. chromium, firefox and webkit together are the
         # union test-storybook, interview-e2e-native, interviewer-e2e-native
         # and architect-e2e-native install between them.
+        id: install
         run: pnpm --filter @codaco/architect exec playwright install --with-deps chromium firefox webkit
+      # Same reasoning as `seed-turbo-cache`'s reporting step: this job is
+      # `continue-on-error`, so a failure leaves the run green and nothing
+      # else says a word. That matters more here than it looks, because the
+      # four consumer jobs are restore-only — if this never succeeds, main
+      # holds no browser cache, every one of them falls through to a full
+      # `playwright install`, and the only symptom is CI being quietly
+      # slower than it should be. Measured cost is about ten seconds per
+      # e2e job rather than minutes, so this is a warning and not a gate,
+      # but it must be a visible one.
+      - name: Report a failed warm
+        if: always()
+        env:
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+        run: |
+          {
+            echo "### Playwright cache warm"
+            echo
+            echo "- install: \`$INSTALL_OUTCOME\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$INSTALL_OUTCOME" != "success" ]]; then
+            echo "::warning::warm-playwright-cache did not warm the shared browser cache (install: $INSTALL_OUTCOME). Every e2e job on the next pull requests will install browsers itself until a later push to main succeeds."
+          fi
 
   seed-turbo-cache:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -947,8 +970,29 @@ jobs:
               ':(exclude)pnpm-lock.yaml' \
               ':(exclude)scripts/*.test.mjs' ':(exclude)*.md'; then
             echo "Running test tasks affected by $DIFF_BASE_SHA..HEAD"
-            TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test \
-              --affected --concurrency=1 --filter='!@codaco/studio-server'
+            # `--affected` is turbo's own sugar for `--filter=...[<base>]`,
+            # spelled out here because turbo 2.10.4 ignores every `--filter`
+            # for TASK selection when `--affected` is present. It is not a
+            # silent no-op either: the run prints a "Packages in scope" line
+            # that honours the filter and then executes the unfiltered task
+            # set anyway, so the exclusion below reads as working while the
+            # Studio suite runs in this job as well as in
+            # `test-studio-server` -- twice per pull request, the second copy
+            # on the very runner the split exists to get it off, on the
+            # affected path most pull requests take.
+            #
+            # The explicit form obeys both filters. Verified equivalent to
+            # `--affected` against two independent bases (23 and 56 selected
+            # tasks, identical task IDs both times), and verified to drop
+            # exactly one task when the negation is added.
+            #
+            # Check any change here by EXECUTING turbo, never with `--dry`:
+            # `--dry`'s `packages` field reports the filtered scope even in
+            # the broken case, so it confirms a filter the run then ignores.
+            # Its `tasks` field is the one that matches what runs.
+            pnpm exec turbo run test --concurrency=1 \
+              --filter="...[$DIFF_BASE_SHA]" \
+              --filter='!@codaco/studio-server'
             exit 0
           fi
 
@@ -2051,8 +2095,12 @@ jobs:
       # pushes to main — see the comment on this same step in `test-storybook`
       # for the full arrangement. This job needs only chromium, so it
       # restores the firefox and webkit binaries the key also carries and
-      # never launches — measured at roughly 200 MB and about ten seconds —
-      # in exchange for never holding a second key against the ceiling.
+      # never launches: about 200 MB more than a chromium-only key, which
+      # costs one to three seconds, since this job's whole cache-hit restore
+      # has a 3.5s median. In exchange it never holds a second key against
+      # the ceiling. Across every Playwright-consuming job in the repository
+      # the union costs on the order of one runner-hour a week, against the
+      # 4.6 GB of ceiling that thirteen per-pull-request copies were holding.
       - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
