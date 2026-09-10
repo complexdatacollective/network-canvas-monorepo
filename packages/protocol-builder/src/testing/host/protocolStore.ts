@@ -1,3 +1,10 @@
+import type {
+  CodebookSubject,
+  Presence,
+  ProtocolEvent,
+  Revision,
+  SectionReference,
+} from '@codaco/protocol-builder-core/contract/schemas';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   validateSection,
@@ -10,13 +17,6 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import type {
-  CodebookSubject,
-  Presence,
-  ProtocolEvent,
-  Revision,
-  SectionReference,
-} from '../../contract/schemas.ts';
 import { EventQueue } from './eventQueue.ts';
 import {
   entityTypeReferences,
@@ -386,6 +386,23 @@ export class InMemoryProtocolStore {
     const sequence = this.#advance();
     if (document === undefined) return this.#remove(id, sequence);
     return this.#write(id, document, sequence);
+  }
+
+  /**
+   * Takes a lease back without telling anybody, as an expiry does.
+   *
+   * The one way a section stops being held that publishes no lock event.
+   * Studio renews a lease for as long as the tab is there, but a renewal that
+   * the storage answers "no such row" to is a lease that ran out
+   * (`server/src/protocol-builder/runtime.ts`): an acquire that TOOK it
+   * publishes its own event, and an expiry nobody took has none to publish.
+   * The holder learns of it from the refusal its next save comes back with.
+   */
+  expireLease(id: ProtocolSectionId): void {
+    const owner = this.#locks.get(id);
+    if (owner === undefined) return;
+    this.#locks.delete(id);
+    this.#presenceFollowsLocks(owner);
   }
 
   /**

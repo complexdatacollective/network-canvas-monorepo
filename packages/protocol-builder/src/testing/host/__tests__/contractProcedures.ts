@@ -1,6 +1,6 @@
 import { getProcedureContractOrThrow } from '@orpc/contract';
 
-import { contract } from '../../../contract/contract.ts';
+import { contract } from '@codaco/protocol-builder-core/contract';
 
 /** Every procedure in the contract, as dotted paths. */
 export function procedurePaths(

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
-import type { IntlShape } from '@codaco/app-i18n/messages';
+import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { resolveFieldErrorTarget } from '@codaco/fresco-ui/form/utils/focusFirstError';
 import type { MessageRule } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
@@ -39,6 +40,13 @@ const messages = defineMessages({
       'This search matches an attribute that is not in the data file. Uncheck it and choose another.',
     description:
       'Shown above the roster-search checkboxes when a checked column is not in the chosen data file. Names the one way out — unchecking — because a checkbox has no row to delete and no cell to repoint.',
+  },
+  unreadableDescription: {
+    id: 'protocolBuilder.rosterColumns.unreadableDescription',
+    defaultMessage:
+      'The chosen data file could not be read, so there is nothing to choose from. The settings this stage already holds are kept.',
+    description:
+      'Shown in place of a roster section’s description when the chosen data file could not be read, so its attributes are not known. Says both why the section offers nothing and that what the stage holds is not lost, because the section is showing empty controls over settings that are still there. The reason the file could not be read is shown by the roster-source section, in the host’s own words.',
   },
 });
 
@@ -99,6 +107,55 @@ export function useRosterColumns(): RosterColumns {
     }),
     [failure, inspection, resourceId],
   );
+}
+
+/**
+ * What a section chosen from the data file's columns says about itself, and
+ * whether it can be edited at all.
+ *
+ * Three states rather than two, because `RosterColumns.names` has three (see
+ * its own note) and a section reading `waiting` alone collapses two of them. A
+ * file the host REFUSED — a manifest entry whose bytes cannot be read, which an
+ * imported protocol carrying a broken asset arrives holding — leaves `names`
+ * undefined with a file chosen, so such a section renders enabled under its
+ * ordinary description over an empty list: a required Attribute cell inviting a
+ * choice among nothing, and a search section inviting the researcher to pick
+ * the attributes people would search for when none are offered. The stage still
+ * holds the configuration the unreadable file is merely hiding, and the only
+ * affordance left on a stranded row is Remove, which destroys it.
+ *
+ * So the section is disabled and says why. Disabled rather than emptied:
+ * nothing is judged (`useOrphanedColumns` deliberately reports no orphan while
+ * the columns are unknown), nothing is refused, and a save still round-trips
+ * every setting the stage arrived with. `ExternalDataSourceSection` carries the
+ * host's own words for what went wrong with the file; this says what that means
+ * for the section in front of the researcher.
+ *
+ * Here rather than as a check in each section, because the distinction belongs
+ * to the columns rather than to any one thing chosen from them: the card, sort
+ * and search sections ask the same question and have to answer it the same way.
+ */
+export function useColumnSectionShell(
+  columns: RosterColumns,
+  description: MessageDescriptor,
+  waitingDescription: MessageDescriptor,
+): Readonly<{ description: string; disabled: boolean }> {
+  const intl = useAppIntl();
+  return useMemo(() => {
+    if (columns.waiting) {
+      return {
+        description: intl.formatMessage(waitingDescription),
+        disabled: true,
+      };
+    }
+    if (columns.problem !== undefined) {
+      return {
+        description: intl.formatMessage(messages.unreadableDescription),
+        disabled: true,
+      };
+    }
+    return { description: intl.formatMessage(description), disabled: false };
+  }, [columns.problem, columns.waiting, description, intl, waitingDescription]);
 }
 
 /**
@@ -329,6 +386,40 @@ export function useOrphanedColumns(
 }
 
 /**
+ * Hands focus back to the field when an option it was just used on stops being
+ * offered.
+ *
+ * An orphan is offered only while it is still checked, which is what keeps a
+ * lost column from ever being chosen afresh — and it means unchecking one
+ * removes the control that was clicked in the SAME commit. Focus then falls to
+ * `<body>`, taking the refusal that named the problem with it, so a researcher
+ * following the one instruction the message gives ("Uncheck it and choose
+ * another") is returned to the top of the document with nothing said.
+ *
+ * `QuickAddSection` answers exactly this shape — an accepted offer destroying
+ * the control that was pressed — the same way, and for the same reason:
+ * `resolveFieldErrorTarget` is the package's one answer to "which control does
+ * this field name?", tiers and all, so the field's first surviving checkbox is
+ * reached here without a selector of this module's own.
+ *
+ * Only focus the removal itself destroyed is taken back. A researcher whose
+ * focus is on something else has moved on by their own gesture — the list can
+ * shrink for reasons other than a click on it, a collaborator's write among
+ * them — and pulling them back would undo it.
+ */
+function useFocusAfterVanishing(path: string, values: readonly string[]): void {
+  const offered = useRef(values);
+  useEffect(() => {
+    const before = offered.current;
+    offered.current = values;
+    if (values.length >= before.length) return;
+    const holder = document.activeElement;
+    if (holder !== null && holder !== document.body) return;
+    resolveFieldErrorTarget(path)?.focus();
+  }, [path, values]);
+}
+
+/**
  * The same question asked of a list whose entries ARE column names — the search
  * section's checkboxes — as the two things that list's owner needs.
  *
@@ -351,7 +442,9 @@ export function useOrphanedColumns(
  * be to switch the whole capability off — throwing away the tolerance they set
  * as well. The guarantee the disabling exists for is kept a different way: an
  * orphan is only ever offered while it is still checked, so unchecking it takes
- * it out of the list for good and it can never be chosen afresh.
+ * it out of the list for good and it can never be chosen afresh — which is what
+ * `useFocusAfterVanishing` is here for, because it is also what takes the
+ * clicked control off the screen.
  *
  * And the refusal is one plain rule rather than a `DanglingCells`, because
  * there are no cells: the whole field is one value, and `messageRuleValidation`
@@ -371,6 +464,7 @@ export function useOrphanedColumnChoices(
   const named = useMemo(() => (Array.isArray(held) ? held : undefined), [held]);
   const values = useOrphanedColumnNames(named, names);
   const valuesRef = useLiveOrphans(values);
+  useFocusAfterVanishing(path, values);
 
   const refusal = useCallback<MessageRule>(
     (value) =>

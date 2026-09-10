@@ -8,7 +8,8 @@ import {
   type WebSocket as NodeWebSocket,
 } from 'ws';
 
-import type { ProtocolBuilderClient } from '../../contract/contract.ts';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+
 import {
   createInMemoryHost,
   type InMemoryHost,

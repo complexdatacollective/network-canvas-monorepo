@@ -5,8 +5,8 @@ import { createRouterClient } from '@orpc/server';
 import { configureStore } from '@reduxjs/toolkit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { ProtocolBuilderClient } from '@codaco/protocol-builder/contract';
-import type { ProtocolEvent } from '@codaco/protocol-builder/contract/schemas';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import {
   CurrentProtocolSchema,
   type ExtractedAsset,

@@ -5,7 +5,6 @@ import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
 import { nameGeneratorRosterStageEditor } from '../NameGeneratorRosterStageEditor.ts';
-import { withRosterColumns } from '../rosterInspection.ts';
 
 /** Where a host would insert a new one: over the stage the fixture holds. */
 const ROSTER_INDEX = fixtureStageIds().indexOf('name-generator-roster-1');
@@ -29,7 +28,6 @@ describe('creating a roster name generator', () => {
     const harness = renderStageEditor({
       create: { type: 'NameGeneratorRoster', position: ROSTER_INDEX },
       registry: nameGeneratorRosterStageEditor,
-      client: withRosterColumns,
     });
 
     await waitFor(() =>
@@ -95,7 +93,6 @@ describe('creating a roster name generator', () => {
     const harness = renderStageEditor({
       create: { type: 'NameGeneratorRoster', position: ROSTER_INDEX },
       registry: nameGeneratorRosterStageEditor,
-      client: withRosterColumns,
     });
 
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));

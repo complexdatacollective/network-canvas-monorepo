@@ -18,7 +18,7 @@ import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
  * SCOPE — list add buttons, not every button. The wider net of EVERY button,
  * page-wide, was measured against the all-interfaces fixture and rejected:
  * per-row controls repeat by design. A five-prompt list renders five "Edit
- * prompt" and five "Remove prompt" buttons, each named for what it does and
+ * prompt" and five "Delete prompt" buttons, each named for what it does and
  * disambiguated by the row it sits in. So does every drag handle. That net
  * would fire on all of them and have to be suppressed back down to roughly
  * the set below.

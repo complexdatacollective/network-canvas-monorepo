@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
-import { withRosterColumns } from '../../rosterInspection.ts';
 import CardDisplaySection from '../CardDisplaySection.tsx';
 import ExternalDataSourceSection from '../ExternalDataSourceSection.tsx';
 import SearchOptionsSection from '../SearchOptionsSection.tsx';
@@ -86,7 +85,6 @@ const reopenSaved = (
   harness.unmount();
   const { id: _id, type: _type, ...fields } = saved;
   return renderStageEditor({
-    client: withRosterColumns,
     stage: { id: 'roster-under-test', type: 'NameGeneratorRoster', fields },
     sections,
   });
@@ -114,7 +112,6 @@ const rosterNamingALostColumn = () =>
 describe("a roster stage's data file", () => {
   it('shows what the chosen file holds', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stageId: 'name-generator-roster-1',
       sections: <ExternalDataSourceSection />,
     });
@@ -130,7 +127,6 @@ describe("a roster stage's data file", () => {
 
   it('refuses to save a roster stage with no data file', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({}),
       sections: <ExternalDataSourceSection />,
     });
@@ -150,7 +146,6 @@ describe("a roster stage's data file", () => {
    */
   it('clears everything chosen from the old file when the file changes', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stageId: 'name-generator-roster-1',
       sections: (
         <>
@@ -181,12 +176,90 @@ describe("a roster stage's data file", () => {
     expect(request?.stageDocument.sortOptions).toBeUndefined();
     expect(request?.stageDocument.searchOptions).toBeUndefined();
   });
+
+  /**
+   * A file the host cannot read — an imported protocol whose manifest names an
+   * asset whose bytes are broken or gone, which the host answers `inspect`
+   * about with a refusal.
+   *
+   * The columns are unknown, exactly as they are while no file has been chosen
+   * and while one is still being read, so nothing can be offered and nothing
+   * can be judged: `useOrphanedColumns` deliberately calls no row dangling on
+   * the strength of a question nobody has answered. Left at that, the three
+   * sections stand OPEN under their ordinary descriptions over empty controls —
+   * a required Attribute cell asking for a choice among nothing, a search
+   * section inviting the researcher to pick the attributes people would search
+   * for when none are offered — while the stage still holds the settings the
+   * unreadable file is merely hiding, and the only affordance left on a
+   * stranded row is Remove, which destroys them.
+   */
+  it('shuts the sections chosen from a data file that could not be read', async () => {
+    const harness = renderStageEditor({
+      assets: {
+        broken_roster: {
+          name: 'Broken Roster',
+          type: 'network',
+          source: 'broken.json',
+        },
+      },
+      stage: rosterWith({
+        dataSource: 'broken_roster',
+        cardOptions: {
+          additionalProperties: [{ variable: 'age', label: 'Age' }],
+        },
+        sortOptions: {
+          sortOrder: [{ property: 'age', direction: 'asc' }],
+          sortableProperties: [{ variable: 'age', label: 'Age' }],
+        },
+        searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
+      }),
+      sections: (
+        <>
+          <CardDisplaySection />
+          <SortOptionsSection />
+          <SearchOptionsSection />
+        </>
+      ),
+    });
+
+    // Said by each of the three, because each is asking the same question of
+    // the same file and each has to answer it the same way.
+    await waitFor(() =>
+      expect(
+        screen.getAllByText(
+          'The chosen data file could not be read, so there is nothing to choose from. The settings this stage already holds are kept.',
+        ),
+      ).toHaveLength(3),
+    );
+
+    // Nothing is offered, so nothing is editable either: an empty required
+    // cell over a value the researcher cannot see is the state the message
+    // above is there to explain.
+    expect(attributeCellIn(/Attributes shown on a card/)).toBeDisabled();
+    expect(
+      attributeCellIn(/Attributes the participant may sort by/),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('group', { name: /Attributes a search matches/ }),
+    ).toBeDisabled();
+
+    // And nothing is lost. The file is unreadable, not the configuration: the
+    // stage saves exactly what it arrived holding, so a researcher who fixes
+    // the file finds their settings where they left them.
+    const request = await harness.submit();
+    expect(request?.stageDocument.searchOptions).toEqual({
+      fuzziness: 0.5,
+      matchProperties: ['name'],
+    });
+    expect(request?.stageDocument.cardOptions).toEqual({
+      additionalProperties: [{ variable: 'age', label: 'Age' }],
+    });
+  });
 });
 
 describe("what a roster's cards show", () => {
   it('shows the card details a stage arrives with, and saves them unchanged', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stageId: 'name-generator-roster-1',
       sections: (
         <>
@@ -212,7 +285,6 @@ describe("what a roster's cards show", () => {
 
   it('offers the data file’s own columns', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         cardOptions: {
@@ -233,7 +305,6 @@ describe("what a roster's cards show", () => {
    */
   it('refuses to save a card detail with no label', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         cardOptions: { additionalProperties: [{ label: '', variable: 'age' }] },
@@ -257,7 +328,6 @@ describe("what a roster's cards show", () => {
    */
   it('says which column a card detail points at when the file lacks it', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterNamingALostColumn(),
       sections: <CardDisplaySection />,
     });
@@ -282,7 +352,6 @@ describe("what a roster's cards show", () => {
 
   it('refuses to save a card detail naming a column the file does not have', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterNamingALostColumn(),
       sections: <CardDisplaySection />,
     });
@@ -310,7 +379,6 @@ describe("what a roster's cards show", () => {
    */
   it('saves once the card detail is pointed at a column the file has', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterNamingALostColumn(),
       sections: <CardDisplaySection />,
     });
@@ -346,7 +414,6 @@ describe("what a roster's cards show", () => {
    */
   it('writes no card details once the last one is deleted', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         cardOptions: {
@@ -384,7 +451,6 @@ describe("what a roster's cards show", () => {
 describe('how a roster is ordered', () => {
   it('offers the file’s columns and the file’s own order', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         sortOptions: { sortOrder: [{ property: 'age', direction: 'desc' }] },
@@ -405,7 +471,6 @@ describe('how a roster is ordered', () => {
    */
   it('refuses to save a sort rule with no direction', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         sortOptions: { sortOrder: [{ property: 'age', direction: '' }] },
@@ -421,7 +486,6 @@ describe('how a roster is ordered', () => {
 
   it('refuses a starting order naming a column the file does not have', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterNamingALostColumn(),
       sections: <SortOptionsSection />,
     });
@@ -445,7 +509,6 @@ describe('how a roster is ordered', () => {
    */
   it('keeps the sortable attributes when only the starting order is emptied', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         sortOptions: {
@@ -480,7 +543,6 @@ describe('how a roster is ordered', () => {
    */
   it('writes no sorting at all once both lists are emptied', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         sortOptions: {
@@ -512,7 +574,6 @@ describe('how a roster is ordered', () => {
 
   it('writes nothing for a roster kept in the file’s own order', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({ dataSource: 'roster_data' }),
       sections: <SortOptionsSection />,
     });
@@ -526,7 +587,6 @@ describe('how a roster is ordered', () => {
 describe('how a participant searches a roster', () => {
   it('matches against the file’s own columns', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
@@ -540,7 +600,6 @@ describe('how a participant searches a roster', () => {
 
   it('records what the researcher chose to search on', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
@@ -560,7 +619,6 @@ describe('how a participant searches a roster', () => {
 
   it('writes nothing for a roster the participant cannot search', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({ dataSource: 'roster_data' }),
       sections: <SearchOptionsSection />,
     });
@@ -578,7 +636,6 @@ describe('how a participant searches a roster', () => {
    */
   it('refuses a search switched on and left empty, in the section’s own words', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({ dataSource: 'roster_data' }),
       sections: <SearchOptionsSection />,
     });
@@ -607,7 +664,6 @@ describe('how a participant searches a roster', () => {
    */
   it('refuses attributes chosen with no tolerance', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { matchProperties: ['name'] },
@@ -637,7 +693,6 @@ describe('how a participant searches a roster', () => {
    */
   it('names a checked attribute the data file does not have', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.5, matchProperties: ['nickname'] },
@@ -656,7 +711,6 @@ describe('how a participant searches a roster', () => {
 
   it('refuses to save a search matching an attribute the file does not have', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.5, matchProperties: ['nickname'] },
@@ -677,6 +731,40 @@ describe('how a participant searches a roster', () => {
   });
 
   /**
+   * Unchecking is the one way out the refusal names, and taking it destroys the
+   * control that was clicked: the orphan is offered only while it is still
+   * checked, so the click removes the checkbox in the same commit and the
+   * refusal that named the problem goes with it. Focus then falls to `<body>`,
+   * and a researcher working from the keyboard or a screen reader is returned
+   * to the top of the document with nothing said about what they just did.
+   */
+  it('keeps focus in the search after unchecking an attribute the file does not have', async () => {
+    const harness = renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: {
+          fuzziness: 0.5,
+          matchProperties: ['name', 'nickname'],
+        },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    const orphan = await screen.findByRole('checkbox', {
+      name: 'nickname — this attribute is not in the data file',
+    });
+    await harness.user.click(orphan);
+
+    // Gone for good, which is what keeps a lost column from being chosen
+    // afresh — and is why focus had nowhere of its own to return to.
+    expect(orphan).not.toBeInTheDocument();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(
+      screen.getByRole('group', { name: /Attributes a search matches/ }),
+    ).toContainElement(document.activeElement as HTMLElement);
+  });
+
+  /**
    * The schema takes any number, so a protocol authored elsewhere can hold a
    * tolerance that is not one of the four this section names. The scale renders
    * from its option list, so such a value would be no position at all: the
@@ -686,7 +774,6 @@ describe('how a participant searches a roster', () => {
    */
   it('shows a tolerance the stage was saved with, off the four settings', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.4, matchProperties: ['name'] },
@@ -707,7 +794,6 @@ describe('how a participant searches a roster', () => {
    */
   it('stops offering it once a named setting is chosen', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.4, matchProperties: ['name'] },

@@ -1,12 +1,15 @@
 import { expect, it } from 'vitest';
 
-import { withResourceProcedures } from '../../../testing/withResourceProcedures.ts';
 import type { ResourceClient } from '../../client.tsx';
 import type { ResourceDescriptor } from '../../types.ts';
 import { discardAbandonedStaging } from '../abandonedStaging.ts';
 import { flushPendingWork } from './asyncControls.ts';
 import { renderResourceClient, TEST_EDIT_ID } from './resourceContext.tsx';
-import { createResourceHost, stagedResources } from './resourceHost.ts';
+import {
+  createResourceHost,
+  stagedResources,
+  withResourceProcedures,
+} from './resourceHost.ts';
 
 async function stageAnImage(
   resources: ResourceClient,

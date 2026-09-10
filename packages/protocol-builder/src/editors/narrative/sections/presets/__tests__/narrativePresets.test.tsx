@@ -114,7 +114,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     const harness = renderStageEditor(openEditor());
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Remove preset' }),
+      screen.getByRole('button', { name: 'Delete preset' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Delete preset' }),
@@ -136,7 +136,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
  * A narrative preset stores four references and writes none of them: the
  * runtime restores positions from the layout attribute with `persist: false`,
  * reads the grouping attribute to draw hulls, and reads the highlight
- * attributes to colour nodes. Classed as an unvalidated WRITER, the pickers
+ * attributes to highlight nodes. Classed as an unvalidated WRITER, the pickers
  * would run the exclusivity that keeps a bin or a stamp off an attribute a
  * form collects — and drop exactly the attributes a narrative stage exists to
  * look at.
@@ -160,6 +160,16 @@ describe('an attribute something else already collects', () => {
     ).toBeInTheDocument();
     expect(
       preset.getByRole('checkbox', { name: 'highlighted' }),
+    ).toBeInTheDocument();
+    // The list takes several attributes, but the interview highlights by ONE
+    // of them at a time: `Narrative.tsx` passes `highlight[highlightIndex]` as
+    // a single `highlightAttribute`, and `PresetSwitcher.tsx` offers the
+    // ticked attributes as radio buttons. The hint has to say so, or a
+    // researcher ticks three expecting all three to show at once.
+    expect(
+      preset.getByText(
+        /The interviewer picks one of these attributes at a time, and the nodes it is true of are shown highlighted\./,
+      ),
     ).toBeInTheDocument();
   });
 });

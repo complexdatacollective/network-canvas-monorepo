@@ -1,7 +1,7 @@
 'use client';
 
 import { Moon, Sun, SunMoon } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 
 import { Button, IconButton } from '../Button';
 import {
@@ -17,6 +17,13 @@ const themeOptions = [
   { id: 'dark', icon: Moon },
   { id: 'system', icon: SunMoon },
 ] as const;
+
+// "Are we past the server render?" read as a store: there is nothing to
+// subscribe to, because the only transition is React handing the tree from the
+// server snapshot to the client one, which it performs itself.
+const subscribeToNothing = () => () => undefined;
+const getMountedOnClient = () => true;
+const getMountedOnServer = () => false;
 
 const THEME_ICON_STROKE_CLASS = '[&>.lucide]:[stroke-width:3.5]';
 
@@ -51,9 +58,11 @@ export default function ThemeSwitcher({
   theme,
   view,
 }: ThemeSwitcherProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(
+    subscribeToNothing,
+    getMountedOnClient,
+    getMountedOnServer,
+  );
 
   // Keep the server and first client render identical. The host's theme
   // provider can restore a persisted preference after hydration, at which

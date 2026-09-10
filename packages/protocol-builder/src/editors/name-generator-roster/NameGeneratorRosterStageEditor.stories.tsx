@@ -6,17 +6,12 @@ import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPa
 import StageEditor from '../../StageEditor.tsx';
 import { StageEditorStoryHost } from '../../testing/StageEditorStoryHost.tsx';
 import { nameGeneratorRosterStageEditor } from './NameGeneratorRosterStageEditor.ts';
-import { withRosterColumns } from './rosterInspection.ts';
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Name Generator (roster)',
   component: StageEditorStoryHost,
   args: {
     stageId: 'name-generator-roster-1',
-    // Everything below the data file is chosen from that file's columns, and
-    // reading a file is the host's job — so the story says what this one holds,
-    // exactly as a host that had read it would.
-    client: withRosterColumns,
     // Through the dispatcher rather than by naming the component, so the story
     // also shows that this editor claims the interface its stage is of.
     renderEditor: ({ actions, ...editor }) => (

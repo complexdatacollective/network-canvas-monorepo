@@ -3,12 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 
-import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { enIntl } from '../../../testing/i18n.ts';
-import { withResourceProcedures } from '../../../testing/withResourceProcedures.ts';
 import {
   RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
   type ResourceDescriptor,
@@ -27,7 +26,11 @@ import {
 } from './previewHarness.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 import { renderInResourceContext, TEST_EDIT_ID } from './resourceContext.tsx';
-import { createResourceHost, stagedResources } from './resourceHost.ts';
+import {
+  createResourceHost,
+  stagedResources,
+  withResourceProcedures,
+} from './resourceHost.ts';
 
 /**
  * Every state one resource attempt can be in, against every input that can

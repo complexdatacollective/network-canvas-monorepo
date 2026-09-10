@@ -1,3 +1,7 @@
+import type {
+  CodebookSubject,
+  SectionReference,
+} from '@codaco/protocol-builder-core/contract/schemas';
 import {
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
@@ -6,11 +10,6 @@ import {
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
-
-import type {
-  CodebookSubject,
-  SectionReference,
-} from '../../contract/schemas.ts';
 
 type Path = (string | number)[];
 

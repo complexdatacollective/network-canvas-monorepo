@@ -1,6 +1,12 @@
+import type { ReactNode } from 'react';
+
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { INPUT_OPTIONS, getVariableTypeLabel } from '~/config/variables';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
 
 const messages = defineMessages({
   description: {
@@ -31,8 +37,8 @@ const AttributeControlDescription = ({
         controlLabel: controlDescriptor
           ? intl.formatMessage(controlDescriptor)
           : (component ?? ''),
-        type: (children) => <strong>{children}</strong>,
-        control: (children) => <strong>{children}</strong>,
+        type: renderStrong,
+        control: renderStrong,
       })}
     </span>
   );

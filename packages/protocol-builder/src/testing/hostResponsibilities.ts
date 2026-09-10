@@ -1,4 +1,4 @@
-import { contract } from '../contract/contract.ts';
+import { contract } from '@codaco/protocol-builder-core/contract';
 
 /**
  * One thing a host has to serve: the procedure, and what serving it means.
@@ -16,7 +16,7 @@ export type HostResponsibility = Readonly<{
  *
  * A leaf is a contract procedure — `@orpc/contract` marks each one with its
  * own `~orpc` property — and everything else is a group of them. So the list
- * is what `src/contract/contract.ts` says it is at the moment it is asked,
+ * is what `@codaco/protocol-builder-core/contract` says it is at the moment it is asked,
  * rather than a copy of it: a procedure added to the contract appears here
  * with nothing done to this file, and one removed disappears.
  *
@@ -85,7 +85,7 @@ const RESPONSIBILITIES: Readonly<Record<string, string>> = {
  * The minimum a host must serve, as the contract's own procedures.
  *
  * Ordered as the contract declares them, so reading this beside
- * `src/contract/contract.ts` is reading the same list twice.
+ * `@codaco/protocol-builder-core/contract` is reading the same list twice.
  */
 export function hostResponsibilities(): HostResponsibility[] {
   const declared = contractProcedurePaths();

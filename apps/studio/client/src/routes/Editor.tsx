@@ -1,4 +1,5 @@
-import { createORPCClient, ORPCError } from '@orpc/client';
+import { createORPCClient, DynamicLink, ORPCError } from '@orpc/client';
+import type { ClientLink } from '@orpc/client';
 import { RPCLink } from '@orpc/client/websocket';
 import type { RouterContractClient } from '@orpc/contract';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -37,6 +38,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { assembleProtocolSections } from '@codaco/studio-sync/protocol-document';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { registerStudioEditorSession } from '../editor/sessionLifecycle.ts';
 import { orpc, rpcClient } from '../lib/api.ts';
 import { clientSessionId } from '../lib/clientSession.ts';
 import { createUuid } from '../lib/createUuid.ts';
@@ -70,11 +72,117 @@ export function hostSocketUrl(): string {
   return url.toString();
 }
 
+/**
+ * One authenticated session's way of reaching the protocol builder's host.
+ *
+ * A session rather than a socket, because closing the socket does not end
+ * either of the things that outlive a sign-out.
+ *
+ * The server reads the principal ONCE, at the upgrade
+ * (`server/src/app.ts`), and authorises and audits every message on that
+ * socket as them — so a socket still open when the next account signs in on
+ * this tab is one they would be editing, and be logged, as the previous
+ * researcher through.
+ *
+ * And the transport reconnects on its own schedule. A call that was in flight
+ * at sign-out is parked inside `getConnectedPeer`, on a socket that is still
+ * connecting or on the delay before the next attempt, and it wakes up after
+ * the sign-out has been decided. Refusing to `connect` does not settle it: an
+ * `RPCLink` with reconnection enabled swallows what `connect` throws and tries
+ * again. So the refusal has to be permanent for THIS session — which is what
+ * ending one means — and the next session is a transport of its own, which the
+ * parked call has no way to reach.
+ */
+type HostSession = Readonly<{
+  link: ClientLink<Record<never, never>>;
+  /** Permanently. Nothing reopens a session; the next call opens another. */
+  end: () => void;
+}>;
+
+/** The session in force, or none because nothing has needed one yet. */
+let hostSession: HostSession | undefined;
+
+/**
+ * A transport for whoever is signed in now.
+ *
+ * Reconnection is the whole of what makes a dropped socket survivable, and it
+ * is off by default in `@orpc/client`: without it the transport keeps the
+ * closed peer and answers every later call from it, so one blip leaves the
+ * editor unable to lock, save or watch anything until the page is reloaded —
+ * and the host's lock-survival grace, which exists exactly for a tab that
+ * comes back, can never be reached. Reopening lazily rather than `onClose`, so
+ * that closing the socket at sign-out is not immediately undone.
+ */
+function openHostSession(): HostSession {
+  let socket: WebSocket | undefined;
+  let ended = false;
+  const link = new RPCLink({
+    connect: (): WebSocket => {
+      // Refused rather than opened: a handshake is what authenticates, so a
+      // socket opened here after the session ended is already the researcher
+      // who left. `shell/useSignOut.ts` ends the editor's sessions BEFORE
+      // `authClient.signOut()`, on purpose, so the cookie a reconnection
+      // carried in this window would still work.
+      if (ended) throw new Error('This tab’s editor session has ended.');
+      socket = new WebSocket(hostSocketUrl());
+      return socket;
+    },
+    reconnect: { enabled: true },
+  });
+  return {
+    link,
+    end: () => {
+      ended = true;
+      socket?.close();
+      socket = undefined;
+    },
+  };
+}
+
+/**
+ * The session every call goes through, opened by the first call to need one.
+ *
+ * Exported so the suite drives the same sessions the application runs on.
+ */
+export function currentHostSession(): HostSession {
+  hostSession ??= openHostSession();
+  return hostSession;
+}
+
+/**
+ * The host client, whose link is the session in force at the moment of a call.
+ *
+ * One client for the life of the tab, because `ProtocolBuilder` memoises its
+ * whole context on this identity and every lock in the editor is taken from an
+ * effect keyed on it. `DynamicLink` is oRPC's own way of writing that: the
+ * client is fixed and the link behind it is resolved per call, so ending a
+ * session swaps the transport without any of the editor noticing a new object.
+ */
 const hostClient: StudioHostClient = createORPCClient(
-  new RPCLink({
-    connect: () => new WebSocket(hostSocketUrl()),
-  }),
+  new DynamicLink(() => currentHostSession().link),
 );
+
+/**
+ * Ending this tab's editor session.
+ *
+ * Registered at module scope rather than from the editor's own effect because
+ * of when it is called: sign-out leaves the editor by an ordinary navigation
+ * first, so the unsaved-changes blocker runs while the session is still valid,
+ * and only then closes the editor's sessions — by which time the route is
+ * unmounted and an effect's registration is gone with it.
+ *
+ * `closeStudioEditorSessions` is the one place this happens, and every way out
+ * of an authenticated session calls it: `shell/useSignOut.ts`, the "use a
+ * different account" sign-out on an invitation, and the app shell's guard,
+ * which is where an expired session and a sign-out in another tab are learnt.
+ *
+ * Closing is also what gives the sections this tab was holding back to its
+ * collaborators.
+ */
+registerStudioEditorSession(async () => {
+  hostSession?.end();
+  hostSession = undefined;
+});
 
 /** What `protocols.draft` and every editing procedure are addressed by. */
 type DraftAddress = {

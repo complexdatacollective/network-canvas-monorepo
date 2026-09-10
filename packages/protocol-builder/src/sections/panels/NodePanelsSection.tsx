@@ -124,7 +124,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.nodePanels.itemNoun',
     defaultMessage: 'panel',
     description:
-      'What one row of the side-panel list is called inside things said ABOUT it — "Edit panel", "Remove this panel?" — so it is lower case and singular. A side panel lists people beside a name generator for the participant to nominate from.',
+      'What one row of the side-panel list is called inside things said ABOUT it — "Edit panel", "Delete this panel?" — so it is lower case and singular. A side panel lists people beside a name generator for the participant to nominate from.',
   },
   emptyState: {
     id: 'protocolBuilder.nodePanels.emptyState',

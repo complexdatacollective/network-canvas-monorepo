@@ -2,16 +2,9 @@
 
 import { ChevronUp, GripHorizontal } from 'lucide-react';
 import { motion } from 'motion/react';
-import {
-  type ReactNode,
-  type RefObject,
-  useEffect,
-  useId,
-  useState,
-} from 'react';
+import { type ReactNode, type RefObject, useId, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
-import usePrevious from '@codaco/fresco-ui/hooks/usePrevious';
 import { MotionSurface } from '@codaco/fresco-ui/layout/Surface';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
@@ -43,13 +36,14 @@ const CollapsablePrompts = (props: {
 
   const isCollapsed = collapsible && collapsed;
 
+  // Re-open for a new prompt. Compared during render rather than in an effect,
+  // so the new prompt is never painted inside a still-collapsed panel.
   const promptId = prompt.id;
-  const prevPromptId = usePrevious(promptId);
-  useEffect(() => {
-    if (prevPromptId !== undefined && promptId !== prevPromptId) {
-      setCollapsed(false);
-    }
-  }, [promptId, prevPromptId]);
+  const [openedPromptId, setOpenedPromptId] = useState(promptId);
+  if (openedPromptId !== promptId) {
+    setOpenedPromptId(promptId);
+    setCollapsed(false);
+  }
 
   return (
     <MotionSurface

@@ -40,7 +40,7 @@ const COPY_PROP =
  * to be able to see.
  *
  * The suffixed families are here because the single names are not enough:
- * `DialogArrayField` takes `addTitle` and `editorTitle` for the two dialog
+ * a row list takes `addTitle` and `editTitle` for the two dialog
  * headings, `PromptsSection` takes `itemNoun` and `optionNoun` for the word
  * spliced into "Edit {noun}", and `fieldHint`, `regExpHint`, `ruleRowSentence`,
  * `openPrompt` and `sizingCopy` are sentences under other names. `.*Name` is
@@ -50,7 +50,7 @@ const COPY_PROP =
  */
 const KNOWN_COPY_PROPS = [
   'addTitle',
-  'editorTitle',
+  'editTitle',
   'pageContentTitle',
   'typedTitle',
   'itemNoun',
@@ -179,8 +179,8 @@ describe('copy written into a JSX attribute', () => {
    * The list has learned about every copy-bearing prop this package passes.
    *
    * The two dialog titles are why this case exists: `addTitle` and
-   * `editorTitle` reached production source in the sections split and matched
-   * nothing, because `title` is anchored and there was no `.*Title` family. A
+   * `editTitle` matched nothing when they first reached production source,
+   * because `title` is anchored and there was no `.*Title` family. A
    * new name added to the source without being added here fails this, which is
    * the deliberate step the closed list is for.
    */

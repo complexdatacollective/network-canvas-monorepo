@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { ORPCError } from '@orpc/client';
+import type { ClientLink } from '@orpc/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import {
@@ -267,6 +268,11 @@ beforeEach(() => {
     sequence: '3',
     hash: 'r3',
   });
+  // Nothing in jsdom serves `/ws`, and the socket tests below are about which
+  // sockets the transport opens rather than about what a host answers.
+  FakeSocket.opened = [];
+  FakeSocket.openImmediately = true;
+  vi.stubGlobal('WebSocket', FakeSocket);
 });
 
 function renderEditor() {
@@ -716,6 +722,15 @@ describe('Studio editor shell', () => {
 });
 
 describe('the socket the editor opens', () => {
+  // The session is module state, as a tab's is. Each of these tests is a fresh
+  // tab, so whatever the one before it left open is ended first.
+  beforeEach(async () => {
+    const { closeStudioEditorSessions } =
+      await import('../../editor/sessionLifecycle.ts');
+    await closeStudioEditorSessions();
+    FakeSocket.opened = [];
+  });
+
   it('names this tab on the upgrade URL, so its locks survive a reconnect', async () => {
     const { hostSocketUrl } = await import('../Editor.tsx');
     const { clientSessionId } = await import('../../lib/clientSession.ts');
@@ -729,4 +744,215 @@ describe('the socket the editor opens', () => {
     expect(url.searchParams.get('clientSession')).toBe(clientSessionId());
     expect(clientSessionId()).not.toBe('');
   });
+
+  /**
+   * A socket that has dropped is opened again, rather than answered from.
+   *
+   * `@orpc/client` does not reconnect unless it is told to: without it the
+   * transport hands every later call the peer of the closed socket, so one
+   * blip leaves the researcher unable to lock, save or watch anything until
+   * they reload — and the host's grace for a tab that comes back, which is
+   * what keeps the section they are editing theirs across a drop, is never
+   * reached.
+   */
+  /**
+   * A socket that has dropped is opened again, rather than answered from.
+   *
+   * `@orpc/client` does not reconnect unless it is told to: without it the
+   * transport hands every later call the peer of the closed socket, so one
+   * blip leaves the researcher unable to lock, save or watch anything until
+   * they reload — and the host's grace for a tab that comes back, which is
+   * what keeps the section they are editing theirs across a drop, is never
+   * reached.
+   */
+  it('opens a new one after a drop, rather than answering from the closed one', async () => {
+    const { currentHostSession } = await import('../Editor.tsx');
+    const session = currentHostSession();
+
+    ask(session, 'lockTheStage');
+    const dropped = await socketNumber(1);
+    dropped.close();
+
+    ask(session, 'lockTheStage');
+    await socketNumber(2);
+  });
+
+  /**
+   * And it is closed when the session ends.
+   *
+   * The server reads the principal once, at the upgrade, and authorises and
+   * audits every message on the socket as them: a socket left open across
+   * sign-out is one the next account to sign in on this tab would be editing
+   * through, under the previous researcher's name.
+   */
+  it('is closed when the editor sessions end, so the next account opens its own', async () => {
+    const { currentHostSession } = await import('../Editor.tsx');
+    const { closeStudioEditorSessions } =
+      await import('../../editor/sessionLifecycle.ts');
+
+    ask(currentHostSession(), 'lockTheStage');
+    const signedIn = await socketNumber(1);
+
+    await closeStudioEditorSessions();
+
+    expect(signedIn.readyState).toBe(FakeSocket.CLOSED);
+    // The next account's first call opens a socket of its own, whose
+    // handshake carries whatever cookie the browser holds by then.
+    ask(currentHostSession(), 'lockTheStage');
+    await socketNumber(2);
+  });
+
+  /**
+   * And the reconnection stops with it, not just the socket.
+   *
+   * A call in flight when the researcher signs out is parked inside the
+   * transport's own reconnect loop — on a socket that is still connecting, or
+   * on the delay before the next attempt — and it wakes up after the closer
+   * has finished and before `authClient.signOut()` has cleared the cookie,
+   * because `shell/useSignOut.ts` releases the editor's lease while the
+   * session is still valid. The socket that attempt opens is upgraded as the
+   * researcher who just left, and there is no closer left to close it.
+   */
+  it('opens nothing more once the sessions have ended, with the cookie still valid', async () => {
+    const { currentHostSession } = await import('../Editor.tsx');
+    const { closeStudioEditorSessions } =
+      await import('../../editor/sessionLifecycle.ts');
+
+    // A real socket is CONNECTING for a round trip, and a call made in that
+    // window is parked inside the transport waiting on it.
+    FakeSocket.openImmediately = false;
+    ask(currentHostSession(), 'lockTheStage');
+    const opening = await socketNumber(1);
+    expect(opening.readyState).toBe(FakeSocket.CONNECTING);
+
+    await closeStudioEditorSessions();
+
+    await new Promise((resolve) => setTimeout(resolve, PAST_RECONNECT_DELAY));
+    expect(opening.readyState).toBe(FakeSocket.CLOSED);
+    expect(FakeSocket.opened).toHaveLength(1);
+  });
+
+  /**
+   * And a call the ended session parked is never carried on the next one.
+   *
+   * Refusing to open a socket does not settle that call: an `RPCLink` with
+   * reconnection enabled swallows what `connect` throws and tries again. On
+   * one transport shared across sessions it would wake into the socket the
+   * next account had just opened and send the previous researcher's lock or
+   * save through it — authorised and audited as the account that is signed in
+   * now. Each session has a transport of its own for that reason: the parked
+   * call has no way to reach the next one.
+   */
+  it('never carries a call the ended session parked onto the next account’s socket', async () => {
+    const { currentHostSession } = await import('../Editor.tsx');
+    const { closeStudioEditorSessions } =
+      await import('../../editor/sessionLifecycle.ts');
+
+    FakeSocket.openImmediately = false;
+    ask(currentHostSession(), PARKED_CALL);
+    await socketNumber(1);
+
+    await closeStudioEditorSessions();
+
+    // The next account opens the editor inside the delay the parked call is
+    // waiting out, which is exactly what it would wake up into.
+    FakeSocket.openImmediately = true;
+    ask(currentHostSession(), NEXT_ACCOUNTS_CALL);
+
+    await new Promise((resolve) => setTimeout(resolve, PAST_RECONNECT_DELAY));
+    const onTheWire = FakeSocket.opened
+      .flatMap((socket) => socket.sent)
+      .join(' ');
+    expect(onTheWire).toContain(NEXT_ACCOUNTS_CALL);
+    expect(onTheWire).not.toContain(PARKED_CALL);
+  });
 });
+
+/** The two procedures these tests tell one session's calls apart by. */
+const PARKED_CALL = 'aCallTheEndedSessionParked';
+const NEXT_ACCOUNTS_CALL = 'aCallTheNextAccountMade';
+
+/**
+ * Long enough for the transport's next reconnection attempt to have happened.
+ *
+ * `@orpc/client` waits two seconds before every attempt after the first, so a
+ * shorter wait would answer "nothing reconnected" before anything could have.
+ */
+const PAST_RECONNECT_DELAY = 2500;
+
+/**
+ * A call over one host session, which is what opens its socket.
+ *
+ * Nothing answers it — there is no host on the other end of a stubbed
+ * socket — so the promise is abandoned rather than awaited, and its rejection
+ * when the socket closes is swallowed here so it is not reported as an
+ * unhandled one. The procedure name travels in the encoded message, so a
+ * socket can be asked whose call it carried.
+ */
+function ask(
+  session: Readonly<{ link: ClientLink<Record<never, never>> }>,
+  procedure: string,
+): void {
+  void session.link
+    .call([procedure], undefined, { context: {} })
+    .catch(() => undefined);
+}
+
+/** The nth socket the transport has opened, once it has opened it. */
+async function socketNumber(count: number): Promise<FakeSocket> {
+  await waitFor(() => expect(FakeSocket.opened).toHaveLength(count));
+  const socket = FakeSocket.opened.at(-1);
+  if (socket === undefined) throw new Error('no socket was opened');
+  return socket;
+}
+
+/**
+ * A WebSocket that connects to nothing, so the transport's own behaviour is
+ * what these tests watch: which sockets it opens, and when.
+ */
+class FakeSocket {
+  static readonly CONNECTING = 0;
+  static readonly OPEN = 1;
+  static readonly CLOSED = 3;
+  /**
+   * Whether a socket is open the moment it is constructed.
+   *
+   * A real one is not — it is CONNECTING for a round trip, which is the window
+   * the transport parks a call inside.
+   */
+  static openImmediately = true;
+  static opened: FakeSocket[] = [];
+  readyState = FakeSocket.openImmediately
+    ? FakeSocket.OPEN
+    : FakeSocket.CONNECTING;
+  readonly #listeners = new Map<string, Set<(event: unknown) => void>>();
+
+  constructor() {
+    FakeSocket.opened.push(this);
+  }
+
+  addEventListener(type: string, listener: (event: unknown) => void): void {
+    const listeners = this.#listeners.get(type) ?? new Set();
+    listeners.add(listener);
+    this.#listeners.set(type, listeners);
+  }
+
+  removeEventListener(type: string, listener: (event: unknown) => void): void {
+    this.#listeners.get(type)?.delete(listener);
+  }
+
+  readonly sent: string[] = [];
+
+  send(message: unknown): void {
+    // The host is what would answer, and there is none; what was put on the
+    // wire is still what a test about which socket a call travels on needs.
+    this.sent.push(String(message));
+  }
+
+  close(): void {
+    this.readyState = FakeSocket.CLOSED;
+    for (const listener of this.#listeners.get('close') ?? []) {
+      listener({ code: 1000, reason: 'the socket dropped' });
+    }
+  }
+}
