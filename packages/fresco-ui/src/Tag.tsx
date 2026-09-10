@@ -7,11 +7,15 @@ import { type PaletteColor, paletteColorStyles } from './styles/palette';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const tagVariants = cva({
-  base: 'inline-flex items-center justify-center rounded-full border-2 border-transparent text-xs leading-tight font-medium whitespace-nowrap uppercase',
+  base: 'inline-flex items-center justify-center rounded-full border-2 border-transparent text-xs leading-tight font-medium whitespace-nowrap',
   variants: {
     size: {
-      sm: 'gap-2 px-2.5 py-0.5 tracking-wide',
-      md: 'gap-2 px-3 py-1 tracking-widest',
+      sm: 'gap-2 px-2.5 py-0.5',
+      md: 'gap-2 px-3 py-1',
+    },
+    uppercase: {
+      true: 'uppercase',
+      false: '',
     },
     tone: {
       default: 'bg-text/15 text-text',
@@ -29,10 +33,17 @@ const tagVariants = cva({
   },
   defaultVariants: {
     size: 'md',
+    uppercase: true,
     tone: 'default',
     interactive: false,
     disabled: false,
   },
+  // Loose tracking is a caps treatment; set in mixed case the label keeps the
+  // xs scale's own letter-spacing.
+  compoundVariants: [
+    { uppercase: true, size: 'sm', className: 'tracking-wide' },
+    { uppercase: true, size: 'md', className: 'tracking-widest' },
+  ],
 });
 
 const dotVariants = cva({
@@ -58,6 +69,8 @@ export type TagProps = Omit<React.HTMLAttributes<HTMLElement>, 'color'> & {
   onPressedChange?: (pressed: boolean) => void;
   /** Muted display tone, for tags shown inside another control. */
   light?: boolean;
+  /** Set false for labels whose own casing carries meaning. */
+  uppercase?: boolean;
   disabled?: boolean;
   size?: TagSize;
 };
@@ -71,6 +84,7 @@ const Tag = React.forwardRef<HTMLElement, TagProps>(function Tag(
     pressed = false,
     onPressedChange,
     light = false,
+    uppercase = true,
     disabled = false,
     size = 'md',
     className,
@@ -81,6 +95,7 @@ const Tag = React.forwardRef<HTMLElement, TagProps>(function Tag(
   const interactive = onPressedChange !== undefined;
   const classes = tagVariants({
     size,
+    uppercase,
     tone: pressed ? 'pressed' : light ? 'light' : 'default',
     interactive: interactive && !disabled,
     disabled,

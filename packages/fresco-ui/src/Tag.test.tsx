@@ -75,6 +75,27 @@ describe('Tag', () => {
     expect(container.querySelector('[aria-hidden="true"]')).toBeNull();
   });
 
+  it('is uppercase with caps tracking by default', () => {
+    render(<Tag data-testid="tag">Display media</Tag>);
+
+    const tag = screen.getByTestId('tag');
+    expect(tag).toHaveClass('uppercase');
+    expect(tag).toHaveClass('tracking-widest');
+  });
+
+  it('drops the caps treatment and its tracking when uppercase is false', () => {
+    render(
+      <Tag data-testid="tag" uppercase={false}>
+        Display media
+      </Tag>,
+    );
+
+    const tag = screen.getByTestId('tag');
+    expect(tag).not.toHaveClass('uppercase');
+    expect(tag).not.toHaveClass('tracking-widest');
+    expect(tag).not.toHaveClass('tracking-wide');
+  });
+
   it('lets the pressed tone win over the light tone', () => {
     render(
       <Tag light pressed onPressedChange={vi.fn()}>

@@ -23,6 +23,7 @@ export function FacetGroup({
             pressed={selected.includes(value)}
             onPressedChange={() => onToggle(value)}
             size="sm"
+            uppercase={false}
           >
             {value}
             <span className="font-normal opacity-70">{count}</span>
