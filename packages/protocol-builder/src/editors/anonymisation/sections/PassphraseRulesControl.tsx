@@ -44,10 +44,15 @@ export default function PassphraseRulesControl({
   disabled = false,
   readOnly = false,
   className,
+  // The field's own verdict on this control, which is `passphraseRulesIssue`
+  // below: while it holds, the field's error region is already showing the
+  // sentence the rule editor would otherwise show a second time at the rules.
+  'aria-invalid': fieldInvalid = false,
 }: PassphraseRulesControlProps) {
   return (
     <VariableValidationEditor
       entity={ENTITY}
+      hostFieldInvalid={fieldInvalid}
       variableType={PASSPHRASE}
       currentVariableId=""
       allVariables={NO_VARIABLES}

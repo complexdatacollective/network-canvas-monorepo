@@ -105,13 +105,18 @@ describe('the sections of an anonymisation stage', () => {
     expect(
       harness.outline().find((section) => section.title === 'Passphrase rules'),
     ).toEqual({ title: 'Passphrase rules', state: 'Has a problem' });
-    // Twice on screen: the rule editor's own alert at the control, and the
-    // field's error region, which is the one this section writes.
+    // Once on screen. The rule editor states a verdict for itself where it has
+    // no host to state it, but here the field's error region — an `aria-live`
+    // region, beside the control the editor marks invalid — is already saying
+    // this one, so the editor's own alert stands down rather than repeating it.
     expect(
       await screen.findAllByText(
         'Enter a value for "Minimum length", or switch the rule off.',
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum length' }),
+    ).toHaveAttribute('aria-invalid', 'true');
   });
 
   /**

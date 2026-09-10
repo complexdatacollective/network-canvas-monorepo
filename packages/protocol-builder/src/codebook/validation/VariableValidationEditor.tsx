@@ -29,6 +29,15 @@ type VariableValidationEditorProps = Readonly<{
   value: Readonly<ValidationMap>;
   onChange(value: ValidationMap): void;
   readOnly?: boolean;
+  /**
+   * A hosting `Field` reports this control invalid, which for a caller that
+   * renders the editor as one means the field's own verdict on the same rule
+   * map: its error region is an `aria-live` region already showing the
+   * sentence the editor would show at the rules. The editor then marks the
+   * rule group invalid to match and leaves that region to be the one that
+   * says it, so a refusal is on screen once rather than twice.
+   */
+  hostFieldInvalid?: boolean;
   className?: string;
 }>;
 
@@ -133,6 +142,7 @@ export default function VariableValidationEditor({
   value,
   onChange,
   readOnly = false,
+  hostFieldInvalid = false,
   className,
 }: VariableValidationEditorProps) {
   const intl = useAppIntl();
@@ -206,7 +216,8 @@ export default function VariableValidationEditor({
           intl,
         )
       : intl.formatMessage(missingComparisonTargetMessage);
-  const issueId = issue === undefined ? undefined : `${editorId}-issue`;
+  const announceIssue = issue !== undefined && !hostFieldInvalid;
+  const issueId = announceIssue ? `${editorId}-issue` : undefined;
 
   const toggleRule = (ruleKey: string, enabled: boolean) => {
     if (readOnly) return;
@@ -226,7 +237,11 @@ export default function VariableValidationEditor({
   };
 
   return (
-    <div className={className} aria-describedby={issueId}>
+    <div
+      className={className}
+      aria-invalid={hostFieldInvalid || undefined}
+      aria-describedby={issueId}
+    >
       {groups.map((group) => (
         <fieldset
           key={group.id}
@@ -340,7 +355,7 @@ export default function VariableValidationEditor({
           })}
         </fieldset>
       ))}
-      {issue !== undefined && (
+      {announceIssue && (
         <p id={issueId} role="alert" className="text-destructive mt-2 text-sm">
           {issue}
         </p>
