@@ -177,6 +177,13 @@ export class StagedResources {
         },
       };
     }
+    if (request.kind === 'content' && request.bytes.size === 0) {
+      // An empty file promotes into a manifest entry an interview would try to
+      // show: an image with no pixels, a roster with no network. The contract's
+      // own host refuses it, and a picker that offers it here and nowhere else
+      // would be Studio disagreeing with the contract it serves.
+      return failure('invalid-content', 'that file is empty');
+    }
     if (request.kind === 'content' && request.bytes.size > MAX_UPLOAD_BYTES) {
       // Refused before the blob is kept rather than after: the bytes reach the
       // handler with the request, and what this bounds is how long an

@@ -16,7 +16,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { ProtocolEvent } from '@codaco/studio-rpc/protocol-builder';
-import { createTenantDb } from '@codaco/studio-sync/tenant';
+import { SyncServer } from '@codaco/studio-sync/server';
+import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';
 import type { SessionPrincipal } from '../auth/service.ts';
@@ -146,6 +147,8 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
   let clients: Map<Researcher, ReturnType<typeof clientFor>>;
   let protocolId: string;
   let draftId: string;
+  /** The team's database, as the host's own sessions reach it. */
+  let tenantDb: TenantDb;
   let reference: VariableReference;
   let unstrippable: VariableReference;
   /** A protocol whose researcher has given the participant no attributes. */
@@ -258,7 +261,8 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     ) as CurrentProtocol;
     reference = strippableVariable(protocol);
     unstrippable = soleVariablePrompt(protocol);
-    const store = new ProtocolStore(createTenantDb(scratch.app, TEAM_ID));
+    tenantDb = createTenantDb(scratch.app, TEAM_ID);
+    const store = new ProtocolStore(tenantDb);
     const created = await store.createProtocol({ protocol });
     protocolId = created.protocolId;
     const { ego: _ego, ...codebook } = protocol.codebook;
@@ -1889,6 +1893,53 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
     now = Date.now();
   });
 
+  /**
+   * A renewal that could not be made says nothing about whose lease it is. A
+   * database briefly out of reach used to be read as the same answer an
+   * expiry gives, and the section was dropped from the keeper while the
+   * researcher's editor was still open on it: the lease then ran out at its
+   * own expiry and their next submit was refused as `NOT_LOCK_HOLDER`.
+   */
+  it('keeps a lease the database never answered a renewal for', async () => {
+    const sectionId = stageSection(reference.stageId);
+    const owner = `${ADA.principal.userId}:${ADA.clientSessionId}`;
+    const held = await asClient(ADA).protocolBuilder.acquireLock({
+      protocolId,
+      sectionId,
+    });
+    expect(held.lock).toBe('held');
+    expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
+
+    // Postgres briefly unreachable: the renewal is not refused, it is never
+    // made. Put where the acquire above put the keeper's own sync server.
+    let attempts = 0;
+    const unreachable = new SyncServer(tenantDb, () => {
+      attempts += 1;
+      return Promise.reject(new Error('ECONNREFUSED'));
+    });
+    runtime.leases.hold({
+      sync: unreachable,
+      draftId,
+      sectionId,
+      owner,
+      epoch: 1n,
+    });
+
+    await runtime.leases.renewDue();
+    expect(attempts).toBe(1);
+    expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
+    // The next tick asks again rather than having given the section up, which
+    // is what the renewal interval being a third of the TTL is for.
+    await runtime.leases.renewDue();
+    expect(attempts).toBe(2);
+    expect(runtime.leases.heldSections(draftId, owner)).toContain(sectionId);
+
+    await asClient(ADA).protocolBuilder.releaseLock({ protocolId, sectionId });
+    expect(runtime.leases.heldSections(draftId, owner)).not.toContain(
+      sectionId,
+    );
+  });
+
   it('answers a write with the written section’s own content hash', async () => {
     // `Revision.contentHash` is the hash the sectioned store keys documents
     // by, so a caller that took a write’s answer as the section’s next base
@@ -1921,6 +1972,37 @@ describe.skipIf(!db)('the protocol-builder host surface', () => {
       protocolId,
       sectionId: stage.sectionId,
     });
+  });
+
+  it('refuses an empty file, and keeps nothing staged for it', async () => {
+    const edit = 'edit-empty';
+    const empty = await asClient(ADA).protocolBuilder.resources.stage({
+      protocolId,
+      editId: edit,
+      requestId: 'empty',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'A photograph with no pixels',
+        source: 'blank.png',
+        contentType: 'image/png',
+        bytes: new Blob([], { type: 'image/png' }),
+      },
+    });
+
+    // What the contract's own host answers: an empty file promoted into the
+    // manifest is an asset the interview would try to show and could not.
+    expect(empty).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'invalid-content' },
+    });
+    const listed = await asClient(ADA).protocolBuilder.resources.list({
+      protocolId,
+      editId: edit,
+      status: 'staged',
+    });
+    if (listed.status !== 'ok') throw new Error(listed.failure.message);
+    expect(listed.data.resources).toEqual([]);
   });
 
   it('refuses a resource larger than this deployment stores, and keeps none of it', async () => {

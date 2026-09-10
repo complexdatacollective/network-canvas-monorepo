@@ -54,6 +54,12 @@ export const IDLE_MS = 5 * 60_000;
  */
 export const REAUTHORIZE_MS = RENEW_INTERVAL_MS;
 
+/**
+ * A renewal the storage never answered, told apart from the `null` that is an
+ * answer: only the second means the lease is gone.
+ */
+const UNANSWERED = Symbol('lease renewal unanswered');
+
 type HeldLease = {
   sync: SyncServer;
   draftId: string;
@@ -181,10 +187,17 @@ export class LeaseKeeper {
       }
       const renewed = await lease.sync
         .renew(lease.draftId, lease.sectionId, lease.owner, lease.epoch)
-        .catch(() => null);
-      // A lease that cannot be renewed has expired or been taken over. The
-      // acquire that took it publishes its own lock event, so dropping the
-      // entry is the whole of the response here.
+        .catch(() => UNANSWERED);
+      // A renewal that could not be made is not an answer: a database that
+      // was briefly unreachable has said nothing about whose lease it is, and
+      // forgetting the lease here would let it expire under an editor who is
+      // still holding it — whose next submit is then refused as
+      // `NOT_LOCK_HOLDER`. The entry stays and the next tick asks again; the
+      // interval is a third of the TTL so that two may be lost this way.
+      if (renewed === UNANSWERED) continue;
+      // `null` is the update matching no row, which is a lease that expired
+      // or was taken over. The acquire that took it publishes its own lock
+      // event, so dropping the entry is the whole of the response here.
       if (renewed === null) this.#held.delete(key);
     }
     this.#stopWhenIdle();
