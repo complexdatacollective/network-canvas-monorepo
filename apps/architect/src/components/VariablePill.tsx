@@ -180,7 +180,8 @@ const getVariablePillClassName = ({
 }) =>
   cx(
     // `variable-pill` marker — hook for same-area cascades in VariablePicker
-    // (nested margin), PreviewRule (zoom), and the printable summary (scale).
+    // (nested margin), the package’s `RulePreview` (zoom), and the printable
+    // summary (scale).
     // `w-max` gives WebKit an explicit max-content basis. `w-fit` combined
     // with the formerly percentage-sized inner wrapper collapsed to the
     // ellipsis width in Safari instead of measuring the full label.
