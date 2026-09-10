@@ -18,14 +18,8 @@ export type LayoutModeFieldProps = Omit<
     value?: boolean;
     onChange?: (value: boolean) => void;
     /**
-     * What manual mode LOOKS like on this interface, where the shared sentence
-     * would not be true of it.
-     *
-     * Formatted by the section that composes this field rather than passed as
-     * a descriptor, because that is where the choice of words is made and this
-     * control has no interface to choose by. Absent means the shared wording:
-     * every node waiting in a bucket at the foot of the canvas, which is what
-     * the stages that COLLECT positions do.
+     * What manual mode LOOKS like on this interface, formatted by the section
+     * that composes this field. Absent means the wording on the card below.
      */
     manualDescription?: string;
     /**

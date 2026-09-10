@@ -103,15 +103,16 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
   });
 
   /**
-   * What this preset NAMES on the two tick lists — what it arrived with, and
-   * what the researcher is building — rather than the committed value alone.
+   * What this preset NAMES on the two tick lists, read from the field rather
+   * than from the committed row.
    *
-   * Both lists render from the codebook, so a reference a collaborator deletes
-   * simply stops being a box while its id stays in the value. The control
-   * writes the whole list back on any tick, so the dangling id survived every
-   * gesture and the only way out was deleting the whole preset. Read from the
-   * committed value alone, an id ticked in this dialog a moment before the
-   * deletion would leave the list just as invisibly. See `useLostReferences`.
+   * Both lists render their boxes from the codebook, so a reference a
+   * collaborator deletes simply stops being a box while its id stays in the
+   * value: the control writes the whole list back on any tick, so the dangling
+   * id survives every gesture and the only way out is deleting the preset. The
+   * field starts from the committed value and carries every tick since, so an
+   * id ticked here a moment before the deletion is covered by the same read.
+   * See `useLostReferences`.
    */
   const live = useFormValue([DISPLAY_EDGES_FIELD, HIGHLIGHT_FIELD] as const);
   const displayedEdges = useMemo(
@@ -127,11 +128,7 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
     () => new Set(edgeChoicesOffered.map((option) => option.value)),
     [edgeChoicesOffered],
   );
-  const namedEdgeTypes = useMemo(
-    () => [...(committedDisplay ?? []), ...displayedEdges],
-    [committedDisplay, displayedEdges],
-  );
-  const lostEdgeTypes = useLostReferences(namedEdgeTypes, knownEdgeTypes);
+  const lostEdgeTypes = useLostReferences(displayedEdges, knownEdgeTypes);
 
   /**
    * Judged against what the list OFFERS rather than against the codebook, so
@@ -145,11 +142,10 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
     () => new Set(highlightOptions.map((option) => option.value)),
     [highlightOptions],
   );
-  const namedHighlights = useMemo(
-    () => [...(committedHighlight ?? []), ...highlightedAttributes],
-    [committedHighlight, highlightedAttributes],
+  const lostHighlights = useLostReferences(
+    highlightedAttributes,
+    knownHighlights,
   );
-  const lostHighlights = useLostReferences(namedHighlights, knownHighlights);
 
   const edgeChoices = useMemo<TickChoice[]>(
     () => [
