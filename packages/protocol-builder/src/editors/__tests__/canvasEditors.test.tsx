@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
 import type { FixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { anonymisationStageEditor } from '../anonymisation/AnonymisationStageEditor.ts';
 import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
 import { geospatialStageEditor } from '../geospatial/GeospatialStageEditor.ts';
 import { narrativePedigreeStageEditor } from '../narrative-pedigree/NarrativePedigreeStageEditor.ts';
@@ -135,6 +136,23 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Interviewer guidance',
     ],
     ownedKeys: ['diseases', 'label', 'showAtRiskStatuses', 'sourceStageId'],
+  },
+  {
+    interfaceName: 'Anonymisation',
+    stageId: 'anonymisation-1',
+    editor: anonymisationStageEditor,
+    // Encrypted attributes are here, and own no stage key: `encrypted` belongs
+    // to a codebook attribute, so that section writes the codebook under its
+    // own lock rather than through this stage's save.
+    sections: [
+      'Stage name',
+      'Passphrase explanation',
+      'Passphrase rules',
+      'Encrypted attributes',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['explanationText', 'label', 'validation'],
   },
 ];
 

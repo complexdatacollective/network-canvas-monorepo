@@ -34,6 +34,7 @@ import type { StageType } from '@codaco/protocol-validation';
 
 import { alterEdgeFormStageEditor } from './editors/alter-edge-form/AlterEdgeFormStageEditor.ts';
 import { alterFormStageEditor } from './editors/alter-form/AlterFormStageEditor.ts';
+import { anonymisationStageEditor } from './editors/anonymisation/AnonymisationStageEditor.ts';
 import { egoFormStageEditor } from './editors/ego-form/EgoFormStageEditor.ts';
 import { familyPedigreeStageEditor } from './editors/family-pedigree/FamilyPedigreeStageEditor.ts';
 import { geospatialStageEditor } from './editors/geospatial/GeospatialStageEditor.ts';
@@ -119,6 +120,7 @@ const REGISTRY_PARTS = [
   // One imported part per line, alphabetically, each with a trailing comma.
   alterEdgeFormStageEditor,
   alterFormStageEditor,
+  anonymisationStageEditor,
   egoFormStageEditor,
   familyPedigreeStageEditor,
   geospatialStageEditor,
@@ -220,7 +222,6 @@ export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
  * editor exists for it.
  */
 export const AWAITING_STAGE_EDITORS = [
-  'Anonymisation',
   'CategoricalBin',
   'DyadCensus',
   'NameGeneratorQuickAdd',
