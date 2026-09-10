@@ -628,6 +628,20 @@ jobs:
           pnpm --filter=@codaco/studio-client build
           pnpm --filter=@codaco/studio-server build
           pnpm --filter=@codaco/studio-server build:netlify
+      # Every other Storybook is built in CI as Chromatic's upload input
+      # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
+      # Builder has no Chromatic project by design, and the build step above
+      # skips it because a private, source-first package has no `build` script
+      # — so without this step nothing in CI runs its static build at all.
+      # `test:storybook` is not a substitute: it serves stories through Vite's
+      # dev server and never bundles, and it does not read the generated docs
+      # entries either (a CSF file with `autodocs` and no story exports is
+      # skipped). Cached through turbo like the other build tasks, so it
+      # replays on the PRs that do not touch the package.
+      - name: Build the Protocol Builder Storybook
+        id: protocol_builder_storybook
+        continue-on-error: true
+        run: pnpm exec turbo run build-storybook --filter=@codaco/protocol-builder
       - name: Verify Studio telemetry opt-out and browser privacy
         id: studio-telemetry
         continue-on-error: true
@@ -653,6 +667,7 @@ jobs:
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           STUDIO_MANAGED_OUTCOME: ${{ steps.studio-managed.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           STUDIO_TELEMETRY_OUTCOME: ${{ steps.studio-telemetry.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
@@ -667,6 +682,7 @@ jobs:
             "scripts=$SCRIPTS_OUTCOME" \
             "studio-managed=$STUDIO_MANAGED_OUTCOME" \
             "build=$BUILD_OUTCOME" \
+            "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "studio-telemetry=$STUDIO_TELEMETRY_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
             echo "$result"
