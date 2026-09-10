@@ -232,6 +232,9 @@ export const SignInForm = () => {
   const [passkeyError, setPasskeyError] = useState<string | null>(null);
   const [showRecovery, setShowRecovery] = useState(false);
 
+  // Capability detection has to happen after hydration: the server has no
+  // WebAuthn API, so reading it during the first render would make the client
+  // markup disagree with the server's.
   useEffect(() => {
     setWebauthnSupported(browserSupportsWebAuthn());
   }, []);

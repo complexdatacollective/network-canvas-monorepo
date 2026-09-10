@@ -37,6 +37,9 @@ export const AnonymousRecruitmentURLButton = ({
   const { promise } = useToast();
   const [url, setUrl] = useState<string | null>(null);
 
+  // The deployment's origin is only knowable in the browser, and the server
+  // renders this button too, so the URL has to be filled in after hydration
+  // rather than derived during the first render.
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUrl(`${window.location.origin}/onboard/${protocolId}`);

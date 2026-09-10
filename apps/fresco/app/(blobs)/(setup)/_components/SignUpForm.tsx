@@ -136,6 +136,9 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyError, setPasskeyError] = useState<string | null>(null);
 
+  // Capability detection has to happen after hydration: the server has no
+  // WebAuthn API, so reading it during the first render would make the client
+  // markup disagree with the server's.
   useEffect(() => {
     setWebauthnSupported(browserSupportsWebAuthn());
   }, []);

@@ -1,7 +1,7 @@
 'use client';
 
 import { FileDown, Upload } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
 import { type FileRejection, useDropzone } from 'react-dropzone';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -100,6 +100,8 @@ const messages = defineMessages({
       'Researcher-facing participants / ImportParticipants: Browse files',
   },
 });
+
+const renderCodeChunks = (chunks: ReactNode[]) => <code>{chunks}</code>;
 
 export default function ImportParticipants() {
   const intl = useAppIntl();
@@ -265,7 +267,7 @@ export default function ImportParticipants() {
             </Heading>
             <Paragraph margin="none" emphasis="muted" className="mt-1 text-sm">
               {intl.formatMessage(messages.dragDropACsvFileHere, {
-                tag1: (chunks) => <code>{chunks}</code>,
+                tag1: renderCodeChunks,
               })}
             </Paragraph>
           </div>

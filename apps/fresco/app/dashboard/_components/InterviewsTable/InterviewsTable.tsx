@@ -98,6 +98,12 @@ const clearableFilters = [
 
 type InterviewRow = GetInterviewsQuery[number];
 
+const actionsColumn: ColumnDef<InterviewRow> = {
+  id: 'actions',
+  enableSorting: false,
+  cell: ({ row }: { row: Row<InterviewRow> }) => <ActionsDropdown row={row} />,
+};
+
 type InterviewsTableProps = {
   interviewsPromise: GetInterviewsReturnType;
   filterOptionsPromise: Promise<InterviewFilterOptions>;
@@ -146,16 +152,10 @@ const InterviewsTableInner = ({
     (id) => rowSelection[id],
   );
 
-  const columns = useMemo<ColumnDef<InterviewRow>[]>(() => {
-    const actionsColumn: ColumnDef<InterviewRow> = {
-      id: 'actions',
-      enableSorting: false,
-      cell: ({ row }: { row: Row<InterviewRow> }) => (
-        <ActionsDropdown row={row} />
-      ),
-    };
-    return [...InterviewColumns(intl, filterOptions), actionsColumn];
-  }, [intl, filterOptions]);
+  const columns = useMemo<ColumnDef<InterviewRow>[]>(
+    () => [...InterviewColumns(intl, filterOptions), actionsColumn],
+    [intl, filterOptions],
+  );
 
   const handleDeleteSelected = () => {
     startDeleteResolving(async () => {
