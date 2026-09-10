@@ -46,6 +46,13 @@ export const canvasBehavioursMessages = defineMessages({
     description:
       'Says what the participant sees in manual layout mode. The "bucket" is the holding area at the foot of the canvas that unplaced nodes wait in; the quotation marks are in the English because it is a nickname for that area rather than a formal name.',
   },
+  layoutModeManualNarrativeDescription: {
+    id: 'protocolBuilder.networkCanvas.layoutModeManualNarrativeDescription',
+    defaultMessage:
+      'Shows every node at the position already stored in the attribute the preset positions by. A node that attribute holds no position for is left off the canvas.',
+    description:
+      'Says what the participant sees in manual layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the two wordings of one control together.',
+  },
   layoutModeAutomaticLabel: {
     id: 'protocolBuilder.networkCanvas.layoutModeAutomaticLabel',
     defaultMessage: 'Automatic mode',
@@ -58,5 +65,12 @@ export const canvasBehavioursMessages = defineMessages({
       'Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.',
     description:
       'Says what the participant sees in automatic layout mode. A stage is one step of an interview; the simulation runs on the canvas while the participant watches.',
+  },
+  layoutModeAutomaticNarrativeDescription: {
+    id: 'protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription',
+    defaultMessage:
+      'Arranges the nodes by simulating physical forces such as attraction and repulsion. Only the nodes the attribute the preset positions by holds a position for are arranged; the rest are left off the canvas, as in manual mode. The participant can pause and resume the simulation, and can move nodes by hand only if “Allow moving nodes” is switched on.',
+    description:
+      'Says what the participant sees in automatic layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the two wordings of one control together. “Allow moving nodes” is the switch named by repositioningLabel, and is quoted because it is being named as a control the researcher can go and find.',
   },
 });

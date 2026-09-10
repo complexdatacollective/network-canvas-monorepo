@@ -7,14 +7,14 @@ import {
   buildVariableRoleMap,
   excludeInterfaceOwned,
   excludeValidatedUses,
-} from '../../../codebook/variableRoles.ts';
-import type { VariablePickerOption } from '../../../fields/VariablePickerField.tsx';
-import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
+} from '../../codebook/variableRoles.ts';
+import type { VariablePickerOption } from '../../fields/VariablePickerField.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
   type CodebookSubject,
   variablesForSubject,
-} from '../../../protocol-context.ts';
-import { useProtocolContext } from '../../../state/protocolContext.ts';
+} from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 
 /** One edge type, as a tick box or a radio option. */
 export type EdgeTypeChoice = Readonly<{ value: string; label: string }>;
@@ -29,6 +29,9 @@ export type EdgeTypeChoice = Readonly<{ value: string; label: string }>;
 export const LAYOUT_TYPES: readonly VariableType[] = Object.freeze(['layout']);
 export const BOOLEAN_TYPES: readonly VariableType[] = Object.freeze([
   'boolean',
+]);
+export const CATEGORICAL_TYPES: readonly VariableType[] = Object.freeze([
+  'categorical',
 ]);
 
 const NO_OPTIONS: readonly VariablePickerOption[] = Object.freeze([]);
@@ -46,11 +49,25 @@ export type VariableChoiceQuery = Readonly<{
   subject: CodebookSubject | undefined;
   types: readonly VariableType[];
   /**
+   * Whether the interview WRITES this attribute around the codebook's
+   * validation rules — a tap that marks a node does — in which case it may not
+   * share the attribute with a form field, which collects it through them.
+   *
+   * `false` for a picker that only READS: a narrative preset positions, groups
+   * and highlights BY attributes, so one a form collects is exactly what it
+   * exists to look at. Classed as a writer, the filter dropped precisely those.
+   */
+  unvalidatedWriter?: boolean;
+  /**
    * What the field currently holds. Always offered back, whatever the filters
    * say: a picker that dropped its own value would blank the control and then
    * write the blank over the reference the researcher has to resolve.
+   *
+   * A LIST where the control holds one — a tick list of highlight attributes
+   * keeps every attribute it has ticked, for the same reason a select keeps
+   * the one it has chosen.
    */
-  currentValue?: string;
+  currentValue?: string | readonly string[];
 }>;
 
 /**
@@ -61,10 +78,12 @@ export type VariableChoiceQuery = Readonly<{
  * attribute a collaborator adds, renames or deletes while the editor is open
  * changes the list without the section using this doing anything.
  *
- * Every attribute a sociogram prompt names is one the interview WRITES around
- * the codebook's validation rules — a position the participant drags a node
- * to, a mark a tap toggles — so one a form field collects is never offered:
- * the two writers would disagree about whether the value was checked.
+ * An attribute a form field collects is offered only to a picker that READS
+ * it. A sociogram prompt names attributes the interview writes around the
+ * codebook's validation rules — a position the participant drags a node to, a
+ * mark a tap toggles — and two writers would disagree about whether the value
+ * was checked; a narrative preset writes nothing at all, so `unvalidatedWriter`
+ * says which of the two this picker is.
  *
  * Ordered by name rather than by the order the codebook happens to hold them
  * in: a researcher looking for an attribute they authored months ago scans an
@@ -75,7 +94,7 @@ export function useVariableChoices(
 ): readonly VariablePickerOption[] {
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
-  const { subject, types, currentValue } = query;
+  const { subject, types, unvalidatedWriter = false, currentValue } = query;
 
   // This stage's own committed uses are excluded from the role map: the
   // attribute a picker is already holding is claimed BY this picker, and
@@ -99,16 +118,21 @@ export function useVariableChoices(
         type: variable.type,
       }))
       .toSorted(byLabel);
-    const roleFiltered = excludeValidatedUses(
-      roleMap,
-      subject,
-      typed,
-      currentValue,
-    );
+    const roleFiltered = unvalidatedWriter
+      ? excludeValidatedUses(roleMap, subject, typed, currentValue)
+      : typed;
     return Object.freeze(
       excludeInterfaceOwned(slotMap, subject, roleFiltered, currentValue),
     );
-  }, [currentValue, protocolContext, roleMap, slotMap, subject, types]);
+  }, [
+    currentValue,
+    protocolContext,
+    roleMap,
+    slotMap,
+    subject,
+    types,
+    unvalidatedWriter,
+  ]);
 }
 
 /** Every edge type the protocol defines, read live. */

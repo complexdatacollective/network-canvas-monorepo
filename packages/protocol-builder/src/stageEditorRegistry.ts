@@ -42,6 +42,7 @@ import { informationStageEditor } from './editors/information/InformationStageEd
 import { nameGeneratorQuickAddStageEditor } from './editors/name-generator-quick-add/NameGeneratorQuickAddStageEditor.ts';
 import { nameGeneratorRosterStageEditor } from './editors/name-generator-roster/NameGeneratorRosterStageEditor.ts';
 import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
+import { narrativeStageEditor } from './editors/narrative/NarrativeStageEditor.ts';
 import { oneToManyDyadCensusStageEditor } from './editors/one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
 import { ordinalBinStageEditor } from './editors/ordinal-bin/OrdinalBinStageEditor.ts';
 import { sociogramStageEditor } from './editors/sociogram/SociogramStageEditor.ts';
@@ -130,6 +131,7 @@ const REGISTRY_PARTS = [
   nameGeneratorQuickAddStageEditor,
   nameGeneratorRosterStageEditor,
   nameGeneratorStageEditor,
+  narrativeStageEditor,
   oneToManyDyadCensusStageEditor,
   ordinalBinStageEditor,
   sociogramStageEditor,
@@ -228,7 +230,6 @@ export type UnregisteredStageType = UnregisteredIn<typeof REGISTRY_PARTS>;
 export const AWAITING_STAGE_EDITORS = [
   'Anonymisation',
   'Geospatial',
-  'Narrative',
   'NarrativePedigree',
   'NetworkComposer',
 ] as const satisfies readonly UnregisteredStageType[];
