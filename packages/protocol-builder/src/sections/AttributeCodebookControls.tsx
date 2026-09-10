@@ -36,8 +36,8 @@ import type { CodebookSubject } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
 import { isCollectableType, isOptionType } from './collectableTypes.ts';
 
-/** Where every row that binds an attribute keeps the attribute it binds. */
-const VARIABLE_FIELD = 'variable';
+/** Where a row that binds an attribute usually keeps the attribute it binds. */
+const DEFAULT_VARIABLE_FIELD = 'variable';
 
 /**
  * What inside a field container can be handed focus, most preferred first.
@@ -170,6 +170,15 @@ export type AttributeCodebookControlsProps = Readonly<{
    */
   committedVariable?: unknown;
   /**
+   * Where in the row the attribute itself lives.
+   *
+   * A prop because a row may bind more than one: a categorical bin's prompt
+   * names the attribute whose values are the bins AND the one the follow-up
+   * answer is stored in, and each of them has its own values, rules and
+   * existence to reach from the control that picked it.
+   */
+  variableField?: string;
+  /**
    * Where in the row the chosen input control lives.
    *
    * A prop because the two families spell it differently and mean different
@@ -199,6 +208,17 @@ export type AttributeCodebookControlsProps = Readonly<{
    * exactly that pairing.
    */
   offerParameters?: boolean;
+  /**
+   * Whether the answer this row collects is checked against the attribute's
+   * rules at all.
+   *
+   * FALSE where the interview writes the attribute without asking the
+   * participant anything a form could check — a bin filled by dragging, whose
+   * schema reference says so with `usage: 'unvalidatedAttribute'`. Rules
+   * authored there would never run, and the button offering them says "for
+   * this answer" about a value nobody types.
+   */
+  offerRules?: boolean;
 }>;
 
 /**
@@ -229,9 +249,11 @@ export type AttributeCodebookControlsProps = Readonly<{
 export default function AttributeCodebookControls({
   subject,
   committedVariable,
+  variableField = DEFAULT_VARIABLE_FIELD,
   componentField,
   inventingType,
   offerParameters = true,
+  offerRules = true,
 }: AttributeCodebookControlsProps) {
   const intl = useAppIntl();
   const { readOnly } = useStageEditorForm();
@@ -242,7 +264,7 @@ export default function AttributeCodebookControls({
   // attribute has to land on it rather than on the stage behind it.
   const setFieldValue = useFormStore((state) => state.setFieldValue);
   const chosen =
-    asString(useRowValue(VARIABLE_FIELD) ?? committedVariable) ?? '';
+    asString(useRowValue(variableField) ?? committedVariable) ?? '';
   const liveComponent = useRowValue(componentField);
   const [editing, setEditing] = useState<Readonly<{
     /** Fresh for every open, so the editor starts from the draft it is given. */
@@ -417,7 +439,7 @@ export default function AttributeCodebookControls({
     offerParameters &&
     picked !== undefined &&
     parameterShapeFor(pickedType, pickedComponent) !== null;
-  const canEditRules = picked !== undefined;
+  const canEditRules = offerRules && picked !== undefined;
   const canCreate =
     inventingType !== undefined && isCollectableType(inventingType);
   /**
@@ -532,7 +554,7 @@ export default function AttributeCodebookControls({
     // detached node is exactly what this exists to avoid handing over.
     if (dialog === null || !dialog.isConnected) return null;
     const container = dialog.querySelector<HTMLElement>(
-      `[data-field-path="${VARIABLE_FIELD}"]`,
+      `[data-field-path="${variableField}"]`,
     );
     for (const selector of FOCUS_TARGETS) {
       const found = container?.querySelector<HTMLElement>(selector);
@@ -805,7 +827,7 @@ export default function AttributeCodebookControls({
               ) {
                 // The picker now names something that exists, which is what
                 // takes this row out of inventing anything.
-                setFieldValue(VARIABLE_FIELD, variableId);
+                setFieldValue(variableField, variableId);
               } else {
                 setCreatedElsewhere(variableName);
               }

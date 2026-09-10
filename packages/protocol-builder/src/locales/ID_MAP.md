@@ -128,7 +128,26 @@ after the fact is marked in place.
 | `nameGeneratorPrompts`      | `sections/name-generator-prompts/NameGeneratorPromptsSection.tsx`                                                                                                                                                                                                     | family D  |
 | `nodePanels`                | `sections/panels/NodePanelsSection.tsx`                                                                                                                                                                                                                               | family D  |
 | `pedigree`                  | `editors/family-pedigree/sections/`                                                                                                                                                                                                                                   | family F  |
+| `censusPrompts`             | `editors/{dyad-census,tie-strength-census,one-to-many-dyad-census,ordinal-bin,categorical-bin}/sections/`                                                                                                                                                             | family E  |
+| `ordinalColor`              | `editors/ordinal-bin/sections/ordinalColors.ts`                                                                                                                                                                                                                       | family E  |
+| `promptAttribute`           | `editors/ordinal-bin/sections/binMessages.ts`                                                                                                                                                                                                                         | family E  |
+| `removeAfterConsideration`  | `editors/one-to-many-dyad-census/sections/RemoveAfterConsiderationSection.tsx`                                                                                                                                                                                        | family E  |
+| `quickAdd`                  | `editors/name-generator-quick-add/sections/QuickAddSection.tsx`                                                                                                                                                                                                       | family E  |
+| `externalDataSource`        | `editors/name-generator-roster/sections/ExternalDataSourceSection.tsx`                                                                                                                                                                                                | family E  |
+| `cardDisplay`               | `editors/name-generator-roster/sections/CardDisplaySection.tsx`                                                                                                                                                                                                       | family E  |
+| `sortOptions`               | `editors/name-generator-roster/sections/SortOptionsSection.tsx`                                                                                                                                                                                                       | family E  |
+| `searchOptions`             | `editors/name-generator-roster/sections/SearchOptionsSection.tsx`                                                                                                                                                                                                     | family E  |
+| `rosterColumns`             | `editors/name-generator-roster/sections/rosterColumns.ts`                                                                                                                                                                                                             | family E  |
 | `networkCanvas`             | `sections/background/`, `sections/canvas/`, `sections/canvas-behaviours/`, `sections/form-fields/composerFormFieldMessages.ts`, `editors/sociogram/sections/prompts/`, `editors/narrative/sections/presets/`, `editors/network-composer/sections/composerMessages.ts` | family F  |
+
+Family E added one the reserved list did not hold, on the same terms:
+
+- **`rosterColumns`** — `editors/name-generator-roster/sections/rosterColumns.ts`
+  reads the chosen data file's columns and judges what each of the roster's
+  three lists still points at, so the sentence naming a column the file does
+  not carry belongs to the reader rather than to whichever of the three
+  sections happens to render it. The same rule `multiSelect` and `sortOrder`
+  already follow: a refusal decided in one place is declared there once.
 
 Family D added a second-level segment the reserved list did not hold. One line,
 because a closed list is only closed if adding to it is argued:
@@ -169,6 +188,19 @@ has to have exactly one:
 - `form/arrayFields/arrayMessages.ts` — the generic row noun a list with no
   word for its rows falls back to, in the row's own affordances and in a
   removal it refuses.
+- `editors/dyad-census/sections/censusMessages.ts` — the words more than one of the
+  three censuses renders: the box the question goes in, the connection an answer
+  creates, and the sort-rule guidance the bins share. What only one of them says
+  is declared beside that family's own markup, under the same `censusPrompts` area. It
+  sits under the Dyad Census because that editor lands first and the family rule is
+  that the first editor owns what its siblings also need; it moves up to `sections/`
+  with `PromptTextField` and `CreateEdgeField` once the last census or bin editor has
+  landed.
+- `editors/ordinal-bin/sections/binMessages.ts` — the same arrangement for the two
+  bins: the attribute picker, the warning about how many bins fit on a screen, and
+  the two orders a bin prompt holds. It also declares the one `promptAttribute` id,
+  the notice over an option list another interface owns. Under the Ordinal Bin
+  because that editor lands first, and it moves up with `censusMessages.ts`.
 - `editors/family-pedigree/sections/pedigreeMessages.ts` — one file per interface family,
   holding EVERYTHING that family says rather than only its shared strings. See
   "One file per family", below.
@@ -251,19 +283,11 @@ wherever one reaches the screen.
 
 Named here so a later split takes the name rather than inventing a synonym.
 
-| `<area>`                   | Will own the copy in                       | Expected in |
-| -------------------------- | ------------------------------------------ | ----------- |
-| `nodePanels`               | `sections/NodePanelsSection`               | family D    |
-| `searchOptions`            | `sections/SearchOptionsSection`            | family D    |
-| `alterLimits`              | `sections/AlterLimitsSection`              | family D    |
-| `quickAdd`                 | `sections/QuickAddSection`                 | family D    |
-| `sortOptions`              | `sections/SortOptionsSection`              | family D    |
-| `nameGeneratorPrompts`     | `sections/NameGeneratorPromptsSection`     | family D    |
-| `cardDisplay`              | `sections/CardDisplaySection`              | family D    |
-| `externalDataSource`       | `sections/ExternalDataSourceSection`       | family D    |
-| `censusPrompts`            | `sections/prompts/`                        | family E    |
-| `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection` | family E    |
-| `ordinalColor`             | `fields/OrdinalColorField`                 | family E    |
+| `<area>`               | Will own the copy in                   | Expected in |
+| ---------------------- | -------------------------------------- | ----------- |
+| `nodePanels`           | `sections/NodePanelsSection`           | family D    |
+| `alterLimits`          | `sections/AlterLimitsSection`          | family D    |
+| `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection` | family D    |
 
 ### One file per family — the interface families
 

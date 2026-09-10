@@ -86,6 +86,13 @@ describe('a host registry supplied to the dispatcher', () => {
    * The control: an interface NEITHER the package nor the host has an editor
    * for still throws, so the merge above is not simply making everything
    * renderable.
+   *
+   * Also the only place left that reads the message. Thrown rather than
+   * reported, because there is no editor to fall back to and rendering nothing
+   * would leave a researcher on an empty page with no account of why — so the
+   * interface it could not open has to be in it. Every interface the package
+   * ships now has an editor, which is what leaves this mocked registry the one
+   * way to reach the throw at all.
    */
   it('still names an interface neither of them registers', () => {
     const consoleError = vi
@@ -93,12 +100,14 @@ describe('a host registry supplied to the dispatcher', () => {
       .mockImplementation(() => undefined);
 
     try {
-      expect(() =>
+      const openSociogram = () =>
         renderStageEditor({
           stageId: 'sociogram-1',
           registry: { Information: HostInformationEditor },
-        }),
-      ).toThrow(UnregisteredStageTypeError);
+        });
+
+      expect(openSociogram).toThrow(UnregisteredStageTypeError);
+      expect(openSociogram).toThrow(/"Sociogram" interface/);
     } finally {
       consoleError.mockRestore();
     }

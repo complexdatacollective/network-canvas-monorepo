@@ -26,9 +26,10 @@ export type LayoutModeFieldProps = Omit<
      * And the same for automatic mode, where what the participant gets is not
      * what the shared sentence describes.
      *
-     * A network composer treats automatic layout as the state the stage OPENS
-     * in rather than as how it arranges nodes: the participant has a switch of
-     * their own on the canvas, and whichever way they leave it is remembered.
+     * Both interfaces that pass one say why in `NodeLayoutSection`: a network
+     * composer, which treats automatic layout as the state the stage OPENS in
+     * rather than as how it arranges nodes, and a narrative stage, which
+     * arranges only the nodes its preset holds a position for.
      */
     automaticDescription?: string;
   }>;

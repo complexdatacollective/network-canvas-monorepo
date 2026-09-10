@@ -2,9 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { describe, expect, it, vi } from 'vitest';
-
-import type { StageType } from '@codaco/protocol-validation';
+import { describe, expect, it } from 'vitest';
 
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { missingStageEditors, STAGE_TYPES } from '../stage-editor-contract.ts';
@@ -12,7 +10,6 @@ import type {
   StageEditorComponent,
   StageEditorProps,
 } from '../stage-editor-contract.ts';
-import { UnregisteredStageTypeError } from '../StageEditor.tsx';
 import {
   AWAITING_STAGE_EDITORS,
   composeStageEditorRegistry,
@@ -20,34 +17,6 @@ import {
   stageEditorRegistry,
 } from '../stageEditorRegistry.ts';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
-
-/**
- * An interface no family has claimed yet, taken from the list that says which
- * those are rather than named here.
- *
- * Named, it would have to be renamed by whichever family lands that interface
- * next — the comment where it used to be said exactly that about `Sociogram` —
- * so each of the thirteen families in turn would edit this file for a reason
- * that has nothing to do with what it tests. `AWAITING_STAGE_EDITORS` is the
- * compile-time-complete list of unclaimed types, which is the very fact under
- * test; when the last family lands it is empty, and the scenario below stops
- * existing at all rather than pointing at an interface somebody owns.
- */
-const unclaimedStageType = (): StageType => {
-  const awaiting = AWAITING_STAGE_EDITORS[0];
-  if (awaiting === undefined) {
-    throw new Error(
-      'Every interface now has an editor, so there is no unregistered one to dispatch to. Delete the cases that need one.',
-    );
-  }
-  return awaiting;
-};
-
-/** A stage of that interface, holding nothing: the dispatch fails before any
- * section is mounted, so there is nothing for its fields to be. */
-const unclaimedStage = () => ({
-  stage: { type: unclaimedStageType(), fields: {} },
-});
 
 const InformationEditor: StageEditorComponent<'Information'> = ({
   stageType,
@@ -202,8 +171,19 @@ describe('the two lists a family edits', () => {
     'utf8',
   );
 
-  /** The lines between a list's own brackets, comments and blanks dropped. */
+  /**
+   * The lines between a list's own brackets, comments and blanks dropped.
+   *
+   * A list with nothing in it is written `[]`, because there are no entries to
+   * keep on lines of their own — which is what `AWAITING_STAGE_EDITORS` is now
+   * that every interface has an editor. Only empty brackets are allowed
+   * through, with the whitespace the formatter chooses to put around them: a
+   * list that HAS entries and was collapsed onto one line still fails, which
+   * is the merge the shape is for.
+   */
   const entriesOf = (name: string): string[] => {
+    if (new RegExp(`const ${name} =\\s*\\[\\] as const`).test(source))
+      return [];
     const body = new RegExp(
       `const ${name} = \\[\\n([\\s\\S]*?)\\n\\] as const`,
     ).exec(source)?.[1];
@@ -331,54 +311,22 @@ describe('dispatching to a named editor', () => {
   });
 
   /**
-   * Thrown rather than reported: there is no editor to fall back to, and
-   * rendering nothing would leave a researcher on an empty page with no
-   * account of why.
+   * Every interface now has an editor, so nothing this package composes can
+   * reach `UnregisteredStageTypeError` any more: an explicit `{}` from a host
+   * is merged OVER the package's registry rather than replacing it, and there
+   * is no longer a stage type the package leaves out. What the throw says, and
+   * that it names the interface, is asserted in
+   * `hostStageEditorOverrides.test.tsx`, where the package registry is mocked
+   * down to two interfaces and a third is genuinely unregistered.
    */
-  it('names the interface nothing is registered for', () => {
-    const consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
-
-    try {
-      // `Information` will not do here: an explicit `{}` is merged OVER the
-      // package's own registry rather than replacing it, so an interface a
-      // landed family already claims stays claimed no matter what a host
-      // passes. An unclaimed interface is one nothing — package or host — has
-      // registered.
-      const unclaimed = unclaimedStageType();
-      expect(() =>
-        renderStageEditor({ ...unclaimedStage(), registry: {} }),
-      ).toThrow(UnregisteredStageTypeError);
-      expect(() =>
-        renderStageEditor({ ...unclaimedStage(), registry: {} }),
-      ).toThrow(new RegExp(`"${unclaimed}" interface`));
-    } finally {
-      consoleError.mockRestore();
-    }
-  });
-
   it('is the package registry when a host does not supply one', () => {
-    const consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
+    // An interface a landed family claims opens in that family's editor with
+    // no registry passed at all, which is how a host reaches one.
+    const harness = renderStageEditor({ stageId: 'information-1' });
 
-    try {
-      // An interface a landed family claims opens in that family's editor with
-      // no registry passed at all, which is how a host reaches one.
-      const harness = renderStageEditor({ stageId: 'information-1' });
-      expect(harness.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
-        'Information',
-      );
-
-      // An interface still awaiting its family says so rather than rendering a
-      // blank page.
-      expect(() => renderStageEditor(unclaimedStage())).toThrow(
-        UnregisteredStageTypeError,
-      );
-    } finally {
-      consoleError.mockRestore();
-    }
+    expect(harness.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+      'Information',
+    );
   });
 
   /**
