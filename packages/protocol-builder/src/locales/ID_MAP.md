@@ -128,7 +128,9 @@ after the fact is marked in place.
 | `nameGeneratorPrompts`      | `sections/name-generator-prompts/NameGeneratorPromptsSection.tsx`                                                                                                                             | family D  |
 | `nodePanels`                | `sections/panels/NodePanelsSection.tsx`                                                                                                                                                       | family D  |
 | `pedigree`                  | `editors/family-pedigree/sections/`                                                                                                                                                           | family F  |
-| `censusPrompts`             | `editors/{dyad-census,tie-strength-census,one-to-many-dyad-census}/sections/`                                                                                                                 | family E  |
+| `censusPrompts`             | `editors/{dyad-census,tie-strength-census,one-to-many-dyad-census,ordinal-bin,categorical-bin}/sections/`                                                                                     | family E  |
+| `ordinalColor`              | `editors/ordinal-bin/sections/ordinalColors.ts`                                                                                                                                               | family E  |
+| `promptAttribute`           | `editors/ordinal-bin/sections/binMessages.ts`                                                                                                                                                 | family E  |
 | `removeAfterConsideration`  | `editors/one-to-many-dyad-census/sections/RemoveAfterConsiderationSection.tsx`                                                                                                                | family E  |
 | `networkCanvas`             | `sections/background/`, `sections/canvas-behaviours/`, `editors/sociogram/sections/prompts/`                                                                                                  | family F  |
 
@@ -173,12 +175,17 @@ has to have exactly one:
   removal it refuses.
 - `editors/dyad-census/sections/censusMessages.ts` — the words more than one of the
   three censuses renders: the box the question goes in, the connection an answer
-  creates, and the sort-rule guidance the bins will share. What only one of them says
+  creates, and the sort-rule guidance the bins share. What only one of them says
   is declared beside that family's own markup, under the same `censusPrompts` area. It
   sits under the Dyad Census because that editor lands first and the family rule is
   that the first editor owns what its siblings also need; it moves up to `sections/`
   with `PromptTextField` and `CreateEdgeField` once the last census or bin editor has
   landed.
+- `editors/ordinal-bin/sections/binMessages.ts` — the same arrangement for the two
+  bins: the attribute picker, the warning about how many bins fit on a screen, and
+  the two orders a bin prompt holds. It also declares the one `promptAttribute` id,
+  the notice over an option list another interface owns. Under the Ordinal Bin
+  because that editor lands first, and it moves up with `censusMessages.ts`.
 - `editors/family-pedigree/sections/pedigreeMessages.ts` — one file per interface family,
   holding EVERYTHING that family says rather than only its shared strings. See
   "One file per family", below.
@@ -271,7 +278,6 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection`       | family D    |
 | `cardDisplay`          | `sections/CardDisplaySection`                | family D    |
 | `externalDataSource`   | `sections/ExternalDataSourceSection`         | family D    |
-| `ordinalColor`         | `fields/OrdinalColorField`                   | family E    |
 | `narrativePedigree`    | `editors/narrative-pedigree/sections/`       | family F    |
 | `geospatial`           | `sections/geospatial/`, geospatial `fields/` | family F    |
 | `anonymisation`        | `sections/anonymisation/`                    | family F    |
