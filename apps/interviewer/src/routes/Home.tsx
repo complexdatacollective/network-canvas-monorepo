@@ -205,6 +205,9 @@ export function HomeRoute() {
         });
         await reload();
       } catch (cause) {
+        // Only the generic translated message below reaches the user; the raw
+        // IndexedDB/Dexie cause is only visible here.
+        // oxlint-disable-next-line no-console -- only diagnostic for a protocol-deletion failure; the user-facing toast is deliberately generic
         console.error('Protocol deletion failed', cause);
         toast.add({
           title: createElement(AppMessage, {
