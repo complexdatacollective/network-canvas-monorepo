@@ -2387,89 +2387,9 @@
     "defaultMessage": "Technical details (English):",
     "description": "Visible text in components / ProtocolValidationDialogReporter."
   },
-  "architect.query.rules.previewText.attribute": {
-    "defaultMessage": "{value1} attribute {label}",
-    "description": "The aria-label text in the printable protocol summary’s rule sentence."
-  },
-  "architect.query.rules.previewText.ego": {
-    "defaultMessage": "Ego",
-    "description": "Visible text in the printable protocol summary’s rule sentence."
-  },
-  "architect.query.sentence.attributePresence": {
-    "defaultMessage": "<subject><entity></entity></subject> <operator>{operatorCode, select, NOT_EXISTS {without} other {where}}</operator> <attribute></attribute>",
-    "description": "Whole sentence for whether an entity has an attribute. Entity and attribute tags render authored labels."
-  },
-  "architect.query.sentence.booleanValue": {
-    "defaultMessage": "{value, select, true {true} other {false}}",
-    "description": "Display of a boolean rule operand; the stored value is unchanged."
-  },
-  "architect.query.sentence.contains": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that contains</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>contains</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.doesNotContain": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that does not contain</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>does not contain</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.entityPresence": {
-    "defaultMessage": "<subject><entity></entity> <operator>{operatorCode, select, NOT_EXISTS {does not exist} other {exists}}</operator></subject>",
-    "description": "Whole sentence for whether an authored node or edge type exists."
-  },
-  "architect.query.sentence.exactly": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is exactly equal to</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is exactly equal to</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.excludes": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that excludes</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>excludes</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.greaterThan": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is greater than</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is greater than</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.greaterThanOrEqual": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is greater than or equal to</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is greater than or equal to</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.includes": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that includes</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>includes</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
   "architect.query.sentence.join": {
     "defaultMessage": "{join, select, AND {and} OR {or} other {}}",
     "description": "How adjacent network-filter rules combine. AND and OR are protocol identifiers; translate their displayed labels only."
-  },
-  "architect.query.sentence.lessThan": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is less than</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is less than</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.lessThanOrEqual": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is less than or equal to</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is less than or equal to</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.not": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that is not</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>is not</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.optionsEquals": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that has selected options equal to</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>has selected options equal to</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.optionsGreaterThan": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that has selected options greater than</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>has selected options greater than</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.optionsLessThan": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that has selected options less than</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>has selected options less than</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.optionsNotEquals": {
-    "defaultMessage": "{target, select, ego {<subject><entity></entity> has <attribute></attribute></subject> <predicate><operator>that has selected options not equal to</operator> <operand></operand></predicate>} other {<subject><entity></entity> where <attribute></attribute></subject> <predicate><operator>has selected options not equal to</operator> <operand></operand></predicate>}}",
-    "description": "Complete rule-preview sentence. Rich tags preserve entity and attribute chips and the literal authored operand; translate and reorder the whole sentence, keeping all tags."
-  },
-  "architect.query.sentence.unknown": {
-    "defaultMessage": "<subject><entity></entity> <attribute></attribute></subject> <predicate><operator>{operatorCode}</operator> <operand></operand></predicate>",
-    "description": "Fallback for an unknown technical operator; do not alter the operator token."
   },
   "architect.remaining.newProtocolDialog.protocolNameIsRequired": {
     "defaultMessage": "Protocol name is required",
