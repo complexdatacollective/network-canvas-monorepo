@@ -155,7 +155,7 @@ export function ComposerFormFieldsField({
   const rows = useMemo(() => rowsOf(held), [held]);
 
   return (
-    <ComposerFormRows {...props} rows={rows}>
+    <ComposerFormRows {...props} name={name} rows={rows}>
       <Field<typeof ArrayField<RowValues>>
         name={name}
         component={ArrayField}
@@ -201,7 +201,7 @@ export function ComposerFormFieldsControl({
   const { readOnly } = useStageEditorForm();
 
   return (
-    <ComposerFormRows {...props} rows={value}>
+    <ComposerFormRows {...props} name={name} rows={value}>
       <UnconnectedField<typeof ArrayField<RowValues>>
         name={name}
         component={ArrayField}
@@ -233,10 +233,22 @@ function ComposerFormRows({
   addTitle,
   editTitle,
   formId,
+  name,
   rows,
   children,
 }: ComposerFormFieldsProps &
-  Readonly<{ rows: readonly RowValues[]; children: ReactNode }>) {
+  Readonly<{
+    /**
+     * What the list is mounted under, which the row dialog hands on as the
+     * path a save would write this row to. The node form's is its place in the
+     * stage document; a connection form has none — it is reached through an
+     * entry's position in `edges` — so its mounting name is the control's own,
+     * which is what the dialog then reports.
+     */
+    name: string;
+    rows: readonly RowValues[];
+    children: ReactNode;
+  }>) {
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const draftUnvalidated = useMemo(
@@ -317,10 +329,11 @@ function ComposerFormRows({
       addTitle,
       editTitle,
       formId,
+      name,
       beforeSave,
       normalize: normalizeComposerField,
     }),
-    [addTitle, beforeSave, editTitle, formId],
+    [addTitle, beforeSave, editTitle, formId, name],
   );
 
   const scope = useMemo(

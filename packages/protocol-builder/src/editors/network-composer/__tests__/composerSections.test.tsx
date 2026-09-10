@@ -174,7 +174,7 @@ describe('what a network composer lets the participant build', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Remove connection type' }),
+      screen.getByRole('button', { name: 'Delete connection type' }),
     ).toBeEnabled();
   });
 
@@ -188,18 +188,26 @@ describe('what a network composer lets the participant build', () => {
     );
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove connection type' }),
+      await screen.findByRole('button', { name: 'Delete connection type' }),
     );
     // The question names what is going, in the list's own noun.
+    expect(
+      await screen.findByText('Delete this connection type?'),
+    ).toBeInTheDocument();
     await harness.user.click(
       await screen.findByRole('button', { name: 'Cancel' }),
     );
 
+    // The row's own control and the confirmation's read the same now, so it is
+    // the question that says the confirmation went — the row survives it.
     await waitFor(() =>
       expect(
-        screen.queryByRole('button', { name: 'Delete connection type' }),
+        screen.queryByText('Delete this connection type?'),
       ).not.toBeInTheDocument(),
     );
+    expect(
+      screen.getByRole('button', { name: 'Delete connection type' }),
+    ).toBeInTheDocument();
     const saved = await harness.submit();
     expect(edgesOf(saved?.stageDocument ?? {})).toHaveLength(1);
   });
@@ -267,14 +275,14 @@ describe('what a network composer lets the participant build', () => {
     );
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Remove form field' }),
+      await screen.findByRole('button', { name: 'Delete form field' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Delete form field' }),
     );
     await waitFor(() =>
       expect(
-        screen.queryByRole('button', { name: 'Remove form field' }),
+        screen.queryByRole('button', { name: 'Delete form field' }),
       ).not.toBeInTheDocument(),
     );
 
