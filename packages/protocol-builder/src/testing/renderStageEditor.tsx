@@ -706,14 +706,24 @@ export function renderStageEditor<T extends StageType = StageType>(
     });
     await user.click(button);
     await waitFor(() => {
+      // Settled either way, read from the FORM rather than from the control
+      // that was clicked — a host may render a plain `<button form={formId}>`
+      // that says nothing about itself. Checked before the save is judged,
+      // on BOTH outcomes: `onSaved` fires from inside `save()`, before the
+      // shell has replayed the saved document over the form — the rebase
+      // that clears its own dirty flag — and before `useForm` clears
+      // `isSubmitting`. A caller that treated `saved.length` moving as
+      // "settled" could read the form in that gap, between the save landing
+      // and the shell finishing what it does about it; every caller of
+      // `submit()` waits for the same signal the form itself uses to say it
+      // is done, rather than each re-deriving its own guess at "done enough"
+      // with a `waitFor` of its own after the fact.
+      expect(submittingForm()).toHaveAttribute('aria-busy', 'false');
       if (saved.length > before) return;
       // A submit that did not save has settled and left its reason on screen:
       // the form's own errors, or a field marked invalid for `focusFirstError`
       // to reach. Asserting both is what stops a submit still in flight from
-      // being read as a refusal. Settling is read from the FORM, not from the
-      // control that was clicked, because a host may render a plain
-      // `<button form={formId}>` that says nothing about itself.
-      expect(submittingForm()).toHaveAttribute('aria-busy', 'false');
+      // being read as a refusal.
       expect(refusalOnScreen(view.container)).toBe(true);
     });
     return saved.length > before ? (saved.at(-1) ?? null) : null;

@@ -462,10 +462,13 @@ describe('a save the protocol did not take', () => {
 
     // Saved work is not unsaved work: a form still reporting itself dirty
     // makes the host ask whether to discard changes the researcher has just
-    // watched it save.
-    await waitFor(() => {
-      expect(screen.getByTestId('form-dirty')).toHaveTextContent('clean');
-    });
+    // watched it save. Read the instant `submit()` resolves rather than
+    // through a `waitFor` of its own: `submit()` settles only once the form
+    // has (aria-busy clears after the rebase runs), so a later, separate
+    // wait here would only be re-deriving that same guarantee — and would
+    // pass even if the rebase never ran, as long as *something else*
+    // eventually re-rendered the flag correctly.
+    expect(screen.getByTestId('form-dirty')).toHaveTextContent('clean');
   });
 });
 

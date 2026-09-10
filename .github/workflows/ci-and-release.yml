@@ -422,6 +422,65 @@ jobs:
   # types directly and do not need built `.d.ts`. This seed job still runs
   # `build` explicitly so the release and app-deploy jobs find a warm `build`
   # cache on main.
+  #
+  # Playwright's browser cache is a separate GitHub Actions cache from the
+  # turbo remote-cache above, and it was competing with it for the same 10 GB
+  # per-repository ceiling. Every job that installs Playwright browsers used
+  # to gate on `github.event_name != 'push'`, so main never wrote a
+  # Playwright cache entry and no PR had anything to fall back on — each PR
+  # missed, installed its own browsers, and saved a copy keyed to its own ref
+  # that no other PR could read. Measured on 2026-09-10: 14 live copies
+  # totalling 5.17 GB, 53% of the ceiling, which evicted the turbo entries
+  # the `seed-turbo-cache` job below exists to seed — the shared turbo slice
+  # was down to 0.64 GB, which is what decides whether the `test` job takes
+  # two minutes or thirty.
+  #
+  # This job restores or (on a miss) installs and saves ONE union-keyed
+  # Playwright cache entry — every browser any of the four consumer jobs
+  # below need between them — and only main writes it; every consumer reads
+  # it with `actions/cache/restore` and never writes its own PR-scoped copy.
+  # See the comment on the first of those restores (in `test-storybook`) for
+  # the full arrangement and its trade-off.
+  warm-playwright-cache:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Cache warming only — a flake here must not fail the push run, which
+    # also carries the release jobs. (`playwright install --with-deps` shells
+    # out to apt and is known to fail runner-side.)
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Resolve the pinned Playwright version
+        id: pw
+        # The same lockfile-derived pin the Docker image tag is built from:
+        # the browser build is fixed by the resolved @playwright/test version
+        # either way, so this lane is no less deterministic about Chromium.
+        run: |
+          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
+          if [ -z "$version" ]; then
+            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          # No browser-set suffix: this is the one union key every consumer
+          # job restores, whatever subset of browsers it installs.
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install every browser the consumer jobs need
+        # `actions/cache` (not `/restore`) is deliberate here: it restores if
+        # this key already has an entry and saves at job end only on a miss,
+        # so a warmed main costs nothing on later pushes — this step becomes
+        # a no-op restore. chromium, firefox and webkit together are the
+        # union test-storybook, interview-e2e-native, interviewer-e2e-native
+        # and architect-e2e-native install between them.
+        run: pnpm --filter @codaco/architect exec playwright install --with-deps chromium firefox webkit
+
   seed-turbo-cache:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Cache warming only — a flake here must not fail the push run, which also
@@ -476,16 +535,64 @@ jobs:
       # `fresco#build`'s `passThroughEnv` (strict env mode strips undeclared
       # variables), which keeps it out of the task hash so the seeded cache
       # stays valid for runs that don't set it.
-      - run: pnpm exec turbo run build typecheck
+      #
+      # `--continue=dependencies-successful` (turbo 2.10.4): without it turbo's
+      # default `--continue=never` cancels every task still queued the moment
+      # one task fails, so a single failing package seeds no cache entry for
+      # any task behind it. Measured across 115 seed runs, 19 (17%) ended this
+      # way, leaving main unseeded for a median of 1.7 hours and once for 12.9
+      # — and a PR's `test` job runs a measured 12.9m median against a cold
+      # cache versus 8.8m against a warm one, so an unseeded main is not a
+      # cosmetic gap. `id:` and `continue-on-error: true` let the step below
+      # report which of these two runs left something unseeded, without
+      # turning that into a job failure — the job is cache warming, not a gate.
+      - name: Build and typecheck
+        id: build-typecheck
+        continue-on-error: true
+        run: pnpm exec turbo run build typecheck --continue=dependencies-successful
         env:
           SKIP_ENV_VALIDATION: 'true'
       # The test suites run one at a time, for the reason the `test` job
       # gives: a single vitest already fills the runner, and suites run in
       # parallel starve each other into timeouts. A starved failure here
       # would abort the run and leave every suite still queued unseeded.
-      - run: pnpm exec turbo run test --concurrency=1
+      #
+      # `--continue=dependencies-successful`: see the comment above the build
+      # step. On 2026-09-10 at 06:20 UTC the killer was protocol-builder's
+      # `src/form/__tests__/lockAndSave.test.tsx > a save the protocol did not
+      # take > rebases the form once the protocol takes the save`, which
+      # failed at 5161 ms and — under the old `--continue=never` default —
+      # would have cancelled every other queued suite's cache seed along with
+      # it. Not applied to the `@codaco/studio-server#test` run above:
+      # `--continue` governs how a multi-task run treats one task's failure,
+      # and a single-task run has nothing else queued behind it to protect.
+      - name: Run tests
+        id: test
+        continue-on-error: true
+        run: pnpm exec turbo run test --concurrency=1 --continue=dependencies-successful
         env:
           SKIP_ENV_VALIDATION: 'true'
+      # Surfaces a broken seed instead of letting it fail silently under
+      # `continue-on-error`. The job stays advisory — cache warming, not a
+      # gate — so this reports rather than exits non-zero.
+      - name: Report seed step outcomes
+        if: always()
+        env:
+          BUILD_TYPECHECK_OUTCOME: ${{ steps.build-typecheck.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+        run: |
+          {
+            echo "### Turbo cache seed outcomes"
+            echo
+            echo "- build typecheck: $BUILD_TYPECHECK_OUTCOME"
+            echo "- test: $TEST_OUTCOME"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$BUILD_TYPECHECK_OUTCOME" != "success" ]]; then
+            echo "::warning::seed-turbo-cache: 'build typecheck' step concluded '$BUILD_TYPECHECK_OUTCOME' — main's cache for one or more of those tasks was not seeded"
+          fi
+          if [[ "$TEST_OUTCOME" != "success" ]]; then
+            echo "::warning::seed-turbo-cache: 'test' step concluded '$TEST_OUTCOME' — main's cache for one or more test tasks was not seeded"
+          fi
 
   lint:
     if: >-
@@ -679,6 +786,73 @@ jobs:
             exit 1
           fi
 
+  test-studio-server:
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: spike
+          POSTGRES_DB: studio_dev
+          POSTGRES_INITDB_ARGS: --set=max_prepared_transactions=10
+        ports:
+          - 54318:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Write protocol-validation .env (test fixture)
+        env:
+          PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
+          PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
+          TEST_PROTOCOL_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
+        run: |
+          {
+            echo "PROTOCOL_ENCRYPTION_KEY=$PROTOCOL_ENCRYPTION_KEY"
+            echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
+            echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
+          } > packages/protocol-validation/.env
+      - name: Run the Studio server suite
+        # The only workspace suite whose assertions are wall-clock budgets
+        # rather than logic: a spawnSync of the Node entrypoint capped at 10s,
+        # a 180s seeding hook, 30s operational probes, and a 150ms delivery
+        # lease that a starved event loop cannot renew. Before turbo's
+        # concurrency was capped here, this suite shared the 4-vCPU runner
+        # with the jsdom suites (architect, protocol-builder, interview,
+        # fresco-ui, interviewer) and those budgets lapsed. Measured across
+        # #1693's runs it passes at or under 408s of suite wall time and
+        # failed at every observed time above that (509s, 519s, 527s, 583s,
+        # 847s, 851s).
+        #
+        # It is selected far more often than it is touched, because
+        # @codaco/protocol-utilities dev-depends on @codaco/fresco-ui: every
+        # fresco-ui change re-hashes it through `^topo`, and protocol-builder
+        # — where most current work sits — pulls it in the same way. When this
+        # suite ran as the first, blocking step of the `test` job, it cost
+        # about 9 minutes in 33 of 60 sampled successful PR runs (55%) and 0
+        # seconds in the other 27, 28% of that job's total wall time, on a job
+        # that gates 51% of pull requests and finished a median of 7.0 minutes
+        # after the runner-up. It now runs as its own job on its own runner
+        # instead of serially ahead of the rest of the workspace: a dedicated
+        # runner is *more* uncontended than a shared one, so the isolation
+        # this suite has always needed for its wall-clock budgets is
+        # strengthened, not weakened. It also no longer needs
+        # `continue-on-error` — as its own job its verdict is its own, and it
+        # can no longer hide behind, or be hidden by, the workspace suite's
+        # result.
+        run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
+
   test:
     if: >-
       github.event_name != 'merge_group'
@@ -719,33 +893,7 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
-      - name: Run the Studio server suite on an uncontended runner
-        id: studio-server
-        # The only workspace suite whose assertions are wall-clock budgets
-        # rather than logic: a spawnSync of the Node entrypoint capped at 10s,
-        # a 180s seeding hook, 30s operational probes, and a 150ms delivery
-        # lease that a starved event loop cannot renew. Before the step below
-        # capped turbo's concurrency, this suite shared the 4-vCPU runner with
-        # the jsdom suites (architect, protocol-builder, interview, fresco-ui,
-        # interviewer) and those budgets lapsed. Measured across #1693's runs
-        # it passes at or under 408s of suite wall time and failed at every
-        # observed time above that (509s, 519s, 527s, 583s, 847s, 851s).
-        #
-        # It is selected far more often than it is touched, because
-        # @codaco/protocol-utilities dev-depends on @codaco/fresco-ui: every
-        # fresco-ui change re-hashes it through `^topo`. Running it first, by
-        # itself, costs a cache replay on the PRs that do not affect it, and
-        # on the ones that do it keeps this suite's verdict and cache entry
-        # independent of the others: turbo schedules nothing further once a
-        # task fails, so queued behind a failing suite it would never run. The
-        # `--affected` pass below replays it from the cache this step wrote.
-        continue-on-error: true
-        run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
       - name: Run tests (PRs run only affected tasks)
-        id: workspace
-        # A Studio failure must not hide the rest of the workspace's result,
-        # so both steps report and the check below decides the job.
-        continue-on-error: true
         env:
           DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
@@ -781,6 +929,15 @@ jobs:
           # against 26m08s at the default, with no timeouts at either cap. Not
           # 2: a protocol-builder file that took 9.5s alone took 20s beside
           # one other suite, which is the headroom the 20s budgets need.
+          #
+          # `--filter=!@codaco/studio-server`: that suite now runs as its own
+          # `test-studio-server` job (see the comment there for why), on its
+          # own runner in parallel with this one. Without this exclusion both
+          # the `--affected` pass and the full-suite fallback below would
+          # still select `@codaco/studio-server#test` as a cache miss — turbo
+          # has no notion that a sibling job already claimed it — and run the
+          # wall-clock-budgeted suite a second time, concurrently with itself,
+          # on a runner it was carved out specifically to avoid sharing.
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
             && [[ -n "$DIFF_BASE_SHA" ]] \
             && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
@@ -791,31 +948,12 @@ jobs:
               ':(exclude)scripts/*.test.mjs' ':(exclude)*.md'; then
             echo "Running test tasks affected by $DIFF_BASE_SHA..HEAD"
             TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test \
-              --affected --concurrency=1
+              --affected --concurrency=1 --filter='!@codaco/studio-server'
             exit 0
           fi
 
           echo "Running the full test suite for $GITHUB_EVENT_NAME"
-          pnpm exec turbo run test --concurrency=1
-      - name: Verify every test task passed
-        if: always()
-        env:
-          STUDIO_SERVER_OUTCOME: ${{ steps.studio-server.outcome }}
-          WORKSPACE_OUTCOME: ${{ steps.workspace.outcome }}
-        run: |
-          failed=false
-          for result in \
-            "studio-server=$STUDIO_SERVER_OUTCOME" \
-            "workspace=$WORKSPACE_OUTCOME"; do
-            echo "$result"
-            if [[ "${result#*=}" != "success" ]]; then
-              failed=true
-            fi
-          done
-          if [[ "$failed" == "true" ]]; then
-            echo "::error::One or more test tasks failed"
-            exit 1
-          fi
+          pnpm exec turbo run test --concurrency=1 --filter='!@codaco/studio-server'
 
   test-storybook:
     # Storybook's play functions and their assertions, executed in a real
@@ -851,14 +989,32 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # One union key, written only by `warm-playwright-cache` on pushes to
+      # main, restored read-only here and by the other three jobs that need
+      # Playwright browsers (interview-e2e-native, interviewer-e2e-native,
+      # architect-e2e-native): a PR-scoped copy is readable by exactly one
+      # pull request, and on 2026-09-10 fourteen of those PR-scoped copies
+      # held 5.17 GB — 53% of the repository's 10 GB cache ceiling — which
+      # evicted the turbo cache entries `test` depends on to stay fast.
+      # `actions/cache/restore` (not `actions/cache`) makes that one-way: each
+      # of these four jobs can read main's warm entry but never writes a
+      # competing copy of its own, warm or not. The deliberate trade: a job
+      # that needs fewer than all three browsers still restores the full
+      # union (this one restores a webkit binary it never launches), a few
+      # hundred MB and some seconds it would not pay from a job-scoped key —
+      # traded for never holding open a second key against the ceiling this
+      # rearrangement exists to protect.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-firefox
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install the pinned browsers
         # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
         # postinstall browser download never runs. Firefox is for fresco-ui,
-        # the one project whose storybook suite runs both engines.
+        # the one project whose storybook suite runs both engines. This step
+        # is the fallback for a cold cache (main's warm job hasn't run yet, or
+        # missed) — a no-op when the binaries the restore above already
+        # placed are present.
         run: pnpm --filter @codaco/interviewer exec playwright install --with-deps chromium firefox
       - name: Generate Fresco's Prisma client and Next types
         run: pnpm exec turbo run fresco#codegen
@@ -982,6 +1138,7 @@ jobs:
       - lint
       - quality-support
       - test
+      - test-studio-server
       - test-storybook
       - detect
       - e2e-policy
@@ -1010,6 +1167,7 @@ jobs:
           LINT_RESULT: ${{ needs.lint.result }}
           SUPPORT_RESULT: ${{ needs.quality-support.result }}
           TEST_RESULT: ${{ needs.test.result }}
+          STUDIO_SERVER_RESULT: ${{ needs.test-studio-server.result }}
           TEST_STORYBOOK_RESULT: ${{ needs.test-storybook.result }}
           INTERVIEW_E2E_RESULT: ${{ needs.interview-e2e.result }}
           INTERVIEW_E2E_NATIVE_RESULT: ${{ needs.interview-e2e-native.result }}
@@ -1048,6 +1206,7 @@ jobs:
             "$LINT_RESULT" \
             "$SUPPORT_RESULT" \
             "$TEST_RESULT" \
+            "$STUDIO_SERVER_RESULT" \
             "$TEST_STORYBOOK_RESULT"
 
           if [[ "$EVENT_NAME" != "merge_group" && "$DETECT_RESULT" != "success" ]]; then
@@ -1643,13 +1802,22 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restore-only, from the one union key `warm-playwright-cache` writes on
+      # pushes to main — see the comment on this same step in `test-storybook`
+      # for why (a PR-scoped write-and-save copy of this cache, multiplied
+      # across live PRs, is what forced this rearrangement in the first
+      # place). This job needs every browser the key holds, so it pays no
+      # part of the union trade the other three jobs make.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-firefox-webkit
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install the pinned browsers
         # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs.
+        # postinstall browser download never runs. This step is the fallback
+        # for a cold cache (main's warm job hasn't run yet, or missed) — a
+        # no-op when the binaries the restore above already placed are
+        # present.
         run: pnpm --filter @codaco/interview exec playwright install --with-deps chromium firefox webkit
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
@@ -1745,13 +1913,20 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restore-only, from the one union key `warm-playwright-cache` writes on
+      # pushes to main — see the comment on this same step in `test-storybook`
+      # for the full arrangement. This job skips firefox, so it restores a
+      # firefox binary it never launches as its share of the union trade.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install the pinned browsers
         # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs.
+        # postinstall browser download never runs. This step is the fallback
+        # for a cold cache (main's warm job hasn't run yet, or missed) — a
+        # no-op when the binaries the restore above already placed are
+        # present.
         run: pnpm --filter @codaco/interviewer exec playwright install --with-deps chromium webkit
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
@@ -1816,10 +1991,30 @@ jobs:
     # cannot reach the Turbo remote cache. The @visual tests stay in
     # architect-e2e's container, the only place a pixel comparison means
     # anything.
+    #
+    # Sharded two ways across separate runners rather than given more
+    # Playwright `workers` on one: measured at 175 tests, `fullyParallel:
+    # true`, and Playwright's default two workers (its own default caps
+    # workers around half the runner's four vCPUs), this job spends 10.5
+    # minutes actually executing tests inside an 11.2-minute median job with
+    # almost no variance (p90 12.7m) — a hard floor that gates 22% of pull
+    # requests. Raising `workers` on that same single four-vCPU runner
+    # confronts the contention this repository's suites are documented
+    # elsewhere in this file as sensitive to (see the `test` job's
+    # `--concurrency=1` comment and its measured starvation failures at
+    # higher turbo concurrency): more workers would divide the same four
+    # vCPUs more ways, not add capacity. Splitting the fixed test count
+    # across two runners instead gives each shard's two workers a whole
+    # four-vCPU machine to itself, halving wall time without reproducing that
+    # contention.
     needs: e2e-policy
     if: ${{ !cancelled() && needs.e2e-policy.outputs.architect == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/2', '2/2']
     env:
       # Build-time PostHog kill switch. Not a Docker artifact: without it the
       # CSP-blocked analytics script load interleaves non-deterministically
@@ -1852,25 +2047,42 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restore-only, from the one union key `warm-playwright-cache` writes on
+      # pushes to main — see the comment on this same step in `test-storybook`
+      # for the full arrangement. This job needs only chromium, so it
+      # restores the firefox and webkit binaries the key also carries and
+      # never launches — measured at roughly 200 MB and about ten seconds —
+      # in exchange for never holding a second key against the ceiling.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install the pinned browsers
         # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs.
+        # postinstall browser download never runs. This step is the fallback
+        # for a cold cache (main's warm job hasn't run yet, or missed) — a
+        # no-op when the binaries the restore above already placed are
+        # present.
         run: pnpm --filter @codaco/architect exec playwright install --with-deps chromium
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
         # one for us.
         run: pnpm exec turbo run build --filter=@codaco/architect
       - name: Run functional E2E tests
-        run: pnpm --filter @codaco/architect run test:e2e:native
+        # `pnpm run` forwards an unrecognised flag straight to the underlying
+        # script (verified: `pnpm --filter @codaco/architect run
+        # test:e2e:native --shard=1/2 --list` produces the same shard split
+        # as calling `playwright test --shard=1/2` directly), so `--shard`
+        # reaches Playwright without needing the `exec playwright` form.
+        run: pnpm --filter @codaco/architect run test:e2e:native --shard=${{ matrix.shard }}
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report-architect-native
+          # Unique per shard: `matrix.shard` itself contains a `/` and is not
+          # a legal artifact name, and without a per-shard name the two
+          # shards' uploads would collide and only one report would survive.
+          name: playwright-report-architect-native-${{ strategy.job-index }}
           path: apps/architect/e2e/playwright-report/
           if-no-files-found: warn
           retention-days: 14
@@ -2145,6 +2357,36 @@ jobs:
           merge_report interviewer-e2e "$R_INTERVIEWER_PIXEL" interviewer-playwright-report
           merge_report interviewer-e2e-native "$R_INTERVIEWER_NATIVE" interviewer-playwright-report-native
           merge_report architect-e2e "$R_ARCHITECT_PIXEL" playwright-report-architect
+          # architect-e2e-native runs as a 2-way shard matrix (see that job),
+          # so each shard uploads its own numbered
+          # playwright-report-architect-native-<job-index> artifact — giving
+          # both shards the same artifact name would make their uploads
+          # collide. merge_report above assumes exactly one source directory
+          # per job, so build it a synthetic one here: copy each shard's
+          # report into its own numbered subdirectory (two independent
+          # Playwright HTML reports nested flat would clobber each other's
+          # identically-named assets) and drop a tiny index linking to both,
+          # so the PR comment's existing '<job-name>/<slug>/' link still
+          # resolves to something useful even when only one shard failed.
+          architect_native_src="reports/playwright-report-architect-native"
+          rm -rf "$architect_native_src"
+          shard_found=false
+          for shard_dir in reports/playwright-report-architect-native-*/; do
+            [ -d "$shard_dir" ] || continue
+            shard_found=true
+            shard_name=$(basename "$shard_dir")
+            mkdir -p "$architect_native_src/$shard_name"
+            cp -r "$shard_dir." "$architect_native_src/$shard_name/"
+          done
+          if [ "$shard_found" = true ]; then
+            {
+              echo '<!doctype html><title>architect-e2e-native shard reports</title>'
+              for shard_dir in "$architect_native_src"/*/; do
+                shard_name=$(basename "$shard_dir")
+                echo "<p><a href=\"./${shard_name}/\">${shard_name}</a></p>"
+              done
+            } > "$architect_native_src/index.html"
+          fi
           merge_report architect-e2e-native "$R_ARCHITECT_NATIVE" playwright-report-architect-native
           # Sweep orphaned reports AFTER merging: a directory whose slug
           # matches no live branch belongs to a deleted or merged branch (or

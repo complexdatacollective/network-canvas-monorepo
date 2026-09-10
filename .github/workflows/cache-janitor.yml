@@ -1,0 +1,285 @@
+name: Cache Janitor
+
+# GitHub caps a repository's Actions cache at 10 GB and evicts purely by
+# least-recently-used, with nothing else ever deleting an entry. Measured on
+# 10 Sep 2026 this repo sits at the cap (539 entries, 9.74 GB), so the
+# eviction always lands on the many small, frequently-recreated Turborepo
+# entries that decide whether the `test` job takes two minutes or thirty —
+# while the largest and least shareable entries (PR-scoped Playwright browser
+# bundles, per-commit CodeQL overlay databases) survive untouched. This
+# workflow removes the two kinds of dead weight this repo can identify on its
+# own: caches whose owning ref can never be read again, and CodeQL databases
+# superseded by a newer one for the same language.
+on:
+  pull_request:
+    types: [closed]
+  # A `schedule:` trigger only ever fires from the workflow file committed on
+  # the repository's default branch, so this half of the workflow is inert
+  # until this file merges to `main` — GitHub Actions ignores schedules
+  # defined on any other ref.
+  schedule:
+    # Daily, off the top of the hour to avoid piling onto whatever else runs
+    # at :00. Time is UTC.
+    - cron: '17 6 * * *'
+  workflow_dispatch: {}
+
+# One group for every trigger so a PR-close cleanup and the daily/manual
+# maintenance run can never delete or list caches at the same time — the
+# Actions cache API has no per-entry locking, and two concurrent deletes
+# racing the same key would each see the other's work as an unexplained 404.
+# Runs queue rather than cancel: a delete that's already in flight must be
+# allowed to finish, not be cut off mid-batch.
+concurrency:
+  group: cache-janitor
+  cancel-in-progress: false
+
+# No blanket permissions: each job below declares exactly what it needs.
+permissions: {}
+
+jobs:
+  # A cache is scoped to the ref that created it (GitHub Actions cache scoping
+  # rules), and a merged or closed PR's `refs/pull/<n>/merge` ref never runs
+  # again, so every cache still keyed to it is permanently unreadable dead
+  # weight from this point on — deleting it immediately, rather than waiting
+  # for LRU eviction, is what stops it from crowding out main's Turborepo
+  # entries.
+  cleanup-pr-caches:
+    # Same-repository pull requests only. A pull request opened from a fork
+    # runs with a read-only `GITHUB_TOKEN` whatever `permissions:` asks for,
+    # so the delete below would 403 rather than 404 — an error the step's
+    # tolerated-failure grep deliberately does not swallow, because a 403 on
+    # a same-repo PR would mean the workflow's permissions were wrong and
+    # must be seen. Skipping forks outright keeps that distinction sharp
+    # instead of turning every external contributor's merged PR into a red
+    # janitor run. A fork's caches are scoped to the fork and are not ours
+    # to delete in any case.
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Delete every cache scoped to this pull request's ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_REF: refs/pull/${{ github.event.number }}/merge
+        run: |
+          # `gh cache delete --all --ref <ref>` lists and pages through every
+          # cache entry for that ref itself, so no manual pagination is
+          # needed here. `--succeed-on-no-caches` turns "this PR never wrote
+          # a cache" into a clean exit instead of a failure.
+          #
+          # A delete can still legitimately 404 despite that: LRU eviction or
+          # a person clearing caches by hand can remove an entry between the
+          # list and the delete call. That race is not a broken gate, so only
+          # fail the step on an error `gh` did not already recognize and
+          # handle as "nothing to delete."
+          set +e
+          output=$(gh cache delete --all --succeed-on-no-caches \
+            --ref "$PR_REF" \
+            --repo "${{ github.repository }}" 2>&1)
+          status=$?
+          set -e
+          echo "$output"
+          if [[ $status -ne 0 ]] && ! grep -qiE '404|not found|no caches (found|to delete)' <<<"$output"; then
+            echo "::error::gh cache delete failed for $PR_REF (exit $status)"
+            exit "$status"
+          fi
+
+  # Scheduled and manual maintenance: prune superseded CodeQL overlay base
+  # databases (the LRU cap otherwise keeps whichever ones happen to be
+  # newest-touched, not newest-built) and publish a usage report so the
+  # composition measured on 10 Sep 2026 — Playwright 5.17 GB/14 entries,
+  # CodeQL 2.38 GB/7 entries (four JavaScript databases alive at once), pnpm
+  # 1.14 GB, Turborepo 0.64 GB main + 0.41 GB stale PR-scoped — stays visible
+  # without anyone re-deriving it by hand.
+  maintain-shared-caches:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Prune superseded CodeQL overlay base databases and report usage
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Raw REST calls via `github.request` rather than the rest.js
+            // sugar methods (`actions.getActionsCacheList` etc.) — the
+            // endpoint path is stable API surface, the method name is not
+            // across octokit versions.
+            const caches = await github.paginate(
+              'GET /repos/{owner}/{repo}/actions/caches',
+              { owner, repo, per_page: 100 }
+            );
+            core.info(`Fetched ${caches.length} cache entries.`);
+
+            // CodeQL overlay base databases are keyed per commit SHA
+            // (codeql-overlay-base-database-<n>-<hash>-<language>-<version>-<sha>-<runid>-<n>),
+            // so main accumulates a fresh ~604 MB JavaScript database on
+            // every push with nothing but LRU eviction ever removing one —
+            // measured with four JavaScript databases alive simultaneously.
+            // Only the newest database is ever useful as an overlay base, so
+            // keep one per language and delete the rest. Be conservative: an
+            // entry whose key does not match this exact shape is left alone
+            // rather than guessed at.
+            const CODEQL_KEY_RE =
+              /^codeql-overlay-base-database-\d+-[0-9a-f]+-([a-z]+)-[^-]+-[0-9a-f]{40}-\d+-\d+$/;
+
+            const byLanguage = new Map();
+            const unparsedCodeql = [];
+            for (const c of caches) {
+              const m = CODEQL_KEY_RE.exec(c.key);
+              if (!c.key.startsWith('codeql-overlay-base-database-')) continue;
+              if (!m) {
+                unparsedCodeql.push(c);
+                continue;
+              }
+              const lang = m[1];
+              if (!byLanguage.has(lang)) byLanguage.set(lang, []);
+              byLanguage.get(lang).push(c);
+            }
+
+            const deleted = [];
+            const deleteErrors = [];
+            for (const [lang, entries] of byLanguage) {
+              entries.sort(
+                (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)
+              );
+              const [newest, ...stale] = entries;
+              core.info(
+                `codeql/${lang}: keeping newest (id ${newest.id}, created ${newest.created_at}), ` +
+                `deleting ${stale.length} older entr${stale.length === 1 ? 'y' : 'ies'}.`
+              );
+              for (const entry of stale) {
+                try {
+                  await github.request(
+                    'DELETE /repos/{owner}/{repo}/actions/caches/{cache_id}',
+                    { owner, repo, cache_id: entry.id }
+                  );
+                  deleted.push(entry);
+                } catch (err) {
+                  // A 404 here means something else (LRU eviction, a manual
+                  // clear) already removed the entry — that is the expected
+                  // outcome of pruning, not a failure. Anything else is
+                  // logged and surfaced at the end rather than aborting the
+                  // rest of the prune.
+                  if (err.status === 404) {
+                    core.info(`codeql cache ${entry.id} was already gone (404) — treating as deleted.`);
+                    deleted.push(entry);
+                  } else {
+                    core.warning(`Failed to delete codeql cache ${entry.id} (${entry.key}): ${err.message}`);
+                    deleteErrors.push(entry);
+                  }
+                }
+              }
+            }
+            if (unparsedCodeql.length > 0) {
+              core.warning(
+                `${unparsedCodeql.length} codeql-overlay-base-database cache key(s) did not match ` +
+                'the expected shape and were left alone: ' +
+                unparsedCodeql.map((c) => c.key).join(', ')
+              );
+            }
+
+            // Usage report. Computed from the same listing the prune above
+            // used, with deleted entries subtracted, so it reflects this
+            // run's end state without a second full API pass.
+            const deletedIds = new Set(deleted.map((c) => c.id));
+            const remaining = caches.filter((c) => !deletedIds.has(c.id));
+
+            const TEN_GB = 10 * 1024 * 1024 * 1024;
+            const gib = (bytes) => (bytes / (1024 * 1024 * 1024)).toFixed(2);
+
+            function categoryOf(key) {
+              if (key.startsWith('turbogha_')) return 'turbo';
+              if (key.startsWith('codeql-overlay-base-database-')) return 'codeql';
+              if (key.startsWith('playwright-')) return 'playwright';
+              // The pnpm store cache is written by actions/setup-node's
+              // built-in `cache: pnpm` option, whose key prefix is
+              // `node-cache-`, not `pnpm-`.
+              if (key.startsWith('node-cache-')) return 'pnpm';
+              return 'other';
+            }
+
+            function summarize(entries, keyFn) {
+              const rows = new Map();
+              for (const c of entries) {
+                const k = keyFn(c);
+                const row = rows.get(k) || { count: 0, bytes: 0 };
+                row.count += 1;
+                row.bytes += c.size_in_bytes;
+                rows.set(k, row);
+              }
+              return rows;
+            }
+
+            const byCategory = summarize(remaining, (c) => categoryOf(c.key));
+            const byScope = summarize(remaining, (c) =>
+              c.ref === 'refs/heads/main' ? 'main' : 'PR-scoped'
+            );
+
+            const totalBytes = remaining.reduce((sum, c) => sum + c.size_in_bytes, 0);
+            const pct = ((totalBytes / TEN_GB) * 100).toFixed(1);
+
+            const categoryOrder = ['turbo', 'codeql', 'playwright', 'pnpm', 'other'];
+            const categoryTable = [
+              [{ data: 'Category', header: true }, { data: 'Entries', header: true }, { data: 'Size', header: true }],
+              ...categoryOrder.map((cat) => {
+                const row = byCategory.get(cat) || { count: 0, bytes: 0 };
+                return [cat, String(row.count), `${gib(row.bytes)} GB`];
+              }),
+            ];
+
+            const scopeOrder = ['main', 'PR-scoped'];
+            const scopeTable = [
+              [{ data: 'Scope', header: true }, { data: 'Entries', header: true }, { data: 'Size', header: true }],
+              ...scopeOrder.map((scope) => {
+                const row = byScope.get(scope) || { count: 0, bytes: 0 };
+                return [scope, String(row.count), `${gib(row.bytes)} GB`];
+              }),
+            ];
+
+            const codeqlLines = [...byLanguage.entries()].map(([lang, entries]) => {
+              const sorted = [...entries].sort(
+                (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)
+              );
+              const kept = sorted[0];
+              const removedCount = sorted.length - 1;
+              return `- **${lang}**: kept \`${kept.key}\` (created ${kept.created_at}), removed ${removedCount} older entr${removedCount === 1 ? 'y' : 'ies'}`;
+            });
+            if (deleteErrors.length > 0) {
+              codeqlLines.push(
+                `- ⚠️ failed to delete ${deleteErrors.length} entr${deleteErrors.length === 1 ? 'y' : 'ies'}: ` +
+                deleteErrors.map((c) => c.key).join(', ')
+              );
+            }
+            if (unparsedCodeql.length > 0) {
+              codeqlLines.push(
+                `- left ${unparsedCodeql.length} unparsed key(s) alone: ` +
+                unparsedCodeql.map((c) => c.key).join(', ')
+              );
+            }
+
+            await core.summary
+              .addHeading('Cache usage', 2)
+              .addRaw(
+                `**Total active cache size:** ${gib(totalBytes)} GB / 10 GB ceiling (${pct}%), ${remaining.length} entries.`,
+                true
+              )
+              .addHeading('By category', 3)
+              .addTable(categoryTable)
+              .addHeading('By scope', 3)
+              .addTable(scopeTable)
+              .addHeading('CodeQL overlay base database pruning', 3)
+              .addRaw(codeqlLines.length > 0 ? codeqlLines.join('\n') : 'No codeql-overlay-base-database entries found.', true)
+              .write();
+
+            if (deleteErrors.length > 0) {
+              core.setFailed(
+                `${deleteErrors.length} CodeQL overlay base database cache(s) could not be deleted; see the job summary.`
+              );
+            }

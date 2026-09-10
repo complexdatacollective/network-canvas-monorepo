@@ -29,6 +29,12 @@
         "scripts/interviewer-*-walker.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
         "scripts/posthog-cli-upload-stub.mjs",
+        // Re-measures CI latency (gate time, cache composition, seed
+        // health) from the GitHub Actions API. Nothing imports it — it is a
+        // standalone CLI run by hand or via `pnpm ci:metrics` — so it needs
+        // an explicit entry the same way posthog-cli-upload-stub.mjs above
+        // does.
+        "scripts/ci-metrics.mjs",
         // Agent hooks are invoked by Claude Code (.claude/settings.json),
         // Codex (.codex/hooks.json) and .husky/pre-push, which knip cannot
         // parse. Only the executables are entries, so the shared library's
