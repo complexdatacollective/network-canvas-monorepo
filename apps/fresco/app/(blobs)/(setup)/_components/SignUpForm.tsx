@@ -5,7 +5,7 @@ import {
   startRegistration,
 } from '@simplewebauthn/browser';
 import { useRouter } from 'next/navigation';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useMediaQuery } from 'usehooks-ts';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -21,6 +21,7 @@ import {
   type FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 import { signup } from '~/actions/auth';
 import {
   generateSignupRegistrationOptions,
@@ -132,16 +133,14 @@ export const SignUpForm = ({ sandboxMode = false }: SignUpFormProps) => {
   const { createUserSchema } = createAuthSchemas(createMessageError);
 
   const router = useRouter();
-  const [webauthnSupported, setWebauthnSupported] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyError, setPasskeyError] = useState<string | null>(null);
 
-  // Capability detection has to happen after hydration: the server has no
-  // WebAuthn API, so reading it during the first render would make the client
-  // markup disagree with the server's.
-  useEffect(() => {
-    setWebauthnSupported(browserSupportsWebAuthn());
-  }, []);
+  // The server has no WebAuthn API, so the capability check can only run once
+  // there is a browser to ask. `useHasHydrated` is false through the hydrating
+  // render — matching the server's markup — and true afterwards.
+  const hasHydrated = useHasHydrated();
+  const webauthnSupported = hasHydrated && browserSupportsWebAuthn();
 
   const showAuthMethodChoice = webauthnSupported && !sandboxMode;
 

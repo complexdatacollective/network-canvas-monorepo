@@ -1,11 +1,11 @@
 'use client';
 
 import { Copy } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { AppMessage } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 import { useToast } from '@codaco/fresco-ui/Toast';
 
 const messages = defineMessages({
@@ -35,16 +35,14 @@ export const AnonymousRecruitmentURLButton = ({
   protocolId: string;
 }) => {
   const { promise } = useToast();
-  const [url, setUrl] = useState<string | null>(null);
 
   // The deployment's origin is only knowable in the browser, and the server
-  // renders this button too, so the URL has to be filled in after hydration
-  // rather than derived during the first render.
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setUrl(`${window.location.origin}/onboard/${protocolId}`);
-    }
-  }, [protocolId]);
+  // renders this button too, so the URL stays empty through the hydrating
+  // render — matching the server's markup — and is derived from then on.
+  const hasHydrated = useHasHydrated();
+  const url = hasHydrated
+    ? `${window.location.origin}/onboard/${protocolId}`
+    : null;
 
   const handleCopyClick = () => {
     if (!url) {
