@@ -14,7 +14,7 @@ import type { StageEditorActions } from '../stage-editor-contract.ts';
 import type { StageEditTarget } from '../stageEdit.tsx';
 import { createInMemoryHost } from './host/createInMemoryHost.ts';
 import {
-  fixtureAssetContent,
+  fixtureAssetContentFor,
   fixtureAssetManifest,
   fixtureProtocolSections,
 } from './protocolFixture.ts';
@@ -95,7 +95,7 @@ export function StageEditorStoryHost({
         ...fixtureProtocolSections(),
         [sectionId({ kind: 'assets' })]: manifest,
       },
-      assetContent: assetContentFor(manifest),
+      assetContent: fixtureAssetContentFor(manifest),
       ...(createResourceId === undefined ? {} : { nextId: createResourceId }),
     });
     if (readOnly) {
@@ -163,39 +163,6 @@ const hostChrome: StageEditorActions = ({ formId, readOnly }) => (
     </SubmitButton>
   </div>
 );
-
-/**
- * The bytes behind the manifest's entries, as `renderStageEditor` seeds them.
- *
- * A stage editor asks the host what is INSIDE a data file — a roster's columns
- * are what its card, sort and search sections offer; a map layer's feature
- * properties are what a geospatial stage records a selection as — so a host
- * with no bytes answers "this file cannot be read", and every one of those
- * controls renders its failure state instead of itself. The tests' harness has
- * seeded them from the start; a story that mounts the same editor over the
- * same protocol has to serve the same files, or the two disagree about the
- * fixture.
- *
- * An asset the fixture ships a file for is seeded with that file; everything
- * else gets a placeholder body, because the editors that reference those read
- * only a resource's kind, name and size.
- */
-function assetContentFor(
-  manifest: Readonly<Record<string, unknown>>,
-): Record<string, Blob> {
-  const content: Record<string, Blob> = {};
-  for (const entry of Object.values(manifest)) {
-    if (typeof entry !== 'object' || entry === null) continue;
-    const source = Reflect.get(entry, 'source');
-    if (typeof source !== 'string') continue;
-    const bytes = fixtureAssetContent(source);
-    content[source] = new Blob(
-      [(bytes ?? new TextEncoder().encode('{}')) as BlobPart],
-      { type: 'application/json' },
-    );
-  }
-  return content;
-}
 
 const stageLabel = (document: SectionDoc): string => {
   const label = document.label;

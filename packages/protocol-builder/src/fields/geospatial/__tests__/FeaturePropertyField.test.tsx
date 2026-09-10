@@ -26,6 +26,30 @@ const EXTRA_LAYERS: Readonly<Record<string, SectionDoc>> = {
     source: 'not-really-geojson.geojson',
   },
   absent_layer: { name: 'Absent layer', type: 'geojson' },
+  bare_layer: {
+    name: 'Unlabelled layer',
+    type: 'geojson',
+    source: 'bare.geojson',
+  },
+  boroughs_layer: {
+    name: 'Boroughs',
+    type: 'geojson',
+    source: 'boroughs.geojson',
+  },
+};
+
+/** Files the protocol does not ship, for the two states one of its own cannot reach. */
+const EXTRA_BYTES: Readonly<Record<string, string>> = {
+  'bare.geojson': JSON.stringify({
+    type: 'FeatureCollection',
+    features: [{ type: 'Feature', geometry: null }],
+  }),
+  'boroughs.geojson': JSON.stringify({
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', properties: { borough: 'Queens' }, geometry: null },
+    ],
+  }),
 };
 
 /**
@@ -47,6 +71,7 @@ const openWithMapOptions = (changes: Readonly<Record<string, unknown>>) => {
     },
     sections: geospatialSections,
     assets: EXTRA_LAYERS,
+    assetBytes: EXTRA_BYTES,
   });
 };
 
@@ -66,6 +91,7 @@ describe('the property a map selection is recorded as', () => {
       stageId: 'geospatial-1',
       sections: geospatialSections,
       assets: EXTRA_LAYERS,
+      assetBytes: EXTRA_BYTES,
     });
 
     expect(offered(await awaitLayerRead())).toEqual(['name']);
@@ -135,6 +161,70 @@ describe('the property a map selection is recorded as', () => {
     const picker = screen.getByRole('combobox', { name: 'Recorded property' });
     expect(offered(picker)).toEqual(['name']);
     expect(picker).toHaveValue('name');
+  });
+
+  it('says when the layer’s features carry nothing to record', async () => {
+    openWithMapOptions({
+      dataSourceAssetId: 'bare_layer',
+      targetFeatureProperty: undefined,
+    });
+
+    expect(
+      await screen.findByText(
+        'The features in this layer carry no properties, so there is nothing to record a selection as. Choose a layer whose features are labeled.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * Not "the old properties until the new layer arrives": those belong to a
+   * layer this stage no longer uses, and offering one is offering an answer
+   * the researcher can keep. Asserted against a layer the host cannot serve,
+   * so the state the previous layer's properties would survive into is one
+   * that settles rather than one the next read closes over.
+   */
+  it('drops the previous layer’s properties as soon as another is chosen', async () => {
+    const harness = openWithMapOptions({ targetFeatureProperty: undefined });
+    const picker = await awaitLayerRead();
+    await waitFor(() => expect(offered(picker)).toEqual(['name']));
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Change the map layer' }),
+    );
+    await harness.user.click(
+      await within(await screen.findByRole('dialog')).findByRole('button', {
+        name: 'Absent layer',
+      }),
+    );
+
+    expect(
+      await screen.findByText(/holds no bytes for that resource/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: 'Recorded property' }),
+    ).toBeNull();
+  });
+
+  /**
+   * The one state a new stage passes through every time: a layer has been
+   * chosen and nothing is recorded yet. Whatever the control says here, it may
+   * not say the layer is missing — that sends the researcher back to a control
+   * they have already answered, and contradicts the failure beside it.
+   */
+  it('does not ask for a layer that has already been chosen', async () => {
+    openWithMapOptions({
+      dataSourceAssetId: 'absent_layer',
+      targetFeatureProperty: undefined,
+    });
+
+    expect(
+      await screen.findByText(/holds no bytes for that resource/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Choose a map layer first. Its features are where these properties come from.',
+      ),
+    ).toBeNull();
   });
 
   /**

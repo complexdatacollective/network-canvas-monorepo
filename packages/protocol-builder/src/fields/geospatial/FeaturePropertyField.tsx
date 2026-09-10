@@ -88,9 +88,12 @@ export default function FeaturePropertyField({
     ];
   }, [intl, isMissing, names, noLayerChosen, selected]);
 
-  const noLayer = intl.formatMessage(geospatialMessages.propertyNoLayer);
+  // Only ever what is true right now. A layer that is still being read, or one
+  // the host could not serve, is NOT "no layer chosen": saying so contradicts
+  // the failure notice above it and sends the researcher back to a control
+  // they have already answered.
   const note = noLayerChosen
-    ? noLayer
+    ? intl.formatMessage(geospatialMessages.propertyNoLayer)
     : unreadable
       ? intl.formatMessage(geospatialMessages.propertyUnreadable)
       : names !== undefined && names.length === 0
@@ -126,7 +129,7 @@ export default function FeaturePropertyField({
           emphasis="muted"
           aria-describedby={ariaDescribedBy}
         >
-          {note ?? noLayer}
+          {note}
         </Paragraph>
       ) : (
         <>

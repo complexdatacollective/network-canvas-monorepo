@@ -10,22 +10,14 @@ import { mapSource } from './sections/mapSource.tsx';
 /**
  * The map a participant is asked to point at.
  *
- * A geospatial stage asks where something is and records the answer as one
- * area of a map, so the map is authored in two sittings with the questions
- * between them.
+ * The prompts sit between the two halves of the map. What the map IS — the key
+ * that lets one be drawn at all, and the layer that says which areas can be
+ * chosen — comes first, because the property recorded from that layer is what
+ * every prompt's answer is stored as. How it looks and where it opens come
+ * last, once the researcher knows what they are asking about.
  *
- * What the map IS comes first, because nothing can be asked until it exists:
- * the key that lets a map be drawn at all, and the layer that says which areas
- * can be chosen. The prompts follow, because the property recorded from that
- * layer is what each prompt's answer is stored as. How the map LOOKS and where
- * it opens come last — those are settled once the researcher knows what they
- * are asking the participant to point at, and the starting view is usually
- * chosen to frame the answer.
- *
- * The key and the layer are stored resources. This editor never sees a file, a
- * URL or a key value: the fields hold asset ids chosen through the package's
- * resource picker, and the map behind the starting view asks the host to
- * resolve a map for an id rather than asking for the key behind it.
+ * The key and the layer are stored resources: these fields hold asset ids, and
+ * no key value can reach this editor.
  */
 export const geospatialStageEditor = defineStageEditor('Geospatial', [
   stageHeading({ documentation: 'geospatial' }),

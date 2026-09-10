@@ -35,16 +35,15 @@ type MapStatus = 'loading' | 'ready' | 'error';
 /**
  * Sets a stage's starting view by panning and zooming a real map.
  *
- * The key itself never reaches this component, and cannot: the contract's
+ * The key itself never reaches this component and cannot: the contract's
  * resource procedures consume secret material and hand back only an asset id.
  * What a host CAN answer with for that id is the URL a preview renders from —
  * a style it has credentialled on its own side — and that is what the map is
- * built with. A host that will not do that answers `unsupported-kind`, which
- * is what the package's own in-memory host does: the researcher is told the
- * map is unavailable here and sets the same two numbers by hand in the section
- * behind this dialog, which is why those boxes are the control and this is the
- * convenience. There is no path here that reads, receives, or stores an API
- * key.
+ * built with. A host that will not do that answers `unsupported-kind`, as the
+ * package's in-memory host does: the researcher is told the map is unavailable
+ * here and sets the same two numbers by hand in the section behind this
+ * dialog, which is why those boxes are the control and this is the
+ * convenience.
  */
 export default function MapPreviewDialog({
   tokenAssetId,
