@@ -22,14 +22,7 @@ export type LayoutModeFieldProps = Omit<
      * that composes this field. Absent means the wording on the card below.
      */
     manualDescription?: string;
-    /**
-     * And the same for automatic mode, where what the participant gets is not
-     * what the shared sentence describes.
-     *
-     * A network composer treats automatic layout as the state the stage OPENS
-     * in rather than as how it arranges nodes: the participant has a switch of
-     * their own on the canvas, and whichever way they leave it is remembered.
-     */
+    /** The same, for automatic mode. */
     automaticDescription?: string;
   }>;
 
@@ -76,7 +69,7 @@ export default function LayoutModeField({
           ),
       },
     ],
-    [automaticDescription, intl, manualDescription],
+    [intl, manualDescription, automaticDescription],
   );
 
   return (

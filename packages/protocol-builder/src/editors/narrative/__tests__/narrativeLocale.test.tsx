@@ -90,6 +90,21 @@ describe('the narrative sections, read in Spanish', () => {
     ).toBeInTheDocument();
   });
 
+  /** The same seam, for the automatic-mode card's own sentence. */
+  it('reads the narrative’s own automatic-mode sentence in Spanish', async () => {
+    renderStageEditor({
+      stageId: 'narrative-1',
+      locale: 'es',
+      editor: narrativeEditor,
+    });
+
+    expect(
+      await screen.findByText(
+        'Organiza los nodos mediante una simulación de fuerzas físicas, como atracción y repulsión. Solo se organizan los nodos para los que el atributo con el que la vista predefinida los coloca tenga posición; el resto se queda fuera del lienzo, igual que en el modo manual. El participante puede pausar y reanudar la simulación, y solo puede mover los nodos manualmente si «Permitir mover nodos» está activado.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   /**
    * An attribute the codebook has lost is named by the id it left behind,
    * spliced into the Spanish sentence rather than into the English one.
