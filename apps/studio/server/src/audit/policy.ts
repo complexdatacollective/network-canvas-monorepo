@@ -40,6 +40,35 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
     kind: 'none',
     reason: 'Lease release is explicitly excluded from the team audit log.',
   },
+  // The protocol-builder host (#1483). Its writes are the same domain
+  // mutation `protocols.commitSection` is, so they carry the same required
+  // event; its locks are the same lease coordination `acquireSection` is, so
+  // they carry none. Staging and discarding an import commit nothing at all —
+  // a staged file lives in the editing process until the submit that names it
+  // promotes it, and that submit is the audited write.
+  'protocolBuilder.submit': { kind: 'required' },
+  'protocolBuilder.create': { kind: 'required' },
+  'protocolBuilder.delete': { kind: 'required' },
+  'protocolBuilder.refactor.deleteVariable': { kind: 'required' },
+  'protocolBuilder.refactor.deleteEntityType': { kind: 'required' },
+  'protocolBuilder.acquireLock': {
+    kind: 'none',
+    reason: 'Lease acquisition is explicitly excluded from the team audit log.',
+  },
+  'protocolBuilder.releaseLock': {
+    kind: 'none',
+    reason: 'Lease release is explicitly excluded from the team audit log.',
+  },
+  'protocolBuilder.resources.stage': {
+    kind: 'none',
+    reason:
+      'A staged import is held in the editing process and written by nothing; only the submit that promotes it reaches storage, and that is audited.',
+  },
+  'protocolBuilder.resources.discard': {
+    kind: 'none',
+    reason:
+      'Discarding a staged import drops process-local state; no stored bytes, manifest entry or revision existed to remove.',
+  },
 } as const satisfies Record<string, AuditPolicy>;
 
 export const NON_RPC_MUTATION_AUDIT_POLICIES = {

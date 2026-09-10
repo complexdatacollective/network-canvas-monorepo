@@ -28,7 +28,7 @@ export class ProtocolCommandAuthorizationError extends Error {
   }
 }
 
-type LockedProtocolDraft = {
+export type LockedProtocolDraft = {
   protocolId: string;
   draftId: string;
   protocolLabel: string;
@@ -36,7 +36,7 @@ type LockedProtocolDraft = {
 
 const teamStore = new TeamStore();
 
-async function lockProtocolActorMembership(
+export async function lockProtocolActorMembership(
   client: pg.PoolClient,
   context: AuditedCommandContext,
 ): Promise<void> {
@@ -70,7 +70,7 @@ async function lockProtocolCreationActor(
   }
 }
 
-async function lockProtocolDraft(
+export async function lockProtocolDraft(
   client: pg.PoolClient,
   input: { teamId: string; protocolId: string; draftId: string },
 ): Promise<LockedProtocolDraft> {
@@ -98,7 +98,7 @@ async function lockProtocolDraft(
   };
 }
 
-function protocolEventContext(
+export function protocolEventContext(
   auditContext: LockedAuditedCommandContext,
   protocol: {
     protocolId: string;
