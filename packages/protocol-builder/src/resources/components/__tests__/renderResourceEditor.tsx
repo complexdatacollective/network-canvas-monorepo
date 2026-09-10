@@ -22,6 +22,7 @@ import {
   type ResourceClient,
 } from '../../client.tsx';
 import type { ResourceDescriptor } from '../../types.ts';
+import { TEST_EDIT_ID } from './resourceContext.tsx';
 import {
   committedManifest,
   createResourceHost,
@@ -58,6 +59,11 @@ export type RenderedResourceEditor = Readonly<{
   host: InMemoryHost;
   /** The client the editor is mounted over, which may be a wrapped one. */
   client: ProtocolBuilderClient;
+  /**
+   * The edit this editor has open, which is what the host holds its staged
+   * files under. A test staging or discarding through the host names it.
+   */
+  editId: string;
   /** Everything the stage form currently holds, by field name. */
   formValues: () => Record<string, unknown>;
   fieldValue: (name: string) => unknown;
@@ -127,7 +133,7 @@ export function renderResourceEditor(
   render(
     <DialogProvider>
       <ProtocolBuilder client={client} protocolId={host.protocolId}>
-        <ResourceClientProvider>
+        <ResourceClientProvider editId={TEST_EDIT_ID}>
           <CaptureResourceClient />
           <StageEditSession target={{ sectionId: STAGE_SECTION }}>
             <StageEditorShell {...(actions === undefined ? {} : { actions })}>
@@ -148,6 +154,7 @@ export function renderResourceEditor(
   return {
     host,
     client,
+    editId: TEST_EDIT_ID,
     formValues,
     fieldValue: (name: string): unknown => formValues()[name],
     resourceClient: () => {
@@ -156,7 +163,7 @@ export function renderResourceEditor(
       }
       return resources.current;
     },
-    staged: () => stagedResources(client, host.protocolId),
+    staged: () => stagedResources(client, host.protocolId, TEST_EDIT_ID),
     manifest: () => committedManifest(host),
   };
 }

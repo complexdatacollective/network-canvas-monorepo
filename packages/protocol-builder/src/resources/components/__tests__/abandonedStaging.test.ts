@@ -1,12 +1,15 @@
 import { expect, it } from 'vitest';
 
-import { withResourceProcedures } from '../../../testing/withResourceProcedures.ts';
 import type { ResourceClient } from '../../client.tsx';
 import type { ResourceDescriptor } from '../../types.ts';
 import { discardAbandonedStaging } from '../abandonedStaging.ts';
 import { flushPendingWork } from './asyncControls.ts';
-import { renderResourceClient } from './resourceContext.tsx';
-import { createResourceHost, stagedResources } from './resourceHost.ts';
+import { renderResourceClient, TEST_EDIT_ID } from './resourceContext.tsx';
+import {
+  createResourceHost,
+  stagedResources,
+  withResourceProcedures,
+} from './resourceHost.ts';
 
 async function stageAnImage(
   resources: ResourceClient,
@@ -32,7 +35,9 @@ it('drops staging nobody is waiting for, and reports nothing', async () => {
   await flushPendingWork();
 
   // The host is not left holding a file no field will ever name.
-  expect(await stagedResources(host.client, host.protocolId)).toEqual([]);
+  expect(
+    await stagedResources(host.client, host.protocolId, TEST_EDIT_ID),
+  ).toEqual([]);
 });
 
 it('carries a host that throws no further than itself', async () => {

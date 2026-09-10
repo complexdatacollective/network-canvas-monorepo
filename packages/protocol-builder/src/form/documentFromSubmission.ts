@@ -26,13 +26,12 @@ import type { StageFormStoreApi } from './stageEditorContext.ts';
  */
 export type DormantField = Readonly<{
   name: string;
-  /** The structural path the form store filed the value under. */
+  /** Absent for a name the store never resolved to a path in the document. */
   path?: ObjectPath;
   value: FieldValue;
 }>;
 
 export type DocumentSubmission = Readonly<{
-  /** The document as the editor currently holds it. */
   currentFields: StageFormDraft;
   /** What the form handed the submit handler: mounted fields only. */
   submittedValues: Readonly<Record<string, FieldValue>>;
@@ -90,7 +89,9 @@ export type DocumentSubmission = Readonly<{
  * 3. A hidden field's value is written back where it belongs. Hiding a field
  *    is not a decision about its value.
  * 4. A field holding nothing is REMOVED rather than set to anything, whether
- *    it was discarded or is simply on screen holding nothing. Absence is how
+ *    it was discarded or is simply on screen holding nothing — except that a
+ *    caller asking to `keep` what a visible control emptied gets it written
+ *    back as it stands, for the reason `emptied` gives. Absence is how
  *    the protocol schema spells "this capability is off"; `null` is not a
  *    value it accepts anywhere, and neither is the `{}` that writing an
  *    absence INTO a container would leave standing where the container ought
