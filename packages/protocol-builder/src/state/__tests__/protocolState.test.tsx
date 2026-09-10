@@ -4,6 +4,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Component, StrictMode, useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -11,8 +13,6 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import type { ProtocolBuilderClient } from '../../contract/contract.ts';
-import type { ProtocolEvent } from '../../contract/schemas.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { createInMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';

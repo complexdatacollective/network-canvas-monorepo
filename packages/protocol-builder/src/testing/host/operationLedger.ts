@@ -1,6 +1,8 @@
+import type {
+  ResourceDescriptor,
+  Revision,
+} from '@codaco/protocol-builder-core/contract/schemas';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
-
-import type { ResourceDescriptor, Revision } from '../../contract/schemas.ts';
 
 /** What one write already did, for the retry that asks about it again. */
 export type CompletedWrite = Readonly<{

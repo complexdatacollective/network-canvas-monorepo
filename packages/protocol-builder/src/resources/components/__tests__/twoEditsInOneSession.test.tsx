@@ -1,7 +1,8 @@
 import { act, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+
 import {
   useResourceClient,
   useStagedResources,

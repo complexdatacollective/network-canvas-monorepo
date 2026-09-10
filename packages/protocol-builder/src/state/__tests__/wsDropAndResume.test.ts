@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
+import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { streamProtocolEvents } from '../../state/channel.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
 import {
   createWebSocketHost,
   type WebSocketHost,
 } from '../../testing/host/websocketHost.ts';
-import type { ProtocolEvent } from '../schemas.ts';
+import { streamProtocolEvents } from '../channel.ts';
 
 /** A fresh idempotency key: every write below is its own intent. */
 let writes = 0;
