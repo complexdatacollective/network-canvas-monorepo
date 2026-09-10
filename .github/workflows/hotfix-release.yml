@@ -92,7 +92,12 @@ jobs:
     # protocol-builder. Its conformance suites need a Postgres on 127.0.0.1:54318
     # and refuse to skip under CI, so without this service the verify step
     # aborts before anything is released (run 34223425194 did exactly that).
-    # Mirrors the `test` job's service in ci-and-release.yml.
+    # Same image and settings as the Postgres that ci-and-release.yml's
+    # `seed-turbo-cache` job declares. Not a copy of the `test` job's, which
+    # no longer has one: that job is sharded, only one shard holds a suite
+    # needing a database, and `services:` cannot be varied per matrix leg, so
+    # it starts an equivalent container from a step. This job runs one
+    # unsharded verify, so a job-level service is still the simpler fit.
     services:
       postgres:
         image: postgres:18
