@@ -511,6 +511,19 @@ type FormStoreState = {
 
   // Form reset
   resetForm: () => void;
+
+  /**
+   * Moves every field's baseline up to what it currently holds, without
+   * touching a single displayed value.
+   *
+   * For a write the host already applied — the case `resetForm` does not
+   * cover, since that discards the current value back to the old baseline
+   * rather than keeping it. Called after a save the protocol took, so the
+   * values just submitted stop counting as a draft: `selectIsFormDirty`
+   * compares `value` against `initialValue`, and only this brings the second
+   * one forward.
+   */
+  rebaseForm: () => void;
 };
 
 /**
@@ -1732,6 +1745,27 @@ export const createFormStore = (
           state.isDirty = false;
           syncPublicFields(state.fields, fieldRecords);
           state.isValid = calculateFormValidity(fieldRecords, []);
+        });
+      },
+
+      rebaseForm: () => {
+        set((state) => {
+          fieldRecords.forEach((fieldState, fieldName) => {
+            fieldRecords.set(fieldName, {
+              ...fieldState,
+              initialValue: fieldState.value,
+            });
+          });
+          dormantRecords.forEach((fieldState, fieldName) => {
+            dormantRecords.set(fieldName, {
+              ...fieldState,
+              initialValue: fieldState.value,
+            });
+          });
+
+          state.isDirty = false;
+          syncPublicFields(state.fields, fieldRecords);
+          syncPublicFields(state.dormantValues, dormantRecords);
         });
       },
 
