@@ -103,6 +103,10 @@
     "defaultMessage": "Delete this {itemLabel}?",
     "description": "Title of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
   },
+  "frescoUi.arrayField.deleteUnavailable": {
+    "defaultMessage": "This list stopped accepting changes while you were confirming, so nothing was removed. Try again once the list can be edited.",
+    "description": "Shown inside a delete confirmation when the list it was opened on stopped accepting changes while the reader was still deciding, so nothing was deleted."
+  },
   "frescoUi.arrayField.emptyState": {
     "defaultMessage": "No items added yet. Click \"Add Item\" to get started.",
     "description": "Default empty state of the list field; mention the add button by its default label."

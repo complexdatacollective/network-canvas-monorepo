@@ -416,9 +416,9 @@ describe('the sort order a prompt carries', () => {
 });
 
 /**
- * Deleting the only rule, through the row's own remove control and its
- * confirmation. Only the confirmation's button is reachable while it is open;
- * the row's own is inert behind it, so both clicks name the same button.
+ * Deleting the only rule, through the row's own remove control and the
+ * confirmation the list raises for it. Only the confirmation's button is
+ * reachable while it is open; the row's own is inert behind it.
  */
 async function removeTheOnlyRule(
   harness: Readonly<{ user: { click(element: Element): Promise<void> } }>,
@@ -427,7 +427,7 @@ async function removeTheOnlyRule(
     await screen.findByRole('button', { name: 'Remove item' }),
   );
   await harness.user.click(
-    await screen.findByRole('button', { name: 'Remove item' }),
+    await screen.findByRole('button', { name: 'Delete item' }),
   );
   await waitFor(() =>
     expect(

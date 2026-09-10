@@ -95,10 +95,6 @@
     "defaultMessage": "option value",
     "description": "What the researcher was entering, named inside the sentence that refuses it: the stored value of one option of a categorical or ordinal attribute, as opposed to the label a participant reads. Interpolated mid-sentence after \"Not a valid\", so it is lower case."
   },
-  "protocolBuilder.arrayField.removalUnavailableRefusal": {
-    "defaultMessage": "This list stopped accepting changes while you were confirming, so this {itemLabel} was not removed. Remove it again once the list can be edited.",
-    "description": "Shown inside a removal confirmation when the list stopped accepting changes while the researcher was reading it, so nothing was deleted. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
-  },
   "protocolBuilder.arrayField.removeRow": {
     "defaultMessage": "Remove {itemLabel}",
     "description": "Action that deletes one row of a list — the accessible name of the button on the row. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
@@ -110,10 +106,6 @@
   "protocolBuilder.arrayField.rowEditorFailed": {
     "defaultMessage": "This editor could not be shown, so there is nothing to fill in here. Close it and try again. If it keeps happening, the problem is in this interface’s editor rather than in your protocol.",
     "description": "Shown in place of the fields of an editing dialog when the interface’s own editor code threw while rendering. Says the fault is in the software rather than in anything the researcher wrote, so they do not go looking for a mistake in their protocol."
-  },
-  "protocolBuilder.arrayField.rowReplacedRefusal": {
-    "defaultMessage": "This {itemLabel} was replaced while you were confirming, so nothing was removed. Check the list and remove it again if you still want to.",
-    "description": "Shown inside a removal confirmation when the row it was opened on has been replaced by a different one while the researcher was reading it, so nothing was deleted. itemLabel is the list’s own noun for one of its rows — \"prompt\", \"option\", \"item\" — already in the reader’s language."
   },
   "protocolBuilder.arrayField.rowRequired": {
     "defaultMessage": "Required",
@@ -1545,11 +1537,7 @@
   },
   "protocolBuilder.multiSelect.removeItem": {
     "defaultMessage": "Remove item",
-    "description": "Action that deletes one row of a list. Used as the button on the row, as the title of the confirmation it raises, and as that confirmation’s own confirm button."
-  },
-  "protocolBuilder.multiSelect.removeItemDescription": {
-    "defaultMessage": "Are you sure you want to remove this item?",
-    "description": "Body of the confirmation raised when a researcher deletes one row of a list."
+    "description": "Accessible name of the button that deletes one row of a list."
   },
   "protocolBuilder.multiSelect.reorderItem": {
     "defaultMessage": "Reorder item {position} of {count, number}",
@@ -1915,17 +1903,9 @@
     "defaultMessage": "option",
     "description": "Noun for one row of the list of options a categorical or ordinal attribute offers. Interpolated mid-sentence into things said ABOUT a row (\"This option was replaced…\"), so it is lower case and singular."
   },
-  "protocolBuilder.option.removeOption": {
-    "defaultMessage": "Remove option",
-    "description": "Action that deletes one option from the list. Used as the title of the confirmation it raises and as that confirmation’s own confirm button."
-  },
   "protocolBuilder.option.removeOptionAt": {
     "defaultMessage": "Remove option {position}",
     "description": "Accessible name of the button that deletes one option. position is the option’s own place in the list, counting from one — the only thing that tells two blank options apart."
-  },
-  "protocolBuilder.option.removeOptionDescription": {
-    "defaultMessage": "Are you sure you want to remove this option?",
-    "description": "Body of the confirmation raised when a researcher deletes one option from the list."
   },
   "protocolBuilder.option.reorderOption": {
     "defaultMessage": "Reorder option {position} of {count, number}",

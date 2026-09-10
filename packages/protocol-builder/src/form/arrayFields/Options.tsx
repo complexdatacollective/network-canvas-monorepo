@@ -6,19 +6,22 @@ import ArrayField, {
   type ArrayFieldProps,
 } from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import { normalizeForComparison } from '@codaco/shared-consts';
 
-import Option, { OptionsContext, type OptionValue } from './Option.tsx';
+import {
+  invalidVariableName,
+  isSameAnswer,
+  variableNameSubjects,
+} from './cellRules.ts';
+import Option, {
+  optionNoun,
+  OptionsContext,
+  type OptionValue,
+} from './Option.tsx';
 import {
   isOptionComplete,
   isOptionLabelEmpty,
   isOptionValueEmpty,
 } from './optionCompleteness.ts';
-import { arrayScopedValues } from './RowField.tsx';
-import {
-  allowedVariableNameRow,
-  variableNameSubjects,
-} from './rowValidators.ts';
 
 export type { OptionValue } from './Option.tsx';
 
@@ -86,21 +89,13 @@ const completeOptions = (value: unknown) =>
     : undefined;
 
 /**
- * Strings compare case-insensitively and under Unicode canonical equivalence,
- * matching `uniqueRowAttribute` — the rule the rows run — so the array and its
- * rows never disagree about which entries clash. See shared-consts'
- * `canonical-text` for why canonical equivalence is part of it.
+ * Compared exactly as the rows compare themselves (`isSameAnswer`), so the
+ * array and its rows never disagree about which entries clash.
  */
-const hasDuplicates = (values: unknown[]) => {
-  const seen = new Set<unknown>();
-  for (const value of values) {
-    const key =
-      typeof value === 'string' ? normalizeForComparison(value) : value;
-    if (seen.has(key)) return true;
-    seen.add(key);
-  }
-  return false;
-};
+const hasDuplicates = (values: unknown[]) =>
+  values.some((value, index) =>
+    values.slice(index + 1).some((other) => isSameAnswer(value, other)),
+  );
 
 const readOptions = (value: unknown): Record<string, unknown>[] =>
   Array.isArray(value)
@@ -112,8 +107,8 @@ const readOptions = (value: unknown): Record<string, unknown>[] =>
 
 /**
  * Duplicate values export as indistinguishable answers, so the ARRAY has to
- * reject them: the rows run `uniqueRowAttribute` too, but a row is not a
- * registered field (see RowField) and can only display its error — nothing
+ * reject them: a row reports the clash where the researcher is working, but a
+ * row is not a registered field and can only display its error — nothing
  * carries it into the form's validity. Incomplete entries are `completeOptions`'
  * business and are ignored here so one edit does not raise two errors.
  */
@@ -136,18 +131,13 @@ const uniqueOptionLabels = (value: unknown) =>
     ? createMessageError(messages.duplicateLabels)
     : undefined;
 
-// Runs the rows' own rule so the array and its rows can never disagree about
-// which characters — or which wording — apply.
-const validateOptionValue = allowedVariableNameRow(
-  variableNameSubjects.optionValue,
-);
-
 /**
- * The array counterpart of the rows' `allowedVariableNameRow`. An option value
- * has to be an NMTOKEN because it becomes an XML export key and a CSV column
- * header (`${attributeName}_${option.value}`), and the row's own message is
- * display-only (see RowField): collapsing the row hides it entirely while
- * keeping the value, so without this the protocol ships with a value the
+ * The array counterpart of the rows' own name check, running the same rule so
+ * the two can never disagree about which characters — or which wording —
+ * apply. An option value has to be an NMTOKEN because it becomes an XML export
+ * key and a CSV column header (`${attributeName}_${option.value}`), and the
+ * row's own message is display-only: collapsing the row hides it entirely
+ * while keeping the value, so without this the protocol ships with a value the
  * researcher was told was invalid.
  *
  * Values are stringified because `parseOptionValue` stores numeric-looking
@@ -161,7 +151,10 @@ const allowedOptionValues = (value: unknown) =>
     .map((option) => option.value)
     .filter((optionValue) => !isOptionValueEmpty(optionValue))
     .map((optionValue) =>
-      validateOptionValue(String(optionValue), undefined, ''),
+      invalidVariableName(
+        String(optionValue),
+        variableNameSubjects.optionValue,
+      ),
     )
     .find((message) => message !== undefined);
 
@@ -172,9 +165,9 @@ const allowedOptionValues = (value: unknown) =>
  * so a call site cannot silently keep some and drop others.
  *
  * These are the rules that can actually REFUSE a save. Each has a row-level
- * twin that only displays (see RowField), and the pairing is deliberate: the
- * row explains the problem where the researcher is working, the array is what
- * stops the protocol being saved with it.
+ * twin that only displays, and the pairing is deliberate: the row explains the
+ * problem where the researcher is working, the array is what stops the
+ * protocol being saved with it.
  */
 export const optionsValidation = {
   required: MINIMUM_OPTIONS_MESSAGE,
@@ -198,6 +191,7 @@ export type OptionsProps = Omit<
   | 'immediateAdd'
   | 'itemClasses'
   | 'itemComponent'
+  | 'itemLabel'
   | 'itemTemplate'
   | 'onOperation'
   | 'sortable'
@@ -220,9 +214,10 @@ export type OptionsProps = Omit<
  * variables.
  *
  * Rendered as `<Field component={Options} … />`, so the whole
- * list is ONE field value; rows validate locally (see RowField) rather than
- * registering `options[0].label` in the form store, which would let a deleted
- * option's dormant value reappear in the saved variable.
+ * list is ONE field value; a row's cells judge themselves and render through
+ * `UnconnectedField` rather than registering `options[0].label` in the form
+ * store, which would let a deleted option's dormant value reappear in the
+ * saved variable.
  */
 export default function Options({
   value = EMPTY_OPTIONS,
@@ -234,11 +229,7 @@ export default function Options({
 }: OptionsProps) {
   const intl = useAppIntl();
   const context = useMemo(
-    () => ({
-      arrayName: name,
-      allValues: arrayScopedValues(name, value),
-      showArrayError: ariaInvalid,
-    }),
+    () => ({ arrayName: name, rows: value, showArrayError: ariaInvalid }),
     [ariaInvalid, name, value],
   );
 
@@ -258,10 +249,10 @@ export default function Options({
         itemTemplate={itemTemplate}
         itemClasses="p-0! shadow-none"
         addButtonLabel={addButtonLabel}
+        itemLabel={optionNoun}
         emptyStateMessage={intl.formatMessage(messages.emptyState)}
         immediateAdd
         sortable
-        confirmDelete={false}
       />
     </OptionsContext>
   );

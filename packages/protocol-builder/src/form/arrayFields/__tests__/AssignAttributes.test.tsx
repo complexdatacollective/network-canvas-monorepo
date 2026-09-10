@@ -333,8 +333,8 @@ describe('a stage document holding something that is not a list', () => {
  * content whenever the value is replaced — which holds a row's update handle
  * on it however the list moves around it, and cannot hold it there when the
  * row's own content is what changed. The deletion path already answers this by
- * re-checking the row it was opened on (`useConfirmRowRemoval`); the creation
- * path is the same window.
+ * removing by the row's own identity rather than by a handle captured when
+ * the dialog opened; the creation path is the same window.
  */
 describe('a variable created while the list is moving', () => {
   const openList = (
