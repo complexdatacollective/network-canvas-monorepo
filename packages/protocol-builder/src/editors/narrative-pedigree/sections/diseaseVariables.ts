@@ -71,10 +71,17 @@ export type DiseaseVariableInput = Readonly<{
  * The attributes a disease may be mapped to.
  *
  * Four exclusions, and every one of them is stated again in
- * {@link diseasePickIssue}, because the picker decides what may be CHOSEN and
- * that decides what may be SAVED: an attribute that stopped qualifying while
- * the dialog was open, or a row an import brought in, never went through the
- * picker at all.
+ * {@link diseasePickIssue}, because the picker only decides what may be
+ * CHOSEN: an attribute that stopped qualifying while the dialog was open, or a
+ * row an import brought in, never went through the picker at all.
+ *
+ * What the second asking is FOR differs by where it is asked. In the dialog it
+ * refuses the pick, which is the researcher's own decision being judged as
+ * they make it. On a row already in the list — {@link diseaseRowIssue} — it
+ * reports, and the stage still saves: what an attribute is, and whether it is
+ * there at all, is the codebook's fact rather than this stage's, and a draft
+ * is allowed to be invalid across sections while a researcher works out which
+ * side to repair. Publication is where that is enforced.
  *
  * - The attribute has to be a boolean the source pedigree's node type has. A
  *   disease is drawn from an affected-or-not answer, and nothing else can
@@ -191,4 +198,31 @@ export function diseasePickIssue(
     return createMessageError(narrativePedigreeMessages.diseasesNotRecorded);
   }
   return undefined;
+}
+
+/**
+ * What is wrong with the attribute a row in the list ALREADY holds, or
+ * `undefined` when nothing is.
+ *
+ * {@link diseasePickIssue} asked with the row's own attribute as both the pick
+ * and the committed mapping, which leaves exactly the rules a researcher
+ * cannot have broken from inside this stage: the attribute deleted, re-typed,
+ * or claimed by one of the pedigree's own interface slots. Everything the
+ * committed value escapes there — a form elsewhere validating it, a nomination
+ * prompt that no longer records it — is escaped here for the same reason it is
+ * escaped in the dialog, and the list's own gate is what reports the second of
+ * them.
+ *
+ * Answering from the row rather than from the picker is the whole point: no
+ * pick is being made, so the only way these three ever reach a researcher is
+ * for the row to say so where it sits.
+ */
+export function diseaseRowIssue(
+  input: DiseaseVariableInput & Readonly<{ variableId: unknown }>,
+): string | undefined {
+  return diseasePickIssue({
+    ...input,
+    committedVariable:
+      typeof input.variableId === 'string' ? input.variableId : '',
+  });
 }

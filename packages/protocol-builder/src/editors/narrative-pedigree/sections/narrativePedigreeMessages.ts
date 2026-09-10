@@ -53,14 +53,14 @@ export const narrativePedigreeMessages = defineMessages({
     id: 'protocolBuilder.narrativePedigree.sourceEmptyTitle',
     defaultMessage: 'No pedigree to read',
     description:
-      'Heading of the notice shown in place of the source-stage control when the interview holds no family tree this stage could draw.',
+      'Heading of the notice shown above the source-stage control when the interview holds no family tree this stage could draw. The control itself stays on screen, disabled.',
   },
   sourceEmptyMessage: {
     id: 'protocolBuilder.narrativePedigree.sourceEmptyMessage',
     defaultMessage:
       'This interview has no Family Pedigree stage before this one. Add one, or move this stage later, before configuring it.',
     description:
-      'Body of the notice shown in place of the source-stage control when nothing in the interview qualifies. "Family Pedigree" names the kind of interview step that collects a family tree.',
+      'Body of the notice shown above the source-stage control when nothing in the interview qualifies; the control itself stays on screen, disabled. "Family Pedigree" names the kind of interview step that collects a family tree.',
   },
   sourceProblemTitle: {
     id: 'protocolBuilder.narrativePedigree.sourceProblemTitle',
@@ -295,9 +295,9 @@ export const narrativePedigreeMessages = defineMessages({
   diseaseVariableEmpty: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableEmpty',
     defaultMessage:
-      'The source pedigree does not record who is affected by anything yet. Add a nomination prompt to it asking who has this condition, and it can be mapped here.',
+      'There is no attribute for this disease to map. A disease can only map an attribute that a nomination prompt of the source pedigree records and that no other disease already maps. Add a nomination prompt to that pedigree asking who has this condition, and it can be mapped here.',
     description:
-      'Said in place of the affected-status list when no nomination prompt of the source Family Pedigree stage records an attribute this stage could draw. It names the one place the attribute can come from, because a disease mapped to anything else marks nobody. "Nomination prompts" is the name of that part of the pedigree editor.',
+      'Said in place of the affected-status list when the source Family Pedigree stage leaves this disease nothing to map — either because no nomination prompt of it records an attribute this stage could draw, or because every attribute it does record is already mapped by another disease. It states the rule and what to do rather than which of the two it is, because the remedy is the same nomination prompt either way. "Nomination prompts" is the name of that part of the pedigree editor.',
   },
   diseaseVariableRequired: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableRequired',

@@ -1,11 +1,17 @@
-import type { ComponentType } from 'react';
+import { useMemo, useRef, type ComponentType } from 'react';
 
+import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import FeaturePropertyField from '../../../fields/geospatial/FeaturePropertyField.tsx';
 import { geospatialMessages } from '../../../fields/geospatial/geospatialMessages.ts';
+import {
+  useGeoJsonFeatureProperties,
+  type GeoJsonPropertiesState,
+} from '../../../fields/geospatial/useGeoJsonFeatureProperties.ts';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
@@ -19,6 +25,69 @@ import {
 const ResourcePicker = AssetPickerField as ComponentType<
   Record<string, unknown>
 >;
+
+const PROPERTY_MISSING = createMessageError(
+  geospatialMessages.propertyMissingRefusal,
+);
+
+const LAYER_STILL_READING = createMessageError(
+  geospatialMessages.propertyLayerReading,
+);
+
+/**
+ * The rule that refuses a property the chosen layer does not have.
+ *
+ * Both halves of the pairing are on this stage — the layer, and the property
+ * every selection is recorded as — so a stage that holds one against the other
+ * is a stage this section can refuse rather than report: the interview would
+ * record nothing for every area the participant chose, and neither the
+ * protocol schema nor anything else downstream reads the layer's bytes to
+ * notice. It is the SAVE that has to stop, because swapping the layer is
+ * exactly the move that breaks the pair, and the researcher has both controls
+ * in front of them.
+ *
+ * Never on absent knowledge, and "absent" is two different states that
+ * `names` alone cannot tell apart — it is dropped before each read starts, so
+ * a layer being read right now looks exactly like one that could not be read
+ * at all:
+ *
+ * - **still being read** (`busy`): the answer is coming, so the save WAITS for
+ *   it rather than taking the property on trust. Refused, in as many words,
+ *   and the researcher saves again a moment later. A save let through here is
+ *   the whole gate defeated — swap the layer, save before the read lands, and
+ *   the mismatched pair is committed.
+ * - **could not be read** (a failure, or bytes that are not GeoJSON): nothing
+ *   will ever be known about this layer, and a gate that refused would trap
+ *   the researcher behind a file it cannot see, over a property that may well
+ *   be there. Accepted.
+ *
+ * Absence of the property itself is left to the field's own `required`, which
+ * is the same division `centerIssue` keeps.
+ *
+ * The rule is built once and reads the layer through a ref, as
+ * `usePanelsValidation` does: a rule rebuilt whenever the read settles is a
+ * new validator on a mounted field, and the form re-runs its rules on the
+ * submit anyway — which is the moment this answer has to be current.
+ */
+function usePropertyValidation(properties: GeoJsonPropertiesState) {
+  const read = useRef<GeoJsonPropertiesState>(properties);
+  read.current = properties;
+
+  return useMemo(
+    () => ({
+      custom: messageRuleValidation([
+        (value: unknown) => {
+          if (typeof value !== 'string' || value === '') return undefined;
+          const { names, busy } = read.current;
+          if (busy) return LAYER_STILL_READING;
+          if (names === undefined) return undefined;
+          return names.includes(value) ? undefined : PROPERTY_MISSING;
+        },
+      ]),
+    }),
+    [],
+  );
+}
 
 /**
  * What the map IS: the key that lets one be drawn, and the layer that says
@@ -38,6 +107,13 @@ const ResourcePicker = AssetPickerField as ComponentType<
 export default function MapSourceSection() {
   const intl = useAppIntl();
   const dataSourceAssetId = useStageValue(LAYER_FIELD);
+  const layerAssetId =
+    typeof dataSourceAssetId === 'string' ? dataSourceAssetId : undefined;
+  // Read HERE, once, rather than inside the control: the same properties
+  // decide what the control offers and what the save gate below will accept,
+  // and two readers would fetch the layer twice to answer one question.
+  const properties = useGeoJsonFeatureProperties(layerAssetId);
+  const propertyValidation = usePropertyValidation(properties);
 
   return (
     <>
@@ -73,14 +149,12 @@ export default function MapSourceSection() {
         <Field<typeof FeaturePropertyField>
           name={PROPERTY_FIELD}
           component={FeaturePropertyField}
-          dataSourceAssetId={
-            typeof dataSourceAssetId === 'string'
-              ? dataSourceAssetId
-              : undefined
-          }
+          dataSourceAssetId={layerAssetId}
+          properties={properties}
           label={intl.formatMessage(geospatialMessages.propertyLabel)}
           hint={intl.formatMessage(geospatialMessages.propertyHint)}
           required={REQUIRED}
+          {...propertyValidation}
         />
       </BuilderSection>
     </>

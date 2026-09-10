@@ -77,7 +77,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * Everything else a row's attribute has to be is `diseasePickIssue`, which the
  * picker in the dialog is built from as well — so the two cannot disagree
  * about which picks are legal, which would read as the editor changing its
- * mind between the pick and the save.
+ * mind between the pick and the save. The rows in this list ask it again for
+ * themselves (`DiseasePreview`), and there it REPORTS: an attribute deleted,
+ * re-typed or claimed by a pedigree slot is the codebook's doing rather than
+ * this stage's, and a draft may be invalid across sections while a researcher
+ * decides which side to repair.
  */
 export default function DiseasesSection() {
   const intl = useAppIntl();
