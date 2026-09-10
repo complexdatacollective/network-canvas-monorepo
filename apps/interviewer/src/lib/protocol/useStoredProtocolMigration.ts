@@ -128,6 +128,7 @@ export function useStoredProtocolMigration(
       .catch((cause: unknown): StoredProtocolMigrationResult => {
         // The sweep is written not to reject. If it ever did, the app's first
         // paint is waiting on this promise, so nothing may be left holding it.
+        // oxlint-disable-next-line no-console -- only diagnostic for a contract violation (migrateStoredProtocols is documented never to reject) that would otherwise silently stall first paint
         console.error('The stored-protocol migration check failed', cause);
         return { migrated: [], failed: [] };
       })
