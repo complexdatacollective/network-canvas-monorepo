@@ -264,6 +264,7 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `censusPrompts`            | `sections/prompts/`                        | family E    |
 | `removeAfterConsideration` | `sections/RemoveAfterConsiderationSection` | family E    |
 | `ordinalColor`             | `fields/OrdinalColorField`                 | family E    |
+| `anonymisation`            | `sections/anonymisation/`                  | family F    |
 
 ### One file per family — the interface families
 
@@ -278,12 +279,9 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `networkCanvas`     | the composer's form-field list                       | `sections/form-fields/composerFormFieldMessages.ts`                |
 | `geospatial`        | `editors/geospatial/sections/`, `fields/geospatial/` | `fields/geospatial/geospatialMessages.ts`                          |
 | `narrativePedigree` | `editors/narrative-pedigree/sections/`               | `editors/narrative-pedigree/sections/narrativePedigreeMessages.ts` |
-| `anonymisation`     | `editors/anonymisation/sections/`                    | `editors/anonymisation/sections/anonymisationMessages.ts`          |
 
-`anonymisation` was reserved for `sections/anonymisation/`, and its copy is
-declared under `editors/anonymisation/sections/` instead: one directory per
-editor, and no editor but this one has an anonymisation section. The `<area>`
-segment is unchanged, so no id moved.
+`anonymisation` keeps its reserved name above and adds a row here when it
+lands.
 
 `geospatial` declares its whole family in one file under `fields/` rather
 than beside the editor, which is where the other families keep theirs. Two
