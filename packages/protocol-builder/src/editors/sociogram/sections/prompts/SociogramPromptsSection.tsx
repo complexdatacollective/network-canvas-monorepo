@@ -100,11 +100,22 @@ export default function SociogramPromptsSection() {
   const beforeSave = useCallback(
     (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
       if (subject === undefined) return { row };
-      // A pick is only here when the dialog is showing the marking control,
-      // which is the dialog's own way of saying the participant will WRITE
-      // this attribute: the row arrives holding the fields that are mounted,
-      // and a prompt that merely colours its nodes by an attribute renders no
-      // picker for it at all.
+      // Only a prompt that MARKS is judged, and `allowHighlighting` is what
+      // says so — never `variable`, which a prompt that merely colours its
+      // nodes carries too. The flag is also what puts the marking picker on
+      // screen, so a refusal has a control to land on: a colouring prompt
+      // renders no picker at all, and a refusal aimed at that path would be
+      // one no field owns and nothing renders — the dialog would refuse to
+      // close with nothing on screen to say why, and only Cancel would
+      // escape. A form collecting the attribute is no conflict for a prompt
+      // that only READS it, which is the other half of the same fact.
+      //
+      // The row carries the value either way: a field the dialog is not
+      // showing is put back where it belongs when the submit assembles the
+      // row, so reading the row cannot tell the two configurations apart.
+      if (asNestedBoolean(row.highlight, 'allowHighlighting') !== true) {
+        return { row };
+      }
       const pick = asNestedText(row.highlight, 'variable');
       if (pick === undefined) return { row };
 

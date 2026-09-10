@@ -554,6 +554,18 @@ describe('what tapping a node does, against what the prompt already said', () =>
       taps: [],
       expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
     },
+    /**
+     * The prompt READS the attribute, so a form collecting it is not a
+     * conflict at all — and there is no marking picker on screen for a
+     * refusal to land on. Refused anyway, this row could not be saved and
+     * could not say why: the dialog simply stayed open.
+     */
+    'a colouring prompt whose attribute a form collects, opened and saved': {
+      committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+      collected: true,
+      taps: [],
+      expected: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
+    },
     'a colouring prompt whose attribute a form collects, switched to marking': {
       committed: { variable: HIGHLIGHT_ATTRIBUTE, allowHighlighting: false },
       collected: true,
