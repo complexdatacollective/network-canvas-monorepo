@@ -2919,6 +2919,10 @@
     "defaultMessage": "Choose what this stage works with before writing its prompts.",
     "description": "Shown in place of the sociogram prompts description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against."
   },
+  "protocolBuilder.networkCanvas.staleControlRefusal": {
+    "defaultMessage": "The “{attributeName}” attribute cannot be asked for with this input control. Choose another control, or record this field in a different attribute.",
+    "description": "Refusal shown when a network composer form field is saved with an input control that cannot collect the kind of answer its attribute holds — because a collaborator changed that attribute while this field was open. attributeName is the researcher-facing name of the codebook attribute. Both ways out are offered because an attribute can be changed to a kind no control at all can ask for."
+  },
   "protocolBuilder.networkCanvas.tapBehaviourLabel": {
     "defaultMessage": "Tap behavior",
     "description": "Label of the control choosing between the three things tapping a node can do."

@@ -719,6 +719,10 @@ jobs:
         id: mapbox-tokens
         continue-on-error: true
         run: pnpm check:mapbox-tokens
+      - name: Check the hydration flag has one implementation
+        id: hydration-flag
+        continue-on-error: true
+        run: pnpm check:hydration-flag
       # Studio's ERD and README schema section are generated and committed. The
       # render is CPU-only — no database — so it belongs beside the other
       # artifact checks rather than in the server's vitest lane, where it
@@ -823,6 +827,7 @@ jobs:
           CHANGESETS_OUTCOME: ${{ steps.changesets.outcome }}
           COMPAT_PROTOCOLS_OUTCOME: ${{ steps.compat-protocols.outcome }}
           MAPBOX_TOKENS_OUTCOME: ${{ steps.mapbox-tokens.outcome }}
+          HYDRATION_FLAG_OUTCOME: ${{ steps.hydration-flag.outcome }}
           STUDIO_SCHEMA_DOCS_OUTCOME: ${{ steps.studio-schema-docs.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
@@ -837,6 +842,7 @@ jobs:
             "changesets=$CHANGESETS_OUTCOME" \
             "compat-protocols=$COMPAT_PROTOCOLS_OUTCOME" \
             "mapbox-tokens=$MAPBOX_TOKENS_OUTCOME" \
+            "hydration-flag=$HYDRATION_FLAG_OUTCOME" \
             "studio-schema-docs=$STUDIO_SCHEMA_DOCS_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
@@ -893,15 +899,42 @@ jobs:
           } > packages/protocol-validation/.env
       - name: Run the Studio server suite
         # The only workspace suite whose assertions are wall-clock budgets
-        # rather than logic: a spawnSync of the Node entrypoint capped at 10s,
-        # a 180s seeding hook, 30s operational probes, and a 150ms delivery
-        # lease that a starved event loop cannot renew. Before turbo's
-        # concurrency was capped here, this suite shared the 4-vCPU runner
-        # with the jsdom suites (architect, protocol-builder, interview,
-        # fresco-ui, interviewer) and those budgets lapsed. Measured across
-        # #1693's runs it passes at or under 408s of suite wall time and
-        # failed at every observed time above that (509s, 519s, 527s, 583s,
-        # 847s, 851s).
+        # rather than logic. The one that a starved event loop actually
+        # breaks is the 150ms delivery lease in
+        # src/team/__tests__/invitation-delivery.test.ts: the dispatcher
+        # renews it from a 50ms setTimeout that has to fire during a real
+        # 450ms pg_sleep, so scheduling jitter, not a hang, is what fails it.
+        # The rest are hang backstops rather than budgets being spent —
+        # `timeout: 10_000` on the ~10 spawnSync launches of the Node
+        # entrypoint, `testTimeout`/`hookTimeout` of 30s as the package-wide
+        # default in vitest.config.ts, and the seeding hooks' 180s (and, in
+        # src/db/__tests__/seed.test.ts, 360s, widened from 180s for being
+        # too tight). Seeding does not take 180s; the ceiling exists to fail
+        # a hung seed rather than a slow one. Read a budget as headroom that
+        # contention eats, not as time the suite spends.
+        #
+        # Before turbo's concurrency was capped here, this suite shared the
+        # 4-vCPU runner with the jsdom suites (architect, protocol-builder,
+        # interview, fresco-ui, interviewer) and those budgets lapsed.
+        # Measured across #1693's runs it passed at or under 408s of suite
+        # wall time and failed at every observed time above that (509s, 519s,
+        # 527s, 583s, 847s, 851s) — thresholds from that shared-runner shape,
+        # not comparable to the times this dedicated job now posts.
+        #
+        # What the suite costs, measured on this job: vitest's two phases sum
+        # to the work, and the workers divide it, down to a floor set by the
+        # longest single file. That floor is
+        # src/db/migrations/__tests__/security.test.ts, which spends 91% of
+        # every deployment cycle inside the real `migrateDatabase` it exists
+        # to exercise (1901ms of 2084ms; the database it creates and drops
+        # around that costs 99ms and 45ms). It cannot be shortened without
+        # deleting coverage and a single file cannot span workers, so it
+        # bounds this job until it is split. Shortening the suite means
+        # removing work — see the fingerprint-addressed DDL cache in
+        # src/__tests__/support/schema-ddl.ts, which took the import phase
+        # from ~310s to ~110s by keeping drizzle-kit out of the module graph
+        # of the sixty files that only needed the rendered statements — not
+        # loosening a budget above.
         #
         # It is selected far more often than it is touched, because
         # @codaco/protocol-utilities dev-depends on @codaco/fresco-ui: every

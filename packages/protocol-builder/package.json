@@ -45,6 +45,7 @@
     "./StageEditor": "./src/StageEditor.tsx",
     "./stageEditorRegistry": "./src/stageEditorRegistry.ts",
     "./state/hooks": "./src/state/hooks.ts",
+    "./state/protocolContext": "./src/state/protocolContext.ts",
     "./state/queryClient": "./src/state/queryClient.ts",
     "./styles.css": "./src/styles.css",
     "./testing/host/createInMemoryHost": "./src/testing/host/createInMemoryHost.ts",
