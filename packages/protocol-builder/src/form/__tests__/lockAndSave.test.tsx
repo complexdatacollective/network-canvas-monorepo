@@ -2,6 +2,8 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
+import { selectIsFormDirty } from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { ProtocolBuilderClient } from '../../contract/contract.ts';
@@ -30,6 +32,18 @@ import StageEditorShell from '../StageEditorShell.tsx';
 const STAGE_ID = 'information-1';
 const STAGE_SECTION = sectionId({ kind: 'stage', stageId: STAGE_ID });
 const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
+
+/**
+ * Whether the stage form holds unsaved work, read from inside it.
+ *
+ * The same selector Studio's navigation blocker reads
+ * (`Editor.tsx`: `useFormStore(selectIsFormDirty)`), so what this reports is
+ * what decides whether a researcher is asked before leaving.
+ */
+function DirtyFlag() {
+  const dirty = useFormStore(selectIsFormDirty);
+  return <p data-testid="form-dirty">{dirty ? 'dirty' : 'clean'}</p>;
+}
 
 /** One section owning one value, so a save can be compared key by key. */
 const nameSection = (
@@ -322,6 +336,135 @@ describe('a save the protocol refuses because the lock has gone', () => {
       id: STAGE_ID,
       type: seeded.type,
       ...seeded.fields,
+    });
+  });
+
+  /**
+   * And the form it puts back is not this researcher's to write.
+   *
+   * Nothing re-acquires the section — it belongs to whoever holds it now — so
+   * an editor left editable is one where every later save is refused the same
+   * way, discarding another round of work each time while the page goes on
+   * saying it may be written to.
+   */
+  it('leaves the stage read-only, named to whoever has it now', async () => {
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: nameSection,
+    });
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Never saved');
+
+    harness.takeOverLock();
+    expect(await harness.submit()).toBeNull();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('textbox', { name: 'Stage name' }),
+      ).toBeDisabled();
+    });
+    expect(
+      screen.getByText(
+        'Robin is editing this stage, so you can read it but not change it.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * And it does not name this researcher when the refusal names nobody.
+   *
+   * A lease that runs out with no one taking the section publishes no lock
+   * event — an acquire that TAKES one publishes its own, and an expiry has
+   * nothing to announce — so what this editor's cache still holds is the
+   * presence its OWN acquire put there. Left alone, the read-only form the
+   * lost lock puts back tells the researcher that they are editing the stage
+   * they were just refused, and offers no account of why they cannot write it.
+   */
+  it('does not name this researcher as the holder when nobody is', async () => {
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: nameSection,
+    });
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Never saved');
+
+    harness.host.store.expireLease(STAGE_SECTION);
+    expect(await harness.submit()).toBeNull();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('textbox', { name: 'Stage name' }),
+      ).toBeDisabled();
+    });
+    expect(
+      screen.getByText(
+        'Somebody else is editing this stage, so you can read it but not change it.',
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('a save the protocol did not take', () => {
+  /**
+   * The draft on screen is still unsaved work, and the form has to say so.
+   *
+   * Dirtiness is what a host asks before letting a researcher leave: Studio
+   * blocks navigation on it and asks whether to discard. A form rebased onto a
+   * draft the protocol refused reports itself clean, so the researcher walks
+   * away from work that was never written and is never asked about it.
+   */
+  it('leaves the form dirty, so the host still asks before discarding it', async () => {
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: (
+        <>
+          {nameSection}
+          <DirtyFlag />
+        </>
+      ),
+    });
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    expect(screen.getByTestId('form-dirty')).toHaveTextContent('dirty');
+
+    // The schema will not take a stage with no name, so the save never leaves
+    // the editor — the commonest refusal there is, and the one a researcher
+    // meets while still typing.
+    expect(await harness.submit()).toBeNull();
+    expect(
+      screen.getByText(/This stage is not finished, so it was not saved/),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('form-dirty')).toHaveTextContent('dirty');
+  });
+
+  it('rebases the form once the protocol takes the save', async () => {
+    const harness = renderStageEditor({
+      stageId: STAGE_ID,
+      sections: (
+        <>
+          {nameSection}
+          <DirtyFlag />
+        </>
+      ),
+    });
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'A renamed page');
+    expect(screen.getByTestId('form-dirty')).toHaveTextContent('dirty');
+
+    expect(await harness.submit()).not.toBeNull();
+
+    // Saved work is not unsaved work: a form still reporting itself dirty
+    // makes the host ask whether to discard changes the researcher has just
+    // watched it save.
+    await waitFor(() => {
+      expect(screen.getByTestId('form-dirty')).toHaveTextContent('clean');
     });
   });
 });

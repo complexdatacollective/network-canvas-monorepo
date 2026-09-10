@@ -175,8 +175,9 @@ export type SectionMutation = Readonly<{
  *
  * Takes the lock on mount and gives it back on unmount. There is no renewal
  * and no re-acquire: a submit the host refuses comes back as a
- * `notLockHolder` result for the editor to report, and the draft is the
- * editor's to discard.
+ * `notLockHolder` result for the editor to report, the draft is the editor's
+ * to discard, and this editor is read-only from that moment on — it does not
+ * hold the section any more, and nothing here is going to ask for it again.
  */
 export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   const { client, protocolId, utils } = useProtocolBuilderContext();
@@ -328,6 +329,30 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         };
       }
       if (definedError?.code === 'NOT_LOCK_HOLDER') {
+        // The section is somebody else's now, and nothing here re-acquires it:
+        // the editor above discards the draft it could not write, and this is
+        // what stops the form it puts back from being editable. Left
+        // `editing`, every later save is refused the same way and discards
+        // another round of work — the same loss, over and over, with the
+        // editor still saying it may write.
+        setAccess('readOnly');
+        // The refusal already names the holder, so the read-only editor can
+        // say whose section it is without waiting for a lock event — and a
+        // host whose locks are always granted never sends one.
+        //
+        // Naming NOBODY is an answer as well, and the cache has to take it:
+        // that is a lease that ran out with no one taking the section, which
+        // publishes no lock event at all (the acquire that TAKES one publishes
+        // its own). What the cache still holds is this editor's own presence,
+        // from the event its own acquire published — so left alone, the
+        // read-only form it puts back tells the researcher that they are the
+        // one editing the stage they have just been refused.
+        queryClient.setQueryData<LockState>(
+          lockQueryKey(protocolId, id),
+          definedError.data.holder === undefined
+            ? {}
+            : { holder: definedError.data.holder },
+        );
         return {
           status: 'notLockHolder',
           ...(definedError.data.holder === undefined
@@ -349,7 +374,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       }
       throw definedError ?? new Error(`submit of ${id} failed`);
     },
-    [client, protocolId, id, saveKey, section],
+    [client, protocolId, id, queryClient, saveKey, section],
   );
 
   const release = useCallback(() => {
