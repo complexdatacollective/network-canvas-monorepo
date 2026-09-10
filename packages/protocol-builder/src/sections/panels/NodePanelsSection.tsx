@@ -416,7 +416,7 @@ const panelSource = (
 /**
  * The rules that can actually refuse a save.
  *
- * A row cannot refuse anything (see `RowField`), and a panel missing its title
+ * A row cannot refuse anything, and a panel missing its title
  * or its source reaches the schema as `stages.N.panels.0.title` — a path,
  * rather than the section the researcher is looking at. An EMPTY list passes:
  * a stage with no panels is the norm, and the capability switch is what says

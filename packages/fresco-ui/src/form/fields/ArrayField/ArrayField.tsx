@@ -23,6 +23,7 @@ import {
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import {
+  createMessageError,
   defineMessages,
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
@@ -113,6 +114,13 @@ const messages = defineMessages({
     defaultMessage: 'This {itemLabel} will be removed from the list.',
     description:
       'Body of the confirmation raised before one row of a list is deleted, for a list that has named its rows. itemLabel is the list’s own noun for one of its rows, already in the reader’s language.',
+  },
+  deleteUnavailable: {
+    id: 'frescoUi.arrayField.deleteUnavailable',
+    defaultMessage:
+      'This list stopped accepting changes while you were confirming, so nothing was removed. Try again once the list can be edited.',
+    description:
+      'Shown inside a delete confirmation when the list it was opened on stopped accepting changes while the reader was still deciding, so nothing was deleted.',
   },
   confirmDeleteAction: {
     id: 'frescoUi.arrayField.confirmDeleteAction',
@@ -770,6 +778,9 @@ export default function ArrayField<T extends Record<string, unknown>>({
   const { confirm } = useDialog();
   const { announce } = useAccessibilityAnnouncements();
   const isInteractionDisabled = (disabled ?? false) || (readOnly ?? false);
+  // Read by a delete confirmation when it is ANSWERED; see its `onConfirm`.
+  const interactionDisabledRef = useRef(isInteractionDisabled);
+  interactionDisabledRef.current = isInteractionDisabled;
 
   const handleCommittedChange = useCallback(
     (nextValue: T[], operation: ArrayFieldOperation<T>): void | boolean => {
@@ -1101,7 +1112,20 @@ export default function ArrayField<T extends Record<string, unknown>>({
           ) : (
             <AppMessage message={commonMessages.delete} />
           ),
-          onConfirm: removeAndAnnounce,
+          // A confirmation is a WINDOW, and what the list will accept can
+          // change inside it: a list that has gone read-only or disabled since
+          // the researcher pressed Delete must not lose a row because they
+          // then pressed Delete again. Read live rather than from the value
+          // this callback closed over, which is the state at the moment the
+          // dialog opened. Thrown rather than silently ignored — `confirm`
+          // renders a throw as the dialog's own error and leaves it open — so
+          // a removal that did not happen is never read as one that did.
+          onConfirm: () => {
+            if (interactionDisabledRef.current) {
+              throw new Error(createMessageError(messages.deleteUnavailable));
+            }
+            removeAndAnnounce();
+          },
           // On confirm the row — and the Delete control that opened this — is
           // gone, so focus goes to the row that has taken its place, and to
           // the add button when the row removed was the last one, that being

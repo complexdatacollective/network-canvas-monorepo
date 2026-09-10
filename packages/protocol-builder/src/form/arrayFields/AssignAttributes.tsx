@@ -78,7 +78,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * through `makeAssignAttributesValidation`, which hands it the whole array.
  *
  * The rows run `required` on both cells too, but a row is not a registered
- * field (see `RowField`) and can only DISPLAY its error — nothing carries it
+ * field and can only DISPLAY its error — nothing carries it
  * into the form's validity. Without this counterpart the prompt dialog saves a
  * half-finished stamp such as `[{}]` or `[{ variable: 'x' }]`, which the
  * protocol schema rejects, so the stage fails validation long after the
@@ -107,7 +107,7 @@ const completeAttributes = (value: unknown) =>
  * Array-level cross-class rule: the BLOCKING counterpart to the row's
  * displayed error.
  *
- * `RowField` errors are display-only, so without this the researcher reads an
+ * A row cell's errors are display-only, so without this the researcher reads an
  * explicit "collected by a form elsewhere … cannot be written by this stage"
  * error, clicks Save, and the contradiction is written into the protocol
  * anyway — the interview then stamps unvalidated booleans onto a
