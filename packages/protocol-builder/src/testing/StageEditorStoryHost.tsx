@@ -9,6 +9,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolBuilderClient } from '../contract/contract.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import type { StageEditorActions } from '../stage-editor-contract.ts';
 import type { StageEditTarget } from '../stageEdit.tsx';
@@ -61,6 +62,15 @@ export type StageEditorStoryHostProps = Readonly<{
    * would make the page differ from itself in every visual comparison.
    */
   createResourceId?: () => string;
+  /**
+   * The host's own client, wrapped before the editor is mounted over it.
+   *
+   * For the facts a host KNOWS about a protocol that this in-memory one does
+   * not work out for itself — so far, only what is inside an imported data
+   * file. See `RenderStageEditorOptions.client`, which is the same seam for
+   * the same reason.
+   */
+  client?: (client: ProtocolBuilderClient) => ProtocolBuilderClient;
 }>;
 
 /**
@@ -85,6 +95,7 @@ export function StageEditorStoryHost({
   readOnly = false,
   assets,
   createResourceId,
+  client,
 }: StageEditorStoryHostProps) {
   const [saved, setSaved] = useState<SectionDoc | null>(null);
   const [host] = useState(() => {
@@ -105,10 +116,13 @@ export function StageEditorStoryHost({
   });
 
   const stage = sectionId({ kind: 'stage', stageId });
+  const [editorClient] = useState(() =>
+    client === undefined ? host.client : client(host.client),
+  );
 
   return (
     <DialogProvider>
-      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+      <ProtocolBuilder client={editorClient} protocolId={host.protocolId}>
         <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
           {/*
             Named, because the editor below mounts live regions of its own: a

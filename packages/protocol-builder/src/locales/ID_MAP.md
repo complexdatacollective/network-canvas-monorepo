@@ -132,6 +132,21 @@ after the fact is marked in place.
 | `ordinalColor`              | `editors/ordinal-bin/sections/ordinalColors.ts`                                                                                                                                               | family E  |
 | `promptAttribute`           | `editors/ordinal-bin/sections/binMessages.ts`                                                                                                                                                 | family E  |
 | `removeAfterConsideration`  | `editors/one-to-many-dyad-census/sections/RemoveAfterConsiderationSection.tsx`                                                                                                                | family E  |
+| `quickAdd`                  | `editors/name-generator-quick-add/sections/QuickAddSection.tsx`                                                                                                                               | family E  |
+| `externalDataSource`        | `editors/name-generator-roster/sections/ExternalDataSourceSection.tsx`                                                                                                                        | family E  |
+| `cardDisplay`               | `editors/name-generator-roster/sections/CardDisplaySection.tsx`                                                                                                                               | family E  |
+| `sortOptions`               | `editors/name-generator-roster/sections/SortOptionsSection.tsx`                                                                                                                               | family E  |
+| `searchOptions`             | `editors/name-generator-roster/sections/SearchOptionsSection.tsx`                                                                                                                             | family E  |
+| `rosterColumns`             | `editors/name-generator-roster/sections/rosterColumns.ts`                                                                                                                                     | family E  |
+
+Family E added one the reserved list did not hold, on the same terms:
+
+- **`rosterColumns`** — `editors/name-generator-roster/sections/rosterColumns.ts`
+  reads the chosen data file's columns and judges what each of the roster's
+  three lists still points at, so the sentence naming a column the file does
+  not carry belongs to the reader rather than to whichever of the three
+  sections happens to render it. The same rule `multiSelect` and `sortOrder`
+  already follow: a refusal decided in one place is declared there once.
 
 Family D added a second-level segment the reserved list did not hold. One line,
 because a closed list is only closed if adding to it is argued:
@@ -270,13 +285,8 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `<area>`               | Will own the copy in                         | Expected in |
 | ---------------------- | -------------------------------------------- | ----------- |
 | `nodePanels`           | `sections/NodePanelsSection`                 | family D    |
-| `searchOptions`        | `sections/SearchOptionsSection`              | family D    |
 | `alterLimits`          | `sections/AlterLimitsSection`                | family D    |
-| `quickAdd`             | `sections/QuickAddSection`                   | family D    |
-| `sortOptions`          | `sections/SortOptionsSection`                | family D    |
 | `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection`       | family D    |
-| `cardDisplay`          | `sections/CardDisplaySection`                | family D    |
-| `externalDataSource`   | `sections/ExternalDataSourceSection`         | family D    |
 | `networkCanvas`        | `sections/network/`                          | family F    |
 | `narrativePedigree`    | `editors/narrative-pedigree/sections/`       | family F    |
 | `geospatial`           | `sections/geospatial/`, geospatial `fields/` | family F    |

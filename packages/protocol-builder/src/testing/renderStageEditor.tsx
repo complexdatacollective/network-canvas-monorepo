@@ -25,6 +25,7 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolBuilderClient } from '../contract/contract.ts';
 import { saveStageMessages } from '../editors/saveStageAction.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
@@ -391,6 +392,21 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      */
     assets?: Readonly<Record<string, SectionDoc>>;
     /**
+     * The host's own client, wrapped before the editor is mounted over it.
+     *
+     * For the facts a host KNOWS about a protocol that this in-memory one does
+     * not work out for itself. The only one so far is what is inside an
+     * imported data file: `inspect` answers with the manifest entry, and a
+     * roster stage's card, sort and search sections are all chosen from that
+     * file's columns — so a test about one of them has to say what the file
+     * holds, exactly as `AssetPickerField.test.tsx` already does for the
+     * picker's own summary.
+     *
+     * Everything else stays the real host: the wrapper is handed the client
+     * and answers with one, so what it does not override is unchanged.
+     */
+    client?: (client: ProtocolBuilderClient) => ProtocolBuilderClient;
+    /**
      * The host's action chrome, as a host would give it to the editor.
      *
      * Given, it is what gets rendered in the editor's slot, whichever of the
@@ -555,6 +571,8 @@ export function renderStageEditor<T extends StageType = StageType>(
     principal: HARNESS_PRINCIPAL,
   });
   const { protocolId, store } = host;
+  const editorClient =
+    options.client === undefined ? host.client : options.client(host.client);
 
   // Locks taken before the editor opens, which is what a collaborator holding
   // a section IS: the acquire the editor is about to make comes back read-only
@@ -587,7 +605,7 @@ export function renderStageEditor<T extends StageType = StageType>(
       {...(options.locale === undefined ? {} : { locale: options.locale })}
     >
       <DialogProvider>
-        <ProtocolBuilder client={host.client} protocolId={protocolId}>
+        <ProtocolBuilder client={editorClient} protocolId={protocolId}>
           <SeedProtocolCache store={store}>
             <HarnessEditor
               target={target}
