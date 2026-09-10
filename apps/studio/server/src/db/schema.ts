@@ -39,6 +39,10 @@ import {
 } from '../monitoring/schema.ts';
 import { NETWORK_SIDECAR_SQL, NETWORK_TABLES } from '../network/schema.ts';
 import { PII_SIDECAR_SQL, PII_TABLES } from '../pii/schema.ts';
+import {
+  PROTOCOL_BUILDER_SIDECAR_SQL,
+  PROTOCOL_BUILDER_TABLES,
+} from '../protocol-builder/schema.ts';
 import { PROTOCOL_SIDECAR_SQL, PROTOCOL_TABLES } from '../protocol/schema.ts';
 import { SCHEDULE_SIDECAR_SQL, SCHEDULE_TABLES } from '../schedule/schema.ts';
 import {
@@ -79,6 +83,7 @@ export const SCHEMA = {
   ...AUTH_TABLES,
   ...SYNC_TABLES,
   ...PROTOCOL_TABLES,
+  ...PROTOCOL_BUILDER_TABLES,
   ...ASSET_TABLES,
   ...STUDY_TABLES,
   ...NETWORK_TABLES,
@@ -112,6 +117,7 @@ export const SIDECARS = [
   ACCESS_SIDECAR_SQL,
   FINGERPRINT_ACCESS_SIDECAR_SQL,
   PROTOCOL_SIDECAR_SQL,
+  PROTOCOL_BUILDER_SIDECAR_SQL,
   ASSET_SIDECAR_SQL,
   STUDY_SIDECAR_SQL,
   NETWORK_SIDECAR_SQL,
