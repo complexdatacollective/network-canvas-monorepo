@@ -8,13 +8,6 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { z } from 'zod';
 
-import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
-import {
-  parseSectionId,
-  sectionId,
-  type ProtocolSectionId,
-} from '@codaco/studio-sync/taxonomy';
-
 import type {
   Presence,
   ResourceDescriptor,
@@ -23,7 +16,14 @@ import type {
   Revision,
   SectionHolderSchema,
   SectionIssueSchema,
-} from '../contract/schemas.ts';
+} from '@codaco/protocol-builder-core/contract/schemas';
+import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
+import {
+  parseSectionId,
+  sectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
+
 import {
   lockQueryKey,
   useProtocolBuilderContext,

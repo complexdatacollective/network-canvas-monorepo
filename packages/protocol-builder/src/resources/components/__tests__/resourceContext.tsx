@@ -3,8 +3,8 @@ import { render, type RenderResult } from '@testing-library/react';
 import { useMemo, type ReactNode } from 'react';
 
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 
-import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
 import { ProtocolBuilderProvider } from '../../../state/context.ts';
 import {
   ResourceClientProvider,

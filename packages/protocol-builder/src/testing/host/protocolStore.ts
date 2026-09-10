@@ -1,3 +1,10 @@
+import type {
+  CodebookSubject,
+  Presence,
+  ProtocolEvent,
+  Revision,
+  SectionReference,
+} from '@codaco/protocol-builder-core/contract/schemas';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   validateSection,
@@ -10,13 +17,6 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import type {
-  CodebookSubject,
-  Presence,
-  ProtocolEvent,
-  Revision,
-  SectionReference,
-} from '../../contract/schemas.ts';
 import { EventQueue } from './eventQueue.ts';
 import {
   entityTypeReferences,

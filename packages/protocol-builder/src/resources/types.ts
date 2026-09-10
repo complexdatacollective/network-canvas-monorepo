@@ -10,7 +10,7 @@ import type {
   ResourcePreviewSchema,
   ResourceSecretStorageSchema,
   ResourceStatusSchema,
-} from '../contract/schemas.ts';
+} from '@codaco/protocol-builder-core/contract/schemas';
 
 /**
  * The resource vocabulary the editor's controls speak, taken from the contract

@@ -1,6 +1,6 @@
-// Studio serving the `@codaco/protocol-builder` host contract over its own
-// storage: the sectioned draft, the lease table Studio's protocol sync keeps,
-// and the protocol event log.
+// Studio serving the `@codaco/protocol-builder-core` host contract over its
+// own storage: the sectioned draft, the lease table Studio's protocol sync
+// keeps, and the protocol event log.
 //
 // The contract's lock is take-and-hold, with no renewal and no epoch, because
 // one editor owns a section while it holds it. Studio's lease is a wall-clock
@@ -15,7 +15,7 @@ import type {
   Presence,
   ResourceDescriptor,
   Revision,
-} from '@codaco/protocol-builder/contract/schemas';
+} from '@codaco/protocol-builder-core/contract/schemas';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   assembledProtocol,

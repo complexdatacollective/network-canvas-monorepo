@@ -204,7 +204,7 @@ export const contract = {
     moveStage: oc.input(MoveStageInputSchema).output(ManifestRevisionSchema),
   },
   /**
-   * The editing host `@codaco/protocol-builder` is written against, nested
+   * The editing host `@codaco/protocol-builder-core` defines, nested
    * whole so a Studio router client exposes it as `client.protocolBuilder`
    * typed by the package's own contract. Its inputs name a protocol and never
    * a team or a draft: the server derives both from the caller's memberships,
