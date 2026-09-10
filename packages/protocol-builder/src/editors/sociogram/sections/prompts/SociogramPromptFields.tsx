@@ -90,10 +90,12 @@ type TapBehaviour =
  *
  * The two are different configurations, and the schema says so: the attribute
  * site carries `usageRequiresSibling: 'allowHighlighting'`, and the interview
- * reads `variable` for the COLOUR whatever the flag holds while gating the
- * tap-to-toggle branch on the flag alone. A prompt naming an attribute with
- * the flag off therefore colours its nodes by something the participant cannot
- * change — a reading of an attribute a form may well validate elsewhere.
+ * shows a node HIGHLIGHTED wherever `variable` says it is, whatever the flag
+ * holds, while gating the tap-to-toggle branch on the flag alone. A prompt
+ * naming an attribute with the flag off therefore highlights the nodes
+ * something else already recorded that attribute for, and the participant
+ * cannot change it — a reading of an attribute a form may well validate
+ * elsewhere.
  */
 const tapBehaviourOf = (item: Record<string, unknown>): TapBehaviour => {
   if (asNestedText(item.edges, 'create') !== undefined) return TAP_CREATE_EDGE;
@@ -158,8 +160,13 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   );
   const committedCreate = asNestedText(item.edges, 'create');
   const committedHighlight = asNestedText(item.highlight, 'variable');
-  const committedAllowHighlighting =
-    asNestedBoolean(item.highlight, 'allowHighlighting') === true;
+  // The flag as the row HOLDS it — `false` and absent are different answers,
+  // and putting one back in place of the other rewrites the prompt.
+  const committedAllowHighlightingValue = asNestedBoolean(
+    item.highlight,
+    'allowHighlighting',
+  );
+  const committedAllowHighlighting = committedAllowHighlightingValue === true;
 
   const [tapBehaviour, setTapBehaviour] = useState<TapBehaviour>(() =>
     tapBehaviourOf(item),
@@ -198,7 +205,7 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
    * the schema pairs `allowHighlighting` with `highlight.variable`, and a
    * control for it could only contradict the behaviour chooser. It is written
    * on EVERY opening of a marked prompt, not only when the choice changes,
-   * because a `variable` arriving without its flag is a prompt that colours
+   * because a `variable` arriving without its flag is a prompt that HIGHLIGHTS
    * nodes rather than one that marks them.
    *
    * Turned OFF for a prompt that had it on, and CLEARED for one this dialog
@@ -220,8 +227,17 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
       return;
     }
     if (!markedHere.current) return;
-    setRowValue(ALLOW_HIGHLIGHTING_FIELD, undefined);
-  }, [committedAllowHighlighting, setRowValue, tapBehaviour]);
+    // Put back, not cleared. A prompt that arrived saying `false` said it, and
+    // visiting the marking option and leaving again is not the researcher
+    // unsaying it — while one that arrived saying nothing goes on saying
+    // nothing, which is the reason this branch exists.
+    setRowValue(ALLOW_HIGHLIGHTING_FIELD, committedAllowHighlightingValue);
+  }, [
+    committedAllowHighlighting,
+    committedAllowHighlightingValue,
+    setRowValue,
+    tapBehaviour,
+  ]);
 
   /**
    * Whether the connection this prompt draws was chosen HERE, in this dialog.
@@ -262,18 +278,31 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
     if (next === tapBehaviour) return;
     const left = tapBehaviour;
     setTapBehaviour(next);
-    // The side being LEFT is cleared rather than left to unmount: a value the
+    // The side being LEFT is written rather than left to unmount: a value the
     // researcher entered and then moved away from is parked by the store, and
     // parked values are replayed into the saved prompt.
     //
-    // Only that side. Clearing every side but the chosen one threw away a
-    // `highlight.variable` this dialog had never shown — a prompt that colours
-    // its nodes without letting the participant toggle them opens on
-    // "nothing", and answering the question about TAPPING took its colours
-    // with it.
+    // Only that side, and only what the side OWNS. A connection type is a tap
+    // target and nothing else — a prompt that draws nothing has no use for
+    // one — so leaving takes it. The attribute is not: `highlight.variable`
+    // with the flag off is a prompt that HIGHLIGHTS its nodes by an attribute
+    // the participant cannot toggle, which is a configuration of its own, and
+    // the marking picker mounts already showing that very attribute. Cleared
+    // on the way out, visiting "mark the node" and changing your mind deleted
+    // the highlighting — with the picker unmounted by then and nothing on
+    // screen to say it had gone. So the pick goes back to what the row opened
+    // with, and a visit that changed nothing changes nothing.
     if (left === TAP_CREATE_EDGE) setRowValue(CREATE_EDGE_FIELD, undefined);
-    if (left === TAP_HIGHLIGHT)
-      setRowValue(HIGHLIGHT_VARIABLE_FIELD, undefined);
+    if (left === TAP_HIGHLIGHT) {
+      // Unless the prompt arrived MARKING, where the attribute is the tap's
+      // own target rather than something the prompt was told to highlight by:
+      // switching the tap off takes it, which is what turning marking off has
+      // always saved.
+      setRowValue(
+        HIGHLIGHT_VARIABLE_FIELD,
+        committedAllowHighlighting ? undefined : committedHighlight,
+      );
+    }
   };
 
   /**

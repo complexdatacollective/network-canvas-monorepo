@@ -78,7 +78,7 @@ export default function SociogramPromptsSection() {
    *
    * `allowHighlighting` is what makes the saved prompt a writer, and only a
    * saved writer's pick is a conflict this edit did not introduce. A prompt
-   * that merely COLOURS its nodes by the attribute reads it and writes
+   * that merely HIGHLIGHTS its nodes by the attribute reads it and writes
    * nothing, so a form is free to collect the same one — and switching that
    * prompt to "mark the node" turns the very same id into an unvalidated
    * writer of an attribute something else validates.
@@ -101,9 +101,9 @@ export default function SociogramPromptsSection() {
     (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
       if (subject === undefined) return { row };
       // Only a prompt that MARKS is judged, and `allowHighlighting` is what
-      // says so — never `variable`, which a prompt that merely colours its
-      // nodes carries too. The flag is also what puts the marking picker on
-      // screen, so a refusal has a control to land on: a colouring prompt
+      // says so — never `variable`, which a prompt that merely highlights
+      // its nodes carries too. The flag is also what puts the marking picker
+      // on screen, so a refusal has a control to land on: a highlighting
       // renders no picker at all, and a refusal aimed at that path would be
       // one no field owns and nothing renders — the dialog would refuse to
       // close with nothing on screen to say why, and only Cancel would
