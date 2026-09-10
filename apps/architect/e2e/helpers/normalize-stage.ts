@@ -29,15 +29,23 @@ const UUID_RE =
  * Architect's own editors force-wrote `false` for every toggle they mounted,
  * so a stage saved through them carried a decision the researcher never made;
  * the canonical sample protocol, and every stage saved by the protocol-builder
- * editors, simply lack the key. `helpers/normalize-protocol.ts` already reads
- * the first two of these that way (its rules 5 and 6) for exactly the same
- * reason, and this is the same statement about the same schema.
+ * editors, simply lack the key. Each of these is a switch the interview reads
+ * as off when it is not there — `behaviours.automaticLayout`
+ * (`stage.behaviours?.automaticLayout ? …`), `behaviours.freeDraw`
+ * (`get(stage, 'behaviours.freeDraw', false)`), and `mapOptions.showTransit`
+ * and `mapOptions.allowSearch`, which the Geospatial map reads as plain
+ * falsy — so the two spellings are the same stage to a participant.
+ *
+ * `background.skewedTowardCenter` is deliberately NOT one of them, though it
+ * looks like one: `ConcentricCircles` defaults `skewed` to `true`, so an
+ * absent key draws the skewed rings and a stored `false` draws even ones. The
+ * canvas interfaces answer it instead, from their template
+ * (`@codaco/protocol-builder`'s `interfaces/templates.ts`).
  *
  * Only `false` is dropped. A switch stored as `true` is a decision, and still
  * compares strictly.
  */
 const ABSENT_WHEN_FALSE: readonly (readonly string[])[] = [
-  ['background', 'skewedTowardCenter'],
   ['behaviours', 'automaticLayout'],
   ['behaviours', 'freeDraw'],
   ['mapOptions', 'showTransit'],

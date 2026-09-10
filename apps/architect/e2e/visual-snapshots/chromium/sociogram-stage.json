@@ -1,6 +1,7 @@
 {
   "background": {
-    "concentricCircles": 4
+    "concentricCircles": 4,
+    "skewedTowardCenter": false
   },
   "id": "id-1",
   "label": "Draw Your Network",
