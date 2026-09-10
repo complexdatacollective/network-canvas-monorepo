@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useMemo, useState } from 'react';
+import { StrictMode, useMemo, useState } from 'react';
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -224,6 +224,47 @@ describe('Collection', () => {
         >
           {(collectionElements) => collectionElements}
         </Collection>,
+      );
+
+      const option = (name: string) => screen.getByRole('option', { name });
+      await waitFor(() => {
+        expect(option('Banana').getAttribute('aria-disabled')).toBe('true');
+      });
+      expect(option('Cherry').getAttribute('aria-selected')).toBe('true');
+      expect(option('Apple').getAttribute('aria-disabled')).toBeNull();
+    });
+
+    // StrictMode double-invokes the memo factories that materialize these
+    // iterables. React keeps the first invocation's value, so a generator is
+    // consumed once; without the memo the committed render would see an
+    // exhausted iterator and silently drop the initial state.
+    it('keeps one-shot iterables of keys under StrictMode', async () => {
+      function* disabled() {
+        yield '2';
+      }
+      function* selected() {
+        yield '3';
+      }
+
+      render(
+        <StrictMode>
+          <Collection
+            items={testItems}
+            keyExtractor={(item) => item.id}
+            textValueExtractor={(item) => item.name}
+            layout={new ListLayout<Item>({ gap: 2 })}
+            selectionMode="single"
+            defaultSelectedKeys={selected()}
+            disabledKeys={disabled()}
+            animate={false}
+            aria-label="Fruit"
+            renderItem={(item, itemProps) => (
+              <div {...itemProps}>{item.name}</div>
+            )}
+          >
+            {(collectionElements) => collectionElements}
+          </Collection>
+        </StrictMode>,
       );
 
       const option = (name: string) => screen.getByRole('option', { name });
