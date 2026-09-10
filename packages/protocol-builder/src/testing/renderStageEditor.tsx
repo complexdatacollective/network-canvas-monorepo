@@ -699,6 +699,23 @@ export function renderStageEditor<T extends StageType = StageType>(
     return form;
   };
 
+  /**
+   * Clicks the submit control and resolves once the form has SETTLED — not
+   * merely once a save landed. Returns the saved stage, or null if the
+   * submit was refused.
+   *
+   * The settling requirement means the stage form must still be mounted when
+   * the save resolves, on the success path as well as the refusal path. Every
+   * harness built on `StageEditorShell` satisfies that, because the shell
+   * keeps the form mounted and clears `aria-busy` after replaying the saved
+   * document over it. A host that unmounted the editor the moment `onSaved`
+   * fired — a dialog that closes on save, say — would instead turn an
+   * instant success into a `waitFor` timeout surfacing as the "found no
+   * form" error above. No current call site does that; if one ever needs to,
+   * it wants its own helper rather than a relaxation of this one, because
+   * the gap this closes is real: `onSaved` fires from inside `save()`,
+   * before the shell has reacted to it.
+   */
   const submit = async (): Promise<SavedStage | null> => {
     const before = saved.length;
     const button = within(view.container).getByRole('button', {

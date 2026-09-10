@@ -442,7 +442,16 @@ jobs:
   # See the comment on the first of those restores (in `test-storybook`) for
   # the full arrangement and its trade-off.
   warm-playwright-cache:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # This job is the only writer of the shared key, so if it fails there is
+    # no cache until it succeeds again. Ordinarily that self-heals on the
+    # next push to main, which is frequent — but a deterministic failure (a
+    # Playwright bump landing while apt is broken for that image) would
+    # otherwise need a no-op commit to clear. Accepting a manual dispatch of
+    # this workflow gives a way to re-warm without one.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || (github.event_name == 'workflow_dispatch'
+      && github.ref == 'refs/heads/main')
     # Cache warming only — a flake here must not fail the push run, which
     # also carries the release jobs. (`playwright install --with-deps` shells
     # out to apt and is known to fail runner-side.)
@@ -550,7 +559,14 @@ jobs:
       # protocol-builder failure here killed @codaco/studio-server#test
       # mid-run, so main's tip seeded no cache entry for it and every PR built
       # on that tip had to execute the suite itself.
-      - run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
+      #
+      # Carries an `id:` so the report step below can see it. Without one the
+      # report covered two of this job's three seeding steps, and the missing
+      # one was the Studio suite — the very suite whose cold-cache cost is
+      # what motivated splitting it out of `test` in the first place.
+      - name: Seed the Studio server suite
+        id: studio-server
+        run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
         continue-on-error: true
       # Fresco's `build` script is a bare `next build`, whose env.js validates
       # the full deployment env at config load; this job has no Fresco
@@ -595,26 +611,55 @@ jobs:
         run: pnpm exec turbo run test --concurrency=1 --continue=dependencies-successful
         env:
           SKIP_ENV_VALIDATION: 'true'
-      # Surfaces a broken seed instead of letting it fail silently under
-      # `continue-on-error`. The job stays advisory — cache warming, not a
-      # gate — so this reports rather than exits non-zero.
+      # Surfaces a broken seed instead of letting it fail silently, and then
+      # FAILS, which is the part that matters.
+      #
+      # The step-level `continue-on-error` above exists so that a failed
+      # `build typecheck` does not stop the `test` step from seeding what it
+      # still can. But those step-level flags also make every step succeed,
+      # and a job all of whose steps succeed concludes `success` — so without
+      # this final non-zero exit the job's conclusion would flip from
+      # `failure` to `success` the moment a step failed. That conclusion is
+      # not cosmetic. It is the only signal that `main` is broken at all,
+      # because `test`, `test-storybook` and `lint` are all gated
+      # `github.event_name != 'push'` and never run on a push; and it is the
+      # exact field `computeSeedHealth()` in scripts/ci-metrics.mjs counts,
+      # so hiding it would have permanently zeroed the seed-failure
+      # measurement this branch adds in order to catch the next regression.
+      #
+      # The JOB-level `continue-on-error: true` at the top still keeps the
+      # push run green, so a flake here cannot fail a run that also carries
+      # the release jobs. That was always the property worth having; a green
+      # job conclusion was not.
       - name: Report seed step outcomes
         if: always()
         env:
+          STUDIO_SERVER_OUTCOME: ${{ steps.studio-server.outcome }}
           BUILD_TYPECHECK_OUTCOME: ${{ steps.build-typecheck.outcome }}
           TEST_OUTCOME: ${{ steps.test.outcome }}
         run: |
           {
             echo "### Turbo cache seed outcomes"
             echo
+            echo "- studio-server: $STUDIO_SERVER_OUTCOME"
             echo "- build typecheck: $BUILD_TYPECHECK_OUTCOME"
             echo "- test: $TEST_OUTCOME"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [[ "$BUILD_TYPECHECK_OUTCOME" != "success" ]]; then
-            echo "::warning::seed-turbo-cache: 'build typecheck' step concluded '$BUILD_TYPECHECK_OUTCOME' — main's cache for one or more of those tasks was not seeded"
-          fi
-          if [[ "$TEST_OUTCOME" != "success" ]]; then
-            echo "::warning::seed-turbo-cache: 'test' step concluded '$TEST_OUTCOME' — main's cache for one or more test tasks was not seeded"
+          failed=false
+          for result in \
+            "studio-server=$STUDIO_SERVER_OUTCOME" \
+            "build typecheck=$BUILD_TYPECHECK_OUTCOME" \
+            "test=$TEST_OUTCOME"; do
+            name="${result%%=*}"
+            outcome="${result#*=}"
+            if [[ "$outcome" != "success" ]]; then
+              echo "::warning::seed-turbo-cache: '$name' concluded '$outcome' — main's cache for one or more of those tasks was not seeded"
+              failed=true
+            fi
+          done
+          if [[ "$failed" == "true" ]]; then
+            echo "::error::seed-turbo-cache did not fully seed main's cache. The push run stays green (job-level continue-on-error), but this job's conclusion must stay 'failure' so the breakage is visible and stays countable."
+            exit 1
           fi
 
   lint:

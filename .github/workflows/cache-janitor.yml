@@ -30,7 +30,16 @@ on:
 # Runs queue rather than cancel: a delete that's already in flight must be
 # allowed to finish, not be cut off mid-batch.
 concurrency:
-  group: cache-janitor
+  # Per pull request for the close-cleanup, shared for the maintenance run.
+  # One group for everything would be wrong in a way that quietly defeats the
+  # workflow: GitHub keeps at most one PENDING run per group and cancels the
+  # previously pending one when a newer run queues, so several pull requests
+  # closing within a few minutes — routine with a merge queue — would leave
+  # only the newest cleanup to run and silently drop the rest. Their caches
+  # would then survive forever, because the scheduled half only prunes CodeQL
+  # and never sweeps pull-request refs. Keyed per PR, those cleanups queue
+  # independently and none is cancelled.
+  group: cache-janitor-${{ github.event_name == 'pull_request' && github.event.number || 'maintenance' }}
   cancel-in-progress: false
 
 # No blanket permissions: each job below declares exactly what it needs.
