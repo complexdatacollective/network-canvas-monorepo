@@ -484,7 +484,7 @@ const asString = (value: unknown): string | undefined =>
  * The rules that can actually refuse a save.
  *
  * The whole list is one field value, so a rule about the list belongs here —
- * a row cannot refuse anything (see `RowField`), and the schema's own "Too
+ * a row cannot refuse anything, and the schema's own "Too
  * small: expected array to have >=1 items" arrives against a path rather than
  * against the section the researcher is looking at. Completeness and the
  * one-field-per-attribute rule are the same story: both are schema failures

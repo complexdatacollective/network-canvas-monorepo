@@ -40,6 +40,12 @@ import { promptItemLabel } from './itemLabel.ts';
  * So the confirm is captured instead. What these tests hold is everything this
  * package owns: that every row type names a target, and that the target it
  * names is the right element once the row is gone.
+ *
+ * The CANCEL branch is not here, because it is not this package's: the dialog
+ * provider prefers the control that opened the confirm whenever it is still in
+ * the document, whatever the caller named — asserted in fresco-ui's
+ * `dialogProviderFocus` spec, over the real provider, which this file's mock
+ * replaces.
  */
 type CapturedConfirm = {
   finalFocus?: unknown;
@@ -192,33 +198,6 @@ describe('a row removal confirm', () => {
     expect(focusTarget()).toBe(
       screen.getByRole('button', { name: 'Remove option 2' }),
     );
-  });
-
-  it('names the control that asked when the option is still there', async () => {
-    const { user } = renderInShell(
-      {
-        options: [
-          { label: 'Alpha', value: 'alpha' },
-          { label: 'Bravo', value: 'bravo' },
-        ],
-      },
-      <Field
-        name="options"
-        label="Answer options"
-        component={Options}
-        addButtonLabel="Create new option"
-        {...optionsValidation}
-      />,
-    );
-
-    const opener = await screen.findByRole('button', {
-      name: 'Remove option 2',
-    });
-    await user.click(opener);
-
-    // Declined, so nothing was removed and the control that opened the confirm
-    // is both still there and where focus belongs.
-    expect(focusTarget()).toBe(opener);
   });
 
   it('names the add button when the last option is removed', async () => {

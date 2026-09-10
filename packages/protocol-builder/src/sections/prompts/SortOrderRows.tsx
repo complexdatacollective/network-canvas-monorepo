@@ -178,7 +178,7 @@ export default function SortOrderRows({
   );
   /**
    * The rule that can actually refuse the save. A row's own cells only display
-   * their errors (see `RowField`), and a rule missing its direction fails the
+   * their errors, and a rule missing its direction fails the
    * protocol's `SortRuleSchema` against a path rather than against the control
    * the researcher left half-filled.
    *

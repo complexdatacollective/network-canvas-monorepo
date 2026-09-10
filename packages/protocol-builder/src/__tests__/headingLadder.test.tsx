@@ -19,10 +19,10 @@ import type { CodebookWriteOutcome } from '../codebook/writes.ts';
 import * as alterEdgeFormStories from '../editors/alter-edge-form/AlterEdgeFormStageEditor.stories.tsx';
 import * as alterFormStories from '../editors/alter-form/AlterFormStageEditor.stories.tsx';
 import * as egoFormStories from '../editors/ego-form/EgoFormStageEditor.stories.tsx';
+import * as familyPedigreeEditorStories from '../editors/family-pedigree/FamilyPedigreeStageEditor.stories.tsx';
 import * as informationStories from '../editors/information/InformationStageEditor.stories.tsx';
-import * as nameGeneratorStories from '../editors/nameGenerators/NameGeneratorStageEditor.stories.tsx';
-import { nameGeneratorStageEditors } from '../editors/nameGeneratorStageEditors.ts';
-import * as familyPedigreeEditorStories from '../editors/pedigree/FamilyPedigreeStageEditor.stories.tsx';
+import * as nameGeneratorStories from '../editors/name-generator/NameGeneratorStageEditor.stories.tsx';
+import { nameGeneratorStageEditor } from '../editors/name-generator/NameGeneratorStageEditor.ts';
 import * as shellStories from '../form/StageEditorShell.stories.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
@@ -287,7 +287,7 @@ describe('a row of a stage editor list, opened in its dialog', () => {
   const openNameGenerator = () =>
     renderStageEditor({
       stageId: 'name-generator-1',
-      registry: nameGeneratorStageEditors,
+      registry: nameGeneratorStageEditor,
     });
 
   /**

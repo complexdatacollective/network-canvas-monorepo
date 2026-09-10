@@ -101,7 +101,7 @@ after the fact is marked in place.
 | `field`                     | `form/requiredField.ts`                                                                                                                                                                       | i18n-2b   |
 | `outline`                   | `form/SectionOutline.tsx`                                                                                                                                                                     | i18n-2b   |
 | `dialogForm`                | `form/DialogForm.tsx`, `form/discardDraftGuard.ts`                                                                                                                                            | i18n-2b   |
-| `arrayField`                | `form/rowDialog.tsx`, `form/DialogForm.tsx` (the row-editor failure), `form/arrayFields/rowValidators.ts`, `useConfirmRowRemoval.ts`, `arrayFields/arrayMessages.ts`                          | i18n-2b   |
+| `arrayField`                | `form/rowDialog.tsx`, `form/DialogForm.tsx` (the row-editor failure), `form/arrayFields/cellRules.ts`, `arrayFields/arrayMessages.ts`                                                         | i18n-2b   |
 | `assignAttributes`          | `form/arrayFields/AssignAttributes.tsx`, `form/arrayFields/Attribute.tsx`                                                                                                                     | i18n-2b   |
 | `multiSelect`               | `form/arrayFields/MultiSelect.tsx`                                                                                                                                                            | i18n-2b   |
 | `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                                 | i18n-2b   |
@@ -124,10 +124,10 @@ after the fact is marked in place.
 | `contentBlock`              | `sections/content-blocks/contentBlockTypes.ts`, `ContentBlockEditor.tsx`, `ContentBlockPreview.tsx`                                                                                           | sections  |
 | `promptsSection`            | `sections/PromptsSection.tsx`                                                                                                                                                                 | sections  |
 | `integerField`              | `fields/IntegerField.tsx`                                                                                                                                                                     | family D  |
-| `alterLimits`               | `sections/AlterLimitsSection.tsx`                                                                                                                                                             | family D  |
-| `nameGeneratorPrompts`      | `sections/NameGeneratorPromptsSection.tsx`                                                                                                                                                    | family D  |
-| `nodePanels`                | `sections/NodePanelsSection.tsx`                                                                                                                                                              | family D  |
-| `pedigree`                  | `sections/pedigree/`                                                                                                                                                                          | family F  |
+| `alterLimits`               | `editors/name-generator/sections/alter-limits/AlterLimitsSection.tsx`                                                                                                                         | family D  |
+| `nameGeneratorPrompts`      | `editors/name-generator/sections/prompts/NameGeneratorPromptsSection.tsx`                                                                                                                     | family D  |
+| `nodePanels`                | `editors/name-generator/sections/panels/NodePanelsSection.tsx`                                                                                                                                | family D  |
+| `pedigree`                  | `editors/family-pedigree/sections/`                                                                                                                                                           | family F  |
 
 Family D added a second-level segment the reserved list did not hold. One line,
 because a closed list is only closed if adding to it is argued:
@@ -168,7 +168,7 @@ has to have exactly one:
 - `form/arrayFields/arrayMessages.ts` — the generic row noun a list with no
   word for its rows falls back to, in the row's own affordances and in a
   removal it refuses.
-- `sections/pedigree/pedigreeMessages.ts` — one file per interface family,
+- `editors/family-pedigree/sections/pedigreeMessages.ts` — one file per interface family,
   holding EVERYTHING that family says rather than only its shared strings. See
   "One file per family", below.
 
@@ -270,9 +270,9 @@ Named here so a later split takes the name rather than inventing a synonym.
 
 ### One file per family — the interface families
 
-| `<area>`   | Owns the copy in     | Declared in                             |
-| ---------- | -------------------- | --------------------------------------- |
-| `pedigree` | `sections/pedigree/` | `sections/pedigree/pedigreeMessages.ts` |
+| `<area>`   | Owns the copy in                    | Declared in                                            |
+| ---------- | ----------------------------------- | ------------------------------------------------------ |
+| `pedigree` | `editors/family-pedigree/sections/` | `editors/family-pedigree/sections/pedigreeMessages.ts` |
 
 The remaining four families of the same series — `narrativePedigree`,
 `networkCanvas`, `geospatial` and `anonymisation` — keep their reserved names

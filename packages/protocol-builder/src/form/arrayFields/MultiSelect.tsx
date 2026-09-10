@@ -10,6 +10,7 @@ import {
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
+import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import ArrayField, {
   ArrayFieldDragHandle,
   stripManagedProperties,
@@ -21,12 +22,8 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import { DEFAULT_ITEM_LABEL } from './arrayMessages.ts';
-import RowField from './RowField.tsx';
-import { requiredRow } from './rowValidators.ts';
-import {
-  rowRemovalControlProps,
-  useConfirmRowRemoval,
-} from './useConfirmRowRemoval.ts';
+import { cellIssues, requiredCell } from './cellRules.ts';
+import { useEditedCells } from './useEditedCells.ts';
 
 const messages = defineMessages({
   incompleteRows: {
@@ -39,13 +36,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.multiSelect.removeItem',
     defaultMessage: 'Remove item',
     description:
-      'Action that deletes one row of a list. Used as the button on the row, as the title of the confirmation it raises, and as that confirmation’s own confirm button.',
-  },
-  removeItemDescription: {
-    id: 'protocolBuilder.multiSelect.removeItemDescription',
-    defaultMessage: 'Are you sure you want to remove this item?',
-    description:
-      'Body of the confirmation raised when a researcher deletes one row of a list.',
+      'Accessible name of the button that deletes one row of a list.',
   },
   reorderItem: {
     id: 'protocolBuilder.multiSelect.reorderItem',
@@ -73,8 +64,6 @@ const FrescoNativeSelectField = NativeSelectField as ComponentType<
   Record<string, unknown>
 >;
 const FrescoInputField = InputField as ComponentType<Record<string, unknown>>;
-
-const CELL_VALIDATORS = [requiredRow()] as const;
 
 export type PropertyField = {
   fieldName: string;
@@ -140,8 +129,7 @@ const NO_DANGLING_CELLS: readonly DanglingCells[] = Object.freeze([]);
 /**
  * The array-level rule every MultiSelect owner must put on its own
  * `<Field>` — the counterpart of the `required` the cells carry,
- * which is DISPLAY ONLY because a row is not a registered field (see
- * RowField).
+ * which is DISPLAY ONLY because a row is not a registered field.
  *
  * Without it a half-finished row (pick a property, leave the direction unset)
  * does not block the save: `{ property: 'name' }` reaches the protocol, fails
@@ -236,30 +224,16 @@ function MultiSelectRow({
   onDelete,
   disabled,
   readOnly,
-  getAddTrigger,
+  deleteTriggerRef,
 }: ArrayFieldItemProps<ItemValue>) {
   const intl = useAppIntl();
   const { arrayName, properties, options, allValues } = useMultiSelectContext();
-  const { rowRef, confirmRemoval } = useConfirmRowRemoval({
-    item,
-    itemLabel: DEFAULT_ITEM_LABEL,
-    index,
-    onDelete,
-    getAddTrigger,
-  });
+  const { hasEdited, markEdited } = useEditedCells();
   const interactionDisabled = disabled || readOnly;
   const rowValues = stripManagedProperties(item);
   // Bind field paths to the committed position, not the live (possibly
   // mid-drag-preview) index, so a reorder preview cannot relabel the rows.
   const rowFieldName = `${arrayName}[${committedIndex ?? index}]`;
-
-  const handleDelete = () => {
-    confirmRemoval({
-      title: messages.removeItem,
-      description: messages.removeItemDescription,
-      confirmLabel: messages.removeItem,
-    });
-  };
 
   // Each property narrows the next one's option list, so a change invalidates
   // every property after it in the row.
@@ -277,7 +251,7 @@ function MultiSelectRow({
   };
 
   return (
-    <div ref={rowRef} className={`group ${MULTI_SELECT_RULE_CLASSES}`}>
+    <div className={`group ${MULTI_SELECT_RULE_CLASSES}`}>
       {isSortable && (
         <div className={MULTI_SELECT_CONTROL_CLASSES}>
           <ArrayFieldDragHandle
@@ -308,45 +282,62 @@ function MultiSelectRow({
               ...rest
             },
             propertyIndex,
-          ) => (
-            <div
-              className={MULTI_SELECT_OPTION_CLASSES}
-              key={propertyFieldName}
-            >
-              <RowField
-                {...rest}
-                name={`${rowFieldName}.${propertyFieldName}`}
-                label={label}
-                component={
-                  control === 'input'
-                    ? FrescoInputField
-                    : FrescoNativeSelectField
-                }
-                {...(control === 'select'
-                  ? {
-                      options: options(propertyFieldName, rowValues, allValues),
-                    }
-                  : {})}
-                value={rowValues[propertyFieldName]}
-                onChange={(value: unknown) =>
-                  handleChange(propertyIndex, value)
-                }
-                validators={CELL_VALIDATORS}
-                disabled={interactionDisabled}
-              />
-            </div>
-          ),
+          ) => {
+            const cellValue = rowValues[propertyFieldName];
+            // A cell complains only once the researcher has changed it: a row
+            // added a moment ago is empty by construction, and telling them so
+            // in every column at once is an error about work not yet started.
+            const errors = cellIssues(requiredCell(cellValue));
+            const showErrors =
+              hasEdited(propertyFieldName) && errors.length > 0;
+
+            return (
+              <div
+                className={MULTI_SELECT_OPTION_CLASSES}
+                key={propertyFieldName}
+              >
+                <UnconnectedField
+                  {...rest}
+                  name={`${rowFieldName}.${propertyFieldName}`}
+                  label={label}
+                  component={
+                    control === 'input'
+                      ? FrescoInputField
+                      : FrescoNativeSelectField
+                  }
+                  {...(control === 'select'
+                    ? {
+                        options: options(
+                          propertyFieldName,
+                          rowValues,
+                          allValues,
+                        ),
+                      }
+                    : {})}
+                  value={cellValue}
+                  onChange={(value: unknown) => {
+                    markEdited(propertyFieldName, value, cellValue);
+                    handleChange(propertyIndex, value);
+                  }}
+                  errors={errors}
+                  showErrors={showErrors}
+                  aria-invalid={showErrors}
+                  disabled={interactionDisabled}
+                />
+              </div>
+            );
+          },
         )}
       </div>
       <div className={MULTI_SELECT_CONTROL_CLASSES}>
         <IconButton
-          {...rowRemovalControlProps}
+          ref={deleteTriggerRef}
           icon={<Trash2 />}
           aria-label={intl.formatMessage(messages.removeItem)}
           color="destructive"
           disabled={interactionDisabled}
           className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
-          onClick={handleDelete}
+          onClick={onDelete}
         />
       </div>
     </div>
@@ -394,9 +385,10 @@ export type MultiSelectProps = Omit<
  * arrives as ONE `value`/`onChange` pair; no row is ever registered as a form
  * field. Every section reaches it through `OptionalList`, which is where the
  * decision an EMPTY list records lives: this component renders whatever it is
- * handed and has no opinion about what emptying one means. Row controls therefore run their own validation locally (see
- * RowField) while keeping the `name[i].property` `data-field-name` paths E2E
- * specs target — which is why every owner also passes
+ * handed and has no opinion about what emptying one means. Row controls
+ * therefore judge themselves, keeping the `name[i].property`
+ * `data-field-name` paths E2E specs target — which is why every owner also
+ * passes
  * `validation={{ completeRows: completeRows(properties) }}`, the only rule
  * that can actually refuse a half-finished row.
  */
@@ -436,7 +428,7 @@ export default function MultiSelect({
           }
           immediateAdd
           sortable
-          confirmDelete={false}
+          itemLabel={DEFAULT_ITEM_LABEL}
           maxItems={maxItems}
         />
       </div>

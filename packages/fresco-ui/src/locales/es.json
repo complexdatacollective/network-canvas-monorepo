@@ -25,6 +25,7 @@
   "frescoUi.arrayField.confirmDeleteAction": "Eliminar {itemLabel}",
   "frescoUi.arrayField.confirmDeleteDescription": "Se eliminará de la lista esta entrada ({itemLabel}).",
   "frescoUi.arrayField.confirmDeleteTitle": "¿Eliminar {itemLabel}?",
+  "frescoUi.arrayField.deleteUnavailable": "Esta lista dejó de aceptar cambios mientras confirmabas, así que no se ha eliminado nada. Vuelve a intentarlo cuando la lista se pueda editar.",
   "frescoUi.arrayField.emptyState": "Aún no hay elementos. Selecciona «Añadir elemento» para empezar.",
   "frescoUi.arrayField.movedItem": "Se ha movido el elemento {from, number} a la posición {to, number} de {count, number}.",
   "frescoUi.arrayField.removedItem": "Se ha eliminado el elemento {position, number}. {count, plural, one {Queda # elemento} other {Quedan # elementos}}.",

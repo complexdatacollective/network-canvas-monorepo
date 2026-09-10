@@ -8,8 +8,8 @@ import {
   loadFixtureStage,
 } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
-import { shimMarkdownEditorMeasurement } from '../pedigree/__tests__/editorFixtures.tsx';
-import { FamilyPedigreeStageEditor } from '../pedigree/FamilyPedigreeStageEditor.tsx';
+import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
+import { familyPedigreeStageEditor } from '../family-pedigree/FamilyPedigreeStageEditor.ts';
 
 shimMarkdownEditorMeasurement();
 
@@ -26,7 +26,7 @@ shimMarkdownEditorMeasurement();
 const CLAIMED = [
   {
     stageType: 'FamilyPedigree',
-    editor: FamilyPedigreeStageEditor,
+    editor: familyPedigreeStageEditor.FamilyPedigree,
     sections: ['Pedigree framing'],
   },
 ] as const satisfies readonly {
