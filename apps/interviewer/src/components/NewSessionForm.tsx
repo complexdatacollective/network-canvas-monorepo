@@ -63,6 +63,21 @@ const messages = defineMessages({
   },
 });
 
+// The offline-map warning's localised nodes, built once at module scope so the
+// form's submit handler stays a plain callback rather than an element factory.
+const offlineWarningTitle = (
+  <AppMessage message={messages.youAppearToBeOffline} />
+);
+const offlineWarningDescription = (
+  <AppMessage message={messages.thisProtocolIncludesAMapStageThat} />
+);
+const offlineWarningPrimaryLabel = (
+  <AppMessage message={messages.startAnyway} />
+);
+const offlineWarningCancelLabel = (
+  <AppMessage message={commonMessages.cancel} />
+);
+
 type NewSessionFormProps = {
   protocol: ProtocolWithCounts;
   onCreated: (session: StoredSession) => void;
@@ -105,19 +120,15 @@ export function NewSessionFormView({
           const proceed = await openDialog({
             type: 'choice',
             intent: 'warning',
-            title: <AppMessage message={messages.youAppearToBeOffline} />,
-            description: (
-              <AppMessage
-                message={messages.thisProtocolIncludesAMapStageThat}
-              />
-            ),
+            title: offlineWarningTitle,
+            description: offlineWarningDescription,
             actions: {
               primary: {
-                label: <AppMessage message={messages.startAnyway} />,
+                label: offlineWarningPrimaryLabel,
                 value: true,
               },
               cancel: {
-                label: <AppMessage message={commonMessages.cancel} />,
+                label: offlineWarningCancelLabel,
                 value: null,
               },
             },

@@ -7,11 +7,9 @@ import {
   useTransform,
 } from 'motion/react';
 import Image from 'next/image';
-import { useRef, useSyncExternalStore } from 'react';
+import { useRef } from 'react';
 
-const subscribeToHydration = () => () => undefined;
-const getClientHydrationSnapshot = () => true;
-const getServerHydrationSnapshot = () => false;
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 
 export function ScreenshotFrame({
   address,
@@ -26,11 +24,7 @@ export function ScreenshotFrame({
 }) {
   const shouldReduceMotion = useReducedMotion();
   const frameRef = useRef<HTMLDivElement>(null);
-  const hasHydrated = useSyncExternalStore(
-    subscribeToHydration,
-    getClientHydrationSnapshot,
-    getServerHydrationSnapshot,
-  );
+  const hasHydrated = useHasHydrated();
   const motionEnabled = hasHydrated && shouldReduceMotion === false;
   const { scrollYProgress } = useScroll({
     target: frameRef,

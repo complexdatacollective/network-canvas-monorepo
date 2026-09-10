@@ -13,6 +13,7 @@ import {
   highlightInASociogram,
   nodeFormFieldsOf,
   openRow,
+  retypePersonVariable,
 } from './composerFixtures.tsx';
 
 const KNOWS_ENTRY = {
@@ -152,6 +153,32 @@ describe('what a network composer lets the participant build', () => {
     // The dialog stays open holding the draft, so the researcher can change it
     // rather than losing what they entered.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * A row the researcher opens and leaves alone saves on the first Save.
+   *
+   * The dialog seeds every field from the row document, so a field restating
+   * what the document already holds has nothing to add — and one restating it
+   * as a fresh object re-registers itself on every render, which marks the
+   * untouched row dirty and drops the submission the researcher just made.
+   */
+  it('closes on the first Save when an existing connection type is unchanged', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ edges: [KNOWS_ENTRY] }),
+    );
+
+    const dialog = await openRow(harness, 'Edit connection type');
+    // The row opens on what it holds, which is the whole of what a save
+    // unchanged has to put back.
+    expect(dialog.getByRole('radio', { name: 'knows' })).toBeChecked();
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const saved = await harness.submit();
+    expect(edgesOf(saved?.stageDocument ?? {})).toEqual([KNOWS_ENTRY]);
   });
 
   /**
@@ -672,6 +699,75 @@ describe('an attribute another stage starts writing mid-edit', () => {
       variable: 'highlighted',
       component: 'Boolean',
     });
+  });
+});
+
+/**
+ * The pairing a composer field carries is judged against the attribute as the
+ * protocol holds it NOW.
+ *
+ * The control follows the attribute, but only while the researcher is the one
+ * changing it: the effect that re-pairs them watches the row's own pick, and a
+ * collaborator retyping the attribute underneath the open row does not move
+ * it. The control list re-derives and the row goes on holding a control that
+ * cannot ask for the attribute — a pairing `validateComposerFieldComponents`
+ * refuses, reported against a path in the saved protocol rather than against
+ * the control the researcher has to change.
+ */
+describe('an attribute a collaborator retypes mid-edit', () => {
+  it('refuses a control that can no longer ask for it', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      'age',
+    );
+    const control = dialog.getByRole('combobox', { name: 'Input control' });
+    // A number attribute arrives paired with the one control that can ask for
+    // a number, which is what makes the pairing below the collaborator's doing.
+    await waitFor(() => expect(control).toHaveValue('Number'));
+
+    retypePersonVariable(harness, 'age', 'text');
+    // Waited for rather than assumed: a save clicked before the change lands
+    // is refused by nothing, which is the defect this test exists for. What
+    // arrives is the list of controls a text attribute may be asked with — the
+    // row's own `Number` is not among them, so the select has nothing to show.
+    await within(control).findByRole('option', { name: 'Text input' });
+    expect(
+      within(control).queryByRole('option', { name: 'Number input' }),
+    ).toBeNull();
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    // On the control rather than above the fields: it is the control the
+    // researcher has to change, and a refusal that named no control would
+    // leave them looking for it.
+    await waitFor(() =>
+      expect(control).toHaveAttribute('aria-invalid', 'true'),
+    );
+    expect(
+      dialog.getByText(/cannot be asked for with this input control/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    // Changed to a control the attribute CAN be asked with, the field saves —
+    // and what reaches the stage is that control rather than the stale one.
+    await harness.user.selectOptions(control, 'Text');
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = await harness.submit();
+    expect(nodeFormFieldsOf(saved?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: 'age',
+        component: 'Text',
+      },
+    ]);
   });
 });
 

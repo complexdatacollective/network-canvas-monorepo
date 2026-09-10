@@ -1,8 +1,10 @@
+// Holds `@codaco/protocol-validation`'s static analyser to the validators a
+// researcher's answer is actually judged by: a rule set the analyser calls
+// contradictory must have no value these functions would accept. Its home is
+// the runtime side of that pair, because that is the side a change breaks it
+// from.
 import { describe, expect, it } from 'vitest';
 
-import type { FieldValue } from '@codaco/fresco-ui/form/Field/types';
-import type { ValidationContext } from '@codaco/fresco-ui/form/store/types';
-import { makeValidationFunction } from '@codaco/fresco-ui/form/validation/helpers';
 import {
   asEntityAttributeReference,
   findValidationContradictions,
@@ -18,6 +20,10 @@ import {
   entityPrimaryKeyProperty,
   type NcNetwork,
 } from '@codaco/shared-consts';
+
+import type { FieldValue } from '../Field/types';
+import type { ValidationContext } from '../store/types';
+import { makeValidationFunction } from './helpers';
 
 const reference = asEntityAttributeReference;
 const subject = { entity: 'node', type: 'person' } as const;

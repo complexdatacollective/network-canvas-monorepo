@@ -6,10 +6,10 @@ import { describe, expect, it } from 'vitest';
 import Button from '@codaco/fresco-ui/Button';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
-import type { ProtocolBuilderClient } from '../../contract/contract.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { useEntityTypes } from '../../state/hooks.ts';
 import {

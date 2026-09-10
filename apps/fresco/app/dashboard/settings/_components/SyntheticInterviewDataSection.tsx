@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { use, useEffect, useState } from 'react';
+import { use, useState } from 'react';
 import { SuperJSON } from 'superjson';
 
 import { commonMessages } from '@codaco/app-i18n/common';
@@ -187,12 +187,20 @@ export default function SyntheticInterviewDataSection({
   const { toast } = useToast();
   const router = useRouter();
 
-  useEffect(() => {
+  // The counts are optimistically updated here while generating or deleting,
+  // then re-synced whenever the server sends fresh ones. Adjusting during
+  // render rather than in an effect avoids a pass that shows the stale counts.
+  const [lastInitialCounts, setLastInitialCounts] = useState(initialCounts);
+  if (
+    lastInitialCounts.interviewCount !== initialCounts.interviewCount ||
+    lastInitialCounts.participantCount !== initialCounts.participantCount
+  ) {
+    setLastInitialCounts(initialCounts);
     setSyntheticCounts({
       interviewCount: initialCounts.interviewCount,
       participantCount: initialCounts.participantCount,
     });
-  }, [initialCounts.interviewCount, initialCounts.participantCount]);
+  }
 
   const showGenerationFailure = (failure: SyntheticGenerationFailure) => {
     toast({

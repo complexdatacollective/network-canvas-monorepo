@@ -1,4 +1,5 @@
 import { Upload } from 'lucide-react';
+import type { ReactNode } from 'react';
 import type { DropzoneState } from 'react-dropzone';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -34,6 +35,20 @@ const messages = defineMessages({
       'Explains where protocols are created; Architect is a product name and link.',
   },
 });
+
+// Rich-text chunk formatters for the two messages above, at module scope so
+// they keep one identity across renders.
+const renderExtension = (chunks: ReactNode[]) => (
+  <span className="font-monospace text-text">{chunks}</span>
+);
+
+const renderArchitectLink = (chunks: ReactNode[]) => (
+  <span className="pointer-events-auto">
+    <ExternalLink href="https://architect.networkcanvas.com">
+      {chunks}
+    </ExternalLink>
+  </span>
+);
 
 type ImportTriggerCardProps = {
   // Carousel activation (click / Enter on the active card): opens the file
@@ -113,21 +128,13 @@ export function ImportTriggerCard({
         </Heading>
         <span className="text-sm">
           {intl.formatMessage(messages.drop, {
-            extension: (chunks) => (
-              <span className="font-monospace text-text">{chunks}</span>
-            ),
+            extension: renderExtension,
           })}
         </span>
       </button>
       <p className="text-text/70 pointer-events-none absolute inset-x-0 bottom-0 px-8 pb-6 text-center text-xs">
         {intl.formatMessage(messages.authoring, {
-          link: (chunks) => (
-            <span className="pointer-events-auto">
-              <ExternalLink href="https://architect.networkcanvas.com">
-                {chunks}
-              </ExternalLink>
-            </span>
-          ),
+          link: renderArchitectLink,
         })}
       </p>
     </div>

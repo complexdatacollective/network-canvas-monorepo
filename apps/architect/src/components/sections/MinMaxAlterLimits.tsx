@@ -1,4 +1,4 @@
-import { createElement, useCallback } from 'react';
+import { createElement, type ReactNode, useCallback } from 'react';
 
 import {
   type IntlShape,
@@ -186,6 +186,8 @@ const IntegerInputField = ({
   />
 );
 
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
   const intl = useAppIntl();
   const currentMinValue = useStageFormValue<number | undefined>(
@@ -245,7 +247,7 @@ const MinMaxAlterLimits = (_props: StageEditorSectionProps) => {
           </AlertTitle>
           <AlertDescription>
             {intl.formatMessage(messages.youHaveMultiplePromptsConfiguredOn, {
-              strong: (chunks) => <strong>{chunks}</strong>,
+              strong: renderStrong,
             })}
           </AlertDescription>
         </Alert>

@@ -15,12 +15,14 @@ function LiveTitle() {
   return intl.formatMessage(commonMessages.loading);
 }
 
+// Held at module scope: an element built inside the click handler reads to the
+// linter as a component defined during render.
+const liveTitle = <LiveTitle />;
+
 function Trigger() {
   const { add } = useToast();
   return (
-    <button onClick={() => add({ title: <LiveTitle />, timeout: 0 })}>
-      Show
-    </button>
+    <button onClick={() => add({ title: liveTitle, timeout: 0 })}>Show</button>
   );
 }
 

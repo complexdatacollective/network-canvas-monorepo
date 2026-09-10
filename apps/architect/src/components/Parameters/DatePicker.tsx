@@ -166,10 +166,16 @@ const DateTimeParameters = ({
     setFieldValue(maxField, undefined);
   }, [dateType, maxField, minField, setFieldValue]);
 
-  // The notice has served its purpose once a bound is set again.
-  useEffect(() => {
-    if (minValue || maxValue) setClearedRange(false);
-  }, [minValue, maxValue]);
+  // The notice has served its purpose once a bound is set again. Only the
+  // moment a bound reappears can retire it — while the notice stands both
+  // bounds are empty, because clearing them is what raised it — so the
+  // transition is compared during render rather than synced from an effect.
+  const hasBound = Boolean(minValue) || Boolean(maxValue);
+  const [previousHasBound, setPreviousHasBound] = useState(hasBound);
+  if (hasBound !== previousHasBound) {
+    setPreviousHasBound(hasBound);
+    if (hasBound) setClearedRange(false);
+  }
 
   const dateFormat = asDateFormat(dateType);
   const pickerParameters = {

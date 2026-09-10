@@ -310,12 +310,17 @@ export default function GeospatialInterface({
     [navState.activeIndex, stageNodes.length],
   );
 
-  useEffect(() => {
+  // Restart at the first node when the prompt changes. Compared during render
+  // rather than in an effect, so the new prompt is never painted alongside the
+  // previous prompt's active node.
+  const [navPromptIndex, setNavPromptIndex] = useState(promptIndex);
+  if (navPromptIndex !== promptIndex) {
+    setNavPromptIndex(promptIndex);
     setNavState({
       activeIndex: 0,
       direction: null,
     });
-  }, [promptIndex]);
+  }
 
   const { updateReady: setIsReadyForNext } = useReadyForNextStage();
 

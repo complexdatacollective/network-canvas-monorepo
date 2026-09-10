@@ -315,9 +315,49 @@ function ComposerFormRows({
         allVariables: variables,
         message: unvalidatedElsewhereMessage,
       });
-      return issue === undefined
-        ? { row }
-        : { refused: { fieldErrors: { [VARIABLE_FIELD]: issue } } };
+      if (issue !== undefined) {
+        return { refused: { fieldErrors: { [VARIABLE_FIELD]: issue } } };
+      }
+
+      /**
+       * The pairing, judged against the attribute's CURRENT type.
+       *
+       * The control follows the attribute, but only while the researcher is
+       * the one moving it: the effect that re-pairs them watches the row's own
+       * pick, and a collaborator retyping the attribute underneath the open
+       * row does not move that. The control list re-derives, the select is
+       * left showing its placeholder, and the row goes on holding a control
+       * that cannot ask for the attribute — a pairing
+       * `validateComposerFieldComponents` refuses, reported against a path in
+       * the saved protocol rather than against the control to change.
+       *
+       * Refused unconditionally rather than only for a pairing this edit
+       * broke, which is the opposite of the rule above it: the offending value
+       * is IN this dialog, so the researcher can act on it here. Skipped for
+       * an attribute the codebook no longer defines, which the schema skips
+       * too — the reference pass owns that error, and this row cannot resolve
+       * it.
+       */
+      const attribute = variables[variable];
+      const component = asText(row[COMPONENT_FIELD]);
+      const unpaired =
+        attribute !== undefined &&
+        component !== undefined &&
+        !controlsForType(attribute.type).some(
+          ({ value }) => value === component,
+        );
+      return unpaired
+        ? {
+            refused: {
+              fieldErrors: {
+                [COMPONENT_FIELD]: intl.formatMessage(
+                  messages.staleControlRefusal,
+                  { attributeName: attribute.name },
+                ),
+              },
+            },
+          }
+        : { row };
     },
     [intl, roleMap, rows, subject, variables],
   );

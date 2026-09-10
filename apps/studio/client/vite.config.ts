@@ -54,6 +54,7 @@ export default defineConfig(({ mode }) => ({
     exclude: [
       '@codaco/fresco-ui',
       '@codaco/protocol-builder',
+      '@codaco/protocol-builder-core',
       '@codaco/studio-sync',
     ],
   },

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -135,6 +135,8 @@ type SelectOption = {
 };
 
 type SortOrderRow = Record<string, unknown>;
+
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
 
 const EMPTY_OPTIONS: SelectOption[] = [];
 const EMPTY_VARIABLE_OPTIONS: OptionValue[] = [];
@@ -291,7 +293,7 @@ const PromptFields = ({
               </AlertTitle>
               <AlertDescription>
                 {intl.formatMessage(messages.theOrdinalBinInterfaceIsDesigned, {
-                  strong: (chunks) => <strong>{chunks}</strong>,
+                  strong: renderStrong,
                 })}
               </AlertDescription>
             </Alert>
@@ -304,7 +306,7 @@ const PromptFields = ({
                 <>
                   {intl.formatMessage(
                     messages.anOrdinalAttributeContainsPreDefinedCategories,
-                    { strong: (chunks) => <strong>{chunks}</strong> },
+                    { strong: renderStrong },
                   )}
                 </>
               }

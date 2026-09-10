@@ -2,10 +2,10 @@ import { getEventMeta, isDefinedError } from '@orpc/client';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
-import type { ProtocolBuilderClient } from '../contract/contract.ts';
-import type { ProtocolEvent } from '../contract/schemas.ts';
 import {
   lockQueryKey,
   presenceQueryKey,
