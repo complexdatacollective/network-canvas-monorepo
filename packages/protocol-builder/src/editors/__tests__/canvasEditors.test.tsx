@@ -5,6 +5,7 @@ import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
 import type { FixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
+import { geospatialStageEditor } from '../geospatial/GeospatialStageEditor.ts';
 import { narrativeStageEditor } from '../narrative/NarrativeStageEditor.ts';
 import { networkComposerStageEditor } from '../network-composer/NetworkComposerStageEditor.ts';
 import { sociogramStageEditor } from '../sociogram/SociogramStageEditor.ts';
@@ -93,6 +94,29 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'quickAdd',
       'subject',
     ],
+  },
+  {
+    interfaceName: 'Geospatial',
+    stageId: 'geospatial-1',
+    editor: geospatialStageEditor,
+    // The map is four decisions a researcher makes at different times, each
+    // finishable on its own — and the prompts sit between the two halves,
+    // because what the map IS has to be settled before there is anything to
+    // ask about it, and how it looks and where it opens are settled once the
+    // questions are written.
+    sections: [
+      'Stage name',
+      'Node type',
+      'Stage filter',
+      'Map access',
+      'Map layer',
+      'Prompts',
+      'Map appearance',
+      'Starting map view',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['label', 'mapOptions', 'prompts', 'subject'],
   },
 ];
 

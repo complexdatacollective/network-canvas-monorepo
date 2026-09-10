@@ -36,6 +36,7 @@ import { alterEdgeFormStageEditor } from './editors/alter-edge-form/AlterEdgeFor
 import { alterFormStageEditor } from './editors/alter-form/AlterFormStageEditor.ts';
 import { egoFormStageEditor } from './editors/ego-form/EgoFormStageEditor.ts';
 import { familyPedigreeStageEditor } from './editors/family-pedigree/FamilyPedigreeStageEditor.ts';
+import { geospatialStageEditor } from './editors/geospatial/GeospatialStageEditor.ts';
 import { informationStageEditor } from './editors/information/InformationStageEditor.ts';
 import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
 import { narrativeStageEditor } from './editors/narrative/NarrativeStageEditor.ts';
@@ -119,6 +120,7 @@ const REGISTRY_PARTS = [
   alterFormStageEditor,
   egoFormStageEditor,
   familyPedigreeStageEditor,
+  geospatialStageEditor,
   informationStageEditor,
   nameGeneratorStageEditor,
   narrativeStageEditor,
@@ -219,7 +221,6 @@ export const AWAITING_STAGE_EDITORS = [
   'Anonymisation',
   'CategoricalBin',
   'DyadCensus',
-  'Geospatial',
   'NameGeneratorQuickAdd',
   'NameGeneratorRoster',
   'NarrativePedigree',
