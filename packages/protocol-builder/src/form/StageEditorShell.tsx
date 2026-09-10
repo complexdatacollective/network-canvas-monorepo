@@ -312,15 +312,15 @@ function StageEditorFormBody({
 
       const outcome = await save(fields);
       if (outcome.status === 'saved') {
-        // The form's baseline moves HERE and nowhere else. Every mounted field
-        // re-seeds its initial value from this document, which is what takes
-        // the form out of being dirty — so advancing it before the save would
-        // call a draft the protocol refused "saved": a stage the schema would
-        // not take, a promotion that failed, a section somebody else is
-        // holding. Studio's discard prompt reads that dirty flag, and a
-        // researcher who left after a refused save would be let go without
-        // being asked, losing work the editor was still showing them.
+        // A save is the only thing that may move the baselines the form's
+        // dirty flag is measured against, and Studio's discard prompt reads
+        // that flag. A structural write and a refused save both advance the
+        // working document out of values nobody has stored, so a baseline
+        // taking those would let a researcher leave without being asked,
+        // losing work the editor was still showing them. (A field remounting
+        // after one seeds itself from the working document, as ever.)
         setDocument(fields);
+        storeApi.getState().rebaseToDocument(fields);
         clearRefusedWrite();
         return { success: true };
       }
