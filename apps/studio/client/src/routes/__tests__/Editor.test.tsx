@@ -15,6 +15,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createInMemoryHost } from '@codaco/protocol-builder/testing/host/createInMemoryHost';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
+  parseSectionId,
   sectionId,
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
@@ -142,15 +143,19 @@ const COMMAND_REVISION = { sequence: 3n, contentHash: 'written-by-command' };
  * A proxy rather than a copy: the contract client is itself a proxy, so
  * spreading it yields an object with none of the procedures on it.
  */
+function commandWriteFor(id: string): SectionDoc | undefined {
+  return commandWrote.get(sectionId(parseSectionId(id)));
+}
+
 function hostAnsweringCommandWrites(client: HostClient): HostClient {
   const overrides: Partial<HostClient> = {
     getSection: async (...args: Parameters<HostClient['getSection']>) => {
-      const written = commandWrote.get(args[0].sectionId);
+      const written = commandWriteFor(args[0].sectionId);
       if (written === undefined) return client.getSection(...args);
       return { document: written, revision: COMMAND_REVISION };
     },
     acquireLock: async (...args: Parameters<HostClient['acquireLock']>) => {
-      const written = commandWrote.get(args[0].sectionId);
+      const written = commandWriteFor(args[0].sectionId);
       if (written === undefined) return client.acquireLock(...args);
       return {
         lock: 'held' as const,
