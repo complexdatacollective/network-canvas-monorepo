@@ -32,15 +32,19 @@ export const lockErrors = {
 } as const;
 
 /**
- * The staged resources a submit asked to promote could not be committed, so
- * neither they nor the section were written: the submit is the only place the
- * two become one revision, and half of it is not an outcome a host offers.
+ * The staged resources a write asked to promote could not be committed, so
+ * neither they nor the section were written: the write that names them is the
+ * only place the two become one revision, and half of it is not an outcome a
+ * host offers.
+ *
+ * `sectionId` is absent when a `create` is refused, because the host mints an
+ * id only for a section it is going to write.
  */
 export const promotionErrors = {
   PROMOTION_FAILED: {
-    message: 'the resources this submit promotes could not be committed',
+    message: 'the resources this write promotes could not be committed',
     data: z.object({
-      sectionId: SectionIdSchema,
+      sectionId: SectionIdSchema.optional(),
       failure: ResourceGatewayFailureSchema,
     }),
   },
@@ -75,16 +79,29 @@ export const lockedSectionErrors = {
   },
 } as const;
 
-export const refactorErrors = {
-  ...lockedSectionErrors,
-  /**
-   * The subject is still named where the host cannot remove the reference —
-   * a stage's own subject, a quick-add attribute — so applying the change
-   * would leave the protocol naming something that no longer exists. The
-   * references are what a codebook dialog tells the researcher is using it.
-   */
+/**
+ * What the change would remove is still named where the host will not take the
+ * reference out, so making it would leave the protocol naming something that
+ * no longer exists.
+ *
+ * Two things put a reference here. A refactor CANNOT remove one — a stage's own
+ * subject, a quick-add attribute — because there is no list entry to drop that
+ * leaves a stage the researcher would recognise. A `delete` WILL not: a stage
+ * another stage jumps to, or describes the people of, is a decision somebody
+ * made about that other stage, and rewriting it as a side effect of removing
+ * this one is not a deletion anybody asked for.
+ *
+ * Either way, the references are what the dialog tells the researcher is using
+ * the thing they asked to remove.
+ */
+export const referenceErrors = {
   REFERENCES_REMAIN: {
     message: 'the change would leave references this host cannot remove',
     data: z.object({ remaining: z.array(SectionReferenceSchema) }),
   },
+} as const;
+
+export const refactorErrors = {
+  ...lockedSectionErrors,
+  ...referenceErrors,
 } as const;

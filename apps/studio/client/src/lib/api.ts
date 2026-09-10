@@ -4,7 +4,9 @@ import type { RouterContractClient } from '@orpc/contract';
 import { createTanstackQueryUtils } from '@orpc/tanstack-query';
 
 import type { contract } from '@codaco/studio-rpc';
+import { CLIENT_SESSION_HEADER } from '@codaco/studio-rpc/client-session';
 
+import { clientSessionId } from './clientSession.ts';
 import { reportUnauthorizedResponse } from './session.ts';
 
 // Typed procedures over the server's /rpc surface (oRPC v2, #1244 decision).
@@ -14,6 +16,11 @@ import { reportUnauthorizedResponse } from './session.ts';
 const link = new RPCLink({
   origin: window.location.origin,
   url: '/rpc',
+  // This tab, which is what its protocol-builder locks belong to. Named on
+  // every call rather than on the lock procedures alone: the server reads the
+  // owner out of the request, and a call that omitted it would be a stranger
+  // to the section this tab is holding.
+  headers: () => ({ [CLIENT_SESSION_HEADER]: clientSessionId() }),
 });
 
 export const rpcClient: RouterContractClient<typeof contract> =

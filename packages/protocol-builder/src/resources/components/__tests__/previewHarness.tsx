@@ -4,7 +4,7 @@ import { expect, vi } from 'vitest';
 import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
 import ResourcePreview from '../ResourcePreview.tsx';
 import { deferred, type Deferred } from './asyncControls.ts';
-import { ResourceContextFrame } from './resourceContext.tsx';
+import { ResourceContextFrame, TEST_EDIT_ID } from './resourceContext.tsx';
 import { createResourceHost, withResourceProcedures } from './resourceHost.ts';
 
 export const HOST_UNAVAILABLE = 'the resource host is temporarily unavailable';
@@ -124,6 +124,9 @@ async function stageImage(
 ): Promise<string> {
   const staged = await client.resources.stage({
     protocolId,
+    // The very edit the preview under test is mounted in: a file staged for
+    // any other one is not a file this preview may resolve.
+    editId: TEST_EDIT_ID,
     requestId: `request-${source}`,
     request: {
       kind: 'content',

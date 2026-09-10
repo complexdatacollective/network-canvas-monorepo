@@ -85,6 +85,11 @@ export type ResourceClient = Readonly<{
 
 /** What the stage editor's save and cancel do with what the edit staged. */
 export type StagedResources = Readonly<{
+  /**
+   * Which edit this is: what the host keys the staging under, and what a
+   * promotion names so only this edit's own files can be committed by it.
+   */
+  editId: string;
   staged: readonly ResourceDescriptor[];
   /**
    * What the stage's submit carries so the host commits these resources in the
@@ -92,9 +97,9 @@ export type StagedResources = Readonly<{
    *
    * There is no promoting of its own: the submit is the only place the bytes
    * and the section naming them become one revision, so a refused submit
-   * leaves the staging exactly as it was and the same request promotes it on
-   * the next attempt — the promotion id is minted once and held until a submit
-   * carrying it is written.
+   * leaves the staging exactly as it was and the same files are promoted on
+   * the next attempt. It carries no key of its own either: the write's
+   * `requestId` is what a retry repeats.
    */
   promotion(): ResourcePromotion | undefined;
   /** Called when a submit carrying that promotion was written. */
@@ -155,7 +160,19 @@ export function useSecretStorage(): ResourceSecretStorage | undefined {
   return useContext(SecretStorageContext);
 }
 
-type ProviderProps = Readonly<{ children: ReactNode }>;
+type ProviderProps = Readonly<{
+  /**
+   * Which edit this is, when the host wants to name it rather than let one be
+   * minted here — the harness does, so a test can ask the host what this edit
+   * is holding.
+   *
+   * It has to be different for every edit open in a session: the host keys
+   * staging by it, and two editors sharing one id would each be able to
+   * promote and discard what the other imported.
+   */
+  editId?: string;
+  children: ReactNode;
+}>;
 
 /**
  * Tracks what one stage edit has staged.
@@ -165,9 +182,22 @@ type ProviderProps = Readonly<{ children: ReactNode }>;
  * stage's submit and discarded with its cancel. That decision belongs to the
  * edit rather than to the control that imported the file, which is why the
  * bookkeeping is here and not in a picker.
+ *
+ * Mounting this IS the edit opening, so the id is minted here and held for as
+ * long as it is mounted. A researcher with a codebook dialog open over a stage
+ * editor has two of these, and neither reaches the other's staging: one
+ * cancel would otherwise take away the file the other was about to save.
  */
-export function ResourceClientProvider({ children }: ProviderProps) {
+export function ResourceClientProvider({
+  editId: named,
+  children,
+}: ProviderProps) {
   const { client, protocolId } = useProtocolBuilderContext();
+  // Minted once for this mount rather than on every render: the id is what the
+  // host holds this edit's staged files under, and a second one would leave
+  // the files imported under the first unreachable.
+  const [minted] = useState(() => uuid());
+  const editId = named ?? minted;
   const [staged, setStaged] = useState<readonly ResourceDescriptor[]>([]);
   const [secretStorage, setSecretStorage] = useState<
     ResourceSecretStorage | undefined
@@ -175,23 +205,20 @@ export function ResourceClientProvider({ children }: ProviderProps) {
   const handles = useRef(new Map<string, StagedSecretHandle>());
   const leaving = useRef(new Set<string>());
   const discarded = useRef(new Set<string>());
-  // The promotion this edit is asking for, kept across attempts: a submit
-  // whose answer was lost is retried with the id the host already knows, so a
-  // promotion it did commit is answered with rather than made twice.
-  const promotionId = useRef<string | undefined>(undefined);
 
   const editorClient = useMemo(
     () =>
       buildResourceClient({
         client,
         protocolId,
+        editId,
         setStaged,
         setSecretStorage,
         handles: handles.current,
         leaving: leaving.current,
         discarded: discarded.current,
       }),
-    [client, protocolId],
+    [client, protocolId, editId],
   );
 
   const stagedResources = useMemo(
@@ -199,12 +226,12 @@ export function ResourceClientProvider({ children }: ProviderProps) {
       buildStagedResources({
         client,
         protocolId,
+        editId,
         staged,
         setStaged,
         handles: handles.current,
-        promotionId,
       }),
-    [client, protocolId, staged],
+    [client, protocolId, editId, staged],
   );
 
   // Where a promoted secret's value comes to rest is a fact the host states in
@@ -241,6 +268,8 @@ export function ResourceClientProvider({ children }: ProviderProps) {
 type ClientDeps = Readonly<{
   client: ProtocolBuilderClient;
   protocolId: string;
+  /** The edit every call names, so none of them reaches another's staging. */
+  editId: string;
   setStaged: (
     next: (
       current: readonly ResourceDescriptor[],
@@ -255,10 +284,10 @@ type ClientDeps = Readonly<{
 type StagedDeps = Readonly<{
   client: ProtocolBuilderClient;
   protocolId: string;
+  editId: string;
   staged: readonly ResourceDescriptor[];
   setStaged: ClientDeps['setStaged'];
   handles: Map<string, StagedSecretHandle>;
-  promotionId: { current: string | undefined };
 }>;
 
 /** Drops a staged resource from the edit's bookkeeping, wherever it is held. */
@@ -273,7 +302,7 @@ function forgetStaged(
 }
 
 function buildResourceClient(deps: ClientDeps): ResourceClient {
-  const { client, protocolId } = deps;
+  const { client, protocolId, editId } = deps;
   const resources = client.resources;
 
   const list = async (
@@ -282,6 +311,10 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
     called(async () => {
       const result = await resources.list({
         protocolId,
+        // Named, so the list is the protocol's committed resources AND what
+        // this edit has imported. Without it a researcher would not see the
+        // file they had just chosen until they had saved the stage.
+        editId,
         ...(options?.kinds === undefined ? {} : { kinds: [...options.kinds] }),
         ...(options?.status === undefined ? {} : { status: options.status }),
       });
@@ -309,6 +342,7 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
       called(async () => {
         const result = await resources.stage({
           protocolId,
+          editId,
           requestId: request.requestId,
           request: {
             kind: 'content',
@@ -330,6 +364,7 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
       called(async () => {
         const result = await resources.stage({
           protocolId,
+          editId,
           requestId: request.requestId,
           request: { kind: 'secret', name: request.name, value: request.value },
         });
@@ -349,13 +384,21 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
 
     resolvePreview: (resourceId) =>
       called(async () => {
-        const result = await resources.preview({ protocolId, resourceId });
+        const result = await resources.preview({
+          protocolId,
+          editId,
+          resourceId,
+        });
         return result.status === 'ok' ? resourceOk(result.data) : result;
       }),
 
     inspect: (resourceId) =>
       called(async () => {
-        const result = await resources.inspect({ protocolId, resourceId });
+        const result = await resources.inspect({
+          protocolId,
+          editId,
+          resourceId,
+        });
         return result.status === 'ok' ? resourceOk(result.data) : result;
       }),
 
@@ -363,7 +406,11 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
       called(async () => {
         deps.leaving.add(resourceId);
         try {
-          const result = await resources.discard({ protocolId, resourceId });
+          const result = await resources.discard({
+            protocolId,
+            editId,
+            resourceId,
+          });
           if (result.status === 'ok') {
             deps.discarded.add(resourceId);
             forget(resourceId);
@@ -395,13 +442,14 @@ function buildResourceClient(deps: ClientDeps): ResourceClient {
 }
 
 function buildStagedResources(deps: StagedDeps): StagedResources {
-  const { client, protocolId } = deps;
+  const { client, protocolId, editId } = deps;
   const resources = client.resources;
   const forget = (resourceId: string) => {
     forgetStaged(deps, resourceId);
   };
 
   return {
+    editId,
     staged: deps.staged,
     promotion: () => {
       const resourceIds = deps.staged.map((descriptor) => descriptor.id);
@@ -409,15 +457,13 @@ function buildStagedResources(deps: StagedDeps): StagedResources {
       const secretHandles = resourceIds
         .map((id) => deps.handles.get(id))
         .filter((handle): handle is StagedSecretHandle => handle !== undefined);
-      deps.promotionId.current ??= uuid();
       return {
-        promotionId: deps.promotionId.current,
+        editId,
         resourceIds,
         ...(secretHandles.length === 0 ? {} : { secretHandles }),
       };
     },
     promoted: () => {
-      deps.promotionId.current = undefined;
       for (const descriptor of deps.staged) forget(descriptor.id);
     },
     discardAll: () =>
@@ -425,9 +471,10 @@ function buildStagedResources(deps: StagedDeps): StagedResources {
         if (deps.staged.length === 0) return resourceOk(undefined);
         // A discard answers with its status and nothing else, so an `ok` is
         // read from the status alone; there is no data key to unwrap.
-        const result = await resources.discard({ protocolId });
+        // Named, so it drops what THIS edit staged and nothing another editor
+        // in the same session is holding.
+        const result = await resources.discard({ protocolId, editId });
         if (result.status !== 'ok') return result;
-        deps.promotionId.current = undefined;
         for (const descriptor of deps.staged) forget(descriptor.id);
         return resourceOk(undefined);
       }),

@@ -11,7 +11,7 @@ import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import type { ResourceDescriptor } from '../../types.ts';
 import ResourceSecretControl from '../ResourceSecretControl.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
-import { renderInResourceContext } from './resourceContext.tsx';
+import { renderInResourceContext, TEST_EDIT_ID } from './resourceContext.tsx';
 import {
   createResourceHost,
   stagedResources,
@@ -414,7 +414,7 @@ describe('the secret resource picker', () => {
   it('refuses a name a key staged since the browser opened already has', async () => {
     const user = userEvent.setup();
     const key = keyRecorder();
-    const { client, host } = renderKeyPicker(key);
+    const { client, editId, host } = renderKeyPicker(key);
 
     await user.click(
       await screen.findByRole('button', { name: 'Select an API key' }),
@@ -431,6 +431,10 @@ describe('the secret resource picker', () => {
     // this test exactly as it does from the researcher.
     const elsewhere = await client.resources.stage({
       protocolId: host.protocolId,
+      // The same edit: the other field is another picker in THIS stage editor,
+      // and a key staged for a different edit is one the check would rightly
+      // not see.
+      editId,
       requestId: 'another-field',
       request: { kind: 'secret', name: 'Mapbox', value: SECOND_SECRET },
     });
@@ -704,9 +708,9 @@ describe('a key edited after an uncertain failure', () => {
     await user.type(screen.getByLabelText('Key'), 'pk.corrected');
 
     await waitFor(async () =>
-      expect(await stagedResources(key.client, key.host.protocolId)).toEqual(
-        [],
-      ),
+      expect(
+        await stagedResources(key.client, key.host.protocolId, TEST_EDIT_ID),
+      ).toEqual([]),
     );
   });
 

@@ -18,12 +18,18 @@ type Harness = ReturnType<typeof renderStageEditor>;
  * has staged is bookkeeping over this, and a discard the host refused would
  * leave the two disagreeing. Failures are thrown rather than answered with an
  * empty list, which is what a discard having worked looks like.
+ *
+ * The edit is named because staged files belong to it: a list that named none
+ * would answer with the protocol's committed resources alone, and every
+ * question here would be answered "nothing is staged" whatever the editor was
+ * holding.
  */
 const stagedInTheHost = async (
   harness: Harness,
 ): Promise<readonly Readonly<{ id: string; name: string }>[]> => {
   const answer = await harness.host.client.resources.list({
     protocolId: harness.host.protocolId,
+    editId: harness.editId,
     status: 'staged',
   });
   if (answer.status !== 'ok') {
