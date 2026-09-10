@@ -141,6 +141,20 @@ test('fails when a changeset names the never-released core half', () => {
   assert.match(res.stderr, /never released: @codaco\/protocol-builder-core$/m);
 });
 
+test('fails when a changeset names a tooling workspace nothing releases', () => {
+  // Nothing about `@codaco/protocol-builder` is special here: every workspace
+  // that is private, unpublished, carries no CHANGELOG and sits in no gated
+  // lane is refused, because `changeset version` would bump every one of them
+  // the same way. A hand-written list of names would have let this through.
+  const cwd = fixture({
+    'tooling.md': `---\n"@codaco/tsconfig": patch\n---\n\nshared tsconfig`,
+  });
+  const res = run(cwd);
+  assert.equal(res.status, 1);
+  assert.match(res.stderr, /tooling\.md/);
+  assert.match(res.stderr, /never released: @codaco\/tsconfig$/m);
+});
+
 test('names both halves when one changeset releases the pair', () => {
   const cwd = fixture({
     'both-halves.md': `---\n"@codaco/protocol-builder": minor\n"@codaco/protocol-builder-core": minor\n---\n\nsplit`,

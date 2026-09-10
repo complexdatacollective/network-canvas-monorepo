@@ -9,7 +9,6 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
 
 import {
   BUNDLED_RUNTIME_DEPENDENTS,
@@ -25,6 +24,7 @@ import {
   renderChangelogSection,
   UNRELEASED_PACKAGES,
   unreleasedReleases,
+  workspaceManifests,
 } from './changeset-app-utils.mjs';
 
 test('normal Changesets versions private Architect and Interviewer packages', () => {
@@ -196,37 +196,13 @@ test('BUNDLED_RUNTIME_DEPENDENTS matches the apps that really bundle each runtim
   // pins it to the workspace's actual dependency graph. If it fails, an app
   // adopted or dropped a bundled runtime — update BUNDLED_RUNTIME_DEPENDENTS.
   const root = new URL('..', import.meta.url);
-  const workspace = readFileSync(new URL('pnpm-workspace.yaml', root), 'utf8');
-  // The app globs are the `- apps/...` lines of the leading `packages:` block;
-  // parse them without a YAML dependency. Comments are indented and skipped;
-  // the next top-level key ends the block.
-  const appGlobs = [];
-  let inPackages = false;
-  for (const line of workspace.split('\n')) {
-    if (line.startsWith('packages:')) {
-      inPackages = true;
-      continue;
-    }
-    if (!inPackages) continue;
-    if (/^\S/.test(line)) break;
-    const glob = line.match(/^\s+-\s+(\S+)/)?.[1];
-    if (glob?.startsWith('apps/')) appGlobs.push(glob);
-  }
-  assert.ok(appGlobs.includes('apps/*'), 'workspace parsing broke');
-
   const { ignore } = JSON.parse(
     readFileSync(new URL('.changeset/config.json', root), 'utf8'),
   );
   const ignored = new Set(ignore);
-  const manifests = appGlobs.flatMap((glob) => {
-    assert.match(glob, /\/\*$/, `unsupported workspace glob shape: ${glob}`);
-    const parent = fileURLToPath(new URL(glob.slice(0, -1), root));
-    return readdirSync(parent, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => join(parent, entry.name, 'package.json'))
-      .filter((manifestPath) => existsSync(manifestPath))
-      .map((manifestPath) => JSON.parse(readFileSync(manifestPath, 'utf8')));
-  });
+  const manifests = workspaceManifests()
+    .filter(({ glob }) => glob.startsWith('apps/'))
+    .map(({ manifest }) => manifest);
   assert.ok(manifests.length > 0);
 
   for (const [pkg, apps] of Object.entries(BUNDLED_RUNTIME_DEPENDENTS)) {
@@ -261,50 +237,27 @@ test('unreleasedReleases names only the packages the changeset lists', () => {
   );
 });
 
-test('UNRELEASED_PACKAGES names only workspaces with no release path at all', () => {
-  // The list is static so the guard works on changeset fixtures; this pins it
-  // to the workspace. Being private is not the qualifying property — Architect,
-  // Interviewer, Fresco, `@codaco/art` and `@codaco/interface-images` are all
-  // private and versioned in the normal lane, and the Studio packages are
-  // private and released by the Studio lane — so each entry has to be shown to
-  // have none of the three release paths. A package that gains one must leave
-  // this list rather than be silently protected from a release it now has.
+test('UNRELEASED_PACKAGES holds every workspace with no release path at all', () => {
+  // The set is derived from the manifests, so this pins it from the other
+  // side: each entry is shown to have none of the three release paths, and
+  // packages whose lane we know are named in both directions. Being private is
+  // not the qualifying property — Architect, Interviewer, Fresco,
+  // `@codaco/art` and `@codaco/interface-images` are all private and versioned
+  // in the normal lane, and the Studio packages are private and released by
+  // the Studio lane.
   const root = new URL('..', import.meta.url);
-  const workspace = readFileSync(new URL('pnpm-workspace.yaml', root), 'utf8');
-  const globs = [];
-  let inPackages = false;
-  for (const line of workspace.split('\n')) {
-    if (line.startsWith('packages:')) {
-      inPackages = true;
-      continue;
-    }
-    if (!inPackages) continue;
-    if (/^\S/.test(line)) break;
-    const glob = line.match(/^\s+-\s+(\S+)/)?.[1];
-    if (glob) globs.push(glob);
-  }
-  assert.ok(globs.includes('packages/*'), 'workspace parsing broke');
-
-  const directories = globs.flatMap((glob) => {
-    assert.match(glob, /\/\*$/, `unsupported workspace glob shape: ${glob}`);
-    const parent = fileURLToPath(new URL(glob.slice(0, -1), root));
-    return readdirSync(parent, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => join(parent, entry.name));
-  });
-
   const { ignore } = JSON.parse(
     readFileSync(new URL('.changeset/config.json', root), 'utf8'),
   );
+  const directories = new Map(
+    workspaceManifests().map(({ directory, manifest }) => [
+      manifest.name,
+      directory,
+    ]),
+  );
 
   for (const name of UNRELEASED_PACKAGES) {
-    const directory = directories.find((candidate) => {
-      const manifestPath = join(candidate, 'package.json');
-      return (
-        existsSync(manifestPath) &&
-        JSON.parse(readFileSync(manifestPath, 'utf8')).name === name
-      );
-    });
+    const directory = directories.get(name);
     assert.ok(directory, `${name} is not a workspace in this repository`);
 
     const manifest = JSON.parse(
@@ -327,6 +280,56 @@ test('UNRELEASED_PACKAGES names only workspaces with no release path at all', ()
     assert.ok(
       !ignore.includes(name),
       `${name} is in the changesets ignore list, which is a gated lane rather than no lane`,
+    );
+    assert.ok(
+      !readdirSync(directory).some((entry) => entry.startsWith('wrangler.')),
+      `${name} is a Cloudflare Worker, which deploys from its own config`,
+    );
+  }
+
+  // Every workspace with none of those paths is protected, not just the ones
+  // someone remembered: both protocol-builder halves, the protocol fixtures,
+  // and the tooling packages that apps and packages consume as source.
+  for (const name of [
+    '@codaco/protocol-builder',
+    '@codaco/protocol-builder-core',
+    '@codaco/protocols',
+    '@codaco/storybook-config',
+    '@codaco/tsconfig',
+    '@codaco/vitest-config',
+  ]) {
+    assert.ok(
+      UNRELEASED_PACKAGES.includes(name),
+      `${name} has no release path, so a changeset naming it must be refused`,
+    );
+  }
+
+  // And nothing with a release path is swept in, which would refuse a
+  // changeset the release lanes need.
+  for (const name of [
+    '@codaco/architect',
+    '@codaco/art',
+    '@codaco/background-creator',
+    '@codaco/documentation',
+    '@codaco/fresco-ui',
+    '@codaco/interface-images',
+    '@codaco/interview',
+    '@codaco/interviewer',
+    '@codaco/studio-client',
+    '@codaco/studio-rpc',
+    '@codaco/studio-server',
+    '@codaco/studio-sync',
+    'fresco',
+    'networkcanvas.com',
+    // Deployed by hand from its own `wrangler` config, and its changesets on
+    // main are the record of those deploys.
+    'posthog-proxy-worker',
+    'development-protocol-worker',
+    'studio-managed-ingress-worker',
+  ]) {
+    assert.ok(
+      !UNRELEASED_PACKAGES.includes(name),
+      `${name} has a release path and must not be refused`,
     );
   }
 });
