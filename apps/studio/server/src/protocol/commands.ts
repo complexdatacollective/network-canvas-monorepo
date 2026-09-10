@@ -1,7 +1,6 @@
 import type pg from 'pg';
 
 import { ProtocolNameSchema } from '@codaco/studio-rpc';
-import type { Command } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
@@ -16,7 +15,6 @@ import { TeamStore } from '../team/store.ts';
 import { addStage, moveStage } from './draft-structure.ts';
 import { emptyProtocol } from './sectionize.ts';
 import { ProtocolStore, ProtocolStoreError } from './store.ts';
-import { createProtocolSyncServer } from './sync.ts';
 
 export type ProtocolRevision = { sequence: string; hash: string };
 export type CreatedProtocol = { protocolId: string; draftId: string };
@@ -28,7 +26,7 @@ export class ProtocolCommandAuthorizationError extends Error {
   }
 }
 
-type LockedProtocolDraft = {
+export type LockedProtocolDraft = {
   protocolId: string;
   draftId: string;
   protocolLabel: string;
@@ -36,7 +34,7 @@ type LockedProtocolDraft = {
 
 const teamStore = new TeamStore();
 
-async function lockProtocolActorMembership(
+export async function lockProtocolActorMembership(
   client: pg.PoolClient,
   context: AuditedCommandContext,
 ): Promise<void> {
@@ -70,7 +68,7 @@ async function lockProtocolCreationActor(
   }
 }
 
-async function lockProtocolDraft(
+export async function lockProtocolDraft(
   client: pg.PoolClient,
   input: { teamId: string; protocolId: string; draftId: string },
 ): Promise<LockedProtocolDraft> {
@@ -98,7 +96,7 @@ async function lockProtocolDraft(
   };
 }
 
-function protocolEventContext(
+export function protocolEventContext(
   auditContext: LockedAuditedCommandContext,
   protocol: {
     protocolId: string;
@@ -161,56 +159,6 @@ export function createAuditedProtocol(
       }),
       eventType: 'protocol.created',
       details: { draftId: result.draftId },
-    } satisfies AuditEventInput;
-    return { status: 'succeeded', result: response, events: [event] };
-  });
-}
-
-export function commitAuditedProtocolSection(
-  context: AuditedCommandContext,
-  input: {
-    protocolId: string;
-    draftId: string;
-    sectionId: string;
-    clientId: string;
-    leaseEpoch: string;
-    clientSequence: string;
-    commands: Command[];
-  },
-): Promise<ProtocolRevision> {
-  return runAuditedCommand(context, async (client, auditContext) => {
-    await lockProtocolActorMembership(client, context);
-    const protocol = await lockProtocolDraft(client, {
-      teamId: context.tenantDb.teamId,
-      protocolId: input.protocolId,
-      draftId: input.draftId,
-    });
-    const result = await createProtocolSyncServer(context.tenantDb).commit(
-      {
-        draftId: input.draftId,
-        sectionId: input.sectionId,
-        owner: `${context.principal.userId}:${input.clientId}`,
-        epoch: BigInt(input.leaseEpoch),
-        clientSeq: BigInt(input.clientSequence),
-        commands: input.commands,
-      },
-      client,
-    );
-    const response = protocolRevision(result);
-    if (result.deduped) {
-      return { status: 'unchanged', result: response };
-    }
-
-    const event = {
-      ...protocolEventContext(auditContext, protocol),
-      eventType: 'protocol.draft.committed',
-      details: {
-        draftId: input.draftId,
-        revision: response.sequence,
-        affectedSectionIds: [input.sectionId],
-        operationTypes: [...new Set(input.commands.map(({ op }) => op))],
-        operationCount: input.commands.length,
-      },
     } satisfies AuditEventInput;
     return { status: 'succeeded', result: response, events: [event] };
   });

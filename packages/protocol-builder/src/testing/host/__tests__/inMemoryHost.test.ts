@@ -1,4 +1,4 @@
-import { safe } from '@orpc/client';
+import { getEventMeta, safe } from '@orpc/client';
 import { describe, expect, it } from 'vitest';
 
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
@@ -11,6 +11,14 @@ import {
   type InMemoryHost,
 } from '../createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../sectionsFromProtocol.ts';
+import { committedSource } from './committedSource.ts';
+
+/** The edit these calls are made from: one editor, open throughout. */
+const EDIT = 'edit-1';
+
+/** A fresh idempotency key: every write below is its own intent. */
+let writes = 0;
+const nextRequestId = (): string => `write-${++writes}`;
 
 const FIXTURE: Record<string, unknown> = allInterfaces;
 
@@ -48,10 +56,11 @@ async function submitHeld(
   subject: InMemoryHost,
   section: ReturnType<typeof sectionId>,
   promote?: Readonly<{
-    promotionId: string;
+    editId: string;
     resourceIds: string[];
     secretHandles?: string[];
   }>,
+  requestId = nextRequestId(),
 ) {
   const held = await subject.client.acquireLock({
     protocolId: subject.protocolId,
@@ -59,11 +68,159 @@ async function submitHeld(
   });
   return subject.client.submit({
     protocolId: subject.protocolId,
+    requestId,
     sectionId: section,
     document: held.document,
     revision: held.revision,
     ...(promote === undefined ? {} : { promote }),
   });
+}
+
+/**
+ * The cursors of the protocol's first `count` events, read from a watch that
+ * is then closed. Two writes under one lock produce four: the lock, the
+ * presence that follows it, and a revision each.
+ */
+async function watchCursors(
+  subject: InMemoryHost,
+  count: number,
+): Promise<string[]> {
+  const held = await subject.client.acquireLock({
+    protocolId: subject.protocolId,
+    sectionId: INFORMATION,
+  });
+  for (const label of ['one', 'two']) {
+    await subject.client.submit({
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      sectionId: INFORMATION,
+      document: { ...held.document, label },
+      revision: held.revision,
+    });
+  }
+  const events = await subject.client.watchProtocol({
+    protocolId: subject.protocolId,
+  });
+  const cursors: string[] = [];
+  for await (const event of events) {
+    cursors.push(String(getEventMeta(event)?.id));
+    if (cursors.length === count) break;
+  }
+  await events.return?.(undefined);
+  return cursors;
+}
+
+const PORTRAIT_BYTES = () =>
+  new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' });
+
+/** A second edit, open beside the first in the same session. */
+const OTHER_EDIT = 'edit-2';
+
+/** A file imported as `portrait.png` by one edit, whatever is inside it. */
+async function stagePortraitBytes(
+  subject: InMemoryHost,
+  editId: string,
+  requestId: string,
+  bytes: Blob,
+): Promise<string> {
+  const staged = await subject.client.resources.stage({
+    protocolId: subject.protocolId,
+    editId,
+    requestId,
+    request: {
+      kind: 'content',
+      contentKind: 'image',
+      name: 'Portrait',
+      source: 'portrait.png',
+      contentType: 'image/png',
+      bytes,
+    },
+  });
+  if (staged.status !== 'ok') throw new Error(staged.failure.message);
+  return staged.data.descriptor.id;
+}
+
+/** The bytes this host hands back for a committed resource. */
+async function committedBytes(
+  subject: InMemoryHost,
+  resourceId: string,
+): Promise<string> {
+  const preview = await subject.client.resources.preview({
+    protocolId: subject.protocolId,
+    resourceId,
+  });
+  if (preview.status !== 'ok') throw new Error(preview.failure.message);
+  return preview.data.url;
+}
+
+async function dataUrl(bytes: Blob): Promise<string> {
+  const encoded = Buffer.from(await bytes.arrayBuffer()).toString('base64');
+  return `data:image/png;base64,${encoded}`;
+}
+
+function manifestSource(subject: InMemoryHost, resourceId: string): unknown {
+  const entry = subject.store.read(sectionId({ kind: 'assets' })).document[
+    resourceId
+  ];
+  if (typeof entry !== 'object' || entry === null) {
+    throw new Error(`no manifest entry for ${resourceId}`);
+  }
+  return (entry as Record<string, unknown>).source;
+}
+
+/** A staged image, as an edit that imported a file holds one. */
+async function stagePortrait(subject: InMemoryHost): Promise<string> {
+  const staged = await subject.client.resources.stage({
+    protocolId: subject.protocolId,
+    editId: EDIT,
+    requestId: 'request-1',
+    request: {
+      kind: 'content',
+      contentKind: 'image',
+      name: 'Portrait',
+      source: 'portrait.png',
+      contentType: 'image/png',
+      bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+    },
+  });
+  if (staged.status !== 'ok') throw new Error(staged.failure.message);
+  return staged.data.descriptor.id;
+}
+
+/** A roster file an edit imported, whatever the bytes say. */
+async function stageRoster(
+  subject: InMemoryHost,
+  source: string,
+  contentType: string,
+  text: string,
+): Promise<string> {
+  const staged = await subject.client.resources.stage({
+    protocolId: subject.protocolId,
+    editId: EDIT,
+    requestId: 'request-1',
+    request: {
+      kind: 'content',
+      contentKind: 'network',
+      name: 'Roster',
+      source,
+      contentType,
+      bytes: new Blob([text], { type: contentType }),
+    },
+  });
+  if (staged.status !== 'ok') throw new Error(staged.failure.message);
+  return staged.data.descriptor.id;
+}
+
+/** An Information stage, without an id, whose body is that resource. */
+function informationNaming(
+  subject: InMemoryHost,
+  resourceId: string,
+): SectionDoc {
+  const { id: _id, ...template } = subject.store.read(INFORMATION).document;
+  return {
+    ...template,
+    items: [{ id: 'item-1', type: 'asset', content: resourceId }],
+  };
 }
 
 function stageOrder(subject: InMemoryHost): string[] {
@@ -90,6 +247,7 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.submit({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...before.document, label: 'Renamed by a non-holder' },
         revision: before.revision,
@@ -123,6 +281,7 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.submit({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...readOnly.document, label: 'Renamed by a spectator' },
         revision: readOnly.revision,
@@ -148,6 +307,7 @@ describe('the in-memory host', () => {
     });
     const { revision } = await subject.client.submit({
       protocolId: subject.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Renamed by the holder' },
       revision: held.revision,
@@ -168,6 +328,7 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.submit({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { id: 'information-1', type: 'NotAnInterface' },
         revision: subject.store.read(INFORMATION).revision,
@@ -186,6 +347,7 @@ describe('the in-memory host', () => {
 
     const created = await subject.client.create({
       protocolId: subject.protocolId,
+      requestId: nextRequestId(),
       kind: 'stage',
       document: withoutId,
       position: 1,
@@ -209,11 +371,111 @@ describe('the in-memory host', () => {
     );
   });
 
+  /**
+   * The gap `submit` cannot close: a stage being ADDED can carry a file the
+   * researcher imported while composing it, and there is no earlier revision
+   * of that stage to promote it with.
+   */
+  it("promotes what a created stage names, in the created stage's own revision", async () => {
+    const subject = host();
+    const staged = await stagePortrait(subject);
+
+    const created = await subject.client.create({
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: informationNaming(subject, staged),
+      promote: { editId: EDIT, resourceIds: [staged] },
+    });
+
+    expect(created.promoted).toEqual([
+      expect.objectContaining({ id: staged, status: 'committed' }),
+    ]);
+    const assets = subject.store.read(sectionId({ kind: 'assets' }));
+    expect(assets.document[staged]).toMatchObject({
+      name: 'Portrait',
+      type: 'image',
+      source: await committedSource(PORTRAIT_BYTES(), 'portrait.png'),
+    });
+    // The section, the pointer that holds it and the manifest are one
+    // revision, which is what a watcher reading the stream in order sees.
+    expect(assets.revision.sequence).toBe(created.revision.sequence);
+    expect(subject.store.read(created.sectionId).revision.sequence).toBe(
+      created.revision.sequence,
+    );
+    expect(subject.store.read(STAGE_ORDER).revision.sequence).toBe(
+      created.revision.sequence,
+    );
+  });
+
+  it('creates neither the stage nor its pointer when a promotion fails', async () => {
+    const subject = host();
+    const before = stageOrder(subject);
+    const assetsBefore = subject.store.read(sectionId({ kind: 'assets' }));
+
+    const { definedError, isSuccess } = await safe(
+      subject.client.create({
+        protocolId: subject.protocolId,
+        requestId: nextRequestId(),
+        kind: 'stage',
+        document: informationNaming(subject, 'never-staged'),
+        promote: { editId: EDIT, resourceIds: ['never-staged'] },
+      }),
+    );
+
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('PROMOTION_FAILED');
+    // No section id: the host mints one only for a create it is going to make.
+    expect(definedError?.data).toEqual({
+      failure: {
+        reason: 'not-found',
+        message: 'no such staged resource',
+        retryable: false,
+        resourceId: 'never-staged',
+      },
+    });
+    expect(stageOrder(subject)).toEqual(before);
+    expect(subject.store.read(sectionId({ kind: 'assets' }))).toEqual(
+      assetsBefore,
+    );
+    expect(
+      subject.store.has(sectionId({ kind: 'stage', stageId: 'minted-1' })),
+    ).toBe(false);
+  });
+
+  it('answers a repeated create with the stage it already made', async () => {
+    const subject = host();
+    const staged = await stagePortrait(subject);
+    const create = () =>
+      subject.client.create({
+        protocolId: subject.protocolId,
+        // The same request id: one intent, asked again because its answer was
+        // lost.
+        requestId: 'write-again',
+        kind: 'stage',
+        document: informationNaming(subject, staged),
+        promote: { editId: EDIT, resourceIds: [staged] },
+      });
+
+    const first = await create();
+    const order = stageOrder(subject);
+    const again = await create();
+
+    // The answer to the first can be lost. Minting a second stage for the
+    // retry would leave the protocol with two copies of it and the researcher
+    // never told about the first.
+    expect(again.sectionId).toBe(first.sectionId);
+    expect(again.revision).toEqual(first.revision);
+    expect(again.promoted).toEqual(first.promoted);
+    expect(stageOrder(subject)).toEqual(order);
+  });
+
   it('refuses to create a section whose document is not shaped like one', async () => {
     const subject = host();
     const { definedError, isSuccess } = await safe(
       subject.client.create({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         kind: 'stage',
         document: { type: 'NotAnInterface' },
       }),
@@ -385,6 +647,7 @@ describe('the in-memory host', () => {
         await safe(
           subject.client.resources.stage({
             protocolId: elsewhere,
+            editId: EDIT,
             requestId: 'request-1',
             request: {
               kind: 'content',
@@ -403,19 +666,30 @@ describe('the in-memory host', () => {
         await safe(
           subject.client.submit({
             protocolId: elsewhere,
+            requestId: nextRequestId(),
             sectionId: INFORMATION,
             document: subject.store.read(INFORMATION).document,
             revision: subject.store.read(INFORMATION).revision,
-            promote: { promotionId: 'promotion-1', resourceIds: [] },
+            // Names a resource rather than nothing, because a promotion of
+            // nothing is refused by the contract before any handler sees it,
+            // and what this asks is what the handler does with the protocol.
+            promote: { editId: EDIT, resourceIds: ['whatever'] },
           }),
         )
       ).definedError?.code,
-      (await safe(subject.client.resources.discard({ protocolId: elsewhere })))
-        .definedError?.code,
+      (
+        await safe(
+          subject.client.resources.discard({
+            protocolId: elsewhere,
+            editId: EDIT,
+          }),
+        )
+      ).definedError?.code,
       (
         await safe(
           subject.client.resources.inspect({
             protocolId: elsewhere,
+            editId: EDIT,
             resourceId: 'whatever',
           }),
         )
@@ -424,6 +698,7 @@ describe('the in-memory host', () => {
         await safe(
           subject.client.resources.preview({
             protocolId: elsewhere,
+            editId: EDIT,
             resourceId: 'whatever',
           }),
         )
@@ -442,6 +717,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const staged = await subject.client.resources.stage({
       protocolId: subject.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
     });
@@ -455,10 +731,11 @@ describe('the in-memory host', () => {
     const withoutHandle = await safe(
       subject.client.submit({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: held.document,
         revision: held.revision,
-        promote: { promotionId: 'promotion-1', resourceIds: [resourceId] },
+        promote: { editId: EDIT, resourceIds: [resourceId] },
       }),
     );
 
@@ -468,7 +745,7 @@ describe('the in-memory host', () => {
     ).toBeUndefined();
 
     const withHandle = await submitHeld(subject, INFORMATION, {
-      promotionId: 'promotion-2',
+      editId: EDIT,
       resourceIds: [resourceId],
       ...(staged.data.handle === undefined
         ? {}
@@ -485,6 +762,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const staged = await subject.client.resources.stage({
       protocolId: subject.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
@@ -498,10 +776,14 @@ describe('the in-memory host', () => {
     if (staged.status !== 'ok') throw new Error('staging failed');
 
     const promote = () =>
-      submitHeld(subject, INFORMATION, {
-        promotionId: 'promotion-1',
-        resourceIds: [staged.data.descriptor.id],
-      });
+      submitHeld(
+        subject,
+        INFORMATION,
+        { editId: EDIT, resourceIds: [staged.data.descriptor.id] },
+        // The same request id: one save, asked again because its answer was
+        // lost.
+        'write-again',
+      );
     const first = await promote();
     const committed = subject.store.read(sectionId({ kind: 'assets' }));
     const again = await promote();
@@ -515,7 +797,7 @@ describe('the in-memory host', () => {
     );
     expect(committed.document[staged.data.descriptor.id]).toMatchObject({
       name: 'Portrait',
-      source: 'portrait.png',
+      source: await committedSource(PORTRAIT_BYTES(), 'portrait.png'),
     });
   });
 
@@ -531,10 +813,11 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.submit({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         sectionId: INFORMATION,
         document: { ...held.document, label: 'Renamed beside a bad promotion' },
         revision: held.revision,
-        promote: { promotionId: 'promotion-1', resourceIds: ['never-staged'] },
+        promote: { editId: EDIT, resourceIds: ['never-staged'] },
       }),
     );
 
@@ -557,6 +840,7 @@ describe('the in-memory host', () => {
     const subject = host();
     const staged = await subject.client.resources.stage({
       protocolId: subject.protocolId,
+      editId: EDIT,
       requestId: 'request-1',
       request: {
         kind: 'content',
@@ -570,7 +854,7 @@ describe('the in-memory host', () => {
     if (staged.status !== 'ok') throw new Error('staging failed');
 
     const written = await submitHeld(subject, INFORMATION, {
-      promotionId: 'promotion-1',
+      editId: EDIT,
       resourceIds: [staged.data.descriptor.id],
     });
 
@@ -582,6 +866,42 @@ describe('the in-memory host', () => {
     expect(subject.store.read(INFORMATION).revision.sequence).toBe(
       written.revision.sequence,
     );
+  });
+
+  it('keeps two imports of one filename as two assets', async () => {
+    const subject = host();
+    const mine = PORTRAIT_BYTES();
+    const theirs = new Blob([new Uint8Array([4, 5, 6, 7])], {
+      type: 'image/png',
+    });
+
+    const first = await stagePortraitBytes(subject, EDIT, 'request-1', mine);
+    await submitHeld(subject, INFORMATION, {
+      editId: EDIT,
+      resourceIds: [first],
+    });
+    const second = await stagePortraitBytes(
+      subject,
+      OTHER_EDIT,
+      'request-2',
+      theirs,
+    );
+    await subject.client.create({
+      protocolId: subject.protocolId,
+      requestId: nextRequestId(),
+      kind: 'stage',
+      document: informationNaming(subject, second),
+      promote: { editId: OTHER_EDIT, resourceIds: [second] },
+    });
+
+    // Committed bytes are named by their content. Keyed by the filename the
+    // researcher picked, the second import would have taken the first one's
+    // place and every stage already naming it would show the new picture.
+    expect(manifestSource(subject, first)).not.toEqual(
+      manifestSource(subject, second),
+    );
+    expect(await committedBytes(subject, first)).toBe(await dataUrl(mine));
+    expect(await committedBytes(subject, second)).toBe(await dataUrl(theirs));
   });
 
   it('removes a stage and its place in the stage order in one revision', async () => {
@@ -656,6 +976,7 @@ describe('the in-memory host', () => {
 
     const created = await subject.client.create({
       protocolId: subject.protocolId,
+      requestId: nextRequestId(),
       kind: 'codebookEgo',
       document: {
         variables: {
@@ -680,6 +1001,7 @@ describe('the in-memory host', () => {
     const { definedError, isSuccess } = await safe(
       subject.client.create({
         protocolId: subject.protocolId,
+        requestId: nextRequestId(),
         kind: 'codebookEgo',
         document: { variables: {} },
       }),
@@ -760,6 +1082,7 @@ describe('the in-memory host', () => {
 
     const written = await subject.client.submit({
       protocolId: subject.protocolId,
+      requestId: nextRequestId(),
       sectionId: INFORMATION,
       document: { ...held.document, label: 'Saved after the stream ended' },
       revision: held.revision,
@@ -775,6 +1098,7 @@ describe('the in-memory host', () => {
     const { isSuccess } = await safe(
       subject.client.resources.stage({
         protocolId: subject.protocolId,
+        editId: EDIT,
         requestId: 'request-1',
         request: {
           kind: 'content',
@@ -790,9 +1114,350 @@ describe('the in-memory host', () => {
     expect(isSuccess).toBe(false);
     const staged = await subject.client.resources.list({
       protocolId: subject.protocolId,
+      editId: EDIT,
       status: 'staged',
     });
     expect(staged.status === 'ok' && staged.data.resources).toEqual([]);
+  });
+
+  it('refuses to stage a file with nothing in it', async () => {
+    const subject = host();
+    const staged = await subject.client.resources.stage({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Empty',
+        source: 'empty.png',
+        contentType: 'image/png',
+        bytes: new Blob([], { type: 'image/png' }),
+      },
+    });
+
+    // Staged, it would promote into a manifest entry naming an image with no
+    // pixels, which the interview would try to show.
+    expect(staged).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'invalid-content' },
+    });
+    const listed = await subject.client.resources.list({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      status: 'staged',
+    });
+    expect(listed.status === 'ok' && listed.data.resources).toEqual([]);
+  });
+
+  it('drops an import the edit cancelled while its bytes were being read', async () => {
+    const subject = host();
+
+    // The import is still being read when the edit is cancelled — the
+    // researcher closing the dialog they picked the file in. The discard
+    // answers `ok`, so a file inserted behind it is one no edit can ever
+    // discard again and no submit can ever promote.
+    const importing = subject.client.resources.stage({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Portrait',
+        source: 'portrait.png',
+        contentType: 'image/png',
+        bytes: PORTRAIT_BYTES(),
+      },
+    });
+    const cancelled = await subject.client.resources.discard({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+    });
+
+    expect(cancelled.status).toBe('ok');
+    expect(await importing).toMatchObject({ status: 'failed' });
+    const listed = await subject.client.resources.list({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      status: 'staged',
+    });
+    expect(listed.status === 'ok' && listed.data.resources).toEqual([]);
+  });
+
+  it('reads the network a staged roster holds', async () => {
+    const subject = host();
+    const roster = await stageRoster(
+      subject,
+      'roster.csv',
+      'text/csv',
+      'name,age\nAda,36\nGrace,45\n',
+    );
+
+    const inspected = await subject.client.resources.inspect({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      resourceId: roster,
+    });
+
+    // The names and counts are in the bytes and nowhere else: a picker showing
+    // a roster's summary, and a field offering its columns, have only what
+    // this answers.
+    expect(inspected).toMatchObject({
+      status: 'ok',
+      data: {
+        counts: { nodes: 2, edges: 0 },
+        variableNames: ['age', 'name'],
+      },
+    });
+  });
+
+  it('refuses a staged roster the interview could not read', async () => {
+    const subject = host();
+    const roster = await stageRoster(
+      subject,
+      'roster.csv',
+      'text/csv',
+      'name,age\nAda,36,unexpected\n',
+    );
+
+    const inspected = await subject.client.resources.inspect({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      resourceId: roster,
+    });
+
+    // Answered `ok`, this is a broken file the editor commits into the
+    // protocol, and an interview that fails on the roster weeks later.
+    expect(inspected).toMatchObject({
+      status: 'failed',
+      failure: { reason: 'invalid-content', resourceId: roster },
+    });
+  });
+
+  it('refuses a promotion that names no resource', async () => {
+    const subject = host();
+    const assets = sectionId({ kind: 'assets' });
+    const before = subject.store.read(assets).revision;
+
+    const refused = await safe(
+      submitHeld(subject, INFORMATION, { editId: EDIT, resourceIds: [] }),
+    );
+
+    // A promotion of nothing is not a promotion: it makes an ordinary save
+    // touch the asset manifest, so a collaborator holding that section is
+    // enough to refuse the save, and a save that is not refused publishes a
+    // manifest revision with nothing in it changed.
+    expect(refused.isSuccess).toBe(false);
+    expect(subject.store.read(assets).revision).toEqual(before);
+  });
+
+  it('keeps a staged secret to the session that staged it', async () => {
+    const subject = host();
+    const staged = await subject.client.resources.stage({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      requestId: 'request-1',
+      request: { kind: 'secret', name: 'Mapbox token', value: 'pk.secret' },
+    });
+    if (staged.status !== 'ok') throw new Error('staging a secret failed');
+
+    // Neither half of what promoting somebody else's secret would take is
+    // reachable from another session: staging is that edit's, so a
+    // collaborator is not shown the resource id, and the handle is minted
+    // independently of that id, so it cannot be worked out from one either.
+    const collaborator = subject.asCollaborator(COLLABORATOR);
+    const listed = await collaborator.resources.list({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      status: 'staged',
+    });
+    if (listed.status !== 'ok') throw new Error('listing failed');
+    expect(listed.data.resources).toEqual([]);
+    expect(staged.data.handle).not.toContain(staged.data.descriptor.id);
+
+    // The session that staged it still has it: this is scoping, not hiding.
+    const mine = await subject.client.resources.list({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      status: 'staged',
+    });
+    if (mine.status !== 'ok') throw new Error('listing failed');
+    expect(mine.data.resources.map((resource) => resource.id)).toEqual([
+      staged.data.descriptor.id,
+    ]);
+
+    const held = await collaborator.acquireLock({
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+    });
+    const forged = await safe(
+      collaborator.submit({
+        protocolId: subject.protocolId,
+        requestId: nextRequestId(),
+        sectionId: INFORMATION,
+        document: held.document,
+        revision: held.revision,
+        promote: {
+          editId: EDIT,
+          resourceIds: [staged.data.descriptor.id],
+          secretHandles: [`staged-secret:${staged.data.descriptor.id}`],
+        },
+      }),
+    );
+
+    expect(forged.definedError?.code).toBe('PROMOTION_FAILED');
+    expect(
+      subject.store.read(sectionId({ kind: 'assets' })).document[
+        staged.data.descriptor.id
+      ],
+    ).toBeUndefined();
+  });
+
+  it('answers a retried submit with the revision it already wrote', async () => {
+    const subject = host();
+    const staged = await subject.client.resources.stage({
+      protocolId: subject.protocolId,
+      editId: EDIT,
+      requestId: 'request-1',
+      request: {
+        kind: 'content',
+        contentKind: 'image',
+        name: 'Portrait',
+        source: 'portrait.png',
+        contentType: 'image/png',
+        bytes: new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      },
+    });
+    if (staged.status !== 'ok') throw new Error('staging failed');
+    const promotion = {
+      editId: EDIT,
+      resourceIds: [staged.data.descriptor.id],
+    };
+
+    const first = await submitHeld(
+      subject,
+      INFORMATION,
+      promotion,
+      'write-again',
+    );
+    const committed = subject.store.read(INFORMATION);
+    const again = await submitHeld(
+      subject,
+      INFORMATION,
+      promotion,
+      'write-again',
+    );
+
+    // The answer to the first can be lost. What the retry is told is what that
+    // attempt wrote — the same revision, not a second one nothing changed in.
+    expect(again).toEqual(first);
+    expect(subject.store.read(INFORMATION)).toEqual(committed);
+
+    await subject.client.releaseLock({
+      protocolId: subject.protocolId,
+      sectionId: INFORMATION,
+    });
+    const afterRelease = await subject.client.submit({
+      protocolId: subject.protocolId,
+      requestId: 'write-again',
+      sectionId: INFORMATION,
+      document: committed.document,
+      revision: committed.revision,
+      promote: promotion,
+    });
+
+    // By the time a retry goes out the editor may have closed and given the
+    // lock back. Refusing then would tell the researcher to discard a draft
+    // that was saved.
+    expect(afterRelease).toEqual(first);
+  });
+
+  it('says which section a refactor cannot find', async () => {
+    const subject = host();
+    const { definedError, isSuccess } = await safe(
+      subject.client.refactor.deleteEntityType({
+        protocolId: subject.protocolId,
+        entity: 'node',
+        typeId: 'ghost',
+      }),
+    );
+
+    // A stale client deleting a type another editor has already removed gets
+    // the refusal the contract declares, not an internal failure that reaches
+    // a caller over a transport as nothing it can act on.
+    expect(isSuccess).toBe(false);
+    expect(definedError?.code).toBe('SECTION_NOT_FOUND');
+    expect(definedError?.data).toMatchObject({
+      sectionId: sectionId({ kind: 'codebookNode', typeId: 'ghost' }),
+    });
+  });
+
+  it('resumes from the cursor the transport says the client reached', async () => {
+    const subject = host();
+    const cursors = await watchCursors(subject, 4);
+
+    // A transport resuming a dropped socket re-invokes the handler with the
+    // same input and the id of the last event it delivered. Starting from the
+    // input would hand this connection everything between the two again, and
+    // the channel applies what it is given.
+    const resumed = await subject.client.watchProtocol(
+      { protocolId: subject.protocolId, since: cursors[0] },
+      { lastEventId: cursors[2] },
+    );
+    const replayed: string[] = [];
+    for await (const event of resumed) {
+      replayed.push(String(getEventMeta(event)?.id));
+      break;
+    }
+    await resumed.return?.(undefined);
+
+    expect(replayed).toEqual([cursors[3]]);
+  });
+
+  it('keeps a holder editing when its watch stream starts again', async () => {
+    const subject = host();
+    await subject.client.acquireLock({
+      protocolId: subject.protocolId,
+      sectionId: PERSON,
+    });
+    const first = await subject.client.watchProtocol({
+      protocolId: subject.protocolId,
+    });
+    await first.next();
+    await first.return(undefined);
+
+    const second = await subject.client.watchProtocol({
+      protocolId: subject.protocolId,
+    });
+    await second.next();
+    const holder = subject.store.holderOf(PERSON);
+    await second.return(undefined);
+
+    // The lock survives the drop, so the editor behind it is still editing.
+    // Rejoining as a viewer would tell every read-only editor of that section
+    // that nobody is in it.
+    expect(holder).toMatchObject({
+      displayName: 'Ada',
+      mode: 'editing',
+      sectionId: PERSON,
+    });
+  });
+
+  it('keeps the section it was seeded with when the seed is changed after', () => {
+    const seed = sectionsFromProtocol(FIXTURE);
+    const subject = createInMemoryHost({ sections: seed });
+    const document = seed[INFORMATION];
+    if (document === undefined) throw new Error('no information section');
+
+    document.label = 'Changed behind the store';
+
+    // Holding the caller's object would let it change the protocol with no
+    // lock check, no revision, no event, and a content hash that no longer
+    // describes what is stored.
+    expect(subject.store.read(INFORMATION).document.label).not.toBe(
+      'Changed behind the store',
+    );
   });
 });
 

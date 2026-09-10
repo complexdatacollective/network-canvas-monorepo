@@ -92,7 +92,7 @@ describe('a refused resource import and the protocol timeline', () => {
     const manifestBefore = manifestOf(store);
 
     const result = await store.dispatch(
-      importAssetAsync(new File(['{"a":1}'], 'rubbish.json')),
+      importAssetAsync({ file: new File(['{"a":1}'], 'rubbish.json') }),
     );
 
     expect(result.type).toBe('assetManifest/importAssetAsync/rejected');
@@ -104,7 +104,9 @@ describe('a refused resource import and the protocol timeline', () => {
     // A refusal used to clear `future` before pushing its own past entry, so
     // it destroyed redoable work as well as inventing an undo step.
     mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
-    await store.dispatch(importAssetAsync(new File(['a,b'], 'people.csv')));
+    await store.dispatch(
+      importAssetAsync({ file: new File(['a,b'], 'people.csv') }),
+    );
     expect(history(store).past).toBe(1);
 
     store.dispatch({ type: 'timeline/undo' });
@@ -112,7 +114,7 @@ describe('a refused resource import and the protocol timeline', () => {
 
     mockedValidateAsset.mockRejectedValue(new Error('NETWORK_EMPTY'));
     await store.dispatch(
-      importAssetAsync(new File(['{"a":1}'], 'rubbish.json')),
+      importAssetAsync({ file: new File(['{"a":1}'], 'rubbish.json') }),
     );
 
     expect(history(store).future).toBe(1);
