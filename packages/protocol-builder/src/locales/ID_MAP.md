@@ -288,24 +288,23 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `nodePanels`           | `sections/NodePanelsSection`           | family D    |
 | `alterLimits`          | `sections/AlterLimitsSection`          | family D    |
 | `nameGeneratorPrompts` | `sections/NameGeneratorPromptsSection` | family D    |
-| `narrativePedigree`    | `editors/narrative-pedigree/sections/` | family F    |
 | `anonymisation`        | `sections/anonymisation/`              | family F    |
 
 ### One file per family — the interface families
 
-| `<area>`        | Owns the copy in                                     | Declared in                                                     |
-| --------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
-| `pedigree`      | `editors/family-pedigree/sections/`                  | `editors/family-pedigree/sections/pedigreeMessages.ts`          |
-| `networkCanvas` | `sections/canvas/`                                   | `sections/canvas/canvasMessages.ts`                             |
-| `networkCanvas` | `sections/canvas-behaviours/`                        | `sections/canvas-behaviours/canvasBehavioursMessages.ts`        |
-| `networkCanvas` | `editors/sociogram/sections/prompts/`                | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts` |
-| `networkCanvas` | `editors/narrative/sections/presets/`                | `editors/narrative/sections/presets/narrativePresetMessages.ts` |
-| `networkCanvas` | `editors/network-composer/sections/`                 | `editors/network-composer/sections/composerMessages.ts`         |
-| `networkCanvas` | the composer's form-field list                       | `sections/form-fields/composerFormFieldMessages.ts`             |
-| `geospatial`    | `editors/geospatial/sections/`, `fields/geospatial/` | `fields/geospatial/geospatialMessages.ts`                       |
+| `<area>`            | Owns the copy in                                     | Declared in                                                        |
+| ------------------- | ---------------------------------------------------- | ------------------------------------------------------------------ |
+| `pedigree`          | `editors/family-pedigree/sections/`                  | `editors/family-pedigree/sections/pedigreeMessages.ts`             |
+| `networkCanvas`     | `sections/canvas/`                                   | `sections/canvas/canvasMessages.ts`                                |
+| `networkCanvas`     | `sections/canvas-behaviours/`                        | `sections/canvas-behaviours/canvasBehavioursMessages.ts`           |
+| `networkCanvas`     | `editors/sociogram/sections/prompts/`                | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts`    |
+| `networkCanvas`     | `editors/narrative/sections/presets/`                | `editors/narrative/sections/presets/narrativePresetMessages.ts`    |
+| `networkCanvas`     | `editors/network-composer/sections/`                 | `editors/network-composer/sections/composerMessages.ts`            |
+| `networkCanvas`     | the composer's form-field list                       | `sections/form-fields/composerFormFieldMessages.ts`                |
+| `geospatial`        | `editors/geospatial/sections/`, `fields/geospatial/` | `fields/geospatial/geospatialMessages.ts`                          |
+| `narrativePedigree` | `editors/narrative-pedigree/sections/`               | `editors/narrative-pedigree/sections/narrativePedigreeMessages.ts` |
 
-The remaining two families of the same series — `narrativePedigree` and
-`anonymisation` — keep their reserved names above and add a row here as each
+`anonymisation` keeps its reserved name above and adds a row here when it
 lands.
 
 `geospatial` declares its whole family in one file under `fields/` rather

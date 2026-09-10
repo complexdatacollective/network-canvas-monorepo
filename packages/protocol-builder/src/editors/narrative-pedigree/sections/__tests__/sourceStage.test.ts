@@ -7,7 +7,12 @@ import {
   type ProtocolBuilderProtocolContext,
 } from '../../../../protocol-context.ts';
 import { fixtureProtocolSections } from '../../../../testing/protocolFixture.ts';
-import { resolveSourceStages, sourceStageNodeType } from '../sourceStage.ts';
+import {
+  diseaseMarksNobody,
+  resolveSourceStages,
+  sourceStageNodeType,
+  sourceStageRecordedVariables,
+} from '../sourceStage.ts';
 
 /**
  * The shared protocol, in whatever interview order the test needs.
@@ -41,8 +46,10 @@ describe('the pedigrees a narrative pedigree may read', () => {
       'family-pedigree-1',
     );
 
+    // Numbered as the researcher will see it in the interview, because two
+    // pedigrees may carry the same name.
     expect(options).toEqual([
-      { value: 'family-pedigree-1', label: 'Family Pedigree' },
+      { value: 'family-pedigree-1', label: 'Family Pedigree', position: 3 },
     ]);
     expect(problem).toBeNull();
   });
@@ -179,5 +186,55 @@ describe('the node type a narrative pedigree describes', () => {
     expect(sourceStageNodeType(context, 'sociogram-1')).toBeUndefined();
     expect(sourceStageNodeType(context, 'no-such-stage')).toBeUndefined();
     expect(sourceStageNodeType(context, undefined)).toBeUndefined();
+  });
+});
+
+describe('the attributes the source pedigree records', () => {
+  /**
+   * A nomination prompt is the one place a Family Pedigree writes a boolean
+   * onto a family member, so it is the whole of what a disease may read.
+   */
+  it('is what its nomination prompts write', () => {
+    expect([
+      ...sourceStageRecordedVariables(
+        contextInOrder(FIXTURE_ORDER),
+        'family-pedigree-1',
+      ),
+    ]).toEqual(['hasConditionX']);
+  });
+
+  it('is nothing at all when the source cannot be resolved', () => {
+    const context = contextInOrder(FIXTURE_ORDER);
+
+    expect(sourceStageRecordedVariables(context, 'sociogram-1').size).toBe(0);
+    expect(sourceStageRecordedVariables(context, 'no-such-stage').size).toBe(0);
+    expect(sourceStageRecordedVariables(context, undefined).size).toBe(0);
+  });
+});
+
+describe('a disease that would mark nobody', () => {
+  const recorded = new Set(['hasConditionX']);
+
+  it('is one mapping an attribute nothing records', () => {
+    expect(diseaseMarksNobody({ variable: 'biologicalSex' }, recorded)).toBe(
+      true,
+    );
+  });
+
+  it('is not one mapping an attribute a nomination prompt writes', () => {
+    expect(diseaseMarksNobody({ variable: 'hasConditionX' }, recorded)).toBe(
+      false,
+    );
+  });
+
+  /**
+   * An unfinished row is what `required` reports; complaining that a blank
+   * marks nobody would put two refusals on one empty control.
+   */
+  it('is not an unfinished row, or something that is not a row at all', () => {
+    expect(diseaseMarksNobody({ variable: '' }, recorded)).toBe(false);
+    expect(diseaseMarksNobody({}, recorded)).toBe(false);
+    expect(diseaseMarksNobody(null, recorded)).toBe(false);
+    expect(diseaseMarksNobody(['hasConditionZ'], recorded)).toBe(false);
   });
 });
