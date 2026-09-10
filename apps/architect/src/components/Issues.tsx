@@ -3,7 +3,7 @@ import { TriangleAlert } from 'lucide-react';
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { resolveFieldErrorTarget } from '@codaco/fresco-ui/form/utils/focusFirstError';
@@ -44,6 +44,31 @@ const resolveTarget = (field: string): HTMLElement | null => {
   return null;
 };
 
+/**
+ * What the researcher calls the field this issue is about.
+ *
+ * The field's own label, read from the element the control is named by: a row
+ * that said `introductionPanel.title` would be sending them to look for a
+ * control by a name nothing on screen uses. The required marker inside the
+ * label is `aria-hidden`, and is dropped here for the same reason it is hidden
+ * there — it is punctuation, not part of the name.
+ */
+const labelTextFor = (field: string): string | null => {
+  const control = resolveFieldErrorTarget(field);
+  const labelId = control?.getAttribute('aria-labelledby')?.split(/\s+/)[0];
+  const named = labelId === undefined ? null : document.getElementById(labelId);
+  const source = named ?? resolveTarget(field);
+  if (!(source instanceof HTMLElement)) return null;
+  const dataName = source.getAttribute('data-name');
+  if (dataName) return dataName;
+  const clone = source.cloneNode(true);
+  if (!(clone instanceof HTMLElement)) return null;
+  for (const hidden of clone.querySelectorAll('[aria-hidden="true"]')) {
+    hidden.remove();
+  }
+  return clone.textContent?.trim() || null;
+};
+
 export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
   const intl = useAppIntl();
   // The stage form's field errors are already flat and keyed by field name.
@@ -54,7 +79,19 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
   // goes with them.
   const fieldErrors = useFormStore((state) => state.errors.fieldErrors);
   const submitFailed = useFormStore((state) => state.errorFocusRequest > 0);
-  const flatIssues = useMemo(() => flattenIssues(fieldErrors), [fieldErrors]);
+  // Decoded here rather than where they were raised: a field's message crosses
+  // the form as an encoded descriptor so that a refusal already on screen
+  // follows a change of language, and this panel is one of the places it is
+  // read out. A host message that was never encoded is already in the
+  // researcher's language and passes through.
+  const flatIssues = useMemo(
+    () =>
+      flattenIssues(fieldErrors).map((issue) => ({
+        ...issue,
+        issue: formatMessageError(issue.issue, intl) ?? issue.issue,
+      })),
+    [fieldErrors, intl],
+  );
   const hasIssues = flatIssues.length > 0;
   const issueCount = flatIssues.length;
 
@@ -83,16 +120,12 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
   }, [hasIssues, setPanelOpen]);
 
   // Field display labels live in the DOM, so a row's own label is only
-  // discoverable once that row's field anchor is mounted. Reads `data-name`
-  // (set by IssueAnchor) or the anchor's text, and rewrites the row in place.
-  // Idempotent: writing the same label twice is a no-op, which is what lets
+  // discoverable once that field is mounted. Rewrites the row in place, and is
+  // idempotent — writing the same label twice is a no-op, which is what lets
   // both callers below run freely.
   const harvestLabel = useCallback((el: HTMLElement | null, field: string) => {
     if (!el) return;
-    const targetField = resolveTarget(field);
-    if (!targetField) return;
-    const fieldName =
-      targetField.getAttribute('data-name') || targetField.textContent;
+    const fieldName = labelTextFor(field);
     if (fieldName) el.textContent = fieldName;
   }, []);
 

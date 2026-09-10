@@ -128,7 +128,11 @@ export default function SectionOutline() {
   return (
     <nav
       aria-label={intl.formatMessage(messages.landmark)}
-      className="@min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:max-h-dvh @min-[60rem]:overflow-y-auto @min-[60rem]:py-14"
+      // `min-w-0`: a grid item's own minimum is its content, so without it the
+      // strip of sections below the two-column breakpoint makes this column as
+      // wide as the whole list — and the list's `overflow-x-auto` never has
+      // anything to scroll, while the page does.
+      className="min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:max-h-dvh @min-[60rem]:overflow-y-auto @min-[60rem]:py-14"
     >
       <ol className="flex list-none gap-2 overflow-x-auto p-0 @min-[60rem]:flex-col @min-[60rem]:overflow-visible">
         {sections.map((section) => (
@@ -209,7 +213,12 @@ function SectionOutlineItem({ section }: { section: OutlineSection }) {
     <button
       type="button"
       onClick={() => focusSection(section.id)}
-      className="focusable flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-left text-sm hover:bg-current/5"
+      // `relative`: the visually hidden status below is absolutely positioned,
+      // so without a positioned ancestor of its own it is laid out against
+      // whatever the page happens to have positioned — reaching, in a host
+      // whose editor sits in a scrolling panel, past the right of the page and
+      // giving it a horizontal scrollbar.
+      className="focusable relative flex w-full cursor-pointer items-center gap-2 rounded-sm px-3 py-2 text-left text-sm hover:bg-current/5"
     >
       <StatusIcon
         aria-hidden

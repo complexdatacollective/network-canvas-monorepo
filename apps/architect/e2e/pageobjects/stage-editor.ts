@@ -15,18 +15,17 @@ import { expect, type Locator, type Page } from '@playwright/test';
 //   heading; `UnconnectedField` (fresco-ui/form/Field/UnconnectedField.tsx) stamps
 //   `data-field-name={name}` on every field, and the connected `Field`
 //   stamps the same attribute on the identical wrapper (Task 2's seam).
-// - `expectNoIssues()`'s `getByTestId('issue')` is real: `Issues.tsx`'s issues
-//   popover renders each flattened sync-validation error as
-//   `<li data-testid="issue">`. That popover only mounts once a submit has
-//   actually failed (`hasIssues && submitFailed`), so absence is trivially
-//   true before any submit attempt — call this after `save()` (or a failed
-//   submit) to make the assertion meaningful.
+// - `expectNoIssues()` reads the editor's own section outline
+//   (`@codaco/protocol-builder`'s `SectionOutline`, a navigation landmark named
+//   "Stage sections") and asserts that no section reports a problem. That is
+//   an assertion about what is on screen BEFORE anything is saved — the
+//   outline lists every section from the moment the editor opens — so unlike
+//   the issues popover it replaces, it is not trivially true before a submit.
 // - `save()`'s button: StageEditorNav.tsx conditionally composes its
-//   `FinishedEditingControl` when `hasUnsavedChanges` is true. The control is
-//   a native submit button associated with the stage form. StageEditor.tsx's
-//   `onSubmit` handler
-//   navigates to `/protocol` only once the form's validators all pass
-//   and the commit actually runs — so `waitForURL` after the click is a
+//   `FinishedEditingControl` when the editor reports unsaved changes. The
+//   control is a native submit button associated with the stage form, and the
+//   editor navigates to `/protocol` only once the form's validators all pass
+//   and the host has accepted the write — so `waitForURL` after the click is a
 //   genuine round-trip assertion, not just a click-and-hope.
 // Inline emphasis spans, longest-delimiter first so `**bold**` is never read
 // as two adjacent `*italic*` markers. Kept as a split pattern (capturing, so
@@ -191,8 +190,21 @@ export class StageEditor {
     }
   }
 
+  outline(): Locator {
+    return this.page.getByRole('navigation', { name: 'Stage sections' });
+  }
+
   async expectNoIssues(): Promise<void> {
-    await expect(this.page.getByTestId('issue')).toHaveCount(0);
+    // Every section the editor renders is listed here with a state, and a
+    // section the schema or a required field is unhappy with says so. Scoped
+    // to the outline rather than the page, so a section whose own body happens
+    // to contain the phrase cannot answer for it.
+    await expect(
+      this.outline().getByRole('listitem').filter({ hasText: 'Has a problem' }),
+    ).toHaveCount(0);
+    // …and the outline is really there: an empty landmark would satisfy the
+    // count above without having looked at anything.
+    await expect(this.outline().getByRole('listitem').first()).toBeVisible();
   }
 
   async save(): Promise<void> {

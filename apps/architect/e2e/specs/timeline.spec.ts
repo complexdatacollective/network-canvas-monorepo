@@ -288,16 +288,14 @@ test('inserts a new Information stage at the clicked index', async ({
     .getByRole('textbox', { name: 'Stage name' })
     .fill('Inserted Info Stage');
 
-  // Information's Title section (Title.tsx) requires a non-empty `title`
-  // (UI-level `validation={{ required: true }}`, stricter than the schema's
-  // `title: z.string().optional()`) and ContentGrid.tsx's `notEmpty`
-  // validator requires a non-empty `items` array — both are validated on
-  // submit, so a save that actually commits needs both filled.
+  // The page's heading is required by the editor (stricter than the schema's
+  // `title: z.string().optional()`) and a page with no blocks shows the
+  // participant nothing, so a save that actually commits needs both filled.
   await architectPage
     .getByRole('textbox', { name: 'Page heading' })
     .fill('Inserted stage heading');
   await architectPage
-    .getByRole('button', { name: 'Create new content item' })
+    .getByRole('button', { name: 'Create new content block' })
     .click();
   await architectPage.getByRole('radio', { name: 'Text' }).click();
   const contentField = architectPage.getByRole('textbox', {
