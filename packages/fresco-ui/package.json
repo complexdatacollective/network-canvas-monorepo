@@ -155,6 +155,7 @@
     "./form/utils/ymd": "./src/form/utils/ymd.ts",
     "./form/validation/helpers": "./src/form/validation/helpers.tsx",
     "./form/validation/utils/isUnanswered": "./src/form/validation/utils/isUnanswered.ts",
+    "./hooks/useHasHydrated": "./src/hooks/useHasHydrated.ts",
     "./hooks/useNodeInteractions": "./src/hooks/useNodeInteractions.ts",
     "./hooks/usePrevious": "./src/hooks/usePrevious.ts",
     "./hooks/useResizablePanel": "./src/hooks/useResizablePanel.ts",
@@ -746,6 +747,10 @@
       "./form/validation/utils/isUnanswered": {
         "types": "./dist/form/validation/utils/isUnanswered.d.ts",
         "default": "./dist/form/validation/utils/isUnanswered.js"
+      },
+      "./hooks/useHasHydrated": {
+        "types": "./dist/hooks/useHasHydrated.d.ts",
+        "default": "./dist/hooks/useHasHydrated.js"
       },
       "./hooks/useNodeInteractions": {
         "types": "./dist/hooks/useNodeInteractions.d.ts",

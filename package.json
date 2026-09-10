@@ -13,6 +13,7 @@
     "changeset": "changeset add",
     "check:changesets": "node scripts/check-changeset-app-isolation.mjs",
     "check:compat-protocols": "node packages/protocols/scripts/check-compat-packages.mjs",
+    "check:hydration-flag": "node scripts/check-hydration-flag.mjs",
     "check:mapbox-tokens": "node scripts/check-mapbox-tokens.mjs",
     "verify:publish-exports": "node scripts/verify-publish-exports.mjs",
     "lint": "oxlint && oxfmt --check .",

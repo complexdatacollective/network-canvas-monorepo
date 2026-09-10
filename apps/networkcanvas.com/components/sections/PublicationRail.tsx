@@ -4,6 +4,7 @@ import { useMotionValueEvent, useReducedMotion, useScroll } from 'motion/react';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 import { ScrollArea } from '@codaco/fresco-ui/ScrollArea';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -12,9 +13,6 @@ import type { Publication } from '~/lib/siteContent';
 
 const pinnedRailMediaQuery = '(min-width: 768px) and (min-height: 640px)';
 const minimumPinnedStageBreathingRoom = 128;
-const subscribeToHydration = () => () => undefined;
-const getClientHydrationSnapshot = () => true;
-const getServerHydrationSnapshot = () => false;
 
 function subscribeToPinnedRailViewport(onStoreChange: () => void) {
   const mediaQuery = window.matchMedia(pinnedRailMediaQuery);
@@ -51,11 +49,7 @@ export function PublicationRail({
   const measurementFrameRef = useRef<number | null>(null);
   const wasPinnedRef = useRef(false);
   const shouldReduceMotion = useReducedMotion();
-  const hasHydrated = useSyncExternalStore(
-    subscribeToHydration,
-    getClientHydrationSnapshot,
-    getServerHydrationSnapshot,
-  );
+  const hasHydrated = useHasHydrated();
   const hasPinnedRailViewport = useSyncExternalStore(
     subscribeToPinnedRailViewport,
     getPinnedRailViewportSnapshot,
