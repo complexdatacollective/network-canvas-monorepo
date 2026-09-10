@@ -19,5 +19,6 @@
   "protocolBuilder.narrativePedigree.sourceNotAPedigree": "The stage this one reads is no longer a Family Pedigree, so there is no family for it to visualise. Choose a Family Pedigree stage instead.",
   "protocolBuilder.networkCanvas.composerEdgeTypeHint": "The kind of connection the participant draws. Its name and colour come from the codebook.",
   "protocolBuilder.networkCanvas.presetsTitle": "Visualisation presets",
+  "protocolBuilder.networkCanvas.tapBehaviourLabel": "Tap behaviour",
   "protocolBuilder.pedigree.dependentStagesDescription": "These stages visualise this pedigree's network and map their own attributes onto its node type: {stageNames}. Changing the node type here will leave them pointing at attributes the new type does not have."
 }

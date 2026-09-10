@@ -101,6 +101,25 @@ function informationItems(stage: unknown): unknown {
   return stage.items;
 }
 
+// What one committed block holds, by its id. `undefined` for a block that is
+// not there, or whose `content` is not a string — both of which a poll
+// predicate reads as "not what this test wrote", so it keeps waiting or lets
+// the assertion below say what did arrive.
+function informationItemContent(
+  stage: unknown,
+  id: string,
+): string | undefined {
+  const items = informationItems(stage);
+  if (!Array.isArray(items)) return undefined;
+  for (const item of items) {
+    if (typeof item !== 'object' || item === null) continue;
+    if (Reflect.get(item, 'id') !== id) continue;
+    const content: unknown = Reflect.get(item, 'content');
+    return typeof content === 'string' ? content : undefined;
+  }
+  return undefined;
+}
+
 const openItemDialog = async (
   editor: StageEditor,
   page: Page,
@@ -251,8 +270,19 @@ test('drops a text draft left behind by a switch to Image', async ({
   await dialog.waitFor({ state: 'detached' });
   await editor.save();
 
-  const stage = await readStageJson(architectPage, 0, (saved) =>
-    JSON.stringify(saved).includes('"item-text","type":"asset"'),
+  // The predicate is the WAIT for the commit, not the judgement of it: the
+  // stage is seeded, so `readStageJson`'s existence check passes on the first
+  // poll and would hand back the pre-save row. It asks whether the edited
+  // block still holds the text the seed gave it — a question about that
+  // block's own value, rather than about the order the app happens to write an
+  // item's keys in, which is what the JSON substring this replaces depended
+  // on. What the save actually produced is judged by the assertion below, so a
+  // commit that got it wrong fails with a diff instead of a bare poll timeout.
+  const stage = await readStageJson(
+    architectPage,
+    0,
+    (saved) =>
+      informationItemContent(saved, 'item-text') !== 'Original text body',
   );
   expect(informationItems(stage)).toEqual([
     { id: 'item-image', type: 'asset', content: 'photo-asset' },

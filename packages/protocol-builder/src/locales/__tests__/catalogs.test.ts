@@ -127,6 +127,8 @@ const AMERICAN_TO_BRITISH: ReadonlyMap<string, string> = new Map([
   ['visualized', 'visualised'],
   ['visualization', 'visualisation'],
   ['visualizations', 'visualisations'],
+  ['behavior', 'behaviour'],
+  ['behaviors', 'behaviours'],
 ]);
 
 const BRITISH_TO_AMERICAN: ReadonlyMap<string, string> = new Map(

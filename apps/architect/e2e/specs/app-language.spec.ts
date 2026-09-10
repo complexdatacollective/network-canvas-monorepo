@@ -90,9 +90,11 @@ test('authors an Information stage in Spanish and changes built-in preview langu
     .getByRole('textbox', { name: 'Encabezado de página' })
     .fill('Participant_Heading_EN');
   await page
-    .getByRole('button', { name: 'Crear nuevo elemento de contenido' })
+    .getByRole('button', { name: 'Crear nuevo bloque de contenido' })
     .click();
-  const dialog = page.getByRole('dialog', { name: 'Editar elemento' });
+  const dialog = page.getByRole('dialog', {
+    name: 'Crear bloque de contenido',
+  });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('radio', { name: 'Texto', exact: true }).click();
   await dialog.getByRole('button', { name: 'Añadir', exact: true }).click();
@@ -101,7 +103,11 @@ test('authors an Information stage in Spanish and changes built-in preview langu
     exact: true,
   });
   await expect(content).toHaveAttribute('aria-invalid', 'true');
-  await expect(dialog.getByText('Este campo es obligatorio.')).toBeVisible();
+  // The text slot states its own requirement rather than falling back to the
+  // form's generic sentence.
+  await expect(
+    dialog.getByText('Escribe el texto que muestra este bloque.'),
+  ).toBeVisible();
   await expect(content).toBeFocused();
   await new StageEditor(page).fillRichText(
     'Contenido',
@@ -408,7 +414,7 @@ test('formats printed attribute order and updates linked-list grammar live while
   await settings.close();
 });
 
-test('renders British spelling in the actual type dialog and both behavior editors', async ({
+test('renders British spelling in the actual type dialog and in the stage editors', async ({
   architectPage: page,
   seed,
 }) => {
@@ -426,13 +432,16 @@ test('renders British spelling in the actual type dialog and both behavior edito
   await name.fill('Organization_authored');
   await expect(name).toHaveValue('Organization_authored');
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  // Two stage editors, because the copy in them is the protocol-builder
+  // package's and its British overrides are a catalog of its own: a stage
+  // editor reading American English is the failure this catches.
   await page.goto('/protocol/stage/narrative-1');
   await expect(
-    page.getByRole('heading', { name: 'Narrative behaviours' }),
+    page.getByRole('heading', { name: 'Visualisation presets' }),
   ).toBeVisible();
-  await page.goto('/protocol/stage/one-to-many-dyad-census-1');
+  await page.goto('/protocol/stage/geospatial-1');
   await expect(
-    page.getByText('Removal behaviour', { exact: true }),
+    page.getByRole('radiogroup', { name: 'Highlight colour' }),
   ).toBeVisible();
   expect(await readProtocolJson(page)).toEqual(before);
 });
