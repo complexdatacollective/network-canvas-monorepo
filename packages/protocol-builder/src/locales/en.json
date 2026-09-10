@@ -79,6 +79,10 @@
     "defaultMessage": "attribute name",
     "description": "What the researcher was entering, named inside the sentence that refuses it: the name of a codebook variable. Interpolated mid-sentence after \"Not a valid\", so it is lower case."
   },
+  "protocolBuilder.arrayField.deleteRow": {
+    "defaultMessage": "Delete {itemLabel}",
+    "description": "Action that deletes one row of a list — the accessible name of the button on the row. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
+  },
   "protocolBuilder.arrayField.editRow": {
     "defaultMessage": "Edit {itemLabel}",
     "description": "Accessible name of the button that opens one row of a list in its editing dialog. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
@@ -89,15 +93,11 @@
   },
   "protocolBuilder.arrayField.itemNoun": {
     "defaultMessage": "item",
-    "description": "Generic noun for one row of an editable list in a stage editor, used where the list has no more specific word for its rows. Interpolated mid-sentence into things said ABOUT a row (\"Remove this item?\", \"This item was not saved.\"), so it is lower case and singular."
+    "description": "Generic noun for one row of an editable list in a stage editor, used where the list has no more specific word for its rows. Interpolated mid-sentence into things said ABOUT a row (\"Delete this item?\", \"This item was not saved.\"), so it is lower case and singular."
   },
   "protocolBuilder.arrayField.optionValueSubject": {
     "defaultMessage": "option value",
     "description": "What the researcher was entering, named inside the sentence that refuses it: the stored value of one option of a categorical or ordinal attribute, as opposed to the label a participant reads. Interpolated mid-sentence after \"Not a valid\", so it is lower case."
-  },
-  "protocolBuilder.arrayField.removeRow": {
-    "defaultMessage": "Remove {itemLabel}",
-    "description": "Action that deletes one row of a list — the accessible name of the button on the row. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
   },
   "protocolBuilder.arrayField.reorderRow": {
     "defaultMessage": "Reorder {itemLabel} {position} of {count, number}",
@@ -1085,7 +1085,7 @@
   },
   "protocolBuilder.formFields.itemNoun": {
     "defaultMessage": "field",
-    "description": "What one row of a form’s list of questions is called inside things said ABOUT it — \"Edit field\", \"Remove this field?\" — so it is lower case and singular."
+    "description": "What one row of a form’s list of questions is called inside things said ABOUT it — \"Edit field\", \"Delete this field?\" — so it is lower case and singular."
   },
   "protocolBuilder.formFields.malformedField": {
     "defaultMessage": "This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.",
@@ -1761,7 +1761,7 @@
   },
   "protocolBuilder.nodePanels.itemNoun": {
     "defaultMessage": "panel",
-    "description": "What one row of the side-panel list is called inside things said ABOUT it — \"Edit panel\", \"Remove this panel?\" — so it is lower case and singular. A side panel lists people beside a name generator for the participant to nominate from."
+    "description": "What one row of the side-panel list is called inside things said ABOUT it — \"Edit panel\", \"Delete this panel?\" — so it is lower case and singular. A side panel lists people beside a name generator for the participant to nominate from."
   },
   "protocolBuilder.nodePanels.missingSource": {
     "defaultMessage": "a network that is no longer in this protocol",
@@ -2089,7 +2089,7 @@
   },
   "protocolBuilder.pageContent.pageItemNoun": {
     "defaultMessage": "block",
-    "description": "What one piece of a page is called inside things said ABOUT it — \"Edit block\", \"Remove this block?\" — so it is lower case and singular."
+    "description": "What one piece of a page is called inside things said ABOUT it — \"Edit block\", \"Delete this block?\" — so it is lower case and singular."
   },
   "protocolBuilder.pageContent.pageItemsHint": {
     "defaultMessage": "The participant scrolls through these in order, so add as many as you need. Drag to reorder them.",
@@ -2477,7 +2477,7 @@
   },
   "protocolBuilder.pedigree.nominationPromptNoun": {
     "defaultMessage": "nomination prompt",
-    "description": "What one row of the nomination prompt list is called inside things said ABOUT it — \"Edit nomination prompt\", \"Remove this nomination prompt?\" — so it is lower case and singular. Qualified rather than plain \"prompt\" because a pedigree editor shows a census prompt beside it."
+    "description": "What one row of the nomination prompt list is called inside things said ABOUT it — \"Edit nomination prompt\", \"Delete this nomination prompt?\" — so it is lower case and singular. Qualified rather than plain \"prompt\" because a pedigree editor shows a census prompt beside it."
   },
   "protocolBuilder.pedigree.nominationPromptsClearConfirm": {
     "defaultMessage": "Delete the prompts",
@@ -2605,7 +2605,7 @@
   },
   "protocolBuilder.promptsSection.itemNoun": {
     "defaultMessage": "prompt",
-    "description": "What one row of the prompt list is called inside things said ABOUT it — \"Edit prompt\", \"Remove this prompt?\" — so it is lower case and singular. A prompt is one question a participant is asked."
+    "description": "What one row of the prompt list is called inside things said ABOUT it — \"Edit prompt\", \"Delete this prompt?\" — so it is lower case and singular. A prompt is one question a participant is asked."
   },
   "protocolBuilder.promptsSection.title": {
     "defaultMessage": "Prompts",
@@ -3638,10 +3638,6 @@
   "protocolBuilder.ruleList.emptyState": {
     "defaultMessage": "No rules have been created yet.",
     "description": "Shown in place of the list when a researcher has added no rules to a rule set yet."
-  },
-  "protocolBuilder.ruleList.saveUnavailable": {
-    "defaultMessage": "These rules are no longer editable, so this rule cannot be saved. Copy anything you want to keep, then close the editor.",
-    "description": "Shown inside the rule editor when the list it was opened from stopped accepting changes while the dialog was open — the rule cannot be committed, and the draft is kept on screen so nothing the researcher wrote is lost."
   },
   "protocolBuilder.rulePreview.attribute": {
     "defaultMessage": "{label} (attribute type: {type})",

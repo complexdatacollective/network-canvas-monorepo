@@ -85,7 +85,8 @@ describe('Dialog focus return', () => {
     // A guard rather than a reproduction: in this shape Base UI's own fallback
     // already lands on the opener, and the reported failures are the ones where
     // it cannot (an opener that is replaced while the dialog is open — see
-    // DialogArrayField's tests — or a dialog opened through `useDialog`, below).
+    // `ArrayField.deleteFocus.test.tsx` — or a dialog opened through
+    // `useDialog`, below).
     render(<Harness />);
     const opener = await openViaOpener();
 
