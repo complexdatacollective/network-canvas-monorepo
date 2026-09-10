@@ -44,6 +44,7 @@ import { nameGeneratorRosterStageEditor } from './editors/name-generator-roster/
 import { nameGeneratorStageEditor } from './editors/name-generator/NameGeneratorStageEditor.ts';
 import { oneToManyDyadCensusStageEditor } from './editors/one-to-many-dyad-census/OneToManyDyadCensusStageEditor.ts';
 import { ordinalBinStageEditor } from './editors/ordinal-bin/OrdinalBinStageEditor.ts';
+import { sociogramStageEditor } from './editors/sociogram/SociogramStageEditor.ts';
 import { tieStrengthCensusStageEditor } from './editors/tie-strength-census/TieStrengthCensusStageEditor.ts';
 import type { StageEditorRegistryPart } from './stage-editor-contract.ts';
 
@@ -131,6 +132,7 @@ const REGISTRY_PARTS = [
   nameGeneratorStageEditor,
   oneToManyDyadCensusStageEditor,
   ordinalBinStageEditor,
+  sociogramStageEditor,
   tieStrengthCensusStageEditor,
 ] as const satisfies readonly StageEditorRegistryPart[];
 
@@ -229,7 +231,6 @@ export const AWAITING_STAGE_EDITORS = [
   'Narrative',
   'NarrativePedigree',
   'NetworkComposer',
-  'Sociogram',
 ] as const satisfies readonly UnregisteredStageType[];
 
 export type Assert<T extends true> = T;

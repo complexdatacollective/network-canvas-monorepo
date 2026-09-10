@@ -4,6 +4,8 @@ import { join } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import type { StageType } from '@codaco/protocol-validation';
+
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { missingStageEditors, STAGE_TYPES } from '../stage-editor-contract.ts';
 import type {
@@ -18,6 +20,34 @@ import {
   stageEditorRegistry,
 } from '../stageEditorRegistry.ts';
 import { renderStageEditor } from '../testing/renderStageEditor.tsx';
+
+/**
+ * An interface no family has claimed yet, taken from the list that says which
+ * those are rather than named here.
+ *
+ * Named, it would have to be renamed by whichever family lands that interface
+ * next — the comment where it used to be said exactly that about `Sociogram` —
+ * so each of the thirteen families in turn would edit this file for a reason
+ * that has nothing to do with what it tests. `AWAITING_STAGE_EDITORS` is the
+ * compile-time-complete list of unclaimed types, which is the very fact under
+ * test; when the last family lands it is empty, and the scenario below stops
+ * existing at all rather than pointing at an interface somebody owns.
+ */
+const unclaimedStageType = (): StageType => {
+  const awaiting = AWAITING_STAGE_EDITORS[0];
+  if (awaiting === undefined) {
+    throw new Error(
+      'Every interface now has an editor, so there is no unregistered one to dispatch to. Delete the cases that need one.',
+    );
+  }
+  return awaiting;
+};
+
+/** A stage of that interface, holding nothing: the dispatch fails before any
+ * section is mounted, so there is nothing for its fields to be. */
+const unclaimedStage = () => ({
+  stage: { type: unclaimedStageType(), fields: {} },
+});
 
 const InformationEditor: StageEditorComponent<'Information'> = ({
   stageType,
@@ -311,17 +341,18 @@ describe('dispatching to a named editor', () => {
       .mockImplementation(() => undefined);
 
     try {
-      // `Information` will not do here once a family lands: an explicit `{}`
-      // is merged OVER the package's own registry rather than replacing it,
-      // so an interface a landed family already claims stays claimed no
-      // matter what a host passes. `sociogram-1` is still awaiting its
-      // family, so nothing — package or host — has claimed it.
+      // `Information` will not do here: an explicit `{}` is merged OVER the
+      // package's own registry rather than replacing it, so an interface a
+      // landed family already claims stays claimed no matter what a host
+      // passes. An unclaimed interface is one nothing — package or host — has
+      // registered.
+      const unclaimed = unclaimedStageType();
       expect(() =>
-        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
+        renderStageEditor({ ...unclaimedStage(), registry: {} }),
       ).toThrow(UnregisteredStageTypeError);
       expect(() =>
-        renderStageEditor({ stageId: 'sociogram-1', registry: {} }),
-      ).toThrow(/"Sociogram" interface/);
+        renderStageEditor({ ...unclaimedStage(), registry: {} }),
+      ).toThrow(new RegExp(`"${unclaimed}" interface`));
     } finally {
       consoleError.mockRestore();
     }
@@ -342,7 +373,7 @@ describe('dispatching to a named editor', () => {
 
       // An interface still awaiting its family says so rather than rendering a
       // blank page.
-      expect(() => renderStageEditor({ stageId: 'sociogram-1' })).toThrow(
+      expect(() => renderStageEditor(unclaimedStage())).toThrow(
         UnregisteredStageTypeError,
       );
     } finally {
