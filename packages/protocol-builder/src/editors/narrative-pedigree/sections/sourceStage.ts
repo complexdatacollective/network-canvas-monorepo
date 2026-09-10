@@ -37,6 +37,17 @@ export type SourceStageResolution = Readonly<{
   options: readonly SourceStageOption[];
   /** What is wrong with the current choice, or `null` when nothing is. */
   problem: SourceStageProblem | null;
+  /**
+   * The stored choice's own name, when the stage it names is still in the
+   * interview.
+   *
+   * Two of the three problems leave that stage where it is — one retyped, one
+   * moved below this one — so the researcher has a name to recognise it by,
+   * and showing them the identifier instead names nothing they ever wrote.
+   * Absent only for a source that has gone, which is the one case with no name
+   * left to read.
+   */
+  chosenLabel?: string;
 }>;
 
 /**
@@ -99,8 +110,11 @@ export function resolveSourceStages(
 
   const chosen = stages.find((stage) => stage.id === currentSourceStageId);
   if (chosen === undefined) return { options, problem: 'missing' };
-  if (!isPedigree(chosen)) return { options, problem: 'notAPedigree' };
-  return { options, problem: 'afterThisStage' };
+  return {
+    options,
+    problem: isPedigree(chosen) ? 'afterThisStage' : 'notAPedigree',
+    chosenLabel: chosen.label,
+  };
 }
 
 /** The source pedigree itself, or nothing when the reference resolves to none. */

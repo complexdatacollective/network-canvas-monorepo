@@ -11,14 +11,6 @@ import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
 
 /**
- * What the researcher is asked before a change that costs them something.
- *
- * Descriptors rather than the sentences they make, formatted where they are
- * rendered: a string held across the await would outlive its formatter, and a
- * language changed under an open question would leave it in the language it
- * was asked in.
- */
-/**
  * One pedigree on offer, in the shape the native select reads.
  *
  * Declared here rather than imported: fresco-ui publishes the select but not
@@ -31,6 +23,14 @@ export type SourcePedigreeOption = Readonly<{
   disabled?: boolean;
 }>;
 
+/**
+ * What the researcher is asked before a change that costs them something.
+ *
+ * Descriptors rather than the sentences they make, formatted where they are
+ * rendered: a string held across the await would outlive its formatter, and a
+ * language changed under an open question would leave it in the language it
+ * was asked in.
+ */
 export type SourceChangeQuestion = Readonly<{
   title: MessageDescriptor;
   description: MessageDescriptor;

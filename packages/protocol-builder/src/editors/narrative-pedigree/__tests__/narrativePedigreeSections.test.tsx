@@ -29,6 +29,21 @@ const openFixture = (): StageEditorHarness =>
 const sourceSelect = () =>
   screen.getByRole('combobox', { name: 'Source stage' });
 
+/**
+ * The pedigrees the source control is offering, read out of the DOM.
+ *
+ * By role everywhere else; from the document only here, where the question the
+ * researcher is answering makes the page behind it inert and the control is
+ * deliberately out of the accessibility tree.
+ */
+const offeredSources = (): string[] =>
+  [...document.querySelectorAll('[data-name="sourceStageId"] option')]
+    .filter(
+      (option): option is HTMLOptionElement =>
+        !(option as HTMLOptionElement).disabled,
+    )
+    .map((option) => option.value);
+
 /** The source pedigree with its only nomination prompt taken away. */
 const pedigreeRecordingNothing = () => {
   const { nominationPrompts: _prompts, ...rest } = sourcePedigreeDocument();
@@ -384,6 +399,84 @@ describe('changing which pedigree a stage reads', () => {
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument(),
     );
     await harness.roundTrip();
+  });
+
+  /**
+   * Every disease names an attribute of the source pedigree's node type, so a
+   * different source invalidates all of them at once — and they go rather than
+   * being left to fail validation against a node type they were never about.
+   *
+   * The choice that caused the loss has to survive it: the discard writes to
+   * the same draft the form is showing, and a write the shell read as a draft
+   * arriving from elsewhere would be written back over every control, putting
+   * the select back to the source the researcher just left.
+   */
+  it('drops the diseases that described the source it left', async () => {
+    const harness = renderStageEditor(
+      narrativePedigreeHolding({
+        sourceStageId: 'a-pedigree-that-was-deleted',
+      }),
+    );
+    expect(await screen.findByText('Condition X')).toBeInTheDocument();
+
+    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Change the pedigree' }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText('Condition X')).not.toBeInTheDocument(),
+    );
+    expect(sourceSelect()).toHaveValue('family-pedigree-1');
+    // The stage is now one the save refuses, which is the point: the diseases
+    // are gone rather than silently re-pointed at a family they never described.
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(/Add at least one disease/),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The question is awaited, so what resumes is a closure from the render that
+   * asked it — while a collaborator can delete the pedigree it named, re-type
+   * it, or move it below this stage. Applied anyway, the answer would cost the
+   * researcher every disease the question warned about AND leave the stage
+   * reading a pedigree it may not read.
+   */
+  it('refuses a confirmed source the interview has moved in the meantime', async () => {
+    const harness = renderStageEditor(
+      narrativePedigreeHolding({
+        sourceStageId: 'a-pedigree-that-was-deleted',
+      }),
+    );
+    expect(await screen.findByText('Condition X')).toBeInTheDocument();
+
+    await harness.user.selectOptions(sourceSelect(), 'family-pedigree-1');
+    await screen.findByRole('button', { name: 'Change the pedigree' });
+    reorderStages(harness, (stages) => [
+      ...stages.filter((id) => id !== 'family-pedigree-1'),
+      'family-pedigree-1',
+    ]);
+    // The control has withdrawn it — read from the DOM, because the open
+    // question makes the page behind it inert and so unreachable by role.
+    await waitFor(() =>
+      expect(offeredSources()).not.toContain('family-pedigree-1'),
+    );
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Change the pedigree' }),
+    );
+
+    // Said rather than swallowed, and it says what did NOT happen.
+    expect(
+      await screen.findByText(
+        'The pedigree you chose is no longer one of the options here, so nothing has changed and no disease has been removed. Choose again.',
+      ),
+    ).toBeInTheDocument();
+    await harness.user.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(await screen.findByText('Condition X')).toBeInTheDocument();
+    expect(sourceSelect()).toHaveValue('a-pedigree-that-was-deleted');
   });
 
   /**

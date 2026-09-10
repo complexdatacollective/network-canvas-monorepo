@@ -113,7 +113,7 @@ export default function SourcePedigreeSection() {
   // created is not in the order to be found in: the editor carries the
   // position the host is about to insert it at, so a new stage placed at the
   // top of an interview is not offered the pedigrees it will run before.
-  const { options, problem } = useMemo(
+  const { options, problem, chosenLabel } = useMemo(
     () =>
       resolveSourceStages(
         protocolContext,
@@ -147,7 +147,9 @@ export default function SourcePedigreeSection() {
   // A stored choice the list no longer contains is still offered, as the
   // current one and labelled with what is wrong: blanking the control would
   // hide the very reference the researcher has to resolve, and would then
-  // write the blank back over it.
+  // write the blank back over it. Named as the researcher named it while the
+  // stage is still there; by its identifier only once there is no stage left
+  // to read a name from.
   const selectOptions = useMemo<SourcePedigreeOption[]>(
     () =>
       problem === null || typeof sourceStageId !== 'string'
@@ -158,12 +160,12 @@ export default function SourcePedigreeSection() {
               value: sourceStageId,
               label: intl.formatMessage(
                 narrativePedigreeMessages.sourceUnusableOption,
-                { stageId: sourceStageId },
+                { stageName: chosenLabel ?? sourceStageId },
               ),
               disabled: true,
             },
           ],
-    [intl, numbered, options, problem, sourceStageId],
+    [chosenLabel, intl, numbered, options, problem, sourceStageId],
   );
 
   /**
