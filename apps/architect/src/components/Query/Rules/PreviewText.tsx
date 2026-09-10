@@ -385,6 +385,33 @@ const AttributePill = ({ label, type }: AttributePillProps) => {
   );
 };
 
+/*
+ * The sentence's rich-text tag renderers. They live at module scope so no
+ * JSX-returning function is defined inside `PreviewText`'s render body; the two
+ * whose markup depends on the layout are factories the render calls with that
+ * render's values.
+ */
+const renderOperator = (children: ReactNode[]) => (
+  <span data-rule-part="operator">{children}</span>
+);
+
+const renderSubject =
+  (isSummary: boolean, presence: boolean) => (children: ReactNode[]) =>
+    isSummary ? (
+      <div className="flex min-w-0 items-center gap-3" data-rule-part="subject">
+        {children}
+      </div>
+    ) : (
+      <RuleSubject presence={presence}>{children}</RuleSubject>
+    );
+
+const renderPredicate = (isSummary: boolean) => (children: ReactNode[]) =>
+  isSummary ? (
+    <Fragment>{children}</Fragment>
+  ) : (
+    <RulePredicate>{children}</RulePredicate>
+  );
+
 /** One whole ICU sentence owns grammar and ordering in both presentation layouts. */
 const PreviewText = ({
   type,
@@ -415,43 +442,32 @@ const PreviewText = ({
       label={options.typeLabel ?? ''}
     />
   );
+  // Built here, alongside `entity`, so the tag renderers below stay plain
+  // references rather than functions that build JSX during render.
+  const attribute = (
+    <AttributePill
+      label={options.attribute ?? ''}
+      type={options.variableType}
+    />
+  );
+  const operand = (
+    <div className={isSummary ? 'min-w-0' : 'inline'}>
+      <Value
+        value={options.value}
+        plain={isSummary}
+        markdown={isAuthoredLabel(options.variableType)}
+      />
+    </div>
+  );
   const sentence = intl.formatMessage(descriptor, {
     target: type,
     operatorCode: operator,
     entity: () => entity,
-    attribute: () => (
-      <AttributePill
-        label={options.attribute ?? ''}
-        type={options.variableType}
-      />
-    ),
-    operand: () => (
-      <div className={isSummary ? 'min-w-0' : 'inline'}>
-        <Value
-          value={options.value}
-          plain={isSummary}
-          markdown={isAuthoredLabel(options.variableType)}
-        />
-      </div>
-    ),
-    subject: (children) =>
-      isSummary ? (
-        <div
-          className="flex min-w-0 items-center gap-3"
-          data-rule-part="subject"
-        >
-          {children}
-        </div>
-      ) : (
-        <RuleSubject presence={entityPresence}>{children}</RuleSubject>
-      ),
-    operator: (children) => <span data-rule-part="operator">{children}</span>,
-    predicate: (children) =>
-      isSummary ? (
-        <Fragment>{children}</Fragment>
-      ) : (
-        <RulePredicate>{children}</RulePredicate>
-      ),
+    attribute: () => attribute,
+    operand: () => operand,
+    subject: renderSubject(isSummary, entityPresence),
+    operator: renderOperator,
+    predicate: renderPredicate(isSummary),
   });
   return isSummary && !entityPresence && !attributePresence ? (
     <div className="grid w-full grid-cols-[minmax(16rem,2fr)_minmax(8rem,1fr)_minmax(0,2fr)] items-center gap-6">

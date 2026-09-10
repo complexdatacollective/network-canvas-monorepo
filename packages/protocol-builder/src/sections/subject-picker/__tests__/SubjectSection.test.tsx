@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
 import type {
   InMemoryClient,
   InMemoryHost,

@@ -6,10 +6,11 @@
 import { safe } from '@orpc/client';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+import type { ProtocolEvent } from '@codaco/protocol-builder-core/contract/schemas';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { streamProtocolEvents } from '../../state/channel.ts';
 import { committedSource } from '../../testing/host/__tests__/committedSource.ts';
 import {
   createInMemoryHost,
@@ -17,8 +18,7 @@ import {
 } from '../../testing/host/createInMemoryHost.ts';
 import { sectionsFromProtocol } from '../../testing/host/sectionsFromProtocol.ts';
 import { createWebSocketHost } from '../../testing/host/websocketHost.ts';
-import type { ProtocolBuilderClient } from '../contract.ts';
-import type { ProtocolEvent } from '../schemas.ts';
+import { streamProtocolEvents } from '../channel.ts';
 
 /** The edit these calls are made from: one editor, open throughout. */
 const EDIT = 'edit-1';

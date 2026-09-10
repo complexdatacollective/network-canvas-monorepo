@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
@@ -95,6 +97,9 @@ const messages = defineMessages({
   },
 });
 
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+const renderEm = (chunks: ReactNode[]) => <em>{chunks}</em>;
+
 const FIELD_NAME = 'showAtRiskStatuses';
 
 const AtRiskStatuses = (_props: StageEditorSectionProps) => {
@@ -119,7 +124,7 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => {
           <Paragraph>
             {intl.formatMessage(
               messages.optionallyShowPossibleAtRiskStatusesAlongside,
-              { strong: (chunks) => <strong>{chunks}</strong> },
+              { strong: renderStrong },
             )}
           </Paragraph>
         }
@@ -127,9 +132,9 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => {
       <div className="[&_h5]:mt-5 [&_h5]:mb-1 [&_h5]:font-semibold [&_li]:mb-1 [&_p]:mb-2.5 [&_ul]:mb-2.5 [&_ul]:list-disc [&_ul]:pl-7">
         <Paragraph>
           {intl.formatMessage(messages.whenEnabledThePedigreeAlsoShows, {
-            em: (chunks) => <em>{chunks}</em>,
-            em2: (chunks) => <em>{chunks}</em>,
-            em3: (chunks) => <em>{chunks}</em>,
+            em: renderEm,
+            em2: renderEm,
+            em3: renderEm,
           })}
         </Paragraph>
 
@@ -140,13 +145,13 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => {
         <ul>
           <li>
             {intl.formatMessage(messages.theChildOfAParentAffected, {
-              em: (chunks) => <em>{chunks}</em>,
+              em: renderEm,
             })}
           </li>
           <li>
             {intl.formatMessage(messages.theChildOfTwoCarriersOf, {
-              em: (chunks) => <em>{chunks}</em>,
-              em2: (chunks) => <em>{chunks}</em>,
+              em: renderEm,
+              em2: renderEm,
             })}
           </li>
         </ul>
@@ -158,8 +163,8 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => {
             {intl.formatMessage(
               messages.onlyBiologicalAndDonorRelationshipsPass,
               {
-                em: (chunks) => <em>{chunks}</em>,
-                em2: (chunks) => <em>{chunks}</em>,
+                em: renderEm,
+                em2: renderEm,
               },
             )}
           </li>
@@ -171,7 +176,7 @@ const AtRiskStatuses = (_props: StageEditorSectionProps) => {
         <h5>{intl.formatMessage(messages.whyThisIsOffByDefault)}</h5>
         <Paragraph>
           {intl.formatMessage(messages.atRiskSymbolsAreAStrongVisual, {
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: renderStrong,
           })}
         </Paragraph>
       </div>

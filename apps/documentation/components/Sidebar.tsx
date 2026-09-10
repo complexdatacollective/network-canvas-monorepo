@@ -164,9 +164,16 @@ const SidebarFolder = ({
 
   const [isOpen, setIsOpen] = useState(memoizedIsOpen);
 
-  useEffect(() => {
+  // Re-sync the (otherwise freely toggleable) open state whenever the
+  // computed baseline changes — e.g. navigating to a page inside a
+  // different folder. Adjusted during render rather than in an effect so
+  // there is no extra paint where the folder is still shown in its old
+  // open/closed state.
+  const [prevMemoizedIsOpen, setPrevMemoizedIsOpen] = useState(memoizedIsOpen);
+  if (memoizedIsOpen !== prevMemoizedIsOpen) {
+    setPrevMemoizedIsOpen(memoizedIsOpen);
     setIsOpen(memoizedIsOpen);
-  }, [memoizedIsOpen]);
+  }
 
   return (
     <Collapsible

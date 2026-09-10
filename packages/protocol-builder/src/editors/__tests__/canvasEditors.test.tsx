@@ -5,6 +5,7 @@ import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
 import type { FixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
+import { narrativeStageEditor } from '../narrative/NarrativeStageEditor.ts';
 import { sociogramStageEditor } from '../sociogram/SociogramStageEditor.ts';
 
 shimMarkdownEditorMeasurement();
@@ -48,6 +49,23 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'Interviewer guidance',
     ],
     ownedKeys: ['background', 'behaviours', 'label', 'prompts', 'subject'],
+  },
+  {
+    interfaceName: 'Narrative',
+    stageId: 'narrative-1',
+    editor: narrativeStageEditor,
+    sections: [
+      'Stage name',
+      'Node type',
+      'Stage filter',
+      'Visualization presets',
+      'Background',
+      'Node layout',
+      'Canvas interaction',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['background', 'behaviours', 'label', 'presets', 'subject'],
   },
 ];
 

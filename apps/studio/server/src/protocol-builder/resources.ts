@@ -17,7 +17,7 @@ import {
   type ResourcePreviewSchema,
   type ResourceSecretStorageSchema,
   type StageResourceInputSchema,
-} from '@codaco/protocol-builder/contract/schemas';
+} from '@codaco/protocol-builder-core/contract/schemas';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { MAX_UPLOAD_BYTES, type AssetStore } from '../assets.ts';

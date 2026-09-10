@@ -542,7 +542,23 @@ const DialogEditor = ({
   // values.
   const [session, setSession] = useState<EditorSession | null>(null);
 
-  useEffect(() => {
+  // Which row the list is editing is a prop, not an external system, so the
+  // session it implies is worked out during render: the dialog opens in the
+  // same commit that hands this component a row, rather than one frame later.
+  // The seed is `null` so a component mounted already editing a row still
+  // opens, as the effect this replaced did on mount.
+  const [editedRow, setEditedRow] = useState<{
+    item: ArrayItem | undefined;
+    index: number | null;
+    isNewItem: boolean;
+  } | null>(null);
+  if (
+    editedRow === null ||
+    editedRow.item !== item ||
+    editedRow.index !== index ||
+    editedRow.isNewItem !== isNewItem
+  ) {
+    setEditedRow({ item, index, isNewItem });
     setSession((previous) => {
       if (!item) {
         return previous?.open ? { ...previous, open: false } : previous;
@@ -562,7 +578,7 @@ const DialogEditor = ({
         open: true,
       };
     });
-  }, [index, isNewItem, item]);
+  }
 
   const sessionItem = session?.item;
   // A new item is not in the committed array yet, so it has no index to

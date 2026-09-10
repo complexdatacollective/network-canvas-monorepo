@@ -9,12 +9,12 @@ import {
 } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import type { Presence } from '@codaco/protocol-builder-core/contract/schemas';
 import type { StageType } from '@codaco/protocol-validation';
 import { contentHash } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
 import { blockedHolders } from './codebook/writes.ts';
-import type { Presence } from './contract/schemas.ts';
 import { getInterfaceTemplate } from './interfaces/templates.ts';
 import { useStagedResources } from './resources/client.tsx';
 import {

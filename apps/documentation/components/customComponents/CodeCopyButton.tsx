@@ -25,7 +25,7 @@ const CodeCopyButton = ({ code }: { code: string }) => {
         aria-live="polite"
         className={
           isCopied
-            ? 'bg-surface-popover text-surface-popover-contrast rounded-md p-1.5 text-sm font-semibold'
+            ? 'bg-surface-popover text-surface-popover-contrast rounded-lg p-1.5 text-sm font-semibold'
             : 'sr-only'
         }
       >

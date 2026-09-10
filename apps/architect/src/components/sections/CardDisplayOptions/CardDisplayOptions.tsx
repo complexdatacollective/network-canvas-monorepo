@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { compose } from 'react-recompose';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -99,6 +100,8 @@ const DISPLAY_PROPERTIES: MessageConfig<PropertyField>[] = [
 // property missing either member survives `prune` to fail the roster stage's
 // schema.
 
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 type CardDisplayOptionsProps = StageEditorSectionProps & {
   dataSource?: string;
   disabled: boolean;
@@ -135,7 +138,7 @@ const CardDisplayOptions = ({
       <Alert variant="info" className="my-7">
         <AlertDescription>
           {intl.formatMessage(messages.cardsWillUseTheNameAttribute, {
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: renderStrong,
           })}
         </AlertDescription>
       </Alert>

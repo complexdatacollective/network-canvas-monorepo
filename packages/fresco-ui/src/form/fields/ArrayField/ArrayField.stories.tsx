@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { PencilIcon, X } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { action } from 'storybook/actions';
 import { useArgs } from 'storybook/preview-api';
 
@@ -47,11 +47,14 @@ function SimpleInlineItem({
 }: ArrayFieldItemProps<SimpleItemBase>) {
   const [label, setLabel] = useState(item?.label ?? '');
 
-  useEffect(() => {
-    if (isBeingEdited) {
-      setLabel(item?.label ?? '');
-    }
-  }, [isBeingEdited, item]);
+  // Seed the draft from the item whenever editing starts, or the item under
+  // the open editor is replaced. Done during render so the input never paints
+  // a frame holding the previous item's text.
+  const [seededFrom, setSeededFrom] = useState({ isBeingEdited, item });
+  if (seededFrom.isBeingEdited !== isBeingEdited || seededFrom.item !== item) {
+    setSeededFrom({ isBeingEdited, item });
+    if (isBeingEdited) setLabel(item?.label ?? '');
+  }
 
   if (isBeingEdited) {
     return (
@@ -379,12 +382,17 @@ function TagInlineItem({
   const [label, setLabel] = useState(item?.label ?? '');
   const [color, setColor] = useState<TagItem['color']>(item?.color ?? 'node-1');
 
-  useEffect(() => {
+  // Seed the draft from the item whenever editing starts, or the item under
+  // the open editor is replaced. Done during render so the editor never paints
+  // a frame holding the previous item's values.
+  const [seededFrom, setSeededFrom] = useState({ isBeingEdited, item });
+  if (seededFrom.isBeingEdited !== isBeingEdited || seededFrom.item !== item) {
+    setSeededFrom({ isBeingEdited, item });
     if (isBeingEdited) {
       setLabel(item?.label ?? '');
       setColor(item?.color ?? 'node-1');
     }
-  }, [isBeingEdited, item]);
+  }
 
   // Edit mode
   if (isBeingEdited) {

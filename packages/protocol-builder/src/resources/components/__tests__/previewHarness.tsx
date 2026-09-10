@@ -1,7 +1,8 @@
 import { act, render, screen, type RenderResult } from '@testing-library/react';
 import { expect, vi } from 'vitest';
 
-import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+
 import ResourcePreview from '../ResourcePreview.tsx';
 import { deferred, type Deferred } from './asyncControls.ts';
 import { ResourceContextFrame, TEST_EDIT_ID } from './resourceContext.tsx';

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
@@ -104,6 +106,8 @@ const messages = defineMessages({
   },
 });
 
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 const BOUNDARY_REQUIREMENT_OPTIONS = [
   { value: 'required', label: configMessages.required },
   { value: 'recommended', label: configMessages.recommended },
@@ -130,17 +134,17 @@ const BoundaryOptions = (_props: StageEditorSectionProps) => {
       <ul className="mb-5 list-disc pl-7 [&_li]:mb-1">
         <li>
           {intl.formatMessage(messages.offTheConditionIs, {
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: renderStrong,
           })}
         </li>
         <li>
           {intl.formatMessage(messages.recommendedParticipantsSeeA, {
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: renderStrong,
           })}
         </li>
         <li>
           {intl.formatMessage(messages.requiredParticipantsCannotFinish, {
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: renderStrong,
           })}
         </li>
       </ul>

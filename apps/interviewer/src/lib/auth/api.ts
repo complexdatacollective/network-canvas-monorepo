@@ -44,6 +44,9 @@ async function runReencryptionSweep(): Promise<void> {
     const { failed } = await reencryptAllRecords();
     setReencryptionPending(failed > 0);
   } catch (error) {
+    // No other reporting exists for this background sweep, and the security
+    // invariant depends on knowing why it failed.
+    // oxlint-disable-next-line no-console -- only diagnostic for a re-encryption sweep failure; nothing else reports this security-relevant background failure
     console.error(
       'Re-encryption sweep failed; existing data may remain plaintext until a later unlock retries it',
       error,

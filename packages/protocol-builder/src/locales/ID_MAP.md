@@ -138,7 +138,7 @@ after the fact is marked in place.
 | `sortOptions`               | `editors/name-generator-roster/sections/SortOptionsSection.tsx`                                                                                                                               | family E  |
 | `searchOptions`             | `editors/name-generator-roster/sections/SearchOptionsSection.tsx`                                                                                                                             | family E  |
 | `rosterColumns`             | `editors/name-generator-roster/sections/rosterColumns.ts`                                                                                                                                     | family E  |
-| `networkCanvas`             | `sections/background/`, `sections/canvas-behaviours/`, `editors/sociogram/sections/prompts/`                                                                                                  | family F  |
+| `networkCanvas`             | `sections/background/`, `sections/canvas/`, `sections/canvas-behaviours/`, `editors/sociogram/sections/prompts/`, `editors/narrative/sections/presets/`                                       | family F  |
 
 Family E added one the reserved list did not hold, on the same terms:
 
@@ -297,22 +297,26 @@ Named here so a later split takes the name rather than inventing a synonym.
 | `<area>`        | Owns the copy in                      | Declared in                                                     |
 | --------------- | ------------------------------------- | --------------------------------------------------------------- |
 | `pedigree`      | `editors/family-pedigree/sections/`   | `editors/family-pedigree/sections/pedigreeMessages.ts`          |
+| `networkCanvas` | `sections/canvas/`                    | `sections/canvas/canvasMessages.ts`                             |
 | `networkCanvas` | `sections/canvas-behaviours/`         | `sections/canvas-behaviours/canvasBehavioursMessages.ts`        |
 | `networkCanvas` | `editors/sociogram/sections/prompts/` | `editors/sociogram/sections/prompts/sociogramPromptMessages.ts` |
+| `networkCanvas` | `editors/narrative/sections/presets/` | `editors/narrative/sections/presets/narrativePresetMessages.ts` |
 
 The remaining three families of the same series — `narrativePedigree`,
 `geospatial` and `anonymisation` — keep their reserved names above and add a
 row here as each lands.
 
-`networkCanvas` takes two rows rather than one, and one of its modules
+`networkCanvas` takes four rows rather than one, and one of its modules
 (`sections/background/`) takes none. The area is one family — the canvas
 interfaces, which share their background and their layout mode — but under one
-directory per editor its copy is declared in the module that renders it, and
-only two of those modules say their words somewhere other than where they are
-declared: the layout mode, whose two cards are written by the section and the
-control it renders, and the sociogram's prompts, four of whose sentences the
-shared `PromptsSection` says. The background section says all of its own, so
-its descriptors sit beside its markup like every other converted module's.
+directory per editor its copy is declared in the module that renders it, and only the modules that say their words somewhere
+other than where they are declared gather theirs into a file: the layout mode,
+whose two cards are written by the section and the control it renders and whose
+manual-mode sentence a narrative stage replaces with its own; the sociogram's
+prompts and the narrative's presets, whose own sentences the shared list
+sections say; and `sections/canvas/`, whose lost-reference label both of those
+lists render. The background section says all of its own, so its descriptors
+sit beside its markup like every other converted module's.
 
 A `*Messages.ts` per family, holding every id the family declares — rather than
 descriptors beside each section's markup, which is the rule everywhere else in

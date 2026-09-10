@@ -17,6 +17,13 @@ export type LayoutModeFieldProps = Omit<
   Readonly<{
     value?: boolean;
     onChange?: (value: boolean) => void;
+    /**
+     * What manual mode LOOKS like on this interface, formatted by the section
+     * that composes this field. Absent means the wording on the card below.
+     */
+    manualDescription?: string;
+    /** The same, for automatic mode. */
+    automaticDescription?: string;
   }>;
 
 /**
@@ -29,6 +36,8 @@ export type LayoutModeFieldProps = Omit<
 export default function LayoutModeField({
   value,
   onChange,
+  manualDescription,
+  automaticDescription,
   ...props
 }: LayoutModeFieldProps) {
   const intl = useAppIntl();
@@ -42,21 +51,25 @@ export default function LayoutModeField({
         label: intl.formatMessage(
           canvasBehavioursMessages.layoutModeManualLabel,
         ),
-        description: intl.formatMessage(
-          canvasBehavioursMessages.layoutModeManualDescription,
-        ),
+        description:
+          manualDescription ??
+          intl.formatMessage(
+            canvasBehavioursMessages.layoutModeManualDescription,
+          ),
       },
       {
         value: AUTOMATIC,
         label: intl.formatMessage(
           canvasBehavioursMessages.layoutModeAutomaticLabel,
         ),
-        description: intl.formatMessage(
-          canvasBehavioursMessages.layoutModeAutomaticDescription,
-        ),
+        description:
+          automaticDescription ??
+          intl.formatMessage(
+            canvasBehavioursMessages.layoutModeAutomaticDescription,
+          ),
       },
     ],
-    [intl],
+    [intl, manualDescription, automaticDescription],
   );
 
   return (

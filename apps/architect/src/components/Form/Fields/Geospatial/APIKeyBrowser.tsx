@@ -1,5 +1,5 @@
 import { ArrowRight } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
@@ -26,6 +26,11 @@ import { getAssetManifest } from '~/selectors/protocol';
 import { refusedCommitError } from '~/utils/protocolLockMessages';
 
 import { addApiKeyAsset } from '../../../../ducks/modules/protocol/assetManifest';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderCode = (chunks: ReactNode[]) => <code>{chunks}</code>;
+
 const messages = defineMessages({
   aPIKeyBrowser: {
     id: 'architect.form.fields.geospatial.aPIKeyBrowser.aPIKeyBrowser',
@@ -287,7 +292,7 @@ const APIKeyBrowserBody = ({
           description={
             <>
               {intl.formatMessage(messages.thisKeyIsSavedInsideYour, {
-                code: (chunks) => <code>{chunks}</code>,
+                code: renderCode,
               })}
             </>
           }

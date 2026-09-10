@@ -204,7 +204,18 @@ const ProjectActions = ({
 
   const [isExporting, setIsExporting] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
-  const [sourceRef, setSourceRef] = useState<ProtocolSourceRef | null>(null);
+  // Held against the protocol it was read for, and matched against the active
+  // one below. A protocol whose row has not been read yet therefore has no
+  // source ref — rather than briefly carrying the previous protocol's, which
+  // is what save-to-source would have written over.
+  const [loadedSourceRef, setLoadedSourceRef] = useState<{
+    protocolId: string;
+    ref: ProtocolSourceRef | null;
+  } | null>(null);
+  const sourceRef =
+    loadedSourceRef && loadedSourceRef.protocolId === activeProtocolId
+      ? loadedSourceRef.ref
+      : null;
   const [isSavingSource, setIsSavingSource] = useState(false);
   const [sourceSaveSuccess, setSourceSaveSuccess] = useState(false);
 
@@ -354,18 +365,18 @@ const ProjectActions = ({
   useEffect(() => {
     let cancelled = false;
 
-    setSourceRef(null);
     if (!isProtocolSourceAuthoringEnabled || !activeProtocolId) {
       return () => {
         cancelled = true;
       };
     }
 
+    const protocolId = activeProtocolId;
     void (async () => {
       try {
-        const row = await getStoredProtocol(activeProtocolId);
+        const row = await getStoredProtocol(protocolId);
         if (!cancelled) {
-          setSourceRef(row?.sourceRef ?? null);
+          setLoadedSourceRef({ protocolId, ref: row?.sourceRef ?? null });
         }
       } catch (error) {
         reportError(error);

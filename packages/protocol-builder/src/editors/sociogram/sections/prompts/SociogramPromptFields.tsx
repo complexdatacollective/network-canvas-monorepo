@@ -27,25 +27,26 @@ import type {
   RowPreviewProps,
 } from '../../../../form/rowDialog.tsx';
 import { variablesForSubject } from '../../../../protocol-context.ts';
-import CreateVariableButton from '../../../../sections/create-variable/CreateVariableButton.tsx';
-import SortOrderRows from '../../../../sections/prompts/SortOrderRows.tsx';
-import { useStageSubject } from '../../../../sections/useStageSubject.ts';
-import { useProtocolContext } from '../../../../state/protocolContext.ts';
+import { canvasMessages } from '../../../../sections/canvas/canvasMessages.ts';
 import {
   BOOLEAN_TYPES,
   LAYOUT_TYPES,
   useEdgeTypeChoices,
   useVariableChoices,
-} from '../../canvas/codebookChoices.ts';
-import OptionalTickList from '../../canvas/OptionalTickList.tsx';
+} from '../../../../sections/canvas/codebookChoices.ts';
+import OptionalTickList from '../../../../sections/canvas/OptionalTickList.tsx';
 import {
   asNestedBoolean,
   asNestedIdList,
   asNestedText,
   asText,
   useStableIdList,
-} from '../../canvas/rowValues.ts';
-import { useLostReferences } from '../../canvas/useLostReferences.ts';
+} from '../../../../sections/canvas/rowValues.ts';
+import { useLostReferences } from '../../../../sections/canvas/useLostReferences.ts';
+import CreateVariableButton from '../../../../sections/create-variable/CreateVariableButton.tsx';
+import SortOrderRows from '../../../../sections/prompts/SortOrderRows.tsx';
+import { useStageSubject } from '../../../../sections/useStageSubject.ts';
+import { useProtocolContext } from '../../../../state/protocolContext.ts';
 import { sociogramPromptMessages as messages } from './sociogramPromptMessages.ts';
 
 const TEXT_FIELD = 'text';
@@ -172,14 +173,19 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
     tapBehaviourOf(item),
   );
 
+  // Both name an attribute the interview writes around the codebook's rules —
+  // a position the participant drags a node to, a mark a tap toggles — so
+  // neither may take one a form field collects.
   const layoutOptions = useVariableChoices({
     subject,
     types: LAYOUT_TYPES,
+    unvalidatedWriter: true,
     ...(committedLayout === undefined ? {} : { currentValue: committedLayout }),
   });
   const highlightOptions = useVariableChoices({
     subject,
     types: BOOLEAN_TYPES,
+    unvalidatedWriter: true,
     ...(committedHighlight === undefined
       ? {}
       : { currentValue: committedHighlight }),
@@ -306,22 +312,19 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   };
 
   /**
-   * The connection types on offer, plus the ones this prompt already names and
-   * the codebook has lost.
+   * The connection types on offer, plus the ones this prompt names and the
+   * codebook has lost.
    *
-   * A type ticked in this dialog and deleted by a collaborator a moment later
-   * is lost the same way as one the prompt arrived with, so both are read —
-   * see `useLostReferences`.
+   * Named is read from the field, which starts at the committed value and
+   * carries every tick since, so a type ticked in this dialog and deleted by a
+   * collaborator a moment later is lost the same way as one the prompt arrived
+   * with — see `useLostReferences`.
    */
   const knownEdgeTypes = useMemo(
     () => new Set(edgeChoicesOffered.map((option) => option.value)),
     [edgeChoicesOffered],
   );
-  const namedEdgeTypes = useMemo(
-    () => [...(committedDisplay ?? []), ...displayedEdges],
-    [committedDisplay, displayedEdges],
-  );
-  const lostEdgeTypes = useLostReferences(namedEdgeTypes, knownEdgeTypes);
+  const lostEdgeTypes = useLostReferences(displayedEdges, knownEdgeTypes);
 
   const edgeChoices = useMemo(() => {
     const offered = edgeChoicesOffered.map((option) =>
@@ -334,7 +337,7 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
       ...offered,
       ...lostEdgeTypes.map((id) => ({
         value: id,
-        label: intl.formatMessage(messages.promptMissingEdgeType, {
+        label: intl.formatMessage(canvasMessages.missingEdgeType, {
           edgeTypeId: id,
         }),
       })),

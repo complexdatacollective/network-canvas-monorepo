@@ -1,7 +1,7 @@
 import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -67,6 +67,10 @@ type DataViewProps = {
   // synthetic-data generation/deletion in Settings) so the table re-queries.
   refreshKey?: number;
 };
+
+// Rich-text chunk formatter for the selection banner's messages, at module
+// scope so it keeps one identity across renders.
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
 
 const containerVariants = {
   hidden: {},
@@ -280,7 +284,7 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
                     {intl.formatMessage(
                       messages.allStrongSelectedCountStrongMatchingInterviewsAre,
                       {
-                        strong: (chunks) => <strong>{chunks}</strong>,
+                        strong: renderStrong,
                         selectedCount: selectedCount,
                       },
                     )}
@@ -301,7 +305,7 @@ export function DataView({ protocols, onReload, refreshKey }: DataViewProps) {
                     {intl.formatMessage(
                       messages.allStrongLengthStrongOnThisPage,
                       {
-                        strong: (chunks) => <strong>{chunks}</strong>,
+                        strong: renderStrong,
                         length: rows.length,
                       },
                     )}
