@@ -495,20 +495,27 @@ type FormStoreState = {
   notifyRestore: () => void;
   reset: () => void;
   /**
-   * Take the document as it now stands as every field's baseline.
+   * Take `document` as every field's baseline.
    *
-   * A field reads the document when it registers and never again, so a
-   * document that advances while the form is open — the protocol taking the
-   * save, a row written structurally — leaves every field on screen measured
-   * against a reading nothing holds any more. The form then reports itself
-   * dirty over work that is saved, and a host guarding unsaved work asks the
-   * researcher whether to discard changes they have just watched it save.
+   * A field reads the document it is seeded from when it registers and never
+   * again, so a form whose document has been STORED — the protocol taking the
+   * save — goes on measuring every field on screen against the reading it
+   * opened on, and reports itself dirty over work that is saved. A host
+   * guarding unsaved work then asks the researcher whether to discard changes
+   * they have just watched it save.
+   *
+   * Said by the host, and never inferred from the document it was handed
+   * moving. A working document also advances for writes nobody has saved — a
+   * row added to a list, a subject changed, a draft discarded — and those
+   * carry the values the researcher is still typing, so a baseline taking
+   * them would call the form clean with all of it still to save. Only the
+   * host knows which of the two it has just done.
    *
    * Only the baseline moves. What a field HOLDS is the researcher's, saved or
-   * not: an edit the new document does not have is still an unsaved edit, and
-   * against the new baseline it goes on saying so.
+   * not: an edit `document` does not have keeps its value and goes on saying
+   * it is unsaved.
    */
-  rebaseToDocument: () => void;
+  rebaseToDocument: (document: Record<string, unknown>) => void;
 
   setErrors: (errors: FlattenedErrors | null) => void;
   requestErrorFocus: () => void;
@@ -835,10 +842,7 @@ export const createFormStore = (
         });
       },
 
-      rebaseToDocument: () => {
-        const document = storeOptions.getInitialValues?.();
-        if (document === undefined) return;
-
+      rebaseToDocument: (document) => {
         // The document's OWN reading of each path, and never the seeding one:
         // seeding writes what the fields inside a container hold over the
         // document, so a baseline taking that overlay would carry the very

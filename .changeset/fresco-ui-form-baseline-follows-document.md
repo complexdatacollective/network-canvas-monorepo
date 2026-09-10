@@ -2,13 +2,16 @@
 '@codaco/fresco-ui': patch
 ---
 
-A form's baseline follows the document it is handed. `<Form initialValues={…}>`
-(and `<FormStoreProvider>`) gave a field its starting value when the field
-mounted and never moved it again, so a document that advanced while the form
-was open — a host taking the save and handing back what it stored — left every
-field on screen measured against the reading it opened on. The form went on
-reporting itself dirty over work that was saved, and a host guarding unsaved
-work asked whether to discard changes the person had just watched it save.
-Every field's baseline now moves to the new document's reading of its own path:
-a field holding what the document says is no longer unsaved work, and an edit
-the document does not have keeps its value and goes on saying it is unsaved.
+A form can be told the document it edits has been stored, and every field's
+baseline moves onto it. `<Form initialValues={…}>` gave a field its starting
+value when the field mounted and never moved it again, so a form whose stage
+had just been saved went on measuring every field on screen against the
+reading it opened on and reported itself dirty over work that was stored — and
+a host guarding unsaved work asked whether to discard changes the person had
+just watched it save. The form store now offers `rebaseToDocument(document)`: a
+field holding what that document says stops counting as unsaved work, while an
+edit the document does not have keeps its value and goes on saying it is
+unsaved. Deliberately said by the host rather than inferred from
+`initialValues` moving — a working document also advances for writes nobody has
+saved, and a baseline taking those would call a form clean with all of it still
+to save.
