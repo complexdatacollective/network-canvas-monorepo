@@ -96,13 +96,6 @@ export const anonymisationMessages = defineMessages({
     description:
       'Guidance under the passphrase-rules control, naming the trade-off a researcher is making when they set a minimum length.',
   },
-  passphraseRulesUnreadable: {
-    id: 'protocolBuilder.anonymisation.passphraseRulesUnreadable',
-    defaultMessage:
-      'These passphrase rules could not be read. Switch them off and set them again.',
-    description:
-      'Refusal shown on the passphrase-rules control when the rules stored on this stage are not in a shape the editor can read at all — a protocol edited by hand, or written by a newer version. Switching the section off discards them so they can be set again.',
-  },
   passphraseRulesMinimumAboveMaximum: {
     id: 'protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum',
     defaultMessage:

@@ -63,18 +63,14 @@ export default function PassphraseRulesControl({
 }
 
 /**
- * A field's `custom` rule answers with a string or nothing, so the two
- * refusals this one writes cross the package's string-only contract encoded:
- * the descriptor and its id travel inside the string, and the form's own error
+ * A field's `custom` rule answers with a string or nothing, so the refusal
+ * this one writes crosses the package's string-only contract encoded: the
+ * descriptor and its id travel inside the string, and the form's own error
  * region decodes them in the reader's language. A refusal `ruleMapPrecheck`
  * wrote is passed through as it stands — it belongs to the rule editor, and is
  * either encoded there already or a plain sentence the same decoder leaves
  * alone.
  */
-const RULES_UNREADABLE = createMessageError(
-  anonymisationMessages.passphraseRulesUnreadable,
-);
-
 const MINIMUM_ABOVE_MAXIMUM = createMessageError(
   anonymisationMessages.passphraseRulesMinimumAboveMaximum,
 );
@@ -86,10 +82,14 @@ const MINIMUM_ABOVE_MAXIMUM = createMessageError(
  * it can be corrected rather than quietly dropped — which means something has
  * to refuse the save while it is there. The protocol schema refuses it too,
  * but against a path and only once the save has been attempted.
+ *
+ * Anything that is not a rule map at all is nothing to say to the researcher:
+ * the schema pins `validation` to an object of length rules, so no protocol a
+ * host holds carries anything else there, and the control writes nothing else
+ * either.
  */
 export function passphraseRulesIssue(value: unknown): string | undefined {
-  if (value === undefined || value === null) return undefined;
-  if (!isValidationMap(value)) return RULES_UNREADABLE;
+  if (!isValidationMap(value)) return undefined;
 
   const { issue, complete } = ruleMapPrecheck(value);
   if (issue !== undefined) return issue;

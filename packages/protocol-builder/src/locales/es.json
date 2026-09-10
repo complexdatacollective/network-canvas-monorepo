@@ -40,7 +40,6 @@
   "protocolBuilder.anonymisation.passphraseRulesFieldLabel": "Reglas de la frase de contraseña",
   "protocolBuilder.anonymisation.passphraseRulesMinimumAboveMaximum": "La frase de contraseña más corta que permites no puede ser más larga que la más larga.",
   "protocolBuilder.anonymisation.passphraseRulesTitle": "Reglas de la frase de contraseña",
-  "protocolBuilder.anonymisation.passphraseRulesUnreadable": "No se han podido leer estas reglas de la frase de contraseña. Desactívalas y vuelve a definirlas.",
   "protocolBuilder.anonymisation.storageNotice": "Un atributo cifrado se guarda de forma que solo la frase de contraseña pueda desbloquearlo. Sin ella no se puede leer, exportar ni recuperar.",
   "protocolBuilder.arrayField.addSubmit": "Añadir",
   "protocolBuilder.arrayField.attributeNameSubject": "nombre de atributo",
