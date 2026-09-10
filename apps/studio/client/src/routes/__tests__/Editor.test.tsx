@@ -14,7 +14,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createInMemoryHost } from '@codaco/protocol-builder/testing/host/createInMemoryHost';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
+import {
+  sectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
 
 import { rpcClient } from '../../lib/api.ts';
 import { authClient } from '../../lib/auth.ts';
@@ -115,6 +118,63 @@ const protocolBuilderHost = vi.hoisted((): { client: unknown } => ({
 
 /** The host these tests seed, kept so a second caller can be made from it. */
 let host: ReturnType<typeof createInMemoryHost>;
+type HostClient = ReturnType<typeof createInMemoryHost>['client'];
+
+const STAGE_ORDER = sectionId({ kind: 'stageOrder' });
+
+/**
+ * What Studio's OWN commands did to the draft.
+ *
+ * `protocols.addInformationStage` and `protocols.moveStage` are Studio's, not
+ * the protocol contract's: they write the draft and publish nothing on the
+ * protocol channel. A client that only listens never hears about them, so the
+ * editor has to read the protocol back — and a host whose answers have changed
+ * with no event to announce it is the only thing that can tell a re-read from
+ * a subscription.
+ */
+const commandWrote = new Map<ProtocolSectionId, SectionDoc>();
+
+const COMMAND_REVISION = { sequence: 3n, contentHash: 'written-by-command' };
+
+/**
+ * The seeded host, answering as though a Studio command had written to it.
+ *
+ * A proxy rather than a copy: the contract client is itself a proxy, so
+ * spreading it yields an object with none of the procedures on it.
+ */
+function hostAnsweringCommandWrites(client: HostClient): HostClient {
+  const overrides: Partial<HostClient> = {
+    getSection: async (...args: Parameters<HostClient['getSection']>) => {
+      const written = commandWrote.get(args[0].sectionId);
+      if (written === undefined) return client.getSection(...args);
+      return { document: written, revision: COMMAND_REVISION };
+    },
+    acquireLock: async (...args: Parameters<HostClient['acquireLock']>) => {
+      const written = commandWrote.get(args[0].sectionId);
+      if (written === undefined) return client.acquireLock(...args);
+      return {
+        lock: 'held' as const,
+        document: written,
+        revision: COMMAND_REVISION,
+      };
+    },
+    listSections: async (...args: Parameters<HostClient['listSections']>) => {
+      const { sectionIds } = await client.listSections(...args);
+      return {
+        sectionIds: [
+          ...sectionIds,
+          ...[...commandWrote.keys()].filter((id) => !sectionIds.includes(id)),
+        ],
+      };
+    },
+  };
+  return new Proxy(client, {
+    get: (target, key, receiver) =>
+      Object.hasOwn(overrides, key)
+        ? overrides[key as keyof HostClient]
+        : Reflect.get(target, key, receiver),
+  });
+}
 let writes = 0;
 const nextRequestId = (): string => `write-${(writes += 1)}`;
 
@@ -324,11 +384,12 @@ beforeEach(() => {
   tenancy.activeTeam = TEAM_A;
   tenancy.owner = TEAM_A.id;
   writes = 0;
+  commandWrote.clear();
   host = createInMemoryHost({
     protocolId: DRAFT.protocol.id,
     sections: HOST_SECTIONS,
   });
-  protocolBuilderHost.client = host.client;
+  protocolBuilderHost.client = hostAnsweringCommandWrites(host.client);
   vi.mocked(authClient.getSession).mockReset();
   vi.mocked(authClient.getSession).mockResolvedValue({
     data: { user: {} },
@@ -377,6 +438,13 @@ function renderEditor() {
     </QueryClientProvider>,
   );
   return { ...result, queryClient, router };
+}
+
+/** The interview screens the outline is showing, in the order it shows them. */
+function outlineScreens(): (string | null)[] {
+  return screen
+    .getAllByRole('button', { name: /Information$/ })
+    .map((entry) => entry.textContent);
 }
 
 /** The stage-name control every `@codaco/protocol-builder` editor opens with. */
@@ -789,6 +857,68 @@ describe('Studio editor shell', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Refresh outline' }));
     await waitFor(() => expect(add).toBeEnabled());
+  });
+
+  /**
+   * Studio's add and reorder write the draft through commands of its own,
+   * which publish nothing on the protocol channel. Nothing else will ever tell
+   * this tab what they did, so the outline they change is the one thing on
+   * this screen that is READ back rather than subscribed to.
+   */
+  it('shows the order a reorder of this researcher\u2019s left behind', async () => {
+    vi.mocked(rpcClient.protocols.moveStage).mockImplementation(async () => {
+      commandWrote.set(STAGE_ORDER, { stages: [STAGE_B, STAGE_A] });
+      return { sequence: '3', hash: 'r3' };
+    });
+    renderEditor();
+    const moveUp = await screen.findByRole('button', {
+      name: 'Move Follow-up up',
+    });
+    expect(outlineScreens()).toEqual([
+      'Welcome, from the hostInformation',
+      'Follow-upInformation',
+    ]);
+
+    fireEvent.click(moveUp);
+
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Follow-upInformation',
+        'Welcome, from the hostInformation',
+      ]),
+    );
+  });
+
+  it('shows the screen an add of this researcher\u2019s left behind', async () => {
+    vi.mocked(rpcClient.protocols.addInformationStage).mockImplementation(
+      async ({ stageId }) => {
+        commandWrote.set(sectionId({ kind: 'stage', stageId }), {
+          id: stageId,
+          type: 'Information',
+          title: '',
+          items: [],
+        });
+        commandWrote.set(STAGE_ORDER, { stages: [STAGE_A, STAGE_B, stageId] });
+        return { sequence: '3', hash: 'r3' };
+      },
+    );
+    renderEditor();
+    await findStageNameField();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    // Named for its position, because the researcher has not named it yet, and
+    // selected, because adding a screen is asking to edit it.
+    await waitFor(() =>
+      expect(outlineScreens()).toEqual([
+        'Welcome, from the hostInformation',
+        'Follow-upInformation',
+        'Screen 3Information',
+      ]),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Screen 3Information' }),
+    ).toHaveAttribute('aria-current', 'page');
   });
 
   it('blocks another reorder until an ambiguous failure is reconciled', async () => {
