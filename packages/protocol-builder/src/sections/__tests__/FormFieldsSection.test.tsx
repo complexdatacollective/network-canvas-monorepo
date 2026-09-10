@@ -13,6 +13,7 @@ import {
 import { draftAdditionalAttributeVariableIds } from '../../codebook/variableValidation.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { protocolContextFromSections } from '../../protocol-context.ts';
+import type { InMemoryClient } from '../../testing/host/createInMemoryHost.ts';
 import { fixtureMessage } from '../../testing/i18n.ts';
 import { loadFixtureStage } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
@@ -1495,6 +1496,12 @@ const collectNotesInATextArea = (
 /** The id the seeded categorical attribute below is filed under. */
 const SEEDED_CONTACT_SETTING = 'seeded-contact-setting';
 
+/** What a collaborator adds to the same type while an editor is open on it. */
+const COLLABORATORS_ATTRIBUTE = 'collaborators-attribute';
+
+/** What a collaborator renames an open editor's attribute to, mid-save. */
+const COLLABORATORS_RENAME = 'renamedByACollaborator';
+
 /**
  * The same categorical attribute, already in the protocol.
  *
@@ -1789,6 +1796,161 @@ describe('the codebook an attribute a form field collects lives in', () => {
       { label: 'At work', value: 'work' },
       { label: 'Somewhere else', value: 'elsewhere' },
     ]);
+  });
+
+  /**
+   * And a save from that editor writes the attribute it was opened on, not the
+   * codebook as this tab last saw it.
+   *
+   * The editor assembles the whole section — every attribute of the type, as
+   * of the render the researcher pressed Save in — while the write takes the
+   * section's lock only afterwards. A collaborator who wrote in between is in
+   * the document the lock hands back and not in this editor's copy, so
+   * submitting that copy whole deletes their attribute with nothing on either
+   * screen to say it happened.
+   */
+  it('keeps an attribute a collaborator added while the values editor was open', async () => {
+    const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+      client: (host) => {
+        let raced = false;
+        const acquireLock: InMemoryClient['acquireLock'] = async (
+          ...args: Parameters<InMemoryClient['acquireLock']>
+        ) => {
+          const [input] = args;
+          if (!raced && input.sectionId === person) {
+            raced = true;
+            // Between the editor's last render and the lock it is asking for
+            // here, which is the whole of the window this is about.
+            const current = host.store.read(person).document;
+            host.store.applyAsCollaborator(person, {
+              ...current,
+              variables: {
+                ...asRecord(current.variables),
+                [COLLABORATORS_ATTRIBUTE]: {
+                  name: 'metThrough',
+                  type: 'text',
+                  component: 'Text',
+                },
+              },
+            });
+          }
+          return host.client.acquireLock(...args);
+        };
+        return new Proxy(host.client, {
+          get: (target, property) =>
+            property === 'acquireLock'
+              ? acquireLock
+              : Reflect.get(target, property),
+        });
+      },
+    });
+
+    const variableId = seedContactSetting(harness);
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      variableId,
+    );
+    await harness.user.click(
+      await dialog.findByRole('button', {
+        name: 'Change this attribute’s values',
+      }),
+    );
+    await addValue(harness, 3, 'Somewhere else', 'elsewhere');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        asRecord(personVariables(harness)[variableId]).options,
+      ).toHaveLength(3),
+    );
+    // The researcher's own change landed, and the collaborator's is still
+    // there beside it.
+    expect(
+      asRecord(personVariables(harness)[COLLABORATORS_ATTRIBUTE]).name,
+    ).toBe('metThrough');
+  });
+
+  /**
+   * And a save from one of those editors writes the properties that editor
+   * set, not the whole attribute as it read it.
+   *
+   * An attribute is one record written through three surfaces — its values,
+   * its input control, its rules — and each of them assembles the record it
+   * submits before the write takes the section's lock. So a rules save
+   * carrying the whole record puts back the name the attribute had when the
+   * rules editor last rendered, undoing a rename a collaborator made in
+   * between from a surface that offers no name field at all.
+   */
+  it('keeps a rename a collaborator made while the rules editor was open', async () => {
+    const person = sectionId({ kind: 'codebookNode', typeId: 'person' });
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+      client: (host) => {
+        let raced = false;
+        const acquireLock: InMemoryClient['acquireLock'] = async (
+          ...args: Parameters<InMemoryClient['acquireLock']>
+        ) => {
+          const [input] = args;
+          if (!raced && input.sectionId === person) {
+            raced = true;
+            // Between the rules editor's last render and the lock its save is
+            // asking for here, which is the whole of the window this is about.
+            const current = host.store.read(person).document;
+            const variables = asRecord(current.variables);
+            host.store.applyAsCollaborator(person, {
+              ...current,
+              variables: {
+                ...variables,
+                relationship_to_ego: {
+                  ...asRecord(variables.relationship_to_ego),
+                  name: COLLABORATORS_RENAME,
+                },
+              },
+            });
+          }
+          return host.client.acquireLock(...args);
+        };
+        return new Proxy(host.client, {
+          get: (target, property) =>
+            property === 'acquireLock'
+              ? acquireLock
+              : Reflect.get(target, property),
+        });
+      },
+    });
+
+    const dialog = await openField(harness, 'Edit field');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await screen.findByRole('button', { name: 'Save validation' });
+    await harness.user.click(
+      screen.getByRole('checkbox', { name: 'Required' }),
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save validation' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        asRecord(
+          asRecord(personVariables(harness).relationship_to_ego).validation,
+        ).required,
+      ).toBe(true),
+    );
+    // The rules the researcher set are there, and the attribute is still
+    // called what the collaborator renamed it to.
+    expect(asRecord(personVariables(harness).relationship_to_ego).name).toBe(
+      COLLABORATORS_RENAME,
+    );
   });
 
   /**

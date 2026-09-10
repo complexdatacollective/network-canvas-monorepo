@@ -328,8 +328,17 @@ type VariableEditorCommonProps = Readonly<{
    * A refusal already written for the researcher — one naming the rule and the
    * values that cannot both hold — is shown as it arrived rather than replaced
    * by this package's copy for a save that did not happen.
+   *
+   * `ownedProperties` names the attribute's properties this submit set, for a
+   * caller that lays the result back over the section as the host holds it
+   * (`documentWithRebasedVariable`): the rest of the attribute belongs to the
+   * other surfaces over the same record. Absent from a create, which authors
+   * the whole attribute.
    */
-  onSubmitDocument(document: SectionDoc): Promise<CodebookWriteOutcome>;
+  onSubmitDocument(
+    document: SectionDoc,
+    ownedProperties?: readonly string[],
+  ): Promise<CodebookWriteOutcome>;
   /**
    * Receives the stable record id after the save is accepted, and the
    * researcher-facing name it was written under.
@@ -683,7 +692,20 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
 
     setBusy(true);
     try {
-      const outcome = await onSubmitDocument(document);
+      const outcome = await onSubmitDocument(
+        document,
+        // What `documentWithUpdatedVariable` was just asked to write: the
+        // properties the draft carries, and the ones it clears. A create
+        // authors the whole attribute and so owns all of it.
+        props.mode === 'create'
+          ? undefined
+          : [
+              ...new Set([
+                ...replaceProperties,
+                ...Object.keys(submittedDraft),
+              ]),
+            ],
+      );
       if (outcome.status === 'applied') {
         onComplete(
           variableId,
