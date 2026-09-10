@@ -7,6 +7,7 @@ import { parse } from 'yaml';
 
 import { GATED_PRODUCT_RELEASE_LANES } from './changeset-app-utils.mjs';
 import { E2E_JOB_NAMES } from './release-e2e-policy.mjs';
+import { TEST_SHARDS } from './test-shards.mjs';
 
 const workflow = readFileSync(
   new URL('../.github/workflows/ci-and-release.yml', import.meta.url),
@@ -567,16 +568,17 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   // Deliberately not `--affected`. Turbo 2.10.4 ignores every `--filter`
   // for task selection when `--affected` is present, while still printing a
   // "Packages in scope" line that honours it — so the Studio-server
-  // exclusion would read as working while that suite ran here as well as in
-  // `test-studio-server`. The explicit `...[<base>]` selector that
-  // `--affected` is sugar for obeys both filters, and was verified
-  // selection-equivalent to `--affected` across several bases. Pin the
-  // explicit form, and refuse any turbo invocation that reaches for
-  // `--affected` again, so the exclusion cannot be quietly re-broken.
+  // exclusion and the per-shard bucket would both read as working while
+  // every shard ran the whole affected set, the Studio suite included. The
+  // explicit `...[<base>]` selector that `--affected` is sugar for obeys
+  // every filter, and was verified selection-equivalent to `--affected`
+  // across several bases. Pin the explicit form, and refuse any turbo
+  // invocation that reaches for `--affected` again, so neither the exclusion
+  // nor the sharding can be quietly re-broken.
   assert.match(
     testJob,
-    /pnpm exec turbo run test --concurrency=1 \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+--filter='!@codaco\/studio-server'/,
-    'the affected path scopes to the PR base and excludes the Studio suite',
+    /pnpm exec turbo run test --concurrency=1 \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+"\$\{SHARD_FILTERS\[@\]\}"/,
+    'the affected path scopes to the PR base and to this shard',
   );
   assert.doesNotMatch(
     testJob,
@@ -592,6 +594,50 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
     testJob,
     /':\(exclude\)scripts\/\*\.test\.mjs'/,
     'repository script tests do not invalidate workspace unit tests',
+  );
+});
+
+test('the test matrix runs exactly the shards scripts/test-shards.mjs defines', () => {
+  // The dangerous drift is a bucket with no runner: its packages are negated
+  // by every shard that DOES run, so nothing executes them and CI stays
+  // green while those suites silently stop running.
+  const legs = parsedWorkflow.jobs.test.strategy.matrix.include;
+  assert.deepEqual(
+    legs.map((leg) => leg.shard).sort((a, b) => a - b),
+    TEST_SHARDS.map((s) => s.shard).sort((a, b) => a - b),
+    'every defined bucket has a matrix leg and vice versa',
+  );
+
+  assert.equal(
+    parsedWorkflow.jobs.test.strategy['fail-fast'],
+    false,
+    'a red shard must not cancel its siblings and hide their verdicts',
+  );
+
+  // Only the bucket holding @codaco/studio-sync starts a database, and it is
+  // started by a step because `services:` cannot vary per matrix leg.
+  const postgresLegs = legs.filter((leg) => leg.postgres === true);
+  assert.equal(postgresLegs.length, 1, 'one leg declares Postgres');
+  assert.equal(
+    postgresLegs[0].shard,
+    TEST_SHARDS.find((s) => s.postgres === true)?.shard,
+    'the Postgres leg is the bucket that holds the Postgres-dependent suite',
+  );
+  assert.ok(
+    !('services' in parsedWorkflow.jobs.test),
+    'no leg pays the 24s container init it does not need',
+  );
+
+  const testJob = job('test');
+  assert.match(
+    testJob,
+    /node scripts\/test-shards\.mjs filters "\$SHARD"/,
+    'each shard derives its bucket from the one source of truth',
+  );
+  assert.match(
+    testJob,
+    /refusing to run the whole workspace/,
+    'an empty filter list fails the shard instead of widening it',
   );
 });
 

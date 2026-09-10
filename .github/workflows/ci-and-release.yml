@@ -922,26 +922,52 @@ jobs:
         run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
 
   test:
+    # The workspace unit suites, one bucket of packages per parallel runner.
+    #
+    # These suites are embarrassingly parallel across MACHINES and stubbornly
+    # serial on one. Every vitest sizes its fork pool to the runner's CPU
+    # count, so a single suite already saturates a 4-vCPU standard runner and
+    # turbo's own `--concurrency` knob buys nothing — measured on the same
+    # thirteen tasks (#1801), 25m53s at `--concurrency=1`, 25m49s at 2, 26m08s
+    # at the default. The bottleneck is CPU throughput, not scheduling, so the
+    # only lever is more CPUs. Standard runners are free on this public
+    # repository and the org has 500 concurrent standard jobs against a
+    # sampled live usage of ~26, so shard count is not the constraint either.
+    #
+    # Each shard is a whole runner running its own bucket at
+    # `--concurrency=1`, which is the same uncontended machine per suite that
+    # the single job gave — the per-test wall-clock budgets still measure the
+    # test rather than the queue. scripts/test-shards.mjs owns which package
+    # is in which bucket, how the buckets were weighted, and the coverage
+    # check that refuses a package belonging to no shard.
+    name: test (shard ${{ matrix.shard }})
     if: >-
       github.event_name != 'merge_group'
       && github.event_name != 'push'
       && !(github.event_name == 'workflow_dispatch'
       && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_PASSWORD: spike
-          POSTGRES_DB: studio_dev
-          POSTGRES_INITDB_ARGS: --set=max_prepared_transactions=10
-        ports:
-          - 54318:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    timeout-minutes: 30
+    strategy:
+      # Every shard's verdict is wanted. Under the default fail-fast the first
+      # red suite cancels its siblings, and a cancelled shard reports no
+      # failure of its own — a pull request would be told about one broken
+      # package at a time, one push each.
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+          - shard: 2
+          # packages/studio-sync's conformance suite is the only workspace
+          # suite outside @codaco/studio-server that needs a database, and it
+          # refuses to skip under CI. Its shard starts one; the others do not
+          # pay for it. `services:` cannot be varied per matrix leg, so the
+          # container is started by a step instead — measured at 24s of
+          # "Initialize containers" on every run of the unsharded job.
+          - shard: 3
+            postgres: true
+          - shard: 4
+          - shard: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -949,7 +975,37 @@ jobs:
           # `--affected` diffs against the PR base; on a shallow clone turbo
           # treats every package as changed.
           fetch-depth: 0
+      # Started before the install so Postgres initialises while pnpm works,
+      # and waited on separately below. Mirrors the service block this job
+      # used to declare: same image, same env (POSTGRES_INITDB_ARGS is read by
+      # the official image's entrypoint either way), same published port.
+      - name: Start Postgres for the studio-sync conformance suite
+        if: matrix.postgres
+        run: |
+          docker run --detach --name studio-sync-postgres \
+            --env POSTGRES_PASSWORD=spike \
+            --env POSTGRES_DB=studio_dev \
+            --env POSTGRES_INITDB_ARGS=--set=max_prepared_transactions=10 \
+            --publish 54318:5432 \
+            postgres:18
       - uses: ./.github/actions/turbo-ci-setup
+      # `-h 127.0.0.1` on purpose: during initdb the official image runs a
+      # temporary server bound to the unix socket only, so a socket-based
+      # pg_isready (what the old service's health-cmd ran) can report ready
+      # before the TCP listener the suite actually connects to exists.
+      - name: Wait for Postgres
+        if: matrix.postgres
+        run: |
+          for _ in $(seq 1 60); do
+            if docker exec studio-sync-postgres pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
+              echo "Postgres is accepting TCP connections"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs studio-sync-postgres
+          echo "::error::Postgres did not accept connections within 120s"
+          exit 1
       - name: Write protocol-validation .env (test fixture)
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
@@ -964,7 +1020,34 @@ jobs:
       - name: Run tests (PRs run only affected tasks)
         env:
           DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SHARD: ${{ matrix.shard }}
         run: |
+          # Restrict this runner to its bucket. scripts/test-shards.mjs emits
+          # one `--filter=!<pkg>` for every test-carrying workspace package
+          # this shard does not own, and refuses to emit anything at all if a
+          # package belongs to no bucket.
+          #
+          # Negations, not positive filters, because turbo UNIONS what the
+          # positive filters select: `--filter=@codaco/art` beside the
+          # affected selector below would run art on every pull request
+          # whether or not the diff touched it. Negations subtract from that
+          # union, which is the intersection a shard actually wants — the same
+          # mechanism that already kept @codaco/studio-server out. That suite
+          # is now excluded by simply belonging to no bucket, so every shard
+          # negates it and the split cannot be undone by editing one shard.
+          #
+          # Via a file rather than `mapfile < <(node ...)`: process
+          # substitution discards the script's exit status, and an empty
+          # filter list would silently widen the shard to the whole workspace
+          # — every suite run four times over, in parallel with itself.
+          node scripts/test-shards.mjs filters "$SHARD" > "$RUNNER_TEMP/shard-filters"
+          mapfile -t SHARD_FILTERS < "$RUNNER_TEMP/shard-filters"
+          if [[ ${#SHARD_FILTERS[@]} -eq 0 ]]; then
+            echo "::error::shard $SHARD produced no package filters; refusing to run the whole workspace"
+            exit 1
+          fi
+          echo "Shard $SHARD excludes ${#SHARD_FILTERS[@]} packages"
+
           # PR checkouts are synthetic merges. Diff against the event's base
           # SHA, then use --affected to scope the run to tasks whose declared
           # inputs the diff touches, plus their dependents (turbo.json enables
@@ -998,14 +1081,19 @@ jobs:
           # 2: a protocol-builder file that took 9.5s alone took 20s beside
           # one other suite, which is the headroom the 20s budgets need.
           #
-          # `--filter=!@codaco/studio-server`: that suite now runs as its own
-          # `test-studio-server` job (see the comment there for why), on its
-          # own runner in parallel with this one. Without this exclusion both
-          # the `--affected` pass and the full-suite fallback below would
-          # still select `@codaco/studio-server#test` as a cache miss — turbo
-          # has no notion that a sibling job already claimed it — and run the
-          # wall-clock-budgeted suite a second time, concurrently with itself,
-          # on a runner it was carved out specifically to avoid sharing.
+          # `--concurrency=1` is still right per shard. A shard is a whole
+          # runner, so serialising its bucket hands each suite the same
+          # uncontended 4 vCPUs the single job did; the parallelism comes from
+          # the other runners, not from this one.
+          #
+          # The `!@codaco/studio-server` negation SHARD_FILTERS carries: that
+          # suite runs as its own `test-studio-server` job (see the comment
+          # there for why), on its own runner in parallel with these. Without
+          # the exclusion both the `--affected` pass and the full-suite
+          # fallback below would still select `@codaco/studio-server#test` as
+          # a cache miss — turbo has no notion that a sibling job already
+          # claimed it — and run the wall-clock-budgeted suite again, on a
+          # runner it was carved out specifically to avoid sharing.
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
             && [[ -n "$DIFF_BASE_SHA" ]] \
             && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
@@ -1026,23 +1114,29 @@ jobs:
             # on the very runner the split exists to get it off, on the
             # affected path most pull requests take.
             #
-            # The explicit form obeys both filters. Verified equivalent to
+            # The explicit form obeys every filter. Verified equivalent to
             # `--affected` against two independent bases (23 and 56 selected
             # tasks, identical task IDs both times), and verified to drop
-            # exactly one task when the negation is added.
+            # exactly one task when the negation is added. The per-shard
+            # negations ride the same form for the same reason: under
+            # `--affected` they would be ignored and every shard would run the
+            # whole affected set.
             #
             # Check any change here by EXECUTING turbo, never with `--dry`:
             # `--dry`'s `packages` field reports the filtered scope even in
             # the broken case, so it confirms a filter the run then ignores.
-            # Its `tasks` field is the one that matches what runs.
+            # Its `tasks` field is the one that matches what runs. Executed
+            # against base b0bc600: 22 real `test` tasks unsharded, and with a
+            # three-package bucket's negations exactly @codaco/art,
+            # @codaco/network-query and @codaco/shared-consts.
             pnpm exec turbo run test --concurrency=1 \
               --filter="...[$DIFF_BASE_SHA]" \
-              --filter='!@codaco/studio-server'
+              "${SHARD_FILTERS[@]}"
             exit 0
           fi
 
           echo "Running the full test suite for $GITHUB_EVENT_NAME"
-          pnpm exec turbo run test --concurrency=1 --filter='!@codaco/studio-server'
+          pnpm exec turbo run test --concurrency=1 "${SHARD_FILTERS[@]}"
 
   test-storybook:
     # Storybook's play functions and their assertions, executed in a real
