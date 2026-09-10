@@ -117,6 +117,23 @@ const nextStageFormId = (): string => {
 };
 
 /**
+ * The edit one mounted harness is, named rather than minted so a test can ask
+ * the host what THIS edit is holding staged — a question the contract answers
+ * only for a named edit, because staged files belong to the edit that imported
+ * them and to nothing wider.
+ *
+ * One per harness for the same reason the form id is: a test may mount two,
+ * and two edits sharing an id would each be able to promote and discard what
+ * the other imported. The number is nobody's to depend on; a test that needs
+ * the id reads `editId` off the harness.
+ */
+let editsOpened = 0;
+const nextEditId = (): string => {
+  editsOpened += 1;
+  return `stage-edit-${editsOpened}`;
+};
+
+/**
  * A change to the codebook made somewhere other than this editor.
  *
  * `null` removes the entity. The editor must follow either kind without
@@ -163,6 +180,12 @@ export type StageEditorHarness = RenderResult &
      * action chrome is given as `formId`.
      */
     formId: string;
+    /**
+     * The edit THIS harness has open, which is what the host holds its staged
+     * files under. A test asking the host directly — listing what is staged,
+     * dropping it behind the editor's back — names it.
+     */
+    editId: string;
     /** The stage the editor opened on, exactly as it was seeded. */
     seeded: SeededStage;
     /**
@@ -392,21 +415,6 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      */
     assets?: Readonly<Record<string, SectionDoc>>;
     /**
-     * The host's own client, wrapped before the editor is mounted over it.
-     *
-     * For the facts a host KNOWS about a protocol that this in-memory one does
-     * not work out for itself. The only one so far is what is inside an
-     * imported data file: `inspect` answers with the manifest entry, and a
-     * roster stage's card, sort and search sections are all chosen from that
-     * file's columns — so a test about one of them has to say what the file
-     * holds, exactly as `AssetPickerField.test.tsx` already does for the
-     * picker's own summary.
-     *
-     * Everything else stays the real host: the wrapper is handed the client
-     * and answers with one, so what it does not override is unchanged.
-     */
-    client?: (client: ProtocolBuilderClient) => ProtocolBuilderClient;
-    /**
      * The host's action chrome, as a host would give it to the editor.
      *
      * Given, it is what gets rendered in the editor's slot, whichever of the
@@ -451,6 +459,25 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
       sectionId: ProtocolSectionId;
       displayName: string;
     }>[];
+    /**
+     * Wraps the seeded host's own client, the way `renderResourceEditor` does,
+     * for a test about a host that holds its answer, or about a fact a real
+     * host KNOWS that this in-memory one does not work out for itself.
+     *
+     * Between the editor and the host rather than inside it: this host answers
+     * in a microtask, so a request that is still in flight is something only
+     * the transport can be. A stubbed store method would be answering for a
+     * write the host decides, and would go on compiling after the host stopped
+     * asking it the same question.
+     *
+     * The fact so far is what is inside an imported data file: `inspect`
+     * answers with the manifest entry, and a roster stage's card, sort and
+     * search sections are all chosen from that file's columns — so a test about
+     * one of them has to say what the file holds, exactly as
+     * `AssetPickerField.test.tsx` already does for the picker's own summary.
+     * Everything the wrapper does not override stays the real host's.
+     */
+    client?: (host: InMemoryHost) => ProtocolBuilderClient;
   }> &
     StageEditorMounting<T> &
     StageEditorSeeding<T>;
@@ -571,8 +598,7 @@ export function renderStageEditor<T extends StageType = StageType>(
     principal: HARNESS_PRINCIPAL,
   });
   const { protocolId, store } = host;
-  const editorClient =
-    options.client === undefined ? host.client : options.client(host.client);
+  const editorClient = options.client?.(host) ?? host.client;
 
   // Locks taken before the editor opens, which is what a collaborator holding
   // a section IS: the acquire the editor is about to make comes back read-only
@@ -591,6 +617,7 @@ export function renderStageEditor<T extends StageType = StageType>(
   const saved: SavedStage[] = [];
   const submitLabel = options.submitLabel ?? defaultSubmitLabel(options.locale);
   const formId = nextStageFormId();
+  const editId = nextEditId();
   const target: StageEditTarget =
     seeded.creation === undefined
       ? { sectionId: stageSectionId }
@@ -610,6 +637,7 @@ export function renderStageEditor<T extends StageType = StageType>(
             <HarnessEditor
               target={target}
               formId={formId}
+              editId={editId}
               submitLabel={submitLabel}
               onSaved={(id) => {
                 saved.push({
@@ -704,6 +732,7 @@ export function renderStageEditor<T extends StageType = StageType>(
     host,
     user,
     formId,
+    editId,
     seeded,
     submit,
     cancel: async () => {
@@ -926,6 +955,7 @@ function withSafeTypingIntoRichText(keyboard: HarnessUser): HarnessUser {
 function HarnessEditor<T extends StageType>({
   target,
   formId,
+  editId,
   submitLabel,
   onSaved,
   actions,
@@ -936,6 +966,8 @@ function HarnessEditor<T extends StageType>({
   target: StageEditTarget;
   /** This harness's own form id. See `nextStageFormId`. */
   formId: string;
+  /** This harness's own edit id. See `nextEditId`. */
+  editId: string;
   submitLabel: string;
   onSaved: (sectionId: ProtocolSectionId) => void;
   actions?: StageEditorActions;
@@ -948,6 +980,7 @@ function HarnessEditor<T extends StageType>({
       <StageEditor
         target={target}
         formId={formId}
+        editId={editId}
         onSaved={onSaved}
         {...(registry === undefined ? {} : { registry })}
         {...(actions === undefined ? {} : { actions })}
@@ -956,7 +989,7 @@ function HarnessEditor<T extends StageType>({
   }
 
   return (
-    <ResourceClientProvider>
+    <ResourceClientProvider editId={editId}>
       <StageEditSession target={target} formId={formId} onSaved={onSaved}>
         {Editor === undefined ? (
           <StageEditorShell

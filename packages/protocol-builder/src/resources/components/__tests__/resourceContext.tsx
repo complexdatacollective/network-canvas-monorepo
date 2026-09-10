@@ -12,9 +12,21 @@ import {
   type ResourceClient,
 } from '../../client.tsx';
 
+/**
+ * The edit a resource control is mounted in.
+ *
+ * Named rather than minted so a test can stage a file through the host
+ * directly and have the control under test see it: staged files belong to the
+ * edit that imported them, and a host asked about a different edit answers
+ * about nothing.
+ */
+export const TEST_EDIT_ID = 'edit-under-test';
+
 export type ResourceContextFrameProps = Readonly<{
   client: ProtocolBuilderClient;
   protocolId: string;
+  /** Which edit this is; `TEST_EDIT_ID` unless a test needs a second one. */
+  editId?: string;
   children: ReactNode;
 }>;
 
@@ -32,6 +44,7 @@ export type ResourceContextFrameProps = Readonly<{
 export function ResourceContextFrame({
   client,
   protocolId,
+  editId = TEST_EDIT_ID,
   children,
 }: ResourceContextFrameProps) {
   const value = useMemo(
@@ -46,7 +59,9 @@ export function ResourceContextFrame({
   return (
     <DialogProvider>
       <ProtocolBuilderProvider value={value}>
-        <ResourceClientProvider>{children}</ResourceClientProvider>
+        <ResourceClientProvider editId={editId}>
+          {children}
+        </ResourceClientProvider>
       </ProtocolBuilderProvider>
     </DialogProvider>
   );

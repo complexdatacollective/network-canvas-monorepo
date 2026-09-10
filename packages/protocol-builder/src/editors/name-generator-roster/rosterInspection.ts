@@ -1,4 +1,5 @@
 import type { ProtocolBuilderClient } from '../../contract/contract.ts';
+import type { InMemoryHost } from '../../testing/host/createInMemoryHost.ts';
 import { withResourceProcedures } from '../../testing/withResourceProcedures.ts';
 
 /**
@@ -28,9 +29,8 @@ const ROSTER_COUNTS = { nodes: 3, edges: 0 } as const;
  * other procedure is the real host's, so a stage saved through this client is
  * still a stage the protocol schema accepted.
  */
-export function withRosterColumns(
-  client: ProtocolBuilderClient,
-): ProtocolBuilderClient {
+export function withRosterColumns(host: InMemoryHost): ProtocolBuilderClient {
+  const { client } = host;
   return withResourceProcedures(client, {
     inspect: async (input) => {
       const inspected = await client.resources.inspect(input);

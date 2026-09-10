@@ -13,7 +13,10 @@ import type { ProtocolBuilderClient } from '../contract/contract.ts';
 import { ProtocolBuilder } from '../ProtocolBuilder.tsx';
 import type { StageEditorActions } from '../stage-editor-contract.ts';
 import type { StageEditTarget } from '../stageEdit.tsx';
-import { createInMemoryHost } from './host/createInMemoryHost.ts';
+import {
+  createInMemoryHost,
+  type InMemoryHost,
+} from './host/createInMemoryHost.ts';
 import {
   fixtureAssetManifest,
   fixtureProtocolSections,
@@ -63,14 +66,14 @@ export type StageEditorStoryHostProps = Readonly<{
    */
   createResourceId?: () => string;
   /**
-   * The host's own client, wrapped before the editor is mounted over it.
+   * The seeded host's own client, wrapped before the editor is mounted over it.
    *
    * For the facts a host KNOWS about a protocol that this in-memory one does
    * not work out for itself — so far, only what is inside an imported data
-   * file. See `RenderStageEditorOptions.client`, which is the same seam for
-   * the same reason.
+   * file. See `RenderStageEditorOptions.client`, which is the same seam, in the
+   * same shape, for the same reason.
    */
-  client?: (client: ProtocolBuilderClient) => ProtocolBuilderClient;
+  client?: (host: InMemoryHost) => ProtocolBuilderClient;
 }>;
 
 /**
@@ -116,9 +119,7 @@ export function StageEditorStoryHost({
   });
 
   const stage = sectionId({ kind: 'stage', stageId });
-  const [editorClient] = useState(() =>
-    client === undefined ? host.client : client(host.client),
-  );
+  const [editorClient] = useState(() => client?.(host) ?? host.client);
 
   return (
     <DialogProvider>

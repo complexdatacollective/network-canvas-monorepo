@@ -92,7 +92,7 @@ export type StageEditorShellProps = Readonly<{
  * after a save the host refused.
  */
 export default function StageEditorShell(props: StageEditorShellProps) {
-  const { identity, committedFields, unavailable } = useStageEdit();
+  const { identity, committedFields, access } = useStageEdit();
   const intl = useAppIntl();
   const [discarded, setDiscarded] = useState(0);
   const [lostMessage, setLostMessage] = useState<string | undefined>(undefined);
@@ -105,7 +105,7 @@ export default function StageEditorShell(props: StageEditorShellProps) {
   // A stage the protocol will not open is the one case that has to be said
   // rather than waited out: the document is never arriving, so a form waiting
   // for it is a page that never finishes opening.
-  if (unavailable) {
+  if (access === 'unavailable') {
     return (
       <Alert variant="destructive">
         {intl.formatMessage(messages.stageUnavailable)}
@@ -294,7 +294,6 @@ function StageEditorFormBody({
         dormantFields: dormantFieldsOf(storeApi),
       });
       working.current = fields;
-      setDocument(fields);
 
       // The schema's own reading of the stage, for the researcher's benefit.
       // The problems a control cannot state about itself — a prompt list with
@@ -313,6 +312,15 @@ function StageEditorFormBody({
 
       const outcome = await save(fields);
       if (outcome.status === 'saved') {
+        // The form's baseline moves HERE and nowhere else. Every mounted field
+        // re-seeds its initial value from this document, which is what takes
+        // the form out of being dirty — so advancing it before the save would
+        // call a draft the protocol refused "saved": a stage the schema would
+        // not take, a promotion that failed, a section somebody else is
+        // holding. Studio's discard prompt reads that dirty flag, and a
+        // researcher who left after a refused save would be let go without
+        // being asked, losing work the editor was still showing them.
+        setDocument(fields);
         clearRefusedWrite();
         return { success: true };
       }
