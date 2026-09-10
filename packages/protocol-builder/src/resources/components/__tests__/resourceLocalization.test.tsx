@@ -9,7 +9,6 @@ import { AppI18nProvider } from '@codaco/app-i18n/react';
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import { protocolBuilderCatalogs } from '../../../locales/catalogs.ts';
 import { esIntl } from '../../../testing/i18n.ts';
-import { withResourceProcedures } from '../../../testing/withResourceProcedures.ts';
 import type {
   ResourceGatewayFailure,
   ResourceInspection,
@@ -22,7 +21,11 @@ import {
   renderResourceClient,
   ResourceContextFrame,
 } from './resourceContext.tsx';
-import { createResourceHost, type CommittedResource } from './resourceHost.ts';
+import {
+  createResourceHost,
+  withResourceProcedures,
+  type CommittedResource,
+} from './resourceHost.ts';
 
 /**
  * Every other test in this directory renders without a provider, which is what

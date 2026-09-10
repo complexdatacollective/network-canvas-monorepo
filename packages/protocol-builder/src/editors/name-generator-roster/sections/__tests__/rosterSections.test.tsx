@@ -5,7 +5,6 @@ import { describe, expect, it } from 'vitest';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
-import { withRosterColumns } from '../../rosterInspection.ts';
 import CardDisplaySection from '../CardDisplaySection.tsx';
 import ExternalDataSourceSection from '../ExternalDataSourceSection.tsx';
 import SearchOptionsSection from '../SearchOptionsSection.tsx';
@@ -86,7 +85,6 @@ const reopenSaved = (
   harness.unmount();
   const { id: _id, type: _type, ...fields } = saved;
   return renderStageEditor({
-    client: withRosterColumns,
     stage: { id: 'roster-under-test', type: 'NameGeneratorRoster', fields },
     sections,
   });
@@ -114,7 +112,6 @@ const rosterNamingALostColumn = () =>
 describe("a roster stage's data file", () => {
   it('shows what the chosen file holds', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stageId: 'name-generator-roster-1',
       sections: <ExternalDataSourceSection />,
     });
@@ -130,7 +127,6 @@ describe("a roster stage's data file", () => {
 
   it('refuses to save a roster stage with no data file', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({}),
       sections: <ExternalDataSourceSection />,
     });
@@ -150,7 +146,6 @@ describe("a roster stage's data file", () => {
    */
   it('clears everything chosen from the old file when the file changes', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stageId: 'name-generator-roster-1',
       sections: (
         <>
@@ -186,7 +181,6 @@ describe("a roster stage's data file", () => {
 describe("what a roster's cards show", () => {
   it('shows the card details a stage arrives with, and saves them unchanged', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stageId: 'name-generator-roster-1',
       sections: (
         <>
@@ -212,7 +206,6 @@ describe("what a roster's cards show", () => {
 
   it('offers the data file’s own columns', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         cardOptions: {
@@ -233,7 +226,6 @@ describe("what a roster's cards show", () => {
    */
   it('refuses to save a card detail with no label', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         cardOptions: { additionalProperties: [{ label: '', variable: 'age' }] },
@@ -257,7 +249,6 @@ describe("what a roster's cards show", () => {
    */
   it('says which column a card detail points at when the file lacks it', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterNamingALostColumn(),
       sections: <CardDisplaySection />,
     });
@@ -282,7 +273,6 @@ describe("what a roster's cards show", () => {
 
   it('refuses to save a card detail naming a column the file does not have', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterNamingALostColumn(),
       sections: <CardDisplaySection />,
     });
@@ -310,7 +300,6 @@ describe("what a roster's cards show", () => {
    */
   it('saves once the card detail is pointed at a column the file has', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterNamingALostColumn(),
       sections: <CardDisplaySection />,
     });
@@ -346,7 +335,6 @@ describe("what a roster's cards show", () => {
    */
   it('writes no card details once the last one is deleted', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         cardOptions: {
@@ -384,7 +372,6 @@ describe("what a roster's cards show", () => {
 describe('how a roster is ordered', () => {
   it('offers the file’s columns and the file’s own order', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         sortOptions: { sortOrder: [{ property: 'age', direction: 'desc' }] },
@@ -405,7 +392,6 @@ describe('how a roster is ordered', () => {
    */
   it('refuses to save a sort rule with no direction', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         sortOptions: { sortOrder: [{ property: 'age', direction: '' }] },
@@ -421,7 +407,6 @@ describe('how a roster is ordered', () => {
 
   it('refuses a starting order naming a column the file does not have', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterNamingALostColumn(),
       sections: <SortOptionsSection />,
     });
@@ -445,7 +430,6 @@ describe('how a roster is ordered', () => {
    */
   it('keeps the sortable attributes when only the starting order is emptied', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         sortOptions: {
@@ -480,7 +464,6 @@ describe('how a roster is ordered', () => {
    */
   it('writes no sorting at all once both lists are emptied', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         sortOptions: {
@@ -512,7 +495,6 @@ describe('how a roster is ordered', () => {
 
   it('writes nothing for a roster kept in the file’s own order', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({ dataSource: 'roster_data' }),
       sections: <SortOptionsSection />,
     });
@@ -526,7 +508,6 @@ describe('how a roster is ordered', () => {
 describe('how a participant searches a roster', () => {
   it('matches against the file’s own columns', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
@@ -540,7 +521,6 @@ describe('how a participant searches a roster', () => {
 
   it('records what the researcher chose to search on', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
@@ -560,7 +540,6 @@ describe('how a participant searches a roster', () => {
 
   it('writes nothing for a roster the participant cannot search', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({ dataSource: 'roster_data' }),
       sections: <SearchOptionsSection />,
     });
@@ -578,7 +557,6 @@ describe('how a participant searches a roster', () => {
    */
   it('refuses a search switched on and left empty, in the section’s own words', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({ dataSource: 'roster_data' }),
       sections: <SearchOptionsSection />,
     });
@@ -607,7 +585,6 @@ describe('how a participant searches a roster', () => {
    */
   it('refuses attributes chosen with no tolerance', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { matchProperties: ['name'] },
@@ -637,7 +614,6 @@ describe('how a participant searches a roster', () => {
    */
   it('names a checked attribute the data file does not have', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.5, matchProperties: ['nickname'] },
@@ -656,7 +632,6 @@ describe('how a participant searches a roster', () => {
 
   it('refuses to save a search matching an attribute the file does not have', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.5, matchProperties: ['nickname'] },
@@ -686,7 +661,6 @@ describe('how a participant searches a roster', () => {
    */
   it('shows a tolerance the stage was saved with, off the four settings', async () => {
     renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.4, matchProperties: ['name'] },
@@ -707,7 +681,6 @@ describe('how a participant searches a roster', () => {
    */
   it('stops offering it once a named setting is chosen', async () => {
     const harness = renderStageEditor({
-      client: withRosterColumns,
       stage: rosterWith({
         dataSource: 'roster_data',
         searchOptions: { fuzziness: 0.4, matchProperties: ['name'] },
