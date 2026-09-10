@@ -1835,10 +1835,6 @@
     "defaultMessage": "Choose a color for this disease.",
     "description": "Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one."
   },
-  "protocolBuilder.narrativePedigree.diseaseColorUnavailable": {
-    "defaultMessage": "This disease is set to a color the palette does not have. Choose one of the colors shown.",
-    "description": "Refusal shown under the disease-colour control when the row holds a colour that is not one of the ones offered — an import or a merge left it there — so nothing is shown as chosen and the protocol would refuse the stage."
-  },
   "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
     "defaultMessage": "How the disease is passed on. Mendelian patterns let the pedigree infer carrier and at-risk statuses from biological relationships and recorded sex; multifactorial and unknown show affected status only.",
     "description": "Guidance under the inheritance-pattern control. \"Mendelian\" describes the classical single-gene patterns; a carrier holds a condition without developing it; \"multifactorial\" and \"unknown\" are two of the choices in the list, and are written here in lower case because they are named inside a sentence."
@@ -1854,10 +1850,6 @@
   "protocolBuilder.narrativePedigree.diseaseInheritanceRequired": {
     "defaultMessage": "Choose how this disease is inherited.",
     "description": "Refusal shown under the inheritance-pattern control when the researcher saves the dialog without choosing one."
-  },
-  "protocolBuilder.narrativePedigree.diseaseInheritanceUnavailable": {
-    "defaultMessage": "This disease is set to an inheritance pattern this editor does not know. Choose one from the list.",
-    "description": "Refusal shown under the inheritance-pattern control when the row holds a pattern that is not one of the ones offered — an import or a merge left it there — so the control can only read the stored value back, and the protocol would refuse the stage. An inheritance pattern is how a condition travels from parent to child."
   },
   "protocolBuilder.narrativePedigree.diseaseMarksNobody": {
     "defaultMessage": "Nothing records this attribute",
@@ -1881,7 +1873,7 @@
   },
   "protocolBuilder.narrativePedigree.diseaseNoun": {
     "defaultMessage": "disease",
-    "description": "What one row of the disease list is called inside things said ABOUT it — \"Edit disease\", \"Remove this disease?\" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree."
+    "description": "What one row of the disease list is called inside things said ABOUT it — \"Edit disease\", \"Delete this disease?\" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree."
   },
   "protocolBuilder.narrativePedigree.diseaseUnnamed": {
     "defaultMessage": "Unnamed disease",
@@ -2068,8 +2060,8 @@
     "description": "Heading of the section where a researcher chooses which earlier step of the interview collected the family this step draws on. A pedigree is a family tree."
   },
   "protocolBuilder.narrativePedigree.sourceUnusableOption": {
-    "defaultMessage": "{stageId} — this stage can no longer be used",
-    "description": "How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageId is the missing stage’s identifier — not a name a person wrote, because there is no longer a stage to read a name from."
+    "defaultMessage": "{stageName} — this stage can no longer be used",
+    "description": "How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier."
   },
   "protocolBuilder.networkCanvas.backgroundCirclesHint": {
     "defaultMessage": "The rings drawn behind the nodes. Participants often use them to place people closer to or further from themselves.",
@@ -2134,6 +2126,10 @@
   "protocolBuilder.networkCanvas.canvasInteractionTitle": {
     "defaultMessage": "Canvas interaction",
     "description": "Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.composerCreateEdgeTypeLabel": {
+    "defaultMessage": "Create a new connection type",
+    "description": "Button opening the codebook editor to define a kind of connection the protocol does not have yet, from inside a network composer. The new kind becomes drawable on this canvas as soon as it is created."
   },
   "protocolBuilder.networkCanvas.composerCreateLayoutLabel": {
     "defaultMessage": "Create a new position attribute",
@@ -2218,10 +2214,6 @@
   "protocolBuilder.networkCanvas.composerNodeWaitingDescription": {
     "defaultMessage": "Choose what this stage works with before configuring how its nodes behave.",
     "description": "Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview."
-  },
-  "protocolBuilder.networkCanvas.composerUnvalidatedOnThisStageRefusal": {
-    "defaultMessage": "“{variableName}” is written directly by another control on this stage, so a question here would check values that control does not.",
-    "description": "Refusal shown when the quick-add box or a form field on a network composer picks an attribute the same stage’s position or grouping control writes straight onto the node. The shared refusal names another STAGE or a prompt; this one names a control on the stage the researcher is looking at, which is the thing they can act on. variableName is the researcher’s own name for the attribute."
   },
   "protocolBuilder.networkCanvas.createHullLabel": {
     "defaultMessage": "Create a new grouping attribute",
@@ -2549,7 +2541,7 @@
   },
   "protocolBuilder.networkCanvas.presetNoun": {
     "defaultMessage": "preset",
-    "description": "What one row of the visualisation preset list is called inside things said ABOUT it — \"Edit preset\", \"Remove this preset?\" — so it is lower case and singular. A preset is one saved way of looking at the network."
+    "description": "What one row of the visualisation preset list is called inside things said ABOUT it — \"Edit preset\", \"Delete this preset?\" — so it is lower case and singular. A preset is one saved way of looking at the network."
   },
   "protocolBuilder.networkCanvas.presetPositionsDescription": {
     "defaultMessage": "Where this preset puts each node on the canvas.",

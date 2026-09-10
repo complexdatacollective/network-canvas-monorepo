@@ -5,7 +5,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
  *
  * One file for the family rather than descriptors beside each section's
  * markup, because several of these ids are rendered somewhere else entirely:
- * the row noun `DialogArrayField` builds "Edit …", "Remove this …?" and its
+ * the row noun the shared row list builds "Edit …", "Delete this …?" and its
  * write refusals around, and the refusals the disease list encodes for a form's
  * error region to decode. A translator reading this file sees the whole of what
  * a narrative pedigree says, wherever it is said.
@@ -76,9 +76,9 @@ export const narrativePedigreeMessages = defineMessages({
   },
   sourceUnusableOption: {
     id: 'protocolBuilder.narrativePedigree.sourceUnusableOption',
-    defaultMessage: '{stageId} — this stage can no longer be used',
+    defaultMessage: '{stageName} — this stage can no longer be used',
     description:
-      'How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageId is the missing stage’s identifier — not a name a person wrote, because there is no longer a stage to read a name from.',
+      'How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier.',
   },
   sourceMissing: {
     id: 'protocolBuilder.narrativePedigree.sourceMissing',
@@ -178,7 +178,7 @@ export const narrativePedigreeMessages = defineMessages({
     id: 'protocolBuilder.narrativePedigree.diseaseNoun',
     defaultMessage: 'disease',
     description:
-      'What one row of the disease list is called inside things said ABOUT it — "Edit disease", "Remove this disease?" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree.',
+      'What one row of the disease list is called inside things said ABOUT it — "Edit disease", "Delete this disease?" — so it is lower case and singular. A disease here is a condition the stage draws on the family tree.',
   },
   diseasesEmptyState: {
     id: 'protocolBuilder.narrativePedigree.diseasesEmptyState',
@@ -273,13 +273,6 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one.',
   },
-  diseaseColorUnavailable: {
-    id: 'protocolBuilder.narrativePedigree.diseaseColorUnavailable',
-    defaultMessage:
-      'This disease is set to a color the palette does not have. Choose one of the colors shown.',
-    description:
-      'Refusal shown under the disease-colour control when the row holds a colour that is not one of the ones offered — an import or a merge left it there — so nothing is shown as chosen and the protocol would refuse the stage.',
-  },
   diseaseColorOption: {
     id: 'protocolBuilder.narrativePedigree.diseaseColorOption',
     defaultMessage: 'Color {position}',
@@ -336,13 +329,6 @@ export const narrativePedigreeMessages = defineMessages({
     defaultMessage: 'Choose how this disease is inherited.',
     description:
       'Refusal shown under the inheritance-pattern control when the researcher saves the dialog without choosing one.',
-  },
-  diseaseInheritanceUnavailable: {
-    id: 'protocolBuilder.narrativePedigree.diseaseInheritanceUnavailable',
-    defaultMessage:
-      'This disease is set to an inheritance pattern this editor does not know. Choose one from the list.',
-    description:
-      'Refusal shown under the inheritance-pattern control when the row holds a pattern that is not one of the ones offered — an import or a merge left it there — so the control can only read the stored value back, and the protocol would refuse the stage. An inheritance pattern is how a condition travels from parent to child.',
   },
   diseaseVariableGone: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableGone',

@@ -114,7 +114,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     const harness = renderStageEditor(openEditor());
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Remove preset' }),
+      screen.getByRole('button', { name: 'Delete preset' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Delete preset' }),

@@ -127,13 +127,6 @@ export const composerFormFieldMessages = defineMessages({
     description:
       'Said above the settings group when this field has none of its own and is showing the codebook attribute’s. attributeName is the researcher-facing name of that attribute.',
   },
-  unvalidatedOnThisStageRefusal: {
-    id: 'protocolBuilder.networkCanvas.composerUnvalidatedOnThisStageRefusal',
-    defaultMessage:
-      '“{variableName}” is written directly by another control on this stage, so a question here would check values that control does not.',
-    description:
-      'Refusal shown when the quick-add box or a form field on a network composer picks an attribute the same stage’s position or grouping control writes straight onto the node. The shared refusal names another STAGE or a prompt; this one names a control on the stage the researcher is looking at, which is the thing they can act on. variableName is the researcher’s own name for the attribute.',
-  },
   duplicateVariableRefusal: {
     id: 'protocolBuilder.networkCanvas.duplicateVariableRefusal',
     defaultMessage:
