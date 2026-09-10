@@ -26,25 +26,26 @@ import type {
   RowPreviewProps,
 } from '../../../../form/rowDialog.tsx';
 import { variablesForSubject } from '../../../../protocol-context.ts';
-import CreateVariableButton from '../../../../sections/create-variable/CreateVariableButton.tsx';
-import SortOrderRows from '../../../../sections/prompts/SortOrderRows.tsx';
-import { useStageSubject } from '../../../../sections/useStageSubject.ts';
-import { useProtocolContext } from '../../../../state/protocolContext.ts';
+import { canvasMessages } from '../../../../sections/canvas/canvasMessages.ts';
 import {
   BOOLEAN_TYPES,
   LAYOUT_TYPES,
   useEdgeTypeChoices,
   useVariableChoices,
-} from '../../canvas/codebookChoices.ts';
-import OptionalTickList from '../../canvas/OptionalTickList.tsx';
+} from '../../../../sections/canvas/codebookChoices.ts';
+import OptionalTickList from '../../../../sections/canvas/OptionalTickList.tsx';
 import {
   asNestedBoolean,
   asNestedIdList,
   asNestedText,
   asText,
   useStableIdList,
-} from '../../canvas/rowValues.ts';
-import { useLostReferences } from '../../canvas/useLostReferences.ts';
+} from '../../../../sections/canvas/rowValues.ts';
+import { useLostReferences } from '../../../../sections/canvas/useLostReferences.ts';
+import CreateVariableButton from '../../../../sections/create-variable/CreateVariableButton.tsx';
+import SortOrderRows from '../../../../sections/prompts/SortOrderRows.tsx';
+import { useStageSubject } from '../../../../sections/useStageSubject.ts';
+import { useProtocolContext } from '../../../../state/protocolContext.ts';
 import { sociogramPromptMessages as messages } from './sociogramPromptMessages.ts';
 
 const TEXT_FIELD = 'text';
@@ -306,7 +307,7 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
       ...offered,
       ...lostEdgeTypes.map((id) => ({
         value: id,
-        label: intl.formatMessage(messages.promptMissingEdgeType, {
+        label: intl.formatMessage(canvasMessages.missingEdgeType, {
           edgeTypeId: id,
         }),
       })),

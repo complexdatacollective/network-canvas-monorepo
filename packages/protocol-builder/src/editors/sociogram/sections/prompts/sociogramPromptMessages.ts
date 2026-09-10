@@ -285,13 +285,6 @@ export const sociogramPromptMessages = defineMessages({
     description:
       'Guidance under the prompt connection-types tick list, saying that ticking nothing is a real answer rather than an unfinished one.',
   },
-  promptMissingEdgeType: {
-    id: 'protocolBuilder.networkCanvas.promptMissingEdgeType',
-    defaultMessage:
-      '{edgeTypeId} — this edge type is no longer in the codebook',
-    description:
-      'Name of the tick-list choice standing for an edge type a stage still names — a sociogram prompt displays it, a network composer draws it, a narrative preset draws it — and the protocol’s codebook no longer defines. edgeTypeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted. An edge type is a kind of relationship between two network members.',
-  },
   promptEmptyPreview: {
     id: 'protocolBuilder.networkCanvas.promptEmptyPreview',
     defaultMessage: 'Empty prompt',

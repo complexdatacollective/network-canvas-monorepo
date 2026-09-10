@@ -7,14 +7,14 @@ import {
   buildVariableRoleMap,
   excludeInterfaceOwned,
   excludeValidatedUses,
-} from '../../../codebook/variableRoles.ts';
-import type { VariablePickerOption } from '../../../fields/VariablePickerField.tsx';
-import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
+} from '../../codebook/variableRoles.ts';
+import type { VariablePickerOption } from '../../fields/VariablePickerField.tsx';
+import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import {
   type CodebookSubject,
   variablesForSubject,
-} from '../../../protocol-context.ts';
-import { useProtocolContext } from '../../../state/protocolContext.ts';
+} from '../../protocol-context.ts';
+import { useProtocolContext } from '../../state/protocolContext.ts';
 
 /** One edge type, as a tick box or a radio option. */
 export type EdgeTypeChoice = Readonly<{ value: string; label: string }>;
