@@ -83,17 +83,25 @@ function getStepFromUrl(): number | undefined {
   return step !== null ? Number(step) : undefined;
 }
 
+// The URL is a synchronous source, so an interview named in it is the initial
+// state rather than something an effect assigns on a second render. Only the
+// `?bootstrap=` path is asynchronous, and that one keeps its effect below.
+function getInterviewIdFromUrl(): string | null {
+  return new URLSearchParams(window.location.search).get('interviewId') || null;
+}
+
 export default function App() {
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState<number | undefined>(undefined);
+  const [activeId, setActiveId] = useState<string | null>(
+    getInterviewIdFromUrl,
+  );
+  const [currentStep, setCurrentStep] = useState<number | undefined>(() =>
+    getInterviewIdFromUrl() !== null ? getStepFromUrl() : undefined,
+  );
   useTestState();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const existingId = params.get('interviewId');
-    if (existingId) {
-      setActiveId(existingId);
-      setCurrentStep(getStepFromUrl());
+    if (params.get('interviewId')) {
       return;
     }
     const bootstrapSlug = params.get('bootstrap');
