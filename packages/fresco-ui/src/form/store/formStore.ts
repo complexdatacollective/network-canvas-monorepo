@@ -26,6 +26,16 @@ import type {
   FormSubmitHandler,
 } from './types';
 
+/**
+ * The one key of the throwaway object a container's seed is assembled in.
+ *
+ * The assembly is done through `createObjectPathWriter`, which copies every
+ * container it traverses but writes the LAST segment directly — so the value
+ * being built has to sit one segment down from the root for the document
+ * beneath it to be copied rather than written into.
+ */
+const seedRootKey = 'seed';
+
 const storeMessages = defineMessages({
   validationFailed: {
     id: 'frescoUi.formStore.validationFailed',
@@ -589,11 +599,18 @@ export const createFormStore = (
    *    absence included. A compound control the person has emptied says there
    *    is nothing there, and the document must not put it back — that is a
    *    value they have just deleted reappearing under them.
-   * 2. Otherwise, whatever the mounted fields assemble at the path, so a
+   * 2. Otherwise, whatever the mounted fields hold beneath the path, so a
    *    container mounting over leaves already on screen shows their edits
    *    rather than the document they were opened from.
    * 3. Otherwise the document, which is the only account of a path nothing
    *    mounted has anything to say about.
+   *
+   * 2 and 3 apply TOGETHER to one container, rather than 2 settling it
+   * whenever anything at all is mounted inside. A container seeded from only
+   * the leaves that happen to be on screen answers for its whole subtree, so
+   * every sibling key the document holds and no field renders is dropped from
+   * the moment it mounts — and a form that never showed those keys saves them
+   * away. Rule 2 is therefore written key by key, over the document.
    */
   const seedValueAt = (
     fieldPath: ObjectPath,
@@ -611,11 +628,62 @@ export const createFormStore = (
         field.path.every((segment, index) => fieldPath[index] === segment),
     );
     if (beneathAMountedField) return assembled;
-    if (assembled !== undefined) return assembled;
+    // A value standing at the field's OWN path with nothing registered inside
+    // it is the field's own — a remount re-registering the name it already
+    // holds — rather than a container assembled out of its descendants, so
+    // there is nothing for the document to fill in around.
+    if (assembled !== undefined && !hasDescendantField(fieldRecords, fieldPath))
+      return assembled;
     const document = storeOptions.getInitialValues?.();
-    if (document === undefined) return undefined;
+    if (document === undefined) return assembled;
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
-    return readObjectPath(document, fieldPath) as FieldValue;
+    const documented = readObjectPath(document, fieldPath) as FieldValue;
+    if (documented === undefined) return assembled;
+    if (assembled === undefined) return documented;
+    return documentWithMountedDescendants(fieldPath, documented);
+  };
+
+  /**
+   * The document's own reading of a container, with what the fields mounted
+   * inside it hold written over the top.
+   *
+   * Written at each mounted field's OWN path rather than merged key by key
+   * all the way down, because a mounted field answers for everything beneath
+   * it — a compound control holding `{min: 1}` where the document holds
+   * `{min: 1, max: 2}` has had its `max` deleted, and merging would put it
+   * back. Shallowest first, the order `getFormValues` replays overlapping
+   * registrations in, so the deeper of two nested fields still wins.
+   *
+   * Nothing reachable from the document is written to: the writer copies
+   * every container it traverses that it does not already own, and it owns
+   * only the wrapper made here.
+   */
+  const documentWithMountedDescendants = (
+    containerPath: ObjectPath,
+    documented: FieldValue,
+  ): FieldValue => {
+    const seedRoot: Record<string, FieldValue> = {};
+    const writeIntoSeed = createObjectPathWriter(seedRoot);
+    writeIntoSeed([seedRootKey], documented);
+
+    const descendants: { path: ObjectPath; value: FieldValue }[] = [];
+    fieldRecords.forEach((field, fieldName) => {
+      const path = resolveStoredFieldPath(fieldName, field);
+      if (isDescendantPath(containerPath, path)) {
+        descendants.push({ path, value: field.value });
+      }
+    });
+
+    for (const descendant of descendants.toSorted(
+      (a, b) => a.path.length - b.path.length,
+    )) {
+      writeIntoSeed(
+        [seedRootKey, ...descendant.path.slice(containerPath.length)],
+        descendant.value,
+      );
+    }
+
+    return seedRoot[seedRootKey];
   };
 
   const invalidateFormValidation = () => {

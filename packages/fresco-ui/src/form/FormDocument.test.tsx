@@ -108,6 +108,38 @@ describe('a form that is handed the document it edits', () => {
     );
   });
 
+  it('keeps a document key no field inside the container renders', async () => {
+    const user = userEvent.setup();
+    const onSubmit = submitted();
+    render(
+      <Form
+        onSubmit={onSubmit}
+        initialValues={{ behaviours: { minNodes: 1, maxNodes: 8 } }}
+      >
+        {/* Declared before the container, so it registers first: the
+            container then mounts over a leaf already on screen. */}
+        <Field
+          name="behaviours.minNodes"
+          label="Minimum"
+          component={InputField}
+        />
+        <Field name="behaviours" label="Behaviours" component={ContactField} />
+        <SubmitButton>Save</SubmitButton>
+      </Form>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    // The container is the only field standing at `behaviours`, so whatever it
+    // was seeded with is what the form saves there. Seeded from the mounted
+    // leaf alone it answers for the whole key, and `maxNodes` — which no field
+    // renders — is saved away.
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      behaviours: { minNodes: 1, maxNodes: 8 },
+    });
+  });
+
   it('does not put back what a mounted container has been emptied of', async () => {
     const user = userEvent.setup();
 
