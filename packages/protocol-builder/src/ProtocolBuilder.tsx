@@ -2,7 +2,8 @@ import { createTanstackQueryUtils } from '@orpc/tanstack-query';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { useMemo, type ReactNode } from 'react';
 
-import type { ProtocolBuilderClient } from './contract/contract.ts';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
+
 import { useProtocolChannel } from './state/channel.ts';
 import { ProtocolBuilderProvider } from './state/context.ts';
 import { createProtocolQueryClient } from './state/queryClient.ts';

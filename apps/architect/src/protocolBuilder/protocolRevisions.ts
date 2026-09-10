@@ -4,7 +4,7 @@ import type {
   Presence,
   ProtocolEvent,
   Revision,
-} from '@codaco/protocol-builder/contract/schemas';
+} from '@codaco/protocol-builder-core/contract/schemas';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';

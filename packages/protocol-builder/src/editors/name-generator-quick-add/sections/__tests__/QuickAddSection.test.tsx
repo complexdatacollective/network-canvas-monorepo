@@ -75,11 +75,17 @@ describe('what a quick-add name generator records', () => {
     renderStageEditor({
       stage: {
         id: 'quick-add-without-a-choice',
+        // The family type rather than the person one, because the exclusion
+        // can only be SEEN where an unvalidated writer and this control are
+        // asking for the same kind of attribute. Every text attribute the
+        // person type has is written validated, so a person-typed quick add
+        // would prove no more than that a boolean is not offered — which the
+        // single-box rule above already refuses on type alone.
         type: 'NameGeneratorQuickAdd',
         fields: {
           label: 'Quick add',
-          subject: { entity: 'node', type: 'person' },
-          quickAdd: 'name',
+          subject: { entity: 'node', type: 'family_member' },
+          quickAdd: 'fm_name',
           prompts: [{ id: 'prompt-1', text: 'Quickly add people you know' }],
         },
       },
@@ -87,11 +93,12 @@ describe('what a quick-add name generator records', () => {
     });
 
     await screen.findByRole('combobox', { name: /Attribute filled in/ });
-    // `composerName` is collected by a Network Composer form elsewhere in the
-    // protocol, which is a validated use and therefore allowed; the same list
-    // must not hold an attribute a prompt stamps.
-    expect(offered()).toContain('composerName');
-    expect(offered()).not.toContain('highlighted');
+    // `fm_name` is collected by a form elsewhere in the protocol, which is a
+    // validated use and therefore allowed; `fm_relationship_to_ego` is text as
+    // well, and is stamped by the family pedigree — so the same list must not
+    // hold it.
+    expect(offered()).toContain('fm_name');
+    expect(offered()).not.toContain('fm_relationship_to_ego');
   });
 
   /**

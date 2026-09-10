@@ -17,6 +17,7 @@ import BuilderSection, {
 import {
   DATA_SOURCE,
   useColumnOptionGetter,
+  useColumnSectionShell,
   useOrphanedColumns,
   useRosterColumns,
 } from './rosterColumns.ts';
@@ -229,6 +230,11 @@ export default function SortOptionsSection() {
     [columns.names, intl, orderOrphans.options],
   );
 
+  const shell = useColumnSectionShell(
+    columns,
+    messages.description,
+    messages.waitingDescription,
+  );
   const orderProperties = useMemo(() => sortOrderColumns(intl), [intl]);
   const sortableProperties = useMemo(() => sortableColumns(intl), [intl]);
   const orderValidation = useMemo(
@@ -244,10 +250,8 @@ export default function SortOptionsSection() {
   return (
     <BuilderSection
       title={intl.formatMessage(messages.title)}
-      description={intl.formatMessage(
-        columns.waiting ? messages.waitingDescription : messages.description,
-      )}
-      disabled={columns.waiting}
+      description={shell.description}
+      disabled={shell.disabled}
       // Everything below names a column of the data file, so a different file
       // makes every one of these a reference to something that may not be
       // there. See `CardDisplaySection`, which resets on the same path for the

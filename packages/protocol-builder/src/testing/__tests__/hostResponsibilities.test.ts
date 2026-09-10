@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { contract } from '../../contract/contract.ts';
+import { contract } from '@codaco/protocol-builder-core/contract';
+
 import {
   contractProcedurePaths,
   hostResponsibilities,

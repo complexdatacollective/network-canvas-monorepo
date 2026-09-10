@@ -20,11 +20,15 @@ import { narrativePresets } from './sections/presets/narrativePresets.tsx';
  * sits behind them, how they are arranged when the stage opens, and what the
  * participant may do to any of it.
  *
- * The manual-mode sentence is this interface's own. The shared one describes
- * the stages that COLLECT positions, where every node starts in a bucket at
- * the foot of the canvas waiting to be placed; a narrative stage places
- * nothing and shows each node at the position its preset's attribute already
- * holds, leaving out the ones it holds no position for.
+ * Both layout-mode sentences are this interface's own. The shared ones
+ * describe the stages that COLLECT positions, where every node starts in a
+ * bucket at the foot of the canvas waiting to be placed and automatic mode
+ * draws all of them in; a narrative stage places nothing, shows each node at
+ * the position its preset's attribute already holds, and leaves out the ones
+ * it holds no position for in EITHER mode — the simulation is given the same
+ * nodes manual mode shows. The shared automatic sentence also promises
+ * repositioning outright, which here is the "Allow moving nodes" switch's to
+ * grant.
  */
 export const narrativeStageEditor = defineStageEditor('Narrative', [
   stageHeading({ documentation: 'narrative' }),
@@ -34,6 +38,8 @@ export const narrativeStageEditor = defineStageEditor('Narrative', [
   nodeLayout({
     manualDescription:
       canvasBehavioursMessages.layoutModeManualNarrativeDescription,
+    automaticDescription:
+      canvasBehavioursMessages.layoutModeAutomaticNarrativeDescription,
   }),
   canvasPermissions(),
   skipLogic(),

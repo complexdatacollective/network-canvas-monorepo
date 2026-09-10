@@ -127,7 +127,7 @@ const openItemDialog = async (
 ) => {
   // Each row of the blocks list names its own affordances after the list's
   // noun ("block" — `pageItemNoun` in PageContentSection.tsx), so the row
-  // buttons read "Edit block" / "Remove block" and the dialog they open is
+  // buttons read "Edit block" / "Delete block" and the dialog they open is
   // titled for the row that already exists.
   await editor
     .field('items')

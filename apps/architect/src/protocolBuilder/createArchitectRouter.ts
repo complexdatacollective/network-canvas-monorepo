@@ -3,11 +3,11 @@ import { createRouterClient, implement, withEventMeta } from '@orpc/server';
 import {
   contract,
   type ProtocolBuilderClient,
-} from '@codaco/protocol-builder/contract';
+} from '@codaco/protocol-builder-core/contract';
 import type {
   Presence,
   Revision,
-} from '@codaco/protocol-builder/contract/schemas';
+} from '@codaco/protocol-builder-core/contract/schemas';
 import { contentHash } from '@codaco/studio-sync/apply';
 import {
   sectionReferenceAt,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { createMessageError } from '@codaco/app-i18n/messages';
@@ -135,11 +135,15 @@ export default function PedigreeView({
   const [updatedPerson, setUpdatedPerson] = useState<{ name: string } | null>(
     null,
   );
+  // The submission itself is what gets consumed, not its name: another
+  // successful save of the same person is a fresh object and so still gets
+  // feedback, while a locale-only render re-runs this effect with the
+  // submission it has already announced and stays quiet.
+  const announcedSubmissionRef = useRef<{ name: string } | null>(null);
   useEffect(() => {
     if (!updatedPerson) return;
-    // Consume this submission, not its name: another successful save of the
-    // same person still needs feedback, while a locale-only render does not.
-    setUpdatedPerson(null);
+    if (announcedSubmissionRef.current === updatedPerson) return;
+    announcedSubmissionRef.current = updatedPerson;
     announce(
       updatedPerson.name
         ? intl.formatMessage(messages.detailsUpdatedFor, {

@@ -18,11 +18,10 @@ export type NodeLayoutSectionProps = Readonly<{
    * across a seam like this is invisible to extraction, absent from the
    * catalogs and covered by no guard.
    *
-   * Only this one, because only this one says something the interfaces decide
-   * differently. Manual mode on a stage that COLLECTS positions leaves every
-   * node in a bucket at the foot of the canvas for the participant to place; a
-   * narrative stage collects nothing and shows the positions the preset's
-   * attribute already holds. Automatic mode is the same simulation on both.
+   * Manual mode on a stage that COLLECTS positions leaves every node in a
+   * bucket at the foot of the canvas for the participant to place; a narrative
+   * stage collects nothing and shows the positions the preset's attribute
+   * already holds.
    *
    * Absent means the shared wording, which the control itself supplies: the
    * default lives with the card it is written on and nowhere else.
@@ -31,10 +30,18 @@ export type NodeLayoutSectionProps = Readonly<{
   /**
    * The sentence under the automatic-mode card, on the same terms.
    *
-   * Only a network composer needs one: there, automatic layout is where the
-   * stage STARTS and the participant switches it off and on for themselves,
-   * which the shared sentence — a simulation the stage runs when it opens —
-   * does not say.
+   * The force simulation is one implementation, but what it promises differs
+   * by interface. It runs over the nodes the interface hands it, and a
+   * narrative stage hands it only the nodes the preset's attribute holds a
+   * position for — `Narrative.tsx` simulates `nodesWithLayout` in either mode,
+   * where `Sociogram.tsx` switches to `allNodes` in automatic mode and draws
+   * the unplaced ones in. Moving a node by hand is unconditional on a
+   * sociogram, while a narrative stage passes `behaviours.allowRepositioning`
+   * down to the canvas, so the "Allow moving nodes" switch withdraws it in
+   * both modes. And a network composer treats automatic layout as where the
+   * stage STARTS rather than as how it arranges nodes: the participant
+   * switches it off and on for themselves, which the shared sentence — a
+   * simulation the stage runs when it opens — does not say.
    */
   automaticDescription?: MessageDescriptor;
 }>;

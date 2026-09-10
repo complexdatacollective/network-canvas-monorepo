@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@codaco/protocol-builder": "workspace:^",
+    "@codaco/protocol-builder-core": "workspace:^",
     "@orpc/contract": "catalog:",
     "zod": "catalog:"
   },

@@ -17,6 +17,7 @@ import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import type { Codebook, StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
@@ -25,7 +26,6 @@ import {
   type ProtocolSectionId,
 } from '@codaco/studio-sync/taxonomy';
 
-import type { ProtocolBuilderClient } from '../contract/contract.ts';
 import { saveStageMessages } from '../editors/saveStageAction.tsx';
 import StageEditorShell from '../form/StageEditorShell.tsx';
 import { getInterfaceTemplate } from '../interfaces/templates.ts';
@@ -466,16 +466,19 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
       displayName: string;
     }>[];
     /**
-     * Wraps the seeded host's own client, the way `renderResourceEditor` does.
+     * Wraps the seeded host's own client, the way `renderResourceEditor` does,
+     * for a test about a host that holds its answer.
      *
-     * Two things reach for it. A host that holds its answer: this host replies
-     * in a microtask, so a request still in flight is something only the
-     * transport can be, and a stubbed store method would be answering for a
-     * write the host decides. And the facts a host KNOWS about a protocol that
-     * this in-memory one does not work out for itself — what is inside an
-     * imported data file, which a roster's card, sort and search sections are
-     * all chosen from. Everything the wrapper leaves alone stays the real
-     * host's.
+     * Between the editor and the host rather than inside it: this host answers
+     * in a microtask, so a request that is still in flight is something only
+     * the transport can be. A stubbed store method would be answering for a
+     * write the host decides, and would go on compiling after the host stopped
+     * asking it the same question. Everything the wrapper does not override
+     * stays the real host's.
+     *
+     * NOT the way to say what is inside an imported data file: this host reads
+     * the bytes it holds, so a roster's columns are seeded through
+     * `assetBytes` and come back through the host's own `inspect`.
      */
     client?: (host: InMemoryHost) => ProtocolBuilderClient;
   }> &
@@ -707,6 +710,23 @@ export function renderStageEditor<T extends StageType = StageType>(
     return form;
   };
 
+  /**
+   * Clicks the submit control and resolves once the form has SETTLED — not
+   * merely once a save landed. Returns the saved stage, or null if the
+   * submit was refused.
+   *
+   * The settling requirement means the stage form must still be mounted when
+   * the save resolves, on the success path as well as the refusal path. Every
+   * harness built on `StageEditorShell` satisfies that, because the shell
+   * keeps the form mounted and clears `aria-busy` after replaying the saved
+   * document over it. A host that unmounted the editor the moment `onSaved`
+   * fired — a dialog that closes on save, say — would instead turn an
+   * instant success into a `waitFor` timeout surfacing as the "found no
+   * form" error above. No current call site does that; if one ever needs to,
+   * it wants its own helper rather than a relaxation of this one, because
+   * the gap this closes is real: `onSaved` fires from inside `save()`,
+   * before the shell has reacted to it.
+   */
   const submit = async (): Promise<SavedStage | null> => {
     const before = saved.length;
     const button = within(view.container).getByRole('button', {
@@ -714,14 +734,24 @@ export function renderStageEditor<T extends StageType = StageType>(
     });
     await user.click(button);
     await waitFor(() => {
+      // Settled either way, read from the FORM rather than from the control
+      // that was clicked — a host may render a plain `<button form={formId}>`
+      // that says nothing about itself. Checked before the save is judged,
+      // on BOTH outcomes: `onSaved` fires from inside `save()`, before the
+      // shell has replayed the saved document over the form — the rebase
+      // that clears its own dirty flag — and before `useForm` clears
+      // `isSubmitting`. A caller that treated `saved.length` moving as
+      // "settled" could read the form in that gap, between the save landing
+      // and the shell finishing what it does about it; every caller of
+      // `submit()` waits for the same signal the form itself uses to say it
+      // is done, rather than each re-deriving its own guess at "done enough"
+      // with a `waitFor` of its own after the fact.
+      expect(submittingForm()).toHaveAttribute('aria-busy', 'false');
       if (saved.length > before) return;
       // A submit that did not save has settled and left its reason on screen:
       // the form's own errors, or a field marked invalid for `focusFirstError`
       // to reach. Asserting both is what stops a submit still in flight from
-      // being read as a refusal. Settling is read from the FORM, not from the
-      // control that was clicked, because a host may render a plain
-      // `<button form={formId}>` that says nothing about itself.
-      expect(submittingForm()).toHaveAttribute('aria-busy', 'false');
+      // being read as a refusal.
       expect(refusalOnScreen(view.container)).toBe(true);
     });
     return saved.length > before ? (saved.at(-1) ?? null) : null;

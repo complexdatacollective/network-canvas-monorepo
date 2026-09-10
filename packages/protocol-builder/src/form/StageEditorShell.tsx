@@ -294,7 +294,6 @@ function StageEditorFormBody({
         dormantFields: dormantFieldsOf(storeApi),
       });
       working.current = fields;
-      setDocument(fields);
 
       // The schema's own reading of the stage, for the researcher's benefit.
       // The problems a control cannot state about itself — a prompt list with
@@ -313,6 +312,15 @@ function StageEditorFormBody({
 
       const outcome = await save(fields);
       if (outcome.status === 'saved') {
+        // A save is the only thing that may move the baselines the form's
+        // dirty flag is measured against, and Studio's discard prompt reads
+        // that flag. A structural write and a refused save both advance the
+        // working document out of values nobody has stored, so a baseline
+        // taking those would let a researcher leave without being asked,
+        // losing work the editor was still showing them. (A field remounting
+        // after one seeds itself from the working document, as ever.)
+        setDocument(fields);
+        storeApi.getState().rebaseToDocument(fields);
         clearRefusedWrite();
         return { success: true };
       }

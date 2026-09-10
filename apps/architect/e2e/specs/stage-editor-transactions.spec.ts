@@ -216,10 +216,13 @@ test('the attribute a discarded field created is kept in the codebook', async ({
   });
 
   await section
-    .getByRole('button', { name: 'Remove field', exact: true })
+    .getByRole('button', { name: 'Delete field', exact: true })
     .last()
     .click();
+  // The row's own control and the confirmation's both read "Delete field", so
+  // the confirm is reached through the dialog rather than by name alone.
   await architectPage
+    .getByRole('dialog', { name: 'Delete this field?' })
     .getByRole('button', { name: 'Delete field', exact: true })
     .click();
 

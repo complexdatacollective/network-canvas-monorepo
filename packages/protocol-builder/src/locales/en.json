@@ -179,6 +179,10 @@
     "defaultMessage": "attribute name",
     "description": "What the researcher was entering, named inside the sentence that refuses it: the name of a codebook variable. Interpolated mid-sentence after \"Not a valid\", so it is lower case."
   },
+  "protocolBuilder.arrayField.deleteRow": {
+    "defaultMessage": "Delete {itemLabel}",
+    "description": "Action that deletes one row of a list — the accessible name of the button on the row. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
+  },
   "protocolBuilder.arrayField.editRow": {
     "defaultMessage": "Edit {itemLabel}",
     "description": "Accessible name of the button that opens one row of a list in its editing dialog. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
@@ -189,15 +193,11 @@
   },
   "protocolBuilder.arrayField.itemNoun": {
     "defaultMessage": "item",
-    "description": "Generic noun for one row of an editable list in a stage editor, used where the list has no more specific word for its rows. Interpolated mid-sentence into things said ABOUT a row (\"Remove this item?\", \"This item was not saved.\"), so it is lower case and singular."
+    "description": "Generic noun for one row of an editable list in a stage editor, used where the list has no more specific word for its rows. Interpolated mid-sentence into things said ABOUT a row (\"Delete this item?\", \"This item was not saved.\"), so it is lower case and singular."
   },
   "protocolBuilder.arrayField.optionValueSubject": {
     "defaultMessage": "option value",
     "description": "What the researcher was entering, named inside the sentence that refuses it: the stored value of one option of a categorical or ordinal attribute, as opposed to the label a participant reads. Interpolated mid-sentence after \"Not a valid\", so it is lower case."
-  },
-  "protocolBuilder.arrayField.removeRow": {
-    "defaultMessage": "Remove {itemLabel}",
-    "description": "Action that deletes one row of a list — the accessible name of the button on the row. itemLabel is the list’s own noun for one of its rows, already in the reader’s language."
   },
   "protocolBuilder.arrayField.reorderRow": {
     "defaultMessage": "Reorder {itemLabel} {position} of {count, number}",
@@ -1717,7 +1717,7 @@
   },
   "protocolBuilder.formFields.itemNoun": {
     "defaultMessage": "field",
-    "description": "What one row of a form’s list of questions is called inside things said ABOUT it — \"Edit field\", \"Remove this field?\" — so it is lower case and singular."
+    "description": "What one row of a form’s list of questions is called inside things said ABOUT it — \"Edit field\", \"Delete this field?\" — so it is lower case and singular."
   },
   "protocolBuilder.formFields.malformedField": {
     "defaultMessage": "This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.",
@@ -2907,6 +2907,10 @@
     "defaultMessage": "Automatic mode",
     "description": "Name of the choice where the stage arranges the nodes itself before the participant touches them. Offered as one of two cards; the sentence under it is layoutModeAutomaticDescription."
   },
+  "protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription": {
+    "defaultMessage": "Arranges the nodes by simulating physical forces such as attraction and repulsion. Only the nodes the attribute the preset positions by holds a position for are arranged; the rest are left off the canvas, as in manual mode. The participant can pause and resume the simulation, and can move nodes by hand only if “Allow moving nodes” is switched on.",
+    "description": "Says what the participant sees in automatic layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the two wordings of one control together. “Allow moving nodes” is the switch named by repositioningLabel, and is quoted because it is being named as a control the researcher can go and find."
+  },
   "protocolBuilder.networkCanvas.layoutModeHint": {
     "defaultMessage": "How the stage arranges nodes before the participant moves any of them.",
     "description": "Guidance under the layout-mode control."
@@ -3020,8 +3024,8 @@
     "description": "Description of the preset highlighted-nodes group."
   },
   "protocolBuilder.networkCanvas.presetHighlightHint": {
-    "defaultMessage": "A node is highlighted while any of these attributes is true of it.",
-    "description": "Guidance under the preset highlight-attributes tick list."
+    "defaultMessage": "The interviewer picks one of these attributes at a time, and the nodes it is true of are shown highlighted.",
+    "description": "Guidance under the preset highlight-attributes tick list. It says what the interview does with the list, because ticking several attributes does not highlight by all of them at once: the interview offers the ticked attributes as a set of radio buttons and highlights by the one chosen."
   },
   "protocolBuilder.networkCanvas.presetHighlightLabel": {
     "defaultMessage": "Highlight attributes",
@@ -3073,7 +3077,7 @@
   },
   "protocolBuilder.networkCanvas.presetNoun": {
     "defaultMessage": "preset",
-    "description": "What one row of the visualisation preset list is called inside things said ABOUT it — \"Edit preset\", \"Remove this preset?\" — so it is lower case and singular. A preset is one saved way of looking at the network."
+    "description": "What one row of the visualisation preset list is called inside things said ABOUT it — \"Edit preset\", \"Delete this preset?\" — so it is lower case and singular. A preset is one saved way of looking at the network."
   },
   "protocolBuilder.networkCanvas.presetPositionsDescription": {
     "defaultMessage": "Where this preset puts each node on the canvas.",
@@ -3457,7 +3461,7 @@
   },
   "protocolBuilder.nodePanels.itemNoun": {
     "defaultMessage": "panel",
-    "description": "What one row of the side-panel list is called inside things said ABOUT it — \"Edit panel\", \"Remove this panel?\" — so it is lower case and singular. A side panel lists people beside a name generator for the participant to nominate from."
+    "description": "What one row of the side-panel list is called inside things said ABOUT it — \"Edit panel\", \"Delete this panel?\" — so it is lower case and singular. A side panel lists people beside a name generator for the participant to nominate from."
   },
   "protocolBuilder.nodePanels.missingSource": {
     "defaultMessage": "a network that is no longer in this protocol",
@@ -3825,7 +3829,7 @@
   },
   "protocolBuilder.pageContent.pageItemNoun": {
     "defaultMessage": "block",
-    "description": "What one piece of a page is called inside things said ABOUT it — \"Edit block\", \"Remove this block?\" — so it is lower case and singular."
+    "description": "What one piece of a page is called inside things said ABOUT it — \"Edit block\", \"Delete this block?\" — so it is lower case and singular."
   },
   "protocolBuilder.pageContent.pageItemsHint": {
     "defaultMessage": "The participant scrolls through these in order, so add as many as you need. Drag to reorder them.",
@@ -4213,7 +4217,7 @@
   },
   "protocolBuilder.pedigree.nominationPromptNoun": {
     "defaultMessage": "nomination prompt",
-    "description": "What one row of the nomination prompt list is called inside things said ABOUT it — \"Edit nomination prompt\", \"Remove this nomination prompt?\" — so it is lower case and singular. Qualified rather than plain \"prompt\" because a pedigree editor shows a census prompt beside it."
+    "description": "What one row of the nomination prompt list is called inside things said ABOUT it — \"Edit nomination prompt\", \"Delete this nomination prompt?\" — so it is lower case and singular. Qualified rather than plain \"prompt\" because a pedigree editor shows a census prompt beside it."
   },
   "protocolBuilder.pedigree.nominationPromptsClearConfirm": {
     "defaultMessage": "Delete the prompts",
@@ -4353,7 +4357,7 @@
   },
   "protocolBuilder.promptsSection.itemNoun": {
     "defaultMessage": "prompt",
-    "description": "What one row of the prompt list is called inside things said ABOUT it — \"Edit prompt\", \"Remove this prompt?\" — so it is lower case and singular. A prompt is one question a participant is asked."
+    "description": "What one row of the prompt list is called inside things said ABOUT it — \"Edit prompt\", \"Delete this prompt?\" — so it is lower case and singular. A prompt is one question a participant is asked."
   },
   "protocolBuilder.promptsSection.title": {
     "defaultMessage": "Prompts",
@@ -4915,6 +4919,10 @@
     "defaultMessage": "This search matches an attribute that is not in the data file. Uncheck it and choose another.",
     "description": "Shown above the roster-search checkboxes when a checked column is not in the chosen data file. Names the one way out — unchecking — because a checkbox has no row to delete and no cell to repoint."
   },
+  "protocolBuilder.rosterColumns.unreadableDescription": {
+    "defaultMessage": "The chosen data file could not be read, so there is nothing to choose from. The settings this stage already holds are kept.",
+    "description": "Shown in place of a roster section’s description when the chosen data file could not be read, so its attributes are not known. Says both why the section offers nothing and that what the stage holds is not lost, because the section is showing empty controls over settings that are still there. The reason the file could not be read is shown by the roster-source section, in the host’s own words."
+  },
   "protocolBuilder.ruleCodebook.operatorNoLongerOffered": {
     "defaultMessage": "{operator} (no longer offered)",
     "description": "Label for an operator a stored rule already uses which this editor no longer offers, shown so the researcher can read their own rule. The protocol schema still accepts it, so it can be chosen again. operator is the operator phrase, e.g. \"is greater than\"."
@@ -5470,10 +5478,6 @@
   "protocolBuilder.ruleList.emptyState": {
     "defaultMessage": "No rules have been created yet.",
     "description": "Shown in place of the list when a researcher has added no rules to a rule set yet."
-  },
-  "protocolBuilder.ruleList.saveUnavailable": {
-    "defaultMessage": "These rules are no longer editable, so this rule cannot be saved. Copy anything you want to keep, then close the editor.",
-    "description": "Shown inside the rule editor when the list it was opened from stopped accepting changes while the dialog was open — the rule cannot be committed, and the draft is kept on screen so nothing the researcher wrote is lost."
   },
   "protocolBuilder.rulePreview.attribute": {
     "defaultMessage": "{label} (attribute type: {type})",

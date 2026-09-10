@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import 'server-only';
 import { after } from 'next/server';
+import type { ReactNode } from 'react';
 import Markdown from 'react-markdown';
 // eslint-disable-next-line no-restricted-imports -- server-only file (uses 'server-only' import)
 import { z } from 'zod';
@@ -90,6 +91,15 @@ const messages = defineMessages({
     description: 'Researcher-facing VersionSection: Checking for updates...',
   },
 });
+
+const renderUpgradeDocsLinkChunks = (chunks: ReactNode[]) => (
+  <Link
+    href="https://documentation.networkcanvas.com/en/fresco/deployment/upgrading"
+    target="_blank"
+  >
+    {chunks}
+  </Link>
+);
 
 const GithubApiResponseSchema = z
   .object({
@@ -206,14 +216,7 @@ export default async function VersionSection() {
           )}
           <AlertDescription>
             {intl.formatMessage(messages.toUpgradeYourFrescoVersionYouWill, {
-              tag1: (chunks) => (
-                <Link
-                  href="https://documentation.networkcanvas.com/en/fresco/deployment/upgrading"
-                  target="_blank"
-                >
-                  {chunks}
-                </Link>
-              ),
+              tag1: renderUpgradeDocsLinkChunks,
             })}
           </AlertDescription>
           <article className="text-text [&_a]:text-link my-4 max-w-full text-sm [&_h1]:text-sm [&_h1]:font-extrabold [&_h1]:tracking-widest [&_h1]:uppercase [&_h2]:text-sm [&_h2]:font-extrabold [&_h2]:tracking-widest [&_h2]:uppercase [&_h3]:text-sm [&_h3]:font-extrabold [&_h3]:tracking-widest [&_h3]:uppercase [&_h4]:text-sm [&_h4]:font-extrabold [&_h4]:tracking-widest [&_h4]:uppercase [&_h5]:text-sm [&_h5]:font-extrabold [&_h5]:tracking-widest [&_h5]:uppercase [&_h6]:text-sm [&_h6]:font-extrabold [&_h6]:tracking-widest [&_h6]:uppercase">

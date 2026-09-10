@@ -13,6 +13,7 @@
     "changeset": "changeset add",
     "check:changesets": "node scripts/check-changeset-app-isolation.mjs",
     "check:compat-protocols": "node packages/protocols/scripts/check-compat-packages.mjs",
+    "check:hydration-flag": "node scripts/check-hydration-flag.mjs",
     "check:mapbox-tokens": "node scripts/check-mapbox-tokens.mjs",
     "verify:publish-exports": "node scripts/verify-publish-exports.mjs",
     "lint": "oxlint && oxfmt --check .",
@@ -24,7 +25,8 @@
     "prepare": "husky",
     "knip": "SKIP_ENV_VALIDATION=true knip",
     "agent:check": "node scripts/agent-hooks/stop-check.mjs --manual",
-    "agent:test": "node scripts/agent-hooks/agent-test.mjs"
+    "agent:test": "node scripts/agent-hooks/agent-test.mjs",
+    "ci:metrics": "node scripts/ci-metrics.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.1",

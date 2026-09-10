@@ -8,13 +8,6 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { z } from 'zod';
 
-import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
-import {
-  parseSectionId,
-  sectionId,
-  type ProtocolSectionId,
-} from '@codaco/studio-sync/taxonomy';
-
 import type {
   Presence,
   ResourceDescriptor,
@@ -23,7 +16,14 @@ import type {
   Revision,
   SectionHolderSchema,
   SectionIssueSchema,
-} from '../contract/schemas.ts';
+} from '@codaco/protocol-builder-core/contract/schemas';
+import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
+import {
+  parseSectionId,
+  sectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
+
 import {
   lockQueryKey,
   useProtocolBuilderContext,
@@ -130,6 +130,71 @@ export function useStageIndex(): readonly StageSummary[] {
   });
 }
 
+/**
+ * How far through the protocol's history this client has been brought.
+ *
+ * Every section carries the revision it was last written at, so the newest of
+ * them is the last revision the channel delivered — which is what a host
+ * command fenced on the protocol's revision has to quote, and what tells a
+ * caller whether the protocol it is looking at is the one the host holds.
+ * `undefined` until a section has been read.
+ */
+export function useProtocolRevision(): bigint | undefined {
+  const { protocolId, utils } = useProtocolBuilderContext();
+  const { data: list } = useQuery(
+    utils.listSections.queryOptions({ input: { protocolId } }),
+  );
+  const ids = list?.sectionIds ?? [];
+
+  return useQueries({
+    queries: ids.map((id) => ({
+      ...utils.getSection.queryOptions({
+        input: { protocolId, sectionId: id },
+      }),
+      select: (section: SectionAtRevision): bigint => section.revision.sequence,
+    })),
+    combine: (results) =>
+      results.reduce<bigint | undefined>(
+        (newest, result) =>
+          result.data !== undefined &&
+          (newest === undefined || result.data > newest)
+            ? result.data
+            : newest,
+        undefined,
+      ),
+  });
+}
+
+/**
+ * Reads the whole protocol again from the host.
+ *
+ * For a write made through a surface of the host's OWN, beside this contract:
+ * Studio's `protocols.addInformationStage` and `protocols.moveStage` advance
+ * the draft without publishing a revision, so nothing about them reaches the
+ * channel and this is the only way the cache learns what they wrote. A change
+ * made through this contract arrives on the channel and needs none of it.
+ *
+ * The list is read first and awaited, so a section the write ADDED is one the
+ * readers of the protocol then observe for themselves. Rejects when the host
+ * cannot be re-read, which leaves the caller holding a write whose result it
+ * could not see.
+ */
+export function useRereadProtocol(): () => Promise<void> {
+  const { protocolId, utils } = useProtocolBuilderContext();
+  const queryClient = useQueryClient();
+
+  return useCallback(async () => {
+    await queryClient.invalidateQueries(
+      { queryKey: utils.listSections.key({ input: { protocolId } }) },
+      { throwOnError: true },
+    );
+    await queryClient.invalidateQueries(
+      { queryKey: utils.getSection.key({ input: { protocolId } }) },
+      { throwOnError: true },
+    );
+  }, [protocolId, queryClient, utils]);
+}
+
 export type SubmitResult =
   /**
    * `promoted` describes what the submit's promotion committed — the host's
@@ -177,8 +242,9 @@ export type SectionMutation = Readonly<{
  *
  * Takes the lock on mount and gives it back on unmount. There is no renewal
  * and no re-acquire: a submit the host refuses comes back as a
- * `notLockHolder` result for the editor to report, and the draft is the
- * editor's to discard.
+ * `notLockHolder` result for the editor to report, the draft is the editor's
+ * to discard, and this editor is read-only from that moment on — it does not
+ * hold the section any more, and nothing here is going to ask for it again.
  */
 export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   const { client, protocolId, utils } = useProtocolBuilderContext();
@@ -330,6 +396,30 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
         };
       }
       if (definedError?.code === 'NOT_LOCK_HOLDER') {
+        // The section is somebody else's now, and nothing here re-acquires it:
+        // the editor above discards the draft it could not write, and this is
+        // what stops the form it puts back from being editable. Left
+        // `editing`, every later save is refused the same way and discards
+        // another round of work — the same loss, over and over, with the
+        // editor still saying it may write.
+        setAccess('readOnly');
+        // The refusal already names the holder, so the read-only editor can
+        // say whose section it is without waiting for a lock event — and a
+        // host whose locks are always granted never sends one.
+        //
+        // Naming NOBODY is an answer as well, and the cache has to take it:
+        // that is a lease that ran out with no one taking the section, which
+        // publishes no lock event at all (the acquire that TAKES one publishes
+        // its own). What the cache still holds is this editor's own presence,
+        // from the event its own acquire published — so left alone, the
+        // read-only form it puts back tells the researcher that they are the
+        // one editing the stage they have just been refused.
+        queryClient.setQueryData<LockState>(
+          lockQueryKey(protocolId, id),
+          definedError.data.holder === undefined
+            ? {}
+            : { holder: definedError.data.holder },
+        );
         return {
           status: 'notLockHolder',
           ...(definedError.data.holder === undefined
@@ -351,7 +441,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       }
       throw definedError ?? new Error(`submit of ${id} failed`);
     },
-    [client, protocolId, id, saveKey, section],
+    [client, protocolId, id, queryClient, saveKey, section],
   );
 
   const release = useCallback(() => {

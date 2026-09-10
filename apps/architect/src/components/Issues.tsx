@@ -106,18 +106,9 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
   // `focusFirstError` had already chosen, whichever issue they clicked.
   const finalFocusRef = useRef<HTMLElement | null>(null);
 
-  // Every OPEN clears it, so a panel that is merely dismissed (Escape, a click
-  // outside) still returns focus to its trigger. Without this, the control
-  // chosen by the last row click would keep taking focus from every later
-  // dismissal.
-  const setPanelOpen = useCallback((next: boolean) => {
-    if (next) finalFocusRef.current = null;
-    setOpen(next);
-  }, []);
-
   const openIssues = useCallback(() => {
-    if (hasIssues) setPanelOpen(true);
-  }, [hasIssues, setPanelOpen]);
+    if (hasIssues) setOpen(true);
+  }, [hasIssues]);
 
   // Field display labels live in the DOM, so a row's own label is only
   // discoverable once that field is mounted. Rewrites the row in place, and is
@@ -174,25 +165,48 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
     [],
   );
 
-  useEffect(() => {
-    if (submitFailed && hasIssues) {
-      setPanelOpen(true);
+  // A save that failed with issues opens the panel. Compared during render
+  // rather than opened from an effect: both halves are values this render
+  // already has, and the panel then opens in the same commit that reports the
+  // failure instead of one frame later. Only the moment the pair BECOMES true
+  // opens it, so a panel the researcher dismissed stays dismissed while the
+  // same failed save stands.
+  const shouldAnnounceIssues = submitFailed && hasIssues;
+  const [wasAnnouncingIssues, setWasAnnouncingIssues] = useState(false);
+  if (shouldAnnounceIssues !== wasAnnouncingIssues) {
+    setWasAnnouncingIssues(shouldAnnounceIssues);
+    if (shouldAnnounceIssues) {
+      setOpen(true);
     }
-  }, [submitFailed, hasIssues, setPanelOpen]);
+  }
 
+  // With nothing to show there is nothing to be open, so the panel's own state
+  // is qualified here rather than being reset when the issues clear. The
+  // control below renders nothing in that state either way.
+  const isOpen = open && hasIssues;
+
+  // Every OPEN clears the focus target above, so a panel that is merely
+  // dismissed (Escape, a click outside) still returns focus to its trigger.
+  // Without this, the control chosen by the last row click would keep taking
+  // focus from every later dismissal. Keyed on the panel actually being open,
+  // so the researcher's own open, `openIssues` and the automatic open above
+  // are all covered, and a row click's target still survives the close it
+  // causes.
   useEffect(() => {
-    if (!hasIssues) setOpen(false);
-  }, [hasIssues]);
+    if (isOpen) {
+      finalFocusRef.current = null;
+    }
+  }, [isOpen]);
 
   // Second pass, for a label that was not resolvable when its row mounted —
   // an anchor inside a section that has since expanded, say. The ref callback
   // above is what covers the ordinary first open.
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     flatIssues.forEach(({ id, field }) => {
       harvestLabel(issueRefs.current[id] ?? null, field);
     });
-  }, [flatIssues, harvestLabel, open]);
+  }, [flatIssues, harvestLabel, isOpen]);
 
   const control = useMemo<React.ReactNode>(() => {
     if (!hasIssues || !submitFailed) return null;
@@ -200,8 +214,8 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
     return (
       <ToolbarPopover
         key="stage-issues"
-        open={open}
-        onOpenChange={setPanelOpen}
+        open={isOpen}
+        onOpenChange={setOpen}
         contentProps={{
           side: 'top',
           className: 'p-0',
@@ -264,10 +278,9 @@ export function useIssuesToolbarControl(): UseIssuesToolbarControlResult {
     flatIssues,
     handleClickIssue,
     hasIssues,
+    isOpen,
     issueCount,
-    open,
     setIssueRef,
-    setPanelOpen,
     submitFailed,
     intl,
   ]);

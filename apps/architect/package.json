@@ -27,6 +27,7 @@
     "@codaco/interface-images": "workspace:^",
     "@codaco/interview": "workspace:^",
     "@codaco/protocol-builder": "workspace:^",
+    "@codaco/protocol-builder-core": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
     "@codaco/protocols": "workspace:^",

@@ -17,6 +17,7 @@ import BuilderSection, {
 import {
   DATA_SOURCE,
   useColumnOptionGetter,
+  useColumnSectionShell,
   useOrphanedColumns,
   useRosterColumns,
 } from './rosterColumns.ts';
@@ -166,6 +167,11 @@ export default function CardDisplaySection() {
     columns.names,
   );
   const options = useColumnOptionGetter(columns.names, orphans.options);
+  const shell = useColumnSectionShell(
+    columns,
+    messages.description,
+    messages.waitingDescription,
+  );
   const properties = useMemo(() => cardPropertyColumns(intl), [intl]);
   const validation = useMemo(
     () => makeMultiSelectValidation(properties, orphans.dangling),
@@ -175,10 +181,8 @@ export default function CardDisplaySection() {
   return (
     <BuilderSection
       title={intl.formatMessage(messages.title)}
-      description={intl.formatMessage(
-        columns.waiting ? messages.waitingDescription : messages.description,
-      )}
-      disabled={columns.waiting}
+      description={shell.description}
+      disabled={shell.disabled}
       // Everything below names a column of the data file, so a different file
       // makes every one of these a reference to something that may not be
       // there. The PATH of the file, so the choice that caused the clear

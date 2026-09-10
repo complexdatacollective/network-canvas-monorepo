@@ -158,7 +158,7 @@ export function ComposerFormFieldsField({
   const rows = useMemo(() => rowsOf(held), [held]);
 
   return (
-    <ComposerFormRows {...props} rows={rows}>
+    <ComposerFormRows {...props} name={name} rows={rows}>
       <Field<typeof ArrayField<RowValues>>
         name={name}
         component={ArrayField}
@@ -236,10 +236,22 @@ function ComposerFormRows({
   addTitle,
   editTitle,
   formId,
+  name,
   rows,
   children,
 }: ComposerFormFieldsProps &
-  Readonly<{ rows: readonly RowValues[]; children: ReactNode }>) {
+  Readonly<{
+    /**
+     * Where the stage document holds this list, for a control inside the row
+     * dialog asking what a save would leave — see `RowListConfig.name`. Given
+     * by the connected mounting, whose list is a field of the stage form;
+     * absent from the unconnected one, whose rows are reached through a
+     * position in `edges` rather than through a key.
+     */
+    name?: string;
+    rows: readonly RowValues[];
+    children: ReactNode;
+  }>) {
   const { identity } = useStageEditorForm();
   const protocolContext = useProtocolContext();
   const draftUnvalidated = useMemo(
@@ -325,10 +337,11 @@ function ComposerFormRows({
       addTitle,
       editTitle,
       formId,
+      ...(name === undefined ? {} : { name }),
       beforeSave,
       normalize: normalizeComposerField,
     }),
-    [addTitle, beforeSave, editTitle, formId],
+    [addTitle, beforeSave, editTitle, formId, name],
   );
 
   const scope = useMemo(

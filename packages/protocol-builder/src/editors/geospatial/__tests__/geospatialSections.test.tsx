@@ -326,7 +326,7 @@ describe('the places a geospatial stage asks about', () => {
     const harness = openEditor();
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Remove prompt' }),
+      screen.getByRole('button', { name: 'Delete prompt' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Delete prompt' }),

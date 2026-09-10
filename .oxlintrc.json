@@ -94,7 +94,8 @@
       ],
       "rules": {
         "typescript/unbound-method": "off",
-        "no-import-assign": "off"
+        "no-import-assign": "off",
+        "react/globals": "off"
       }
     },
     {

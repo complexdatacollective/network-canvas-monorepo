@@ -7,7 +7,7 @@ confirmed removal leaves focus inside the list.
 
 `ArrayFieldItemProps` gains `itemLabel`, the descriptor the list already
 declares for its delete confirmation, so a row can name its own Edit and
-Remove controls for the researcher instead of leaving several lists on one
+Delete controls for the researcher instead of leaving several lists on one
 screen showing identically named buttons.
 
 It also gains `deleteTriggerRef`. A row that registers the control opening its
