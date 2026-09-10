@@ -347,7 +347,7 @@ function AdditionalAttributes({
         onCreateVariable={createStampVariable}
         draftValidatedVariables={draftValidatedVariables}
         committedVariableIds={committedVariableIds}
-        // The rows' own rules are display-only (see `RowField`), so the
+        // The rows' own rules are display-only, so the
         // blocking counterparts have to exist here or the dialog saves exactly
         // what it has just refused in red.
         custom={validation.custom}
