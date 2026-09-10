@@ -38,7 +38,11 @@ export function scratchSchemaDdl(): Promise<string> {
 
 function cachePath(): string {
   // Beside the package's other build caches, so `node_modules` removal clears
-  // it and no cleanup step has to know about it.
+  // it and no cleanup step has to know about it. CI caches the pnpm store
+  // rather than `node_modules`, so a CI run always starts cold: the workers
+  // that miss together each render once, and every file after that reads the
+  // entry. The saving is per file, not per run, so a cold start costs one
+  // render and still avoids the other fifty-odd imports.
   return join(
     dirname(fileURLToPath(import.meta.url)),
     '../../../node_modules/.cache/studio-server',
