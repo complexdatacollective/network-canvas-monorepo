@@ -1029,6 +1029,14 @@ jobs:
         # Only the shard whose bucket holds @codaco/protocol-validation. The
         # file is that package's own turbo input, so writing it anywhere else
         # hands three secrets to a runner that cannot use them.
+        #
+        # Withholding it elsewhere cannot cost cache hits: `.env` is
+        # gitignored, so turbo's default inputs — which is what the input-less
+        # `topo` transit task hashes, and therefore what propagates across the
+        # dependency edge — do not include it. Only a task that names `.env`
+        # in its own `inputs` hashes it, and only for its own package.
+        # Verified by diffing every task hash with the file present and
+        # absent: @codaco/protocol-validation moved, nothing else did.
         if: matrix.protocolValidation
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
