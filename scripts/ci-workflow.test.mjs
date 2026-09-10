@@ -580,6 +580,34 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
     /pnpm exec turbo run test --concurrency=1 \\\n\s+--filter="\.\.\.\[\$DIFF_BASE_SHA\]" \\\n\s+"\$\{SHARD_FILTERS\[@\]\}"/,
     'the affected path scopes to the PR base and to this shard',
   );
+  // The fallback runs whenever the diff touches anything outside the turbo
+  // input trees — including an edit to this very workflow file, which is how
+  // most changes to the job itself are exercised. Without its own assertion,
+  // a shard restriction dropped or misquoted here would leave every shard
+  // running the whole workspace, and only the generic --concurrency=1 check
+  // would have looked at the line.
+  assert.match(
+    testJob,
+    /pnpm exec turbo run test --concurrency=1 "\$\{SHARD_FILTERS\[@\]\}"/,
+    'the full-suite fallback is scoped to this shard too',
+  );
+  // Both invocations, and no others: a third turbo run without the shard
+  // restriction would be an unrestricted workspace run on five runners.
+  const shardedRuns =
+    testJob.match(/pnpm exec turbo run test\b(?:[^\n]*\\\n)*[^\n]*/g) ?? [];
+  assert.equal(shardedRuns.length, 2, 'exactly two turbo invocations');
+  for (const run of shardedRuns) {
+    assert.match(
+      run,
+      /"\$\{SHARD_FILTERS\[@\]\}"/,
+      `every turbo run is shard-restricted: ${run}`,
+    );
+  }
+  assert.match(
+    testJob,
+    /if ! node scripts\/test-shards\.mjs filters "\$SHARD" >/,
+    'the shard filters are gated on the exit status, not on the output being non-empty',
+  );
   assert.doesNotMatch(
     testJob,
     /turbo run [^\n]*--affected/,
@@ -628,6 +656,18 @@ test('the test matrix runs exactly the shards scripts/test-shards.mjs defines', 
     'no leg pays the 24s container init it does not need',
   );
 
+  // Three secrets reach only the shard whose bucket holds the one package
+  // that reads them.
+  const envLegs = legs.filter((leg) => leg.protocolValidation === true);
+  assert.equal(envLegs.length, 1, 'one leg writes the protocol-validation env');
+  assert.equal(
+    envLegs[0].shard,
+    TEST_SHARDS.find((s) =>
+      s.packages.some((p) => p.name === '@codaco/protocol-validation'),
+    )?.shard,
+    'the env leg is the bucket that holds @codaco/protocol-validation',
+  );
+
   const testJob = job('test');
   assert.match(
     testJob,
@@ -636,8 +676,26 @@ test('the test matrix runs exactly the shards scripts/test-shards.mjs defines', 
   );
   assert.match(
     testJob,
-    /refusing to run the whole workspace/,
-    'an empty filter list fails the shard instead of widening it',
+    /- name: Write protocol-validation \.env[\s\S]*?if: matrix\.protocolValidation/,
+    'the secret-writing step is gated on that leg',
+  );
+
+  // Ordering, not just presence. The `services:` block this replaced made
+  // Actions block every step on the container's healthcheck, so a container
+  // that could not start failed the job before a checkout or an install had
+  // been paid for. Both Postgres steps must therefore precede turbo-ci-setup.
+  const setupAt = testJob.indexOf('uses: ./.github/actions/turbo-ci-setup');
+  const startAt = testJob.indexOf('- name: Start Postgres');
+  const waitAt = testJob.indexOf('- name: Wait for Postgres');
+  assert.ok(startAt !== -1 && waitAt !== -1 && setupAt !== -1);
+  assert.ok(
+    startAt < waitAt && waitAt < setupAt,
+    'a Postgres that cannot start fails the shard before the install is paid for',
+  );
+  assert.match(
+    testJob,
+    /The Postgres container stopped before accepting connections/,
+    'a stopped container is reported at once rather than waited out',
   );
 });
 

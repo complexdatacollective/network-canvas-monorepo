@@ -91,6 +91,29 @@ test('exactly one shard carries the only suite that needs Postgres', () => {
   }
 });
 
+test('a deliberately-unsharded package added to a bucket fails the check', () => {
+  // The drift this catches: a rebalance drops @codaco/studio-server into a
+  // bucket. It is not a duplicate, it IS a workspace test package, and it is
+  // no longer unassigned — so every other arm of the guard passes it. But the
+  // shard that owns it stops negating it, and the wall-clock-budgeted suite
+  // runs there as well as in its dedicated job.
+  const rogue = {
+    shard: 99,
+    packages: [{ name: '@codaco/studio-server', seconds: 590 }],
+  };
+  TEST_SHARDS.push(rogue);
+  try {
+    assert.throws(
+      () => assertShardCoverage(),
+      /deliberately not sharded[\s\S]*test-studio-server/,
+    );
+  } finally {
+    TEST_SHARDS.pop();
+  }
+  // And the real configuration is still clean once the rogue bucket is gone.
+  assert.doesNotThrow(() => assertShardCoverage());
+});
+
 test('an unassigned test package fails the coverage check', () => {
   assert.throws(
     () =>

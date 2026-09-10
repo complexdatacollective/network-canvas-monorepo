@@ -94,7 +94,10 @@ import { parse } from 'yaml';
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
- * Packages that carry a `test` script but are deliberately not in any bucket.
+ * Packages that carry a `test` script but are deliberately not in any bucket,
+ * mapped to what runs them instead. The reason is not decoration: it is read
+ * back by `assertShardCoverage` to explain what a bucket would be stealing if
+ * one of these were ever added to it.
  * @type {Record<string, string>}
  */
 const NOT_SHARDED = {
@@ -193,8 +196,11 @@ export function workspaceTestPackages(root = REPO_ROOT) {
 }
 
 /**
- * Fail closed on drift: a package that gained a `test` script but no bucket
- * would otherwise be negated by every shard and silently never run.
+ * Fail closed on drift, in both directions: a package that gained a `test`
+ * script but no bucket would be negated by every shard and silently never
+ * run, and a package that is deliberately NOT sharded would, if added to a
+ * bucket, stop being negated on that shard and run there concurrently with
+ * the dedicated job it was carved out into.
  * @param {string[]} [testPackages]
  */
 export function assertShardCoverage(testPackages = workspaceTestPackages()) {
@@ -205,6 +211,15 @@ export function assertShardCoverage(testPackages = workspaceTestPackages()) {
       throw new Error(`${name} is assigned to more than one test shard`);
     }
     seen.add(name);
+  }
+
+  for (const name of assigned) {
+    const reason = NOT_SHARDED[name];
+    if (reason !== undefined) {
+      throw new Error(
+        `${name} is assigned to a test shard, but it is deliberately not sharded: it ${reason}. A shard that owns it stops negating it, so it would run there as well.`,
+      );
+    }
   }
 
   const known = new Set(testPackages);
@@ -273,6 +288,12 @@ function main(argv) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     const output = main(process.argv.slice(2));
+    // An empty filter list prints NOTHING, not a blank line: the caller reads
+    // this output into a bash array one line per element, and a lone newline
+    // would become a single empty element that reaches turbo as an empty
+    // argument. Callers must therefore treat the exit status, not the
+    // presence of output, as the success signal — a bucket that owned every
+    // test package needs no negations and is legitimately silent.
     if (output) console.log(output);
   } catch (error) {
     console.error(`::error::${error.message}`);

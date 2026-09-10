@@ -521,8 +521,11 @@ jobs:
     runs-on: ubuntu-latest
     # The `test` task includes the studio-sync and studio-server conformance
     # suites, which refuse to skip under CI. Without this they abort the whole
-    # `turbo run`, and the job seeds no cache at all — see the `test` job, whose
-    # service this mirrors.
+    # `turbo run`, and the job seeds no cache at all. This job seeds every
+    # package in one run, so it keeps a plain job-level service; the sharded
+    # `test` job starts an equivalent container from a step instead, because
+    # only one of its five shards holds a suite that needs a database and
+    # `services:` cannot be varied per matrix leg.
     services:
       postgres:
         image: postgres:18
@@ -966,6 +969,11 @@ jobs:
           # "Initialize containers" on every run of the unsharded job.
           - shard: 3
             postgres: true
+            # @codaco/protocol-validation's suite is the only one that reads
+            # the encryption keys and the protocol-fetch token, through a
+            # `.env` in its own package directory. Only its shard writes them,
+            # so the secrets never reach a runner with no use for them.
+            protocolValidation: true
           - shard: 4
           - shard: 5
     steps:
@@ -975,10 +983,12 @@ jobs:
           # `--affected` diffs against the PR base; on a shallow clone turbo
           # treats every package as changed.
           fetch-depth: 0
-      # Started before the install so Postgres initialises while pnpm works,
-      # and waited on separately below. Mirrors the service block this job
-      # used to declare: same image, same env (POSTGRES_INITDB_ARGS is read by
-      # the official image's entrypoint either way), same published port.
+      # Both Postgres steps run BEFORE the install, so a container that cannot
+      # start fails this job in seconds rather than after a checkout, a pnpm
+      # install and a cache restore. That ordering is what the `services:`
+      # block this replaces gave for free: Actions blocked every step on the
+      # container's healthcheck. Same image, same env (POSTGRES_INITDB_ARGS is
+      # read by the official image's entrypoint either way), same port.
       - name: Start Postgres for the studio-sync conformance suite
         if: matrix.postgres
         run: |
@@ -988,25 +998,38 @@ jobs:
             --env POSTGRES_INITDB_ARGS=--set=max_prepared_transactions=10 \
             --publish 54318:5432 \
             postgres:18
-      - uses: ./.github/actions/turbo-ci-setup
       # `-h 127.0.0.1` on purpose: during initdb the official image runs a
       # temporary server bound to the unix socket only, so a socket-based
       # pg_isready (what the old service's health-cmd ran) can report ready
-      # before the TCP listener the suite actually connects to exists.
+      # before the TCP listener the suite actually connects to exists. The
+      # 120s budget covers that init; a container that has *stopped* is not
+      # going to start listening, so it is reported at once rather than
+      # waited out.
       - name: Wait for Postgres
         if: matrix.postgres
         run: |
+          set -euo pipefail
           for _ in $(seq 1 60); do
             if docker exec studio-sync-postgres pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
               echo "Postgres is accepting TCP connections"
               exit 0
             fi
+            if [[ "$(docker inspect --format '{{.State.Running}}' studio-sync-postgres 2>/dev/null)" != "true" ]]; then
+              docker logs studio-sync-postgres || true
+              echo "::error::The Postgres container stopped before accepting connections"
+              exit 1
+            fi
             sleep 2
           done
-          docker logs studio-sync-postgres
+          docker logs studio-sync-postgres || true
           echo "::error::Postgres did not accept connections within 120s"
           exit 1
+      - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
+        # Only the shard whose bucket holds @codaco/protocol-validation. The
+        # file is that package's own turbo input, so writing it anywhere else
+        # hands three secrets to a runner that cannot use them.
+        if: matrix.protocolValidation
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
           PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
@@ -1037,15 +1060,21 @@ jobs:
           # negates it and the split cannot be undone by editing one shard.
           #
           # Via a file rather than `mapfile < <(node ...)`: process
-          # substitution discards the script's exit status, and an empty
-          # filter list would silently widen the shard to the whole workspace
-          # — every suite run four times over, in parallel with itself.
-          node scripts/test-shards.mjs filters "$SHARD" > "$RUNNER_TEMP/shard-filters"
-          mapfile -t SHARD_FILTERS < "$RUNNER_TEMP/shard-filters"
-          if [[ ${#SHARD_FILTERS[@]} -eq 0 ]]; then
-            echo "::error::shard $SHARD produced no package filters; refusing to run the whole workspace"
+          # substitution discards the script's exit status, so a script that
+          # died would leave an empty filter list and silently widen the shard
+          # to the whole workspace — every suite run five times over, in
+          # parallel with itself.
+          #
+          # The EXIT STATUS is what decides, not whether the file has content.
+          # A bucket that owned every test package would need no negations at
+          # all, and treating that empty-but-correct output as a failure would
+          # abort a shard that had nothing wrong with it.
+          set -euo pipefail
+          if ! node scripts/test-shards.mjs filters "$SHARD" > "$RUNNER_TEMP/shard-filters"; then
+            echo "::error::shard $SHARD could not resolve its package filters; refusing to run an unrestricted workspace"
             exit 1
           fi
+          mapfile -t SHARD_FILTERS < "$RUNNER_TEMP/shard-filters"
           echo "Shard $SHARD excludes ${#SHARD_FILTERS[@]} packages"
 
           # PR checkouts are synthetic merges. Diff against the event's base
