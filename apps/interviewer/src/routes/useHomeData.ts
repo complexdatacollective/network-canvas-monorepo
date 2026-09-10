@@ -30,6 +30,9 @@ export function useHomeData() {
     }
   }, []);
 
+  // The three lists live in IndexedDB, so the only way to know them is to ask
+  // and wait: the state written here is that answer arriving, which is what an
+  // effect is for.
   useEffect(() => {
     void reload();
   }, [reload]);
