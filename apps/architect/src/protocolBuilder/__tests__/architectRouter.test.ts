@@ -17,7 +17,7 @@ import { timelineActions } from '~/ducks/middleware/timeline';
 import { setActiveProtocol } from '~/ducks/modules/activeProtocol';
 import { setActiveProtocolId, setProtocolLockState } from '~/ducks/modules/app';
 import { rootReducer } from '~/ducks/modules/root';
-import { getAssetManifest, getCanonicalProtocol } from '~/selectors/protocol';
+import { getAssetManifest, getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from '../architectStore.ts';
 import {
@@ -107,18 +107,14 @@ async function importResource(
 }
 
 const stageLabel = (store: ArchitectStore, stageId: string): string =>
-  getCanonicalProtocol(store.getState())?.stages.find(
-    (stage) => stage.id === stageId,
-  )?.label ?? '';
+  getProtocol(store.getState())?.stages.find((stage) => stage.id === stageId)
+    ?.label ?? '';
 
 const stageIds = (store: ArchitectStore): string[] =>
-  (getCanonicalProtocol(store.getState())?.stages ?? []).map(
-    (stage) => stage.id,
-  );
+  (getProtocol(store.getState())?.stages ?? []).map((stage) => stage.id);
 
 const personVariables = (store: ArchitectStore): Record<string, unknown> =>
-  getCanonicalProtocol(store.getState())?.codebook.node?.person?.variables ??
-  {};
+  getProtocol(store.getState())?.codebook.node?.person?.variables ?? {};
 
 const undoDepth = (store: ArchitectStore): number =>
   store.getState().activeProtocol.past.length;
@@ -394,8 +390,7 @@ describe("Architect's in-process protocol-builder host", () => {
       protocolId: PROTOCOL_ID,
       sectionId: PERSON,
     });
-    const committed = getCanonicalProtocol(store.getState())?.codebook.node
-      ?.person;
+    const committed = getProtocol(store.getState())?.codebook.node?.person;
     await client.submit({
       protocolId: PROTOCOL_ID,
       requestId: nextRequestId(),
@@ -1196,9 +1191,7 @@ describe("Architect's in-process protocol-builder host", () => {
 
   it('creates the ego codebook a protocol does not have yet', async () => {
     const { store, client } = openProtocol({ withEgo: false });
-    expect(
-      getCanonicalProtocol(store.getState())?.codebook.ego,
-    ).toBeUndefined();
+    expect(getProtocol(store.getState())?.codebook.ego).toBeUndefined();
 
     const created = await client.create({
       protocolId: PROTOCOL_ID,
@@ -1215,13 +1208,13 @@ describe("Architect's in-process protocol-builder host", () => {
     // no other way to bring one into being.
     expect(created.sectionId).toBe(sectionId({ kind: 'codebookEgo' }));
     expect(
-      getCanonicalProtocol(store.getState())?.codebook.ego?.variables,
+      getProtocol(store.getState())?.codebook.ego?.variables,
     ).toMatchObject({ ego_age: { name: 'ego_age' } });
   });
 
   it('refuses to create an ego codebook the protocol already has', async () => {
     const { store, client } = openProtocol();
-    const before = getCanonicalProtocol(store.getState())?.codebook.ego;
+    const before = getProtocol(store.getState())?.codebook.ego;
 
     const { definedError, isSuccess } = await safe(
       client.create({
@@ -1237,9 +1230,7 @@ describe("Architect's in-process protocol-builder host", () => {
     expect(definedError?.data).toMatchObject({
       sectionId: sectionId({ kind: 'codebookEgo' }),
     });
-    expect(getCanonicalProtocol(store.getState())?.codebook.ego).toEqual(
-      before,
-    );
+    expect(getProtocol(store.getState())?.codebook.ego).toEqual(before);
   });
 
   it('keeps a lock when the stream that reported it ends', async () => {

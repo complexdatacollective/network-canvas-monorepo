@@ -16,6 +16,7 @@ import type { CurrentProtocol, Stage } from '@codaco/protocol-validation';
 import { hasDirtyNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
 import ArchitectField from '~/components/Form/ArchitectField';
 import NestedDraftReclaimDialog from '~/components/NestedDraftReclaimDialog';
+import { publishStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import createTimeline from '~/ducks/middleware/timeline';
 import activeProtocol, {
   setActiveProtocol,
@@ -26,9 +27,6 @@ import app, {
 } from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
-import stageEditorDraft, {
-  draftTimelineActions,
-} from '~/ducks/modules/stageEditorDraft';
 import { useProtocolNavGuard } from '~/hooks/useProtocolNavGuard';
 import { useProtocolTabLock } from '~/hooks/useProtocolTabLock';
 import { renderQueuedMessage } from '~/test/renderQueuedMessage';
@@ -82,7 +80,6 @@ const createTestStore = () =>
       app,
       protocols,
       protocolValidation,
-      stageEditorDraft,
       activeProtocol: createTimeline(activeProtocol),
     }),
   });
@@ -127,7 +124,7 @@ const setup = () => {
   // A stage editor open on the Geospatial stage with nothing changed in it —
   // the ordinary situation the API-key browser is opened from, and the one in
   // which every guard the stage editor owns reads "pristine".
-  store.dispatch(draftTimelineActions.reset({ stage, codebook: {} }));
+  publishStageDraft(stage, {}, {});
 
   window.history.replaceState(null, '', PROTOCOL_PATH);
   window.history.pushState(null, '', STAGE_EDITOR_PATH);

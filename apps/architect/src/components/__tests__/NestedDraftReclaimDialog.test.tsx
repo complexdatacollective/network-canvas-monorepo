@@ -16,7 +16,6 @@ import app, {
 } from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 import { renderQueuedMessage } from '~/test/renderQueuedMessage';
 
 import NestedDraftReclaimDialog from '../NestedDraftReclaimDialog';
@@ -37,7 +36,6 @@ const createTestStore = () =>
       app,
       protocols,
       protocolValidation,
-      stageEditorDraft,
       activeProtocol: createTimeline(activeProtocol),
     }),
   });

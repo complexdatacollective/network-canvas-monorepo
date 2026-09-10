@@ -3,15 +3,17 @@ import { renderHook } from '@testing-library/react';
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { Stage } from '@codaco/protocol-validation';
 import { useNestedDraft } from '~/components/DialogForm/nestedDraftRegistry';
+import {
+  closeStageDraft,
+  publishStageDraft,
+} from '~/components/StageEditor/stageDraftBeacon';
 import appReducer, {
   getStorageUnavailable,
   setProtocolLockState,
   setStorageUnavailable,
 } from '~/ducks/modules/app';
-import stageEditorDraftReducer, {
-  draftTimelineActions,
-} from '~/ducks/modules/stageEditorDraft';
 import { refusedCommitMessage } from '~/utils/protocolLockMessages';
 
 import reducer, { importAssetAsync, test } from '../assetManifest';
@@ -33,15 +35,19 @@ const mockedValidateAsset = vi.mocked(validateAsset);
 const { saveAssetWithFallback } = await import('~/utils/assetUtils');
 const mockedSaveAssetWithFallback = vi.mocked(saveAssetWithFallback);
 
+const openStage: Stage = {
+  id: 'stage-1',
+  type: 'Information',
+  label: 'A',
+  title: 'A',
+  items: [],
+};
+
 const createTestStore = () =>
   configureStore({
     reducer: {
       app: appReducer,
       assetManifest: reducer,
-      // Registered so a stage-draft transaction can be opened in the tests
-      // below. The refusal itself no longer reads this slice — that it once
-      // did, and answered "which blocker?" with it, is the bug they pin.
-      stageEditorDraft: stageEditorDraftReducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
@@ -98,6 +104,9 @@ describe('protocol/assetManifest', () => {
       store = createTestStore();
       vi.clearAllMocks();
       mockedSaveAssetWithFallback.mockResolvedValue({ persisted: true });
+      // The beacon is module state: a test that opens an editor would leave it
+      // open for the next one.
+      closeStageDraft();
     });
 
     it('flags storage-unavailable when the asset only persisted to memory', async () => {
@@ -166,12 +175,7 @@ describe('protocol/assetManifest', () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
       // A stage editor open, with a nested editor open inside it: the exact
       // pair the old discriminator answered backwards.
-      store.dispatch(
-        draftTimelineActions.reset({
-          stage: { id: 'stage-1', type: 'Information', label: 'A' },
-          codebook: {},
-        }),
-      );
+      publishStageDraft(openStage, {}, {});
       const nestedEditor = renderHook(() => useNestedDraft(true, () => true));
       store.dispatch(setProtocolLockState('reclaim-blocked'));
 
@@ -191,12 +195,7 @@ describe('protocol/assetManifest', () => {
 
     it('sends the researcher to the stage-draft choice when that is the blocker', async () => {
       mockedValidateAsset.mockResolvedValue({ duplicateCount: 0 });
-      store.dispatch(
-        draftTimelineActions.reset({
-          stage: { id: 'stage-1', type: 'Information', label: 'A' },
-          codebook: {},
-        }),
-      );
+      publishStageDraft(openStage, {}, {});
       store.dispatch(setProtocolLockState('reclaim-blocked'));
 
       const result = await store.dispatch(

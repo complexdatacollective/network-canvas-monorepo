@@ -22,7 +22,6 @@ const EGO_SLOT = 'familyPedigree.nodeConfig.egoVariable';
 const stateWith = (protocol: unknown): RootState =>
   ({
     activeProtocol: { present: protocol },
-    stageEditorDraft: { ui: { liveValues: null } },
   }) as unknown as RootState;
 
 const pedigreeStage = (id: string) => ({

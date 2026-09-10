@@ -7,7 +7,6 @@ import { describe, expect, it, vi } from 'vitest';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import app, { setProtocolLockState } from '~/ducks/modules/app';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 import DialogForm from '../DialogForm';
 import { hasDirtyNestedDraft } from '../nestedDraftRegistry';
@@ -494,7 +493,7 @@ describe('DialogForm unsaved-changes guard', () => {
 describe('DialogForm in a tab that cannot save', () => {
   const createTestStore = () =>
     configureStore({
-      reducer: combineReducers({ app, stageEditorDraft }),
+      reducer: combineReducers({ app }),
     });
 
   const renderForm = (

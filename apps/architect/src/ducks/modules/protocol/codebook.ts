@@ -66,33 +66,13 @@ import {
 import { getIsUsed } from '~/selectors/codebook/isUsed';
 import { getEdgeIndex, getNodeIndex, utils } from '~/selectors/indexes';
 import { getProtocol } from '~/selectors/protocol';
-import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
 import prune from '~/utils/prune';
 import safeName from '~/utils/safeName';
 
-import { commitStageEditorDraft } from './commitStageEditorDraft';
 import { deleteStage } from './deleteStage';
-import { stageEditorCodebookMeta } from './stageEditorCodebookMeta';
 import { getNextCategoryColor } from './utils/helpers';
 
 type Entity = 'node' | 'edge' | 'ego';
-
-/**
- * Stamps a codebook slice action for the stage editor's draft copy whenever a
- * codebook transaction is open, so nothing a nested field or variable editor
- * writes reaches the canonical protocol before the stage is committed (#1382).
- *
- * Routing here rather than at each of the ~11 UI call sites keeps the decision
- * in one place, and means a new call site is transactional by default rather
- * than by remembering to opt in.
- */
-const routeCodebookAction = <T extends { type: string }>(
-  action: T,
-  state: RootState,
-): T =>
-  getStageEditorCodebookTransactionOpen(state)
-    ? { ...action, meta: stageEditorCodebookMeta }
-    : action;
 
 type CreateTypePayload<T extends EntityDefinition = EntityDefinition> = {
   entity: Entity;
@@ -148,7 +128,7 @@ export const createTypeAsync = createAppAsyncThunk(
       entity,
       configuration,
     }: { entity: Entity; configuration: Partial<EntityDefinition> },
-    { dispatch, getState },
+    { dispatch },
   ) => {
     const type = uuid();
     const payload: CreateTypePayload = {
@@ -160,12 +140,7 @@ export const createTypeAsync = createAppAsyncThunk(
       },
     };
 
-    dispatch(
-      routeCodebookAction(
-        codebookSlice.actions.createType(payload),
-        getState(),
-      ),
-    );
+    dispatch(codebookSlice.actions.createType(payload));
     return { type, entity };
   },
 );
@@ -182,15 +157,10 @@ export const updateTypeAsync = createAppAsyncThunk(
       type: string;
       configuration: Partial<EntityDefinition>;
     },
-    { dispatch, getState },
+    { dispatch },
   ) => {
     const payload: UpdateTypePayload = { entity, type, configuration };
-    dispatch(
-      routeCodebookAction(
-        codebookSlice.actions.updateType(payload),
-        getState(),
-      ),
-    );
+    dispatch(codebookSlice.actions.updateType(payload));
     return { type, entity };
   },
 );
@@ -200,8 +170,6 @@ export const createEdgeAsync = createAppAsyncThunk(
   async (configuration: Partial<EdgeDefinition>, { dispatch, getState }) => {
     const entity: Entity = 'edge';
     const state = getState();
-    // Draft-aware, so a colour picked inside an open stage editor accounts for
-    // edge types created earlier in the same (uncommitted) session.
     const protocol = getProtocol(state);
     const colorFromHelper = protocol
       ? getNextCategoryColor(protocol, entity)
@@ -219,9 +187,7 @@ export const createEdgeAsync = createAppAsyncThunk(
       payload.configuration.color = color as EdgeColor;
     }
 
-    dispatch(
-      routeCodebookAction(codebookSlice.actions.createType(payload), state),
-    );
+    dispatch(codebookSlice.actions.createType(payload));
     return { type, entity };
   },
 );
@@ -276,9 +242,7 @@ export const createVariableAsync = createAppAsyncThunk(
       configuration: safeConfiguration,
     };
 
-    dispatch(
-      routeCodebookAction(codebookSlice.actions.createVariable(payload), state),
-    );
+    dispatch(codebookSlice.actions.createVariable(payload));
     return { entity, type, variable };
   },
 );
@@ -329,9 +293,7 @@ const updateVariableAsync = createAppAsyncThunk(
       replaceProperties,
     };
 
-    dispatch(
-      routeCodebookAction(codebookSlice.actions.updateVariable(payload), state),
-    );
+    dispatch(codebookSlice.actions.updateVariable(payload));
     return payload;
   },
 );
@@ -359,9 +321,7 @@ export const deleteVariableAsync = createAppAsyncThunk(
     }
 
     const payload: DeleteVariablePayload = { entity, type, variable };
-    dispatch(
-      routeCodebookAction(codebookSlice.actions.deleteVariable(payload), state),
-    );
+    dispatch(codebookSlice.actions.deleteVariable(payload));
   },
 );
 
@@ -405,9 +365,7 @@ export const deleteTypeAsync = createAppAsyncThunk(
     }
 
     const payload: DeleteTypePayload = { entity, type };
-    dispatch(
-      routeCodebookAction(codebookSlice.actions.deleteType(payload), state),
-    );
+    dispatch(codebookSlice.actions.deleteType(payload));
   },
 );
 
@@ -557,25 +515,15 @@ const codebookSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder
-      .addCase(deleteStage, (state, action) => {
-        if (!action.payload.clearEncryptedVariables) return;
+    builder.addCase(deleteStage, (state, action) => {
+      if (!action.payload.clearEncryptedVariables) return;
 
-        for (const nodeType of Object.values(state.node ?? {})) {
-          for (const variable of Object.values(nodeType.variables ?? {})) {
-            delete variable.encrypted;
-          }
+      for (const nodeType of Object.values(state.node ?? {})) {
+        for (const variable of Object.values(nodeType.variables ?? {})) {
+          delete variable.encrypted;
         }
-      })
-      // Promoting the stage editor's draft codebook. Replacing wholesale is
-      // what makes discard total: a variable the editor created exists only in
-      // the draft, and every property it changed (name, component, options,
-      // parameters, validation) is carried by the same object — so there is no
-      // per-property merge to get wrong in either direction.
-      .addCase(
-        commitStageEditorDraft,
-        (state, action) => action.payload.codebook ?? state,
-      );
+      }
+    });
   },
 });
 

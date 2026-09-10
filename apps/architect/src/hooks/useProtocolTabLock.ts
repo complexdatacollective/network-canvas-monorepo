@@ -17,7 +17,7 @@ import {
   setProtocolLockState,
 } from '~/ducks/modules/app';
 import { restoreActiveProtocolFromLibrary } from '~/ducks/restoreActiveProtocol';
-import { getCanonicalProtocol } from '~/selectors/protocol';
+import { getProtocol } from '~/selectors/protocol';
 import {
   createProtocolTabLock,
   type ProtocolTabLock,
@@ -227,7 +227,7 @@ export const useProtocolTabLock = (
       // A confirmed leave clears the editing buffer before it navigates, so
       // there is nothing to refresh into and pulling the row back would fight
       // the exit for it.
-      !getCanonicalProtocol(store.getState())
+      !getProtocol(store.getState())
     ) {
       dispatch(setProtocolLockState('owned'));
       return;

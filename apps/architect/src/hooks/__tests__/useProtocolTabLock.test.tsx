@@ -21,7 +21,6 @@ import app, {
 } from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 import type { ProtocolTabLock } from '~/utils/protocolTabLock';
 
 import { useProtocolTabLock } from '../useProtocolTabLock';
@@ -111,7 +110,6 @@ const createTestStore = () =>
       app,
       protocols,
       protocolValidation,
-      stageEditorDraft,
       activeProtocol: createTimeline(activeProtocol),
     }),
   });

@@ -31,7 +31,7 @@ import {
   getEntityTypeUsageHitsById,
   getVariableUsageHits,
 } from '~/selectors/indexes';
-import { getCanonicalProtocol } from '~/selectors/protocol';
+import { getProtocol } from '~/selectors/protocol';
 import {
   assetImportSurface,
   refusedCommitError,
@@ -54,7 +54,7 @@ const os = implement(contract);
  * The protocol-builder host contract, served from Architect's Redux store.
  *
  * Everything the contract calls a write is an action Architect already has:
- * `commitStageEditorDraft` for a stage, whether it is being created or saved;
+ * `commitStage` for a stage, whether it is being created or saved;
  * the codebook module's thunks for an entity type; the protocol-level actions
  * for the settings, the stage index and the asset manifest. Revisions are
  * derived from the committed protocol rather than written alongside it
@@ -678,9 +678,7 @@ function remainingReferences(
   state: RootState,
   hits: readonly { path: (string | number)[] }[],
 ): SectionReference[] {
-  const stageIds = (getCanonicalProtocol(state)?.stages ?? []).map(
-    (stage) => stage.id,
-  );
+  const stageIds = (getProtocol(state)?.stages ?? []).map((stage) => stage.id);
   return hits.map((hit) => sectionReferenceAt(hit.path, stageIds));
 }
 
