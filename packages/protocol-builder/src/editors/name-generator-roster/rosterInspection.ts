@@ -1,4 +1,5 @@
 import type { ProtocolBuilderClient } from '../../contract/contract.ts';
+import { withResourceProcedures } from '../../testing/withResourceProcedures.ts';
 
 /**
  * What a host that had read the roster answers about it.
@@ -23,13 +24,6 @@ const ROSTER_COUNTS = { nodes: 3, edges: 0 } as const;
  * The host's client, answering about a network file the way a host that had
  * read one does.
  *
- * Proxied rather than spread: a contract client's procedures are reached
- * through property access rather than held as own properties, so a spread copy
- * of one has no procedures on it at all. (`withResourceProcedures`, in the
- * resource tests' own host helper, is the same proxy; it is not imported here
- * because this module is also mounted by a story, and a story reaching into a
- * `__tests__` directory would put test scaffolding in the Storybook build.)
- *
  * Only `inspect` is answered for, and only for a `network` resource: every
  * other procedure is the real host's, so a stage saved through this client is
  * still a stage the protocol schema accepted.
@@ -37,36 +31,23 @@ const ROSTER_COUNTS = { nodes: 3, edges: 0 } as const;
 export function withRosterColumns(
   client: ProtocolBuilderClient,
 ): ProtocolBuilderClient {
-  const inspect: ProtocolBuilderClient['resources']['inspect'] = async (
-    input,
-  ) => {
-    const inspected = await client.resources.inspect(input);
-    if (
-      inspected.status !== 'ok' ||
-      inspected.data.descriptor.kind !== 'network'
-    ) {
-      return inspected;
-    }
-    return {
-      status: 'ok' as const,
-      data: {
-        ...inspected.data,
-        counts: ROSTER_COUNTS,
-        variableNames: [...ROSTER_COLUMNS],
-      },
-    };
-  };
-
-  const resources = new Proxy(client.resources, {
-    get: (target, property, receiver) =>
-      property === 'inspect'
-        ? inspect
-        : Reflect.get(target, property, receiver),
-  });
-  return new Proxy(client, {
-    get: (target, property, receiver) =>
-      property === 'resources'
-        ? resources
-        : Reflect.get(target, property, receiver),
+  return withResourceProcedures(client, {
+    inspect: async (input) => {
+      const inspected = await client.resources.inspect(input);
+      if (
+        inspected.status !== 'ok' ||
+        inspected.data.descriptor.kind !== 'network'
+      ) {
+        return inspected;
+      }
+      return {
+        status: 'ok' as const,
+        data: {
+          ...inspected.data,
+          counts: ROSTER_COUNTS,
+          variableNames: [...ROSTER_COLUMNS],
+        },
+      };
+    },
   });
 }

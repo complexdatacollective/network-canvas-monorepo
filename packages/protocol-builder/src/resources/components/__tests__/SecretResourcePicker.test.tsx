@@ -8,6 +8,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
+import { withResourceProcedures } from '../../../testing/withResourceProcedures.ts';
 import type { ResourceDescriptor } from '../../types.ts';
 import ResourceSecretControl from '../ResourceSecretControl.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
@@ -15,7 +16,6 @@ import { renderInResourceContext } from './resourceContext.tsx';
 import {
   createResourceHost,
   stagedResources,
-  withResourceProcedures,
   withSubmitsCounted,
   type CommittedResource,
 } from './resourceHost.ts';

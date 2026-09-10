@@ -2987,10 +2987,6 @@
     "defaultMessage": "Choose the attribute quick add fills in.",
     "description": "Refusal shown when a researcher saves a quick-add stage without saying which attribute receives what the participant types, which would create network members with no name at all."
   },
-  "protocolBuilder.quickAdd.missingType": {
-    "defaultMessage": "This type is no longer in the codebook, so its attributes cannot be changed.",
-    "description": "Refusal shown when the node type the stage works with has been deleted from the codebook — the protocol’s definition of what an interview records — while the researcher was editing."
-  },
   "protocolBuilder.quickAdd.noTextAttribute": {
     "defaultMessage": "This type has no text attribute quick add could fill in. Create one below.",
     "description": "Shown in place of the quick-add attribute list when the chosen node type has no attribute holding typed text. Points at the control beneath, which invents one."

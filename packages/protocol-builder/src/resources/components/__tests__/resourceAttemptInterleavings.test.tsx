@@ -8,6 +8,7 @@ import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { enIntl } from '../../../testing/i18n.ts';
+import { withResourceProcedures } from '../../../testing/withResourceProcedures.ts';
 import {
   RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
   type ResourceDescriptor,
@@ -26,11 +27,7 @@ import {
 } from './previewHarness.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 import { renderInResourceContext } from './resourceContext.tsx';
-import {
-  createResourceHost,
-  stagedResources,
-  withResourceProcedures,
-} from './resourceHost.ts';
+import { createResourceHost, stagedResources } from './resourceHost.ts';
 
 /**
  * Every state one resource attempt can be in, against every input that can

@@ -90,11 +90,9 @@ export function useRosterColumns(): RosterColumns {
 
   return useMemo(
     () => ({
-      // Exactly what the gateway answered. The inspection is dropped before a
-      // newly chosen file is asked about, so this is `undefined` in every state
-      // where the columns of the file the stage holds NOW are unknown — none
-      // chosen, still reading, or unreadable — and a list only once one has
-      // actually been read.
+      // The inspection is dropped before a newly chosen file is asked about,
+      // so this carries the `undefined` that `RosterColumns.names` documents
+      // in every state where the file the stage holds NOW is unread.
       names: inspection?.variableNames,
       waiting: resourceId === undefined,
       ...(failure === undefined ? {} : { problem: failure.message }),
@@ -123,7 +121,7 @@ export function useRosterColumns(): RosterColumns {
  */
 export function useColumnOptionGetter(
   names: readonly string[] | undefined,
-  orphans: readonly SortableProperty[] = NO_ORPHANS,
+  orphans: readonly SortableProperty[],
 ): OptionGetter {
   return useMemo<OptionGetter>(
     () => (fieldName, _rowValues, allValues) => {
@@ -204,13 +202,9 @@ const MISSING_SEARCH_COLUMN_MESSAGE = createMessageError(
  * the two list editors, the entry itself for the search checkboxes — and
  * `undefined` when the list holds nothing at all.
  *
- * `names` is `undefined` while the columns are not known — no file chosen, the
- * bytes still being read, a file that could not be read — and nothing is judged
- * in that state: every entry would be reported dangling on the strength of a
- * question nobody has answered yet. An empty list is the opposite answer and is
- * judged in full: a data file whose people carry no attributes is exactly where
- * every entry the stage holds IS dangling, and it is the state a blank control
- * explains least.
+ * Nothing is judged while `names` is `undefined` (see `RosterColumns.names`):
+ * every entry would be reported dangling on the strength of a question nobody
+ * has answered yet. An empty list is judged in full.
  */
 function useOrphanedColumnNames(
   named: readonly unknown[] | undefined,

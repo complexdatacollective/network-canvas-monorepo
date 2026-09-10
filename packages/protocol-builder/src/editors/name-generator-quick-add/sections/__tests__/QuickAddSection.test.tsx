@@ -1,6 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -280,6 +282,44 @@ describe('a quick-add attribute that need not be answered', () => {
     expect(
       screen.queryByText('This attribute can be left empty'),
     ).not.toBeInTheDocument();
+  });
+
+  /**
+   * The rule belongs to the codebook rather than to this stage, so adding it
+   * is a codebook write and a colleague holding the type refuses it. Said in
+   * the researcher's terms, and said outside the offer: the offer is about an
+   * attribute that can be left empty, so a refusal rendered inside it would go
+   * with the warning the moment the attribute changed, leaving whoever pressed
+   * the button with no account of what happened.
+   */
+  it('names the colleague who refused the rule, and leaves the offer standing', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+      heldSections: [
+        {
+          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          displayName: 'Robin',
+        },
+      ],
+    });
+
+    await screen.findByText('This attribute can be left empty');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Require an answer' }),
+    );
+
+    expect(
+      await screen.findByText(
+        'Robin is currently editing a section needed for this change.',
+      ),
+    ).toBeInTheDocument();
+    // Nothing was written, which is what makes the sentence true — and the
+    // offer is still there to be accepted once the colleague lets go.
+    expect(personValidation(harness, 'name')).toEqual({ unique: true });
+    expect(
+      screen.getByRole('button', { name: 'Require an answer' }),
+    ).toBeEnabled();
   });
 
   /**

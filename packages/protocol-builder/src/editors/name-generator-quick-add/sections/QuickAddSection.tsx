@@ -137,13 +137,6 @@ const messages = defineMessages({
     description:
       'Confirmation shown to a researcher who asked for the quick-add attribute to be required, when the stage moved off that attribute while the change was being made — they chose a different node type, or a different attribute. The change was still made, so it is said rather than swallowed. variableName is the attribute’s own name and is not translated.',
   },
-  missingType: {
-    id: 'protocolBuilder.quickAdd.missingType',
-    defaultMessage:
-      'This type is no longer in the codebook, so its attributes cannot be changed.',
-    description:
-      'Refusal shown when the node type the stage works with has been deleted from the codebook — the protocol’s definition of what an interview records — while the researcher was editing.',
-  },
 });
 
 const CHOOSE_AN_ATTRIBUTE = createMessageError(messages.fieldRequired);
@@ -328,7 +321,7 @@ function QuickAddAnswerRequirement({
 }>) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
-  const requireAnswer = useRequireCodebookAnswer(subject);
+  const requireAnswer = useRequireCodebookAnswer();
   const answerLands = useWhereTheAnswerLands(subject, () => variableId);
   const [problem, setProblem] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -372,7 +365,7 @@ function QuickAddAnswerRequirement({
     const variableName = variable.name;
     setBusy(true);
     try {
-      const outcome = await requireAnswer(variableId);
+      const outcome = await requireAnswer(subject, variableId);
       if (outcome.status === 'refused') {
         setProblem(outcome.message);
         return;
@@ -485,17 +478,14 @@ type RequireAnswerOutcome =
  * carried through: this ADDS a requirement, it does not replace the
  * researcher's rules with the one the role needs.
  */
-function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
+function useRequireCodebookAnswer() {
   const write = useCodebookSectionWrite();
 
   return useCallback(
-    async (variableId: string): Promise<RequireAnswerOutcome> => {
-      if (subject === undefined) {
-        return {
-          status: 'refused',
-          message: createMessageError(messages.missingType),
-        };
-      }
+    async (
+      subject: CodebookSubject,
+      variableId: string,
+    ): Promise<RequireAnswerOutcome> => {
       const outcome = await write(subject, (authoritativeDocument) => {
         const variables = authoritativeDocument.variables;
         const current =
@@ -519,6 +509,6 @@ function useRequireCodebookAnswer(subject: CodebookSubject | undefined) {
         ? { status: 'required' }
         : { status: 'refused', message: outcome.message };
     },
-    [subject, write],
+    [write],
   );
 }

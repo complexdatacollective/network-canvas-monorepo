@@ -2,10 +2,11 @@ import { act, render, screen, type RenderResult } from '@testing-library/react';
 import { expect, vi } from 'vitest';
 
 import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
+import { withResourceProcedures } from '../../../testing/withResourceProcedures.ts';
 import ResourcePreview from '../ResourcePreview.tsx';
 import { deferred, type Deferred } from './asyncControls.ts';
 import { ResourceContextFrame } from './resourceContext.tsx';
-import { createResourceHost, withResourceProcedures } from './resourceHost.ts';
+import { createResourceHost } from './resourceHost.ts';
 
 export const HOST_UNAVAILABLE = 'the resource host is temporarily unavailable';
 
