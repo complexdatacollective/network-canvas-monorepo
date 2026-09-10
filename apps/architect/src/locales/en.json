@@ -2011,6 +2011,14 @@
     "defaultMessage": "Connections",
     "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
   },
+  "architect.home.demoSubtitle.dyadCensus": {
+    "defaultMessage": "Dyad Census",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.egoForm": {
+    "defaultMessage": "Ego Form",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
   "architect.home.demoSubtitle.information": {
     "defaultMessage": "Information",
     "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
@@ -2025,6 +2033,18 @@
   },
   "architect.home.demoSubtitle.ordinalBin": {
     "defaultMessage": "Ordinal Bin",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.quickAdd": {
+    "defaultMessage": "Quick Add",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.roster": {
+    "defaultMessage": "Roster",
+    "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
+  },
+  "architect.home.demoSubtitle.tieStrength": {
+    "defaultMessage": "Tie Strength",
     "description": "Interface-style subtitle in the illustrative home-page timeline, which is app demo copy rather than an authored protocol."
   },
   "architect.home.home.architectIsTheProtocolDesignerFor": {
@@ -2227,10 +2247,6 @@
     "defaultMessage": "Your protocols are saved only on this device. They are never uploaded to a server.",
     "description": "Visible text in components / Home / LibraryPanel."
   },
-  "architect.home.timelineScript.config.categoricalBin": {
-    "defaultMessage": "Categorical Bin",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
   "architect.home.timelineScript.config.closeOut": {
     "defaultMessage": "Close out",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
@@ -2263,24 +2279,8 @@
     "defaultMessage": "Group membership",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
   },
-  "architect.home.timelineScript.config.information": {
-    "defaultMessage": "Information",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
   "architect.home.timelineScript.config.keyMoments": {
     "defaultMessage": "Key moments",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.nameGenerator": {
-    "defaultMessage": "Name Generator",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.narrative": {
-    "defaultMessage": "Narrative",
-    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
-  },
-  "architect.home.timelineScript.config.ordinalBin": {
-    "defaultMessage": "Ordinal Bin",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
   },
   "architect.home.timelineScript.config.relationshipType": {
@@ -2313,6 +2313,10 @@
   },
   "architect.home.timelineScript.config.welcome": {
     "defaultMessage": "Welcome",
+    "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
+  },
+  "architect.home.timelineScript.config.whoKnowsWhom": {
+    "defaultMessage": "Who knows whom",
     "description": "Presentation label or description in components/Home/timelineScript.ts. Identifiers are not translated."
   },
   "architect.home.transitMap.protocolTimeline": {
