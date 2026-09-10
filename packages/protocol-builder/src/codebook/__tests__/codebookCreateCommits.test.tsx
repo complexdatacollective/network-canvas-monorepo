@@ -9,6 +9,7 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
+import type { ProtocolBuilderClient } from '../../contract/contract.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import { useEntityTypes } from '../../state/hooks.ts';
 import {
@@ -141,6 +142,208 @@ describe('a codebook type created from inside a stage editor', () => {
     expect(list).toHaveTextContent('Place');
   });
 });
+
+describe('two codebook types added one after the other', () => {
+  it('are two types, not the first one answered for twice', async () => {
+    const user = userEvent.setup();
+    const host = createInMemoryHost({
+      sections: sectionsFromProtocol(FIXTURE),
+    });
+    const seededLabel = String(host.store.read(STAGE).document.label);
+
+    render(
+      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+        <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+      </ProtocolBuilder>,
+    );
+
+    const list = screen.getByRole('list', { name: 'Node types' });
+    await waitFor(() => expect(list).not.toBeEmptyDOMElement());
+
+    for (const name of ['Place', 'Event']) {
+      await user.click(
+        screen.getByRole('button', { name: 'Create a new node type' }),
+      );
+      await user.type(
+        await screen.findByRole('textbox', { name: 'Node type name' }),
+        name,
+      );
+      await user.click(screen.getByRole('button', { name: 'Save entity' }));
+      await waitFor(() => expect(list).toHaveTextContent(name));
+    }
+
+    // Each change the researcher asked for is its own write. A key held across
+    // them — one per dialog, one per session — would have the host answer the
+    // second with the section the first created: the editor would report that
+    // Event had been added, and the codebook would hold two Places.
+    expect(nodeTypeNames(host)).toContain('Place');
+    expect(nodeTypeNames(host)).toContain('Event');
+  });
+});
+
+/**
+ * A transport that loses the answer to the first `create` and sends the
+ * identical request again — a socket that drops between the host writing and
+ * the client reading it, which is the one case a client cannot tell from a
+ * write that never happened.
+ *
+ * Proxied rather than spread: a contract client's procedures are reached
+ * through property access rather than held as own properties, so a spread copy
+ * of one has no procedures on it at all.
+ */
+function withTheFirstAnswerLost(
+  host: InMemoryHost,
+): Readonly<{ client: ProtocolBuilderClient; resends: () => number }> {
+  let resends = 0;
+  let lost = false;
+  const create: ProtocolBuilderClient['create'] = async (input, options) => {
+    const answer = await host.client.create(input, options);
+    if (lost) return answer;
+    lost = true;
+    resends += 1;
+    // The first answer never reaches the client, so the very same request
+    // goes out again.
+    return host.client.create(input, options);
+  };
+  return {
+    client: new Proxy(host.client, {
+      get: (target, property) =>
+        property === 'create' ? create : Reflect.get(target, property),
+    }),
+    resends: () => resends,
+  };
+}
+
+describe('a codebook type whose answer is lost on the way back', () => {
+  it('is created once, however many times the request reaches the host', async () => {
+    const user = userEvent.setup();
+    const host = createInMemoryHost({
+      sections: sectionsFromProtocol(FIXTURE),
+    });
+    const lost = withTheFirstAnswerLost(host);
+    const seededLabel = String(host.store.read(STAGE).document.label);
+
+    render(
+      <ProtocolBuilder client={lost.client} protocolId={host.protocolId}>
+        <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+      </ProtocolBuilder>,
+    );
+
+    const list = screen.getByRole('list', { name: 'Node types' });
+    await waitFor(() => expect(list).not.toBeEmptyDOMElement());
+
+    await user.click(
+      screen.getByRole('button', { name: 'Create a new node type' }),
+    );
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'Place',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() => expect(list).toHaveTextContent('Place'));
+    // One Place in the codebook, not two. The request really was made twice —
+    // otherwise this proves nothing about a retry — and the second was
+    // answered with the section the first minted rather than minting another,
+    // which would leave the researcher with a duplicate node type they never
+    // asked for and no way to tell which of the two anything points at.
+    expect(lost.resends()).toBe(1);
+    expect(nodeTypeNames(host).filter((name) => name === 'Place')).toEqual([
+      'Place',
+    ]);
+  });
+
+  it('is created once when the researcher, told it could not be sent, saves again', async () => {
+    const user = userEvent.setup();
+    const host = createInMemoryHost({
+      sections: sectionsFromProtocol(FIXTURE),
+    });
+    const lost = withTheAnswerSwallowed(host);
+    const seededLabel = String(host.store.read(STAGE).document.label);
+
+    render(
+      <ProtocolBuilder client={lost.client} protocolId={host.protocolId}>
+        <StageEditorWithACodebookDialog seededLabel={seededLabel} />
+      </ProtocolBuilder>,
+    );
+
+    const list = screen.getByRole('list', { name: 'Node types' });
+    await waitFor(() => expect(list).not.toBeEmptyDOMElement());
+
+    await user.click(
+      screen.getByRole('button', { name: 'Create a new node type' }),
+    );
+    await user.type(
+      await screen.findByRole('textbox', { name: 'Node type name' }),
+      'Place',
+    );
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+
+    // The dialog is still open, saying the change could not be sent — which is
+    // what the researcher acts on.
+    expect(
+      await screen.findByText(/This change could not be sent/),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save entity' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('textbox', { name: 'Node type name' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    // Both attempts carried one key, so the host answered the second with the
+    // section the first created. Keys minted per attempt leave the codebook
+    // holding two node types called Place while the dialog reports that one
+    // was added, and nothing on screen can tell them apart.
+    expect(lost.keys()).toHaveLength(2);
+    expect(new Set(lost.keys()).size).toBe(1);
+    expect(nodeTypeNames(host).filter((name) => name === 'Place')).toEqual([
+      'Place',
+    ]);
+  });
+});
+
+/**
+ * A host that WRITES and whose answer never arrives, with the channel silent
+ * for as long as it is: the socket that lost the answer is the socket the
+ * revisions ride on, so nothing tells this client that the type is already
+ * there. The researcher presses Save again, which is the retry.
+ *
+ * Proxied rather than spread, for the reason `withTheFirstAnswerLost` is.
+ */
+function withTheAnswerSwallowed(
+  host: InMemoryHost,
+): Readonly<{ client: ProtocolBuilderClient; keys: () => readonly string[] }> {
+  const keys: string[] = [];
+  let swallowed = false;
+  const create: ProtocolBuilderClient['create'] = async (input, options) => {
+    keys.push(input.requestId);
+    const answer = await host.client.create(input, options);
+    if (swallowed) return answer;
+    swallowed = true;
+    throw new Error('the socket dropped before the answer arrived');
+  };
+  // A channel that never delivers anything, cast through `unknown` because
+  // the contract's event iterator is a procedure client rather than a plain
+  // function type: what matters here is only that nothing arrives on it.
+  const watchProtocol = (() =>
+    (async function* (): AsyncGenerator<never> {
+      await new Promise(() => undefined);
+      // Not reached: the promise above never settles. Written so this is a
+      // generator rather than a function that merely returns one.
+      yield undefined as never;
+    })()) as unknown as ProtocolBuilderClient['watchProtocol'];
+  return {
+    keys: () => keys,
+    client: new Proxy(host.client, {
+      get: (target, property) => {
+        if (property === 'create') return create;
+        if (property === 'watchProtocol') return watchProtocol;
+        return Reflect.get(target, property);
+      },
+    }),
+  };
+}
 
 /**
  * The same write, refused: a collaborator is holding the codebook section it
