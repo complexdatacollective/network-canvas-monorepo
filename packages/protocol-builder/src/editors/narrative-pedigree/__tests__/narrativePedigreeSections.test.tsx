@@ -20,6 +20,14 @@ import {
   stageOrder,
 } from './narrativePedigreeFixtures.tsx';
 
+/**
+ * What the attribute picker says when it can offer nothing.
+ *
+ * Reached two ways — a pedigree that records no condition, and one whose
+ * conditions are all mapped already — so the sentence names neither cause.
+ */
+const NOTHING_LEFT_TO_MAP = /There is no attribute for this disease to map/;
+
 const openFixture = (): StageEditorHarness =>
   renderStageEditor({
     stageId: 'narrative-pedigree-1',
@@ -266,11 +274,7 @@ describe('the diseases a narrative pedigree defines', () => {
     receiveSection(harness, SOURCE_STAGE_SECTION, pedigreeRecordingNothing());
 
     const dialog = await addDisease(harness);
-    expect(
-      await dialog.findByText(
-        /The source pedigree does not record who is affected by anything yet/,
-      ),
-    ).toBeInTheDocument();
+    expect(await dialog.findByText(NOTHING_LEFT_TO_MAP)).toBeInTheDocument();
     expect(
       dialog.queryByRole('combobox', { name: 'Affected-status attribute' }),
     ).toBeNull();
@@ -280,16 +284,17 @@ describe('the diseases a narrative pedigree defines', () => {
    * The fixture's own disease already maps the one condition the pedigree
    * records, so a second row is offered nothing at all — which is the
    * exclusion, seen from the only state the fixture can be in.
+   *
+   * The same sentence as the case above, and deliberately: the pedigree here
+   * DOES record a condition, so a sentence saying it records nothing would be
+   * a false account of why this row has nothing to choose from. What the two
+   * states share is the remedy, and that is what the picker says.
    */
   it('never offers an attribute a sibling disease already maps', async () => {
     const harness = openFixture();
 
     const dialog = await addDisease(harness);
-    expect(
-      await dialog.findByText(
-        /The source pedigree does not record who is affected by anything yet/,
-      ),
-    ).toBeInTheDocument();
+    expect(await dialog.findByText(NOTHING_LEFT_TO_MAP)).toBeInTheDocument();
   });
 
   it('keeps a mapping the protocol already holds saveable', async () => {
@@ -470,6 +475,121 @@ describe('a disease the source pedigree stopped recording', () => {
     expect(
       await screen.findByText(/no longer records a yes-or-no answer/),
     ).toBeInTheDocument();
+  });
+});
+
+/**
+ * The three things a collaborator can do to the CODEBOOK that leave a disease
+ * mapping unusable. None of them is the researcher's own doing, and none of
+ * them is a fact about this stage: what an attribute is, and whether it is
+ * there at all, belongs to the codebook. So each is reported on the row and
+ * the save is taken — a draft may be invalid across sections while the
+ * researcher works out which side to repair, and publication is where that is
+ * enforced. The dialog still refuses the same picks, which is the same rule
+ * asked of a decision the researcher is making now.
+ *
+ * All three assertions are made every time, because any two of them hold while
+ * the third breaks: a row marked invalid under an outline that reads
+ * "Finished" is a problem nobody scrolling the section list would find, and a
+ * save refused for one of these traps the researcher in a stage they cannot
+ * leave.
+ */
+describe('a disease whose attribute the codebook can no longer carry', () => {
+  /** The collapsed row for one disease, by the name the researcher gave it. */
+  const diseaseRow = (label: string): HTMLElement => {
+    const row = screen.getByText(label).closest('li');
+    if (row === null) throw new Error(`No row is showing "${label}".`);
+    return row;
+  };
+
+  const diseasesOutline = (harness: StageEditorHarness) =>
+    harness.outline().find((section) => section.title === 'Diseases')?.state;
+
+  it('reports an attribute a collaborator deleted, and saves the stage', async () => {
+    const harness = openFixture();
+    await screen.findByText('Condition X');
+    expect(
+      diseaseRow('Condition X').querySelector('[aria-invalid="true"]'),
+    ).toBeNull();
+
+    harness.receiveCodebookUpdate({
+      node: {
+        family_member: familyMemberCodebook({ remove: 'hasConditionX' }),
+      },
+    });
+
+    expect(
+      await screen.findByText(/no longer in the codebook/),
+    ).toBeInTheDocument();
+    const row = diseaseRow('Condition X');
+    expect(row).toContainElement(screen.getByText(/no longer in the codebook/));
+    expect(row.querySelector('[aria-invalid="true"]')).not.toBeNull();
+    expect(diseasesOutline(harness)).toBe('Has a problem');
+    expect((await harness.submit())?.stageDocument.diseases).toEqual([
+      fixtureDisease(),
+    ]);
+  });
+
+  it('reports an attribute a collaborator retyped, and saves the stage', async () => {
+    const harness = openFixture();
+    await screen.findByText('Condition X');
+
+    harness.receiveCodebookUpdate({
+      node: {
+        family_member: familyMemberCodebook({
+          add: { hasConditionX: { name: 'hasConditionX', type: 'text' } },
+        }),
+      },
+    });
+
+    expect(
+      await screen.findByText(/no longer records a yes-or-no answer/),
+    ).toBeInTheDocument();
+    const row = diseaseRow('Condition X');
+    expect(row).toContainElement(
+      screen.getByText(/no longer records a yes-or-no answer/),
+    );
+    expect(row.querySelector('[aria-invalid="true"]')).not.toBeNull();
+    expect(diseasesOutline(harness)).toBe('Has a problem');
+    expect((await harness.submit())?.stageDocument.diseases).toEqual([
+      fixtureDisease(),
+    ]);
+  });
+
+  /**
+   * A row mapping the pedigree's own participant marker, which the picker
+   * never offered and an import brought in.
+   *
+   * The nomination prompt a collaborator adds is what makes this case about
+   * the interface slot at all: without one, `is_ego` is also an attribute the
+   * pedigree does not record, the list's "marks nobody" rule refuses the save
+   * first, and the claim would hold with the slot rule deleted. So the prompt
+   * arriving is waited for by the badge it clears, and what is left standing
+   * afterwards is the slot rule alone.
+   */
+  it('reports an attribute the pedigree derives for itself, and saves the stage', async () => {
+    const mappedToEgo = { ...fixtureDisease(), variable: 'is_ego' };
+    const harness = renderStageEditor(
+      narrativePedigreeHolding({ diseases: [mappedToEgo] }),
+    );
+    await screen.findByText('Condition X');
+
+    alsoRecording(harness, {}, ['is_ego']);
+    await waitFor(() =>
+      expect(screen.queryByText('Nothing records this attribute')).toBeNull(),
+    );
+
+    const row = diseaseRow('Condition X');
+    expect(row).toContainElement(
+      screen.getByText(
+        /is set by the Family Pedigree interface, which marks the participant/,
+      ),
+    );
+    expect(row.querySelector('[aria-invalid="true"]')).not.toBeNull();
+    expect(diseasesOutline(harness)).toBe('Has a problem');
+    expect((await harness.submit())?.stageDocument.diseases).toEqual([
+      mappedToEgo,
+    ]);
   });
 });
 
