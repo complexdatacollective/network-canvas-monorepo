@@ -609,9 +609,9 @@ export const createFormStore = (
    *    is nothing there, and the document must not put it back — that is a
    *    value they have just deleted reappearing under them.
    * 2. Otherwise the document at the field's own path, with what the fields
-   *    mounted INSIDE it hold written over the top — so a container mounting
-   *    over leaves already on screen shows their edits, and still carries the
-   *    keys beside them that nothing renders.
+   *    INSIDE it hold written over the top — so a container mounting over
+   *    leaves already on screen shows their edits, and still carries the keys
+   *    beside them that nothing renders.
    *
    * Rule 2 is written key by key rather than settled either way whole. A
    * container seeded from only the leaves on screen answers for its whole
@@ -648,49 +648,67 @@ export const createFormStore = (
     if (document === undefined) return undefined;
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     const documented = readObjectPath(document, fieldPath) as FieldValue;
-    return documentWithMountedDescendants(fieldPath, documented);
+    return documentWithFieldsInside(fieldPath, documented);
   };
 
   /**
-   * The document's own reading of a container, with what the fields mounted
-   * inside it hold written over the top.
+   * The document's own reading of a container, with what the fields inside it
+   * hold written over the top.
    *
-   * Written at each mounted field's OWN path rather than merged key by key
-   * all the way down, because a mounted field answers for everything beneath
-   * it — a compound control holding `{min: 1}` where the document holds
-   * `{min: 1, max: 2}` has had its `max` deleted, and merging would put it
-   * back. Shallowest first, the order `getFormValues` replays overlapping
-   * registrations in, so the deeper of two nested fields still wins.
+   * Written at each field's OWN path rather than merged key by key all the way
+   * down, because a field answers for everything beneath it — a compound
+   * control holding `{min: 1}` where the document holds `{min: 1, max: 2}` has
+   * had its `max` deleted, and merging would put it back. Shallowest first,
+   * the order `getFormValues` replays overlapping registrations in, so the
+   * deeper of two nested fields still wins.
+   *
+   * PARKED fields count, and are written before the mounted ones. A value the
+   * form is holding but not showing — a control inside a collapsed group of
+   * advanced options — is still the person's own most recent word on its path,
+   * and the document is by then out of date about it; seeded from the document
+   * alone, a container mounting afterwards would answer for that path with the
+   * value they replaced, and quietly put it back. A field on screen outranks a
+   * parked one, because it is the newer of the two. A field parked holding
+   * nothing was thrown away on purpose, and writing that nothing over the
+   * document is how it stays thrown away.
    *
    * Nothing reachable from the document is written to: the writer copies
    * every container it traverses that it does not already own, and it owns
    * only the wrapper made here — which is also what turns a `documented` of
-   * `undefined` into the container the descendants are written into, so an
-   * absent subtree needs no special case. With no descendants, `documented`
-   * is handed straight back, absence included.
+   * `undefined` into the container the fields are written into, so an absent
+   * subtree needs no special case. With no fields inside, `documented` is
+   * handed straight back, absence included.
    */
-  const documentWithMountedDescendants = (
+  const documentWithFieldsInside = (
     containerPath: ObjectPath,
     documented: FieldValue,
   ): FieldValue => {
-    const descendants: { path: ObjectPath; value: FieldValue }[] = [];
-    fieldRecords.forEach((field, fieldName) => {
-      const path = resolveStoredFieldPath(fieldName, field);
-      if (isDescendantPath(containerPath, path)) {
-        descendants.push({ path, value: field.value });
-      }
-    });
-    if (descendants.length === 0) return documented;
+    const fieldsInside = (
+      records: Map<string, FieldState>,
+    ): { path: ObjectPath; value: FieldValue }[] => {
+      const found: { path: ObjectPath; value: FieldValue }[] = [];
+      records.forEach((field, fieldName) => {
+        const path = resolveStoredFieldPath(fieldName, field);
+        if (isDescendantPath(containerPath, path)) {
+          found.push({ path, value: field.value });
+        }
+      });
+      return found.toSorted((a, b) => a.path.length - b.path.length);
+    };
+
+    const inside = [
+      ...fieldsInside(dormantRecords),
+      ...fieldsInside(fieldRecords),
+    ];
+    if (inside.length === 0) return documented;
 
     const seedRoot: Record<string, FieldValue> = {};
     const writeIntoSeed = createObjectPathWriter(seedRoot);
     writeIntoSeed([seedRootKey], documented);
-    for (const descendant of descendants.toSorted(
-      (a, b) => a.path.length - b.path.length,
-    )) {
+    for (const field of inside) {
       writeIntoSeed(
-        [seedRootKey, ...descendant.path.slice(containerPath.length)],
-        descendant.value,
+        [seedRootKey, ...field.path.slice(containerPath.length)],
+        field.value,
       );
     }
 

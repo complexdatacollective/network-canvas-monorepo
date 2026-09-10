@@ -176,6 +176,57 @@ describe('a form that is handed the document it edits', () => {
     );
   });
 
+  it('keeps an edit made in a field hidden before the container mounted', async () => {
+    const user = userEvent.setup();
+    const onSubmit = submitted();
+
+    function CollapsibleAdvanced() {
+      const [collapsed, setCollapsed] = useState(false);
+      const [revealed, setRevealed] = useState(false);
+      return (
+        <Form
+          onSubmit={onSubmit}
+          initialValues={{ limits: { min: 1, max: 2 } }}
+        >
+          {!collapsed && (
+            <Field name="limits.min" label="Minimum" component={InputField} />
+          )}
+          <button type="button" onClick={() => setCollapsed(true)}>
+            collapse
+          </button>
+          <button type="button" onClick={() => setRevealed(true)}>
+            reveal
+          </button>
+          {revealed && (
+            <Field name="limits" label="Limits" component={ShowsValue} />
+          )}
+          <SubmitButton>Save</SubmitButton>
+        </Form>
+      );
+    }
+
+    render(<CollapsibleAdvanced />);
+    const minimum = screen.getByRole('textbox', { name: 'Minimum' });
+    await user.clear(minimum);
+    await user.type(minimum, '9');
+    await user.click(screen.getByRole('button', { name: 'collapse' }));
+    await user.click(screen.getByRole('button', { name: 'reveal' }));
+
+    // Hiding a field is not a decision about its value: the 9 is still the
+    // most recent word on `limits.min`, and the document's 1 is by then out
+    // of date. A container seeded from the document alone shows the 1 and
+    // saves it, putting back the value the researcher replaced.
+    expect(await screen.findByTestId('shown-value')).toHaveTextContent(
+      '{"min":"9","max":2}',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({
+      limits: { min: '9', max: 2 },
+    });
+  });
+
   it('keeps an edit made inside a container the document does not have yet', async () => {
     const user = userEvent.setup();
     const onSubmit = submitted();
