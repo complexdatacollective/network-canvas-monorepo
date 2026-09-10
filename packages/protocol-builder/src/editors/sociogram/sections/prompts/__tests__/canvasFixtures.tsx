@@ -21,7 +21,7 @@ export const sociogramSections = (
   </>
 );
 
-export const PERSON_SECTION = sectionId({
+const PERSON_SECTION = sectionId({
   kind: 'codebookNode',
   typeId: 'person',
 });
