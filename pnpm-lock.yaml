@@ -335,6 +335,9 @@ importers:
 
   .:
     devDependencies:
+      '@cdktn/hcl2json':
+        specifier: 0.24.0
+        version: 0.24.0
       '@changesets/cli':
         specifier: ^3.0.1
         version: 3.0.1
@@ -4384,6 +4387,9 @@ packages:
     resolution: {integrity: sha512-TQstOBrynvQP7t1s7egvf0RkiTR29EUbBMEhus8bb4uPFROfACOxR0s68uuOS6uTN3bSF2tpsz2NcVnVV/XvzA==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
+
+  '@cdktn/hcl2json@0.24.0':
+    resolution: {integrity: sha512-ECDHCIhXkg6cBVwm2842II5NYzcqaZyz99hqVFIhBEeWCYG2NmfTaCxbdOXWo7nlWI4Dn+lhekgnksEwolH4Yg==}
 
   '@changesets/apply-release-plan@8.0.0':
     resolution: {integrity: sha512-kUd2pbf1w5/AYmBMb0Tt+rkIPCjFJdT0SZMrkOjJT/WV/QbtmvkyB5jkV0oaNPheavprZk+SfUiozUti7TIL2w==}
@@ -19241,6 +19247,10 @@ snapshots:
   '@capawesome/capacitor-file-picker@8.0.2(@capacitor/core@8.5.1)':
     dependencies:
       '@capacitor/core': 8.5.1
+
+  '@cdktn/hcl2json@0.24.0':
+    dependencies:
+      fs-extra: 11.3.6
 
   '@changesets/apply-release-plan@8.0.0':
     dependencies:

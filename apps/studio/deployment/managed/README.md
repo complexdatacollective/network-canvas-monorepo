@@ -370,23 +370,24 @@ configuration archive, and their account-recovery paths.
    free ingest limit. No automatic paid upgrade is allowed, and PostHog remains
    the only application error-reporting path.
 
-## Preliminary subprocessor inventory
+## Generated subprocessor inventory
 
-| Provider                             | Candidate data/role                                                    | Location statement                                                | Status                                                                                                        |
-| ------------------------------------ | ---------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Fly.io                               | Backend/Registry request traffic, process logs, runtime secrets        | IAD, United States                                                | Selected candidate; contracts, support, routing, and live qualification pending                               |
-| Crunchy Data / Crunchy Bridge on AWS | Four logical PostgreSQL databases in one cluster                       | AWS `us-east-1`                                                   | Selected candidate; tuning, PITR latest point, stopped-WAL monitoring, capacity, and restore evidence pending |
-| Cloudflare                           | CDN/DNS and four primary R2 asset buckets                              | R2 `us` jurisdiction; edge processing must be separately assessed | Selected candidate; credentials, version inventory, retention, routing, and DPA evidence pending              |
-| Amazon Web Services                  | Two KMS application-root wrapping keys and ciphertext context metadata | `us-east-1`                                                       | Encoded; policy review, principal custody, billing, and recovery drills pending                               |
-| Backblaze                            | Independently encrypted database/object recovery archives              | Independently owned US-region account required                    | Selected candidate; region/account custody, Object Lock, egress, restore, and deletion evidence pending       |
-| New Relic                            | Operational logs, metrics, queries, and operator alerts                | US account/region handling requires contractual verification      | Cost candidate; 30-day retention, hard cap, alert routing, and DPA evidence pending                           |
-| Postmark                             | Transactional Registry/Studio mail                                     | Existing candidate; residency and contracts pending               | No resource in this module                                                                                    |
-| PostHog relay                        | Existing redacted telemetry and error reporting                        | Existing behavior; downstream terms remain separately documented  | Existing integration, not replaced by New Relic                                                               |
-
-This inventory is preliminary input to the #1260 subprocessor list and HECVAT
-Lite handoff. Provider legal names, affiliates, data categories, residency,
-retention/deletion, security reports, breach terms, support, and account recovery
-must be confirmed before publication.
+The machine-readable estate sources are `subprocessor-estate.json` and
+`estate-provider-contract.json`. After reviewing an infrastructure change,
+update the affected input hashes in `estate-config-manifest.json`, then run
+`node generate-subprocessor-inventory.mjs`. The generator parses both HCL and
+Terraform JSON, checks provider/resource mappings and the selected US storage
+locations, and formats [`subprocessor-inventory.json`](./subprocessor-inventory.json),
+[`SUBPROCESSORS.md`](./SUBPROCESSORS.md) and `estate-provider-contract.tf.json`.
+Generated provider declarations are outputs, not manually edited manifest inputs.
+Every supported resource and data block is counted by type and name; extra blocks,
+provider aliases and uninspected Terraform modules are refused. Adding support
+requires an explicit extension of the inventory and residency checks, even for an
+already listed provider. The managed-estate test rejects stale
+outputs and missing required providers, including transactional mail. This inventory
+is input to the #1260 subprocessor list and HECVAT Lite handoff. Provider legal
+entities, affiliates, residency, retention/deletion, security reports, breach
+terms, support, and account recovery require separate publication evidence.
 
 ## Offline review
 
