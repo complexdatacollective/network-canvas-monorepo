@@ -39,20 +39,6 @@ type VariableOption = {
   options?: VariableOptions;
 };
 
-type NodeTypes = Record<string, NodeDefinition>;
-type EdgeTypes = Record<string, EdgeDefinition>;
-
-// Basic selectors
-export const getNodeTypes = createSelector(
-  [getCodebook],
-  (codebook): NodeTypes => get(codebook, 'node', {}) as NodeTypes,
-);
-
-export const getEdgeTypes = createSelector(
-  [getCodebook],
-  (codebook): EdgeTypes => get(codebook, 'edge', {}) as EdgeTypes,
-);
-
 // Memoized selector for getting a specific type
 const getTypeSelector = createSelector(
   [getCodebook, (_state: RootState, subject: Subject) => subject],
@@ -84,7 +70,7 @@ export const getType = (state: RootState, subject: Subject) =>
 const EMPTY_VARIABLES: Variables = Object.freeze({});
 
 // Memoized selector for getting variables for a subject
-export const getVariablesForSubjectSelector = createSelector(
+const getVariablesForSubjectSelector = createSelector(
   [getCodebook, (_state: RootState, subject: Subject) => subject],
   (codebook, subject): Variables => {
     if (!subject || !codebook) return EMPTY_VARIABLES;
@@ -282,7 +268,7 @@ export const makeGetVariable = (uuid: string) => (state: RootState) => {
 // identity across unrelated store changes, and consumers' `useSelector` /
 // `shallowEqual` guards actually hold. Taking whole state as an input here
 // would mint a fresh array per dispatch and defeat every such guard.
-export const getVariableOptionsForSubjectSelector = createSelector(
+const getVariableOptionsForSubjectSelector = createSelector(
   [getIsUsed, getVariablesForSubjectSelector],
   (isUsed, variables): VariableOption[] =>
     asOptions(variables).map((option) => ({

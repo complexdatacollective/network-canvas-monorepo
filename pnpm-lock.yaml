@@ -482,9 +482,6 @@ importers:
       luxon:
         specifier: ^3.7.2
         version: 3.7.2
-      mapbox-gl:
-        specifier: ^3.25.0
-        version: 3.25.0
       motion:
         specifier: 'catalog:'
         version: 13.1.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

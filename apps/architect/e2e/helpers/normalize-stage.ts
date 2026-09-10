@@ -4,8 +4,8 @@ import { format } from 'oxfmt';
 // read back via `readStageJson` (Task 3) can be snapshotted deterministically
 // across runs. Ids the app generates at runtime are real `uuid` v4 strings
 // (`import { v4 as uuid } from 'uuid'` — ducks/modules/protocol/codebook.ts
-// for variable/type ids, Form/DialogArrayField.tsx for prompt/field array
-// item ids), so a plain UUID-shaped regex genuinely covers them.
+// for variable/type ids, fresco-ui's `ArrayField` for prompt/field array item
+// ids), so a plain UUID-shaped regex genuinely covers them.
 //
 // Every key literally named `id` is *also* remapped unconditionally (not just
 // when its value happens to be UUID-shaped): a freshly-created stage's own

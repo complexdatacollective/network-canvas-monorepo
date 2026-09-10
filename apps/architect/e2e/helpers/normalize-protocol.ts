@@ -83,11 +83,11 @@ const pathMatches =
 //    edge-color-seq-1,6) left by types deleted and recreated during original
 //    authoring, so a from-scratch build necessarily produces the dense
 //    sequence. Prompt-level `color` (OrdinalBin) is NOT stripped — the
-//    DialogArrayField item template's `ord-color-seq-1` matches canonical and
+//    array field item template's `ord-color-seq-1` matches canonical and
 //    stays strictly compared.
-// 4. `form.fields[*].id` — DialogArrayField's `createItem` injects `id:
-//    uuid()` into every array item and `normalizeField` deliberately keeps
-//    it; the canonical form fields predate that and have none.
+// 4. `form.fields[*].id` — fresco-ui's `ArrayField` gives every row a managed
+//    id and `normalizeField` deliberately keeps it; the canonical form fields
+//    predate that and have none.
 // 5. `background.skewedTowardCenter: false` ≡ absent — the architect `Toggle`
 //    mount effect force-writes `false` for every mounted toggle ("Persist the
 //    explicit false default…", Toggle.tsx) and prune keeps `false`; the
@@ -480,9 +480,9 @@ export function assertBuiltProtocolInvariants(built: unknown): void {
   }
 
   // --- stages[*].form.fields[*].id (deleted: canonical predates them)
-  // DialogArrayField mints these so ordered-list keying survives reorder and
-  // delete. PR 2 rewrites that component, so this is precisely the regression
-  // this oracle exists to catch.
+  // fresco-ui's `ArrayField` mints these so row keying survives reorder and
+  // delete, and the ids reach the saved protocol; the canonical fixture
+  // predates them.
   const stages = Array.isArray(built.stages) ? built.stages : [];
   const fieldIds = new Set<string>();
   for (const [index, stage] of stages.entries()) {

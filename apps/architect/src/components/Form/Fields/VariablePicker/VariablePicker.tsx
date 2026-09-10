@@ -111,7 +111,7 @@ export const VariablePickerControl = ({
    * The spotlight is part of this field's interaction, but its popup is
    * portalled outside the field's DOM subtree. Without this boundary check,
    * fresco-ui's container-scoped blur validation treats the popup's autofocus
-   * as leaving the field. A dirty AssignAttributes array then validates and
+   * as leaving the field. A dirty array field around it then validates and
    * re-renders underneath the popup before its first option click completes.
    */
   const handleBlur = useCallback(

@@ -5,7 +5,7 @@ import {
   type ComponentType,
   VARIABLE_TYPE_COMPONENTS,
 } from '@codaco/protocol-validation';
-import type { ConfigMessage, FormattedConfig } from '~/i18n/formatConfig';
+import type { ConfigMessage } from '~/i18n/formatConfig';
 
 import BooleanVariable from '../images/variables/boolean-variable.svg';
 import CategoricalVariable from '../images/variables/categorical-variable.svg';
@@ -477,26 +477,9 @@ const VARIABLE_TYPES_COMPONENTS: [string, ComponentConfig[], ConfigMessage][] =
 const VARIABLE_TYPES_WITH_OPTIONS = ['ordinal', 'categorical'];
 
 // Internal config - not exported
-const VARIABLE_TYPES_WITH_PARAMETERS = ['scalar', 'datetime'];
-
 export const VARIABLE_TYPES_WITH_COMPONENTS = VARIABLE_TYPES_COMPONENTS.map(
   ([type]) => type,
 );
-
-export const INPUT_OPTIONS = Object.values(COMPONENTS);
-
-/**
- * The input controls a researcher can choose from, grouped by the variable
- * type each group produces.
- *
- * A real group, not a flat list punctuated by value-less "heading" options:
- * seven headings all carrying the same absent value are seven duplicate React
- * keys, and a screen reader reads each of them as one more thing to pick.
- */
-export type InputControlGroup = {
-  label: string;
-  options: FormattedConfig<ComponentConfig>[];
-};
 
 const formattedInputOptions: {
   label: ConfigMessage;
@@ -524,17 +507,6 @@ const isOrdinalOrCategoricalType = (
 ): variableType is string =>
   typeof variableType === 'string' &&
   VARIABLE_TYPES_WITH_OPTIONS.includes(variableType);
-
-const isVariableTypeWithParameters = (
-  variableType: string | null | undefined,
-): variableType is string =>
-  typeof variableType === 'string' &&
-  VARIABLE_TYPES_WITH_PARAMETERS.includes(variableType);
-
-const isBooleanWithOptions = (
-  component: string | null | undefined,
-): component is string =>
-  typeof component === 'string' && component === COMPONENTS.BooleanChoice.value;
 
 const findByType =
   (type: string) =>
@@ -577,7 +549,5 @@ export {
   getComponentsForType,
   getIconForType,
   getTypeForComponent,
-  isBooleanWithOptions,
   isOrdinalOrCategoricalType,
-  isVariableTypeWithParameters,
 };

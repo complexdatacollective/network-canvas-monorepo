@@ -24,8 +24,8 @@ const categoricalOptions = [
 // excluded from the *other* class's picker, and one wholly unused `cleanVar`
 // confirming the pickers aren't just returning an empty list. Each writer
 // gets its own stage (rather than sharing one AlterForm/CategoricalBin stage
-// with two fields/prompts) so every DialogArrayField section holds exactly
-// one row — no need to disambiguate rows by index or preview text.
+// with two fields/prompts) so every array field section holds exactly one row
+// — no need to disambiguate rows by index or preview text.
 // Variable "name"s (not just their codebook keys) must satisfy
 // VariableNameSchema's `/^[a-zA-Z0-9._:-]+$/` — no spaces — since that field
 // is what the alert/picker render as the visible label.
