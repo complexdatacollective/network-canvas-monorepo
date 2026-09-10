@@ -17,31 +17,30 @@ test('creates a valid AlterForm stage from scratch', async ({
   await editor.createNew('AlterForm');
   await editor.setStageName('About Each Person');
 
-  // AlterForm's subject is a node type (sections/NodeType.tsx's
-  // `FilteredNodeType`, `Section title="Node setup"`), and Form.tsx's
-  // `withDisabledSubjectRequired` disables Form configuration
-  // (`disabled: true` whenever `interfaceType !== 'EgoForm' && !type`) until
-  // `subject.type` is set — Section.tsx doesn't even render `children` while
-  // `disabled`, so the "Create new" button genuinely isn't in the DOM until
-  // this runs first.
+  // AlterForm's subject is a node type (`@codaco/protocol-builder`'s
+  // `subjectPicker({ entity: 'node', filter: true })`, the "Node type"
+  // section), and the "Form fields" section stays disabled until one is
+  // chosen: `FormFieldsSection` reads the subject through `useStageSubject`
+  // and, with no type to collect into, renders itself disabled — its add
+  // button is present but not clickable, and its description reads "Choose
+  // what this stage works with before writing its form." So this runs first.
   await selectOrCreateNodeType(architectPage, 'person');
 
   await editor
     .field('introductionPanel.title')
     .getByRole('textbox')
     .fill('About Each Person');
-  // See ego-form.spec.ts: the accessible name is the literal string
-  // IntroductionPanel.tsx passes as `label`, "Introduction text" — not the
-  // field's name.
+  // See ego-form.spec.ts: "Introduction text" is the label
+  // `IntroductionSection` gives the field, not the field's own name.
   await editor.fillRichText(
     'Introduction text',
     'Tell us a bit about each person you know.',
   );
 
-  await addFormField(editor.section('Form configuration'), {
+  await addFormField(editor.section('Form fields'), {
     variableName: 'age',
     promptText: 'What is your name?',
-    inputControl: 'Text Input',
+    inputControl: 'Text input',
   });
 
   await editor.expectNoIssues();

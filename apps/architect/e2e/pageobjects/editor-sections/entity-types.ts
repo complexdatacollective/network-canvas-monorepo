@@ -61,11 +61,14 @@ async function selectOrCreateEntityType(
       .fill(opts.icon);
   }
   await dialog.getByRole('button', { name: 'Save entity' }).click();
+  // Answered BEFORE the dialog is waited out: a type created here is chosen
+  // for the stage as it is created, so the stage's own question about what
+  // that choice removes opens over this dialog and holds it open.
+  await confirmSubjectChange(page, entityType);
   // Waited out on the DIALOG rather than on the submit control: the editor
   // renames that control while the codebook write is in flight, so a wait on
   // its name would come back before the type existed.
   await dialog.waitFor({ state: 'detached' });
-  await confirmSubjectChange(page, entityType);
 }
 
 /**

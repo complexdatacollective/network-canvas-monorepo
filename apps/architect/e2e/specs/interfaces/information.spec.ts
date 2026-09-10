@@ -22,8 +22,9 @@ test('creates a valid Information stage from scratch', async ({
 
   const pageContent = editor.section('Page content');
 
-  // Page heading now belongs to the same Section as the content items. It is
-  // UI-required even though the schema marks `title` optional.
+  // The page heading and the blocks are one section (protocol-builder's
+  // `sections/page-content/PageContentSection.tsx`, the `page` variant). The
+  // heading is UI-required even though the schema marks `title` optional.
   await pageContent
     .locator('[data-field-name="title"]')
     .getByRole('textbox')
@@ -32,12 +33,12 @@ test('creates a valid Information stage from scratch', async ({
   // The add button names what it adds, so it needs no section scoping to be
   // unambiguous — the whole point of #1391's rename.
   await pageContent
-    .getByRole('button', { name: 'Create new content item', exact: true })
+    .getByRole('button', { name: 'Create new content block', exact: true })
     .click();
 
-  // The item dialog is a top-level Dialog (not nested under the Items
-  // section's DOM), so its controls are queried on the page directly —
-  // matching timeline.spec.ts's already-verified "insert stage" flow.
+  // The block dialog is a page-level portal (protocol-builder's
+  // `form/rowDialog.tsx` -> `DialogForm` -> fresco-ui `Dialog`), not nested
+  // under the section's DOM, so its controls are queried on the page directly.
   await architectPage.getByRole('radio', { name: 'Text' }).click();
   await editor.fillRichText('Content', 'Thanks for taking part.');
   // `exact` avoids matching the RichTextEditor toolbar's "Add link" button
@@ -105,12 +106,16 @@ const openItemDialog = async (
   page: Page,
   position: number,
 ) => {
+  // Each row of the blocks list names its own affordances after the list's
+  // noun ("block" — `pageItemNoun` in PageContentSection.tsx), so the row
+  // buttons read "Edit block" / "Remove block" and the dialog they open is
+  // titled for the row that already exists.
   await editor
     .field('items')
-    .getByRole('button', { name: 'Edit item' })
+    .getByRole('button', { name: 'Edit block', exact: true })
     .nth(position)
     .click();
-  const dialog = page.getByRole('dialog', { name: 'Edit Item' });
+  const dialog = page.getByRole('dialog', { name: 'Edit content block' });
   await expect(dialog).toBeVisible();
   return dialog;
 };
@@ -141,9 +146,12 @@ test('never turns an image item into its own asset id as participant text', asyn
 
   // The save is REFUSED, visibly: it used to be swallowed with no error, no
   // invalid control and focus on <body> — and that silent attempt is what
-  // wrote the asset id back into the form.
+  // wrote the asset id back into the form. The refusal is the block editor's
+  // own sentence (`contentBlock.textRequired`), not the generic one.
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(dialog.getByText('This field is required.')).toBeVisible();
+  await expect(
+    dialog.getByText('Write the text this block shows.'),
+  ).toBeVisible();
   await expect(contentEditor).toHaveAttribute('aria-invalid', 'true');
   await expect(contentEditor).toBeFocused();
 
@@ -183,8 +191,11 @@ test('keeps an unsaved text draft across a round trip through Image', async ({
   await editor.fillRichText('Content', 'Original text body plus unsaved work');
 
   await dialog.getByRole('radio', { name: 'Image', exact: true }).click();
+  // The resource picker names the kind it is choosing
+  // (`resourceKinds.imageSelectAction`), so an image block's picker is the
+  // only control that could be reading the text draft.
   await expect(
-    dialog.getByRole('button', { name: 'Select resource' }),
+    dialog.getByRole('button', { name: 'Select an image', exact: true }),
   ).toBeVisible();
 
   await dialog.getByRole('radio', { name: 'Text', exact: true }).click();
@@ -193,13 +204,15 @@ test('keeps an unsaved text draft across a round trip through Image', async ({
   );
 });
 
-// The per-type drafts are session state, and the row is committed by
-// `DialogArrayField`'s `mergeEditedRow`, which walks the form store's DORMANT
-// values through lodash-style `set`/`unset` before `normalizeType` runs. That
-// walk is why the slots carry flat names: a `content.text`-style name would be
-// read as a path and replace the committed `content` STRING with an object.
-// Only a real save exercises it, so this saves after leaving a diverged text
-// draft behind.
+// The per-type drafts are session state: the block editor gives each content
+// type a slot of its own (`CONTENT_BLOCK_SLOTS` in
+// `sections/content-blocks/contentBlockTypes.ts`), and the row dialog commits
+// the row by writing the form store's DORMANT values through a lodash-style
+// `set` before `collapseContentBlock` strips every slot and promotes the
+// chosen type's one into `content`. That walk is why the slots carry flat
+// names: a `content.text`-style name would be read as a path and replace the
+// committed `content` STRING with an object. Only a real save exercises it, so
+// this saves after leaving a diverged text draft behind.
 test('drops a text draft left behind by a switch to Image', async ({
   architectPage,
   seed,
@@ -213,20 +226,25 @@ test('drops a text draft left behind by a switch to Image', async ({
   const editor = new StageEditor(architectPage);
   const dialog = await openItemDialog(editor, architectPage, 1);
   // Diverge the text slot from the value it registered with, so its dormant
-  // entry is a real edit that `mergeEditedRow` writes onto the row.
+  // entry is a real edit the row merge writes onto the row.
   await editor.fillRichText('Content', 'A text draft that must not be saved');
 
   await dialog.getByRole('radio', { name: 'Image', exact: true }).click();
-  await dialog.getByRole('button', { name: 'Select resource' }).click();
-  await expect(
-    architectPage.getByRole('dialog', { name: 'Resource Browser' }),
-  ).toBeVisible();
-  await architectPage
-    .getByRole('dialog', { name: 'Resource Browser' })
-    .getByText('photo.svg')
+  await dialog
+    .getByRole('button', { name: 'Select an image', exact: true })
+    .click();
+  // The browser is titled for the kind the field accepts
+  // (`resourceKinds.imageBrowserTitle`), and each stored resource is a button
+  // named for its own file — selecting one closes the browser.
+  const resourceBrowser = architectPage.getByRole('dialog', {
+    name: 'Choose an image',
+  });
+  await expect(resourceBrowser).toBeVisible();
+  await resourceBrowser
+    .getByRole('button', { name: 'photo.svg', exact: true })
     .click();
   await expect(
-    dialog.getByRole('button', { name: 'Update resource' }),
+    dialog.getByRole('button', { name: 'Change the image', exact: true }),
   ).toBeVisible();
 
   await dialog.getByRole('button', { name: 'Save', exact: true }).click();

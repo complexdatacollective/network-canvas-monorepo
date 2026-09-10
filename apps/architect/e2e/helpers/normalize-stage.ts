@@ -23,6 +23,34 @@ import { format } from 'oxfmt';
 const UUID_RE =
   /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
+/**
+ * Switches whose absence and whose stored `false` mean the same thing.
+ *
+ * Architect's own editors force-wrote `false` for every toggle they mounted,
+ * so a stage saved through them carried a decision the researcher never made;
+ * the canonical sample protocol, and every stage saved by the protocol-builder
+ * editors, simply lack the key. `helpers/normalize-protocol.ts` already reads
+ * the first two of these that way (its rules 5 and 6) for exactly the same
+ * reason, and this is the same statement about the same schema.
+ *
+ * Only `false` is dropped. A switch stored as `true` is a decision, and still
+ * compares strictly.
+ */
+const ABSENT_WHEN_FALSE: readonly (readonly string[])[] = [
+  ['background', 'skewedTowardCenter'],
+  ['behaviours', 'automaticLayout'],
+  ['behaviours', 'freeDraw'],
+  ['mapOptions', 'showTransit'],
+  ['mapOptions', 'allowSearch'],
+];
+
+const isAbsentWhenFalse = (path: readonly string[]): boolean =>
+  ABSENT_WHEN_FALSE.some(
+    (candidate) =>
+      candidate.length === path.length &&
+      candidate.every((part, index) => part === path[index]),
+  );
+
 // Not exported: every consumer wants the snapshot-ready string produced by
 // `stageSnapshotJson` below, not this intermediate object — see its comment.
 function normalizeStage(input: unknown): unknown {
@@ -38,19 +66,49 @@ function normalizeStage(input: unknown): unknown {
     return placeholder;
   };
 
-  const walk = (value: unknown): unknown => {
+  const walk = (value: unknown, path: readonly string[] = []): unknown => {
     if (typeof value === 'string') {
       return value.replace(UUID_RE, (match) => mapId(match));
     }
     if (Array.isArray(value)) {
-      return value.map(walk);
+      // Array indices are not part of a path: the rules above are about a
+      // named switch wherever it is stored, and a prompt's index is not
+      // something a rule should have to spell out.
+      return value.map((item) => walk(item, path));
     }
     if (value && typeof value === 'object') {
       const out: Record<string, unknown> = {};
-      for (const [key, val] of Object.entries(value)) {
-        out[key] =
-          key === 'id' && typeof val === 'string' ? mapId(val) : walk(val);
+      let dropped = 0;
+      // Keys in one order, chosen here rather than taken from the editor.
+      // A stage document is a JSON object, whose keys carry no order of their
+      // own — nothing reads a protocol by key position — so the order a
+      // particular form happened to assemble them in is incidental to the
+      // saved stage in exactly the way a generated id is. Left alone, these
+      // snapshots would fail whenever a section was written in a different
+      // sequence, which is a fact about the editor and not about what it
+      // saved.
+      for (const key of Object.keys(value).toSorted()) {
+        const val = (value as Record<string, unknown>)[key];
+        const here = [...path, key];
+        if (val === false && isAbsentWhenFalse(here)) {
+          dropped += 1;
+          continue;
+        }
+        const written =
+          key === 'id' && typeof val === 'string'
+            ? mapId(val)
+            : walk(val, here);
+        if (written === undefined) {
+          dropped += 1;
+          continue;
+        }
+        out[key] = written;
       }
+      // A container left holding nothing BY that rule is the rule's own
+      // consequence — a Sociogram whose only behaviour was its layout mode is
+      // a stage with no behaviours at all — so it goes with the key. A
+      // container that was already empty is content, and stays.
+      if (dropped > 0 && Object.keys(out).length === 0) return undefined;
       return out;
     }
     return value;

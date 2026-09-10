@@ -14,11 +14,19 @@ import { type Locator, type Page } from '@playwright/test';
 // the row that creates a new variable reads `Create new variable called
 // "${filterTerm}".`.
 //
+// NOTE: the shared `@codaco/protocol-builder` editors ship no spotlight at
+// all — the string "spotlight" appears nowhere in that package. Each picker
+// now asks in its own way: a form field chooses its attribute from a native
+// `<select>` carrying a "Create a new attribute…" option (driven by
+// `addFormField` in forms.ts, which no longer calls this), and quick add has
+// a name box of its own. The callers still reaching for this helper are
+// pointed at a control Architect no longer renders, and each needs re-pointing
+// against its own section's page evidence rather than by a shared rename.
+//
 // This is the *simple* creation path: VariablePickerControl's
 // `handleCreateOption` hands the typed name straight to the caller's
 // `onCreateOption`, which for most pickers (e.g. NodeConfiguration's
-// quick-add/layout variable, Form/FieldFields.tsx's `variable` field used by
-// `addFormField` in forms.ts) either creates a plain variable directly or
+// quick-add/layout variable) either creates a plain variable directly or
 // just stashes the name as a placeholder — no further dialog opens here. For
 // flows whose `onCreateOption` instead opens NewVariableWindow (ordinal /
 // categorical pickers such as "Group hull variable" or the bin/tie-strength

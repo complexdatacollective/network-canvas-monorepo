@@ -1,22 +1,22 @@
 {
-  "label": "How Strong Is This Tie?",
   "id": "id-1",
-  "type": "TieStrengthCensus",
-  "subject": {
-    "entity": "node",
-    "type": "id-2"
-  },
   "introductionPanel": {
-    "title": "How Strong Is This Tie?",
-    "text": "We would like to ask you how close you are with the people you know."
+    "text": "We would like to ask you how close you are with the people you know.",
+    "title": "How Strong Is This Tie?"
   },
+  "label": "How Strong Is This Tie?",
   "prompts": [
     {
+      "createEdge": "id-2",
       "edgeVariable": "id-3",
       "id": "id-4",
-      "text": "How close are you?",
-      "createEdge": "id-5",
-      "negativeLabel": "We are not close"
+      "negativeLabel": "We are not close",
+      "text": "How close are you?"
     }
-  ]
+  ],
+  "subject": {
+    "entity": "node",
+    "type": "id-5"
+  },
+  "type": "TieStrengthCensus"
 }
