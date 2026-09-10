@@ -7,10 +7,10 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import { v4 as uuid } from 'uuid';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { StageType } from '@codaco/protocol-validation';
+import { contentHash } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 
 import { blockedHolders } from './codebook/writes.ts';
@@ -31,6 +31,7 @@ import {
   type SectionAccess,
   type SubmitResult,
 } from './state/hooks.ts';
+import { useKeptRequestId } from './state/requestKey.ts';
 
 /**
  * Which stage an editor is open on: one the protocol already holds, or one it
@@ -221,6 +222,7 @@ function CreatingStage({
   const formId = useFormId(requestedFormId);
   const { client, protocolId } = useProtocolBuilderContext();
   const staged = useStagedResources();
+  const addKey = useKeptRequestId();
   const { stageType, position } = target;
   const extraFields = target.fields;
 
@@ -241,22 +243,26 @@ function CreatingStage({
       // with. The section, its place in the stage order and the manifest
       // entries are one revision.
       const promotion = staged.promotion();
+      const document = stageDocument(identity, fields);
+      // One id for this attempt to add the stage, so a transport that
+      // re-sends the request after a lost answer — or a researcher pressing
+      // Save again because they were told the add failed — is told which
+      // section the first attempt made rather than adding a second copy of
+      // the stage the client would never learn about. Asked for by the
+      // document, so an add the host REFUSED, which the researcher fixes and
+      // asks for again, is a different intent and gets an id of its own.
+      const requestId = addKey.forAsk(contentHash(document));
       const { data, definedError, isSuccess } = await safe(
         client.create({
           protocolId,
-          // One id for this attempt to add the stage, so a transport that
-          // re-sends the request after a lost answer is told which section the
-          // first attempt made rather than adding a second copy of the stage
-          // the client would never learn about. Minted per save rather than
-          // per edit: an add the host refused is one the researcher fixes and
-          // asks for again, and that is a different intent.
-          requestId: uuid(),
+          requestId,
           kind: 'stage',
-          document: stageDocument(identity, fields),
+          document,
           position,
           ...(promotion === undefined ? {} : { promote: promotion }),
         }),
       );
+      if (isSuccess || definedError !== null) addKey.settled(requestId);
       if (!isSuccess) {
         // Every one of these left the protocol exactly as it was, so the draft
         // stays: the stage was not added, and adding it again once the reason
@@ -282,7 +288,7 @@ function CreatingStage({
       onSaved?.(data.sectionId);
       return { status: 'saved', sectionId: data.sectionId };
     },
-    [client, identity, onSaved, position, protocolId, staged],
+    [addKey, client, identity, onSaved, position, protocolId, staged],
   );
 
   const edit = useMemo<StageEdit>(

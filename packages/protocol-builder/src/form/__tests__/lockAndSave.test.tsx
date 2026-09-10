@@ -251,6 +251,41 @@ describe('a save whose answer is lost on the way back', () => {
     expect(order.length).toBe(before.length + 1);
     expect(order).toContain(written?.sectionId.split(':').at(-1));
   });
+
+  it('adds it once when the researcher, told the add failed, saves again', async () => {
+    const before = fixtureStageIds();
+    const lost = withTheFirstAnswerSwallowed();
+    const harness = renderStageEditor({
+      create: {
+        type: 'Information',
+        position: 1,
+        fields: loadFixtureStage(STAGE_ID).fields,
+      },
+      sections: nameSection,
+      client: lost.client,
+    });
+
+    const field = screen.getByRole('textbox', { name: 'Stage name' });
+    await harness.user.clear(field);
+    await harness.user.type(field, 'Added through a dropped socket');
+
+    // The host wrote; the researcher is told nothing was added and that they
+    // should try again, and the draft is still on screen for them to do it.
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(/This stage could not be added/),
+    ).toBeInTheDocument();
+
+    expect(await harness.submit()).not.toBeNull();
+
+    // The same key both times, so the second attempt was answered with the
+    // section the first one minted. A key minted per attempt leaves the
+    // protocol holding the stage twice, and the editor is told about only one
+    // of them.
+    expect(new Set(lost.keys()).size).toBe(1);
+    expect(lost.keys()).toHaveLength(2);
+    expect(orderOf(harness.protocolSections()).length).toBe(before.length + 1);
+  });
 });
 
 describe('a save the protocol refuses because the lock has gone', () => {
@@ -682,4 +717,40 @@ function orderOf(sections: Readonly<Record<string, unknown>>): string[] {
   return Array.isArray(stages)
     ? stages.filter((entry): entry is string => typeof entry === 'string')
     : [];
+}
+
+/**
+ * A host that WRITES and whose answer never arrives — the socket dropped
+ * between the write and the reply, and the transport rejected the call in
+ * flight rather than resending it.
+ *
+ * What the researcher then does is the retry: they are told the add failed and
+ * they press Save again, over a socket that has come back. Only the request id
+ * tells the host that this is the same intent as the write it already made.
+ */
+function withTheFirstAnswerSwallowed(): Readonly<{
+  client: (host: InMemoryHost) => ProtocolBuilderClient;
+  keys: () => readonly string[];
+}> {
+  const keys: string[] = [];
+  let swallowed = false;
+  return {
+    keys: () => keys,
+    client: (host) => {
+      const create = async (
+        ...args: Parameters<InMemoryClient['create']>
+      ): Promise<Awaited<ReturnType<InMemoryClient['create']>>> => {
+        const [input] = args;
+        keys.push(input.requestId);
+        const answer = await host.client.create(...args);
+        if (swallowed) return answer;
+        swallowed = true;
+        throw new Error('the socket dropped before the answer arrived');
+      };
+      return new Proxy(host.client, {
+        get: (target, property) =>
+          property === 'create' ? create : Reflect.get(target, property),
+      });
+    },
+  };
 }

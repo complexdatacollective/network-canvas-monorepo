@@ -6,7 +6,6 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { v4 as uuid } from 'uuid';
 import type { z } from 'zod';
 
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
@@ -30,6 +29,7 @@ import {
   useProtocolBuilderContext,
   type LockState,
 } from './context.ts';
+import { useKeptRequestId } from './requestKey.ts';
 
 export type SectionAtRevision = Readonly<{
   document: SectionDoc;
@@ -198,19 +198,13 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
   // editor still wants.
   const wanted = useRef<ProtocolSectionId | undefined>(undefined);
   const released = useRef(false);
-  // The save the current request id was minted for, kept while its answer is
-  // uncertain. A transport that drops after the host committed leaves this
-  // client unable to tell a write that happened from one that did not, and an
-  // oRPC link rejects the calls that were in flight rather than resending
-  // them: only a retry carrying the same id makes the host replay what the
-  // first attempt wrote instead of writing again — or, for a promotion,
-  // refusing it because that attempt already consumed the staged files.
-  //
-  // Keyed by the document, so a save of NEW work is never answered with the
-  // revision the earlier one wrote.
-  const pendingSave = useRef<
-    Readonly<{ requestId: string; document: string }> | undefined
-  >(undefined);
+  // The id this editor's save carries while its answer is uncertain — see
+  // `useKeptRequestId`. Asked for by the document, so a save of NEW work is
+  // never answered with the revision the earlier one wrote, and a retry after
+  // a dropped socket makes the host replay what the first attempt wrote
+  // instead of writing again — or, for a promotion, refusing it because that
+  // attempt already consumed the staged files.
+  const saveKey = useKeptRequestId();
   const section = useSection(id);
   const { data: lock } = useQuery<LockState>({
     queryKey: lockQueryKey(protocolId, id),
@@ -228,7 +222,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
     const mine = (acquisition.current += 1);
     wanted.current = id;
     // The save an id was kept for was of the section this editor is leaving.
-    pendingSave.current = undefined;
+    saveKey.forget();
     // Nothing has been answered for this section yet, whatever the last one
     // this editor was pointed at said.
     setAccess('pending');
@@ -299,7 +293,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       released.current = true;
       void safe(client.releaseLock({ protocolId, sectionId: id }));
     };
-  }, [client, protocolId, id, queryClient, utils]);
+  }, [client, protocolId, id, queryClient, saveKey, utils]);
 
   const submit = useCallback(
     async (
@@ -314,12 +308,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       // written again. Per save rather than per edit: the next save is a
       // different document, and an id shared with the last one would be
       // answered with the revision that one wrote.
-      const fingerprint = contentHash(document);
-      const requestId =
-        pendingSave.current?.document === fingerprint
-          ? pendingSave.current.requestId
-          : uuid();
-      pendingSave.current = { requestId, document: fingerprint };
+      const requestId = saveKey.forAsk(contentHash(document));
       const { data, definedError, isSuccess } = await safe(
         client.submit({
           protocolId,
@@ -330,13 +319,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
           ...(promote === undefined ? {} : { promote }),
         }),
       );
-      // The host answered — with the revision it wrote, or with a refusal it
-      // decided on — so this save is settled and the next one is a new
-      // operation. Anything else is an answer that may or may not exist, and
-      // the id is kept for the retry.
-      if (isSuccess || definedError !== null) {
-        pendingSave.current = undefined;
-      }
+      if (isSuccess || definedError !== null) saveKey.settled(requestId);
       if (isSuccess) {
         return {
           status: 'written',
@@ -366,7 +349,7 @@ export function useSectionMutation(id: ProtocolSectionId): SectionMutation {
       }
       throw definedError ?? new Error(`submit of ${id} failed`);
     },
-    [client, protocolId, id, section],
+    [client, protocolId, id, saveKey, section],
   );
 
   const release = useCallback(() => {

@@ -1,8 +1,30 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it } from 'vitest';
 
+import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
+import {
+  sectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
+
 import ProtocolField from '../../../form/ProtocolField.tsx';
+import StageEditorShell from '../../../form/StageEditorShell.tsx';
+import { ProtocolBuilder } from '../../../ProtocolBuilder.tsx';
+import BuilderSection from '../../../sections/BuilderSection.tsx';
+import type { StageEditorComponent } from '../../../stage-editor-contract.ts';
+import StageEditor from '../../../StageEditor.tsx';
+import { createInMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
+import { sectionsFromProtocol } from '../../../testing/host/sectionsFromProtocol.ts';
+import {
+  useResourceClient,
+  useStagedResources,
+  type ResourceClient,
+} from '../../client.tsx';
+import type { ResourceDescriptor } from '../../types.ts';
 import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import { renderResourceEditor } from './renderResourceEditor.tsx';
 import type { CommittedResource } from './resourceHost.ts';
@@ -135,4 +157,104 @@ it('keeps one resource client across a staging change', async () => {
   expect(await staged()).toEqual([
     expect.objectContaining({ id: 'staged-resource-1', status: 'staged' }),
   ]);
+});
+
+/**
+ * An edit lasts as long as the researcher is on one stage, and no longer.
+ *
+ * A host does not unmount the editor to open another stage: Studio selects
+ * another screen in its outline, which changes `target` on the element it
+ * already has. What the researcher imported into the first stage and never
+ * saved belongs to that stage's edit, so the move has to end it — otherwise
+ * the second stage's save promotes those files into the protocol's manifest,
+ * where nothing refers to them and nothing will take them out again.
+ */
+const FIXTURE: Record<string, unknown> = allInterfaces;
+const FIRST_STAGE = sectionId({ kind: 'stage', stageId: 'information-1' });
+const SECOND_STAGE = sectionId({ kind: 'stage', stageId: 'ego-form-1' });
+const ASSETS = sectionId({ kind: 'assets' });
+
+const openEdit: {
+  client: ResourceClient | undefined;
+  editId: string | undefined;
+  staged: readonly ResourceDescriptor[];
+} = { client: undefined, editId: undefined, staged: [] };
+
+function EditProbe() {
+  const staged = useStagedResources();
+  openEdit.client = useResourceClient();
+  openEdit.editId = staged.editId;
+  openEdit.staged = staged.staged;
+  return null;
+}
+
+const NameAndProbe: StageEditorComponent = ({ actions }) => (
+  <StageEditorShell {...(actions === undefined ? {} : { actions })}>
+    <BuilderSection title="Stage name">
+      <ProtocolField name="label" label="Stage name" component={InputField} />
+    </BuilderSection>
+    <EditProbe />
+  </StageEditorShell>
+);
+
+it('ends the edit when the host opens another stage in the same editor', async () => {
+  const host = createInMemoryHost({ sections: sectionsFromProtocol(FIXTURE) });
+  const registry = {
+    Information: NameAndProbe as StageEditorComponent<'Information'>,
+    EgoForm: NameAndProbe as StageEditorComponent<'EgoForm'>,
+  };
+  const editorOn = (stage: ProtocolSectionId) => (
+    <DialogProvider>
+      <ProtocolBuilder client={host.client} protocolId={host.protocolId}>
+        <StageEditor
+          target={{ sectionId: stage }}
+          registry={registry}
+          actions={({ formId }) => (
+            <SubmitButton form={formId}>Save screen</SubmitButton>
+          )}
+        />
+      </ProtocolBuilder>
+    </DialogProvider>
+  );
+
+  const view = render(editorOn(FIRST_STAGE));
+  await screen.findByRole('textbox', { name: 'Stage name' });
+  await waitFor(() => expect(openEdit.client).toBeDefined());
+  const firstEdit = openEdit.editId;
+
+  const imported = await openEdit.client?.stageUpload({
+    requestId: 'import-1',
+    kind: 'image',
+    name: 'Portrait',
+    source: 'portrait.png',
+    contentType: 'image/png',
+    bytes: new Uint8Array([1, 2, 3]),
+  });
+  expect(imported?.status).toBe('ok');
+  await waitFor(() => expect(openEdit.staged).toHaveLength(1));
+  const manifestBefore = Object.keys(host.store.read(ASSETS).document);
+
+  // The researcher opens another screen without saving the first.
+  await act(async () => {
+    view.rerender(editorOn(SECOND_STAGE));
+  });
+  await waitFor(() =>
+    expect(screen.getByRole('textbox', { name: 'Stage name' })).toBeEnabled(),
+  );
+
+  expect(openEdit.editId).not.toBe(firstEdit);
+  expect(openEdit.staged).toEqual([]);
+
+  // And the second screen's save commits nothing the first screen imported.
+  const user = userEvent.setup();
+  const field = screen.getByRole('textbox', { name: 'Stage name' });
+  await user.clear(field);
+  await user.type(field, 'The second screen, renamed');
+  await user.click(screen.getByRole('button', { name: 'Save screen' }));
+  await waitFor(() =>
+    expect(host.store.read(SECOND_STAGE).document.label).toBe(
+      'The second screen, renamed',
+    ),
+  );
+  expect(Object.keys(host.store.read(ASSETS).document)).toEqual(manifestBefore);
 });

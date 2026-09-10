@@ -2,7 +2,7 @@ import { safe } from '@orpc/client';
 import { useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
 
-import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   sectionId,
   type ProtocolSectionId,
@@ -11,6 +11,7 @@ import {
 import type { ProtocolBuilderClient } from '../contract/contract.ts';
 import type { Presence, SectionReference } from '../contract/schemas.ts';
 import { useProtocolBuilderContext } from '../state/context.ts';
+import { useKeptRequestId, type KeptRequestId } from '../state/requestKey.ts';
 import {
   codebookRefusalMessage,
   type CodebookRefusal,
@@ -26,12 +27,18 @@ import {
  * One key for one codebook change the researcher asked for.
  *
  * A host makes the write once for its key and answers a retry with what that
- * attempt wrote, so a change whose answer was lost on the way back is not made
- * twice — which for `create` would leave the codebook holding two entity types
- * where the researcher added one. Minted per change rather than per dialog: a
- * refused change the researcher corrects and asks for again is a different
- * intent, and one that reused the key would be answered with the earlier
- * write instead of being made.
+ * attempt wrote. Minted per change rather than per dialog: a refused change
+ * the researcher corrects and asks for again is a different intent, and one
+ * that reused the key would be answered with the earlier write instead of
+ * being made.
+ *
+ * Only the rewrite of an existing section mints its key this way. A rewrite
+ * has nothing stable to key a retry on — the second attempt lays the draft
+ * over the document the host holds NOW, which is a different document from
+ * the one the first attempt wrote — so there is no ask for `useKeptRequestId`
+ * to recognise. The two CREATES do have one, and use it: a create that was not
+ * recognised as a retry leaves the codebook holding two entity types where the
+ * researcher added one.
  */
 const nextRequestId = (): string => uuid();
 
@@ -171,6 +178,9 @@ export function useCodebookSectionWrite(): (
   next: (authoritativeDocument: SectionDoc) => SectionDoc,
 ) => Promise<CodebookWriteOutcome> {
   const { client, protocolId } = useProtocolBuilderContext();
+  // The participant's own section is CREATED by the first attribute, and a
+  // create is the one write here a retry can be recognised as.
+  const egoKey = useKeptRequestId();
 
   return useCallback(
     async (subject, next) => {
@@ -189,7 +199,7 @@ export function useCodebookSectionWrite(): (
           subject.entity === 'ego' &&
           acquired.definedError?.code === 'SECTION_NOT_FOUND'
         ) {
-          return createEgoCodebook(client, protocolId, next);
+          return createEgoCodebook(client, protocolId, egoKey, next);
         }
         return refused(protocolRefusal(acquired.definedError?.code));
       }
@@ -230,7 +240,7 @@ export function useCodebookSectionWrite(): (
         await safe(client.releaseLock({ protocolId, sectionId: id }));
       }
     },
-    [client, protocolId],
+    [client, egoKey, protocolId],
   );
 }
 
@@ -247,6 +257,7 @@ export function useCodebookSectionWrite(): (
 async function createEgoCodebook(
   client: ProtocolBuilderClient,
   protocolId: string,
+  egoKey: KeptRequestId,
   next: (authoritativeDocument: SectionDoc) => SectionDoc,
 ): Promise<CodebookWriteOutcome> {
   let document: SectionDoc;
@@ -255,14 +266,18 @@ async function createEgoCodebook(
   } catch (error: unknown) {
     return builderRefusal(error);
   }
+  const requestId = egoKey.forAsk(contentHash(document));
   const created = await safe(
     client.create({
       protocolId,
-      requestId: nextRequestId(),
+      requestId,
       kind: 'codebookEgo',
       document,
     }),
   );
+  if (created.isSuccess || created.definedError !== null) {
+    egoKey.settled(requestId);
+  }
   if (created.isSuccess) {
     return { status: 'applied', sectionId: created.data.sectionId };
   }
@@ -290,17 +305,25 @@ export function useCreateCodebookEntity(): (
   document: SectionDoc,
 ) => Promise<CodebookWriteOutcome> {
   const { client, protocolId } = useProtocolBuilderContext();
+  const createKey = useKeptRequestId();
 
   return useCallback(
     async (entity, document) => {
-      const created = await safe(
-        client.create({
-          protocolId,
-          requestId: nextRequestId(),
-          kind: entity === 'node' ? 'codebookNode' : 'codebookEdge',
-          document,
-        }),
+      const kind = entity === 'node' ? 'codebookNode' : 'codebookEdge';
+      // Kept while the answer is uncertain, so the researcher pressing Save
+      // again on a dialog that reported "could not be sent" asks the host
+      // about the write it may already have made rather than making a second
+      // one: with the socket down, nothing has told this client the type is
+      // already there, and the codebook would end up holding two of them.
+      const requestId = createKey.forAsk(
+        `${kind}\u0000${contentHash(document)}`,
       );
+      const created = await safe(
+        client.create({ protocolId, requestId, kind, document }),
+      );
+      if (created.isSuccess || created.definedError !== null) {
+        createKey.settled(requestId);
+      }
       if (created.isSuccess) {
         return { status: 'applied', sectionId: created.data.sectionId };
       }
@@ -313,7 +336,7 @@ export function useCreateCodebookEntity(): (
       }
       return refused(protocolRefusal(definedError?.code));
     },
-    [client, protocolId],
+    [client, createKey, protocolId],
   );
 }
 
