@@ -23,7 +23,6 @@ export function FacetGroup({
             pressed={selected.includes(value)}
             onPressedChange={() => onToggle(value)}
             size="sm"
-            className="whitespace-nowrap"
           >
             {value}
             <span className="font-normal opacity-70">{count}</span>

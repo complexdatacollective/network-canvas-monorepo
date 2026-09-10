@@ -1,10 +1,10 @@
 import { ArrowRight } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 
-import { Badge } from '@codaco/fresco-ui/Badge';
 import type { ItemProps } from '@codaco/fresco-ui/collection/types';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { StageBar } from '@codaco/fresco-ui/stages/StageBar';
+import Tag from '@codaco/fresco-ui/Tag';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
@@ -17,11 +17,11 @@ function CardFacetRow({ label, values }: { label: string; values: string[] }) {
   return (
     <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2">
       <Eyebrow render={<span />}>{label}</Eyebrow>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-2">
         {values.map((value) => (
-          <Badge key={value} color="platinum-dark">
+          <Tag key={value} size="sm">
             {value}
-          </Badge>
+          </Tag>
         ))}
       </div>
     </div>

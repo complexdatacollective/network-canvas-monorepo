@@ -2,9 +2,9 @@ import { ExternalLink } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
-import { Badge } from '@codaco/fresco-ui/Badge';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
+import Tag from '@codaco/fresco-ui/Tag';
 import Eyebrow from '@codaco/fresco-ui/typography/Eyebrow';
 import { OverlineHeading } from '~/components/protocol-gallery/OverlineHeading';
 import type { GalleryProtocol } from '~/lib/protocolGallery';
@@ -26,11 +26,11 @@ function DetailItem({
 
 function ValueList({ values }: { values: string[] }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-2">
       {values.map((value) => (
-        <Badge key={value} color="platinum-dark">
+        <Tag key={value} size="sm">
           {value}
-        </Badge>
+        </Tag>
       ))}
     </div>
   );

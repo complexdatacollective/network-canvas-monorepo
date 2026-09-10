@@ -7,11 +7,11 @@ import { type PaletteColor, paletteColorStyles } from './styles/palette';
 import { cva, cx, type VariantProps } from './utils/cva';
 
 const tagVariants = cva({
-  base: 'inline-flex items-center justify-center rounded-full border-2 border-transparent text-xs font-semibold uppercase',
+  base: 'inline-flex items-center justify-center rounded-full border-2 border-transparent text-xs leading-tight font-medium whitespace-nowrap uppercase',
   variants: {
     size: {
-      sm: 'gap-1.5 px-1.5 py-0.5 tracking-wide',
-      md: 'gap-2 px-2 py-1 tracking-widest',
+      sm: 'gap-2 px-2.5 py-0.5 tracking-wide',
+      md: 'gap-2 px-3 py-1 tracking-widest',
     },
     tone: {
       default: 'bg-text/15 text-text',
@@ -39,8 +39,8 @@ const dotVariants = cva({
   base: 'aspect-square h-auto shrink-0 rounded-full bg-(--tag-dot)',
   variants: {
     size: {
-      sm: 'w-3',
-      md: 'w-3.75',
+      sm: 'w-2.5',
+      md: 'w-3',
     },
   },
   defaultVariants: { size: 'md' },
