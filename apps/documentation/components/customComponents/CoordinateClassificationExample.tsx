@@ -81,7 +81,7 @@ const CoordinateClassificationExample = () => {
         aria-label={`${languageName} coordinate classification example`}
       >
         <Pre raw={code}>
-          {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- `language-${lang}` is the rehype-highlight convention (package.json's rehype-highlight) for tagging the grammar to highlight, not a utility. */}
+          {/* oxlint-disable-next-line tailwindcss/no-unknown-classes -- rehype-highlight language-tagging convention */}
           <code className={`language-${language}`}>{code}</code>
         </Pre>
       </div>

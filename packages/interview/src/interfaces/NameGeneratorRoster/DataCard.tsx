@@ -77,7 +77,7 @@ const DataCard = ({
     <article
       {...articleProps}
       className={cx(
-        // oxlint-disable-next-line tailwindcss/no-unknown-classes -- `card` is the hook NameGeneratorRoster's `[&_.card]:cursor-grab` targets during drag, not a utility.
+        // oxlint-disable-next-line tailwindcss/no-unknown-classes -- NameGeneratorRoster's drag-cursor selector hook
         'card group relative flex h-full flex-col overflow-hidden rounded',
         'bg-platinum text-charcoal',
         'focusable outline-white',

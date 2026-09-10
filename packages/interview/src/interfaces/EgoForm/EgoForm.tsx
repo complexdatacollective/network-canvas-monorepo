@@ -298,7 +298,7 @@ const EgoFormInner = (props: EgoFormProps) => {
             shadow="xs"
             role="status"
             aria-live="polite"
-            // oxlint-disable-next-line tailwindcss/no-unknown-classes -- `scroll-nudge` is a semantic marker, not a utility; it names the concept the e2e matrix's `scroll-nudge-*` scenario/option ids (see e2e/matrix/ego-form.scenarios.ts, e2e/matrix/option-inventory.ts) refer to.
+            // oxlint-disable-next-line tailwindcss/no-unknown-classes -- semantic marker matching e2e scenario ids
             className="scroll-nudge mx-auto mt-2 mb-4 flex shrink-0"
             initial={{ y: '100%' }}
             animate={{

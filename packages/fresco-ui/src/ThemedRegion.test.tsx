@@ -49,7 +49,7 @@ describe('ThemedRegion', () => {
 
   it('forwards className and other HTML props to the wrapper', () => {
     const { container } = render(
-      // oxlint-disable-next-line tailwindcss/no-unknown-classes -- arbitrary probe string asserting the className prop forwards, not a utility.
+      // oxlint-disable-next-line tailwindcss/no-unknown-classes -- probe asserting className forwards
       <ThemedRegion theme="interview" className="custom-class" id="region">
         <span />
       </ThemedRegion>,
@@ -63,7 +63,7 @@ describe('ThemedRegion', () => {
 
   it('supports the render prop for tag polymorphism', () => {
     const { container } = render(
-      // oxlint-disable-next-line tailwindcss/no-unknown-classes -- arbitrary probe string asserting the render prop's className merges in, not a utility.
+      // oxlint-disable-next-line tailwindcss/no-unknown-classes -- probe asserting render-prop className merges
       <ThemedRegion theme="interview" render={<main className="shell" />}>
         <span data-testid="child" />
       </ThemedRegion>,

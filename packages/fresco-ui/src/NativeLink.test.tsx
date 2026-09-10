@@ -75,9 +75,9 @@ describe('NativeLink', () => {
     render(
       <NativeLink
         ref={ref}
-        // oxlint-disable-next-line tailwindcss/no-unknown-classes -- arbitrary probe string asserting the render prop's className merges in, not a utility.
+        // oxlint-disable-next-line tailwindcss/no-unknown-classes -- probe asserting render-prop className merges
         render={<RouterLink to="/docs" className="router-class" />}
-        // oxlint-disable-next-line tailwindcss/no-unknown-classes -- arbitrary probe string asserting the consumer's className merges in, not a utility.
+        // oxlint-disable-next-line tailwindcss/no-unknown-classes -- probe asserting consumer className merges
         className="consumer-class"
       >
         Documentation

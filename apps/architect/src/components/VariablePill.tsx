@@ -184,7 +184,7 @@ const getVariablePillClassName = ({
     // `w-max` gives WebKit an explicit max-content basis. `w-fit` combined
     // with the formerly percentage-sized inner wrapper collapsed to the
     // ellipsis width in Safari instead of measuring the full label.
-    // oxlint-disable-next-line tailwindcss/no-unknown-classes -- `variable-pill` is a non-Tailwind hook class, not a utility; see the comment above.
+    // oxlint-disable-next-line tailwindcss/no-unknown-classes -- hook class, see comment above
     'variable-pill font-monospace inline-flex h-12 w-max max-w-full min-w-0 flex-nowrap rounded-full p-0.5 text-base',
     'effect-shadow-sm',
     animated ? 'variable-pill-effect-border' : 'bg-(--variable-pill-accent)',
@@ -220,7 +220,7 @@ function VariablePillContents({
     >
       <span className="flex items-center justify-center border-r border-white/25 bg-(--variable-pill-accent) [&_.icon]:w-5">
         <img
-          // oxlint-disable-next-line tailwindcss/no-unknown-classes -- `icon` is the nested-selector hook the parent's `[&_.icon]:w-5` targets, not a utility.
+          // oxlint-disable-next-line tailwindcss/no-unknown-classes -- icon selector hook for the parent
           className="icon opacity-80"
           src={icon}
           alt={intl.formatMessage(messages.attribute, {

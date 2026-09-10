@@ -224,7 +224,7 @@ const Stage = ({ configuration, id, label, stageNumber, type }: StageProps) => {
     | undefined;
   return (
     <div
-      // oxlint-disable-next-line tailwindcss/no-unknown-classes -- `page-break-marker` is the print stylesheet's hook (src/styles/protocol-summary.css) and an e2e selector (e2e/specs/codebook-and-summary.spec.ts), not a utility.
+      // oxlint-disable-next-line tailwindcss/no-unknown-classes -- print stylesheet + e2e selector hook
       className="page-break-marker flex break-before-page flex-col gap-6"
       id={`stage-${id}`}
     >
