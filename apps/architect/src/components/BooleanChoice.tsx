@@ -5,7 +5,7 @@ import {
 } from '@codaco/app-i18n/messages';
 
 const defaultIntl = createAppIntl({ locale: 'en' });
-import { useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -16,6 +16,11 @@ import RichText from '@codaco/protocol-builder/fields/RichTextField';
 import type { OptionValue } from '~/components/Form/arrayFields/Option';
 
 import ArchitectField from './Form/ArchitectField';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 const utilityMessages = defineMessages({
   bothOptionLabelsAreRequired: {
     id: 'architect.utility.booleanChoice.bothOptionLabelsAreRequired',
@@ -192,7 +197,7 @@ function BooleanChoiceOptionsField({
         <Paragraph>
           {intl.formatMessage(messages.thisOptionWillSetTheValue, {
             value1: String(optionOne.value),
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: renderStrong,
           })}
         </Paragraph>
         <UnconnectedField
@@ -217,7 +222,7 @@ function BooleanChoiceOptionsField({
         <Paragraph>
           {intl.formatMessage(messages.thisOptionWillSetTheValue, {
             value1: String(optionTwo.value),
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: renderStrong,
           })}
         </Paragraph>
         <UnconnectedField

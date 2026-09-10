@@ -12,7 +12,11 @@ type LoadingProps = {
 
 const Loading = ({ message, className = '', small = false }: LoadingProps) => (
   <motion.div
-    className={cx('loading', className)}
+    // No `loading` class: the classic app's `.loading` (flex-centering,
+    // size, padding) was never ported to the shared Tailwind theme, and both
+    // current callers already centre this component in their own
+    // `flex items-center justify-center` wrapper (NodePanel, NameGeneratorRoster).
+    className={cx(className)}
     key="loading"
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}

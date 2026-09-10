@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 
-import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
 import { enIntl } from '../../../testing/i18n.ts';

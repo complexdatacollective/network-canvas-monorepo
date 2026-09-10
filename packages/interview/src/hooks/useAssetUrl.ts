@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useContractHandlers } from '../contract/context';
 
@@ -10,32 +10,36 @@ type AssetUrlState = {
   error: Error | null;
 };
 
+// The resolved value is stored against the asset id it was requested for, so a
+// render that has already moved on to a different asset reports "loading"
+// without an effect having to reset the state first — and never shows the
+// previous asset's URL for a frame.
+type ResolvedAsset = {
+  assetId: string;
+  url: string | null;
+  error: Error | null;
+};
+
 export function useAssetUrl(assetId: string | undefined): AssetUrlState {
   const { onRequestAsset } = useContractHandlers();
-  const [state, setState] = useState<AssetUrlState>({
-    url: null,
-    isLoading: Boolean(assetId),
-    error: null,
-  });
+  const [resolved, setResolved] = useState<ResolvedAsset | null>(null);
 
   useEffect(() => {
     if (!assetId) {
-      setState({ url: null, isLoading: false, error: null });
       return;
     }
 
     let cancelled = false;
-    setState({ url: null, isLoading: true, error: null });
 
     onRequestAsset(assetId)
       .then((url) => {
-        if (!cancelled) setState({ url, isLoading: false, error: null });
+        if (!cancelled) setResolved({ assetId, url, error: null });
       })
       .catch((err: unknown) => {
         if (!cancelled)
-          setState({
+          setResolved({
+            assetId,
             url: null,
-            isLoading: false,
             error: err instanceof Error ? err : new Error(String(err)),
           });
       });
@@ -45,5 +49,13 @@ export function useAssetUrl(assetId: string | undefined): AssetUrlState {
     };
   }, [assetId, onRequestAsset]);
 
-  return state;
+  return useMemo(() => {
+    if (!assetId) {
+      return { url: null, isLoading: false, error: null };
+    }
+    if (!resolved || resolved.assetId !== assetId) {
+      return { url: null, isLoading: true, error: null };
+    }
+    return { url: resolved.url, isLoading: false, error: resolved.error };
+  }, [assetId, resolved]);
 }

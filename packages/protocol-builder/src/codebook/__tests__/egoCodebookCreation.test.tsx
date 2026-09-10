@@ -8,11 +8,11 @@ import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
 import { formatMessageError } from '@codaco/app-i18n/messages';
 import { AppI18nProvider, useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import allInterfaces from '@codaco/protocols/e2e/all-interfaces/protocol.json';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import type { ProtocolBuilderClient } from '../../contract/contract.ts';
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import { ProtocolBuilder } from '../../ProtocolBuilder.tsx';
 import {

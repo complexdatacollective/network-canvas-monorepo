@@ -1,8 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
-import type { SectionDoc } from '@codaco/studio-sync/apply';
-
 import type {
   ResourceDescriptorSchema,
   ResourceGatewayFailureSchema,
@@ -10,7 +8,9 @@ import type {
   ResourcePreviewSchema,
   ResourceSecretStorageSchema,
   StageResourceInputSchema,
-} from '../../contract/schemas.ts';
+} from '@codaco/protocol-builder-core/contract/schemas';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+
 import { readRosterFacts } from '../../resources/rosterFacts.ts';
 
 type Descriptor = z.output<typeof ResourceDescriptorSchema>;

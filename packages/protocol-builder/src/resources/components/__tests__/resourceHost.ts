@@ -1,8 +1,8 @@
+import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import type { ProtocolBuilderClient } from '../../../contract/contract.ts';
 import {
   createInMemoryHost,
   type InMemoryHost,

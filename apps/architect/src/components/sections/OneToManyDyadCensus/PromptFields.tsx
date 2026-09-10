@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { shallowEqual, useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -77,6 +77,8 @@ type SelectOption = {
 
 type SortOrderRow = Record<string, unknown>;
 
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 const EMPTY_OPTIONS: SelectOption[] = [];
 
 type PromptFieldsProps = {
@@ -131,8 +133,8 @@ const PromptFields = ({
         <Alert variant="info" className="my-7">
           <AlertDescription>
             {intl.formatMessage(messages.rememberToWriteYourPromptText, {
-              strong: (chunks) => <strong>{chunks}</strong>,
-              strong2: (chunks) => <strong>{chunks}</strong>,
+              strong: renderStrong,
+              strong2: renderStrong,
             })}
           </AlertDescription>
         </Alert>

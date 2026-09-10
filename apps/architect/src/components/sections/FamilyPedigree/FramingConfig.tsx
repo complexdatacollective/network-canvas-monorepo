@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import {
   defineMessages,
   type MessageDescriptor,
@@ -85,6 +87,8 @@ const messages = defineMessages({
   },
 });
 
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 const FRAMING_MODE_OPTIONS = [
   { value: 'fixed', label: configMessages.fixedFraming },
   { value: 'participantChoice', label: configMessages.letTheParticipantChoose },
@@ -138,12 +142,12 @@ const FramingConfig = (_props: StageEditorSectionProps) => {
       <ul className="mb-5 list-disc pl-7 [&_li]:mb-1">
         <li>
           {intl.formatMessage(messages.gameteBasedDescribesEachParent, {
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: renderStrong,
           })}
         </li>
         <li>
           {intl.formatMessage(messages.genderedUsesGenderedKinship, {
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: renderStrong,
           })}
         </li>
       </ul>
