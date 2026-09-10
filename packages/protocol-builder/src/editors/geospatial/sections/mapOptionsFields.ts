@@ -1,13 +1,9 @@
 /**
  * Every key the schema keeps a geospatial stage's map settings under.
  *
- * Named once, and imported by both of the sections that render them, because
- * the map is authored in two sittings that the prompts sit between: what the
- * map IS — the key that lets one be drawn and the layer that says which areas
- * can be chosen — comes before there is anything to ask, and how the map LOOKS
- * and where it opens comes after. Two sections owning one `mapOptions` object
- * is exactly why the names live apart from either of them: a key spelled twice
- * is a key that can be spelled differently.
+ * Apart from both sections that render them, because two sections own one
+ * `mapOptions` object between them and a key spelled twice can be spelled
+ * differently.
  */
 export const TOKEN_FIELD = 'mapOptions.tokenAssetId';
 export const LAYER_FIELD = 'mapOptions.dataSourceAssetId';

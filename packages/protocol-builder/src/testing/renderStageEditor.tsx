@@ -50,7 +50,7 @@ import {
 } from './host/createInMemoryHost.ts';
 import type { HostPrincipal } from './host/protocolStore.ts';
 import {
-  fixtureAssetContent,
+  fixtureAssetContentFor,
   fixtureAssetManifest,
   fixtureProtocolSections,
   type FixtureStageId,
@@ -391,6 +391,12 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      */
     assets?: Readonly<Record<string, SectionDoc>>;
     /**
+     * The text this host serves for an asset `source`, for a file the protocol
+     * does not ship. A control that reads what is INSIDE a file has states
+     * only a file of that shape reaches.
+     */
+    assetBytes?: Readonly<Record<string, string>>;
+    /**
      * The host's action chrome, as a host would give it to the editor.
      *
      * Given, it is what gets rendered in the editor's slot, whichever of the
@@ -551,7 +557,7 @@ export function renderStageEditor<T extends StageType = StageType>(
 
   const host = createInMemoryHost({
     sections: seededSections(seeded, assetManifest),
-    assetContent: assetContentFor(assetManifest),
+    assetContent: fixtureAssetContentFor(assetManifest, options.assetBytes),
     principal: HARNESS_PRINCIPAL,
   });
   const { protocolId, store } = host;
@@ -1076,32 +1082,6 @@ function stageOrderWith(
     ? order.filter((entry): entry is string => typeof entry === 'string')
     : [];
   return stages.includes(stageId) ? stages : [...stages, stageId];
-}
-
-/**
- * The bytes the host holds for the manifest's assets, keyed by the filename
- * the manifest names.
- *
- * An asset the fixture ships a file for is seeded with that file, because an
- * editor asks the host what is INSIDE a data file — a roster's columns are the
- * material its card, sort and search sections offer. Everything else gets a
- * placeholder body: those editors read only a resource's kind, name and size.
- */
-function assetContentFor(
-  manifest: Readonly<Record<string, unknown>>,
-): Record<string, Blob> {
-  const content: Record<string, Blob> = {};
-  for (const entry of Object.values(manifest)) {
-    if (typeof entry !== 'object' || entry === null) continue;
-    const source = Reflect.get(entry, 'source');
-    if (typeof source !== 'string') continue;
-    const bytes = fixtureAssetContent(source);
-    content[source] = new Blob(
-      [(bytes ?? new TextEncoder().encode('{}')) as BlobPart],
-      { type: 'application/json' },
-    );
-  }
-  return content;
 }
 
 /** What a round trip did to the stage, one path per difference. */

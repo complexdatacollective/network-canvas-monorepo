@@ -22,12 +22,9 @@ const TEXT_FIELD = 'text';
 const VARIABLE_FIELD = 'variable';
 
 /**
- * The only attribute type that can hold a place on a map, so the only one this
- * prompt offers and the only one its create button makes.
- *
- * Module-level and frozen because a picker's option list is memoised on the
- * type list it was asked for, and an array literal written at a call site is a
- * new one on every render.
+ * The only attribute type that can hold a place on a map. Module-level because
+ * a picker memoises its options on the type list it was asked for, and a
+ * literal at the call site is a new array every render.
  */
 const LOCATION_TYPES: readonly VariableType[] = Object.freeze(['location']);
 
@@ -39,21 +36,14 @@ const VariablePicker = VariablePickerField as ComponentType<
 /**
  * One geospatial prompt: what it asks, and where the answer goes.
  *
- * The attribute is a LOCATION attribute of the stage's own type, because that
- * is the only thing a map selection can be stored in. A researcher who has not
- * created one yet creates it here, through the codebook's own write — the same
- * edit the codebook screen would make, so the new attribute is a real part of
- * the protocol rather than something this prompt invented for itself.
+ * A LOCATION attribute of the stage's own type, because that is the only thing
+ * a map selection can be stored in, created here through the codebook's own
+ * write when the researcher has none yet.
  *
- * The interview writes what the participant taps on the map straight into that
- * attribute, around whatever validation the codebook holds for it, so the
- * picker is an UNVALIDATED writer: an attribute a form field collects is not
- * offered here, and an export would otherwise mix checked and unchecked
- * answers under one name.
- *
- * Rendered inside the prompt dialog, whose form store is its own — which is
- * what `useFormStore` addresses below — while the stage editor context around
- * it is not re-provided, so the subject and the codebook are still read live.
+ * The interview writes what the participant taps straight into that attribute,
+ * around whatever validation the codebook holds for it, so the picker is an
+ * UNVALIDATED writer: an attribute a form field collects is not offered here,
+ * or an export would mix checked and unchecked answers under one name.
  */
 export function GeospatialPromptFields({ item }: RowEditorProps) {
   const intl = useAppIntl();

@@ -393,7 +393,7 @@
   "protocolBuilder.geospatial.zoomHint": "{min, number} muestra todo el mundo; {max, number} es el nivel de calle.",
   "protocolBuilder.geospatial.zoomIncrease": "Aumentar el zoom",
   "protocolBuilder.geospatial.zoomLabel": "Zoom inicial",
-  "protocolBuilder.geospatial.zoomOutOfRange": "El zoom inicial debe ser un número entero entre {min, number} y {max, number}.",
+  "protocolBuilder.geospatial.zoomOutOfRange": "El zoom inicial debe estar entre {min, number} y {max, number}.",
   "protocolBuilder.integerField.notAWholeNumber": "Esto tiene que ser un número entero de personas.",
   "protocolBuilder.interface.alterEdgeForm": "Formulario de vínculos por álter",
   "protocolBuilder.interface.alterForm": "Formulario por álter",

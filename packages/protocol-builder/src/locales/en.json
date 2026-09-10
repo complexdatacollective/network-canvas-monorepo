@@ -1576,8 +1576,8 @@
     "description": "Label of the control holding how far in the map is zoomed when the stage opens."
   },
   "protocolBuilder.geospatial.zoomOutOfRange": {
-    "defaultMessage": "Starting zoom must be a whole number between {min, number} and {max, number}.",
-    "description": "Refusal shown under the starting-zoom control when it holds a zoom level Mapbox has no such thing as. min and max are the ends of Mapbox’s own zoom scale, 0 and 22."
+    "defaultMessage": "Starting zoom must be between {min, number} and {max, number}.",
+    "description": "Refusal shown under the starting-zoom control when it holds a zoom level Mapbox has no such thing as. min and max are the ends of Mapbox’s own zoom scale, 0 and 22. A zoom between two whole numbers is ordinary — a map panned into place hands back a fraction — so only the ends are named."
   },
   "protocolBuilder.integerField.notAWholeNumber": {
     "defaultMessage": "This has to be a whole number of people.",

@@ -243,9 +243,7 @@ describe('the map a geospatial stage shows', () => {
 
     expect(await harness.submit()).toBeNull();
     expect(
-      await screen.findByText(
-        'Starting zoom must be a whole number between 0 and 22.',
-      ),
+      await screen.findByText('Starting zoom must be between 0 and 22.'),
     ).toBeInTheDocument();
   });
 });

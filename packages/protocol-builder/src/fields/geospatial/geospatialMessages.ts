@@ -3,25 +3,17 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 /**
  * Everything a researcher building a map stage reads.
  *
- * One file for the whole family rather than descriptors beside each piece of
- * markup, because most of this copy is rendered somewhere other than where it
- * would be declared: two of these modules PRODUCE copy and hold no markup at
- * all (the basemap list and the centre validator), four sentences are said by
- * the shared `PromptsSection` on this family's behalf, and the rest is split
- * between the sections and the controls they mount. Splitting it would leave a
- * translator answering half a question in two files — which is the reason
- * `ID_MAP.md` gives for a `*Messages.ts` per interface family.
+ * One file for the family rather than descriptors beside each piece of markup,
+ * because most of this copy is rendered somewhere other than it would be
+ * declared: two modules produce copy and hold no markup at all (the basemap
+ * list and the centre validator), four sentences are said by the shared
+ * `PromptsSection` on this family's behalf, and the rest is split between the
+ * sections and the controls they mount. `ID_MAP.md` gives the same reason for
+ * a `*Messages.ts` per interface family.
  *
- * It lives under `fields/` rather than beside the editor because that is the
- * layer both halves can import: sections mount fields, and a field reaching
- * back into an editor's directory for its words would invert that.
- *
- * The four `prompts*` sentences are what `PromptsSection` says here. A
- * geospatial prompt asks the participant WHERE something is and records the
- * answer in one location attribute, which is not the generic
- * question-and-answer that section is worded for — so they are whole sentences
- * rather than a noun swapped into a shared frame, and descriptors rather than
- * strings so a translator ever sees them.
+ * Under `fields/` rather than beside the editor because that is the layer both
+ * halves can import: sections mount fields, and a field reaching back into an
+ * editor's directory would invert that.
  */
 export const geospatialMessages = defineMessages({
   promptsDescription: {
@@ -506,9 +498,9 @@ export const geospatialMessages = defineMessages({
   zoomOutOfRange: {
     id: 'protocolBuilder.geospatial.zoomOutOfRange',
     defaultMessage:
-      'Starting zoom must be a whole number between {min, number} and {max, number}.',
+      'Starting zoom must be between {min, number} and {max, number}.',
     description:
-      'Refusal shown under the starting-zoom control when it holds a zoom level Mapbox has no such thing as. min and max are the ends of Mapbox’s own zoom scale, 0 and 22.',
+      'Refusal shown under the starting-zoom control when it holds a zoom level Mapbox has no such thing as. min and max are the ends of Mapbox’s own zoom scale, 0 and 22. A zoom between two whole numbers is ordinary — a map panned into place hands back a fraction — so only the ends are named.',
   },
   longitudeOutOfRange: {
     id: 'protocolBuilder.geospatial.longitudeOutOfRange',

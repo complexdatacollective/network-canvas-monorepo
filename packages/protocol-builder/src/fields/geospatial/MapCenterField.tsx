@@ -16,12 +16,9 @@ export type MapCenterFieldProps = CreateFormFieldProps<
   'fieldset',
   {
     /**
-     * The stage path holding the zoom this view is half of.
-     *
-     * Centre and zoom are two schema keys and therefore two fields, but one
-     * gesture — panning a map — sets both. The map writes the zoom through the
-     * stage form rather than through this field's own `onChange`, so the field
-     * that owns `initialZoom` stays the only writer of its own key.
+     * The stage path holding the zoom this view is half of. One gesture —
+     * panning a map — sets both, and the map writes the zoom through the stage
+     * form so the field owning `initialZoom` stays its only writer.
      */
     zoomFieldName: string;
     /** The stored key the map is drawn with. Never the key itself. */
@@ -74,41 +71,28 @@ const standsFor = (drafted: number[] | undefined, held: unknown): boolean => {
  *
  * Two numbers, editable as two numbers — and settable by panning a map, for a
  * researcher who knows the place rather than its coordinates. The typed
- * controls are not a fallback for the map: they are the only way to set an
- * exact centre, and they keep working when the host cannot draw a map at all.
+ * controls are the only way to set an exact centre, and they keep working when
+ * the host cannot draw a map at all.
  *
- * Labelling of the pair belongs to the surrounding field; each control names
- * the coordinate it holds, because "longitude" and "latitude" cannot be told
- * apart by position.
+ * ## Why the researcher's text is kept
  *
- * ## Why the text is kept, and why one draft covers both controls
- *
- * A coordinate is built one character at a time, and the first character of
- * half the world is a minus sign. A number input reports NOTHING for a reading
- * it cannot read as a number, so `-`, and `-` followed by a decimal point, and
- * every other half-finished coordinate, arrive here as the empty string. A
+ * A number input reports NOTHING for a reading it cannot parse, so `-`, and
+ * every other half-finished coordinate, arrives here as the empty string. A
  * control rendered from the parsed number therefore rewrites itself under the
- * researcher's cursor: the minus sign of `-122.4` disappears as soon as the
- * first digit lands on it, and the stage saves a starting view in the wrong
- * hemisphere without anything on screen having said so.
- *
- * So the researcher's own text is what is SHOWN, and the numbers are what is
- * STORED. The draft is kept only while it still stands for the value the form
- * holds, so a centre set by the map — or by anything else in the editor —
- * replaces it rather than being overwritten by text the stage no longer has.
+ * cursor: the minus sign of `-122.4` disappears as soon as the first digit
+ * lands on it, and the stage saves a starting view in the wrong hemisphere
+ * with nothing on screen having said so. So the text is what is SHOWN and the
+ * numbers are what is STORED, and the draft is dropped as soon as it stops
+ * standing for the value the form holds.
  *
  * ONE draft covers both controls because a centre is one value: an unreadable
- * longitude means the form is holding no centre at all, and a per-control
- * draft would then have nothing left to render the latitude from. Reading the
- * pair from one draft is what keeps a coordinate the researcher has already
- * finished on screen while they are still typing the other one.
+ * longitude means the form holds no centre at all, and a per-control draft
+ * would have nothing left to render the latitude from.
  *
- * There is deliberately no settle-on-blur (which a single-valued numeric
- * control can afford): the two controls share a fieldset, so moving between
- * them is a blur, and settling there would take back the coordinate the
- * researcher had just entered. A half-entered pair is instead reported by the
- * field's own `required`, which is what the form holds while it is half
- * entered.
+ * There is deliberately no settle-on-blur: the two controls share a fieldset,
+ * so moving between them is a blur, and settling there would take back the
+ * coordinate just entered. A half-entered pair is reported by the field's own
+ * `required`.
  */
 export default function MapCenterField({
   id,

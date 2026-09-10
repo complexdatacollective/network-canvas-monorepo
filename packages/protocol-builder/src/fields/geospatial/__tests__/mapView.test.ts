@@ -118,13 +118,13 @@ describe('the view a geospatial stage opens on', () => {
 
     it('refuses one beyond either end, and one that is not a number', () => {
       expect(read(zoomIssue, MAX_ZOOM + 1)).toBe(
-        'Starting zoom must be a whole number between 0 and 22.',
+        'Starting zoom must be between 0 and 22.',
       );
       expect(read(zoomIssue, -1)).toBe(
-        'Starting zoom must be a whole number between 0 and 22.',
+        'Starting zoom must be between 0 and 22.',
       );
       expect(read(zoomIssue, '10')).toBe(
-        'Starting zoom must be a whole number between 0 and 22.',
+        'Starting zoom must be between 0 and 22.',
       );
     });
   });

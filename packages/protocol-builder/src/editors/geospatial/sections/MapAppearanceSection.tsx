@@ -47,13 +47,10 @@ const zoomValidation = {
  * How the map LOOKS, and where it opens.
  *
  * Two more sections of the same `mapOptions` object `MapSourceSection` starts,
- * and they come after the prompts rather than beside it: a researcher settles
- * the basemap, the highlight colour and the opening view once they know what
- * they are asking the participant to point at, and the starting view in
- * particular is usually chosen to frame the answer.
- *
- * The map behind the starting centre asks the host to resolve one for the
- * key's asset id. This editor never sees the key itself.
+ * after the prompts rather than beside them: the starting view in particular
+ * is chosen to frame the answer the researcher has just written a question
+ * for. The map behind it asks the host to resolve one for the key's asset id;
+ * this editor never sees the key.
  */
 export default function MapAppearanceSection() {
   const intl = useAppIntl();
@@ -64,15 +61,9 @@ export default function MapAppearanceSection() {
   // re-registers it.
   const styleOptions = useMemo(() => mapStyleOptions(intl), [intl]);
 
-  /**
-   * The colours a selectable area can be drawn in.
-   *
-   * Named rather than only shown, because a colour has to be sayable: it is
-   * chosen once here and then discussed, documented, and matched against the
-   * basemap by people who are not looking at this control. The stored value is
-   * a position in the theme's ordinal palette, so the position is what the
-   * name is built from.
-   */
+  // Named rather than only shown, because a colour has to be sayable by people
+  // who are not looking at the control. The stored value is a position in the
+  // theme's ordinal palette, so the position is what the name is built from.
   const colorOptions = useMemo(
     () =>
       OrdinalColorSequence.map((value, index) => ({
