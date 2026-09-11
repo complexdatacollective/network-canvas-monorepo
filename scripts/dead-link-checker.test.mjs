@@ -16,19 +16,27 @@ import {
   parseArguments,
   retryDelayMilliseconds,
   run,
-  validateIntermediateCA,
 } from './dead-link-checker.mjs';
 
 const checkerPath = fileURLToPath(
   new URL('./dead-link-checker.mjs', import.meta.url),
 );
 
+// Every check is a real Chrome navigation, so these tests need a browser.
+// They run it headless: nothing served by the local fixtures below challenges
+// a client, and the production path's headed launch — which is what defeats
+// the challenge providers — is asserted against the workflow in
+// ci-workflow.test.mjs instead.
 function runChecker(args, { env = {} } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [checkerPath, ...args], {
-      env: { ...process.env, ...env },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    const child = spawn(
+      process.execPath,
+      [checkerPath, '--headless', ...args],
+      {
+        env: { ...process.env, ...env },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
     let stdout = '';
     let stderr = '';
 
@@ -72,29 +80,13 @@ function jsonResult(result) {
   return JSON.parse(result.stdout);
 }
 
-test('the bundled missing issuer is a current intermediate signed by a trusted root', async () => {
-  const certificate = await readFile(
-    new URL('./certificates/HARICA-GEANT-TLS-RSA-1.crt', import.meta.url),
-    'utf8',
-  );
-
-  assert.match(
-    validateIntermediateCA(certificate, {
-      expectedFingerprint:
-        '5B:67:8D:C4:40:95:A5:28:95:B6:3B:31:F2:72:27:F4:B3:6C:3E:34:74:91:BF:2B:FA:69:18:37:A5:FB:8C:79',
-    }),
-    /^-----BEGIN CERTIFICATE-----/,
-  );
-  assert.throws(
-    () => validateIntermediateCA(certificate, { trustedCAs: [] }),
-    /trusted root/,
-  );
-});
-
-test('the user-agent option applies to every link request', async () => {
-  const userAgents = [];
+test('every request carries Chrome own identity, never a checker signature', async () => {
+  const requests = [];
   const server = await startServer((request, response) => {
-    userAgents.push(request.headers['user-agent']);
+    requests.push({
+      url: request.url,
+      userAgent: request.headers['user-agent'],
+    });
     if (request.url === '/') {
       html(
         response,
@@ -112,20 +104,102 @@ test('the user-agent option applies to every link request', async () => {
   });
 
   try {
-    const userAgent =
-      'Mozilla/5.0 BrowserSignature/1.0 NetworkCanvasLinkChecker/1.0';
-    const result = await runChecker([
-      server.origin,
-      '--yes',
-      '--delay=0',
-      `--user-agent=${userAgent}`,
-    ]);
+    const result = await runChecker([server.origin, '--yes', '--delay=0']);
 
     assert.equal(result.code, 0, result.stderr);
-    assert.deepEqual(userAgents, [userAgent, userAgent]);
+    const agents = [...new Set(requests.map((request) => request.userAgent))];
+    assert.equal(agents.length, 1, 'one identity for the whole crawl');
+    // Real Chrome, unmodified. There is deliberately no override: a
+    // browser-shaped string sent by something that is not that browser is
+    // precisely what publishers fingerprint against, and sending one is what
+    // made the Zenodo citations report dead.
+    assert.match(agents[0], /Chrome\/\d+/);
+    assert.doesNotMatch(agents[0], /NetworkCanvasLinkChecker|LinkChecker|bot/i);
+    // The option is gone, not merely unused by CI.
+    const rejected = await runChecker([
+      server.origin,
+      '--user-agent=Mozilla/5.0 NetworkCanvasLinkChecker/1.0',
+    ]);
+    assert.equal(rejected.code, 2);
+    assert.match(rejected.stderr, /Unknown option: --user-agent/);
+
+    for (const path of ['/', '/linked']) {
+      assert.ok(
+        requests.some((request) => request.url === path),
+        `${path} was visited`,
+      );
+    }
     assert.doesNotMatch(result.stdout, /data:|vbscript:|mailto:|javascript:/);
   } finally {
     await server.stop();
+  }
+});
+
+test('a WAF interstitial or block is reported dead, never accepted', async () => {
+  // Cloudflare serves its attestation script on a PERMANENT "you have been
+  // blocked" 403 and on ordinary 200 pages alike, and announces only some
+  // interstitials with a header — so no marker identifies a solvable challenge,
+  // and an earlier attempt here accepted block pages as live because of it.
+  // Headed Chrome exists to resolve challenges; when it cannot, the run does
+  // not know the link is alive and must not say that it is.
+  const CHALLENGE_SCRIPT =
+    '<script src="/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1"></script>';
+  const external = await startServer((request, response) => {
+    response.statusCode = 403;
+    response.setHeader('server', 'cloudflare');
+    response.setHeader('content-type', 'text/html; charset=UTF-8');
+    if (request.url === '/interstitial') {
+      response.setHeader('cf-mitigated', 'challenge');
+      response.end(`<title>Just a moment...</title>${CHALLENGE_SCRIPT}`);
+      return;
+    }
+    // The 1020 block page: same script, no header, permanent.
+    response.end(
+      `<title>Attention Required!</title><h1>Sorry, you have been blocked</h1>${CHALLENGE_SCRIPT}`,
+    );
+  });
+  const root = await startServer((request, response) => {
+    if (request.url === '/') {
+      html(
+        response,
+        `<a href="/to-interstitial">interstitial behind a redirect</a>
+         <a href="/to-block">permanent block behind a redirect</a>`,
+      );
+      return;
+    }
+    response.writeHead(302, {
+      location:
+        request.url === '/to-interstitial'
+          ? `${external.origin}/interstitial`
+          : `${external.origin}/blocked`,
+    });
+    response.end();
+  });
+
+  try {
+    const result = await runChecker([
+      root.origin,
+      '--format=json',
+      '--delay=0',
+      '--retries=0',
+    ]);
+    assert.equal(result.code, 1, result.stderr);
+    const report = jsonResult(result);
+    assert.equal(report.summary.failed, 2, 'both are dead');
+    assert.equal(report.summary.passed, 1, 'only the root page passed');
+
+    for (const path of ['/to-interstitial', '/to-block']) {
+      const failure = report.failures.find(({ url }) => url.endsWith(path));
+      assert.ok(failure, `${path} is reported`);
+      assert.equal(failure.ok, false);
+      assert.equal(failure.status, 403);
+      assert.equal(failure.error, 'HTTP 403');
+      // The redirect must not be reported as the destination reached.
+      assert.match(failure.finalUrl, /\/(interstitial|blocked)$/);
+    }
+  } finally {
+    await root.stop();
+    await external.stop();
   }
 });
 
@@ -357,6 +431,12 @@ test('renderers escape workflow commands and obey explicit color selection', () 
     url: 'https://example.test/failure',
   };
   const report = {
+    cache: {
+      hits: 0,
+      internalHosts: ['example.test'],
+      stored: 0,
+      ttlSeconds: 604_800,
+    },
     durationMs: 1,
     failures: [failure],
     results: [failure],
@@ -494,9 +574,14 @@ test('redirects use their final URL, recurse internally, and detect loops', asyn
     assert.equal(redirected.redirects.length, 1);
     const missing = report.failures.find(({ url }) => url.endsWith('/missing'));
     assert.deepEqual(missing.foundOn, [`${server.origin}/page`]);
+    // Chrome follows redirects itself and refuses an endless chain before the
+    // crawl ever sees an outcome, so a loop surfaces as the browser's own
+    // navigation failure rather than a hop count we computed. It is still a
+    // failure, and still names the cause.
     const loop = report.failures.find(({ url }) => url.endsWith('/loop'));
-    assert.match(loop.error, /Redirect loop/);
-    assert.equal(loop.kind, 'redirect-error');
+    assert.equal(loop.ok, false);
+    assert.equal(loop.kind, 'request-error');
+    assert.match(loop.error, /ERR_TOO_MANY_REDIRECTS/);
     const tooMany = report.failures.find(({ url }) =>
       url.endsWith('/too-many'),
     );
@@ -506,7 +591,13 @@ test('redirects use their final URL, recurse internally, and detect loops', asyn
   }
 });
 
-test('a terminal 304 response is not treated as a redirect', async () => {
+test('an unconditional 304 is an aborted navigation, never a redirect', async () => {
+  // Every link is checked in a fresh browser context, so the crawl never sends
+  // a conditional request and a 304 can only come from a server answering one
+  // that was not asked. Chrome has no stored representation to pair it with and
+  // abandons the navigation. The point worth guarding is that the checker
+  // reports that for what it is rather than mistaking a 3xx for a redirect and
+  // chasing a Location that does not exist.
   const server = await startServer((_request, response) => {
     response.statusCode = 304;
     response.end();
@@ -519,11 +610,13 @@ test('a terminal 304 response is not treated as a redirect', async () => {
       '--delay=0',
       '--retries=0',
     ]);
-    assert.equal(result.code, 0, result.stderr);
+    assert.equal(result.code, 1, result.stderr);
     const report = jsonResult(result);
-    assert.equal(report.results[0].status, 304);
-    assert.equal(report.results[0].ok, true);
-    assert.deepEqual(report.results[0].redirects, []);
+    const [only] = report.results;
+    assert.equal(only.ok, false);
+    assert.equal(only.kind, 'request-error');
+    assert.match(only.error, /ERR_ABORTED/);
+    assert.deepEqual(only.redirects, []);
   } finally {
     await server.stop();
   }
@@ -537,10 +630,18 @@ test('external redirects and transient responses are followed and retried', asyn
       response.end();
       return;
     }
-    transientRequests++;
-    if (transientRequests === 1) {
-      response.writeHead(503, { 'retry-after': '0' });
-      response.end('retry');
+    // Count only the link under test: a browser also asks for a favicon, and
+    // the assertion below is about how many times the transient response was
+    // retried, not how many requests Chrome made.
+    if (request.url === '/transient') {
+      transientRequests++;
+      if (transientRequests === 1) {
+        response.writeHead(503, { 'retry-after': '0' });
+        response.end('retry');
+        return;
+      }
+      response.statusCode = 404;
+      response.end('missing');
       return;
     }
     response.statusCode = 404;
@@ -571,88 +672,6 @@ test('external redirects and transient responses are followed and retried', asyn
   }
 });
 
-test('only a redirected Cloudflare challenge accepts its initial redirect', async () => {
-  const challengeRequests = [];
-  const external = await startServer((request, response) => {
-    challengeRequests.push(request.url);
-    response.statusCode = 403;
-    response.setHeader('server', 'cloudflare');
-    response.setHeader('content-type', 'text/html; charset=UTF-8');
-    if (request.url !== '/ordinary-403') {
-      response.setHeader('cf-mitigated', 'challenge');
-    }
-    response.end('<title>Just a moment...</title>');
-  });
-  const root = await startServer((request, response) => {
-    if (request.url === '/') {
-      html(
-        response,
-        `<a href="/cloudflare-redirect">challenge behind redirect</a>
-         <a href="/ordinary-redirect">ordinary 403 behind redirect</a>
-         <a href="${external.origin}/direct-challenge">direct challenge</a>`,
-      );
-      return;
-    }
-    const target =
-      request.url === '/cloudflare-redirect'
-        ? `${external.origin}/redirected-challenge`
-        : `${external.origin}/ordinary-403`;
-    response.writeHead(302, { location: target });
-    response.end();
-  });
-
-  try {
-    const result = await runChecker([
-      root.origin,
-      '--format=json',
-      '--delay=0',
-      '--retries=0',
-    ]);
-    assert.equal(result.code, 1, result.stderr);
-    const report = jsonResult(result);
-    assert.deepEqual(
-      [
-        ...new Set(challengeRequests.filter((url) => url !== '/favicon.ico')),
-      ].toSorted((left, right) => left.localeCompare(right)),
-      ['/direct-challenge', '/ordinary-403', '/redirected-challenge'],
-    );
-    assert.deepEqual(report.summary, {
-      checked: 4,
-      discovered: 4,
-      failed: 2,
-      passed: 2,
-    });
-
-    const accepted = report.results.find(({ url }) =>
-      url.endsWith('/cloudflare-redirect'),
-    );
-    assert.equal(accepted.ok, true);
-    assert.equal(accepted.status, 302);
-    assert.equal(accepted.finalUrl, `${external.origin}/redirected-challenge`);
-    assert.deepEqual(accepted.redirects, [
-      {
-        from: `${root.origin}/cloudflare-redirect`,
-        status: 302,
-        to: `${external.origin}/redirected-challenge`,
-      },
-    ]);
-
-    const ordinary = report.failures.find(({ url }) =>
-      url.endsWith('/ordinary-redirect'),
-    );
-    assert.equal(ordinary.status, 403);
-    assert.equal(ordinary.error, 'HTTP 403');
-
-    const direct = report.failures.find(({ url }) =>
-      url.endsWith('/direct-challenge'),
-    );
-    assert.equal(direct.status, 403);
-    assert.equal(direct.error, 'HTTP 403');
-  } finally {
-    await root.stop();
-    await external.stop();
-  }
-});
 test('timeouts are reported as link failures and retry delays are capped and deterministic', async () => {
   const server = await startServer((_request, response) => {
     setTimeout(() => response.end('late'), 100);
@@ -670,7 +689,10 @@ test('timeouts are reported as link failures and retry delays are capped and det
     const report = jsonResult(result);
     assert.equal(report.failures[0].status, null);
     assert.equal(report.failures[0].kind, 'request-error');
-    assert.equal(report.failures[0].error, 'Request timed out after 20ms');
+    assert.equal(
+      report.failures[0].error,
+      'Browser verification failed: Verification timed out after 20ms',
+    );
   } finally {
     await server.stop();
   }

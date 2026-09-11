@@ -36,7 +36,9 @@
         "scripts/agent-hooks/post-edit.mjs",
         "scripts/agent-hooks/pre-bash.mjs",
         "scripts/agent-hooks/stop-check.mjs",
-        "scripts/agent-hooks/pre-push-knip.mjs"
+        "scripts/agent-hooks/pre-push-knip.mjs",
+        // Run by the dead-link-cache-refresh workflow, which knip cannot parse.
+        "scripts/dead-link-refresh-gate.mjs"
       ],
       "ignoreDependencies": [
         "@playwright/test",
