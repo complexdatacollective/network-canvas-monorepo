@@ -224,6 +224,48 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
+   * A stage may hold two panels and nothing else in the dialog says which of
+   * them is open, so the source control is numbered — the way Architect
+   * numbers it. A panel being added is the next one, and an existing panel is
+   * the one it is in the list, counting from one.
+   */
+  it('numbers the source control after the panel being added', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+      ]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Add new panel');
+
+    expect(dialog.getByText('Data source for panel 2')).toBeInTheDocument();
+  });
+
+  it('numbers the source control after the panel being edited', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+        { id: 'panel-2', title: 'Second panel', dataSource: 'existing' },
+      ]),
+      sections: panels,
+    });
+
+    const first = await openPanel(harness, 'Edit panel', 0);
+    expect(first.getByText('Data source for panel 1')).toBeInTheDocument();
+    expect(
+      first.queryByText('Data source for panel 2'),
+    ).not.toBeInTheDocument();
+    await harness.user.click(first.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    const second = await openPanel(harness, 'Edit panel', 1);
+    expect(second.getByText('Data source for panel 2')).toBeInTheDocument();
+  });
+
+  /**
    * A panel with no title has nothing above it on screen, and the schema
    * refuses it — as `stages.N.panels.0.title`, a path rather than the section
    * the researcher is looking at.
