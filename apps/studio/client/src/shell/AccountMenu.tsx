@@ -31,18 +31,18 @@ const messages = defineMessages({
 });
 
 /**
- * The header's account menu (§5.5): profile, language, sign out.
+ * The header's account menu (§5.5): profile, sign out. The interface language
+ * sits beside it in the header as its own control.
  *
- * Profile and Language are ordinary router navigations into the account area,
- * which means the editor's dirty-state blocker applies to them without
- * anything here knowing about it (§6.5). Sign out cannot be one — it ends the
- * session — so it runs `useSignOut`'s sequence instead, which is the one
- * `AppLayout` performed with §6.5's generation token added to it. This menu is
- * app-shell chrome, so its sequence returns through `/account`.
+ * Profile is an ordinary router navigation into the account area, which means
+ * the editor's dirty-state blocker applies to it without anything here knowing
+ * about it (§6.5). Sign out cannot be one — it ends the session — so it runs
+ * `useSignOut`'s sequence instead, which is the one `AppLayout` performed with
+ * §6.5's generation token added to it. This menu is app-shell chrome, so its
+ * sequence returns through `/account`.
  *
- * The two destination names come from the navigation manifest's own
- * descriptors, so the menu and the account sidebar cannot call one screen two
- * things.
+ * The destination name comes from the navigation manifest's own descriptor,
+ * so the menu and the account sidebar cannot call one screen two things.
  */
 export default function AccountMenu() {
   const intl = useAppIntl();
@@ -69,9 +69,6 @@ export default function AccountMenu() {
         <DropdownMenuContent align="end">
           <DropdownMenuItem render={<Link to="/account" />}>
             {intl.formatMessage(navLabelMessages.profile)}
-          </DropdownMenuItem>
-          <DropdownMenuItem render={<Link to="/account/language" />}>
-            {intl.formatMessage(navLabelMessages.language)}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={signOut}>
