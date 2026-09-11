@@ -80,72 +80,69 @@ export const binMessages = defineMessages({
   },
   bucketOrderTitle: {
     id: 'protocolBuilder.censusPrompts.bucketOrderTitle',
-    defaultMessage: 'Order people are handed to the participant in',
+    defaultMessage: 'Bucket order',
     description:
       'Heading of the optional group holding the rules that order the people a bin stage has not been asked about yet.',
   },
   bucketOrderDescription: {
     id: 'protocolBuilder.censusPrompts.bucketOrderDescription',
-    defaultMessage:
-      'Choose the order the people still to be sorted are offered in.',
+    defaultMessage: 'Set the order of nodes before they are placed.',
     description:
       'Description of the group holding the rules that order the people a bin stage has not been asked about yet.',
   },
   bucketOrderLabel: {
     id: 'protocolBuilder.censusPrompts.bucketOrderLabel',
-    defaultMessage: 'Rules for handing people over',
+    defaultMessage: 'Bucket sort rules',
     description:
       'Label of the list of sort rules that order the people a bin stage has not been asked about yet.',
   },
   bucketOrderAddLabel: {
     id: 'protocolBuilder.censusPrompts.bucketOrderAddLabel',
-    defaultMessage: 'Add a rule for the order people are handed over in',
+    defaultMessage: 'Add new bucket sort rule',
     description:
       'Button that appends one sort rule to the list ordering the people a bin stage has not been asked about yet.',
   },
   bucketOrderEmptyState: {
     id: 'protocolBuilder.censusPrompts.bucketOrderEmptyState',
-    defaultMessage:
-      'No rules yet, so people are handed over in the order they were added.',
+    defaultMessage: 'No sort rules have been created yet.',
     description:
       'Shown in place of the sort rules ordering the people a bin stage has not been asked about yet, when the researcher has written none.',
   },
   binOrderTitle: {
     id: 'protocolBuilder.censusPrompts.binOrderTitle',
-    defaultMessage: 'Order within each bin',
+    defaultMessage: 'Bin order',
     description:
       'Heading of the optional group holding the rules that order the people already dragged into a bin.',
   },
   binOrderDescription: {
     id: 'protocolBuilder.censusPrompts.binOrderDescription',
     defaultMessage:
-      'Choose the order people already sorted into a bin are listed in.',
+      'Set the order of nodes after they have been placed into a bin.',
     description:
       'Description of the group holding the rules that order the people already dragged into a bin.',
   },
   binOrderLabel: {
     id: 'protocolBuilder.censusPrompts.binOrderLabel',
-    defaultMessage: 'Rules for the order within a bin',
+    defaultMessage: 'Bin sort rules',
     description:
       'Label of the list of sort rules that order the people already dragged into a bin.',
   },
   binOrderAddLabel: {
     id: 'protocolBuilder.censusPrompts.binOrderAddLabel',
-    defaultMessage: 'Add a rule for the order within a bin',
+    defaultMessage: 'Add new bin sort rule',
     description:
       'Button that appends one sort rule to the list ordering the people already dragged into a bin.',
   },
   binOrderEmptyState: {
     id: 'protocolBuilder.censusPrompts.binOrderEmptyState',
-    defaultMessage:
-      'No rules yet, so people are listed in the order they were dropped in.',
+    defaultMessage: 'No sort rules have been created yet.',
     description:
       'Shown in place of the sort rules ordering the people already dragged into a bin, when the researcher has written none.',
   },
   sortRulesDroppedHint: {
     id: 'protocolBuilder.censusPrompts.sortRulesDroppedHint',
     defaultMessage:
-      'Rules are applied in order. Use the asterisk to keep the order the people were dropped in.',
+      'Add one or more rules to determine the order in which nodes are displayed in the bin after they have been placed. Use the asterisk property to sort by the order that nodes were placed.',
     description:
       'The same guidance as `sortRulesAddedHint` for a list of sort rules inside a bin, where the fallback is the order the participant dragged people into that bin. The asterisk is the wildcard option offered in the rule’s own property picker.',
   },

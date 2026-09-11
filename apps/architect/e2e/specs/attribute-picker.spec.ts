@@ -43,7 +43,7 @@ test('finds an attribute, and invents the one that is missing', async ({
   const empty = await openAttributeWindow(picker);
   // The field's own label, asterisk and all: `BaseField` puts the required
   // marker inside the label, and the window is named by pointing at it.
-  await expect(empty).toHaveAccessibleName('Attribute filled in *');
+  await expect(empty).toHaveAccessibleName('Select an attribute *');
   await expect(
     empty.getByRole('searchbox', { name: 'Find or create an attribute' }),
   ).toBeFocused();

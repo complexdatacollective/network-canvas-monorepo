@@ -18,7 +18,7 @@ import QuickAddSection from '../QuickAddSection.tsx';
 const quickAdd = <QuickAddSection />;
 
 /** The label of the field the quick-add attribute is chosen in. */
-const LABEL = 'Attribute filled in';
+const LABEL = 'Select an attribute';
 
 /**
  * The field the attribute is chosen in.
@@ -230,7 +230,7 @@ describe('what a quick-add name generator records', () => {
 
     expect(
       await screen.findByText(
-        'Choose the attribute the participant fills in when they add a “family member” with a single box.',
+        'Choose the attribute populated when a participant creates a node with Quick Add.',
       ),
     ).toBeInTheDocument();
     expect(
@@ -241,7 +241,7 @@ describe('what a quick-add name generator records', () => {
     // Shown before a type has been chosen as well, so this one names nothing.
     expect(
       screen.getByText(
-        'What the participant types goes here. Use the attribute holding the name unless you have a reason not to — the interview labels what it creates by it.',
+        "Select the attribute that is assigned a value when creating a new node using the Quick Add button. Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview.",
       ),
     ).toBeInTheDocument();
   });

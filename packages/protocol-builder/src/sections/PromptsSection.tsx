@@ -35,23 +35,15 @@ const messages = defineMessages({
   },
   title: {
     id: 'protocolBuilder.promptsSection.title',
-    defaultMessage: 'Prompts',
+    defaultMessage: 'Prompt collection',
     description:
       'Heading of the section holding the questions this step of the interview asks the participant.',
   },
   description: {
     id: 'protocolBuilder.promptsSection.description',
-    defaultMessage:
-      'Write the questions this stage asks, and drag them into the order the participant answers them.',
+    defaultMessage: 'Create and reorder the prompts shown in this stage.',
     description:
       'Description of the prompts section. A stage is one step of an interview.',
-  },
-  waitingDescription: {
-    id: 'protocolBuilder.promptsSection.waitingDescription',
-    defaultMessage:
-      'Choose what this stage works with before writing its prompts.',
-    description:
-      'Shown in place of the prompts section’s description while the researcher has not yet chosen which node or edge type the stage is about, so there is nothing for a prompt to be written against.',
   },
   fieldLabel: {
     id: 'protocolBuilder.promptsSection.fieldLabel',
@@ -61,8 +53,7 @@ const messages = defineMessages({
   },
   fieldHint: {
     id: 'protocolBuilder.promptsSection.fieldHint',
-    defaultMessage:
-      'The participant answers these one at a time, in this order. Add at least one.',
+    defaultMessage: 'Add at least one prompt and drag prompts to reorder them.',
     description: 'Guidance under the list of prompts.',
   },
   addLabel: {
@@ -91,8 +82,7 @@ const messages = defineMessages({
   },
   emptyState: {
     id: 'protocolBuilder.promptsSection.emptyState',
-    defaultMessage:
-      'No prompts yet. Create one to say what this stage asks the participant.',
+    defaultMessage: 'No items have been created yet.',
     description:
       'Shown in place of the prompt list while a stage asks nothing yet.',
   },
@@ -215,7 +205,13 @@ export type PromptsSectionProps = Readonly<{
    * reaches the screen.
    */
   description?: MessageDescriptor;
-  /** Said instead of `description` while the section waits on a subject. */
+  /**
+   * Said instead of `description` while the section waits on a subject.
+   *
+   * Defaults to `description`: Architect's prompts section is disabled without
+   * a subject but goes on saying what it is for, and an interface only
+   * overrides that where it has something more specific to say.
+   */
   waitingDescription?: MessageDescriptor;
   fieldHint?: MessageDescriptor;
   emptyState?: MessageDescriptor;
@@ -242,7 +238,7 @@ export default function PromptsSection({
   itemTemplate,
   collapseRow,
   description = messages.description,
-  waitingDescription = messages.waitingDescription,
+  waitingDescription = description,
   fieldHint = messages.fieldHint,
   emptyState = messages.emptyState,
 }: PromptsSectionProps) {

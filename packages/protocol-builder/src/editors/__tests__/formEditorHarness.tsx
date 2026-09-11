@@ -272,7 +272,9 @@ const addOption = async (
   label: string,
   value: string,
 ) => {
-  await harness.user.click(screen.getByRole('button', { name: 'Add option' }));
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Create new option' }),
+  );
   await harness.user.type(
     screen.getByRole('textbox', { name: `Option ${position} label` }),
     label,

@@ -186,9 +186,9 @@ describe('the name generator editor', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(8));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Stage name',
-      'Node type',
-      'Form fields',
-      'Prompts',
+      'Node setup',
+      'Form configuration',
+      'Prompt collection',
       'Side panels',
       'Nomination limits',
       'Skip logic',
@@ -404,8 +404,10 @@ describe('the name generator editor', () => {
     expect(await harness.submit()).toBeNull();
     expect(screen.getByText('Give this form a title.')).toBeInTheDocument();
     expect(
-      harness.outline().find((section) => section.title === 'Form fields'),
-    ).toEqual({ title: 'Form fields', state: 'Has a problem' });
+      harness
+        .outline()
+        .find((section) => section.title === 'Form configuration'),
+    ).toEqual({ title: 'Form configuration', state: 'Has a problem' });
   });
 
   /**

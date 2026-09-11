@@ -174,8 +174,8 @@ describe('VariableEditor', () => {
     const name = screen.getByRole('textbox', { name: /attribute name/i });
     expect(name).toHaveFocus();
     await user.type(name, 'preference');
-    await user.click(screen.getByRole('button', { name: 'Add option' }));
-    await user.click(screen.getByRole('button', { name: 'Add option' }));
+    await user.click(screen.getByRole('button', { name: 'Create new option' }));
+    await user.click(screen.getByRole('button', { name: 'Create new option' }));
     await user.type(
       screen.getByRole('textbox', { name: 'Option 1 label' }),
       'Yes',
@@ -468,10 +468,12 @@ describe('VariableEditor', () => {
 
     expect(
       screen.getByRole('table', {
-        name: /managed by the interface and cannot be changed/i,
+        name: /automatically configured by the interface and cannot be modified/i,
       }),
     ).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'Add option' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Create new option' }),
+    ).toBeNull();
     expect(
       screen.getByRole('combobox', { name: /attribute type/i }),
     ).toBeDisabled();
@@ -509,7 +511,9 @@ describe('VariableEditor', () => {
     expect(
       screen.getByRole('combobox', { name: /attribute type/i }),
     ).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Add option' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Create new option' }),
+    ).toBeDisabled();
     expect(
       screen.getByRole('button', { name: 'Create attribute' }),
     ).toBeDisabled();
@@ -1213,7 +1217,7 @@ describe('the settings the chosen input control takes', () => {
     await user.click(screen.getByRole('button', { name: 'Create attribute' }));
 
     const fieldset = await screen.findByRole('group', {
-      name: 'What this control accepts',
+      name: 'Control settings',
     });
     expect(fieldset).toHaveAttribute('aria-invalid', 'true');
     const describedBy = fieldset.getAttribute('aria-describedby') ?? '';
@@ -1392,7 +1396,7 @@ describe('the settings the chosen input control takes', () => {
     };
     render(<VariableEditor {...parameterProps(variable, onSubmitDocument)} />);
 
-    expect(screen.queryByText('What this control accepts')).toBeNull();
+    expect(screen.queryByText('Control settings')).toBeNull();
     const name = screen.getByRole('textbox', { name: /attribute name/i });
     await user.clear(name);
     await user.type(name, 'note');
@@ -1690,7 +1694,7 @@ describe('the two answers a boolean offers', () => {
     const variable = { name: 'flagged', type: 'boolean', component: 'Toggle' };
     render(<VariableEditor {...booleanProps(variable, onSubmitDocument)} />);
 
-    expect(screen.queryByText('The two answers')).toBeNull();
+    expect(screen.queryByText('Boolean values')).toBeNull();
     expect(
       screen.queryByRole('textbox', { name: 'Label for “true”' }),
     ).toBeNull();

@@ -47,7 +47,7 @@ describe('the geospatial sections, read in Spanish', () => {
     expect(harness.outline().map((entry) => entry.title)).toEqual([
       'Acceso al mapa',
       'Capa del mapa',
-      'Preguntas',
+      'Conjunto de preguntas',
       'Apariencia del mapa',
       'Vista inicial del mapa',
     ]);

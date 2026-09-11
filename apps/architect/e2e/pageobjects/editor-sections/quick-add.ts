@@ -5,7 +5,7 @@ import { chooseOrCreateAttribute } from './variables.js';
 
 // The quick-add section (`@codaco/protocol-builder`'s
 // `editors/name-generator-quick-add/sections/QuickAddSection.tsx`, `Quick add`)
-// holds one field, `quickAdd`, labelled "Attribute filled in" and rendered by
+// holds one field, `quickAdd`, labelled "Select an attribute" and rendered by
 // `VariablePickerField`. Facts read from that source:
 // - The picker is a trigger opening the attribute window over the node type's
 //   TEXT attributes; because this section passes `onCreateOption`, the window

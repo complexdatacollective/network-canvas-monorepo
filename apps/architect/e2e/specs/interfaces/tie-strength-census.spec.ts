@@ -142,7 +142,7 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
       { label: 'High', value: 'high' },
     ].entries()) {
       await attributeEditor
-        .getByRole('button', { name: 'Add option', exact: true })
+        .getByRole('button', { name: 'Create new option', exact: true })
         .click();
       await attributeEditor
         .getByRole('textbox', {

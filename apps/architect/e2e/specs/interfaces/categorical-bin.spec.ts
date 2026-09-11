@@ -111,7 +111,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
       { label: 'Friends', value: 'friends' },
     ].entries()) {
       await attributeEditor
-        .getByRole('button', { name: 'Add option', exact: true })
+        .getByRole('button', { name: 'Create new option', exact: true })
         .click();
       await attributeEditor
         .getByRole('textbox', {

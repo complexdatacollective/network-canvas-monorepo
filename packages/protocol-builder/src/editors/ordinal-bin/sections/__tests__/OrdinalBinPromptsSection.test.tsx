@@ -182,12 +182,10 @@ describe('the questions an ordinal bin asks', () => {
     await findScaleField();
     expect(
       screen.getByRole('switch', {
-        name: 'Order people are handed to the participant in',
+        name: 'Bucket order',
       }),
     ).toBeDisabled();
-    expect(
-      screen.getByRole('switch', { name: 'Order within each bin' }),
-    ).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Bin order' })).toBeDisabled();
 
     await chooseAttributeById(
       harness.user,
@@ -196,9 +194,7 @@ describe('the questions an ordinal bin asks', () => {
     );
 
     await waitFor(() =>
-      expect(
-        screen.getByRole('switch', { name: 'Order within each bin' }),
-      ).toBeEnabled(),
+      expect(screen.getByRole('switch', { name: 'Bin order' })).toBeEnabled(),
     );
   });
 
@@ -240,7 +236,7 @@ describe('the questions an ordinal bin asks', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('switch', {
-          name: 'Order people are handed to the participant in',
+          name: 'Bucket order',
         }),
       ).toBeChecked(),
     );
@@ -252,9 +248,7 @@ describe('the questions an ordinal bin asks', () => {
     );
     // The ordering the prompt does NOT have stays switched off, so "already
     // configured" is what opens a group rather than "the prompt was opened".
-    expect(
-      screen.getByRole('switch', { name: 'Order within each bin' }),
-    ).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Bin order' })).not.toBeChecked();
   });
 
   it('saves a gradient and a sort rule the researcher chose', async () => {
@@ -266,12 +260,10 @@ describe('the questions an ordinal bin asks', () => {
     await harness.user.click(
       await screen.findByRole('radio', { name: 'Tomato' }),
     );
-    await harness.user.click(
-      screen.getByRole('switch', { name: 'Order within each bin' }),
-    );
+    await harness.user.click(screen.getByRole('switch', { name: 'Bin order' }));
     await harness.user.click(
       await screen.findByRole('button', {
-        name: 'Add a rule for the order within a bin',
+        name: 'Add new bin sort rule',
       }),
     );
     await harness.user.selectOptions(

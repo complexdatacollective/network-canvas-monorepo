@@ -173,8 +173,8 @@ const lists: readonly ListCase[] = [
   },
   {
     list: 'the blocks a page shows',
-    noun: 'block',
-    addLabel: 'Create new content block',
+    noun: 'item',
+    addLabel: 'Create new content item',
     read: rowsAt('items'),
     row: (id, text) => ({ id, type: 'text', content: text }),
     label: (row) => row.content,
@@ -196,7 +196,7 @@ const lists: readonly ListCase[] = [
   {
     list: 'the panels a name generator shows',
     noun: 'panel',
-    addLabel: 'Create new panel',
+    addLabel: 'Add new panel',
     read: rowsAt('panels'),
     row: (id, text) => ({ id, title: text, dataSource: 'existing' }),
     label: (row) => row.title,

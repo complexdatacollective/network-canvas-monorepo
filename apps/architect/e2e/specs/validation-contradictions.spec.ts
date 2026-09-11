@@ -34,7 +34,7 @@ async function egoFormWithAgeField(architectPage: Page): Promise<StageEditor> {
     'Introduction text',
     'Thanks for taking part in this study.',
   );
-  await addFormField(editor.section('Form fields'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'How old are you?',
     inputControl: 'Number input',
@@ -51,7 +51,7 @@ async function egoFormWithAgeField(architectPage: Page): Promise<StageEditor> {
  * added first — which is what creates the attribute — and reopened.
  */
 async function openAgeRules(editor: StageEditor) {
-  const section = editor.section('Form fields');
+  const section = editor.section('Form configuration');
   await section
     .getByRole('button', { name: 'Edit field', exact: true })
     .click();
@@ -220,7 +220,7 @@ test('the option editor rejects canonically equivalent labels', async ({
   );
 
   await editor
-    .section('Form fields')
+    .section('Form configuration')
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   const fieldDialog = page.getByRole('dialog', { name: 'Create form field' });
@@ -249,7 +249,7 @@ test('the option editor rejects canonically equivalent labels', async ({
     .fill('venue');
 
   const addOption = attributeEditor.getByRole('button', {
-    name: 'Add option',
+    name: 'Create new option',
     exact: true,
   });
   const optionLabel = (position: number) =>

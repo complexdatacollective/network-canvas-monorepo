@@ -57,7 +57,7 @@ describe('the tasks a sociogram sets', () => {
 
     await waitFor(() => expect(harness.outline()).toHaveLength(3));
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Prompts',
+      'Prompt collection',
       'Node layout',
       'Background',
     ]);

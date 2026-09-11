@@ -60,36 +60,35 @@ const NO_OPTIONS: readonly VariablePickerOption[] = Object.freeze([]);
 const messages = defineMessages({
   title: {
     id: 'protocolBuilder.quickAdd.title',
-    defaultMessage: 'Quick add',
+    defaultMessage: 'Quick add configuration',
     description:
       'Heading of the section choosing which attribute a participant fills in when they add a network member with a single box. An attribute is one field the protocol records about that member, which may be a person, an organisation, a place, or anything else the study is about.',
   },
   description: {
     id: 'protocolBuilder.quickAdd.description',
     defaultMessage:
-      'Choose the attribute the participant fills in when they add a “{typeName}” with a single box.',
+      'Choose the attribute populated when a participant creates a node with Quick Add.',
     description:
-      'Description of the quick-add section. typeName is the researcher’s own name for the node type this stage adds — a person, an organisation, a place — and is not translated.',
+      'Description of the quick-add section. "Quick Add" is the name of the button a participant uses.',
   },
   waitingDescription: {
     id: 'protocolBuilder.quickAdd.waitingDescription',
-    defaultMessage:
-      'Choose what this stage works with before setting up quick add.',
+    defaultMessage: 'Select a node type above to configure this section.',
     description:
-      'Shown in place of the quick-add section’s description while the researcher has not yet chosen which node type the stage is about, so there are no attributes to choose from.',
+      'Shown in place of the quick-add section’s description while the researcher has not yet chosen which node type the stage is about, so there are no attributes to choose from. The node type is chosen in the section above this one.',
   },
   fieldLabel: {
     id: 'protocolBuilder.quickAdd.fieldLabel',
-    defaultMessage: 'Attribute filled in',
+    defaultMessage: 'Select an attribute',
     description:
       'Label of the control choosing which attribute receives what the participant types into the quick-add box.',
   },
   fieldHint: {
     id: 'protocolBuilder.quickAdd.fieldHint',
     defaultMessage:
-      'What the participant types goes here. Use the attribute holding the name unless you have a reason not to — the interview labels what it creates by it.',
+      "Select the attribute that is assigned a value when creating a new node using the Quick Add button. Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview.",
     description:
-      'Guidance under the quick-add attribute control. Said without naming what is created, because this interface can add any kind of network member and the control is shown before the researcher has chosen which.',
+      'Guidance under the quick-add attribute control. "Quick Add" is the name of the button a participant uses, "Interviewer" is the name of the app that runs an interview, and the quoted attribute name is a protocol identifier: none of the three is translated.',
   },
   fieldRequired: {
     id: 'protocolBuilder.quickAdd.fieldRequired',

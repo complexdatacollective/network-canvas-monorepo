@@ -9,7 +9,7 @@ import { chooseAttribute } from './variables.js';
 // so a stage showing two lists at once (a name generator shows this one and
 // its prompts) keeps them apart.
 //
-// Takes the enclosing section `Locator` (`editor.section('Form fields')`)
+// Takes the enclosing section `Locator` (`editor.section('Form configuration')`)
 // rather than the Page, and scopes the OPEN click to it, so the helper stays
 // honest about which list it is driving. The dialog it opens is a page-level
 // portal, so everything after that is reached through `section.page()` and

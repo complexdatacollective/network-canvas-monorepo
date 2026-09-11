@@ -47,7 +47,7 @@ async function selectOrCreateEntityType(
     }
     return;
   }
-  const create = `Create a new ${entityType} type`;
+  const create = `Create new ${entityType} type`;
   await page.getByRole('button', { name: create }).click();
   const dialog = page.getByRole('dialog', { name: create });
   await dialog

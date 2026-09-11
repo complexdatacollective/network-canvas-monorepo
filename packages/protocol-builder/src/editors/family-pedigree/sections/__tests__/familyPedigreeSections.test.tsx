@@ -1409,7 +1409,7 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     // rejects. Compared against the schema's export rather than a copy, so the
     // two cannot drift.
     const table = screen.getByRole('table', {
-      name: /managed by the interface and cannot be changed/i,
+      name: /automatically configured by the interface and cannot be modified/i,
     });
     expect(
       [...table.querySelectorAll('tbody tr')].map((row) =>
@@ -1422,7 +1422,7 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     );
     // And no way to change or add to them.
     expect(
-      screen.queryByRole('button', { name: 'Add option' }),
+      screen.queryByRole('button', { name: 'Create new option' }),
     ).not.toBeInTheDocument();
   });
 
@@ -1549,7 +1549,9 @@ async function addOption(
   label: string,
   value: string,
 ): Promise<void> {
-  await harness.user.click(screen.getByRole('button', { name: 'Add option' }));
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Create new option' }),
+  );
   await harness.user.type(
     screen.getByRole('textbox', { name: `Option ${position} label` }),
     label,
@@ -1866,7 +1868,7 @@ describe('a pedigree whose node type changes', () => {
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
 
     expect(
-      await screen.findByText('This node type cannot be changed'),
+      await screen.findByText('Cannot change node type'),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/"Narrative Pedigree" reads this pedigree/),
@@ -1916,7 +1918,7 @@ describe('a pedigree whose node type changes', () => {
     await harness.user.click(confirm);
 
     expect(
-      await screen.findByText('This node type cannot be changed'),
+      await screen.findByText('Cannot change node type'),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/"Narrative Pedigree" reads this pedigree/),

@@ -129,7 +129,7 @@ describe('creating an ordinal bin stage', () => {
     ].entries()) {
       const position = index + 1;
       await harness.user.click(
-        screen.getByRole('button', { name: 'Add option' }),
+        screen.getByRole('button', { name: 'Create new option' }),
       );
       await writeInto(
         harness,

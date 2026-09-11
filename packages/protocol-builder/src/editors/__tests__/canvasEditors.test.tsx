@@ -44,9 +44,9 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     editor: sociogramStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Stage filter',
-      'Prompts',
+      'Prompt collection',
       'Background',
       'Node layout',
       'Skip logic',
@@ -60,7 +60,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     editor: narrativeStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Stage filter',
       'Visualization presets',
       'Background',
@@ -77,7 +77,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     editor: networkComposerStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Adding and arranging nodes',
       'Node attributes',
       'Connections',
@@ -108,11 +108,11 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     // questions are written.
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Stage filter',
       'Map access',
       'Map layer',
-      'Prompts',
+      'Prompt collection',
       'Map appearance',
       'Starting map view',
       'Skip logic',

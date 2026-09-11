@@ -24,7 +24,7 @@ const messages = defineMessages({
   description: {
     id: 'protocolBuilder.skipLogic.description',
     defaultMessage:
-      'Determine whether this stage is shown, and where the interview continues when it is skipped.',
+      'Determine whether this stage is shown and where the interview continues when it is skipped.',
     description:
       'Description of the skip-logic section. A stage is one step of an interview.',
   },
