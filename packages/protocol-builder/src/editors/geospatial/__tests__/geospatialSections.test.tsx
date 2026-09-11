@@ -520,6 +520,116 @@ describe('the places a geospatial stage asks about', () => {
   });
 
   /**
+   * The save-time half of that same rule, for the state the picker cannot
+   * prevent.
+   *
+   * Filtering the list only decides what is offered at the moment it renders.
+   * A form elsewhere that starts collecting the attribute WHILE the row dialog
+   * stands open — a collaborator's field, an import replayed underneath — is
+   * never offered here at all, and without a gate the row closes on a conflict
+   * only protocol validation would report, long after the edit. Architect
+   * refuses it at the control that resolves it.
+   */
+  it('refuses a prompt whose attribute a form elsewhere starts collecting', async () => {
+    const harness = openEditor();
+    await harness.opened();
+    addLocationAttribute(harness, 'workplace');
+
+    const dialog = await openPrompt(harness, 'Create new prompt');
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Prompt text' }),
+      'Work?',
+    );
+    await waitFor(() =>
+      expect(offeredAttributes(dialog)).toEqual(['workplace']),
+    );
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Location attribute' }),
+      'workplace',
+    );
+
+    // Somebody else's form field, arriving after the pick was made. The
+    // picker takes the attribute off its own list as the revision arrives,
+    // which is what has to be waited for: the pick stays in the field, and
+    // that is precisely the row the gate exists to refuse.
+    asCollaborator(harness, ALTER_FORM, (stage) => ({
+      ...stage,
+      form: {
+        fields: [
+          ...(Array.isArray(
+            (stage.form as Record<string, unknown> | undefined)?.fields,
+          )
+            ? ((stage.form as Record<string, unknown>).fields as unknown[])
+            : []),
+          { variable: 'workplace', prompt: 'Where do they work?' },
+        ],
+      },
+    }));
+    // The picker saying so is how this test knows the revision has arrived;
+    // the pick itself stays in the field, which is the row the gate refuses.
+    expect(
+      await dialog.findByText(
+        'This attribute is not available here. Choose another one.',
+      ),
+    ).toBeInTheDocument();
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+
+    expect(
+      await dialog.findByText(
+        '"workplace" is collected by a form elsewhere in this protocol, so it cannot be written by this stage (values written here would bypass its validation)',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  /**
+   * A conflict the protocol ARRIVED with is not one this edit introduced, and
+   * the prompt holding it is not where a researcher can resolve it — the form
+   * collecting the attribute is on another stage they may not be able to
+   * reach. So a prompt re-saved on the attribute it was already saved with
+   * still saves, exactly as Architect's unchanged-pick escape does.
+   */
+  it('still saves a prompt re-saved on the attribute it arrived with', async () => {
+    const harness = openEditor();
+    await harness.opened();
+    addLocationAttribute(harness, 'workplace');
+
+    const dialog = await openPrompt(harness, 'Edit prompt');
+    await waitFor(() =>
+      expect(offeredAttributes(dialog)).toEqual(['location', 'workplace']),
+    );
+
+    // The form starts collecting BOTH: the free attribute leaving the picker
+    // is how this test knows the revision arrived, and the prompt's own
+    // attribute — kept in the list because the field holds it — is the one
+    // the gate must let past.
+    asCollaborator(harness, ALTER_FORM, (stage) => ({
+      ...stage,
+      form: {
+        fields: [
+          ...(Array.isArray(
+            (stage.form as Record<string, unknown> | undefined)?.fields,
+          )
+            ? ((stage.form as Record<string, unknown>).fields as unknown[])
+            : []),
+          { variable: 'workplace', prompt: 'Where do they work?' },
+          { variable: 'location', prompt: 'Where do they live?' },
+        ],
+      },
+    }));
+    await waitFor(() =>
+      expect(offeredAttributes(dialog)).toEqual(['location']),
+    );
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+  });
+
+  /**
    * A location attribute created here is a real part of the protocol, made
    * through the codebook's own write — not something this prompt invented for
    * itself and wrote into the stage. It is also BOUND to the prompt that asked
