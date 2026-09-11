@@ -22,14 +22,17 @@ export default function Hint({
   id,
   hint,
   validationSummary,
+  children,
 }: {
   id: string;
   hint?: ReactNode;
   validationSummary?: ReactNode;
+  /** What a consumer outside this repo passes; `hint` is the primary API. */
+  children?: ReactNode;
 }) {
   return (
     <div id={id} className="text-sm text-current/70">
-      {hintPart(hint)}
+      {hintPart(hint ?? children)}
       {hintPart(validationSummary)}
     </div>
   );

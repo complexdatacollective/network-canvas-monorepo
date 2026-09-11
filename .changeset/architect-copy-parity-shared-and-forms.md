@@ -1,6 +1,6 @@
 ---
 '@codaco/architect': patch
-'@codaco/fresco-ui': patch
+'@codaco/fresco-ui': minor
 ---
 
 The stage editor's shared sections and its form-family editors say what
@@ -28,4 +28,10 @@ already use.
 
 Colour swatches announce the colour they are rather than their position in the
 palette — "Sea Serpent" rather than "Node color 2" — for everyone choosing one
-with a screen reader.
+with a screen reader. Architect's own colour picker in the codebook reads its
+swatch names from the same list, so the two announce a swatch identically.
+
+For anyone building on `@codaco/fresco-ui`: a field's hint is now given to
+`Hint` as its `hint` prop, with a field's validation summary as a separate
+`validationSummary` prop, so a field carrying both keeps them as two
+paragraphs. Passing the hint as children still works and renders as before.
