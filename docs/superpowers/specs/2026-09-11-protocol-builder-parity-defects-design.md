@@ -34,6 +34,14 @@ Reading: the package's in-editor left column — `SectionOutline`, the "Stage se
 
 _Research pending — filled in from `research/parity/defect-02-section-outline.md` (what Architect has, what the outline does and who depends on it — the e2e `expectNoIssues()` oracle, stories, Studio — what replaces its functions, acceptance criteria, seam and size, and whether Studio's design wants it as a host option rather than a deletion)._
 
+### 3.3 Quick-add attribute validation is a nested, toggleable validation section
+
+_Josh, 2026-09-11:_ "the quick add attribute validation should be a nested validation section that can be toggled on. the Alert that has been added is incorrect."
+
+Reading: in Architect's name generator editor, the quick-add section edits the quick-add variable's validation rules in place through a nested section that the researcher toggles on (off = no validation); the package's quick-add section replaced that with an Alert. The Alert goes; the nested toggleable validation section returns.
+
+_Research pending — filled in from `research/parity/defect-03-quick-add-validation.md` (what Architect does — the nested section, its toggle, which rules it offers for the quick-add variable's type, how it writes to the codebook; what the package shows instead and what its Alert says; required behaviour; acceptance criteria; seam and size)._
+
 ## 4. Sequence
 
 _To be written once the collection is complete: which defects share a seam and land together, which need a fresco-ui primitive first, and the order that keeps every intermediate main state working._
