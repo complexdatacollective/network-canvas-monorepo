@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import {
@@ -9,6 +10,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
+import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { useResourceClient } from '../resources/client.tsx';
@@ -167,6 +169,15 @@ export type AssetPickerFieldProps = CreateFormFieldProps<
      * file, as Architect's roster fields do. Only meaningful for `network`.
      */
     canUseExisting?: boolean;
+    /**
+     * Frames the preview as the interview canvas the image will be drawn on —
+     * 16:9, in the interview theme, the picture fitted inside it — rather than
+     * as a plain thumbnail of a file. Architect's own background field does
+     * this (`Form/Fields/Image.tsx:9`), and it is the only way a researcher
+     * can see what a participant will: a background sized for a phone shown on
+     * a white card tells them nothing about how much of it the canvas keeps.
+     */
+    canvasBackgroundPreview?: boolean;
   }
 >;
 
@@ -189,6 +200,7 @@ export default function AssetPickerField({
   onFocus,
   kind,
   canUseExisting = false,
+  canvasBackgroundPreview = false,
   disabled = false,
   readOnly = false,
   className,
@@ -466,7 +478,7 @@ export default function AssetPickerField({
                 </Paragraph>
                 <Button
                   type="button"
-                  variant="outline"
+                  color="destructive"
                   size="sm"
                   disabled={locked}
                   onClick={handleRemove}
@@ -479,18 +491,31 @@ export default function AssetPickerField({
           {inspection !== undefined && descriptor !== undefined && (
             <div className="flex flex-col gap-3">
               <ResourceSummary inspection={inspection} />
-              {isPreviewableKind(descriptor.kind) && (
-                <ResourcePreview
-                  resourceId={descriptor.id}
-                  kind={descriptor.kind}
-                  name={descriptor.name}
-                />
-              )}
+              {isPreviewableKind(descriptor.kind) &&
+                (canvasBackgroundPreview ? (
+                  <ThemedRegion
+                    theme="interview"
+                    className="bg-background aspect-video w-full overflow-hidden rounded"
+                  >
+                    <ResourcePreview
+                      resourceId={descriptor.id}
+                      kind={descriptor.kind}
+                      name={descriptor.name}
+                      className="size-full object-contain object-center"
+                    />
+                  </ThemedRegion>
+                ) : (
+                  <ResourcePreview
+                    resourceId={descriptor.id}
+                    kind={descriptor.kind}
+                    name={descriptor.name}
+                  />
+                ))}
               <div className="flex flex-wrap gap-2">
                 {descriptor.kind !== 'apikey' && (
                   <Button
                     type="button"
-                    variant="outline"
+                    color="info"
                     size="sm"
                     disabled={action.busy}
                     onClick={handleDownload}
@@ -501,7 +526,6 @@ export default function AssetPickerField({
                 {descriptor.status === 'staged' ? (
                   <Button
                     type="button"
-                    variant="outline"
                     size="sm"
                     color="destructive"
                     disabled={locked || action.busy}
@@ -512,7 +536,7 @@ export default function AssetPickerField({
                 ) : (
                   <Button
                     type="button"
-                    variant="outline"
+                    color="destructive"
                     size="sm"
                     disabled={locked}
                     onClick={handleRemove}
@@ -537,7 +561,7 @@ export default function AssetPickerField({
               {selectedId !== undefined && (
                 <Button
                   type="button"
-                  variant="outline"
+                  color="destructive"
                   size="sm"
                   disabled={locked}
                   onClick={handleRemove}
@@ -561,6 +585,7 @@ export default function AssetPickerField({
             type="button"
             color="primary"
             className="self-start"
+            icon={<Plus aria-hidden="true" />}
             disabled={!canBrowse}
             onClick={() => setBrowserOpen(true)}
           >

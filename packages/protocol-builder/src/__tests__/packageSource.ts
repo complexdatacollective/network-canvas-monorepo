@@ -16,6 +16,12 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx'];
 /** Fixtures render throwaway copy on purpose, and nobody translates a fixture. */
 const FIXTURE = /(\.test\.|\.stories\.|__tests__|__mocks__)/;
 
+/** A story file, which is a fixture for the copy guards and real UI for the
+ * guards that read how a component is CONFIGURED: a story is what Chromatic
+ * photographs and what a reviewer looks at, so a button style wrong there is
+ * wrong on a page somebody reads. */
+const STORY = /\.stories\./;
+
 /**
  * Test-support code, which is a fixture in every sense but its path: the story
  * host and the render harness exist to be rendered BY tests and stories.
@@ -63,17 +69,21 @@ const isUnder = (path: string, directories: readonly string[]) => {
  */
 export function sourceFiles(
   directory: string = packageSource,
-  { excluding = NOT_CONVERTED_YET }: { excluding?: readonly string[] } = {},
+  {
+    excluding = NOT_CONVERTED_YET,
+    withStories = false,
+  }: { excluding?: readonly string[]; withStories?: boolean } = {},
 ): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
-    if (entry.isDirectory()) return sourceFiles(path, { excluding });
+    if (entry.isDirectory())
+      return sourceFiles(path, { excluding, withStories });
     if (
       !SOURCE_EXTENSIONS.some((extension) => entry.name.endsWith(extension))
     ) {
       return [];
     }
-    if (FIXTURE.test(path)) return [];
+    if (FIXTURE.test(path) && !(withStories && STORY.test(path))) return [];
     return isUnder(path, [...excluding, ...FIXTURE_DIRECTORIES]) ? [] : [path];
   });
 }

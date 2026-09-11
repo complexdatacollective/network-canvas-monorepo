@@ -276,6 +276,10 @@ export default function BackgroundSection() {
           label={intl.formatMessage(messages.backgroundImageLabel)}
           hint={intl.formatMessage(messages.backgroundImageHint)}
           required={REQUIRED}
+          // The picture is a canvas background, so it is shown as the canvas:
+          // a researcher choosing one is deciding what a participant will see
+          // behind the nodes, not looking at a file.
+          canvasBackgroundPreview
         />
       )}
     </BuilderSection>

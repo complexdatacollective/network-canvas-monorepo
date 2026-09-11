@@ -14,6 +14,7 @@ import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useOutlineSection } from '../../form/useOutlineSection.ts';
 import { interfaceDisplayName } from '../../interfaces/interfaceNames.ts';
+import StageTypeImage from '../../interfaces/StageTypeImage.tsx';
 import {
   type AutoStageNamePanel,
   useAutoStageName,
@@ -121,11 +122,46 @@ export default function StageNameSection({
       id={sectionId}
       tabIndex={-1}
       aria-labelledby={headingId}
-      // The field's own margin is dropped so the hero input sits directly
-      // under the position line, as one block of heading.
-      className="flex min-w-0 flex-col justify-center pt-7 outline-none *:data-[field-name=label]:m-0"
+      // `mb-14` is the 3.5rem Architect puts between the heading and the first
+      // section (`StageEditor.tsx:758`'s `pt-14` wrapper). A margin rather than
+      // padding because the sections are flat children of one form here, so
+      // there is no wrapper to pad — and a `gap-*` on the form would also
+      // change the 2.5rem rhythm between sections that `Section` owns.
+      //
+      // The two columns are a CONTAINER query, not Architect's viewport
+      // breakpoint: this editor is drawn inside whatever panel a host gives
+      // it, and a heading that read the window would go two-column in a narrow
+      // pane on a wide screen.
+      className="mb-14 flex w-full flex-col gap-5 pt-7 outline-none @min-[48rem]:grid @min-[48rem]:grid-cols-[20rem_auto] @min-[48rem]:gap-8 @min-[48rem]:pt-10"
     >
-      {/*
+      <div className="flex items-center justify-center">
+        {/*
+          Decorative timeline rail behind the stage thumbnail, as Architect
+          draws it:
+          - image height h-28 (7rem); rail height h-56 (14rem) extends 3.5rem
+            above and below to bleed past both ends
+          - -top-13 (-3.25rem) centres the rail vertically on the image
+          - border-l-10 (10px) matches the badge timeline accent width
+        */}
+        <div className="before:border-neon-coral relative before:absolute before:-top-13 before:left-[50%] before:h-56 before:border-l-10 before:mask-[linear-gradient(180deg,transparent,rgb(0,0,0)_20%,rgb(0,0,0)_80%,transparent_100%)]">
+          {/*
+            Decorative: the interface is NAMED in the badge below, so an image
+            that announced it too would say the same thing twice to a reader
+            who cannot see it. Architect's alt text predates that badge.
+          */}
+          <StageTypeImage
+            type={identity.type}
+            ratio="4:3"
+            sizes="10rem"
+            alt=""
+            className="border-navy-taupe relative h-28 w-auto rounded-sm border-2"
+          />
+        </div>
+      </div>
+      {/* The field's own margin is dropped so the hero input sits directly
+          under the position line, as one block of heading. */}
+      <div className="flex min-w-0 flex-col justify-center *:data-[field-name=label]:m-0">
+        {/*
         A real heading rather than a label: the visible one is the name field
         itself, which is a control and cannot be a heading, so without this the
         stage editor has no heading at the rung every section below counts
@@ -133,51 +169,52 @@ export default function StageNameSection({
         level the shell states that nothing in the document occupies. Visually
         hidden, so the hero input is still the only stage title on screen.
       */}
-      {createElement(
-        headingLevel,
-        { id: headingId, className: 'sr-only' },
-        stageNameLabel,
-      )}
-      {position && (
-        <Paragraph
-          className={headingVariants({
-            level: 'label',
-            variant: 'all-caps',
-            margin: 'none',
-            className: 'text-current/70',
-          })}
-        >
-          {intl.formatMessage(messages.position, {
-            index: position.index,
-            total: position.total,
-          })}
-        </Paragraph>
-      )}
-      <Field<typeof StageNameInput>
-        name="label"
-        component={StageNameInput}
-        // The hero input is the visible heading, so the label exists for
-        // assistive technology — but it still has to exist, because it is
-        // what the outline and a host's problem panel call this field.
-        label={stageNameLabel}
-        labelHidden
-        placeholder={intl.formatMessage(messages.placeholder)}
-        characterLimit={STAGE_NAME_LIMIT}
-        required={REQUIRED}
-        autoFocus={autoFocus ?? isNewStage}
-        onFieldBlur={onLabelBlur}
-      />
-      <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
-        <Badge color="neon-coral">{interfaceName}</Badge>
-        {documentationUrl !== undefined && (
-          <NativeLink
-            href={documentationUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {intl.formatMessage(messages.documentation)}
-          </NativeLink>
+        {createElement(
+          headingLevel,
+          { id: headingId, className: 'sr-only' },
+          stageNameLabel,
         )}
+        {position && (
+          <Paragraph
+            className={headingVariants({
+              level: 'label',
+              variant: 'all-caps',
+              margin: 'none',
+              className: 'text-current/70',
+            })}
+          >
+            {intl.formatMessage(messages.position, {
+              index: position.index,
+              total: position.total,
+            })}
+          </Paragraph>
+        )}
+        <Field<typeof StageNameInput>
+          name="label"
+          component={StageNameInput}
+          // The hero input is the visible heading, so the label exists for
+          // assistive technology — but it still has to exist, because it is
+          // what the outline and a host's problem panel call this field.
+          label={stageNameLabel}
+          labelHidden
+          placeholder={intl.formatMessage(messages.placeholder)}
+          characterLimit={STAGE_NAME_LIMIT}
+          required={REQUIRED}
+          autoFocus={autoFocus ?? isNewStage}
+          onFieldBlur={onLabelBlur}
+        />
+        <div className="mt-2 flex flex-wrap items-center gap-5 text-sm">
+          <Badge color="neon-coral">{interfaceName}</Badge>
+          {documentationUrl !== undefined && (
+            <NativeLink
+              href={documentationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {intl.formatMessage(messages.documentation)}
+            </NativeLink>
+          )}
+        </div>
       </div>
     </section>
   );

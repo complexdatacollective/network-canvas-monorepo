@@ -701,7 +701,7 @@ export default function CodebookEntityEditor({
               {onCancel !== undefined && (
                 <Button
                   type="button"
-                  variant="outline"
+                  color="default"
                   onClick={onCancel}
                   disabled={busy}
                 >

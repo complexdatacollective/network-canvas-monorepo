@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { interfaceDocumentationUrl } from '../../../interfaces/documentation.ts';
+import { defaultStageImage } from '../../../interfaces/StageTypeImage.tsx';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import StageHeadingSection from '../StageHeadingSection.tsx';
@@ -56,6 +57,37 @@ describe('the stage heading', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/^Stage \d+ of \d+$/)).toBeNull();
   });
+
+  /**
+   * Which of nineteen interfaces is open, at a glance.
+   *
+   * Architect draws the interface's own screenshot on a decorative rail beside
+   * the stage name (`StageHeading.tsx:72-91`), and the rebuilt heading dropped
+   * it — leaving a researcher clicking through a timeline with the stage's
+   * name and a type badge to tell a Sociogram from a Narrative.
+   *
+   * Every interface the fixture protocol holds is asked, and the placeholder
+   * is refused: a heading that had stopped reading the stage's type would
+   * render the Default screenshot for all of them and a test that only counted
+   * images would still pass.
+   */
+  it.each(fixtureStageIds())(
+    'shows the interface screenshot for %s',
+    (stageId) => {
+      const { container } = renderStageEditor({ stageId, sections: heading });
+
+      const image = container.querySelector('img');
+      expect(image, stageId).not.toBeNull();
+      expect(image?.getAttribute('src'), stageId).not.toBe(
+        defaultStageImage.src,
+      );
+
+      // Decorative: the interface is named in the badge beside it, so the
+      // picture says nothing a reader who cannot see it is not already told.
+      expect(image?.getAttribute('alt'), stageId).toBe('');
+      expect(screen.queryAllByRole('img')).toEqual([]);
+    },
+  );
 
   /** The one thing an interface does tell the heading. */
   it('points at the documentation for this interface', () => {

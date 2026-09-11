@@ -22,6 +22,7 @@ import {
 } from '../resources/components/storyFixtures.ts';
 import BuilderSection from '../sections/BuilderSection.tsx';
 import { StageEditSession } from '../stageEdit.tsx';
+import { buttonPaint, TRANSPARENT } from '../testing/buttonPaint.ts';
 import AssetPickerField from './AssetPickerField.tsx';
 
 /** Which stage the picker under the researcher's cursor is a field of. */
@@ -31,7 +32,9 @@ type StagePreset =
   /** An information screen showing two, which may be the same image. */
   | 'two-image-items'
   /** A roster name generator, whose data source is a network resource. */
-  | 'roster';
+  | 'roster'
+  /** A sociogram whose background is a picture drawn behind the nodes. */
+  | 'canvas-background';
 
 type StageScenario = Readonly<{ stage: StoryStage; children: ReactNode }>;
 
@@ -123,6 +126,28 @@ const STAGE_SCENARIOS: Readonly<
         {itemIdentityFields(1)}
         {imageItemPicker(1, 'Second image')}
       </>
+    ),
+  }),
+  'canvas-background': (holding) => ({
+    stage: {
+      stageId: 'sociogram-1',
+      type: 'Sociogram',
+      fields: {
+        label: 'Sociogram',
+        subject: { entity: 'node', type: 'person' },
+        prompts: [{ id: 'prompt-1', text: 'Place the people you know' }],
+        background: { image: holding ?? '' },
+      },
+    },
+    children: (
+      <Field
+        component={AssetPickerField}
+        name="background.image"
+        nameMode="path"
+        label="Background image"
+        kind="image"
+        canvasBackgroundPreview
+      />
     ),
   }),
   'roster': (holding) => ({
@@ -244,6 +269,42 @@ export const Empty: Story = {};
  */
 export const Chosen: Story = {
   args: { holding: IMAGE_RESOURCE.id },
+  // What this play reads is painted, not present: jsdom resolves no Tailwind
+  // class, so every colour it measured would be the empty string and every
+  // assertion below would pass on any button at all.
+  parameters: { playsInJsdom: false },
+  /**
+   * Architect carries destructive intent on the colour, never on a variant
+   * (`Codebook/EntityType.tsx:177` filled, `AssetCard.tsx:277` on a row) and
+   * has no hollow button anywhere. Letting go of a resource is the one
+   * irreversible thing this field offers, and it used to look exactly like
+   * the download beside it.
+   */
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const remove = buttonPaint(
+      await canvas.findByRole('button', { name: 'Remove this resource' }),
+    );
+    await expect(remove.colour).toBe(remove.token('destructive'));
+    await expect(remove.background).not.toBe(TRANSPARENT);
+    await expect(remove.borderWidth).toBe('0px');
+
+    // The action that only reads the resource is not painted as the one that
+    // lets go of it.
+    const download = buttonPaint(
+      canvas.getByRole('button', { name: 'Download this resource' }),
+    );
+    await expect(download.colour).not.toBe(download.token('destructive'));
+
+    // Choosing another is Architect's own add affordance: primary, with a plus.
+    const browse = canvas.getByRole('button', { name: 'Change the image' });
+    await expect(buttonPaint(browse).colour).toBe(
+      buttonPaint(browse).token('primary'),
+    );
+    await expect(browse.querySelector('svg')).not.toBeNull();
+  },
 };
 
 /**
@@ -325,6 +386,46 @@ export const ImportingAFile: Story = {
     await expect(
       canvas.getByRole('button', { name: 'Discard this resource' }),
     ).toBeInTheDocument();
+  },
+};
+
+/**
+ * The picture a canvas is drawn on, shown as the canvas rather than as a file.
+ */
+export const AsACanvasBackground: Story = {
+  args: { stage: 'canvas-background', holding: IMAGE_RESOURCE.id },
+  // Measured, so it means something only where layout happens — see `Chosen`.
+  parameters: { playsInJsdom: false },
+  /**
+   * Architect frames a background in the interview theme at the canvas's own
+   * 16:9 (`Form/Fields/Image.tsx:9`); the rebuilt field showed a thumbnail on
+   * the editor's white card, which tells a researcher nothing about how much
+   * of their picture a participant will see. Measured rather than asserted
+   * about classes: the shape is the point.
+   */
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    const preview = await canvas.findByAltText(IMAGE_RESOURCE.name);
+    // The frame is the picture's own parent, so a frame that stopped wrapping
+    // it fails here rather than being found further up the page.
+    const frame = preview.parentElement;
+    await expect(frame?.hasAttribute('data-theme-interview')).toBe(true);
+
+    // An absent frame measures 0 and fails the first of these rather than
+    // dividing its way to a pass.
+    const box = frame?.getBoundingClientRect() ?? new DOMRect();
+    await expect(box.width).toBeGreaterThan(0);
+    await expect(box.width / box.height).toBeCloseTo(16 / 9, 1);
+
+    // The picture is fitted inside the canvas, never cropped to it or
+    // stretched: a background is chosen on what it looks like whole.
+    await expect(getComputedStyle(preview).objectFit).toBe('contain');
+    // And the canvas is the interview's own ground, not the editor's card.
+    await expect(
+      frame === null ? '' : getComputedStyle(frame).backgroundColor,
+    ).not.toBe(getComputedStyle(canvasElement).backgroundColor);
   },
 };
 

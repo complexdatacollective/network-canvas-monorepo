@@ -144,6 +144,46 @@ export const Editing: Story = {
     // on the page is the host's, so the shell is one column with no navigation
     // of its own; the sections are published on the action slot instead.
     await expect(canvas.queryByRole('navigation')).not.toBeInTheDocument();
+
+    /*
+      The rhythm Architect has always had, measured rather than asserted about
+      classes — a class list is the source written out twice, and jsdom
+      resolves no Tailwind at all, so this only means anything in the browser
+      the `storybook` project runs.
+
+      Architect draws the heading unwrapped and then `<div className="pt-14">`
+      around the sections (`StageEditor.tsx:753-758`): 3.5rem below the stage
+      title, and `Section`'s own `mb-10` — 2.5rem — between sections. The
+      package put every section, heading included, flat inside one `<form>`
+      with no gap, so the title sat hard against the first card.
+    */
+    const heading = canvas.getByRole('region', { name: 'Stage name' });
+    const first = canvas.getByRole('region', { name: 'Page content' });
+    const second = canvas.getByRole('region', { name: 'Interviewer guidance' });
+
+    const titleToFirstSection =
+      first.getBoundingClientRect().top -
+      heading.getBoundingClientRect().bottom;
+    await expect(titleToFirstSection).toBeCloseTo(56, 0);
+
+    // Measured between sections as well, so spacing the title with a `gap-*`
+    // on the form — which would push these apart too — fails here.
+    const betweenSections =
+      second.getBoundingClientRect().top - first.getBoundingClientRect().bottom;
+    await expect(betweenSections).toBeCloseTo(40, 0);
+
+    /*
+      And the title is deliberately not in a card: it identifies the stage
+      rather than configuring part of it. Nothing stands between it and the
+      form, and it carries none of the surface a section does — asserted both
+      ways round so the marker being renamed shows up as a failure rather than
+      as a pass.
+    */
+    await expect(heading.parentElement).toBe(
+      canvasElement.querySelector('form'),
+    );
+    await expect(heading.classList.contains('publish-colors')).toBe(false);
+    await expect(first.classList.contains('publish-colors')).toBe(true);
   },
 };
 

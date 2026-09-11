@@ -218,7 +218,7 @@ function ResourceBrowserBody({
               >
                 <Button
                   type="button"
-                  variant="outline"
+                  color="default"
                   size="sm"
                   disabled={disabled}
                   aria-current={
