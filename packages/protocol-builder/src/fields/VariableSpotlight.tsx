@@ -250,7 +250,7 @@ export default function VariableSpotlight({
   if (openBaseline !== open) {
     setOpenBaseline(open);
     if (!open) {
-      setTerm(term);
+      setTerm('');
       setRefusedReason(undefined);
     }
   }
