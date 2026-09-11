@@ -20,7 +20,10 @@ attribute that already exists explains why the list of input controls is short
 ("Attribute type is locked") and choosing a control for an attribute being
 invented says which type it will create; and a form field's collapsed row
 names its attribute type and input control in the reader's own language,
-coloured by type, instead of showing a raw schema token.
+outlined and washed in that type's colour, instead of showing a raw schema
+token. Outlined rather than filled: white on the filled colour is below the
+contrast a reader is owed for text that size on four of the nine attribute
+types.
 
 A validation rule is now called the same thing everywhere: the names come from
 `@codaco/protocol-validation`, which is what a protocol's own validation errors
@@ -35,3 +38,7 @@ For anyone building on `@codaco/fresco-ui`: a field's hint is now given to
 `Hint` as its `hint` prop, with a field's validation summary as a separate
 `validationSummary` prop, so a field carrying both keeps them as two
 paragraphs. Passing the hint as children still works and renders as before.
+A `Badge` given both a `color` and `variant="outline"` now reads in the surface's
+own text colour instead of the theme colour, which most of the palette does not
+reach 4.5:1 against a wash of itself; the colour is still the badge's border
+and background.

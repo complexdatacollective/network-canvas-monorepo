@@ -14,7 +14,6 @@ import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
-import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -37,10 +36,7 @@ import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
 } from '../../codebook/variableRoles.ts';
-import {
-  variableTypeBadgeColor,
-  variableTypeLabel,
-} from '../../codebook/variableTypeLabels.ts';
+import { variableTypeLabel } from '../../codebook/variableTypeLabels.ts';
 import {
   draftUnvalidatedElsewhereMessage,
   makeFieldEditorValidate,
@@ -79,7 +75,6 @@ import AttributeCodebookControls, {
 } from '../AttributeCodebookControls.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 import {
-  controlLabel,
   controlsForType,
   isCollectableType,
   isOptionType,
@@ -87,6 +82,7 @@ import {
   TYPE_OPTIONS,
 } from '../collectableTypes.ts';
 import { type SubjectEntity, useStageSubject } from '../useStageSubject.ts';
+import AttributeControlBadge from './AttributeControlBadge.tsx';
 
 /**
  * Where an interface that holds a whole form keeps it.
@@ -450,25 +446,12 @@ const messages = defineMessages({
     description:
       'Refusal shown under the attribute control when a sibling field of the same form already records its answer under the attribute just chosen.',
   },
-  previewMissing: {
-    id: 'protocolBuilder.formFields.previewMissing',
-    defaultMessage: 'This attribute is no longer in the codebook.',
-    description:
-      'Shown in the collapsed row of a form’s list of questions when the attribute it records into has been deleted from the codebook.',
-  },
   controlLandedElsewhere: {
     id: 'protocolBuilder.formFields.controlLandedElsewhere',
     defaultMessage:
       'The input control for “{variableName}” was changed, but this field no longer collects that attribute, so the field was not saved.',
     description:
       'Refusal shown above the fields of a form field’s dialog when the researcher’s choice of input control was recorded in the codebook — the protocol’s definition of what an interview records — and, while that was happening, someone else pointed this field at a different attribute. variableName is the attribute’s researcher-facing name and is not translated.',
-  },
-  attributeControlBadge: {
-    id: 'protocolBuilder.formFields.attributeControlBadge',
-    defaultMessage:
-      '<type>{typeLabel}</type> attribute using <control>{controlLabel}</control> input control',
-    description:
-      'Shown in the collapsed row of a form’s list of questions, naming the kind of attribute it records into and the control the participant answers with. Both are already translated where they are read from, and both are emphasised inside the sentence so a translator moves them with the clause they belong to.',
   },
   lockedTypeTitle: {
     id: 'protocolBuilder.formFields.lockedTypeTitle',
@@ -1871,44 +1854,7 @@ function AttributePicker({
 }
 
 /** How one field reads in the list when its dialog is closed. */
-/**
- * What a form field collects, said the way Architect says it: the kind of
- * attribute and the control the participant answers with, both translated and
- * both emphasised inside one sentence.
- *
- * A component rather than a formatted string because the sentence carries
- * markup. Architect shares one of these between its ordinary, composer and
- * family-pedigree row previews; the composer's preview is a different defect
- * (audit candidate 25) and is not touched here, so this stays private until
- * the second caller arrives.
- */
-function AttributeControlBadge({
-  type,
-  component,
-}: Readonly<{ type?: string; component?: string }>) {
-  const intl = useAppIntl();
-  const typeLabel = variableTypeLabel(type);
-  const controlDescriptor = controlLabel(component);
-
-  return (
-    <span>
-      {intl.formatMessage(messages.attributeControlBadge, {
-        // The schema's own token where this package has no name for it, which
-        // is what a protocol authored against a later schema arrives holding:
-        // an empty badge would say less than the identifier does.
-        typeLabel: typeLabel ? intl.formatMessage(typeLabel) : (type ?? ''),
-        controlLabel: controlDescriptor
-          ? intl.formatMessage(controlDescriptor)
-          : (component ?? ''),
-        type: renderStrong,
-        control: renderStrong,
-      })}
-    </span>
-  );
-}
-
 function FormFieldPreview({ item }: RowPreviewProps) {
-  const intl = useAppIntl();
   const protocolContext = useProtocolContext();
   const { subject } = useFormFieldsScope();
   const variableId = asString(item.variable) ?? '';
@@ -1923,20 +1869,19 @@ function FormFieldPreview({ item }: RowPreviewProps) {
         {asString(item.prompt) ?? ''}
       </RenderMarkdown>
       <div>
-        <Badge color={variableTypeBadgeColor(variable?.type)}>
-          {variable === undefined ? (
-            intl.formatMessage(messages.previewMissing)
-          ) : (
-            <AttributeControlBadge
-              type={variable.type}
-              component={
-                'component' in variable
-                  ? asString(variable.component)
-                  : undefined
-              }
-            />
-          )}
-        </Badge>
+        <AttributeControlBadge
+          attribute={
+            variable === undefined
+              ? undefined
+              : {
+                  type: variable.type,
+                  component:
+                    'component' in variable
+                      ? asString(variable.component)
+                      : undefined,
+                }
+          }
+        />
       </div>
     </div>
   );
