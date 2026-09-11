@@ -147,8 +147,15 @@ export function useVariableChoices(
         : writerClass === 'validated'
           ? excludeUnvalidatedUses(roleMap, subject, typed, currentValue)
           : typed;
+    // Structural slots are excluded from WRITERS only. An attribute another
+    // interface owns — a pedigree's ego marker — is exactly what a picker
+    // that only reads exists to look at: a narrative preset highlights by it,
+    // groups by it, positions by it, and writes nothing back. Run over a
+    // reading picker the exclusion dropped precisely those.
     return Object.freeze(
-      excludeInterfaceOwned(slotMap, subject, roleFiltered, currentValue),
+      writerClass === undefined
+        ? roleFiltered
+        : excludeInterfaceOwned(slotMap, subject, roleFiltered, currentValue),
     );
   }, [
     currentValue,

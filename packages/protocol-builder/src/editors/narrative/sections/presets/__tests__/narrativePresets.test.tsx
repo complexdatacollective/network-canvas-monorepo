@@ -174,6 +174,49 @@ describe('an attribute something else already collects', () => {
   });
 });
 
+/**
+ * What another INTERFACE writes, offered to the pickers that only read it.
+ *
+ * A Family Pedigree derives its ego marker from the tree the participant
+ * draws and claims that attribute outright, so no other stage may write it.
+ * Highlighting by it writes nothing — it is the reason the pedigree records
+ * the marker at all — and a narrative stage over the pedigree's own node type
+ * is where a researcher goes to show the participant inside their family.
+ */
+describe('an attribute another interface owns', () => {
+  /** A narrative stage over the type the fixture's pedigree builds. */
+  const narrativeOverFamilyMembers = () => ({
+    stage: {
+      type: 'Narrative' as const,
+      fields: {
+        label: 'Family narrative',
+        subject: { entity: 'node', type: 'family_member' },
+        background: { concentricCircles: 4, skewedTowardCenter: true },
+        behaviours: { freeDraw: true, allowRepositioning: true },
+        presets: [],
+      },
+    },
+    sections: narrativeSections,
+  });
+
+  it('is offered to a preset that highlights by it', async () => {
+    const harness = renderStageEditor(narrativeOverFamilyMembers());
+
+    const preset = await addPreset(harness);
+
+    // `is_ego` is the pedigree's own slot; `hasConditionX` is an ordinary
+    // true/false attribute of the same type. Both are asserted, so a tick
+    // list that rendered nothing cannot pass as one that correctly left the
+    // owned attribute out.
+    expect(
+      await preset.findByRole('checkbox', { name: 'is_ego' }),
+    ).toBeInTheDocument();
+    expect(
+      preset.getByRole('checkbox', { name: 'hasConditionX' }),
+    ).toBeInTheDocument();
+  });
+});
+
 const LOST_EDGE = 'former_edge';
 const LOST_HIGHLIGHT = 'former_flag';
 const LOST_EDGE_CHOICE = `${LOST_EDGE} — this edge type is no longer in the codebook`;
