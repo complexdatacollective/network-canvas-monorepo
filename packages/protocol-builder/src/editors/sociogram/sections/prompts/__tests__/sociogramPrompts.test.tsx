@@ -91,10 +91,10 @@ describe('the tasks a sociogram sets', () => {
 
     const prompt = await openPrompt(harness);
     await harness.user.click(
-      prompt.getByRole('option', { name: /Mark the node/ }),
+      prompt.getByRole('option', { name: /Attribute toggling/ }),
     );
     await harness.user.selectOptions(
-      await prompt.findByRole('combobox', { name: 'Attribute marked' }),
+      await prompt.findByRole('combobox', { name: 'Boolean attribute' }),
       'highlighted',
     );
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
@@ -120,7 +120,7 @@ describe('the tasks a sociogram sets', () => {
 
     const prompt = await openPrompt(harness, 1);
     await harness.user.click(
-      prompt.getByRole('option', { name: /Create a connection/ }),
+      prompt.getByRole('option', { name: /Edge creation/ }),
     );
     await harness.user.click(
       await prompt.findByRole('radio', { name: /family_edge/ }),
@@ -154,10 +154,10 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
 
     const prompt = await openPrompt(harness);
     await harness.user.click(
-      prompt.getByRole('option', { name: /Mark the node/ }),
+      prompt.getByRole('option', { name: /Attribute toggling/ }),
     );
     await harness.user.selectOptions(
-      await prompt.findByRole('combobox', { name: 'Attribute marked' }),
+      await prompt.findByRole('combobox', { name: 'Boolean attribute' }),
       'highlighted',
     );
 
@@ -385,7 +385,7 @@ describe('a prompt that only highlights its nodes', () => {
 
     const prompt = await openPrompt(harness);
     await harness.user.click(
-      prompt.getByRole('option', { name: /Create a connection/ }),
+      prompt.getByRole('option', { name: /Edge creation/ }),
     );
     await harness.user.click(
       await prompt.findByRole('radio', { name: /family_edge/ }),
@@ -434,7 +434,7 @@ describe('a prompt that draws a connection it does not show', () => {
 
     const prompt = await openPrompt(harness);
     expect(
-      prompt.getByRole('option', { name: /Create a connection/ }),
+      prompt.getByRole('option', { name: /Edge creation/ }),
     ).toHaveAttribute('aria-selected', 'true');
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
@@ -516,8 +516,8 @@ describe('what tapping a node does, against what the prompt already said', () =>
   });
 
   const NOTHING = /Nothing/;
-  const CREATE_EDGE = /Create a connection/;
-  const MARK = /Mark the node/;
+  const CREATE_EDGE = /Edge creation/;
+  const MARK = /Attribute toggling/;
 
   type Case = Readonly<{
     /** What the protocol holds for this prompt's `highlight`. */
@@ -640,7 +640,7 @@ describe('what tapping a node does, against what the prompt already said', () =>
       await harness.user.click(prompt.getByRole('option', { name: tap }));
       if (tap === MARK && scenario.marks !== undefined) {
         await harness.user.selectOptions(
-          await prompt.findByRole('combobox', { name: 'Attribute marked' }),
+          await prompt.findByRole('combobox', { name: 'Boolean attribute' }),
           scenario.marks,
         );
       }
@@ -724,7 +724,7 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
     ).find(([, variable]) => variable.name === 'second_canvas')?.[0];
     await waitFor(() =>
       expect(
-        prompt.getByRole('combobox', { name: 'Position attribute' }),
+        prompt.getByRole('combobox', { name: 'Layout attribute' }),
       ).toHaveValue(created),
     );
   });
@@ -737,6 +737,37 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
  * who the participant is asked about first, so a stage that holds one and an
  * editor that cannot show it is an editor that quietly discards a decision.
  */
+/**
+ * A tick list whose choices all come from the codebook can have none, and a
+ * fieldset with no boxes in it reads as an editor that failed to draw rather
+ * than as a protocol with nothing to offer. The released Architect disabled
+ * the whole section instead; the package says why.
+ */
+describe('a connections list with nothing in it', () => {
+  it('says why, rather than rendering an empty fieldset', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding({
+        id: 'sociogram-prompt-1',
+        text: 'Place the people who know each other close together',
+        layout: { layoutVariable: 'layout' },
+      }),
+    );
+
+    // Every edge type gone, so the prompt's own list has nothing to offer and
+    // holds no reference of its own to report as lost.
+    harness.receiveCodebookUpdate({ edge: { knows: null, family_edge: null } });
+
+    const prompt = await openPrompt(harness);
+
+    expect(
+      await prompt.findByText(
+        'Nothing to choose from yet. Create what this list offers in the codebook first.',
+      ),
+    ).toBeInTheDocument();
+    expect(prompt.queryByRole('checkbox')).toBeNull();
+  });
+});
+
 describe('the order a sociogram hands unplaced nodes over in', () => {
   const SORTED_PROMPT = {
     id: 'sociogram-prompt-1',
@@ -777,7 +808,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     );
     await harness.user.click(
       await prompt.findByRole('button', {
-        name: 'Add a rule for the order unplaced nodes are handed over in',
+        name: 'Add new sort rule',
       }),
     );
     await harness.user.selectOptions(

@@ -28,8 +28,8 @@ describe('the sections of an anonymisation stage', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(6));
     expect(harness.outline().slice(0, 4)).toEqual([
       { title: 'Stage name', state: 'Finished' },
-      { title: 'Passphrase explanation', state: 'Finished' },
-      { title: 'Passphrase rules', state: 'Finished' },
+      { title: 'Task explanation', state: 'Finished' },
+      { title: 'Passphrase validation', state: 'Finished' },
       { title: 'Encrypted attributes', state: 'Finished' },
     ]);
   });
@@ -38,7 +38,7 @@ describe('the sections of an anonymisation stage', () => {
     const harness = openEditor();
 
     const heading = await screen.findByRole('textbox', {
-      name: 'Explanation heading',
+      name: 'Title',
     });
     await harness.user.clear(heading);
     await harness.user.type(heading, 'Your answers are protected');
@@ -59,13 +59,14 @@ describe('the sections of an anonymisation stage', () => {
     const harness = openEditor();
 
     await harness.user.clear(
-      await screen.findByRole('textbox', { name: 'Explanation heading' }),
+      await screen.findByRole('textbox', { name: 'Title' }),
     );
 
     expect(await harness.submit()).toBeNull();
-    expect(
-      screen.getByRole('textbox', { name: 'Explanation heading' }),
-    ).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
   });
 
   it('refuses passphrase rules whose shortest allowed length exceeds its longest', async () => {
@@ -132,8 +133,10 @@ describe('the sections of an anonymisation stage', () => {
     ).toBeInTheDocument();
     // And reported where a researcher goes looking for what to correct.
     expect(
-      harness.outline().find((section) => section.title === 'Passphrase rules'),
-    ).toEqual({ title: 'Passphrase rules', state: 'Has a problem' });
+      harness
+        .outline()
+        .find((section) => section.title === 'Passphrase validation'),
+    ).toEqual({ title: 'Passphrase validation', state: 'Has a problem' });
   });
 
   /**
@@ -155,8 +158,10 @@ describe('the sections of an anonymisation stage', () => {
 
     expect(await harness.submit()).toBeNull();
     expect(
-      harness.outline().find((section) => section.title === 'Passphrase rules'),
-    ).toEqual({ title: 'Passphrase rules', state: 'Has a problem' });
+      harness
+        .outline()
+        .find((section) => section.title === 'Passphrase validation'),
+    ).toEqual({ title: 'Passphrase validation', state: 'Has a problem' });
     // Once on screen. The rule editor states a verdict for itself where it has
     // no host to state it, but here the field's error region — an `aria-live`
     // region, beside the control the editor marks invalid — is already saying
@@ -179,7 +184,7 @@ describe('the sections of an anonymisation stage', () => {
     const harness = openEditor();
 
     await harness.user.click(
-      await screen.findByRole('switch', { name: 'Passphrase rules' }),
+      await screen.findByRole('switch', { name: 'Passphrase validation' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Remove the rules' }),
@@ -264,7 +269,7 @@ describe('the attributes a passphrase protects', () => {
   it('keeps an unsaved stage edit made before the toggle', async () => {
     const harness = openEditor();
     const heading = await screen.findByRole('textbox', {
-      name: 'Explanation heading',
+      name: 'Title',
     });
     await harness.user.clear(heading);
     await harness.user.type(heading, 'Rewritten heading');
@@ -274,9 +279,9 @@ describe('the attributes a passphrase protects', () => {
       expect(attributeCheckbox('person', 'name')).toBeChecked(),
     );
 
-    expect(
-      screen.getByRole('textbox', { name: 'Explanation heading' }),
-    ).toHaveValue('Rewritten heading');
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
+      'Rewritten heading',
+    );
     const saved = await harness.submit();
     expect(saved?.stageDocument.explanationText).toMatchObject({
       title: 'Rewritten heading',

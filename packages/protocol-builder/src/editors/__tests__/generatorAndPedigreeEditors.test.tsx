@@ -60,7 +60,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Pedigree framing',
       'Pedigree boundaries',
       'Family member data',
-      'Family member form',
+      'Form configuration',
       'Relationship data',
       'Introduction screen',
       'Family-building prompt',

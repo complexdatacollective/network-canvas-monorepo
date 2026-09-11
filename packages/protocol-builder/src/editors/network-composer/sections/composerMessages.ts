@@ -11,14 +11,14 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 export const composerMessages = defineMessages({
   nodesTitle: {
     id: 'protocolBuilder.networkCanvas.composerNodeTitle',
-    defaultMessage: 'Adding and arranging nodes',
+    defaultMessage: 'Node configuration',
     description:
       'Heading of the section deciding how a participant adds members to the network on a composer canvas, where those members are remembered, and how they are grouped. Also names the section in the editor outline and to assistive technology.',
   },
   nodesDescription: {
     id: 'protocolBuilder.networkCanvas.composerNodeDescription',
     defaultMessage:
-      'How the participant adds nodes to the canvas, where those nodes sit, and how they group them.',
+      'Configure attribute mappings, layout behavior, group hulls, and editable node attributes.',
     description:
       'Description of the node section of a network composer. A node is one member of the network the participant is building.',
   },
@@ -31,7 +31,7 @@ export const composerMessages = defineMessages({
   },
   quickAddLabel: {
     id: 'protocolBuilder.networkCanvas.quickAddLabel',
-    defaultMessage: 'Attribute filled in when a node is added',
+    defaultMessage: 'Create or select an attribute for the quick-add form',
     description:
       'Label of the control choosing which codebook attribute the participant fills in as they add a member to the network — usually a name.',
   },
@@ -57,7 +57,7 @@ export const composerMessages = defineMessages({
   },
   layoutLabel: {
     id: 'protocolBuilder.networkCanvas.composerLayoutLabel',
-    defaultMessage: 'Position attribute',
+    defaultMessage: 'Create or select an attribute to store node coordinates',
     description:
       'Label of the control choosing which codebook attribute stores where each node sits on a composer canvas.',
   },
@@ -83,7 +83,7 @@ export const composerMessages = defineMessages({
   },
   hullLabel: {
     id: 'protocolBuilder.networkCanvas.hullLabel',
-    defaultMessage: 'Grouping attribute',
+    defaultMessage: 'Create or select a categorical attribute for grouping',
     description:
       'Label of the control choosing which codebook attribute the participant groups nodes by on a composer canvas.',
   },
@@ -109,14 +109,14 @@ export const composerMessages = defineMessages({
   },
   nodeFormTitle: {
     id: 'protocolBuilder.networkCanvas.nodeFormTitle',
-    defaultMessage: 'Node attributes',
+    defaultMessage: 'Editable attributes',
     description:
       'Heading of the section holding the questions a network composer asks about each node the participant has added. Also names the section in the editor outline and to assistive technology.',
   },
   nodeFormDescription: {
     id: 'protocolBuilder.networkCanvas.nodeFormDescription',
     defaultMessage:
-      'Optionally let the participant fill in more about each node after they have added it.',
+      'The attributes shown in the side panel when a node is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it.',
     description:
       'Description of the node-attributes section of a network composer.',
   },
@@ -135,7 +135,7 @@ export const composerMessages = defineMessages({
   },
   nodeFormAddLabel: {
     id: 'protocolBuilder.networkCanvas.nodeFormAddLabel',
-    defaultMessage: 'Create new node attribute field',
+    defaultMessage: 'Create new node attribute',
     description:
       'Button that adds a question to the form a network composer shows for a selected node.',
   },
@@ -167,14 +167,14 @@ export const composerMessages = defineMessages({
   },
   connectionsTitle: {
     id: 'protocolBuilder.networkCanvas.composerEdgeTitle',
-    defaultMessage: 'Connections',
+    defaultMessage: 'Edge configuration',
     description:
       'Heading of the section deciding which kinds of connection a participant may draw between nodes on a composer canvas. Also names the section in the editor outline and to assistive technology.',
   },
   connectionsDescription: {
     id: 'protocolBuilder.networkCanvas.composerEdgeDescription',
     defaultMessage:
-      'Choose the kinds of connection the participant can draw between nodes on this canvas.',
+      'Define the connection types participants can draw and the attributes collected for each type.',
     description:
       'Description of the connections section of a network composer. A connection is a relationship between two members of the network.',
   },
@@ -262,27 +262,27 @@ export const composerMessages = defineMessages({
   },
   connectionFormsTitle: {
     id: 'protocolBuilder.networkCanvas.edgeFormsTitle',
-    defaultMessage: 'Connection attributes',
+    defaultMessage: 'Editable attributes',
     description:
       'Heading of the section holding the questions a network composer asks about each connection the participant draws. Also names the section in the editor outline and to assistive technology.',
   },
   connectionFormsDescription: {
     id: 'protocolBuilder.networkCanvas.edgeFormsDescription',
     defaultMessage:
-      'Optionally ask the participant more about each connection they draw. Each kind of connection is asked about separately, because each records its own attributes.',
+      'Configure the attributes collected for this connection type.',
     description:
       'Description of the connection-attributes section of a network composer.',
   },
   connectionFormLabel: {
     id: 'protocolBuilder.networkCanvas.edgeFormHeading',
-    defaultMessage: 'Attributes for “{typeName}” connections',
+    defaultMessage: 'Edge Attributes — {typeName}',
     description:
       'Label of the list of questions asked about one kind of connection. typeName is the researcher-facing name of that connection type.',
   },
   connectionFormHint: {
     id: 'protocolBuilder.networkCanvas.edgeFormFieldsHint',
     defaultMessage:
-      'The participant answers these in the panel that opens when they select a connection of this kind. Drag to reorder them.',
+      'The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it.',
     description:
       'Guidance under the list of questions asked about one kind of connection.',
   },

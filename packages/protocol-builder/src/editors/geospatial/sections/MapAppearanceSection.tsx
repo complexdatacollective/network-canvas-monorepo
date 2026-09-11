@@ -6,7 +6,6 @@ import ColorPickerField from '@codaco/fresco-ui/form/fields/ColorPicker';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
-import { OrdinalColorSequence } from '@codaco/protocol-validation';
 
 import { geospatialMessages } from '../../../fields/geospatial/geospatialMessages.ts';
 import { mapStyleOptions } from '../../../fields/geospatial/mapboxStyles.ts';
@@ -21,6 +20,7 @@ import MapZoomField from '../../../fields/geospatial/MapZoomField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
+import { ordinalColorOptions } from '../../ordinal-bin/sections/ordinalColors.ts';
 import {
   CENTER_FIELD,
   COLOR_FIELD,
@@ -62,18 +62,11 @@ export default function MapAppearanceSection() {
   const styleOptions = useMemo(() => mapStyleOptions(intl), [intl]);
 
   // Named rather than only shown, because a colour has to be sayable by people
-  // who are not looking at the control. The stored value is a position in the
-  // theme's ordinal palette, so the position is what the name is built from.
-  const colorOptions = useMemo(
-    () =>
-      OrdinalColorSequence.map((value, index) => ({
-        value,
-        label: intl.formatMessage(geospatialMessages.colorOptionLabel, {
-          position: index + 1,
-        }),
-      })),
-    [intl],
-  );
+  // who are not looking at the control — and named after the hue the theme
+  // resolves each position to, as Architect named them, rather than counted.
+  // The same table the ordinal bin's gradient picker reads: one sequence, one
+  // set of names, so the same swatch is not two things in two editors.
+  const colorOptions = useMemo(() => ordinalColorOptions(intl), [intl]);
 
   return (
     <>

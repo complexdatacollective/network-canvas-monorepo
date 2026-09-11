@@ -26,6 +26,7 @@ import type {
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
+import { diseaseColorOptions } from './diseaseColors.ts';
 import {
   diseaseRowIssue,
   diseaseVariableOptions,
@@ -148,19 +149,10 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
    *
    * The swatches are what the researcher chooses from — a colour named "Color
    * 3" and not shown is a shade they meet for the first time in an interview —
-   * and the counted names are what a screen reader announces.
+   * so each is announced by the hue the theme gives it, as Architect announced
+   * them.
    */
-  const colorOptions = useMemo(
-    () =>
-      NodeColorSequence.map((value, index) => ({
-        value,
-        label: intl.formatMessage(
-          narrativePedigreeMessages.diseaseColorOption,
-          { position: index + 1 },
-        ),
-      })),
-    [intl],
-  );
+  const colorOptions = useMemo(() => diseaseColorOptions(intl), [intl]);
 
   const options = useMemo(
     () =>

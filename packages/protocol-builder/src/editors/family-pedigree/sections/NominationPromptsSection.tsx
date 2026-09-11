@@ -260,7 +260,6 @@ export default function NominationPromptsSection() {
         <Field<typeof ArrayField<RowValues>>
           name={PROMPTS_FIELD}
           label={intl.formatMessage(pedigreeMessages.nominationFieldLabel)}
-          hint={intl.formatMessage(pedigreeMessages.nominationFieldHint)}
           component={ArrayField}
           getId={rowId}
           addButtonLabel={intl.formatMessage(

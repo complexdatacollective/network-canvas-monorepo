@@ -1,6 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
+import type { StageEditorHarness } from '../../../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
 import {
   addPreset,
@@ -10,6 +14,8 @@ import {
   personWithVariable,
   presetsOf,
 } from '../../../__tests__/narrativeFixtures.tsx';
+
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 const openEditor = () => ({
   stageId: 'narrative-1' as const,
@@ -31,7 +37,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline()).toEqual([
       { title: 'Visualization presets', state: 'Finished' },
-      { title: 'Canvas interaction', state: 'Finished' },
+      { title: 'Narrative behaviors', state: 'Finished' },
     ]);
     expect(screen.getByText('Default layout')).toBeInTheDocument();
   });
@@ -40,7 +46,7 @@ describe('the ways of looking at the network a narrative stage offers', () => {
     const harness = renderStageEditor(openEditor());
 
     const preset = await openPreset(harness);
-    const name = preset.getByRole('textbox', { name: 'Preset name' });
+    const name = preset.getByRole('textbox', { name: 'Preset label' });
     await harness.user.clear(name);
     await harness.user.type(name, 'Ties');
     await harness.user.click(preset.getByRole('button', { name: 'Save' }));
@@ -66,11 +72,11 @@ describe('the ways of looking at the network a narrative stage offers', () => {
 
     const preset = await addPreset(harness);
     await harness.user.type(
-      preset.getByRole('textbox', { name: 'Preset name' }),
+      preset.getByRole('textbox', { name: 'Preset label' }),
       'All',
     );
     await harness.user.selectOptions(
-      preset.getByRole('combobox', { name: 'Position attribute' }),
+      preset.getByRole('combobox', { name: 'Layout attribute' }),
       'layout',
     );
     await harness.user.click(preset.getByRole('button', { name: 'Add' }));
@@ -161,18 +167,63 @@ describe('an attribute something else already collects', () => {
     expect(
       preset.getByRole('checkbox', { name: 'highlighted' }),
     ).toBeInTheDocument();
-    // The list takes several attributes, but the interview highlights by ONE
-    // of them at a time: `Narrative.tsx` passes `highlight[highlightIndex]` as
-    // a single `highlightAttribute`, and `PresetSwitcher.tsx` offers the
-    // ticked attributes as radio buttons. The hint has to say so, or a
-    // researcher ticks three expecting all three to show at once.
-    expect(
-      preset.getByText(
-        /The interviewer picks one of these attributes at a time, and the nodes it is true of are shown highlighted\./,
-      ),
-    ).toBeInTheDocument();
   });
 });
+
+/**
+ * Both of a preset's tick lists take everything they offer from the codebook,
+ * so both can be empty — and a fieldset with no boxes in it reads as an editor
+ * that failed to draw rather than as a codebook with nothing to offer. The
+ * released Architect disabled the whole section instead; the package says why,
+ * in one sentence that serves every canvas tick list.
+ */
+describe('a preset’s tick lists with nothing in them', () => {
+  const EMPTY_LIST =
+    'Nothing to choose from yet. Create what this list offers in the codebook first.';
+
+  it('say why, rather than rendering empty fieldsets', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    // Every edge type and every attribute a preset could highlight by, gone.
+    // A preset being ADDED holds no reference of its own, so neither list has
+    // a lost reference to report in place of a choice.
+    harness.receiveCodebookUpdate({
+      edge: { knows: null, family_edge: null },
+      node: { person: personWithoutHighlights(harness) },
+    });
+
+    const preset = await addPreset(harness);
+
+    await waitFor(() =>
+      expect(preset.getAllByText(EMPTY_LIST)).toHaveLength(2),
+    );
+    expect(preset.queryByRole('checkbox')).toBeNull();
+  });
+});
+
+/**
+ * The fixture's person type with every boolean attribute taken out, so the
+ * preset's highlight list has nothing to offer. Written from what the protocol
+ * holds rather than from a literal, so an attribute added to the fixture is
+ * removed here too instead of quietly leaving the list non-empty.
+ */
+const personWithoutHighlights = (harness: StageEditorHarness): SectionDoc => {
+  const document = harness.protocolSections()[PERSON_SECTION];
+  if (document === undefined) throw new Error('the fixture has no person type');
+  const held = document.variables;
+  const variables =
+    typeof held === 'object' && held !== null && !Array.isArray(held)
+      ? (held as Record<string, Record<string, unknown>>)
+      : {};
+  return {
+    ...document,
+    variables: Object.fromEntries(
+      Object.entries(variables).filter(
+        ([, variable]) => variable.type !== 'boolean',
+      ),
+    ),
+  };
+};
 
 const LOST_EDGE = 'former_edge';
 const LOST_HIGHLIGHT = 'former_flag';
@@ -288,7 +339,7 @@ describe('a codebook change made while a preset dialog is open', () => {
     const harness = renderStageEditor(openEditor());
 
     const preset = await openPreset(harness);
-    const picker = preset.getByRole('combobox', { name: 'Position attribute' });
+    const picker = preset.getByRole('combobox', { name: 'Layout attribute' });
     expect(
       within(picker).queryByRole('option', { name: 'seating' }),
     ).not.toBeInTheDocument();

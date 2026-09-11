@@ -167,10 +167,10 @@ describe('the map a geospatial stage shows', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(5));
     expect(harness.outline().map((entry) => entry.title)).toEqual([
       'Map access',
-      'Map layer',
+      'Map layers',
       'Prompts',
       'Map appearance',
-      'Starting map view',
+      'Map starting position',
     ]);
   });
 
@@ -223,11 +223,11 @@ describe('the map a geospatial stage shows', () => {
     const harness = openEditor();
 
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Basemap' }),
+      screen.getByRole('combobox', { name: 'Mapbox style' }),
       'mapbox://styles/mapbox/dark-v11',
     );
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Show public transport' }),
+      screen.getByRole('switch', { name: 'Show public transit' }),
     );
     const zoom = screen.getByRole('spinbutton', { name: 'Starting zoom' });
     await harness.user.clear(zoom);
@@ -251,9 +251,7 @@ describe('the map a geospatial stage shows', () => {
   it('saves the highlight colour selectable areas are drawn in', async () => {
     const harness = openEditor();
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'Highlight color 1' }),
-    );
+    await harness.user.click(screen.getByRole('radio', { name: 'Sea Green' }));
 
     const request = await harness.submit();
     expect(mapOptionsOf(request?.stageDocument ?? {}).color).toBe(
@@ -273,7 +271,7 @@ describe('the map a geospatial stage shows', () => {
     const harness = openEditor();
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Allow searching the map' }),
+      screen.getByRole('switch', { name: 'Allow location search' }),
     );
 
     const request = await harness.submit();
@@ -298,7 +296,7 @@ describe('the map a geospatial stage shows', () => {
     });
 
     expect(
-      screen.getByRole('switch', { name: 'Allow searching the map' }),
+      screen.getByRole('switch', { name: 'Allow location search' }),
     ).toBeChecked();
   });
 

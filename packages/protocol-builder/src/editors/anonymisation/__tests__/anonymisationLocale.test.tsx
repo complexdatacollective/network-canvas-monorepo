@@ -33,15 +33,14 @@ describe('the anonymisation sections, read in Spanish', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Explicación de la frase de contraseña',
+        name: 'Explicación de la tarea',
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('textbox', { name: 'Encabezado de la explicación' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Título' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Cuerpo' })).toBeInTheDocument();
     expect(
       screen.getByText(
-        'El encabezado que aparece arriba en la pantalla donde se pide la frase de contraseña.',
+        'Explica el proceso de anonimización a los participantes antes de que introduzcan su frase de contraseña.',
       ),
     ).toBeInTheDocument();
   });
@@ -74,7 +73,7 @@ describe('the anonymisation sections, read in Spanish', () => {
 
     await harness.user.click(
       await screen.findByRole('switch', {
-        name: 'Reglas de la frase de contraseña',
+        name: 'Validación de la frase de contraseña',
       }),
     );
 

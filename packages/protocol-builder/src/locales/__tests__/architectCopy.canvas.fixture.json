@@ -1,0 +1,887 @@
+{
+  "protocolBuilder.anonymisation.attributeGroupLabel": {
+    "en": "Encrypted attributes for {typeName}",
+    "es": "Atributos cifrados de {typeName}",
+    "from": "package — kept exception (spec 3.4 item 3)"
+  },
+  "protocolBuilder.anonymisation.encryptedAttributesDescription": {
+    "en": "Select the text attributes for each node type that should be encrypted.",
+    "es": "Selecciona los atributos de texto de cada tipo de nodo que deben cifrarse.",
+    "from": "74a07e626 architect.sections.anonymisation.encryptedVariables.selectTheTextAttributesForEach"
+  },
+  "protocolBuilder.anonymisation.encryptedAttributesTitle": {
+    "en": "Encrypted attributes",
+    "es": "Atributos cifrados",
+    "from": "74a07e626 architect.sections.anonymisation.encryptedVariables.encryptedAttributes"
+  },
+  "protocolBuilder.anonymisation.explanationBodyLabel": {
+    "en": "Body",
+    "es": "Cuerpo",
+    "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.body"
+  },
+  "protocolBuilder.anonymisation.explanationBodyPlaceholder": {
+    "en": "Enter your passphrase below, and click the 'continue' button.",
+    "es": "Introduce tu frase de contraseña abajo y pulsa el botón «Continuar».",
+    "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.enterYourPassphraseBelowAndClick"
+  },
+  "protocolBuilder.anonymisation.explanationDescription": {
+    "en": "Explain the anonymisation process to participants before they enter their passphrase.",
+    "es": "Explica el proceso de anonimización a los participantes antes de que introduzcan su frase de contraseña.",
+    "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.explainTheAnonymisationProcessToParticipants"
+  },
+  "protocolBuilder.anonymisation.explanationHeadingLabel": {
+    "en": "Title",
+    "es": "Título",
+    "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.title"
+  },
+  "protocolBuilder.anonymisation.explanationHeadingPlaceholder": {
+    "en": "This interview uses enhanced privacy protection",
+    "es": "Esta entrevista utiliza protección adicional de la privacidad",
+    "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.thisInterviewUsesEnhancedPrivacyProtection"
+  },
+  "protocolBuilder.anonymisation.explanationTitle": {
+    "en": "Task explanation",
+    "es": "Explicación de la tarea",
+    "from": "74a07e626 architect.sections.anonymisation.anonymisationExplanation.taskExplanation"
+  },
+  "protocolBuilder.anonymisation.passphraseRulesDescription": {
+    "en": "Choose which validation rules apply to the passphrase.",
+    "es": "Elige qué reglas de validación se aplican a la frase de contraseña.",
+    "from": "74a07e626 architect.sections.anonymisation.anonymisationValidation.chooseWhichValidationRulesApplyTo"
+  },
+  "protocolBuilder.anonymisation.passphraseRulesTitle": {
+    "en": "Passphrase validation",
+    "es": "Validación de la frase de contraseña",
+    "from": "74a07e626 architect.sections.anonymisation.anonymisationValidation.passphraseValidation"
+  },
+  "protocolBuilder.geospatial.accessDescription": {
+    "en": "Provide the Mapbox API key required to display the map.",
+    "es": "Proporciona la clave de API de Mapbox necesaria para mostrar el mapa.",
+    "from": "74a07e626 architect.sections.mapOptions.provideTheMapboxAPIKeyRequired"
+  },
+  "protocolBuilder.geospatial.accessTitle": {
+    "en": "Map access",
+    "es": "Acceso al mapa",
+    "from": "74a07e626 architect.sections.mapOptions.mapAccess"
+  },
+  "protocolBuilder.geospatial.appearanceDescription": {
+    "en": "Customize the colors, style, and features of the map.",
+    "es": "Personalice los colores, el estilo y las funciones del mapa.",
+    "from": "74a07e626 architect.sections.mapOptions.customizeTheColorsStyleAndFeatures"
+  },
+  "protocolBuilder.geospatial.appearanceTitle": {
+    "en": "Map appearance",
+    "es": "Apariencia del mapa",
+    "from": "74a07e626 architect.sections.mapOptions.mapAppearance"
+  },
+  "protocolBuilder.geospatial.colorHint": {
+    "en": "Choose the color used to outline selectable GeoJSON areas and highlight the area a participant selects. Use a color that remains easy to distinguish from the chosen Mapbox style.",
+    "es": "Elige el color para delinear las áreas GeoJSON seleccionables y resaltar el área que seleccione el participante. Usa un color que se distinga con facilidad del estilo de Mapbox elegido.",
+    "from": "74a07e626 architect.sections.mapOptions.chooseTheColorUsedToOutline"
+  },
+  "protocolBuilder.geospatial.colorLabel": {
+    "en": "Map outline and selection color",
+    "es": "Color del contorno y la selección del mapa",
+    "from": "74a07e626 architect.sections.mapOptions.mapOutlineAndSelectionColor"
+  },
+  "protocolBuilder.geospatial.layerDescription": {
+    "en": "Select the GeoJSON source that provides selectable areas for prompts.",
+    "es": "Selecciona la fuente GeoJSON que proporciona las áreas seleccionables para las preguntas.",
+    "from": "74a07e626 architect.sections.mapOptions.selectTheGeoJSONSourceThatProvides"
+  },
+  "protocolBuilder.geospatial.layerHint": {
+    "en": "Choose a GeoJSON resource containing the geographic areas participants can select. Each feature should include a property that identifies the area, such as a census tract, ZIP code, or neighborhood; after selecting the resource, choose which property value to record below. Avoid very large files or features outside the study area, as they can slow map loading.",
+    "es": "Elige un recurso GeoJSON que contenga las áreas geográficas que los participantes pueden seleccionar. Cada elemento debe incluir una propiedad que identifique el área, como una sección censal, un código postal o un barrio. Después de seleccionar el recurso, elige abajo qué valor de propiedad se registrará. Evita archivos muy grandes o elementos fuera del área de estudio, ya que pueden ralentizar la carga del mapa.",
+    "from": "74a07e626 architect.sections.mapOptions.chooseAGeoJSONResourceContainingThe"
+  },
+  "protocolBuilder.geospatial.layerLabel": {
+    "en": "Layer data source",
+    "es": "Fuente de datos de la capa",
+    "from": "74a07e626 architect.sections.mapOptions.layerDataSource"
+  },
+  "protocolBuilder.geospatial.layerTitle": {
+    "en": "Map layers",
+    "es": "Capas del mapa",
+    "from": "74a07e626 architect.sections.mapOptions.mapLayers"
+  },
+  "protocolBuilder.geospatial.promptVariableLabel": {
+    "en": "Location attribute",
+    "es": "Atributo de ubicación",
+    "from": "74a07e626 architect.sections.geospatialPrompts.promptFields.locationAttribute"
+  },
+  "protocolBuilder.geospatial.promptsDescription": {
+    "en": "Create and reorder the prompts shown in this stage.",
+    "es": "Crea y ordena las preguntas que se muestran en esta etapa.",
+    "from": "74a07e626 architect.sections.geospatialPrompts.geospatialPrompts.createAndReorderThePromptsShown"
+  },
+  "protocolBuilder.geospatial.promptsFieldHint": {
+    "en": "Add at least one prompt and drag prompts to reorder them.",
+    "es": "Añade al menos una pregunta y arrastra las preguntas para cambiar su orden.",
+    "from": "74a07e626 architect.sections.geospatialPrompts.geospatialPrompts.addAtLeastOnePromptAnd"
+  },
+  "protocolBuilder.geospatial.propertyLabel": {
+    "en": "Map selection property",
+    "es": "Propiedad de selección del mapa",
+    "from": "74a07e626 architect.sections.mapOptions.mapSelectionProperty"
+  },
+  "protocolBuilder.geospatial.searchHint": {
+    "en": "Allow participants to search the map for addresses, neighborhoods, and points of interest.",
+    "es": "Permitir que los participantes busquen direcciones, barrios y puntos de interés en el mapa.",
+    "from": "74a07e626 architect.sections.mapOptions.allowParticipantsToSearchTheMap"
+  },
+  "protocolBuilder.geospatial.searchLabel": {
+    "en": "Allow location search",
+    "es": "Permitir la búsqueda de ubicaciones",
+    "from": "74a07e626 architect.sections.mapOptions.allowLocationSearch"
+  },
+  "protocolBuilder.geospatial.styleHint": {
+    "en": "Choose the Mapbox basemap displayed beneath the selectable GeoJSON areas. Consider the contrast between the basemap, the configured outline color, and any place labels participants need to read.",
+    "es": "Elige el mapa base de Mapbox que se muestra debajo de las áreas GeoJSON seleccionables. Considera el contraste entre el mapa base, el color de contorno configurado y las etiquetas de lugares que deban leer los participantes.",
+    "from": "74a07e626 architect.sections.mapOptions.chooseTheMapboxBasemapDisplayedBeneath"
+  },
+  "protocolBuilder.geospatial.styleLabel": {
+    "en": "Mapbox style",
+    "es": "Estilo de Mapbox",
+    "from": "74a07e626 architect.sections.mapOptions.mapboxStyle"
+  },
+  "protocolBuilder.geospatial.tokenHint": {
+    "en": "This interface requires an API key from Mapbox. For more information about Mapbox and retrieving an API key, read our <ExternalLink> documentation </ExternalLink> on the interface.",
+    "es": "Esta interfaz requiere una clave de API de Mapbox. Para obtener más información sobre Mapbox y cómo conseguir una clave de API, lee nuestra <ExternalLink>documentación</ExternalLink> sobre la interfaz.",
+    "from": "74a07e626 architect.additional.sections.mapOptions.thisInterfaceRequiresAnAPIKey"
+  },
+  "protocolBuilder.geospatial.tokenLabel": {
+    "en": "Mapbox API Key",
+    "es": "Clave de API de Mapbox",
+    "from": "74a07e626 architect.sections.mapOptions.mapboxAPIKey"
+  },
+  "protocolBuilder.geospatial.transitHint": {
+    "en": "Show public transit routes and stations on the map.",
+    "es": "Mostrar rutas y estaciones de transporte público en el mapa.",
+    "from": "74a07e626 architect.sections.mapOptions.showPublicTransitRoutesAndStations"
+  },
+  "protocolBuilder.geospatial.transitLabel": {
+    "en": "Show public transit",
+    "es": "Mostrar transporte público",
+    "from": "74a07e626 architect.sections.mapOptions.showPublicTransit"
+  },
+  "protocolBuilder.geospatial.viewDescription": {
+    "en": "Set where the map is centered and how far it is zoomed when the stage opens.",
+    "es": "Establece el centro del mapa y su nivel de zoom al abrir la etapa.",
+    "from": "74a07e626 architect.sections.mapOptions.setWhereTheMapIsCentered"
+  },
+  "protocolBuilder.geospatial.viewTitle": {
+    "en": "Map starting position",
+    "es": "Posición inicial del mapa",
+    "from": "74a07e626 architect.sections.mapOptions.mapStartingPosition"
+  },
+  "protocolBuilder.narrativePedigree.atRiskFieldHint": {
+    "en": "Optionally show <strong>possible</strong> (at-risk) statuses alongside the certain ones, inferred from family structure and inheritance patterns.",
+    "es": "Puedes mostrar estados <strong>posibles</strong> (de riesgo) junto a los confirmados, inferidos a partir de la estructura familiar y los patrones de herencia.",
+    "from": "74a07e626 architect.sections.narrativePedigree.atRiskStatuses.optionallyShowPossibleAtRiskStatusesAlongside"
+  },
+  "protocolBuilder.narrativePedigree.atRiskFieldLabel": {
+    "en": "Show possible (at-risk) statuses",
+    "es": "Mostrar estados posibles (de riesgo)",
+    "from": "74a07e626 architect.sections.narrativePedigree.atRiskStatuses.showPossibleAtRiskStatuses"
+  },
+  "protocolBuilder.narrativePedigree.atRiskMeaning": {
+    "en": "When this is on, the pedigree also shows a person who <em>may develop</em> a condition or <em>may carry</em> it. These are drawn as the usual status symbol with a question mark (“?”) added. A solid, filled symbol always means a clinically <em>affected</em> individual (per Bennett et al., 2022 nomenclature), so at-risk relatives always appear as unfilled symbols marked with a “?”.",
+    "es": "Cuando esta opción está activada, la genealogía también muestra a una persona que <em>puede desarrollar</em> una afección o que <em>puede ser portadora</em> de ella. Se representan con el símbolo habitual del estado y un signo de interrogación («?»). Un símbolo completamente relleno siempre indica una persona clínicamente <em>afectada</em> (según la nomenclatura de Bennett et al., 2022), por lo que los familiares en riesgo aparecen siempre con símbolos sin rellenar y marcados con «?».",
+    "from": "package prose + 74a07e626 architect.sections.narrativePedigree.atRiskStatuses.whenEnabledThePedigreeAlsoShows (candidate 22)"
+  },
+  "protocolBuilder.narrativePedigree.atRiskTitle": {
+    "en": "At-risk statuses",
+    "es": "Estados de riesgo",
+    "from": "74a07e626 architect.sections.narrativePedigree.atRiskStatuses.atRiskStatuses"
+  },
+  "protocolBuilder.narrativePedigree.atRiskWhyOff": {
+    "en": "At-risk symbols are a strong visual signal that can be read as established fact rather than inferred risk. They are intended for <strong>clinician-directed use</strong>, where the result is interpreted in context. Standard pedigree nomenclature (Bennett et al., 2022) deliberately does not encode probabilistic risk, so leave this off unless a clinician is guiding interpretation.",
+    "es": "Los símbolos de riesgo son una señal visual fuerte que puede interpretarse como un hecho establecido en lugar de un riesgo inferido. Están pensados para un <strong>uso dirigido por un profesional clínico</strong>, que interpreta el resultado en su contexto. La nomenclatura genealógica estándar (Bennett et al., 2022) omite deliberadamente el riesgo probabilístico, por lo que conviene dejar esta opción desactivada salvo que un profesional clínico guíe la interpretación.",
+    "from": "package prose + 74a07e626 architect.sections.narrativePedigree.atRiskStatuses.atRiskSymbolsAreAStrongVisual (candidate 22)"
+  },
+  "protocolBuilder.narrativePedigree.diseaseColorHint": {
+    "en": "Select a color for this disease.",
+    "es": "Selecciona un color para esta enfermedad.",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.selectAColorForThisDisease"
+  },
+  "protocolBuilder.narrativePedigree.diseaseColorLabel": {
+    "en": "Color",
+    "es": "Color",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.color"
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
+    "en": "Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.",
+    "es": "Elige cómo se hereda esta enfermedad. Los patrones mendelianos se utilizan junto con las relaciones biológicas y el sexo registrado para inferir estados de portador y posibles estados de riesgo. Los patrones multifactorial y desconocido solo muestran el estado afectado y no infieren estados de portador ni de riesgo.",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.chooseHowThisDiseaseIsInherited"
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritanceLabel": {
+    "en": "Inheritance pattern",
+    "es": "Patrón de herencia",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.inheritancePattern"
+  },
+  "protocolBuilder.narrativePedigree.diseaseInheritancePlaceholder": {
+    "en": "Select an inheritance pattern...",
+    "es": "Selecciona un patrón de herencia...",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.selectAnInheritancePattern"
+  },
+  "protocolBuilder.narrativePedigree.diseaseNameLabel": {
+    "en": "Disease label",
+    "es": "Etiqueta de enfermedad",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.diseaseLabel"
+  },
+  "protocolBuilder.narrativePedigree.diseaseNamePlaceholder": {
+    "en": "Enter a name for this disease...",
+    "es": "Introduce un nombre para esta enfermedad...",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.enterANameForThisDisease"
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableHint": {
+    "en": "Select a boolean node attribute.",
+    "es": "Selecciona un atributo booleano de nodo.",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.selectABooleanNodeAttribute"
+  },
+  "protocolBuilder.narrativePedigree.diseaseVariableLabel": {
+    "en": "Node attribute",
+    "es": "Atributo de nodo",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.nodeAttribute"
+  },
+  "protocolBuilder.narrativePedigree.diseasesAddLabel": {
+    "en": "Create new disease",
+    "es": "Crear nueva enfermedad",
+    "from": "74a07e626 architect.additional.sections.narrativePedigree.diseases.createNewDisease"
+  },
+  "protocolBuilder.narrativePedigree.diseasesAddTitle": {
+    "en": "Create disease",
+    "es": "Crear enfermedad",
+    "from": "package — kept exception (spec 3.4 item 3)"
+  },
+  "protocolBuilder.narrativePedigree.diseasesEditTitle": {
+    "en": "Edit disease",
+    "es": "Editar enfermedad",
+    "from": "package — kept exception (spec 3.4 item 3)"
+  },
+  "protocolBuilder.narrativePedigree.diseasesFieldHint": {
+    "en": "Define the diseases to visualize on the pedigree. Each disease maps to a boolean node attribute from the source Family Pedigree stage.",
+    "es": "Define las enfermedades que se visualizarán en la genealogía. Cada enfermedad se asocia a un atributo booleano de nodo de la etapa de genealogía familiar de origen.",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseases.defineTheDiseasesToVisualizeOn"
+  },
+  "protocolBuilder.narrativePedigree.diseasesFieldLabel": {
+    "en": "Diseases",
+    "es": "Enfermedades",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseases.diseases"
+  },
+  "protocolBuilder.narrativePedigree.diseasesTitle": {
+    "en": "Disease mappings",
+    "es": "Asignaciones de enfermedades",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseases.diseaseMappings"
+  },
+  "protocolBuilder.narrativePedigree.nodeColorSeq1": {
+    "en": "Neon Coral",
+    "es": "Coral neón",
+    "from": "74a07e626 architect.config.neonCoral"
+  },
+  "protocolBuilder.narrativePedigree.nodeColorSeq2": {
+    "en": "Sea Serpent",
+    "es": "Turquesa marino",
+    "from": "74a07e626 architect.config.seaSerpent"
+  },
+  "protocolBuilder.narrativePedigree.nodeColorSeq3": {
+    "en": "Purple Pizazz",
+    "es": "Púrpura brillante",
+    "from": "74a07e626 architect.config.purplePizazz"
+  },
+  "protocolBuilder.narrativePedigree.nodeColorSeq4": {
+    "en": "Neon Carrot",
+    "es": "Zanahoria neón",
+    "from": "74a07e626 architect.config.neonCarrot"
+  },
+  "protocolBuilder.narrativePedigree.nodeColorSeq5": {
+    "en": "Kiwi",
+    "es": "Kiwi",
+    "from": "74a07e626 architect.config.kiwi"
+  },
+  "protocolBuilder.narrativePedigree.nodeColorSeq6": {
+    "en": "Cerulean Blue",
+    "es": "Azul cerúleo",
+    "from": "74a07e626 architect.config.ceruleanBlue"
+  },
+  "protocolBuilder.narrativePedigree.nodeColorSeq7": {
+    "en": "Paradise Pink",
+    "es": "Rosa paraíso",
+    "from": "74a07e626 architect.config.paradisePink"
+  },
+  "protocolBuilder.narrativePedigree.nodeColorSeq8": {
+    "en": "Mustard",
+    "es": "Mostaza",
+    "from": "74a07e626 architect.config.mustard"
+  },
+  "protocolBuilder.narrativePedigree.sourceHint": {
+    "en": "Select the Family Pedigree stage whose network data this Narrative Pedigree will visualize. Only Family Pedigree stages are listed here.",
+    "es": "Selecciona la etapa de genealogía familiar cuyos datos de red visualizará esta genealogía narrativa. Aquí solo se muestran etapas de genealogía familiar.",
+    "from": "74a07e626 architect.sections.narrativePedigree.sourceStage.selectTheFamilyPedigreeStageWhose"
+  },
+  "protocolBuilder.narrativePedigree.sourceLabel": {
+    "en": "Source stage",
+    "es": "Etapa de origen",
+    "from": "74a07e626 architect.sections.narrativePedigree.sourceStage.sourceStage"
+  },
+  "protocolBuilder.narrativePedigree.sourcePlaceholder": {
+    "en": "Select a Family Pedigree stage...",
+    "es": "Selecciona una etapa de genealogía familiar...",
+    "from": "74a07e626 architect.sections.narrativePedigree.sourceStage.selectAFamilyPedigreeStage"
+  },
+  "protocolBuilder.narrativePedigree.sourceTitle": {
+    "en": "Pedigree source",
+    "es": "Origen de la genealogía",
+    "from": "74a07e626 architect.sections.narrativePedigree.sourceStage.pedigreeSource"
+  },
+  "protocolBuilder.networkCanvas.canvasInteractionDescription": {
+    "en": "Control automatic layout, drawing, and node repositioning on the narrative canvas.",
+    "es": "Controle la disposición automática, el dibujo y el movimiento de nodos en el lienzo narrativo.",
+    "from": "74a07e626 architect.sections.narrativeBehaviours.controlAutomaticLayoutDrawingAndNode"
+  },
+  "protocolBuilder.networkCanvas.canvasInteractionTitle": {
+    "en": "Narrative behaviors",
+    "es": "Comportamientos de la narrativa",
+    "from": "74a07e626 architect.sections.narrativeBehaviours.narrativeBehaviors"
+  },
+  "protocolBuilder.networkCanvas.composerEdgeDescription": {
+    "en": "Define the connection types participants can draw and the attributes collected for each type.",
+    "es": "Define los tipos de conexiones que los participantes pueden dibujar y los atributos recogidos para cada tipo.",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.defineTheConnectionTypesParticipantsCan"
+  },
+  "protocolBuilder.networkCanvas.composerEdgeTitle": {
+    "en": "Edge configuration",
+    "es": "Configuración de vínculos",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.edgeConfiguration"
+  },
+  "protocolBuilder.networkCanvas.composerLayoutLabel": {
+    "en": "Create or select an attribute to store node coordinates",
+    "es": "Crear o seleccionar un atributo para guardar las coordenadas de los nodos",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.createOrSelectAnAttributeTo"
+  },
+  "protocolBuilder.networkCanvas.composerNodeDescription": {
+    "en": "Configure attribute mappings, layout behavior, group hulls, and editable node attributes.",
+    "es": "Configura las asignaciones de atributos, el comportamiento de la disposición, las envolventes de grupos y los atributos editables de nodos.",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.configureAttributeMappingsLayoutBehaviourGroup (Americanised: the package writes American defaults and carries the British spelling in en-GB)"
+  },
+  "protocolBuilder.networkCanvas.composerNodeTitle": {
+    "en": "Node configuration",
+    "es": "Configuración de nodos",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.nodeConfiguration"
+  },
+  "protocolBuilder.networkCanvas.edgeFormFieldsHint": {
+    "en": "The attributes shown in the side panel when an edge is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it.",
+    "es": "Los atributos que se muestran en el panel lateral al seleccionar un vínculo, para que puedan editarse durante la entrevista. Cada atributo se asocia al control de entrada usado para recogerlo.",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.theAttributesShownInTheSide"
+  },
+  "protocolBuilder.networkCanvas.edgeFormHeading": {
+    "en": "Edge Attributes — {typeName}",
+    "es": "Atributos de vínculo: {typeName}",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.edgeAttributes"
+  },
+  "protocolBuilder.networkCanvas.edgeFormsDescription": {
+    "en": "Configure the attributes collected for this connection type.",
+    "es": "Configura los atributos recogidos para este tipo de conexión.",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.configureTheAttributesCollectedForThis"
+  },
+  "protocolBuilder.networkCanvas.edgeFormsTitle": {
+    "en": "Editable attributes",
+    "es": "Atributos editables",
+    "from": "74a07e626 architect.sections.edgeConfiguration.edgeConfiguration.editableAttributes"
+  },
+  "protocolBuilder.networkCanvas.freeDrawHint": {
+    "en": "Allow drawing on the canvas",
+    "es": "Permitir dibujar en el lienzo",
+    "from": "74a07e626 architect.sections.narrativeBehaviours.allowDrawingOnTheCanvas"
+  },
+  "protocolBuilder.networkCanvas.freeDrawLabel": {
+    "en": "Free-draw",
+    "es": "Dibujo libre",
+    "from": "74a07e626 architect.sections.narrativeBehaviours.freeDraw"
+  },
+  "protocolBuilder.networkCanvas.hullLabel": {
+    "en": "Create or select a categorical attribute for grouping",
+    "es": "Crear o seleccionar un atributo categórico para agrupar",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.createOrSelectACategoricalAttribute"
+  },
+  "protocolBuilder.networkCanvas.layoutModeAutomaticDescription": {
+    "en": "Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.",
+    "es": "Coloca los nodos al abrir la etapa mediante una simulación de fuerzas físicas, como atracción y repulsión. El participante puede pausar y reanudar la simulación, y mover los nodos manualmente mientras está en pausa.",
+    "from": "74a07e626 architect.sections.automaticLayout.config.positionsNodesWhenTheStageFirst"
+  },
+  "protocolBuilder.networkCanvas.layoutModeAutomaticLabel": {
+    "en": "Automatic mode",
+    "es": "Modo automático",
+    "from": "74a07e626 architect.sections.automaticLayout.config.automaticMode"
+  },
+  "protocolBuilder.networkCanvas.layoutModeManualDescription": {
+    "en": "Places all nodes in a \"bucket\" at the bottom of the screen, from which the participant drags each one to where they want it.",
+    "es": "Coloca todos los nodos en una zona de reserva en la parte inferior de la pantalla, desde donde el participante arrastra cada uno hasta donde quiera colocarlo.",
+    "from": "74a07e626 architect.sections.automaticLayout.config.placesAllNodesInABucket"
+  },
+  "protocolBuilder.networkCanvas.layoutModeManualLabel": {
+    "en": "Manual mode",
+    "es": "Modo manual",
+    "from": "74a07e626 architect.sections.automaticLayout.config.manualMode"
+  },
+  "protocolBuilder.networkCanvas.nodeFormAddLabel": {
+    "en": "Create new node attribute",
+    "es": "Crear nuevo atributo de nodo",
+    "from": "74a07e626 architect.additional.sections.nodeConfiguration.nodeConfiguration.createNewNodeAttribute"
+  },
+  "protocolBuilder.networkCanvas.nodeFormDescription": {
+    "en": "The attributes shown in the side panel when a node is selected, so they can be edited during the interview. Each attribute is paired with the input control used to collect it.",
+    "es": "Los atributos que se muestran en el panel lateral al seleccionar un nodo para que puedan editarse durante la entrevista. Cada atributo se asocia al control de entrada utilizado para recogerlo.",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.theAttributesShownInTheSide"
+  },
+  "protocolBuilder.networkCanvas.nodeFormTitle": {
+    "en": "Editable attributes",
+    "es": "Atributos editables",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.editableAttributes"
+  },
+  "protocolBuilder.networkCanvas.presetConnectionsDescription": {
+    "en": "Select the edge types shown in this visualization preset.",
+    "es": "Selecciona los tipos de vínculos que se muestran en esta vista predefinida.",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.selectTheEdgeTypesShownIn"
+  },
+  "protocolBuilder.networkCanvas.presetConnectionsTitle": {
+    "en": "Displayed edges",
+    "es": "Vínculos mostrados",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.displayedEdges"
+  },
+  "protocolBuilder.networkCanvas.presetDisplayEdgesLabel": {
+    "en": "Edge types",
+    "es": "Tipos de vínculos",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.edgeTypes"
+  },
+  "protocolBuilder.networkCanvas.presetGroupHint": {
+    "en": "The selected values draw semi-transparent convex hulls around matching nodes; nodes with multiple values appear in overlapping hulls.",
+    "es": "Los valores seleccionados dibujan envolventes convexas semitransparentes alrededor de los nodos correspondientes. Los nodos con varios valores aparecen en envolventes superpuestas.",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.theSelectedValuesDrawSemiTransparentConvex"
+  },
+  "protocolBuilder.networkCanvas.presetGroupLabel": {
+    "en": "Grouping attribute",
+    "es": "Atributo de agrupación",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.groupingAttribute"
+  },
+  "protocolBuilder.networkCanvas.presetGroupingDescription": {
+    "en": "Draw convex hulls around nodes that share a categorical attribute.",
+    "es": "Dibujar envolventes convexas alrededor de los nodos que comparten un atributo categórico.",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.drawConvexHullsAroundNodesThat"
+  },
+  "protocolBuilder.networkCanvas.presetGroupingTitle": {
+    "en": "Node grouping",
+    "es": "Agrupación de nodos",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.nodeGrouping"
+  },
+  "protocolBuilder.networkCanvas.presetHighlightDescription": {
+    "en": "Highlight nodes whose selected boolean attributes are true.",
+    "es": "Resaltar los nodos cuyos atributos booleanos seleccionados sean verdaderos.",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.highlightNodesWhoseSelectedBooleanAttributes"
+  },
+  "protocolBuilder.networkCanvas.presetHighlightLabel": {
+    "en": "Highlight attributes",
+    "es": "Atributos para resaltar",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.highlightAttributes"
+  },
+  "protocolBuilder.networkCanvas.presetHighlightTitle": {
+    "en": "Node highlighting",
+    "es": "Resaltado de nodos",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.nodeHighlighting"
+  },
+  "protocolBuilder.networkCanvas.presetIdentityTitle": {
+    "en": "Preset identity",
+    "es": "Identidad de la vista predefinida",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.presetIdentity"
+  },
+  "protocolBuilder.networkCanvas.presetLayoutHint": {
+    "en": "Select an attribute to use to position the nodes for this preset.",
+    "es": "Selecciona un atributo para colocar los nodos en esta vista predefinida.",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.selectAnAttributeToUseTo"
+  },
+  "protocolBuilder.networkCanvas.presetLayoutLabel": {
+    "en": "Layout attribute",
+    "es": "Atributo de disposición",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.layoutAttribute"
+  },
+  "protocolBuilder.networkCanvas.presetNameHint": {
+    "en": "The preset label will used to quickly identify the preset from within the narrative interface. It will be visible to the participant.",
+    "es": "La etiqueta permitirá identificar rápidamente la vista predefinida dentro de la interfaz narrativa. Será visible para el participante.",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.thePresetLabelWillUsedTo"
+  },
+  "protocolBuilder.networkCanvas.presetNameLabel": {
+    "en": "Preset label",
+    "es": "Etiqueta de la vista predefinida",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.presetLabel"
+  },
+  "protocolBuilder.networkCanvas.presetNamePlaceholder": {
+    "en": "Enter a label for the preset...",
+    "es": "Introduce una etiqueta para la vista predefinida...",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.enterALabelForThePreset"
+  },
+  "protocolBuilder.networkCanvas.presetPositionsTitle": {
+    "en": "Node layout",
+    "es": "Disposición de nodos",
+    "from": "74a07e626 architect.sections.narrativePresets.presetFields.nodeLayout"
+  },
+  "protocolBuilder.networkCanvas.presetsAddLabel": {
+    "en": "Create new preset",
+    "es": "Crear nueva vista predefinida",
+    "from": "74a07e626 architect.additional.sections.narrativePresets.narrativePresets.createNewPreset"
+  },
+  "protocolBuilder.networkCanvas.presetsAddTitle": {
+    "en": "Create preset",
+    "es": "Crear vista predefinida",
+    "from": "package — kept exception (spec 3.4 item 3)"
+  },
+  "protocolBuilder.networkCanvas.presetsDescription": {
+    "en": "Create visualizations that researchers can switch between during the interview.",
+    "es": "Crea visualizaciones entre las que los investigadores puedan alternar durante la entrevista.",
+    "from": "74a07e626 architect.sections.narrativePresets.narrativePresets.createVisualizationsThatResearchersCanSwitch"
+  },
+  "protocolBuilder.networkCanvas.presetsEditTitle": {
+    "en": "Edit preset",
+    "es": "Editar vista predefinida",
+    "from": "package — kept exception (spec 3.4 item 3)"
+  },
+  "protocolBuilder.networkCanvas.presetsFieldHint": {
+    "en": "Add one or more \"presets\" below, to create different visualizations that you can switch between within the interview.",
+    "es": "Añade una o varias vistas predefinidas abajo para crear distintas visualizaciones entre las que podrás alternar durante la entrevista.",
+    "from": "74a07e626 architect.sections.narrativePresets.narrativePresets.addOneOrMorePresetsBelow"
+  },
+  "protocolBuilder.networkCanvas.presetsFieldLabel": {
+    "en": "Presets",
+    "es": "Vistas predefinidas",
+    "from": "74a07e626 architect.sections.narrativePresets.narrativePresets.presets"
+  },
+  "protocolBuilder.networkCanvas.presetsTitle": {
+    "en": "Visualization presets",
+    "es": "Vistas predefinidas de visualización",
+    "from": "74a07e626 architect.sections.narrativePresets.narrativePresets.visualizationPresets"
+  },
+  "protocolBuilder.networkCanvas.promptCreateEdgeLabel": {
+    "en": "Created edge type",
+    "es": "Tipo de vínculo creado",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.createdEdgeType"
+  },
+  "protocolBuilder.networkCanvas.promptDisplayEdgesLabel": {
+    "en": "Edge types",
+    "es": "Tipos de vínculos",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsEdges.edgeTypes"
+  },
+  "protocolBuilder.networkCanvas.promptEdgesDescription": {
+    "en": "Choose the edge types shown on this prompt.",
+    "es": "Elige los tipos de vínculos que se muestran en esta pregunta.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsEdges.chooseTheEdgeTypesShownOn"
+  },
+  "protocolBuilder.networkCanvas.promptEdgesTitle": {
+    "en": "Displayed edges",
+    "es": "Vínculos mostrados",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsEdges.displayedEdges"
+  },
+  "protocolBuilder.networkCanvas.promptHighlightHint": {
+    "en": "Select the attribute toggled when a participant taps a node.",
+    "es": "Selecciona el atributo que cambia cuando un participante pulsa un nodo.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.selectTheAttributeToggledWhenA"
+  },
+  "protocolBuilder.networkCanvas.promptHighlightLabel": {
+    "en": "Boolean attribute",
+    "es": "Atributo booleano",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.booleanAttribute"
+  },
+  "protocolBuilder.networkCanvas.promptLayoutHint": {
+    "en": "Create or select an attribute that stores node coordinates.",
+    "es": "Crea o selecciona un atributo que guarde las coordenadas de los nodos.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.createOrSelectAnAttributeThat"
+  },
+  "protocolBuilder.networkCanvas.promptLayoutLabel": {
+    "en": "Layout attribute",
+    "es": "Atributo de disposición",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.layoutAttribute"
+  },
+  "protocolBuilder.networkCanvas.promptPositionsDescription": {
+    "en": "Store node positions and configure the initial order of unplaced nodes.",
+    "es": "Guarda las posiciones de los nodos y configura el orden inicial de los que todavía no se han colocado.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.storeNodePositionsAndConfigureThe"
+  },
+  "protocolBuilder.networkCanvas.promptPositionsTitle": {
+    "en": "Node layout",
+    "es": "Disposición de nodos",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.nodeLayout"
+  },
+  "protocolBuilder.networkCanvas.promptSortAddLabel": {
+    "en": "Add new sort rule",
+    "es": "Añadir nueva regla de orden",
+    "from": "74a07e626 architect.additional.sections.sociogramPrompts.promptFieldsLayout.addNewSortRule"
+  },
+  "protocolBuilder.networkCanvas.promptSortDescription": {
+    "en": "Control the order of the stack participants use to position nodes.",
+    "es": "Controle el orden de la pila que usan los participantes para colocar nodos.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.controlTheOrderOfTheStack"
+  },
+  "protocolBuilder.networkCanvas.promptSortLabel": {
+    "en": "Sort rules",
+    "es": "Reglas de orden",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.sortRules"
+  },
+  "protocolBuilder.networkCanvas.promptSortTitle": {
+    "en": "Sort unplaced nodes",
+    "es": "Ordenar nodos sin colocar",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsLayout.sortUnplacedNodes"
+  },
+  "protocolBuilder.networkCanvas.promptTextLabel": {
+    "en": "Prompt text",
+    "es": "Texto de la pregunta",
+    "from": "74a07e626 architect.sections.promptText.promptText"
+  },
+  "protocolBuilder.networkCanvas.promptTextPlaceholder": {
+    "en": "Enter your prompt...",
+    "es": "Introduce la pregunta...",
+    "from": "74a07e626 architect.sections.promptText.enterYourPrompt"
+  },
+  "protocolBuilder.networkCanvas.promptTextSectionDescription": {
+    "en": "Write the instruction or question participants see for this task.",
+    "es": "Escribe la instrucción o pregunta que ven los participantes para esta tarea.",
+    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants"
+  },
+  "protocolBuilder.networkCanvas.promptTextTitle": {
+    "en": "Participant prompt",
+    "es": "Pregunta para el participante",
+    "from": "74a07e626 architect.sections.promptText.participantPrompt"
+  },
+  "protocolBuilder.networkCanvas.quickAddLabel": {
+    "en": "Create or select an attribute for the quick-add form",
+    "es": "Crear o seleccionar un atributo para el formulario de adición rápida",
+    "from": "74a07e626 architect.sections.nodeConfiguration.nodeConfiguration.createOrSelectAnAttributeFor"
+  },
+  "protocolBuilder.networkCanvas.repositioningHint": {
+    "en": "Allow nodes to be repositioned",
+    "es": "Permitir mover los nodos",
+    "from": "74a07e626 architect.sections.narrativeBehaviours.allowNodesToBeRepositioned"
+  },
+  "protocolBuilder.networkCanvas.repositioningLabel": {
+    "en": "Allow repositioning",
+    "es": "Permitir cambiar la posición",
+    "from": "74a07e626 architect.sections.narrativeBehaviours.allowRepositioning"
+  },
+  "protocolBuilder.networkCanvas.sociogramPromptsDescription": {
+    "en": "Create and reorder the prompts shown in this stage.",
+    "es": "Crea y ordena las preguntas que se muestran en esta etapa.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.sociogramPrompts.createAndReorderThePromptsShown"
+  },
+  "protocolBuilder.networkCanvas.sociogramPromptsFieldHint": {
+    "en": "Add at least one prompt and drag prompts to reorder them.",
+    "es": "Añade al menos una pregunta y arrastra las preguntas para cambiar su orden.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.sociogramPrompts.addAtLeastOnePromptAnd"
+  },
+  "protocolBuilder.networkCanvas.tapBehaviourLabel": {
+    "en": "Interaction type",
+    "es": "Tipo de interacción",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.interactionType"
+  },
+  "protocolBuilder.networkCanvas.tapCreateEdgeDescription": {
+    "en": "Clicking or tapping a node allows the participant to create an edge.",
+    "es": "Al pulsar un nodo, el participante puede crear un vínculo.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.clickingOrTappingANodeAllows"
+  },
+  "protocolBuilder.networkCanvas.tapCreateEdgeLabel": {
+    "en": "Edge creation",
+    "es": "Creación de vínculos",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.edgeCreation"
+  },
+  "protocolBuilder.networkCanvas.tapDescription": {
+    "en": "Choose whether tapping a node toggles an attribute or creates an edge.",
+    "es": "Elige si pulsar un nodo alterna un atributo o crea un vínculo.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.chooseWhetherTappingANodeToggles"
+  },
+  "protocolBuilder.networkCanvas.tapHighlightDescription": {
+    "en": "Clicking or tapping a node toggles a boolean attribute between true and false.",
+    "es": "Al pulsar un nodo, se alterna un atributo booleano entre verdadero y falso.",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.clickingOrTappingANodeToggles"
+  },
+  "protocolBuilder.networkCanvas.tapHighlightLabel": {
+    "en": "Attribute toggling",
+    "es": "Alternar atributo",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.config.attributeToggling"
+  },
+  "protocolBuilder.networkCanvas.tapTitle": {
+    "en": "Node interaction",
+    "es": "Interacción con nodos",
+    "from": "74a07e626 architect.sections.sociogramPrompts.promptFieldsTapBehaviour.nodeInteraction"
+  },
+  "protocolBuilder.networkCanvas.tickListEmptyState": {
+    "en": "Nothing to choose from yet. Create what this list offers in the codebook first.",
+    "es": "Todavía no hay nada que elegir. Crea antes en el libro de códigos lo que ofrece esta lista.",
+    "from": "judgement (candidate 17; Architect disables the section instead and says nothing)"
+  },
+  "protocolBuilder.pedigree.censusFieldHint": {
+    "en": "Configure the prompt shown to participants during the family building phase.",
+    "es": "Configura la pregunta que se muestra a los participantes durante la fase de construcción de la familia.",
+    "from": "74a07e626 architect.sections.familyPedigree.censusPrompt.configureThePromptShownToParticipants"
+  },
+  "protocolBuilder.pedigree.censusFieldLabel": {
+    "en": "Census prompt",
+    "es": "Pregunta del censo",
+    "from": "74a07e626 architect.sections.familyPedigree.censusPrompt.censusPrompt"
+  },
+  "protocolBuilder.pedigree.censusTitle": {
+    "en": "Family-building prompt",
+    "es": "Pregunta de construcción de la familia",
+    "from": "74a07e626 architect.sections.familyPedigree.censusPrompt.familyBuildingPrompt"
+  },
+  "protocolBuilder.pedigree.edgeDescription": {
+    "en": "Choose the edge type and map the attributes used to store family relationships.",
+    "es": "Elige el tipo de vínculo y asigna los atributos utilizados para guardar las relaciones familiares.",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.chooseTheEdgeTypeAndMap"
+  },
+  "protocolBuilder.pedigree.edgeGameteRoleHint": {
+    "en": "Stores whether a parent contributed the egg or sperm. The interface uses this fixed value set to trace biological inheritance.",
+    "es": "Guarda si un progenitor aportó el óvulo o el espermatozoide. La interfaz utiliza este conjunto fijo de valores para seguir la herencia biológica.",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.storesWhetherAParentContributedThe"
+  },
+  "protocolBuilder.pedigree.edgeGameteRoleLabel": {
+    "en": "Gamete role",
+    "es": "Aportación de gametos",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.gameteRole"
+  },
+  "protocolBuilder.pedigree.edgeGestationalCarrierHint": {
+    "en": "A boolean attribute indicating whether a parent is a gestational carrier. Used only for parent relationships.",
+    "es": "Un atributo booleano que indica si un progenitor es gestante. Solo se usa para relaciones de progenitores.",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.aBooleanAttributeIndicatingWhetherA"
+  },
+  "protocolBuilder.pedigree.edgeGestationalCarrierLabel": {
+    "en": "Gestational carrier",
+    "es": "Gestante",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.gestationalCarrier"
+  },
+  "protocolBuilder.pedigree.edgeIsActiveHint": {
+    "en": "A boolean attribute indicating whether the relationship is currently active.",
+    "es": "Un atributo booleano que indica si la relación está activa en la actualidad.",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.aBooleanAttributeIndicatingWhetherThe"
+  },
+  "protocolBuilder.pedigree.edgeIsActiveLabel": {
+    "en": "Active status",
+    "es": "Estado activo",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.activeStatus"
+  },
+  "protocolBuilder.pedigree.edgeRelationshipTypeHint": {
+    "en": "Stores the relationship category between family members, such as biological, social, donor, surrogate, adoptive, or partner.",
+    "es": "Guarda la categoría de relación entre familiares, como biológica, social, donación, gestación subrogada, adopción o pareja.",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.storesTheRelationshipCategoryBetweenFamily"
+  },
+  "protocolBuilder.pedigree.edgeRelationshipTypeLabel": {
+    "en": "Relationship type",
+    "es": "Tipo de relación",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.relationshipType"
+  },
+  "protocolBuilder.pedigree.edgeTitle": {
+    "en": "Relationship data",
+    "es": "Datos de la relación",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.relationshipData"
+  },
+  "protocolBuilder.pedigree.edgeTypeLabel": {
+    "en": "Edge type",
+    "es": "Tipo de vínculo",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.edgeType"
+  },
+  "protocolBuilder.pedigree.memberFormDescription": {
+    "en": "Optionally add fields shown when participants add or edit family members.",
+    "es": "Puedes añadir campos que se muestran cuando los participantes añaden o editan familiares.",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.optionallyAddFieldsShownWhenParticipants"
+  },
+  "protocolBuilder.pedigree.memberFormFieldLabel": {
+    "en": "Form fields",
+    "es": "Campos del formulario",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.formFields"
+  },
+  "protocolBuilder.pedigree.memberFormTitle": {
+    "en": "Form configuration",
+    "es": "Configuración del formulario",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.formConfiguration"
+  },
+  "protocolBuilder.pedigree.nodeBiologicalSexHint": {
+    "en": "Stores each family member's sex recorded at birth for sex-linked inheritance.",
+    "es": "Guarda el sexo registrado al nacer de cada familiar para la herencia ligada al sexo.",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.storesEachFamilyMemberSSexRecorded"
+  },
+  "protocolBuilder.pedigree.nodeBiologicalSexLabel": {
+    "en": "Biological sex",
+    "es": "Sexo biológico",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.biologicalSex"
+  },
+  "protocolBuilder.pedigree.nodeDescription": {
+    "en": "Choose the node type and map the attributes used to represent family members.",
+    "es": "Elige el tipo de nodo y asigna los atributos utilizados para representar a los familiares.",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.chooseTheNodeTypeAndMap"
+  },
+  "protocolBuilder.pedigree.nodeEgoHint": {
+    "en": "A boolean attribute used to identify which node represents the participant in the family pedigree.",
+    "es": "Un atributo booleano utilizado para identificar qué nodo representa al participante en la genealogía familiar.",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.aBooleanAttributeUsedToIdentify"
+  },
+  "protocolBuilder.pedigree.nodeEgoLabel": {
+    "en": "Participant identifier",
+    "es": "Identificador del participante",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.participantIdentifier"
+  },
+  "protocolBuilder.pedigree.nodeLabelHint": {
+    "en": "A text attribute used to store the display label for each family member other than the participant.",
+    "es": "Un atributo de texto utilizado para guardar la etiqueta visible de cada familiar, excepto la del participante.",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.aTextAttributeUsedToStore"
+  },
+  "protocolBuilder.pedigree.nodeLabelLabel": {
+    "en": "Display label",
+    "es": "Etiqueta visible",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.displayLabel"
+  },
+  "protocolBuilder.pedigree.nodeRelationshipHint": {
+    "en": "Stores each person's relationship to the participant, such as mother, uncle, or daughter. The family pedigree interface calculates this value automatically.",
+    "es": "Guarda la relación de cada persona con el participante, como madre, tío o hija. La interfaz de genealogía familiar calcula este valor automáticamente.",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.storesEachPersonSRelationshipToThe"
+  },
+  "protocolBuilder.pedigree.nodeRelationshipLabel": {
+    "en": "Relationship to participant",
+    "es": "Relación con el participante",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.relationshipToParticipant"
+  },
+  "protocolBuilder.pedigree.nodeTitle": {
+    "en": "Family member data",
+    "es": "Datos de familiares",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.familyMemberData"
+  },
+  "protocolBuilder.pedigree.nodeTypeLabel": {
+    "en": "Node type",
+    "es": "Tipo de nodo",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.nodeType"
+  },
+  "protocolBuilder.pedigree.nominationDescription": {
+    "en": "Optionally collect a specific condition or trait in a boolean attribute for each family member.",
+    "es": "Puedes recoger una condición o un rasgo específico en un atributo booleano para cada familiar.",
+    "from": "74a07e626 architect.sections.familyPedigree.nominationPrompts.optionallyCollectASpecificConditionOr"
+  },
+  "protocolBuilder.pedigree.nominationFieldLabel": {
+    "en": "Prompts",
+    "es": "Preguntas",
+    "from": "74a07e626 architect.sections.familyPedigree.nominationPrompts.prompts"
+  },
+  "protocolBuilder.pedigree.nominationTextLabel": {
+    "en": "Prompt text",
+    "es": "Texto de la pregunta",
+    "from": "74a07e626 architect.sections.familyPedigree.nominationPromptFields.promptText"
+  },
+  "protocolBuilder.pedigree.nominationTitle": {
+    "en": "Nomination prompts",
+    "es": "Preguntas de nominación",
+    "from": "74a07e626 architect.sections.familyPedigree.nominationPrompts.nominationPrompts"
+  },
+  "protocolBuilder.pedigree.nominationVariableHint": {
+    "en": "Select the boolean attribute this prompt will update.",
+    "es": "Selecciona el atributo booleano que actualizará esta pregunta.",
+    "from": "74a07e626 architect.sections.familyPedigree.nominationPromptFields.selectTheBooleanAttributeThisPrompt"
+  },
+  "protocolBuilder.pedigree.nominationVariableLabel": {
+    "en": "Attribute",
+    "es": "Atributo",
+    "from": "74a07e626 architect.sections.familyPedigree.nominationPromptFields.attribute"
+  }
+}
