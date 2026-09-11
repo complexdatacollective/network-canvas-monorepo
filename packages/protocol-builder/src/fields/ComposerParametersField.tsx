@@ -1,14 +1,14 @@
 import { useAppIntl } from '@codaco/app-i18n/react';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 
-import VariableParameterFields from '../../codebook/components/VariableParameterFields.tsx';
+import VariableParameterFields from '../codebook/components/VariableParameterFields.tsx';
 import {
   type ParameterShape,
   parametersForShape,
   parametersWith,
   validateParameters,
-} from '../../codebook/variableParameters.ts';
-import { composerFormFieldMessages as messages } from './composerFormFieldMessages.ts';
+} from '../codebook/variableParameters.ts';
+import { composerFormFieldMessages as messages } from '../sections/form-fields/composerFormFieldMessages.ts';
 
 export type ComposerParameters = Record<string, unknown>;
 

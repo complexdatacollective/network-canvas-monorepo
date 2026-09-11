@@ -17,6 +17,15 @@ import {
   hasValidatedUse,
   interfaceOwnedPickIssue,
 } from '../../../codebook/variableRoles.ts';
+import CreateEdgeField, {
+  CREATE_EDGE_FIELD,
+  edgeSubjectOf,
+  missingEdgeTypeIssue,
+} from '../../../fields/CreateEdgeField.tsx';
+import {
+  PromptTextField,
+  PromptTextPreview,
+} from '../../../fields/PromptTextField.tsx';
 import RichTextField from '../../../fields/RichTextField.tsx';
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
 import {
@@ -35,15 +44,6 @@ import CreateVariableButton from '../../../sections/create-variable/CreateVariab
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
-import CreateEdgeField, {
-  CREATE_EDGE_FIELD,
-  edgeSubjectOf,
-  missingEdgeTypeIssue,
-} from '../../dyad-census/sections/CreateEdgeField.tsx';
-import {
-  PromptTextField,
-  PromptTextPreview,
-} from '../../dyad-census/sections/PromptTextField.tsx';
 
 const SCALE_FIELD = 'edgeVariable';
 const DECLINE_FIELD = 'negativeLabel';

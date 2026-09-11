@@ -9,6 +9,14 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
+import BinAttributeField, {
+  type BinAttributeSlot,
+  binAttributePickIssue,
+} from '../../../fields/BinAttributeField.tsx';
+import {
+  PromptTextField,
+  PromptTextPreview,
+} from '../../../fields/PromptTextField.tsx';
 import type {
   RowEditorProps,
   RowSaveContext,
@@ -19,14 +27,6 @@ import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
-import {
-  PromptTextField,
-  PromptTextPreview,
-} from '../../dyad-census/sections/PromptTextField.tsx';
-import BinAttributeField, {
-  type BinAttributeSlot,
-  binAttributePickIssue,
-} from './BinAttributeField.tsx';
 import { binMessages } from './binMessages.ts';
 import BinSortOrders from './BinSortOrders.tsx';
 import { FIRST_ORDINAL_COLOR, ordinalColorOptions } from './ordinalColors.ts';

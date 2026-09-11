@@ -5,7 +5,7 @@ import RichSelectGroupField, {
   type RichSelectOption,
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 
-import { canvasBehavioursMessages } from './canvasBehavioursMessages.ts';
+import { canvasBehavioursMessages } from '../sections/canvas-behaviours/canvasBehavioursMessages.ts';
 
 const MANUAL = 'manual';
 const AUTOMATIC = 'automatic';

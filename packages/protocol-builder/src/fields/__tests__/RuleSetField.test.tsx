@@ -8,12 +8,12 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { RuleEditorHost } from '../../rules/__tests__/ruleEditorHost.tsx';
+import type { RuleDraft } from '../../rules/rule.ts';
+import type { RuleSetValue } from '../../rules/ruleSet.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import type { InMemoryProtocolStore } from '../../testing/host/protocolStore.ts';
-import type { RuleDraft } from '../rule.ts';
-import type { RuleSetValue } from '../ruleSet.ts';
 import { QueryRuleSetField } from '../RuleSetField.tsx';
-import { RuleEditorHost } from './ruleEditorHost.tsx';
 
 const stageSection = sectionId({ kind: 'stage', stageId: 'stage-1' });
 const personSection = sectionId({ kind: 'codebookNode', typeId: 'person' });

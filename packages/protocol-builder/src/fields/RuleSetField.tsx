@@ -7,18 +7,18 @@ import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import RadioGroupField from '@codaco/fresco-ui/form/fields/RadioGroup';
 
-import { useProtocolContext } from '../state/protocolContext.ts';
-import type { RuleDraft } from './rule.ts';
-import type { RuleTargetType } from './ruleCodebook.ts';
-import type { RuleTypeOption } from './RuleEditorDialog.tsx';
-import RuleList from './RuleList.tsx';
+import type { RuleDraft } from '../rules/rule.ts';
+import type { RuleTargetType } from '../rules/ruleCodebook.ts';
+import type { RuleTypeOption } from '../rules/RuleEditorDialog.tsx';
+import RuleList from '../rules/RuleList.tsx';
 import {
   asRuleSetValue,
   joinOptions,
   type RuleSetValue,
   type RuleSetVariant,
   ruleSetTargets,
-} from './ruleSet.ts';
+} from '../rules/ruleSet.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 
 /**
  * What each target is offered as, in the sentence that says what it matches.
