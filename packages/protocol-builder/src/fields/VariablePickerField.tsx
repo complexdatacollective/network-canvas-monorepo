@@ -1,18 +1,19 @@
-import { useMemo, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { useCallback, useRef, useState, type FocusEvent } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Button from '@codaco/fresco-ui/Button';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
-import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
-import Pill from '@codaco/fresco-ui/Pill';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { VariableType } from '@codaco/protocol-validation';
 
 import { createVariableRefused } from '../codebook/useCodebookVariableEdits.ts';
+import AttributePill from './AttributePill.tsx';
+import VariableSpotlight, {
+  type CreateRowOutcome,
+} from './VariableSpotlight.tsx';
 
 export type VariablePickerOption = Readonly<{
   value: string;
@@ -30,7 +31,7 @@ export type VariablePickerOption = Readonly<{
   /**
    * What to say about an option the caller has ruled out, in the caller's own
    * words: the name the held option is listed under, and the sentence shown
-   * beneath the select.
+   * beneath the control.
    *
    * Read only while `usable` is false. Absent, the picker says the attribute
    * cannot carry a rule, which is what every rule caller means by ruling one
@@ -51,6 +52,17 @@ export type VariablePickerFieldProps = CreateFormFieldProps<
     /** Shown in place of the list when nothing can be picked yet. */
     emptyMessage?: string;
     /**
+     * Every attribute name the type this would create on already holds, for
+     * the create row to check a typed name against before asking.
+     *
+     * Wider than `options`, which the caller has already narrowed to the kinds
+     * of answer it can use: a name is taken by a date attribute just as firmly
+     * as by a text one. Passed in rather than read here, for the reason
+     * `options` is — the picker is handed what a section knows, and a field
+     * that read the protocol for itself could not be rendered outside one.
+     */
+    namesInUse?: readonly string[];
+    /**
      * Adds an attribute to the codebook under this name and selects it here.
      *
      * Optional, and omitted is the plain picker: a control that chooses from
@@ -62,26 +74,38 @@ export type VariablePickerFieldProps = CreateFormFieldProps<
      * Answers with what became of the create — see `CreateOptionOutcome`. A
      * codebook write can be refused (a name it cannot store, a section someone
      * else is holding) and it can land somewhere the caller can no longer use,
-     * and both answers arrive after the researcher has let go of the button,
-     * so the control has to wait for one before deciding what to do with the
-     * name they typed.
+     * and both answers arrive after the researcher has let go of the row, so
+     * the window has to wait for one before deciding what to do with the name
+     * they typed.
      */
     onCreateOption?: (variableName: string) => Promise<CreateOptionOutcome>;
   }
 >;
 
 const messages = defineMessages({
-  placeholder: {
-    id: 'protocolBuilder.variablePicker.placeholder',
-    defaultMessage: 'Select an attribute…',
+  selectAttribute: {
+    id: 'protocolBuilder.variablePicker.selectAttribute',
+    defaultMessage: 'Select attribute',
     description:
-      'Placeholder in the select a researcher chooses one codebook attribute from, shown while nothing has been chosen. An attribute is a variable the protocol’s codebook defines for a node type, an edge type or the interview participant.',
+      'Button that opens the window a researcher chooses one codebook attribute in, while nothing has been chosen yet. An attribute is a variable the protocol’s codebook defines for a node type, an edge type or the interview participant.',
+  },
+  changeAttribute: {
+    id: 'protocolBuilder.variablePicker.changeAttribute',
+    defaultMessage: 'Change attribute',
+    description:
+      'The same button once an attribute has been chosen, saying that pressing it replaces the choice rather than adding to it.',
+  },
+  noneSelected: {
+    id: 'protocolBuilder.variablePicker.noneSelected',
+    defaultMessage: 'No attribute selected',
+    description:
+      'Shown where the chosen attribute would be, while none has been chosen. Said rather than left blank, so an empty control reads as an unanswered question rather than as a control that failed to draw.',
   },
   emptyState: {
     id: 'protocolBuilder.variablePicker.emptyState',
     defaultMessage: 'No attributes are available to choose from.',
     description:
-      'Shown in place of the select when nothing can be picked — the caller offered no attributes at all. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead.',
+      'Shown in place of the control when nothing can be picked — the caller offered no attributes at all and does not allow one to be created. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead.',
   },
   /**
    * Names a stored choice that is not among the attributes this picker was
@@ -132,51 +156,27 @@ const messages = defineMessages({
     id: 'protocolBuilder.variablePicker.missingAttribute',
     defaultMessage: 'This attribute is not available here. Choose another one.',
     description:
-      'Shown under the select when the attribute a researcher’s stored choice names is not among the ones this control was given to offer — it may have been deleted from the protocol’s codebook, or ruled out by whatever the choice is being made for. Worded for what the control actually knows: it is handed a list of attributes and a stored choice, and cannot tell those two cases apart.',
+      'Shown under the control when the attribute a researcher’s stored choice names is not among the ones this control was given to offer — it may have been deleted from the protocol’s codebook, or ruled out by whatever the choice is being made for. Worded for what the control actually knows: it is handed a list of attributes and a stored choice, and cannot tell those two cases apart.',
   },
   unusableAttribute: {
     id: 'protocolBuilder.variablePicker.unusableAttribute',
     defaultMessage:
       'This attribute cannot be used in a rule. Choose another one.',
     description:
-      'Shown under the select when the attribute a researcher’s stored choice names is still in the codebook but cannot carry a rule. Worded apart from the deleted-attribute sentence on purpose: this attribute is still where the researcher left it.',
-  },
-  createLabel: {
-    id: 'protocolBuilder.variablePicker.createLabel',
-    defaultMessage: 'Create a new attribute',
-    description:
-      'Label of the box where a researcher types the name of an attribute that does not exist yet, beside the list of the ones that do. An attribute is one thing an interview records about a network member.',
-  },
-  createHint: {
-    id: 'protocolBuilder.variablePicker.createHint',
-    defaultMessage: 'Adds it to this type’s codebook and selects it above.',
-    description:
-      'Guidance under the box for naming a new attribute, saying that it lands in the codebook — the protocol’s definition of what an interview records — and becomes the choice made above.',
-  },
-  createPlaceholder: {
-    id: 'protocolBuilder.variablePicker.createPlaceholder',
-    defaultMessage: 'nominated_early',
-    description:
-      'Example attribute name shown in the empty box. A name the codebook would accept: letters, digits and the symbols . _ - : only, so it deliberately has no space in it. Translate it to an equally valid example if that reads better.',
-  },
-  createAction: {
-    id: 'protocolBuilder.variablePicker.createAction',
-    defaultMessage: 'Create the attribute',
-    description:
-      'Button that adds the attribute named in the box beside it to the codebook and selects it.',
+      'Shown under the control when the attribute a researcher’s stored choice names is still in the codebook but cannot carry a rule. Worded apart from the deleted-attribute sentence on purpose: this attribute is still where the researcher left it.',
   },
   createdUnassigned: {
     id: 'protocolBuilder.variablePicker.createdUnassigned',
     defaultMessage:
       '“{variableName}” was added to the codebook, but it has not been selected here.',
     description:
-      'Notice under the create button, shown when the attribute the researcher named was added to the codebook — the protocol’s definition of what an interview records — but whatever they were creating it for did not take it. variableName is the name they typed and is not translated.',
+      'Notice under the control, shown when the attribute the researcher named was added to the codebook — the protocol’s definition of what an interview records — but whatever they were creating it for did not take it. variableName is the name they typed and is not translated.',
   },
   attributeTypeLabel: {
     id: 'protocolBuilder.variablePicker.attributeTypeLabel',
     defaultMessage: 'Attribute type: {attributeType}',
     description:
-      'Accessible name of the badge stating what kind of answer the chosen attribute records. attributeType is a protocol schema token such as "number", "text" or "categorical", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence.',
+      'Read out after the chosen attribute’s name, saying what kind of answer it records. attributeType is a protocol schema token such as "number", "text" or "categorical", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence.',
   },
 });
 
@@ -200,11 +200,11 @@ export const createdUnassigned = messages.createdUnassigned;
  *
  * Three answers rather than two, because "it does not exist" and "it exists,
  * and nothing here was given it" are opposite instructions to this control. A
- * refusal is ABOUT the name in the box, so the name stays there to be
- * corrected. An attribute that EXISTS must leave the box whatever happened
- * next: pressing Create again would ask the codebook for a name it already
- * holds, and the duplicate-name refusal that comes back is about something the
- * researcher did not do.
+ * refusal is ABOUT the name that was typed, so the window stays open with the
+ * name still in the search box to be corrected. An attribute that EXISTS
+ * closes the window whatever happened next: asking again would ask the
+ * codebook for a name it already holds, and the duplicate-name refusal that
+ * comes back is about something the researcher did not do.
  */
 export type CreateOptionOutcome =
   /** The attribute exists, and the caller has been given it. */
@@ -216,16 +216,26 @@ export type CreateOptionOutcome =
    * what is left to say is where the attribute went.
    */
   | Readonly<{ status: 'unassigned' }>
-  /** Nothing was created. The name is the researcher's to correct. */
-  | Readonly<{ status: 'refused' }>;
+  /**
+   * Nothing was created. The name is the researcher's to correct, and the
+   * window stays open on it.
+   *
+   * The reason comes with it where the caller has one. It used to be left on
+   * the caller's own surface, which was right while the name was typed there —
+   * it is typed in the picker's window now, and a sentence on the section
+   * behind a modal is a sentence nobody reads.
+   */
+  | Readonly<{ status: 'refused'; message?: string }>;
 
 /**
  * What this control has left to say once a create has ended.
  *
- * Only the two events nobody else says anything about. A `refused` outcome is
- * not among them: it is a sentence the CALLER already has — it knows what the
- * codebook would not take — and it is shown on the surface the researcher
- * asked from, so a second notice here would say the same thing twice.
+ * Only the two events nobody else says anything about, and both are said on
+ * the FIELD rather than in the window, because the window has closed by the
+ * time either is true. A `refused` outcome is not among them: it is a sentence
+ * the CALLER already has — it knows what the codebook would not take — and the
+ * window stays open with the name to correct, which is where the researcher is
+ * looking.
  */
 type CreateNotice =
   /** The attribute exists, and nothing here was given it. */
@@ -241,6 +251,14 @@ type CreateNotice =
  * Chooses one codebook attribute, and — where the caller allows it — invents
  * the one that is missing.
  *
+ * A trigger and a window, not a list in place. The codebooks this searches are
+ * long: a node type carried through a few studies holds dozens of attributes
+ * of one kind, and every control that would have shown them inline buried
+ * whatever the researcher was reading underneath it. So the field shows the
+ * one thing that matters while it is closed — which attribute is chosen, and
+ * what kind of answer it holds — and the choosing happens in a window with a
+ * search box in it.
+ *
  * It takes its options rather than reading a codebook, because what may be
  * offered depends on what the choice is FOR: a rule offers the attributes it
  * can compare, a form field drops the ones its siblings already collect and
@@ -255,32 +273,8 @@ type CreateNotice =
  * thought, and a picker that could only choose would send them to the codebook
  * and back to finish it. So a caller that knows what an invented attribute
  * would be for passes `onCreateOption`; one that does not gets the plain
- * picker.
- *
- * The name box is beside the list rather than inside it, because the two are
- * different acts: the list chooses something that exists, and this asks for
- * something to be made. What the researcher types here is the attribute's
- * name, and what this field stores is the id the codebook hands back.
- *
- * The name stays until the attribute exists. Emptying the box on the click
- * emptied it ahead of the answer, so a refusal — which is ABOUT the name they
- * typed — arrived with the name gone and nothing to correct. Mirrors quick
- * add's own create (`QuickAddSection`), which is the same act on the stage.
- *
- * Until it EXISTS, not until it was assigned: an attribute the codebook now
- * holds is one this box may not offer to create again, whatever became of it
- * afterwards, because the second press is refused for a duplicate name the
- * researcher did not choose to ask for twice. So the box empties on both
- * answers that mean the write landed, and the one where nothing here took the
- * attribute says so — otherwise emptying the box beside an unchanged
- * selection is indistinguishable from a create that quietly did nothing.
- *
- * The box is held with the button while the write is in flight, for the same
- * reason and one more. The create submits the name as it was when it was
- * pressed, so a name typed while the answer was on its way was erased by a
- * success and contradicted by a refusal — the sentence is about the submitted
- * name, and it arrived beside a box showing a different one. Held, the box is
- * always exactly what the answer is about.
+ * picker. Inventing is offered from inside the window, on the search term, so
+ * that looking for an attribute and finding it does not exist are one act.
  *
  * Labelling belongs to the surrounding field; pass `label`/`hint` to the
  * `Field` that renders this.
@@ -294,6 +288,7 @@ export default function VariablePickerField({
   onFocus,
   options = [],
   emptyMessage,
+  namesInUse,
   onCreateOption,
   disabled = false,
   readOnly = false,
@@ -301,11 +296,18 @@ export default function VariablePickerField({
   'aria-describedby': ariaDescribedBy,
   'aria-invalid': ariaInvalid,
   'aria-labelledby': ariaLabelledBy,
-  'aria-required': ariaRequired,
 }: VariablePickerFieldProps) {
   const intl = useAppIntl();
-  const [newVariableName, setNewVariableName] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  /**
+   * Whether the window that is closing was ANSWERED, rather than dismissed.
+   *
+   * A ref rather than state because the answer is read while the window is
+   * closing, by Base UI's focus manager, and a re-render would not have
+   * happened yet.
+   */
+  const answeredRef = useRef(false);
   /**
    * What is left to say about the create that has just happened, held for as
    * long as the notice about it is on screen.
@@ -315,112 +317,162 @@ export default function VariablePickerField({
    * both be true: the attribute exists and nothing here took it, or nothing
    * was written at all.
    *
-   * `unassigned` carries the SUBMITTED name rather than whatever the box holds
-   * now — the sentence is about the attribute that was created, and the box is
-   * empty by the time it appears. `failed` carries none, because there is no
-   * attribute to name.
+   * `unassigned` carries the SUBMITTED name rather than whatever the search
+   * box held — the sentence is about the attribute that was created, and the
+   * window has closed by the time it appears. `failed` carries none, because
+   * there is no attribute to name.
    */
   const [notice, setNotice] = useState<CreateNotice | undefined>(undefined);
+
   const selected = options.find((option) => option.value === value);
-  const isMissing =
-    value !== undefined && value !== '' && selected === undefined;
+  const held = value !== undefined && value !== '';
+  const isMissing = held && selected === undefined;
   const isUnusable = selected?.usable === false;
   const unusableWords = isUnusable ? selected?.unusableWords : undefined;
 
-  const selectOptions = useMemo(() => {
-    const listed = options.flatMap((option) =>
-      option.usable === false
-        ? []
-        : [{ value: option.value, label: option.label }],
-    );
-    // The choice the field already holds is offered so the control can show it
-    // as selected — a native select falls back to its placeholder otherwise,
-    // showing nothing chosen over a rule that is pointed somewhere, and saving
-    // the blank back. It goes last, so it never sits among the attributes a
-    // rule can actually be built on.
+  const offerable = options.filter((option) => option.usable !== false);
+  /**
+   * Nothing to choose, nothing to invent and nothing held, which is the one
+   * state with no window worth opening. A trigger here would offer an act
+   * whose whole content is a sentence saying it cannot be done.
+   *
+   * A HELD value keeps the control on screen whatever else is true. The
+   * reference the researcher has to resolve is the one thing this field knows
+   * and nothing else does, and replacing the control with "there is nothing to
+   * choose from" would hide it — and then the researcher would have no way to
+   * change it either.
+   */
+  const nothingToDo =
+    !held && offerable.length === 0 && onCreateOption === undefined;
+
+  /**
+   * Where focus RETURNS when the window closes.
+   *
+   * Dismissal only. A window closed by actually choosing changes the field
+   * underneath it — a new pill, and for a stage-level picker a whole section
+   * that mounts below — and focus belongs with that new content. Putting it
+   * back on the trigger also parks it inside this field's wrapper, whose blur
+   * then fires on the researcher's next click anywhere in the form, and the
+   * re-render that follows swallows that click.
+   */
+  const finalFocus = useCallback(
+    () => (answeredRef.current ? false : triggerRef.current),
+    [],
+  );
+
+  /**
+   * Keeps the window's own focus changes from reading as the researcher
+   * leaving this field.
+   *
+   * The window is portalled out of this subtree, but its React events still
+   * bubble through the owner tree — so without this the search box taking
+   * focus validates a field the researcher is in the middle of answering, and
+   * the re-render that follows lands under their first click.
+   */
+  const handleBlur = useCallback(
+    (event: FocusEvent<HTMLDivElement>) => {
+      const next = event.relatedTarget;
+      if (
+        open ||
+        (next instanceof Element && next.closest('[data-variable-spotlight]'))
+      ) {
+        event.stopPropagation();
+        return;
+      }
+      onBlur?.(event);
+    },
+    [onBlur, open],
+  );
+
+  const handleSelect = useCallback(
+    (next: string) => {
+      if (disabled || readOnly) return;
+      answeredRef.current = true;
+      setNotice(undefined);
+      onChange?.(next);
+      setOpen(false);
+    },
+    [disabled, onChange, readOnly],
+  );
+
+  const handleCreate = useCallback(
+    async (variableName: string): Promise<CreateRowOutcome> => {
+      if (onCreateOption === undefined) return 'correct-the-name';
+      answeredRef.current = true;
+      setNotice(undefined);
+      try {
+        const outcome = await onCreateOption(variableName);
+        // A refusal is ABOUT this name, so the window stays open with it still
+        // in the search box — and it is said by whoever refused it, on the
+        // surface that asked. This control is handed an outcome with no words
+        // of its own precisely because the caller has already put the reason
+        // where the researcher is looking.
+        if (outcome.status === 'refused') {
+          answeredRef.current = false;
+          return outcome.message === undefined
+            ? 'correct-the-name'
+            : { keep: outcome.message };
+        }
+        // Every other answer means the codebook now holds it, and asking for
+        // it a second time is refused for a duplicate name the researcher
+        // never chose to ask for.
+        if (outcome.status === 'unassigned') {
+          setNotice({ kind: 'unassigned', variableName });
+        }
+        return 'finished';
+      } catch {
+        // A caller that throws — synchronously, or by rejecting, or by
+        // answering with something that is not an outcome at all — has broken
+        // the promise `onCreateOption` makes, and from here they are the same
+        // broken promise: nothing is known to exist, and nobody has said
+        // anything about it.
+        //
+        // Said rather than swallowed, and said on the FIELD rather than in the
+        // window: a window left open would hold the one sentence the
+        // researcher needs behind a search box they have no reason to look at
+        // again, and the control they act on next is this one.
+        setNotice({ kind: 'failed' });
+        return 'finished';
+      }
+    },
+    [onCreateOption],
+  );
+
+  const heldPill = (() => {
     if (isMissing && value !== undefined) {
-      return [
-        ...listed,
-        {
-          value,
-          label: intl.formatMessage(messages.missingOptionLabel, {
+      return (
+        <AttributePill
+          name={intl.formatMessage(messages.missingOptionLabel, {
             attributeId: value,
-          }),
-        },
-      ];
+          })}
+        />
+      );
     }
-    if (isUnusable && selected !== undefined) {
-      return [
-        ...listed,
-        {
-          value: selected.value,
-          label:
+    if (selected === undefined) return undefined;
+    if (isUnusable) {
+      return (
+        <AttributePill
+          name={
             unusableWords?.optionLabel ??
             intl.formatMessage(messages.unusableOptionLabel, {
               attributeName: selected.label,
-            }),
-        },
-      ];
+            })
+          }
+          type={selected.type}
+        />
+      );
     }
-    return listed;
-  }, [intl, isMissing, isUnusable, options, selected, unusableWords, value]);
-
-  const create = async () => {
-    if (onCreateOption === undefined) return;
-    const submitted = newVariableName.trim();
-    setBusy(true);
-    setNotice(undefined);
-    try {
-      const outcome = await onCreateOption(submitted);
-      // A refusal is ABOUT this name, so it stays in the box to be corrected —
-      // and it is said by whoever refused it, on the surface that asked. This
-      // control is handed an outcome with no words of its own precisely
-      // because the caller has already put the reason where the researcher is
-      // looking.
-      if (outcome.status === 'refused') return;
-      // Every other answer means the codebook now holds it, and asking for it
-      // a second time is refused for a duplicate name.
-      setNewVariableName('');
-      if (outcome.status === 'unassigned') {
-        setNotice({ kind: 'unassigned', variableName: submitted });
-      }
-    } catch {
-      // A caller that throws — synchronously, or by rejecting, or by answering
-      // with something that is not an outcome at all — has broken the promise
-      // `onCreateOption` makes, and from here they are the same broken promise:
-      // nothing is known to exist, and the name they typed stays in the box for
-      // another try. `callGateway` answers a host that throws the same way, for
-      // the same reason. Everything is inside the `try` rather than only the
-      // call, so a synchronous throw is caught too.
-      //
-      // Said rather than swallowed. A broken promise is not a refusal the
-      // caller has explained somewhere — nobody has said anything, so the
-      // button coming back beside an unchanged row is all the researcher gets,
-      // and it is indistinguishable from a press that never happened. Their
-      // next move is to press Create again: the same failing write, or, if
-      // that first one did land somewhere this control never heard about, a
-      // duplicate-name refusal about an attempt they never made. So the one
-      // sentence the package already has for a codebook write refused with no
-      // explanation of its own is said here too, rather than a second wording
-      // of it.
-      setNotice({ kind: 'failed' });
-    } finally {
-      // In a `finally` because the button is disabled while this is true: a
-      // create that ended in a throw would otherwise leave the researcher
-      // looking at a Create button that never comes back, with no way to try
-      // again.
-      setBusy(false);
-    }
-  };
+    return <AttributePill name={selected.label} type={selected.type} />;
+  })();
 
   return (
     <div
       data-name={name}
-      onBlur={onBlur}
+      onBlur={handleBlur}
       onFocus={onFocus}
-      className={cx('w-full', className)}
+      className={cx('flex w-full flex-col items-start gap-4', className)}
     >
-      {selectOptions.length === 0 ? (
+      {nothingToDo ? (
         <p
           id={id}
           aria-describedby={ariaDescribedBy}
@@ -429,45 +481,79 @@ export default function VariablePickerField({
           {emptyMessage ?? intl.formatMessage(messages.emptyState)}
         </p>
       ) : (
-        <div className="flex w-full flex-col items-start gap-3">
-          <NativeSelectField
+        <>
+          {/*
+            A named group holding the answer, not a control: the control is the
+            button below it.
+
+            `aria-invalid` is a global state, so it says here what it used to
+            say on the select. `aria-required` is not: ARIA allows it only on
+            roles that take input, and there is no such role left on this field
+            once the select has gone. Nothing is lost by dropping it — the
+            required rule is one of the sentences `BaseField` already wires
+            into `aria-describedby`, which is where a researcher reads it.
+          */}
+          <div
             id={id}
-            name={name}
-            value={value ?? ''}
-            onChange={(next) => {
-              if (disabled || readOnly) return;
-              onChange?.(typeof next === 'string' ? next : String(next ?? ''));
-            }}
-            options={selectOptions}
-            placeholder={intl.formatMessage(messages.placeholder)}
-            disabled={disabled}
-            readOnly={readOnly}
+            role="group"
+            aria-labelledby={ariaLabelledBy}
             aria-describedby={ariaDescribedBy}
             aria-invalid={ariaInvalid}
-            aria-labelledby={ariaLabelledBy}
-            aria-required={ariaRequired}
-          />
-          {/*
-            The type is stated beside the choice rather than only implied by
-            the control's colour: it decides which operators the next control
-            offers, so the researcher needs to be able to read it.
-          */}
-          {selected?.type !== undefined && (
-            <Pill
-              variant="outline"
-              className="variable-pill max-w-full"
-              data-attribute-type={selected.type}
-              // A label and its value, not a sentence: the words around the
-              // type name never have to agree with it grammatically.
-              aria-label={intl.formatMessage(messages.attributeTypeLabel, {
-                attributeType: selected.type,
-              })}
-            >
-              <span className="min-w-0 overflow-hidden text-ellipsis">
-                {selected.type}
-              </span>
-            </Pill>
-          )}
+            className={cx(
+              // `min-w-0`: without it this box's automatic minimum is the
+              // min-content of the pill inside, so a long attribute name makes
+              // the whole picker — and the editor around it — refuse to
+              // shrink.
+              'bg-input text-input-contrast flex w-full min-w-0 flex-col items-start rounded border-2 p-4',
+              ariaInvalid === true && 'border-destructive',
+              disabled && 'opacity-50',
+              readOnly && 'opacity-70',
+            )}
+          >
+            {heldPill === undefined ? (
+              <p className="w-full py-6 text-center text-sm text-current/70 italic">
+                {offerable.length === 0 && emptyMessage !== undefined
+                  ? emptyMessage
+                  : intl.formatMessage(messages.noneSelected)}
+              </p>
+            ) : (
+              <div className="w-full min-w-0">
+                {heldPill}
+                {/* The kind of answer decides which operators the next control
+                    offers, so it is stated rather than left to the pill's
+                    colour. Inside the field and not inside the pill: where the
+                    same pill renders as a row of the window's list, that row's
+                    accessible NAME has to be the attribute's own name. */}
+                {selected?.type !== undefined && (
+                  <span className="sr-only">
+                    {intl.formatMessage(messages.attributeTypeLabel, {
+                      attributeType: selected.type,
+                    })}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          <Button
+            ref={triggerRef}
+            type="button"
+            icon={<Plus />}
+            color="primary"
+            disabled={disabled || readOnly}
+            onClick={() => {
+              answeredRef.current = false;
+              setOpen(true);
+            }}
+            // Names this button as where a refused save should send focus for
+            // this field: it is the control that resolves a "choose an
+            // attribute" error, and it is not the first focusable element in
+            // the field once one has been chosen.
+            data-field-focus-target=""
+          >
+            {intl.formatMessage(
+              held ? messages.changeAttribute : messages.selectAttribute,
+            )}
+          </Button>
           {isMissing && (
             <p className="text-destructive text-sm">
               {intl.formatMessage(messages.missingAttribute)}
@@ -479,107 +565,53 @@ export default function VariablePickerField({
                 intl.formatMessage(messages.unusableAttribute)}
             </p>
           )}
-        </div>
-      )}
-      {onCreateOption !== undefined && (
-        <>
-          <UnconnectedField<typeof InputField>
-            name="newAttributeName"
-            component={InputField}
-            label={intl.formatMessage(messages.createLabel)}
-            hint={intl.formatMessage(messages.createHint)}
-            // A name the codebook would actually take. `VariableNameSchema`
-            // allows letters, digits and `. _ - :` and nothing else, so a
-            // placeholder with a space in it showed the researcher an example
-            // of a name that is refused the moment they type it.
-            placeholder={intl.formatMessage(messages.createPlaceholder)}
-            value={newVariableName}
-            disabled={disabled || readOnly || busy}
-            // Enter here means "create the attribute", and it has to be said
-            // so. This box is inside a form whose submit means something else
-            // — the stage's own, whose default button is the host's Save,
-            // associated by `form=` and therefore the form's default button
-            // wherever the host renders it, and a row dialog's — so the
-            // browser's implicit submission saved and closed the editor
-            // instead, creating nothing and taking the typed name with it.
-            // `QuickAddSection`'s own name box answers Enter for the same
-            // reason.
-            onKeyDown={(event) => {
-              // A key pressed to compose a character is not a key press.
-              if (event.key !== 'Enter' || event.nativeEvent.isComposing) {
-                return;
-              }
-              // Whatever else is true, Enter in this box does not mean "save".
-              event.preventDefault();
-              // Nothing is named, so there is nothing to create — the one part
-              // of the button's own guard a key press can still reach, since
-              // the box is disabled in every other case the button is.
-              if (newVariableName.trim() === '') return;
-              void create();
-            }}
-            onChange={(next: unknown) => {
-              // The notice is about the create that has just happened; naming
-              // another attribute is the start of a different one.
-              setNotice(undefined);
-              setNewVariableName(typeof next === 'string' ? next : '');
-            }}
-          />
-          {/* One column child, so the always-mounted live region below the
-              button takes up no room while it is saying nothing — a gap
-              between flex items is spent on an empty child too. */}
-          <div className="flex flex-col">
-            <Button
-              // Never a submit: this control lives inside a form whose submit
-              // means something else entirely, on both the stage and a row
-              // dialog.
-              type="button"
-              disabled={
-                disabled || readOnly || busy || newVariableName.trim() === ''
-              }
-              onClick={() => void create()}
-            >
-              {intl.formatMessage(messages.createAction)}
-            </Button>
-            {/* Always mounted, so a screen reader is watching this region
-                before the notice appears: a live region added to the page at
-                the same moment as its own content is not reliably announced.
+          {/* Always mounted, so a screen reader is watching this region before
+              the notice appears: a live region added to the page at the same
+              moment as its own content is not reliably announced.
 
-                The `Alert` inside it is presentational for exactly that
-                reason. Its `info` variant is a `role="status"` of its own —
-                and its `destructive` variant a `role="alert"` — so either
-                would be a second live region inserted into this one at the
-                moment its content appears, which is the double (or, on some
-                assistive technology, dropped) announcement this wrapper exists
-                to avoid. Same shape as the bounds notice in
-                `VariableParameterFields`.
+              The `Alert` inside it is presentational for exactly that reason.
+              Its `info` variant is a `role="status"` of its own — and its
+              `destructive` variant a `role="alert"` — so either would be a
+              second live region inserted into this one at the moment its
+              content appears, which is the double (or, on some assistive
+              technology, dropped) announcement this wrapper exists to avoid.
 
-                One region for both sentences, and polite for both. Neither
-                interrupts anything: they are said about a press the researcher
-                has already made and finished waiting for, and the control they
-                would act on next is the one their focus is already in. */}
-            <div
-              role="status"
-              aria-live="polite"
-              className={notice === undefined ? undefined : 'mt-3'}
-            >
-              {notice?.kind === 'unassigned' && (
-                <Alert variant="info" role="presentation">
-                  <AlertDescription>
-                    {intl.formatMessage(messages.createdUnassigned, {
-                      variableName: notice.variableName,
-                    })}
-                  </AlertDescription>
-                </Alert>
-              )}
-              {notice?.kind === 'failed' && (
-                <Alert variant="destructive" role="presentation">
-                  <AlertDescription>
-                    {intl.formatMessage(createVariableRefused)}
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
+              One region for both sentences, and polite for both. Neither
+              interrupts anything: they are said about a create the researcher
+              has already made and finished waiting for. */}
+          <div role="status" aria-live="polite" className="w-full empty:hidden">
+            {notice?.kind === 'unassigned' && (
+              <Alert variant="info" role="presentation">
+                <AlertDescription>
+                  {intl.formatMessage(messages.createdUnassigned, {
+                    variableName: notice.variableName,
+                  })}
+                </AlertDescription>
+              </Alert>
+            )}
+            {notice?.kind === 'failed' && (
+              <Alert variant="destructive" role="presentation">
+                <AlertDescription>
+                  {intl.formatMessage(createVariableRefused)}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
+          <VariableSpotlight
+            open={open}
+            onOpenChange={(next) => {
+              if (!disabled && !readOnly) setOpen(next);
+            }}
+            options={offerable}
+            onSelect={handleSelect}
+            {...(onCreateOption === undefined
+              ? {}
+              : { onCreate: handleCreate, namesInUse })}
+            {...(ariaLabelledBy === undefined
+              ? {}
+              : { 'aria-labelledby': ariaLabelledBy })}
+            finalFocus={finalFocus}
+          />
         </>
       )}
     </div>

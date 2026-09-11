@@ -15,4 +15,5 @@ export const interfaceDocumentationUrl = (slug: string): string =>
 export const protocolAuthoringLinks = {
   skipLogic: `${DOCS_BASE_URL}/design-protocols/key-concepts/skip-logic/`,
   networkFiltering: `${DOCS_BASE_URL}/design-protocols/key-concepts/network-filtering/`,
+  attributeNaming: `${DOCS_BASE_URL}/design-protocols/key-concepts/variables/#variable-naming-best-practices`,
 } as const;
