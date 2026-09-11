@@ -83,11 +83,11 @@ const pathMatches =
 //    edge-color-seq-1,6) left by types deleted and recreated during original
 //    authoring, so a from-scratch build necessarily produces the dense
 //    sequence. Prompt-level `color` (OrdinalBin) is NOT stripped — the
-//    DialogArrayField item template's `ord-color-seq-1` matches canonical and
+//    array field item template's `ord-color-seq-1` matches canonical and
 //    stays strictly compared.
-// 4. `form.fields[*].id` — DialogArrayField's `createItem` injects `id:
-//    uuid()` into every array item and `normalizeField` deliberately keeps
-//    it; the canonical form fields predate that and have none.
+// 4. `form.fields[*].id` — fresco-ui's `ArrayField` gives every row a managed
+//    id and `normalizeField` deliberately keeps it; the canonical form fields
+//    predate that and have none.
 // 5. `background.skewedTowardCenter: false` ≡ absent — the architect `Toggle`
 //    mount effect force-writes `false` for every mounted toggle ("Persist the
 //    explicit false default…", Toggle.tsx) and prune keeps `false`; the
@@ -113,12 +113,43 @@ const pathMatches =
 //    editor always writes a variables map when creating a type, while the
 //    canonical file omits the key for variable-less types (know/conflict
 //    edges, the Classmate node). Non-empty maps still compare strictly.
+// 10. A boolean attribute's `options[*].negative: false` ≡ absent — the
+//    switch that styles an answer as the negative one is off by default and
+//    `@codaco/protocol-builder`'s editor writes nothing for a switch left
+//    off, while the canonical file (authored by the legacy editor, which
+//    force-wrote every toggle it mounted) carries the explicit `false`. The
+//    control that renders these reads the two the same way:
+//    `option.negative ?? false` (fresco-ui's `Boolean.tsx`). `negative: true`
+//    still compares strictly.
+// 11. A DatePicker's `parameters.type: 'full'` ≡ absent — `full` is the
+//    resolution the control is seeded with and the one every consumer
+//    assumes when the key is missing: fresco-ui's `DatePicker` destructures
+//    `type: resolutionType = 'full'`, the package reads an absent resolution
+//    back as `full` (`dateResolutionOf`), and protocol-validation's own
+//    schema-8 migration says so in as many words ("'full'/'month'/'year' (or
+//    omitted, defaulting to 'full')"). The editor writes only what was
+//    authored, so a resolution nobody changed leaves no key at all — and the
+//    `parameters` block that held nothing else goes with it, the same shape
+//    as rules 6 and 9. `month` and `year` still compare strictly.
 // ---------------------------------------------------------------------------
 
 type DeletionRule = {
   matches: PathMatcher;
   when?: (value: unknown) => boolean;
 };
+
+/**
+ * The same path under every codebook attribute, wherever attributes live.
+ *
+ * `codebook.ego.variables` is one level shallower than
+ * `codebook.node.<type>.variables`, so a rule about attributes has to be
+ * written three times or not at all.
+ */
+const variablePaths = (...tail: string[]): PathMatcher[] => [
+  pathMatches('codebook', 'node', '*', 'variables', '*', ...tail),
+  pathMatches('codebook', 'edge', '*', 'variables', '*', ...tail),
+  pathMatches('codebook', 'ego', 'variables', '*', ...tail),
+];
 
 const DELETED_PATHS: DeletionRule[] = [
   { matches: pathMatches('lastModified') },
@@ -150,6 +181,14 @@ const DELETED_PATHS: DeletionRule[] = [
     when: (value: unknown) =>
       isRecord(value) && Object.keys(value).length === 0,
   })),
+  ...variablePaths('options', '*', 'negative').map((matches) => ({
+    matches,
+    when: (value: unknown) => value === false,
+  })),
+  ...variablePaths('parameters', 'type').map((matches) => ({
+    matches,
+    when: (value: unknown) => value === 'full',
+  })),
 ];
 
 /**
@@ -162,6 +201,7 @@ const DELETED_PATHS: DeletionRule[] = [
 const EMPTY_EQUALS_ABSENT: PathMatcher[] = [
   pathMatches('stages', '*', 'behaviours'),
   pathMatches('stages', '*', 'prompts', '*', 'highlight'),
+  ...variablePaths('parameters'),
 ];
 
 const RICH_TEXT_PATHS: PathMatcher[] = [
@@ -338,8 +378,9 @@ export function normalizeProtocol(input: unknown): unknown {
 //
 // The conditional deletions are the exception, deliberately: each fires
 // only when the value IS the default it treats as equivalent to absent
-// (`skewedTowardCenter: false`, `automaticLayout: false`, or
-// `allowHighlighting: false`). A changed value
+// (`skewedTowardCenter: false`, `automaticLayout: false`,
+// `allowHighlighting: false`, an option's `negative: false`, or a date
+// attribute's `parameters.type: 'full'`). A changed value
 // still compares, and for those defaults "written as the default" and "not
 // written at all" are indistinguishable to every consumer — so no regression
 // survives the tolerance.
@@ -366,10 +407,11 @@ export function assertBuiltProtocolInvariants(built: unknown): void {
   }
 
   // --- assetManifest[*].source (deleted: canonical uses opaque storage keys)
-  // Upload writes `source: file.name` and `name: file.name` from the same
-  // File, so they must agree; a source whose extension contradicts its type
-  // (the '.txt for a video' case) would break export ZIP entries and preview
-  // MIME types while still validating.
+  // An import writes `source` as a content-addressed name and `name` as the
+  // researcher's own, so the two no longer agree by construction and each is
+  // checked for what it is. The extension still has to match the type: a
+  // source whose extension contradicts it (the '.txt for a video' case) would
+  // break export ZIP entries and preview MIME types while still validating.
   const EXTENSIONS: Record<string, RegExp> = {
     image: /\.(png|svg|jpe?g|gif)$/i,
     video: /\.(mov|mp4)$/i,
@@ -388,10 +430,18 @@ export function assertBuiltProtocolInvariants(built: unknown): void {
       problems.push(`assetManifest[${id}].source is missing`);
       continue;
     }
-    if (source !== name) {
+    // Named by its CONTENT, not by the file the researcher picked: the
+    // resource gateway hashes the bytes so that two imports of different
+    // pictures both called `portrait.png` stay two assets wherever the
+    // protocol is opened next. The researcher's own name is kept beside it,
+    // and is what the rest of this comparison reads.
+    if (!/^[0-9a-f]{64}\.[a-z0-9]+$/i.test(source)) {
       problems.push(
-        `assetManifest[${id}].source ${JSON.stringify(source)} !== name ${JSON.stringify(name)} — upload derives both from File.name`,
+        `assetManifest[${id}].source ${JSON.stringify(source)} is not a content-addressed name`,
       );
+    }
+    if (typeof name !== 'string' || name === '') {
+      problems.push(`assetManifest[${id}].name is missing`);
     }
     const expected = typeof type === 'string' ? EXTENSIONS[type] : undefined;
     if (expected && !expected.test(source)) {
@@ -430,9 +480,9 @@ export function assertBuiltProtocolInvariants(built: unknown): void {
   }
 
   // --- stages[*].form.fields[*].id (deleted: canonical predates them)
-  // DialogArrayField mints these so ordered-list keying survives reorder and
-  // delete. PR 2 rewrites that component, so this is precisely the regression
-  // this oracle exists to catch.
+  // fresco-ui's `ArrayField` mints these so row keying survives reorder and
+  // delete, and the ids reach the saved protocol; the canonical fixture
+  // predates them.
   const stages = Array.isArray(built.stages) ? built.stages : [];
   const fieldIds = new Set<string>();
   for (const [index, stage] of stages.entries()) {

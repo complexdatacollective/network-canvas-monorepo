@@ -237,16 +237,23 @@ function StageEditorFormBody({
     setRefusedWrite(message);
   }, []);
 
-  /** The document right now: what the controls hold, over what has been written. */
+  /**
+   * The document right now: what the controls hold, over what has been written.
+   *
+   * The values come from the form's own `getFormValues`, which is what a
+   * submit is handed — and it has to be, because `documentFromSubmission`
+   * reads them by field PATH. Assembled here by field NAME instead, every
+   * control registered beneath a top-level key (`form.title`, `form.fields`)
+   * looked to that read like a field the submission never carried, and was
+   * skipped: this answered with the committed document wherever a section
+   * writes into a nested part of the stage, so a host reading it saw a
+   * researcher's unsaved form as no change at all.
+   */
   const liveDraft = useCallback((): StageFormDraft => {
     if (storeApi === undefined) return working.current;
-    const submittedValues: Record<string, FieldValue> = {};
-    for (const [name, field] of storeApi.getState().fields) {
-      submittedValues[name] = field.value;
-    }
     return documentFromSubmission({
       currentFields: working.current,
-      submittedValues,
+      submittedValues: storeApi.getState().getFormValues(),
       mountedPaths: mountedPathsOf(storeApi),
       dormantFields: dormantFieldsOf(storeApi),
     });
@@ -383,7 +390,10 @@ function StageEditorFormBody({
   // tells it when either changes: a component reordering its sections, or
   // revealing a field, re-renders itself and not the outline beside it.
   // Watching the form's own subtree is what closes that gap — text included,
-  // because a field's label is what the outline calls it in a problem.
+  // because a field's label is what the outline calls it in a problem, and
+  // `aria-invalid`, because a control that decides its own validity against
+  // the rest of the protocol can flip it without anything else on the page
+  // moving.
   useEffect(() => {
     const form = formRef.current;
     if (form === null) return;
@@ -392,6 +402,8 @@ function StageEditorFormBody({
       childList: true,
       subtree: true,
       characterData: true,
+      attributes: true,
+      attributeFilter: ['aria-invalid'],
     });
     return () => observer.disconnect();
   }, [outline]);
@@ -420,6 +432,7 @@ function StageEditorFormBody({
             formId,
             storeApi,
             committedFields: document,
+            liveDraft,
             applyOwnCommands,
             reportRefusedWrite,
             identity,
@@ -433,6 +446,7 @@ function StageEditorFormBody({
       document,
       formId,
       identity,
+      liveDraft,
       outline,
       readOnly,
       reportRefusedWrite,

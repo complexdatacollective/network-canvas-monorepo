@@ -444,7 +444,7 @@ const Timeline = () => {
           // no count — which is the whole point of this element, and would
           // have left the "wrong number of stages" defect fixed on one of the
           // two engines Architect ships to. Same reason, same fix as
-          // `PreviewRules.tsx` and fresco-ui's `ArrayField`.
+          // fresco-ui's `ArrayField`.
           // oxlint-disable-next-line jsx-a11y/no-redundant-roles
           role="list"
           className="relative grid w-full grid-cols-1 justify-items-center gap-1"

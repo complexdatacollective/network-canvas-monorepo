@@ -1,8 +1,28 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
+import type { Stage } from '@codaco/protocol-validation';
+import {
+  closeStageDraft,
+  publishStageDraft,
+} from '~/components/StageEditor/stageDraftBeacon';
 import type { RootState } from '~/ducks/modules/root';
 
 import { getIsUsed } from '../isUsed';
+
+/**
+ * The stage an editor is holding, as its chrome publishes it.
+ *
+ * The unsaved stage is no longer Redux state — it lives in the package's form
+ * store and reaches everything else through the beacon — so a test about "a
+ * variable only the unsaved stage names" says so the way the editor does.
+ */
+const openStageDraft = (fields: Record<string, unknown>) => {
+  publishStageDraft(
+    { id: 'stage-1', type: 'Information', ...fields } as unknown as Stage,
+    {},
+    fields,
+  );
+};
 
 const variable1 = '1234-1234-1234-1';
 const variable2 = '1234-1234-1234-2';
@@ -55,8 +75,11 @@ const mockProtocolWithoutUse = {
 
 const mockStateWithoutUse = {
   activeProtocol: mockProtocolWithoutUse,
-  stageEditorDraft: { ui: { liveValues: null } },
 };
+
+afterEach(() => {
+  closeStageDraft();
+});
 
 const asState = (state: typeof mockStateWithoutUse | Record<string, unknown>) =>
   state as unknown as RootState;
@@ -127,22 +150,10 @@ describe('getIsUsed', () => {
   });
 
   describe('the unsaved stage draft', () => {
-    const stateWithLiveUse = {
-      ...mockStateWithoutUse,
-      stageEditorDraft: {
-        ui: {
-          liveValues: {
-            [variable2]: 'foo',
-            thing: {
-              foo: variable3,
-            },
-          },
-        },
-      },
-    };
-
     it('returns true for variables referenced by the live stage values', () => {
-      const result = getIsUsed(asState(stateWithLiveUse));
+      openStageDraft({ [variable2]: 'foo', thing: { foo: variable3 } });
+
+      const result = getIsUsed(asState(mockStateWithoutUse));
 
       expect(result).toEqual({
         [variable1]: false,
@@ -203,39 +214,27 @@ describe('getIsUsed', () => {
     });
   });
 
-  // `getIsUsed` recomputes on every live-value mirror tick (that reactivity
-  // is the feature), but its `resultEqualityCheck` must hand back the SAME
-  // map reference when the recomputed content is unchanged — the common case
-  // while typing — so that selectors composed on it (variable options) and
-  // `useSelector` guards keyed on its identity stay quiet.
-  describe('reference identity across live-value ticks', () => {
-    it('returns the identical map when only the liveValues object identity changes', () => {
-      // Content-equal but referentially distinct liveValues, over the same
-      // protocol reference: a debounced mirror tick that changed nothing.
-      const tickA = {
-        ...mockStateWithoutUse,
-        stageEditorDraft: { ui: { liveValues: { draftText: 'typing' } } },
-      };
-      const tickB = {
-        ...mockStateWithoutUse,
-        stageEditorDraft: { ui: { liveValues: { draftText: 'typing' } } },
-      };
+  // `getIsUsed` recomputes every time the editor publishes a new draft (that
+  // reactivity is the feature), but its `resultEqualityCheck` must hand back
+  // the SAME map reference when the recomputed content is unchanged — the
+  // common case while typing — so that selectors composed on it (variable
+  // options) and `useSelector` guards keyed on its identity stay quiet.
+  describe('reference identity across published drafts', () => {
+    it('returns the identical map when only the published draft identity changes', () => {
+      openStageDraft({ draftText: 'typing' });
+      const first = getIsUsed(asState(mockStateWithoutUse));
+      // The same document, published again: a keystroke that changed nothing
+      // about which variables are named.
+      openStageDraft({ draftText: 'typing' });
 
-      expect(getIsUsed(asState(tickB))).toBe(getIsUsed(asState(tickA)));
+      expect(getIsUsed(asState(mockStateWithoutUse))).toBe(first);
     });
 
-    it('returns a new map when a tick changes which variables are used', () => {
-      const before = {
-        ...mockStateWithoutUse,
-        stageEditorDraft: { ui: { liveValues: { draftText: 'typing' } } },
-      };
-      const after = {
-        ...mockStateWithoutUse,
-        stageEditorDraft: { ui: { liveValues: { someField: variable1 } } },
-      };
-
-      const beforeResult = getIsUsed(asState(before));
-      const afterResult = getIsUsed(asState(after));
+    it('returns a new map when a published draft changes which variables are used', () => {
+      openStageDraft({ draftText: 'typing' });
+      const beforeResult = getIsUsed(asState(mockStateWithoutUse));
+      openStageDraft({ someField: variable1 });
+      const afterResult = getIsUsed(asState(mockStateWithoutUse));
 
       expect(afterResult).not.toBe(beforeResult);
       expect(beforeResult[variable1]).toBe(false);

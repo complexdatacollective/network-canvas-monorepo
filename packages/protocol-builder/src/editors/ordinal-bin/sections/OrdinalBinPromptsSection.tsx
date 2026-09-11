@@ -171,7 +171,7 @@ function OrdinalBinPromptEditor({ item }: RowEditorProps) {
   const subject = useStageSubject('node');
   const { variable } = useFormValue([SCALE_FIELD] as const);
   const chosen = typeof variable === 'string' && variable !== '';
-  const swatches = useMemo(() => ordinalColorOptions(intl), [intl]);
+  const swatches = useMemo(() => ordinalColorOptions(), []);
 
   return (
     <>

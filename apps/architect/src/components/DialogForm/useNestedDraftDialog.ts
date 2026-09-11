@@ -28,10 +28,9 @@ type NestedDraftDialogOptions = {
  * it asks first.
  *
  * Extracted from `DialogForm`, which was the only registrant that owned a
- * dialog, because the registry is not a `DialogForm` feature — `Query/Rules`
- * already registers its own draft directly, and the Geospatial API-key browser
- * is a dialog that cannot be a `DialogForm` (see APIKeyBrowser). Two copies of
- * this would drift, and the copy that drifts loses somebody's work.
+ * dialog, because the registry is not a `DialogForm` feature: a dialog that
+ * cannot be a `DialogForm` needs it just as much. Two copies of this would
+ * drift, and the copy that drifts loses somebody's work.
  *
  * Must be called under a `FormStoreProvider` that is a PARENT of the dialog:
  * the dismissal routes it guards (the footer Cancel, the close button, Escape,

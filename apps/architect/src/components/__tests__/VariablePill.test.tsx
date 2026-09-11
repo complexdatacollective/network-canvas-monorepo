@@ -60,7 +60,7 @@ vi.mock('~/selectors/codebook', async (importOriginal) => {
     // builds so a regression to `type: 'node'` for ego is caught directly.
     getVariablesForSubject: (_state: unknown, subject: Subject) => {
       subjectsSeen.push(subject);
-      return actual.getVariablesForSubjectSelector(
+      return actual.getVariablesForSubject(
         { activeProtocol: { present: { codebook } } } as never,
         subject,
       );

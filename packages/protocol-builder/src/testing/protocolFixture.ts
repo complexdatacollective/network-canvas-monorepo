@@ -243,16 +243,26 @@ export function fixtureAssetContent(source: string): Uint8Array | undefined {
  * `StageEditorStoryHost` for the stories. A harness that seeded only the
  * manifest would leave `inspect` refusing for want of bytes, and every section
  * chosen from a data file's columns would render its empty state.
+ *
+ * `extra` is the text a test wants served for a `source` of its own — a layer
+ * with no feature properties, a roster with a column the fixture's has not.
+ * A file the protocol does not ship is the only way to reach the states an
+ * editor has for one, and they are researcher-visible states.
  */
 export function fixtureAssetContentFor(
   manifest: Readonly<Record<string, unknown>>,
+  extra: Readonly<Record<string, string>> = {},
 ): Record<string, Blob> {
   const content: Record<string, Blob> = {};
   for (const entry of Object.values(manifest)) {
-    if (typeof entry !== 'object' || entry === null) continue;
-    const source = Reflect.get(entry, 'source');
+    if (!isRecord(entry)) continue;
+    const source = entry.source;
     if (typeof source !== 'string') continue;
-    const bytes = fixtureAssetContent(source);
+    const text = extra[source];
+    const bytes =
+      text === undefined
+        ? fixtureAssetContent(source)
+        : new TextEncoder().encode(text);
     content[source] = new Blob(
       [(bytes ?? new TextEncoder().encode('{}')) as BlobPart],
       { type: 'application/json' },

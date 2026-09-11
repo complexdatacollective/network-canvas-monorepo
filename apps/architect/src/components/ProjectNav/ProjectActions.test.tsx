@@ -52,7 +52,7 @@ const createTestStore = () =>
     reducer: {
       app: appReducer,
       // The timeline-wrapped slice, as the toolbar's selectors read it. Only
-      // `present` matters here: `getCanonicalProtocol` is what decides whether
+      // `present` matters here: `getProtocol` is what decides whether
       // Save to source is offered at all.
       activeProtocol: () => ({ present: PROTOCOL, past: [], future: [] }),
     },

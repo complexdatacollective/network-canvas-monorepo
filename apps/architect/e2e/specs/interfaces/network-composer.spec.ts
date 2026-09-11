@@ -1,10 +1,48 @@
+import type { Locator, Page } from '@playwright/test';
+
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readStageJson } from '../../helpers/read-store.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
-import { createVariableViaSpotlight } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
+
+/**
+ * Adds a codebook attribute from beside one of the stage's pickers.
+ *
+ * `VariablePickerField` is handed the attributes that exist and no
+ * `onCreateOption` here, so it can only choose; the `CreateVariableButton`
+ * beside it is what adds one, through the codebook's own attribute editor
+ * ("Attribute name", submitted with "Create attribute") in a dialog titled
+ * with the button's own label. The type is the call site's — never asked for —
+ * so the empty codebook this spec starts from is filled in one step per
+ * picker.
+ */
+async function createAttribute(
+  page: Page,
+  scope: Locator,
+  field: Locator,
+  opts: { buttonLabel: string; name: string },
+): Promise<void> {
+  await scope
+    .getByRole('button', { name: opts.buttonLabel, exact: true })
+    .click();
+  const attributeEditor = page.getByRole('dialog', {
+    name: opts.buttonLabel,
+    exact: true,
+  });
+  await attributeEditor
+    .getByRole('textbox', { name: 'Attribute name', exact: true })
+    .fill(opts.name);
+  await attributeEditor
+    .getByRole('button', { name: 'Create attribute', exact: true })
+    .click();
+  // The write goes to the codebook under its section's own lock and the id
+  // comes back afterwards, so the picker holds the new attribute only once the
+  // editor has closed.
+  await attributeEditor.waitFor({ state: 'detached' });
+  await expect(field.locator('option:checked')).toHaveText(opts.name);
+}
 
 test('creates a valid NetworkComposer stage from scratch', async ({
   architectPage,
@@ -17,59 +55,41 @@ test('creates a valid NetworkComposer stage from scratch', async ({
   await editor.createNew('NetworkComposer');
   await editor.setStageName('Build Your Network');
 
-  // StageEditor/Interfaces.tsx: `NetworkComposer.sections = [NodeType,
-  // NodeConfiguration, EdgeConfiguration, Background, SkipLogic,
-  // InterviewScript]` — the plain `NodeType`, not `FilteredNodeType`.
+  // `networkComposerStageEditor` is [stage heading, subject picker, nodes,
+  // connections, background, node layout, skip logic, interviewer guidance].
+  // The subject picker here offers no stage filter: the network is built on
+  // this stage rather than drawn from one built earlier.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // NodeConfiguration.tsx renders THREE `VariablePicker`s inside one always-
-  // visible `Section` (no per-nested-section toggle/collapse): "Quick add
-  // variable" (`quickAdd`), "Node positions" (`layoutVariable`), and "Group
-  // hulls" (`convexHullVariable`) — all showing the picker's unselected-state
-  // "Select variable" button simultaneously once `subject.type` is set
-  // (`withDisabledSubjectRequired`'s `Section disabled` unmounts children
-  // entirely while disabled — confirmed in Section.tsx's `fieldsetContent`,
-  // so nothing renders before this point either). An unscoped
-  // `createVariableViaSpotlight` would hit all three "Select variable"
-  // buttons and throw a Playwright strict-mode violation — this is the first
-  // spec in the suite to exercise a section with more than one simultaneous
-  // `VariablePicker`. Fixed by giving `createVariableViaSpotlight` an
-  // optional `scope` (a `Locator`, e.g. `editor.field(name)` — the
-  // `data-field-name` seam, Task 2) that scopes only the initial trigger
-  // click; the spotlight dialog itself is a page-level portal, so the rest of
-  // the flow still resolves against the page (see variables.ts's own
-  // comment).
-  await createVariableViaSpotlight(architectPage, {
-    variableName: 'name',
-    scope: editor.field('quickAdd'),
+  // "Adding and arranging nodes" holds three pickers at once — the attribute
+  // the quick-add box fills in (`quickAdd`), the one that stores each node's
+  // position (`layoutVariable`) and the one nodes are grouped by
+  // (`convexHullVariable`) — plus a create button for each, named for the
+  // attribute it adds. The section is disabled until the node type is chosen,
+  // because every one of them names that type's attributes.
+  const nodes = editor.section('Adding and arranging nodes');
+  await createAttribute(architectPage, nodes, editor.field('quickAdd'), {
+    buttonLabel: 'Create a new attribute to fill in',
+    name: 'name',
+  });
+  await createAttribute(architectPage, nodes, editor.field('layoutVariable'), {
+    buttonLabel: 'Create a new position attribute',
+    name: 'layout',
   });
 
-  // `layoutVariable`'s `onCreateOption` wires directly to
-  // `handleCreateVariable(value, 'layout', 'layoutVariable')`
-  // (withCreateVariableHandler.tsx) — a direct `createVariableAsync` dispatch
-  // with `configuration.type: 'layout'` pre-supplied by the call site, not
-  // the NewVariableWindow/enabled-combobox path (unlike "Group hull
-  // variable", which this spec deliberately leaves untouched: it's optional
-  // per `networkComposerStage`'s zod schema and its `onCreateOption` DOES
-  // open `NewVariableWindow` with a pre-locked `type: 'categorical'` — out of
-  // scope here).
-  await createVariableViaSpotlight(architectPage, {
-    variableName: 'layout',
-    scope: editor.field('layoutVariable'),
-  });
-
-  // Background.tsx: `allowsBackgroundImage('NetworkComposer')` is true, but
-  // `useImage` again defaults to `false` (see sociogram.spec.ts), so the
-  // concentric-circles number input (role "spinbutton") renders by default.
+  // The Background section opens on concentric circles for this interface too
+  // (a background holding no `image` key is a circles background), so the
+  // number input — a native number field, hence role "spinbutton" — is on
+  // screen without touching the type chooser.
   await editor
     .field('background.concentricCircles')
     .getByRole('spinbutton')
     .fill('4');
 
-  // EdgeConfiguration.tsx is `required={false}` and `edges` is optional per
-  // `networkComposerStage`'s zod schema (the editor's `prune` strips an empty
-  // `edges` array on save) — deliberately left untouched, same reasoning as
-  // "Group hulls" above.
+  // Deliberately untouched: the grouping attribute is optional per the stage
+  // schema, the "Node attributes" form is a capability that stays switched
+  // off, and so is everything in the Connections section — an empty one is
+  // dropped on save rather than written as an empty list.
   await editor.expectNoIssues();
   await editor.save();
 

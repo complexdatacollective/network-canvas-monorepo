@@ -129,9 +129,9 @@ describe('CodebookVariableValidationEditor', () => {
         name: 'Deleted attribute (deleted-height)',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Less than' })).toHaveValue(
-      'deleted-height',
-    );
+    expect(
+      screen.getByRole('combobox', { name: 'Less than another attribute' }),
+    ).toHaveValue('deleted-height');
     expect(screen.getByRole('alert')).toHaveTextContent(
       'The selected comparison attribute no longer exists.',
     );
@@ -151,6 +151,9 @@ describe('CodebookVariableValidationEditor', () => {
     await user.clear(input);
 
     expect(input).toHaveValue(null);
+    // The dialog is not a form field and has no error region of its own, so
+    // the rule editor is what states the refusal here — `getByRole` also
+    // pinning it to exactly one alert.
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Enter a value for "Minimum value", or switch the rule off.',
     );
@@ -172,7 +175,12 @@ describe('CodebookVariableValidationEditor', () => {
     expect(
       screen.getByRole('spinbutton', { name: 'Maximum value' }),
     ).toHaveValue(2);
-    expect(screen.getByRole('alert')).toHaveTextContent('is greater than');
+    // The repair guidance, not the analyser's own technical diagnostic
+    // (`Attribute "Age": minValue (10) is greater than maxValue (2)`), which
+    // names the schema's rule keys and is written for a validation report.
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The minimum and maximum rules for Age leave no permitted answer. Adjust the bounds or the required-answer rule.',
+    );
     expect(
       screen.getByRole('button', { name: 'Save validation' }),
     ).toBeDisabled();

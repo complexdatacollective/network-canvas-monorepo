@@ -14,7 +14,7 @@ import CodebookEntityEditor from '../../../codebook/components/CodebookEntityEdi
 import { useCreateCodebookEntity } from '../../../codebook/writes.ts';
 import EntityTypePickerField from '../../../fields/EntityTypePickerField.tsx';
 import type { CodebookSubject } from '../../../protocol-context.ts';
-import { NEW_ENTITY_DRAFT } from '../../../sections/subject-picker/SubjectSection.tsx';
+import { newEntityDraft } from '../../../sections/subject-picker/SubjectSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from './censusMessages.ts';
 
@@ -159,7 +159,10 @@ export default function CreateEdgeField({
             mode="create"
             sessionKey={session.key}
             subject={{ entity: 'edge', type: session.typeId }}
-            initialDraft={NEW_ENTITY_DRAFT.edge}
+            initialDraft={newEntityDraft(
+              'edge',
+              Object.keys(codebook.edge ?? {}).length,
+            )}
             existingEntityNames={existingEntityNames}
             onSubmit={async (document) => {
               setSubmitting(true);

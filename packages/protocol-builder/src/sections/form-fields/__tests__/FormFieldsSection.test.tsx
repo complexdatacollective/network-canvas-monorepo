@@ -362,6 +362,42 @@ describe('the fields a form collects', () => {
     await harness.roundTrip({ unowned: ['label', 'introductionPanel'] });
   });
 
+  /**
+   * A protocol nobody has recorded anything about the participant in has no
+   * `codebook.ego` at all — the section is written by the first attribute put
+   * into it. The controls that open the codebook's own editor are offered
+   * against a section that EXISTS, which is the right rule for a node or edge
+   * type (an absent one has been deleted) and the wrong one here: it left the
+   * kinds that can only be made in that editor — a list of answers, a scale —
+   * with no way in at all on the first ego form of a new protocol.
+   */
+  it('offers to invent the first attribute the participant has', async () => {
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      sections: <FormFieldsSection subject="ego" />,
+    });
+    await harness.opened();
+    act(() => {
+      harness.receiveCodebookUpdate({ ego: null });
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Attribute' }),
+      CREATE_NEW_ATTRIBUTE,
+    );
+    await harness.user.selectOptions(
+      dialog.getByRole('combobox', { name: 'Kind of answer' }),
+      'categorical',
+    );
+
+    expect(
+      await dialog.findByRole('button', {
+        name: 'Create this attribute and its values',
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("collects a relationship's attributes on an alter edge form", async () => {
     const harness = renderStageEditor({
       stageId: 'alter-edge-form-1',
@@ -1338,7 +1374,9 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
     });
 
     // Seeded with a form, so the capability opens switched on.
-    const toggle = await screen.findByRole('switch', { name: 'Form fields' });
+    const toggle = await screen.findByRole('switch', {
+      name: 'Form configuration',
+    });
     expect(toggle).toBeChecked();
 
     await harness.user.click(toggle);
@@ -1351,8 +1389,9 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
 
     await waitFor(() =>
       expect(
-        harness.outline().find((section) => section.title === 'Form fields')
-          ?.state,
+        harness
+          .outline()
+          .find((section) => section.title === 'Form configuration')?.state,
       ).toBe('Switched off'),
     );
 
@@ -1377,7 +1416,9 @@ const addValue = async (
   label: string,
   value: string,
 ) => {
-  await harness.user.click(screen.getByRole('button', { name: 'Add option' }));
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Create new option' }),
+  );
   await harness.user.type(
     screen.getByRole('textbox', { name: `Option ${position} label` }),
     label,
@@ -1933,7 +1974,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
     );
     await screen.findByRole('button', { name: 'Save validation' });
     await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required' }),
+      screen.getByRole('checkbox', { name: 'Required answer' }),
     );
     await harness.user.click(
       screen.getByRole('button', { name: 'Save validation' }),
@@ -2077,7 +2118,7 @@ describe('the codebook an attribute a form field collects lives in', () => {
     );
     await screen.findByRole('button', { name: 'Save validation' });
     await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required' }),
+      screen.getByRole('checkbox', { name: 'Required answer' }),
     );
     await harness.user.click(
       screen.getByRole('button', { name: 'Save validation' }),
@@ -2532,7 +2573,7 @@ describe('a codebook editor open over a row when its section goes', () => {
     );
     await screen.findByRole('button', { name: 'Save validation' });
     await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required' }),
+      screen.getByRole('checkbox', { name: 'Required answer' }),
     );
 
     deleteThePersonType(harness);
@@ -2544,7 +2585,9 @@ describe('a codebook editor open over a row when its section goes', () => {
       ).toBeDisabled(),
     );
     // ...and still on screen, still holding what the researcher had chosen.
-    expect(screen.getByRole('checkbox', { name: 'Required' })).toBeChecked();
+    expect(
+      screen.getByRole('checkbox', { name: 'Required answer' }),
+    ).toBeChecked();
   });
 
   it('keeps the attribute editor on screen, with its draft, and refuses the save', async () => {
@@ -3083,7 +3126,7 @@ describe('a stored field the schema refuses for its own shape', () => {
     expect(await harness.submit()).toBeNull();
     await waitFor(() =>
       expect(outlineEntry()).toEqual([
-        'Form fieldsHas a problem. Fields holds settings this stage does not have.',
+        'Form configurationHas a problem. Form fields holds settings this stage does not have.',
       ]),
     );
   });
@@ -3097,7 +3140,7 @@ describe('a stored field the schema refuses for its own shape', () => {
     expect(await harness.submit()).toBeNull();
     await waitFor(() =>
       expect(outlineEntry()).toEqual([
-        'Form fieldsHas a problem. Fields holds the wrong kind of value.',
+        'Form configurationHas a problem. Form fields holds the wrong kind of value.',
       ]),
     );
   });
@@ -3137,7 +3180,7 @@ describe('a stored field the schema refuses for its own shape', () => {
 
     expect(fieldsOf(await harness.submit())).toEqual([RELATIONSHIP]);
     await waitFor(() =>
-      expect(outlineEntry()).toEqual(['Form fieldsFinished']),
+      expect(outlineEntry()).toEqual(['Form configurationFinished']),
     );
   });
 
@@ -3158,7 +3201,7 @@ describe('a stored field the schema refuses for its own shape', () => {
     expect(await harness.submit()).toBeNull();
     await waitFor(() =>
       expect(outlineEntry()).toEqual([
-        'Form fieldsHas a problem. Fields holds settings this stage does not have.',
+        'Form configurationHas a problem. Form fields holds settings this stage does not have.',
       ]),
     );
   });
@@ -3501,7 +3544,7 @@ describe('dismissing a codebook editor while its save is in flight', () => {
     );
     await screen.findByRole('button', { name: 'Save validation' });
     await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required' }),
+      screen.getByRole('checkbox', { name: 'Required answer' }),
     );
     await harness.user.click(
       screen.getByRole('button', { name: 'Save validation' }),
@@ -3510,7 +3553,7 @@ describe('dismissing a codebook editor while its save is in flight', () => {
     await harness.user.keyboard('{Escape}');
     await harness.user.click(document.body);
     expect(
-      screen.getByRole('checkbox', { name: 'Required' }),
+      screen.getByRole('checkbox', { name: 'Required answer' }),
     ).toBeInTheDocument();
     expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
 

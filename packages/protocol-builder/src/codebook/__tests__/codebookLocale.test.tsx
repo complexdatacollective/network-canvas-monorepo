@@ -5,13 +5,15 @@ import { describe, expect, it } from 'vitest';
 
 import { commonCatalogs } from '@codaco/app-i18n/common';
 import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { createAppIntl, type IntlShape } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
+import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
-import { esIntl, readMessage } from '../../testing/i18n.ts';
+import { readMessage } from '../../testing/i18n.ts';
 import {
   expectNoLocaleLeaks,
   protocolStrings,
@@ -75,9 +77,11 @@ const context: ProtocolBuilderProtocolContext = {
 
 /**
  * The catalog a host actually mounts, in the merge order `frescoUiCatalogs`
- * documents: common verbs, then the shared components, then this package.
+ * documents: common verbs, then the shared components, then this package,
+ * then the shared validation rule names `@codaco/protocol-validation` owns
+ * (`architectCatalogs` merges them in the same order).
  *
- * All three layers matter to a sweep. Passing only `protocolBuilderCatalogs.es`
+ * All four layers matter to a sweep. Passing only `protocolBuilderCatalogs.es`
  * leaves `commonMessages.cancel` and every `frescoUi.*` id falling back to
  * English, and the fallbacks are not harmless noise: fresco-ui's field marker
  * is "Required", which is also the English of this package's own
@@ -89,7 +93,17 @@ const SPANISH = mergeCatalogs(
   commonCatalogs.es ?? {},
   frescoUiCatalogs.es ?? {},
   protocolBuilderCatalogs.es ?? {},
+  protocolValidationCatalogs.es ?? {},
 );
+
+/**
+ * `testing/i18n.ts`'s `esIntl` carries only this package's own catalog, which
+ * is right for a plain `defineMessages` id but not for a rule name — those
+ * are `@codaco/protocol-validation`'s own descriptors now, so decoding one
+ * needs its Spanish alongside this package's, the same `SPANISH` a host
+ * mounts above.
+ */
+const esIntl: IntlShape = createAppIntl({ locale: 'es', messages: SPANISH });
 
 const renderInSpanish = (children: ReactNode) =>
   render(
@@ -118,7 +132,6 @@ describe('the codebook read in Spanish', () => {
         'protocolBuilder.codebookEntity.subjectDescription',
         'protocolBuilder.codebookEntity.editAttributeLabel',
         'protocolBuilder.variableValidation.incompleteValueRule',
-        'protocolBuilder.variableValidation.minValueLabel',
       ]),
     );
   });
@@ -337,7 +350,9 @@ describe('the codebook editors swept for English', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Añadir opción' })).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Crear nueva opción' }),
+    ).toBeVisible();
     expectNoLocaleLeaks(
       'the attribute editor',
       protocolStrings(PERSON_DOCUMENT, draft),
@@ -385,7 +400,7 @@ describe('the codebook editors swept for English', () => {
           { label: '', value: false },
         ],
       },
-      anchor: 'Las dos respuestas',
+      anchor: 'Valores booleanos',
       refusal:
         'Escribe lo que dice esta respuesta, o borra ambas para ofrecer Sí y No.',
     },
@@ -397,7 +412,7 @@ describe('the codebook editors swept for English', () => {
         component: 'DatePicker',
         parameters: { type: 'full', min: '2020-01-01', max: '2019-01-01' },
       },
-      anchor: 'Lo que acepta este control',
+      anchor: 'Ajustes del control',
       refusal:
         'La fecha más tardía no puede ser anterior a la fecha más temprana.',
     },
@@ -425,7 +440,7 @@ describe('the codebook editors swept for English', () => {
         type: 'scalar',
         parameters: { minLabel: '   ', maxLabel: 'Muy cerca' },
       },
-      anchor: 'Lo que acepta este control',
+      anchor: 'Ajustes del control',
       refusal: 'Escribe qué significa el extremo bajo de la escala.',
     },
   ])(

@@ -39,14 +39,12 @@ describe('creating a quick-add name generator', () => {
     // The attribute cannot be chosen before the type whose attributes it comes
     // from.
     expect(
-      screen.getByText(
-        'Choose what this stage works with before setting up quick add.',
-      ),
+      screen.getByText('Select a node type above to configure this section.'),
     ).toBeInTheDocument();
 
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: /Attribute filled in/ }),
+      await screen.findByRole('combobox', { name: 'Select an attribute' }),
       'name',
     );
 

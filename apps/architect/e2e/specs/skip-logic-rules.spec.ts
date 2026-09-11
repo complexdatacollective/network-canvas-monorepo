@@ -20,10 +20,12 @@ import { StageEditor } from '../pageobjects/stage-editor.js';
  * of the accessible-name algorithm rather than of the DOM.
  */
 
+// The rule builder's own description of a card, which is what its Edit
+// control is named after.
 const FLAGGED_RULE =
-  'person where boolean attribute flagged is exactly equal to true';
+  'person where flagged (attribute type: boolean) is exactly equal to true';
 const HIGHLIGHTED_RULE =
-  'person where boolean attribute highlighted is exactly equal to true';
+  'person where highlighted (attribute type: boolean) is exactly equal to true';
 
 test('skip-logic rule cards carry valid, distinct semantics', async ({
   architectPage,

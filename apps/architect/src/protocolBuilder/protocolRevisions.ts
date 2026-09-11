@@ -9,7 +9,7 @@ import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { contentHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import type { ProtocolSectionId } from '@codaco/studio-sync/taxonomy';
 import { getActiveProtocolId } from '~/ducks/modules/app';
-import { getCanonicalProtocol } from '~/selectors/protocol';
+import { getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
 import { protocolSections } from './protocolSections.ts';
@@ -197,7 +197,7 @@ export class ProtocolRevisions {
   #seed(): void {
     const state = this.#store.getState();
     this.#protocolId = getActiveProtocolId(state);
-    this.#protocol = getCanonicalProtocol(state);
+    this.#protocol = getProtocol(state);
     if (this.#protocol === null) return;
     for (const [id, document] of protocolSections(this.#protocol)) {
       this.#sections.set(id, {
@@ -236,7 +236,7 @@ export class ProtocolRevisions {
       this.#reopen();
       return changed;
     }
-    const protocol = getCanonicalProtocol(this.#store.getState());
+    const protocol = getProtocol(this.#store.getState());
     if (protocol === this.#protocol) return changed;
     this.#protocol = protocol;
 

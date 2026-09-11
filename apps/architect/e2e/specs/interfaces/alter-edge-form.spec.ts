@@ -18,18 +18,17 @@ test('creates a valid AlterEdgeForm stage from scratch', async ({
   await editor.setStageName('About Each Relationship');
 
   // AlterEdgeForm's subject is an edge type
-  // (sections/FilteredEdgeType.tsx, `Section title="Edge setup"`), and
-  // Form.tsx's `withDisabledSubjectRequired` disables Form configuration until
-  // `subject.type` is set — same reasoning as alter-form.spec.ts.
+  // (`subjectPicker({ entity: 'edge', filter: true })`, the "Edge type"
+  // section), and the "Form fields" section stays disabled until one is
+  // chosen — same reasoning as alter-form.spec.ts.
   await selectOrCreateEdgeType(architectPage, 'knows');
 
   await editor
     .field('introductionPanel.title')
     .getByRole('textbox')
     .fill('About Each Relationship');
-  // See ego-form.spec.ts: the accessible name is the literal string
-  // IntroductionPanel.tsx passes as `label`, "Introduction text" — not the
-  // field's name.
+  // See ego-form.spec.ts: "Introduction text" is the label
+  // `IntroductionSection` gives the field, not the field's own name.
   await editor.fillRichText(
     'Introduction text',
     'Tell us a bit about how these two people know each other.',
@@ -38,7 +37,7 @@ test('creates a valid AlterEdgeForm stage from scratch', async ({
   await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
-    inputControl: 'Text Input',
+    inputControl: 'Text input',
   });
 
   await editor.expectNoIssues();

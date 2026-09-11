@@ -4,7 +4,7 @@ import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readStageJson } from '../../helpers/read-store.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
-import { createVariableViaSpotlight } from '../../pageobjects/editor-sections/variables.js';
+import { selectOrCreateQuickAddVariable } from '../../pageobjects/editor-sections/quick-add.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 test('creates a valid NameGeneratorQuickAdd stage from scratch', async ({
@@ -18,21 +18,19 @@ test('creates a valid NameGeneratorQuickAdd stage from scratch', async ({
   await editor.createNew('NameGeneratorQuickAdd');
   await editor.setStageName('Quickly Add Friends');
 
-  // Same NodeType.tsx section as NameGenerator (`Section title="Node
-  // setup"`); QuickAdd.tsx's own `withDisabledSubjectRequired` gates its
-  // section until `subject.type` is set.
+  // Same shared subject picker as NameGenerator ("Node type"); the quick-add
+  // section below is disabled until the stage has one, because the attribute
+  // it fills in is one of that type's own.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // QuickAdd.tsx, `Section title="Quick add configuration"` — a single
-  // VariablePicker field (`quickAdd`) with no `value` yet, so its button
-  // reads the picker's default "Select variable" (variables.ts's own
-  // default), driven the same spotlight flow as addFormField's variable
-  // step.
-  await createVariableViaSpotlight(architectPage, { variableName: 'name' });
+  // The "Quick add" section holds one field, `quickAdd`. A fresh protocol's
+  // node type has no text attribute for it to fill in, so the picker offers
+  // only its inline create — see quick-add.ts for what that writes.
+  await selectOrCreateQuickAddVariable(editor, 'name');
 
-  // NameGeneratorQuickAdd reuses NameGeneratorPrompts.tsx's `prompts`
-  // ArchitectArrayField — see name-generator.spec.ts for why the RichText
-  // field's accessible name is "Prompt text", not the brief's guessed `'text'`.
+  // NameGeneratorQuickAdd reuses the same shared `prompts` list as
+  // NameGenerator — see name-generator.spec.ts for why the RichText field's
+  // accessible name is "Prompt text".
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Name someone you know');
   });

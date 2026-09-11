@@ -6,49 +6,17 @@ import { canRedo, canUndo } from '~/ducks/middleware/timeline';
 import type { RootState } from '~/ducks/modules/root';
 import { deriveAssetDisplayNames } from '~/utils/assetNames';
 
-import { getStageEditorDraftCodebook } from './stageEditorDraft';
-
 /**
- * The protocol exactly as it will be validated, persisted and exported.
- *
- * Use this ONLY where the canonical, committed protocol is the subject:
- * validation, persistence, and download. Everything the researcher looks at or
- * edits must go through `getProtocol`, or the stage editor would show a
- * codebook that disagrees with the one its field editors are writing.
+ * The protocol as it stands: what the researcher sees, and what is validated,
+ * persisted and exported. There is one, and this is it.
  */
-export const getCanonicalProtocol = (state: RootState) => {
+export const getProtocol = (state: RootState) => {
   // The activeProtocol in RootState is wrapped by the timeline middleware
   // We need to extract the present value. Optional-chained because unit-test
   // stores register only the slices under test, and a selector reached from a
   // mounted component there must resolve to "no protocol" rather than throw.
   return state.activeProtocol?.present ?? null;
 };
-
-/**
- * The protocol as the editor sees it: canonical, with the stage editor's draft
- * codebook swapped in while a codebook transaction is open.
- *
- * Nested field and variable editors write a draft codebook so that cancelling
- * a field or discarding a stage cannot mutate the shared codebook (#1382).
- * Overlaying here — at the single root every other protocol and codebook
- * selector derives from — is what keeps the whole UI (previews, issues,
- * indexes, `isUsed`, the field editors themselves) reading one consistent
- * codebook without each of them knowing a transaction exists.
- *
- * Memoised because it synthesises an object: an unmemoised version would
- * return a new reference on every call and defeat both `createSelector` and
- * `useSelector` reference equality.
- */
-export const getProtocol = createSelector(
-  [getCanonicalProtocol, getStageEditorDraftCodebook],
-  (protocol, draftCodebook) => {
-    if (!protocol || !draftCodebook || draftCodebook === protocol.codebook) {
-      return protocol;
-    }
-
-    return { ...protocol, codebook: draftCodebook };
-  },
-);
 
 // Protocol metadata selectors
 export const getProtocolName = (state: RootState): string | undefined => {

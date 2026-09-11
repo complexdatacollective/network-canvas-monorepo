@@ -19,6 +19,7 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
 import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import type { Codebook, StageType } from '@codaco/protocol-validation';
+import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -415,6 +416,12 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
      */
     assets?: Readonly<Record<string, SectionDoc>>;
     /**
+     * The text this host serves for an asset `source`, for a file the protocol
+     * does not ship. A control that reads what is INSIDE a file has states
+     * only a file of that shape reaches.
+     */
+    assetBytes?: Readonly<Record<string, string>>;
+    /**
      * The host's action chrome, as a host would give it to the editor.
      *
      * Given, it is what gets rendered in the editor's slot, whichever of the
@@ -461,21 +468,18 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
     }>[];
     /**
      * Wraps the seeded host's own client, the way `renderResourceEditor` does,
-     * for a test about a host that holds its answer, or about a fact a real
-     * host KNOWS that this in-memory one does not work out for itself.
+     * for a test about a host that holds its answer.
      *
      * Between the editor and the host rather than inside it: this host answers
      * in a microtask, so a request that is still in flight is something only
      * the transport can be. A stubbed store method would be answering for a
      * write the host decides, and would go on compiling after the host stopped
-     * asking it the same question.
+     * asking it the same question. Everything the wrapper does not override
+     * stays the real host's.
      *
-     * The fact so far is what is inside an imported data file: `inspect`
-     * answers with the manifest entry, and a roster stage's card, sort and
-     * search sections are all chosen from that file's columns — so a test about
-     * one of them has to say what the file holds, exactly as
-     * `AssetPickerField.test.tsx` already does for the picker's own summary.
-     * Everything the wrapper does not override stays the real host's.
+     * NOT the way to say what is inside an imported data file: this host reads
+     * the bytes it holds, so a roster's columns are seeded through
+     * `assetBytes` and come back through the host's own `inspect`.
      */
     client?: (host: InMemoryHost) => ProtocolBuilderClient;
   }> &
@@ -550,10 +554,17 @@ function LocaleFrame({
     <AppI18nProvider
       locale={locale}
       locales={ecosystemLocales}
+      // The layers a host actually mounts, in the order `architectCatalogs`
+      // merges them. `@codaco/protocol-validation`'s is not optional: the
+      // validation rule names a researcher ticks are its descriptors, so
+      // leaving it out renders them in English under a Spanish harness and a
+      // locale sweep would read that as copy this package failed to
+      // translate.
       messages={mergeCatalogs(
         commonCatalogs[locale] ?? {},
         frescoUiCatalogs[locale] ?? {},
         protocolBuilderCatalogs[locale] ?? {},
+        protocolValidationCatalogs[locale] ?? {},
       )}
       manageDocument={false}
     >
@@ -594,7 +605,7 @@ export function renderStageEditor<T extends StageType = StageType>(
 
   const host = createInMemoryHost({
     sections: seededSections(seeded, assetManifest),
-    assetContent: fixtureAssetContentFor(assetManifest),
+    assetContent: fixtureAssetContentFor(assetManifest, options.assetBytes),
     principal: HARNESS_PRINCIPAL,
   });
   const { protocolId, store } = host;

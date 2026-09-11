@@ -37,6 +37,19 @@ export type OutlineFieldRegistration = Readonly<{
   label: string;
   /** Whether this field must hold a value for its section to be complete. */
   required: boolean;
+  /**
+   * Whether anything the field renders is currently marked invalid.
+   *
+   * Read off the page rather than from the form, because the form is not the
+   * only thing that can mark a control invalid: a control that resolves its
+   * own value against the rest of the protocol — a skip destination whose
+   * stage has gone, a disease mapping whose attribute a collaborator deleted —
+   * reports the problem itself and the save is still taken, because a draft is
+   * allowed to be invalid across sections. Without this the outline told a
+   * researcher that section was finished while the control inside it was
+   * showing them why it is not.
+   */
+  invalid: boolean;
 }>;
 
 /**
@@ -128,6 +141,7 @@ function fieldsInside(
           ?.textContent ?? '',
       required:
         container.querySelector(`[id$="${FIELD_ELEMENT.required}"]`) !== null,
+      invalid: container.querySelector('[aria-invalid="true"]') !== null,
     });
   }
   return fields;
@@ -140,7 +154,8 @@ const sameField = (
   other !== undefined &&
   field.name === other.name &&
   field.label === other.label &&
-  field.required === other.required;
+  field.required === other.required &&
+  field.invalid === other.invalid;
 
 /**
  * A registered field's name, read back as the path it is filed under.
@@ -501,6 +516,9 @@ export function sectionOutlineStatus(
 
   let incomplete = false;
   for (const field of section.fields) {
+    // A control marked invalid, whether the form said so or the control worked
+    // it out against the rest of the protocol for itself.
+    if (field.invalid) return 'error';
     const errors = reader.getFieldErrors(field.name);
     if (errors !== null && errors.length > 0) return 'error';
     if (

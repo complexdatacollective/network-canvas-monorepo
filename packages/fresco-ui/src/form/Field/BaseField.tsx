@@ -136,10 +136,11 @@ export function BaseField({
               </span>
             )}
             {(hint ?? validationSummary) && (
-              <Hint id={elementIds.hint}>
-                {hint}
-                {validationSummary}
-              </Hint>
+              <Hint
+                id={elementIds.hint}
+                hint={hint}
+                validationSummary={validationSummary}
+              />
             )}
           </div>
           <div className={cx(inline && 'shrink-0')}>{children}</div>

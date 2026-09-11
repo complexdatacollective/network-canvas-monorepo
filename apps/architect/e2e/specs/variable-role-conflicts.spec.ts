@@ -24,8 +24,8 @@ const categoricalOptions = [
 // excluded from the *other* class's picker, and one wholly unused `cleanVar`
 // confirming the pickers aren't just returning an empty list. Each writer
 // gets its own stage (rather than sharing one AlterForm/CategoricalBin stage
-// with two fields/prompts) so every DialogArrayField section holds exactly
-// one row — no need to disambiguate rows by index or preview text.
+// with two fields/prompts) so every array field section holds exactly one row
+// — no need to disambiguate rows by index or preview text.
 // Variable "name"s (not just their codebook keys) must satisfy
 // VariableNameSchema's `/^[a-zA-Z0-9._:-]+$/` — no spaces — since that field
 // is what the alert/picker render as the visible label.
@@ -182,51 +182,65 @@ test("excludes each writer's picker from offering the other class's variable, wh
   const timeline = new Timeline(architectPage);
   const editor = new StageEditor(architectPage);
 
+  // Both pickers are `@codaco/protocol-builder`'s `VariablePickerField` — a
+  // native `<select>`, so what a picker offers is read off its `<option>`s
+  // rather than off a spotlight's result rows.
+  //
   // AlterForm's field `variable` picker is a VALIDATED writer
-  // (withFieldsHandlers.tsx's excludeUnvalidatedUses): it must drop
-  // binOnlyVar (an UNVALIDATED-only writer elsewhere), while keeping the
-  // field's own current value (sharedVar, also itself part of the conflict)
-  // and the unrelated cleanVar.
+  // (`FormFieldsSection`'s `AttributePicker` calls `excludeUnvalidatedUses`):
+  // it must drop binOnlyVar (an UNVALIDATED-only writer elsewhere), while
+  // keeping the field's own current value (sharedVar, also itself part of the
+  // conflict) and the unrelated cleanVar.
   await timeline.openStage('Person Details');
   await editor
     .section('Form configuration')
     .getByRole('button', { name: 'Edit field' })
     .click();
-  const fieldDialog = architectPage.getByRole('dialog', { name: 'Edit Field' });
+  const fieldDialog = architectPage.getByRole('dialog', {
+    name: 'Edit form field',
+  });
   await expect(fieldDialog).toBeVisible();
-  await fieldDialog.getByRole('button', { name: 'Change attribute' }).click();
 
-  const formPickerItems = architectPage.getByTestId('spotlight-list-item');
-  await expect(formPickerItems).toHaveCount(3);
+  const formPickerItems = fieldDialog
+    .getByRole('combobox', { name: 'Attribute', exact: true })
+    .getByRole('option');
+  // Five: the three attributes this picker may offer, plus the select's own
+  // placeholder ("Select an attribute…") and the sentinel that stands for an
+  // attribute the researcher has yet to invent ("Create a new attribute…").
+  await expect(formPickerItems).toHaveCount(5);
   await expect(formPickerItems.filter({ hasText: 'binOnlyVar' })).toHaveCount(
     0,
   );
   await expect(formPickerItems.filter({ hasText: 'sharedVar' })).toHaveCount(1);
   await expect(formPickerItems.filter({ hasText: 'cleanVar' })).toHaveCount(1);
 
-  // Navigating away (rather than closing the spotlight/dialog first) is
-  // deliberate: neither has been touched, so there is nothing to discard,
-  // and it sidesteps the spotlight's own Escape handler racing the outer
-  // Dialog's (both are dismissible-on-Escape).
+  // Navigating away (rather than closing the dialog first) is deliberate:
+  // nothing has been touched, so there is nothing to discard, and it sidesteps
+  // the dialog's own Escape handling entirely.
   await gotoProtocol(architectPage);
 
   // CategoricalBin's prompt `variable` picker is an UNVALIDATED writer
-  // (withVariableOptions.tsx's excludeValidatedUses): it must drop
-  // formOnlyVar (a VALIDATED-only writer elsewhere), while keeping the
-  // prompt's own current value (sharedVar) and the unrelated cleanVar.
+  // (`BinAttributeField` calls `excludeValidatedUses` for a slot whose writer
+  // class is unvalidated): it must drop formOnlyVar (a VALIDATED-only writer
+  // elsewhere), while keeping the prompt's own current value (sharedVar) and
+  // the unrelated cleanVar.
   await timeline.openStage('Contact Category');
   await editor
     .field('prompts')
     .getByRole('button', { name: 'Edit prompt' })
     .click();
   const promptDialog = architectPage.getByRole('dialog', {
-    name: 'Edit Prompt',
+    name: 'Edit prompt',
   });
   await expect(promptDialog).toBeVisible();
-  await promptDialog.getByRole('button', { name: 'Change attribute' }).click();
 
-  const binPickerItems = architectPage.getByTestId('spotlight-list-item');
-  await expect(binPickerItems).toHaveCount(3);
+  const binPickerItems = promptDialog
+    .getByRole('combobox', { name: 'Attribute', exact: true })
+    .getByRole('option');
+  // Four rather than five: this picker invents nothing of its own — a bin
+  // attribute IS its list of values, so creating one is a separate button
+  // ("Create a new attribute") that opens the codebook editor.
+  await expect(binPickerItems).toHaveCount(4);
   await expect(binPickerItems.filter({ hasText: 'formOnlyVar' })).toHaveCount(
     0,
   );

@@ -13,7 +13,6 @@ import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readProtocolJson } from '../../helpers/read-store.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
-import { createVariableViaSpotlight } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 const SOURCE_STAGE_ID = 'family-pedigree-1';
@@ -57,15 +56,15 @@ async function readNarrativePedigreeStage(
   return stage;
 }
 
-// NarrativePedigree's `sourceStageId` (SourceStage.tsx) only lists stages
-// already present in the live redux store (`getStageList(state).filter(...
-// type === 'FamilyPedigree')`), and its `diseases[].variable` picker
-// (DiseaseFields.tsx) only offers boolean variables belonging to that source
-// stage's `nodeConfig.type` — both read from the protocol's existing `stages`/
-// `codebook`, not anything authored inside this stage editor. Seed the
-// prerequisite directly so this spec isolates NarrativePedigree instead of
-// coupling it to a separate FamilyPedigree authoring flow. The codebook/stage
-// shape below is a hand-typed twin of
+// NarrativePedigree's `sourceStageId` (`SourcePedigreeSection.tsx`) only
+// lists the Family Pedigree stages the protocol already holds that run BEFORE
+// this one, and its `diseases[].variable` picker (`DiseaseRow.tsx`) only
+// offers boolean attributes of that source stage's `nodeConfig.type` which one
+// of its nomination prompts actually records — both read from the protocol's
+// existing stages and codebook, not anything authored inside this stage
+// editor. Seed the prerequisite directly so this spec isolates
+// NarrativePedigree instead of coupling it to a separate FamilyPedigree
+// authoring flow. The codebook/stage shape below is a hand-typed twin of
 // `packages/protocols/e2e/all-interfaces/protocol.json`'s validated
 // `family-pedigree-1` stage and its referenced `person`/`family_edge` codebook
 // entries (confirmed against that fixture, which Task 7's fixture-validation
@@ -185,77 +184,79 @@ test('creates a valid NarrativePedigree stage from scratch', async ({
   await gotoProtocol(architectPage);
 
   const editor = new StageEditor(architectPage);
-  await editor.createNew('NarrativePedigree');
+  // Created AFTER the seeded pedigree, not before it. A narrative pedigree may
+  // only read a Family Pedigree that runs earlier in the interview
+  // (`resolveSourceStages` in `sections/sourceStage.ts`, which reads the
+  // position the host is about to insert at), so a stage created at index 0
+  // runs before the only pedigree there is, is offered nothing, and has its
+  // source control disabled with "No pedigree to read" beside it.
+  await editor.createNew('NarrativePedigree', 1);
   await editor.setStageName('Family Health History');
 
-  // SourceStage.tsx owns `sourceStageId` through a StyledSelectField labelled
-  // "Source stage" — a Base UI Select combobox (same "combobox" trigger role
-  // + "option" item role pattern `createVariableWithOptions` already
-  // exercises for "Variable type"), listing only the seeded FamilyPedigree
-  // stage by its `label`.
-  // Diseases.tsx reads `nodeType` from THIS field's live value (via
-  // `getStage(state, sourceStageId)`), so it must be set before the disease
-  // dialog's variable picker has anything to offer — hence selecting it
-  // first, as the task brief specifies.
+  // `SourcePedigreeSection.tsx` owns `sourceStageId` through
+  // `SourcePedigreePickerField`, which is a NATIVE select (fresco-ui's
+  // `Select/Native`) labelled "Source stage" — so the choice is made with
+  // `selectOption` rather than by opening a listbox.
+  // The diseases section reads its node type from THIS field's live value, so
+  // it must be set before the disease dialog's attribute picker has anything
+  // to offer — hence selecting it first.
+  //
+  // Selected by VALUE (the source stage's own id, which the assertion below
+  // reads back) rather than by the option's text: each option is labelled
+  // "Stage {position} — {label}", and the position it counts for a stage that
+  // PRECEDES the one being created is currently one too high (see the report
+  // on `resolveSourceStages`), so matching the text would pin a number that is
+  // wrong today and would have to change when it is fixed.
   await editor
     .field('sourceStageId')
     .getByRole('combobox', { name: 'Source stage' })
-    .click();
-  await architectPage.getByRole('option', { name: 'Family Pedigree' }).click();
+    .selectOption(SOURCE_STAGE_ID);
 
-  // Diseases.tsx exposes its `diseases` ArchitectArrayField through the same
-  // DialogArrayField pattern every other prompt array in this suite uses, so
-  // the add button is named for what it adds and addPrompt is told which label
-  // to click.
+  // The `diseases` list is the package's shared row-dialog list
+  // (`form/rowDialog.tsx`), the same one every prompt array in this suite
+  // uses, so the add button is named for what it adds and addPrompt is told
+  // which label to click.
   await addPrompt(
     editor.field('diseases'),
     async () => {
-      // DiseaseFields.tsx: visible "Disease label" InputField.
+      // DiseaseRow.tsx's `label` field, which asks for the name the
+      // participant reads in the pedigree's key.
       await architectPage
-        .getByRole('textbox', { name: 'Disease label' })
+        .getByRole('textbox', { name: 'Disease name', exact: true })
         .fill('Condition X');
 
-      // ColorPicker (`palette: 'node-color-seq'`, ranged to the palette's real
-      // eight colours) renders a Base UI RadioGroup of swatch buttons, each
-      // `role="radio"` named for its hue rather than its token — the same Base
-      // UI Radio primitive already confirmed for EntitySelectField's
-      // node/edge-type pills. Picked by name so the spec fails if the swatches
-      // ever go back to announcing `node-color-seq-1`.
+      // fresco-ui's ColorPicker over `NodeColorSequence` renders a radio group
+      // of swatch buttons. The palette's colours are the study's own theme
+      // colours and have no names of their own, so each swatch is named for
+      // its position — "Color 1" is `node-color-seq-1`, which is what the
+      // saved disease carries.
       await architectPage
-        .getByRole('radio', { name: 'Neon Coral', exact: true })
+        .getByRole('radio', { name: 'Color 1', exact: true })
         .click();
 
-      // DiseaseFields.tsx's "variable" VariablePicker passes NO
-      // `onCreateOption` (unlike every other variable picker in this suite),
-      // so its `onCreateOption` no-ops — this is a genuinely pick-only picker,
-      // as the task brief specifies. `createVariableViaSpotlight` still works
-      // unmodified: searching the EXACT existing variable name
-      // (`hasConditionX`, seeded above on the source stage's node type) means
-      // VariableSpotlight's "Create new variable called…" row never appears
-      // (an exact match exists), so the helper's fallback branch
-      // (`search.press('Enter')`, selecting the single filtered match) fires
-      // instead of ever attempting to create anything.
-      await createVariableViaSpotlight(architectPage, {
-        variableName: 'hasConditionX',
-      });
+      // The attribute picker is deliberately pick-only: a disease READS an
+      // attribute the source pedigree records, so there is no create
+      // affordance beside it (DiseaseRow.tsx says so, and the picker's empty
+      // message points at the pedigree's nomination prompts instead). It lists
+      // only attributes a nomination prompt of the source stage records —
+      // `hasConditionX`, seeded above — as a native select.
+      await architectPage
+        .getByRole('combobox', { name: 'Affected-status attribute' })
+        .selectOption('hasConditionX');
 
-      // The visibly labelled "Inheritance pattern" field is grouped with the
-      // other disease mapping fields in "Disease details". Its options are
-      // `startCase(INHERITANCE_PATTERNS[n])`; 'autosomalDominant' becomes
-      // "Autosomal Dominant".
+      // "Inheritance pattern" is a native select whose options are written out
+      // per pattern rather than derived from the schema token, so
+      // 'autosomalDominant' reads "Autosomal dominant".
       await architectPage
         .getByRole('combobox', { name: 'Inheritance pattern' })
-        .click();
-      await architectPage
-        .getByRole('option', { name: 'Autosomal Dominant' })
-        .click();
+        .selectOption({ label: 'Autosomal dominant' });
     },
     { addButtonLabel: 'Create new disease' },
   );
 
-  // AtRiskStatuses.tsx's `showAtRiskStatuses` toggle defaults to `false` via
-  // the interface's own `template` (Interfaces.tsx) and is optional/boolean
-  // in the schema — deliberately left untouched.
+  // `showAtRiskStatuses` starts `false` from the interface's own template
+  // (`interfaces/templates.ts`) and is optional/boolean in the schema — the
+  // "At-risk statuses" switch is deliberately left untouched.
 
   await editor.expectNoIssues();
   await editor.save();

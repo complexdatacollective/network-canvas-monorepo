@@ -18,7 +18,7 @@ import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
  * SCOPE — list add buttons, not every button. The wider net of EVERY button,
  * page-wide, was measured against the all-interfaces fixture and rejected:
  * per-row controls repeat by design. A five-prompt list renders five "Edit
- * prompt" and five "Remove prompt" buttons, each named for what it does and
+ * prompt" and five "Delete prompt" buttons, each named for what it does and
  * disambiguated by the row it sits in. So does every drag handle. That net
  * would fire on all of them and have to be suppressed back down to roughly
  * the set below.
@@ -27,12 +27,12 @@ import { loadAllInterfacesFixture } from '../helpers/load-fixture.js';
  * "Add new …"/"Create new …" — which is what makes a one-per-list control
  * identifiable without an allowlist. Two things follow from drawing it there.
  *
- * The rule builders were brought INSIDE it. `RuleSetFields` mounts
- * `Query/Rules/Rules.tsx` twice per stage editor, once for Skip logic and once
- * for Stage filter. Each rule set is now one editable list with one conventionally
- * named add control ("Add new skip logic rule" / "Add new filter rule"); the
- * rule target is selected inside the row editor. Both controls are therefore
- * covered here with no widening and no allowlist.
+ * The rule builders were brought INSIDE it. `@codaco/protocol-builder`’s
+ * `rules/RuleSetField.tsx` mounts a rule list twice per stage editor, once for
+ * Skip logic and once for Stage filter. Each rule set is one editable list with
+ * one conventionally named add control ("Add new skip logic rule" / "Add new
+ * filter rule"); the rule target is selected inside the row editor. Both
+ * controls are therefore covered here with no widening and no allowlist.
  *
  * What stays outside is `RichTextEditor.tsx`'s "Add link" — a toolbar button,
  * one per editor, belonging to the editor it sits in exactly as a row's Edit

@@ -51,11 +51,11 @@ const VariablePicker = VariablePickerField as ComponentType<
  *
  * The interview sets the configured value on the node as it is created, with
  * nobody to answer anything — so a stamp is a flag, and the researcher is
- * asked only for its name. `Toggle` is how the codebook editors offer a
- * boolean, and an attribute created here has to read the same way there.
+ * asked only for its name. Nothing else is written with it: an attribute set
+ * without being asked has no control to be answered through, and a default one
+ * recorded here would be a decision about a question nobody puts.
  */
 const STAMP_TYPE = 'boolean';
-const STAMP_COMPONENT = 'Toggle';
 
 const messages = defineMessages({
   promptGroupTitle: {
@@ -66,7 +66,8 @@ const messages = defineMessages({
   },
   promptGroupDescription: {
     id: 'protocolBuilder.nameGeneratorPrompts.promptGroupDescription',
-    defaultMessage: 'Write the question this prompt asks the participant.',
+    defaultMessage:
+      'Write the instruction or question participants see for this task.',
     description:
       'Description of the first half of the dialog for one name-generator prompt.',
   },
@@ -76,18 +77,11 @@ const messages = defineMessages({
     description:
       'Label of the box holding the question one name-generator prompt asks the participant.',
   },
-  textHint: {
-    id: 'protocolBuilder.nameGeneratorPrompts.textHint',
-    defaultMessage:
-      'Shown to the participant while they name people. Supports markdown formatting.',
-    description:
-      'Guidance under the prompt-text box. Markdown is the name of a text formatting syntax and is not translated.',
-  },
   textPlaceholder: {
     id: 'protocolBuilder.nameGeneratorPrompts.textPlaceholder',
-    defaultMessage: 'Who are the people you know?',
+    defaultMessage: 'Enter your prompt...',
     description:
-      'Example shown in the empty prompt-text box. Written as a participant would read it, because that is who reads the prompt.',
+      'Placeholder shown in the empty prompt-text box. The trailing dots are an ellipsis written as three full stops.',
   },
   textRequired: {
     id: 'protocolBuilder.nameGeneratorPrompts.textRequired',
@@ -104,7 +98,7 @@ const messages = defineMessages({
   attributesGroupDescription: {
     id: 'protocolBuilder.nameGeneratorPrompts.attributesGroupDescription',
     defaultMessage:
-      'Give every person named on this prompt a fixed value, so later stages can ask about them.',
+      'Assign fixed attribute values to nodes created from this prompt.',
     description:
       'Description of the additional-attributes half of the name-generator prompt dialog. A stage is one step of an interview.',
   },
@@ -116,7 +110,8 @@ const messages = defineMessages({
   },
   assignmentsHint: {
     id: 'protocolBuilder.nameGeneratorPrompts.assignmentsHint',
-    defaultMessage: 'Use these values in skip logic or in a stage’s filter.',
+    defaultMessage:
+      'Use assigned values in skip logic or stage filtering rules.',
     description:
       'Guidance under the attribute-assignments list, naming the two places a later stage can read the assigned values. Skip logic decides whether a stage runs at all; a filter decides what reaches it.',
   },
@@ -172,7 +167,6 @@ function NameGeneratorPromptEditor({ item }: RowEditorProps) {
           name="text"
           component={RichTextField}
           label={intl.formatMessage(messages.textLabel)}
-          hint={intl.formatMessage(messages.textHint)}
           placeholder={intl.formatMessage(messages.textPlaceholder)}
           singleLine
           initialValue={asString(item.text)}
@@ -285,7 +279,6 @@ function AdditionalAttributes({
       const outcome = await createVariable({
         name: variableName,
         type: STAMP_TYPE,
-        component: STAMP_COMPONENT,
       });
       if (outcome.status === 'refused') {
         setCreateProblem(outcome.message);

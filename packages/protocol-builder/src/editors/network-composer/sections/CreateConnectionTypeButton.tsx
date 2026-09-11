@@ -9,7 +9,7 @@ import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 import CodebookEntityEditor from '../../../codebook/components/CodebookEntityEditor.tsx';
 import { useCreateCodebookEntity } from '../../../codebook/writes.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
-import { NEW_ENTITY_DRAFT } from '../../../sections/subject-picker/SubjectSection.tsx';
+import { newEntityDraft } from '../../../sections/subject-picker/SubjectSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { composerMessages as messages } from './composerMessages.ts';
 
@@ -122,7 +122,10 @@ export default function CreateConnectionTypeButton({
             mode="create"
             sessionKey={session.key}
             subject={{ entity: 'edge', type: session.typeId }}
-            initialDraft={NEW_ENTITY_DRAFT.edge}
+            initialDraft={newEntityDraft(
+              'edge',
+              Object.keys(codebook.edge ?? {}).length,
+            )}
             readOnly={readOnly}
             existingEntityNames={existingEntityNames}
             onSubmit={async (document) => {

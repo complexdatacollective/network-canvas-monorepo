@@ -56,13 +56,12 @@ export type DialogFormProps = {
   validate?: FormLevelValidate;
   /**
    * The committed array index of the item being edited, when this dialog
-   * edits one member of a field array. Forwarded to `validate` as context —
-   * see DialogArrayField's `editorValidate`.
+   * edits one member of a field array. Forwarded to `validate` as context.
    */
   editIndex?: number;
   /**
    * Shared-layout id, for a dialog that animates out of the element that
-   * opened it (an array row's Edit button — see arrayFields/DialogArrayField).
+   * opened it (an array row's Edit button).
    */
   layoutId?: string;
   style?: React.CSSProperties;

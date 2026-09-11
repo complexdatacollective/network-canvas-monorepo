@@ -1,25 +1,26 @@
 import { type Page } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
-import { createVariableViaSpotlight } from './variables.js';
 
-// CategoricalBin prompt dialog's follow-up other-option nested section
-// (sections/CategoricalBinPrompts/PromptFields.tsx). Facts verified against
-// source:
-// - The toggleable region and its switch are both named "Follow-up other
-//   option" by the Section heading.
-// - It is disabled until the main categorical `variable` is picked, and its
-//   toggle initializes nothing.
-// - The otherVariable picker creates `{ name, type: 'text', validation:
-//   { required: true } }` directly (no NewVariableWindow). The forced
-//   validation CANNOT be cleared from inside the prompt dialog — toggling
-//   the nested Validation section OFF writes `_modified` into the DIALOG
-//   form, which rides into the saved prompt and fails the schema's strict
-//   object (verified live) — so the comparison layer drops it instead
-//   (helpers/normalize-protocol.ts dropForcedRequiredValidation).
-// - otherOptionLabel ("Other bin label") and otherVariablePrompt
-//   ("Follow-up question") are visible-labelled inline RichText fields; all
-//   three fields are required once the section is on.
+// CategoricalBin's follow-up bin, a nested toggleable section of the prompt
+// row dialog (@codaco/protocol-builder's CategoricalBinPromptsSection.tsx).
+// Facts verified against source:
+// - The section is headed "A bin for anything else", and fresco-ui's `Section`
+//   labels its toggle from that same heading (`aria-labelledby={titleId}`), so
+//   region and switch share the name.
+// - It is disabled until the main "The bins" attribute is picked, and it opens
+//   closed (`defaultOpen={committedOther !== undefined}`).
+// - The attribute the typed answer is stored in is a `BinAttributeField`
+//   restricted to text attributes: a picker labelled "Attribute the answer is
+//   stored in", plus a `CreateVariableButton` labelled "Create a new text
+//   attribute" that opens the codebook's own attribute editor. A text
+//   attribute has no values to author, so the editor needs only "Attribute
+//   name" before "Create attribute" commits it — and, unlike the Architect
+//   editor this replaced, it forces no `validation: { required: true }` onto
+//   the attribute.
+// - otherOptionLabel ("Bin label") and otherVariablePrompt ("Follow-up
+//   question") are visible-labelled RichText fields; all three fields are
+//   required once the section is open.
 export async function enableOtherOption(
   editor: StageEditor,
   page: Page,
@@ -29,15 +30,32 @@ export async function enableOtherOption(
     variablePrompt: string;
   },
 ): Promise<void> {
-  const section = editor.section('Follow-up other option');
+  const section = editor.section('A bin for anything else');
   await section
-    .getByRole('switch', { name: 'Follow-up other option', exact: true })
+    .getByRole('switch', { name: 'A bin for anything else', exact: true })
     .click();
-  await createVariableViaSpotlight(page, {
-    variableName: opts.variableName,
-    scope: section,
-    until: section.getByRole('button', { name: 'Change attribute' }),
+  // Scoped to the attribute editor's own dialog: the bins picker above has a
+  // "Create a new attribute" button of its own, and the prompt dialog behind
+  // this one is still mounted.
+  const attributeEditor = page.getByRole('dialog', {
+    name: 'Create a new text attribute',
+    exact: true,
   });
-  await editor.fillRichText('Other bin label', opts.optionLabel);
+  await page
+    .getByRole('button', { name: 'Create a new text attribute', exact: true })
+    .click();
+  await attributeEditor
+    .getByRole('textbox', { name: 'Attribute name', exact: true })
+    .fill(opts.variableName);
+  await attributeEditor
+    .getByRole('button', { name: 'Create attribute', exact: true })
+    .click();
+  // The dialog holds itself open until the codebook write lands, renaming its
+  // submit while the request is in flight — so the DIALOG going is the signal
+  // that the attribute exists and has been bound to this prompt, not the
+  // button. Waiting matters for the reason prompts.ts gives: the prompt dialog
+  // behind this one must not be driven through a modal still on screen.
+  await attributeEditor.waitFor({ state: 'hidden' });
+  await editor.fillRichText('Bin label', opts.optionLabel);
   await editor.fillRichText('Follow-up question', opts.variablePrompt);
 }

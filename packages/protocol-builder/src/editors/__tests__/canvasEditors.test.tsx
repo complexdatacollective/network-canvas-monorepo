@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
 import type { FixtureStageId } from '../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
+import { anonymisationStageEditor } from '../anonymisation/AnonymisationStageEditor.ts';
 import { shimMarkdownEditorMeasurement } from '../family-pedigree/__tests__/editorFixtures.ts';
+import { geospatialStageEditor } from '../geospatial/GeospatialStageEditor.ts';
+import { narrativePedigreeStageEditor } from '../narrative-pedigree/NarrativePedigreeStageEditor.ts';
 import { narrativeStageEditor } from '../narrative/NarrativeStageEditor.ts';
 import { networkComposerStageEditor } from '../network-composer/NetworkComposerStageEditor.ts';
 import { sociogramStageEditor } from '../sociogram/SociogramStageEditor.ts';
@@ -41,9 +44,9 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     editor: sociogramStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Stage filter',
-      'Prompts',
+      'Prompt collection',
       'Background',
       'Node layout',
       'Skip logic',
@@ -57,7 +60,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     editor: narrativeStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Stage filter',
       'Visualization presets',
       'Background',
@@ -74,7 +77,7 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
     editor: networkComposerStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Adding and arranging nodes',
       'Node attributes',
       'Connections',
@@ -93,6 +96,63 @@ const CANVAS_EDITORS: CanvasEditorCase[] = [
       'quickAdd',
       'subject',
     ],
+  },
+  {
+    interfaceName: 'Geospatial',
+    stageId: 'geospatial-1',
+    editor: geospatialStageEditor,
+    // The map is four decisions a researcher makes at different times, each
+    // finishable on its own — and the prompts sit between the two halves,
+    // because what the map IS has to be settled before there is anything to
+    // ask about it, and how it looks and where it opens are settled once the
+    // questions are written.
+    sections: [
+      'Stage name',
+      'Node setup',
+      'Stage filter',
+      'Map access',
+      'Map layer',
+      'Prompt collection',
+      'Map appearance',
+      'Starting map view',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['label', 'mapOptions', 'prompts', 'subject'],
+  },
+  {
+    interfaceName: 'NarrativePedigree',
+    stageId: 'narrative-pedigree-1',
+    editor: narrativePedigreeStageEditor,
+    // No subject picker: this stage draws a family somebody else collected, so
+    // the node type its diseases are attributes of is the source pedigree's,
+    // resolved through the stage it names rather than chosen here.
+    sections: [
+      'Stage name',
+      'Pedigree source',
+      'Diseases',
+      'At-risk statuses',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['diseases', 'label', 'showAtRiskStatuses', 'sourceStageId'],
+  },
+  {
+    interfaceName: 'Anonymisation',
+    stageId: 'anonymisation-1',
+    editor: anonymisationStageEditor,
+    // Encrypted attributes are here, and own no stage key: `encrypted` belongs
+    // to a codebook attribute, so that section writes the codebook under its
+    // own lock rather than through this stage's save.
+    sections: [
+      'Stage name',
+      'Passphrase explanation',
+      'Passphrase rules',
+      'Encrypted attributes',
+      'Skip logic',
+      'Interviewer guidance',
+    ],
+    ownedKeys: ['explanationText', 'label', 'validation'],
   },
 ];
 

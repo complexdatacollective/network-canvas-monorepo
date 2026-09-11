@@ -11,7 +11,6 @@ import {
   getProtocolLockState,
   requestProtocolReclaimChoice,
 } from '~/ducks/modules/app';
-import { resetDraft } from '~/ducks/modules/stageEditorDraft';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
 const chromeMessages = defineMessages({
   theOtherTabHasBeenClosed: {
@@ -165,10 +164,10 @@ const ProtocolLockBanner = () => {
           : {
               label: intl.formatMessage(messages.discardChanges),
               onClick: () => {
-                // Discarding leaves the stage editor as well as clearing the
-                // draft: staying would leave an editor whose every control is
-                // still live but whose writes can never be saved.
-                dispatch(resetDraft(null));
+                // Leaving the editor IS discarding the draft — it lives in
+                // that form and nowhere else — and staying would leave an
+                // editor whose every control is still live but whose writes
+                // can never be saved.
                 setLocation('/protocol');
               },
             };

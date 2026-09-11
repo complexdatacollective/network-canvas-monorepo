@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { stageSchema } from '@codaco/protocol-validation';
 
 import { STAGE_TYPES } from '../../stage-types.ts';
-import { getStageEditorInitialValues } from '../initialValues.ts';
 import { getInterfaceTemplate } from '../templates.ts';
 
 describe('getInterfaceTemplate', () => {
@@ -17,7 +16,6 @@ describe('getInterfaceTemplate', () => {
   });
 
   it('answers with an empty template for an interface that authors no defaults', () => {
-    expect(getInterfaceTemplate('Sociogram')).toEqual({});
     expect(getInterfaceTemplate('NameGenerator')).toEqual({});
     // The three form interfaces used to be listed in the map holding `{}`,
     // which reads as a template whose contents went missing rather than as an
@@ -40,13 +38,33 @@ describe('getInterfaceTemplate', () => {
   it('seeds the layout and consideration behaviours their interfaces are designed around', () => {
     expect(getInterfaceTemplate('Narrative')).toEqual({
       behaviours: { allowRepositioning: true, automaticLayout: true },
+      background: { skewedTowardCenter: false },
     });
     expect(getInterfaceTemplate('NetworkComposer')).toEqual({
       behaviours: { automaticLayout: true },
+      background: { skewedTowardCenter: false },
     });
     expect(getInterfaceTemplate('OneToManyDyadCensus')).toEqual({
       behaviours: { removeAfterConsideration: true },
     });
+  });
+
+  /**
+   * The one template entry that exists because absence and `false` are NOT the
+   * same stage: `ConcentricCircles` defaults `skewed` to `true`, so a canvas
+   * saved with no answer to the toggle draws the skew the editor showed
+   * switched off.
+   */
+  it('answers the concentric-circles skew for every canvas interface', () => {
+    for (const stageType of [
+      'Sociogram',
+      'Narrative',
+      'NetworkComposer',
+    ] as const) {
+      expect(getInterfaceTemplate(stageType).background, stageType).toEqual({
+        skewedTowardCenter: false,
+      });
+    }
   });
 
   it('seeds the pedigree interfaces with their framing, boundaries and intro copy', () => {
@@ -116,12 +134,16 @@ const STILL_NEEDED: Readonly<Record<string, readonly string[]>> = {
   TieStrengthCensus: ['introductionPanel', 'prompts', 'subject'],
 };
 
-/** A new stage of `type`, exactly as a stage editor mounts one, plus a name. */
+/**
+ * A new stage of `type`, exactly as a stage editor mounts one, plus a name.
+ *
+ * `CreatingStage` mounts its form on `{ ...getInterfaceTemplate(type) }` and
+ * submits it through `stageDocument`, which stamps the identity — so this is
+ * that composition with nothing in between.
+ */
 const newStage = (type: (typeof STAGE_TYPES)[number]) => ({
-  ...getStageEditorInitialValues({
-    interfaceType: type,
-    template: getInterfaceTemplate(type),
-  }),
+  ...getInterfaceTemplate(type),
+  type,
   id: 'stage-1',
   label: 'A new stage',
 });
@@ -143,19 +165,13 @@ const refusedProperties = (
 
 describe('a new stage given nothing but a name', () => {
   /**
-   * Architect reads a template through `getInterface(type).template`, which is
-   * `getInterfaceTemplate`, and mounts its editor on
-   * `getStageEditorInitialValues` — both of them this package's. So what a
-   * researcher's new stage holds is what these two say, for every interface,
-   * with nothing in between that could diverge.
+   * A new stage holds its interface's template under its own type, and
+   * nothing else: the template is the only thing a create seeds the form
+   * with, so what a researcher's new stage holds is what this map says.
    */
   it.each(STAGE_TYPES)('is the %s template under its stage type', (type) => {
-    expect(
-      getStageEditorInitialValues({
-        interfaceType: type,
-        template: getInterfaceTemplate(type),
-      }),
-    ).toMatchObject({ ...getInterfaceTemplate(type), type });
+    const { id: _id, label: _label, ...seeded } = newStage(type);
+    expect(seeded).toEqual({ ...getInterfaceTemplate(type), type });
   });
 
   it.each(STAGE_TYPES)('still needs the listed properties on %s', (type) => {
@@ -194,28 +210,5 @@ describe('a new stage given nothing but a name', () => {
         ? []
         : parsed.error.issues.map((issue) => issue.path.join('.')),
     ).toContain('label');
-  });
-});
-
-/**
- * A committed stage wins outright: reopening an existing stage must not have
- * its interface's defaults written back over what the researcher chose.
- */
-describe('a stage that already exists', () => {
-  it('keeps its own values rather than taking the template again', () => {
-    const stage = {
-      id: 'narrative-1',
-      type: 'Narrative' as const,
-      label: 'Existing',
-      behaviours: { automaticLayout: false },
-    };
-
-    expect(
-      getStageEditorInitialValues({
-        interfaceType: 'Narrative',
-        stage: stage as never,
-        template: getInterfaceTemplate('Narrative'),
-      }),
-    ).toEqual(stage);
   });
 });

@@ -190,7 +190,7 @@ jobs:
   # release-PR refreshes may reuse an equivalent earlier verdict. Merge groups
   # deliberately skip the policy and all E2E work. Every path and history guard
   # fails closed; see
-  # scripts/release-e2e-policy.mjs.
+  # scripts/ci/release-e2e-policy.mjs.
   e2e-policy:
     if: >-
       github.event_name != 'merge_group'
@@ -234,7 +234,7 @@ jobs:
           # Read-only, feeds release-PR equivalence lookups.
           GH_TOKEN: ${{ github.token }}
         run: |
-          policy=$(node scripts/release-e2e-policy.mjs)
+          policy=$(node scripts/ci/release-e2e-policy.mjs)
           if [[ "$BENCHMARK_INTERVIEW_E2E" == "true" ]]; then
             policy=$(jq \
               '.interview = true
@@ -521,8 +521,11 @@ jobs:
     runs-on: ubuntu-latest
     # The `test` task includes the studio-sync and studio-server conformance
     # suites, which refuse to skip under CI. Without this they abort the whole
-    # `turbo run`, and the job seeds no cache at all — see the `test` job, whose
-    # service this mirrors.
+    # `turbo run`, and the job seeds no cache at all. This job seeds every
+    # package in one run, so it keeps a plain job-level service; the sharded
+    # `test` job starts an equivalent container from a step instead, because
+    # only one of its five shards holds a suite that needs a database and
+    # `services:` cannot be varied per matrix leg.
     services:
       postgres:
         image: postgres:18
@@ -623,7 +626,7 @@ jobs:
       # not cosmetic. It is the only signal that `main` is broken at all,
       # because `test`, `test-storybook` and `lint` are all gated
       # `github.event_name != 'push'` and never run on a push; and it is the
-      # exact field `computeSeedHealth()` in scripts/ci-metrics.mjs counts,
+      # exact field `computeSeedHealth()` in scripts/ci/ci-metrics.mjs counts,
       # so hiding it would have permanently zeroed the seed-failure
       # measurement this branch adds in order to catch the next regression.
       #
@@ -746,11 +749,13 @@ jobs:
             echo "::error::Pull request base SHA is unavailable"
             exit 1
           fi
-          node scripts/check-npm-version-collisions.mjs --base "$BASE_SHA"
+          node scripts/release/check-npm-version-collisions.mjs --base "$BASE_SHA"
       - name: Test repository scripts
         id: scripts
         continue-on-error: true
-        run: pnpm test:scripts
+        # Through turbo so the suite is cached like every other test task; it
+        # is a root task because scripts/ is not a workspace package.
+        run: pnpm exec turbo run //#test:scripts
       - name: Validate managed Studio infrastructure without provider credentials
         id: studio-managed
         continue-on-error: true
@@ -767,7 +772,7 @@ jobs:
             set +e
             git diff --quiet "$BASE_SHA" "$GITHUB_SHA" -- \
               apps/studio/deployment/managed \
-              scripts/studio-managed-estate.test.mjs \
+              scripts/studio/studio-managed-estate.test.mjs \
               .github/workflows/ci-and-release.yml
             infra_diff_exit=$?
             set -e
@@ -799,7 +804,7 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ci-release-build-preflight
           POSTHOG_PROJECT_ID: '1'
-          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/posthog-cli-upload-stub.mjs
+          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/build/posthog-cli-upload-stub.mjs
         run: |
           pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
           pnpm --filter=@codaco/architect build
@@ -807,6 +812,20 @@ jobs:
           pnpm --filter=@codaco/studio-client build
           pnpm --filter=@codaco/studio-server build
           pnpm --filter=@codaco/studio-server build:netlify
+      # Every other Storybook is built in CI as Chromatic's upload input
+      # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
+      # Builder has no Chromatic project by design, and the build step above
+      # skips it because a private, source-first package has no `build` script
+      # — so without this step nothing in CI runs its static build at all.
+      # `test:storybook` is not a substitute: it serves stories through Vite's
+      # dev server and never bundles, and it does not read the generated docs
+      # entries either (a CSF file with `autodocs` and no story exports is
+      # skipped). Cached through turbo like the other build tasks, so it
+      # replays on the PRs that do not touch the package.
+      - name: Build the Protocol Builder Storybook
+        id: protocol_builder_storybook
+        continue-on-error: true
+        run: pnpm exec turbo run build-storybook --filter=@codaco/protocol-builder
       - name: Verify Studio telemetry opt-out and browser privacy
         id: studio-telemetry
         continue-on-error: true
@@ -833,6 +852,7 @@ jobs:
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           STUDIO_MANAGED_OUTCOME: ${{ steps.studio-managed.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           STUDIO_TELEMETRY_OUTCOME: ${{ steps.studio-telemetry.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
         run: |
@@ -848,6 +868,7 @@ jobs:
             "scripts=$SCRIPTS_OUTCOME" \
             "studio-managed=$STUDIO_MANAGED_OUTCOME" \
             "build=$BUILD_OUTCOME" \
+            "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "studio-telemetry=$STUDIO_TELEMETRY_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME"; do
             echo "$result"
@@ -955,26 +976,57 @@ jobs:
         run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
 
   test:
+    # The workspace unit suites, one bucket of packages per parallel runner.
+    #
+    # These suites are embarrassingly parallel across MACHINES and stubbornly
+    # serial on one. Every vitest sizes its fork pool to the runner's CPU
+    # count, so a single suite already saturates a 4-vCPU standard runner and
+    # turbo's own `--concurrency` knob buys nothing — measured on the same
+    # thirteen tasks (#1801), 25m53s at `--concurrency=1`, 25m49s at 2, 26m08s
+    # at the default. The bottleneck is CPU throughput, not scheduling, so the
+    # only lever is more CPUs. Standard runners are free on this public
+    # repository and the org has 500 concurrent standard jobs against a
+    # sampled live usage of ~26, so shard count is not the constraint either.
+    #
+    # Each shard is a whole runner running its own bucket at
+    # `--concurrency=1`, which is the same uncontended machine per suite that
+    # the single job gave — the per-test wall-clock budgets still measure the
+    # test rather than the queue. scripts/ci/test-shards.mjs owns which package
+    # is in which bucket, how the buckets were weighted, and the coverage
+    # check that refuses a package belonging to no shard.
+    name: test (shard ${{ matrix.shard }})
     if: >-
       github.event_name != 'merge_group'
       && github.event_name != 'push'
       && !(github.event_name == 'workflow_dispatch'
       && inputs.interview_e2e_benchmark == true)
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:18
-        env:
-          POSTGRES_PASSWORD: spike
-          POSTGRES_DB: studio_dev
-          POSTGRES_INITDB_ARGS: --set=max_prepared_transactions=10
-        ports:
-          - 54318:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    timeout-minutes: 30
+    strategy:
+      # Every shard's verdict is wanted. Under the default fail-fast the first
+      # red suite cancels its siblings, and a cancelled shard reports no
+      # failure of its own — a pull request would be told about one broken
+      # package at a time, one push each.
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+          - shard: 2
+          # packages/studio-sync's conformance suite is the only workspace
+          # suite outside @codaco/studio-server that needs a database, and it
+          # refuses to skip under CI. Its shard starts one; the others do not
+          # pay for it. `services:` cannot be varied per matrix leg, so the
+          # container is started by a step instead — measured at 24s of
+          # "Initialize containers" on every run of the unsharded job.
+          - shard: 3
+            postgres: true
+            # @codaco/protocol-validation's suite is the only one that reads
+            # the encryption keys and the protocol-fetch token, through a
+            # `.env` in its own package directory. Only its shard writes them,
+            # so the secrets never reach a runner with no use for them.
+            protocolValidation: true
+          - shard: 4
+          - shard: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -982,8 +1034,61 @@ jobs:
           # `--affected` diffs against the PR base; on a shallow clone turbo
           # treats every package as changed.
           fetch-depth: 0
+      # Both Postgres steps run BEFORE the install, so a container that cannot
+      # start fails this job in seconds rather than after a checkout, a pnpm
+      # install and a cache restore. That ordering is what the `services:`
+      # block this replaces gave for free: Actions blocked every step on the
+      # container's healthcheck. Same image, same env (POSTGRES_INITDB_ARGS is
+      # read by the official image's entrypoint either way), same port.
+      - name: Start Postgres for the studio-sync conformance suite
+        if: matrix.postgres
+        run: |
+          docker run --detach --name studio-sync-postgres \
+            --env POSTGRES_PASSWORD=spike \
+            --env POSTGRES_DB=studio_dev \
+            --env POSTGRES_INITDB_ARGS=--set=max_prepared_transactions=10 \
+            --publish 54318:5432 \
+            postgres:18
+      # `-h 127.0.0.1` on purpose: during initdb the official image runs a
+      # temporary server bound to the unix socket only, so a socket-based
+      # pg_isready (what the old service's health-cmd ran) can report ready
+      # before the TCP listener the suite actually connects to exists. The
+      # 120s budget covers that init; a container that has *stopped* is not
+      # going to start listening, so it is reported at once rather than
+      # waited out.
+      - name: Wait for Postgres
+        if: matrix.postgres
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            if docker exec studio-sync-postgres pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
+              echo "Postgres is accepting TCP connections"
+              exit 0
+            fi
+            if [[ "$(docker inspect --format '{{.State.Running}}' studio-sync-postgres 2>/dev/null)" != "true" ]]; then
+              docker logs studio-sync-postgres || true
+              echo "::error::The Postgres container stopped before accepting connections"
+              exit 1
+            fi
+            sleep 2
+          done
+          docker logs studio-sync-postgres || true
+          echo "::error::Postgres did not accept connections within 120s"
+          exit 1
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
+        # Only the shard whose bucket holds @codaco/protocol-validation. The
+        # file is that package's own turbo input, so writing it anywhere else
+        # hands three secrets to a runner that cannot use them.
+        #
+        # Withholding it elsewhere cannot cost cache hits: `.env` is
+        # gitignored, so turbo's default inputs — which is what the input-less
+        # `topo` transit task hashes, and therefore what propagates across the
+        # dependency edge — do not include it. Only a task that names `.env`
+        # in its own `inputs` hashes it, and only for its own package.
+        # Verified by diffing every task hash with the file present and
+        # absent: @codaco/protocol-validation moved, nothing else did.
+        if: matrix.protocolValidation
         env:
           PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
           PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
@@ -997,7 +1102,40 @@ jobs:
       - name: Run tests (PRs run only affected tasks)
         env:
           DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SHARD: ${{ matrix.shard }}
         run: |
+          # Restrict this runner to its bucket. scripts/ci/test-shards.mjs emits
+          # one `--filter=!<pkg>` for every test-carrying workspace package
+          # this shard does not own, and refuses to emit anything at all if a
+          # package belongs to no bucket.
+          #
+          # Negations, not positive filters, because turbo UNIONS what the
+          # positive filters select: `--filter=@codaco/art` beside the
+          # affected selector below would run art on every pull request
+          # whether or not the diff touched it. Negations subtract from that
+          # union, which is the intersection a shard actually wants — the same
+          # mechanism that already kept @codaco/studio-server out. That suite
+          # is now excluded by simply belonging to no bucket, so every shard
+          # negates it and the split cannot be undone by editing one shard.
+          #
+          # Via a file rather than `mapfile < <(node ...)`: process
+          # substitution discards the script's exit status, so a script that
+          # died would leave an empty filter list and silently widen the shard
+          # to the whole workspace — every suite run five times over, in
+          # parallel with itself.
+          #
+          # The EXIT STATUS is what decides, not whether the file has content.
+          # A bucket that owned every test package would need no negations at
+          # all, and treating that empty-but-correct output as a failure would
+          # abort a shard that had nothing wrong with it.
+          set -euo pipefail
+          if ! node scripts/ci/test-shards.mjs filters "$SHARD" > "$RUNNER_TEMP/shard-filters"; then
+            echo "::error::shard $SHARD could not resolve its package filters; refusing to run an unrestricted workspace"
+            exit 1
+          fi
+          mapfile -t SHARD_FILTERS < "$RUNNER_TEMP/shard-filters"
+          echo "Shard $SHARD excludes ${#SHARD_FILTERS[@]} packages"
+
           # PR checkouts are synthetic merges. Diff against the event's base
           # SHA, then use --affected to scope the run to tasks whose declared
           # inputs the diff touches, plus their dependents (turbo.json enables
@@ -1031,14 +1169,19 @@ jobs:
           # 2: a protocol-builder file that took 9.5s alone took 20s beside
           # one other suite, which is the headroom the 20s budgets need.
           #
-          # `--filter=!@codaco/studio-server`: that suite now runs as its own
-          # `test-studio-server` job (see the comment there for why), on its
-          # own runner in parallel with this one. Without this exclusion both
-          # the `--affected` pass and the full-suite fallback below would
-          # still select `@codaco/studio-server#test` as a cache miss — turbo
-          # has no notion that a sibling job already claimed it — and run the
-          # wall-clock-budgeted suite a second time, concurrently with itself,
-          # on a runner it was carved out specifically to avoid sharing.
+          # `--concurrency=1` is still right per shard. A shard is a whole
+          # runner, so serialising its bucket hands each suite the same
+          # uncontended 4 vCPUs the single job did; the parallelism comes from
+          # the other runners, not from this one.
+          #
+          # The `!@codaco/studio-server` negation SHARD_FILTERS carries: that
+          # suite runs as its own `test-studio-server` job (see the comment
+          # there for why), on its own runner in parallel with these. Without
+          # the exclusion both the `--affected` pass and the full-suite
+          # fallback below would still select `@codaco/studio-server#test` as
+          # a cache miss — turbo has no notion that a sibling job already
+          # claimed it — and run the wall-clock-budgeted suite again, on a
+          # runner it was carved out specifically to avoid sharing.
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
             && [[ -n "$DIFF_BASE_SHA" ]] \
             && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
@@ -1059,23 +1202,29 @@ jobs:
             # on the very runner the split exists to get it off, on the
             # affected path most pull requests take.
             #
-            # The explicit form obeys both filters. Verified equivalent to
+            # The explicit form obeys every filter. Verified equivalent to
             # `--affected` against two independent bases (23 and 56 selected
             # tasks, identical task IDs both times), and verified to drop
-            # exactly one task when the negation is added.
+            # exactly one task when the negation is added. The per-shard
+            # negations ride the same form for the same reason: under
+            # `--affected` they would be ignored and every shard would run the
+            # whole affected set.
             #
             # Check any change here by EXECUTING turbo, never with `--dry`:
             # `--dry`'s `packages` field reports the filtered scope even in
             # the broken case, so it confirms a filter the run then ignores.
-            # Its `tasks` field is the one that matches what runs.
+            # Its `tasks` field is the one that matches what runs. Executed
+            # against base b0bc600: 22 real `test` tasks unsharded, and with a
+            # three-package bucket's negations exactly @codaco/art,
+            # @codaco/network-query and @codaco/shared-consts.
             pnpm exec turbo run test --concurrency=1 \
               --filter="...[$DIFF_BASE_SHA]" \
-              --filter='!@codaco/studio-server'
+              "${SHARD_FILTERS[@]}"
             exit 0
           fi
 
           echo "Running the full test suite for $GITHUB_EVENT_NAME"
-          pnpm exec turbo run test --concurrency=1 --filter='!@codaco/studio-server'
+          pnpm exec turbo run test --concurrency=1 "${SHARD_FILTERS[@]}"
 
   test-storybook:
     # Storybook's play functions and their assertions, executed in a real
@@ -1250,10 +1399,10 @@ jobs:
           node-version-file: '.nvmrc'
       - name: Refuse a release PR that leaves normal-lane changesets behind
         if: steps.head.outputs.release_pr == 'true'
-        run: node scripts/check-version-packages-freshness.mjs
+        run: node scripts/release/check-version-packages-freshness.mjs
       - name: Refuse a release PR whose publish needs a package npm does not know
         if: steps.head.outputs.release_pr == 'true'
-        run: node scripts/check-first-publications.mjs
+        run: node scripts/release/check-first-publications.mjs
 
   quality:
     needs:
@@ -1376,7 +1525,10 @@ jobs:
       && (github.head_ref == 'changeset-release/documentation'
       || github.head_ref == 'changeset-release/website')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Budgets a 15-minute Netlify status poll plus the crawl. Every link is a
+    # browser navigation now, so a cold cache is minutes rather than seconds;
+    # the site's own pages are never cached and set the floor.
+    timeout-minutes: 45
     permissions:
       contents: read
       statuses: read
@@ -1471,24 +1623,10 @@ jobs:
           done
           echo "::error::Netlify documentation preview is not reachable at $DOCS_URL"
           exit 1
-      - name: Dead-link check
-        env:
-          DEAD_LINK_CHECK_USER_AGENT: >-
-            Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)
-            Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
-          DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
-        run: >-
-          node scripts/dead-link-checker.mjs "$DOCS_URL" --github-actions --concurrent=1
-          --report="$RUNNER_TEMP/docs-dead-link-report.json"
-          --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
-      - name: Upload dead-link report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: ./.github/actions/dead-link-check
         with:
-          name: docs-dead-link-report
-          path: ${{ runner.temp }}/docs-dead-link-report.json
-          if-no-files-found: error
-          retention-days: 7
+          url: ${{ steps.netlify-preview.outputs.url }}
+          report-name: docs-dead-link-report
       - name: Redirect test
         working-directory: apps/documentation
         env:
@@ -1506,8 +1644,10 @@ jobs:
       || github.head_ref == 'changeset-release/website')
     runs-on: ubuntu-latest
     # Budgets two sequential 15-minute Netlify status polls (website, then
-    # documentation) plus the reachability probes and the crawl itself.
-    timeout-minutes: 40
+    # documentation) plus the reachability probes and the crawl itself. Every
+    # link is a browser navigation now, so the crawl's share is minutes rather
+    # than seconds on a cold cache.
+    timeout-minutes: 55
     permissions:
       contents: read
       statuses: read
@@ -1689,24 +1829,10 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Dead-link check
-        env:
-          DEAD_LINK_CHECK_USER_AGENT: >-
-            Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)
-            Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
-          WEBSITE_URL: ${{ steps.netlify-preview.outputs.url }}
-        run: >-
-          node scripts/dead-link-checker.mjs "$WEBSITE_URL/en-US/" --github-actions --concurrent=1
-          --report="$RUNNER_TEMP/website-dead-link-report.json"
-          --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
-      - name: Upload dead-link report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: ./.github/actions/dead-link-check
         with:
-          name: website-dead-link-report
-          path: ${{ runner.temp }}/website-dead-link-report.json
-          if-no-files-found: error
-          retention-days: 7
+          url: ${{ steps.netlify-preview.outputs.url }}/en-US/
+          report-name: website-dead-link-report
 
   interview-e2e:
     # Runs when the policy requires the interview suite. The Dockerized suite
@@ -1846,7 +1972,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs packages/interview/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs packages/interview/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       # Dormant until a shard matrix is added (spec: enable shards only if the
@@ -1981,7 +2107,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim workspace ownership
@@ -2089,7 +2215,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim workspace ownership
@@ -2747,13 +2873,13 @@ jobs:
         # package and assert no packed export/main/module/types path points into
         # `src` and every referenced file exists — guarding the swap before the
         # changesets/action publish below.
-        run: node scripts/verify-publish-exports.mjs
+        run: node scripts/release/verify-publish-exports.mjs
       - name: Hide separately gated product changesets from the normal release
         # Documentation, Website, and Studio changesets persist until their own
         # release PR consumes them. Normal-lane apps intentionally remain for
         # the Changesets CLI to version alongside library packages.
         # Working-tree-only deletion; see the script header.
-        run: node scripts/prune-ignored-changesets.mjs
+        run: node scripts/release/prune-ignored-changesets.mjs
       - name: Refuse to publish a package npm does not know
         # The lane publishes through npm trusted publishing, which can only
         # publish to a package npm already knows; every first publication is
@@ -2765,7 +2891,7 @@ jobs:
         # pending the action only regenerates the release PR, and the check
         # skips itself; version-packages-freshness refuses the merge that would
         # reach the publish path.
-        run: node scripts/check-first-publications.mjs --publish-path-only
+        run: node scripts/release/check-first-publications.mjs --publish-path-only
       - name: Confirm this run still describes main's tip
         # Push-to-main runs never cancel each other (see the top of the file)
         # and the build above takes minutes, so the run for an older main
@@ -2794,7 +2920,7 @@ jobs:
           # the Documentation and Website changesets. The Git CLI path still
           # begins with the `git reset --hard` that restores them, so the prune
           # stays working-tree-only — keep it until
-          # scripts/prune-ignored-changesets.mjs no longer relies on that reset.
+          # scripts/release/prune-ignored-changesets.mjs no longer relies on that reset.
           push-with-git-cli: true
           # A fine-grained PAT makes the generated PR's pull_request event run
           # normally. GITHUB_TOKEN-created PR events always require manual
@@ -2887,7 +3013,7 @@ jobs:
       - name: Compute ${{ matrix.product }} version bump
         if: steps.tip.outputs.current == 'true'
         run: >-
-          node scripts/version-gated-products.mjs ${{ matrix.package_args }}
+          node scripts/release/version-gated-products.mjs ${{ matrix.package_args }}
           --out "${RUNNER_TEMP}/product-release-body.md"
       - name: Open/update the ${{ matrix.product }} release PR
         if: steps.tip.outputs.current == 'true'
@@ -3059,7 +3185,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/architect
           --pkg @codaco/architect
           --version "$VERSION"
@@ -3147,7 +3273,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/interviewer
           --pkg @codaco/interviewer
           --version "$VERSION"
@@ -3222,7 +3348,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.background_creator_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/background-creator
           --pkg @codaco/background-creator
           --version "$VERSION"
@@ -3304,7 +3430,7 @@ jobs:
           MONOREPO_SHA: ${{ github.sha }}
           VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/fresco
           --repo complexdatacollective/Fresco
           --branch main
@@ -3319,7 +3445,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/fresco
           --pkg fresco
           --version "$VERSION"
@@ -3572,16 +3698,16 @@ jobs:
       # renderer process to appear (macOS/Linux; Windows runs the sweep
       # only). Either check would have blocked the broken 6.6.0 releases,
       # where `files` exclusions stripped runtime modules from the asar and
-      # the apps crashed at launch. See scripts/verify-packaged-app.mjs.
+      # the apps crashed at launch. See scripts/release/verify-packaged-app.mjs.
       - name: Verify packaged app
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq xvfb
-            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/interviewer-classic
+            xvfb-run --auto-servernum node scripts/release/verify-packaged-app.mjs --app apps/interviewer-classic
           else
-            node scripts/verify-packaged-app.mjs --app apps/interviewer-classic
+            node scripts/release/verify-packaged-app.mjs --app apps/interviewer-classic
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -3636,9 +3762,9 @@ jobs:
           if [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq xvfb
-            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/architect-classic
+            xvfb-run --auto-servernum node scripts/release/verify-packaged-app.mjs --app apps/architect-classic
           else
-            node scripts/verify-packaged-app.mjs --app apps/architect-classic
+            node scripts/release/verify-packaged-app.mjs --app apps/architect-classic
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -3668,13 +3794,13 @@ jobs:
           LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/interviewer-classic
           --repo complexdatacollective/interviewer
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
       - name: Extract release notes
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/interviewer-classic
           --pkg @codaco/interviewer-classic
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
@@ -3747,13 +3873,13 @@ jobs:
           LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/architect-classic
           --repo complexdatacollective/architect
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}
       - name: Extract release notes
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/architect-classic
           --pkg @codaco/architect-classic
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}

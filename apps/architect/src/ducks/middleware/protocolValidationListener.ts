@@ -9,7 +9,7 @@ import { navigate } from 'wouter/use-browser-location';
 
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import { ensureError } from '@codaco/shared-consts';
-import { getCanonicalProtocol, getTimelineLocus } from '~/selectors/protocol';
+import { getProtocol, getTimelineLocus } from '~/selectors/protocol';
 import { disarmInMemoryUnloadGuard } from '~/utils/beforeUnloadGuard';
 import { beginProtocolCommit } from '~/utils/criticalOperation';
 import { enqueueProtocolValidationDialogEvent } from '~/utils/protocolValidationDialogQueue';
@@ -31,7 +31,6 @@ import {
   validateProtocolAsync,
 } from '../modules/protocolValidation';
 import type { RootState } from '../modules/root';
-import { resetDraft } from '../modules/stageEditorDraft';
 import { protocolCommitAccepted } from '../protocolCommit';
 import type { AppDispatch } from '../store';
 import { timelineActions } from './timeline';
@@ -79,7 +78,7 @@ const beginTrustedSession = (state: RootState): void => {
   activeSession += 1;
   closeInvalidDialog();
 
-  const protocol = getCanonicalProtocol(state);
+  const protocol = getProtocol(state);
   const locusId = getTimelineLocus(state);
   lastValidState =
     protocol && locusId
@@ -99,7 +98,6 @@ const clearProtocolSession = (): void => {
 const resetInvalidProtocolSession = (listenerApi: AppListenerApi): void => {
   clearProtocolSession();
   disarmInMemoryUnloadGuard();
-  listenerApi.dispatch(resetDraft(null));
   listenerApi.dispatch(clearValidation());
   listenerApi.dispatch(setProtocolLockState('owned'));
   listenerApi.dispatch(setActiveProtocolId(null));
@@ -272,16 +270,16 @@ startAppListening({
     // Canonical, never the stage editor's draft overlay: a codebook edit made
     // inside an open editor must not be validated or persisted until the stage
     // is committed (#1382).
-    const currentProtocol = getCanonicalProtocol(currentState);
+    const currentProtocol = getProtocol(currentState);
     return (
       currentProtocol !== null &&
-      currentProtocol !== getCanonicalProtocol(previousState) &&
+      currentProtocol !== getProtocol(previousState) &&
       getTimelineLocus(currentState) !== null
     );
   },
   effect: async (_action, listenerApi) => {
     const state = listenerApi.getState();
-    const protocol = getCanonicalProtocol(state);
+    const protocol = getProtocol(state);
     const locusId = getTimelineLocus(state);
     if (!protocol || !locusId) return;
 

@@ -1,4 +1,10 @@
-import { type ComponentType, useCallback, useMemo, useState } from 'react';
+import {
+  type ComponentType,
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -9,12 +15,14 @@ import RichSelectGroupField, {
 } from '@codaco/fresco-ui/form/fields/RichSelectGroup';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 
 import AssetPickerField from '../../fields/AssetPickerField.tsx';
 import { IntegerFieldControl } from '../../fields/IntegerField.tsx';
 import { REQUIRED } from '../../form/requiredField.ts';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useDiscardStageValues } from '../../form/stageFormHooks.ts';
+import { protocolAuthoringLinks } from '../../interfaces/documentation.ts';
 import BuilderSection from '../BuilderSection.tsx';
 
 const CIRCLES_FIELD = 'background.concentricCircles';
@@ -46,26 +54,26 @@ const messages = defineMessages({
   backgroundDescription: {
     id: 'protocolBuilder.networkCanvas.backgroundDescription',
     defaultMessage:
-      'Choose what the participant sees behind the nodes on this canvas: concentric circles, or a picture of your own.',
+      'Choose concentric circles or a custom image as the graphical background for this prompt.',
     description:
       'Description of the background section, where the researcher chooses between the two kinds of background a canvas can have.',
   },
   backgroundModeLabel: {
     id: 'protocolBuilder.networkCanvas.backgroundModeLabel',
-    defaultMessage: 'Background type',
+    defaultMessage: 'Choose a background type',
     description:
       'Label of the control choosing between the two kinds of background a canvas can have.',
   },
   backgroundCirclesOptionLabel: {
     id: 'protocolBuilder.networkCanvas.backgroundCirclesOptionLabel',
-    defaultMessage: 'Concentric circles',
+    defaultMessage: 'Concentric Circles',
     description:
       'Name of the background made of rings drawn one inside another. Offered as one of two cards; the sentence under it is backgroundCirclesOptionDescription.',
   },
   backgroundCirclesOptionDescription: {
     id: 'protocolBuilder.networkCanvas.backgroundCirclesOptionDescription',
     defaultMessage:
-      'The conventional sociogram background: rings the participant places nodes within.',
+      'Use the conventional concentric circles sociogram background.',
     description:
       'Says what a concentric-circles background is for. A sociogram is the canvas interface where a participant arranges the people in their network.',
   },
@@ -77,22 +85,15 @@ const messages = defineMessages({
   },
   backgroundImageOptionDescription: {
     id: 'protocolBuilder.networkCanvas.backgroundImageOptionDescription',
-    defaultMessage:
-      'A picture of your own — a map, a floor plan, a diagram — filling the canvas.',
+    defaultMessage: 'Use a custom image of your choosing as the background.',
     description:
-      'Says what an image background is for, with three examples of what researchers use. Addressed to the researcher.',
+      'Says what an image background is for. Addressed to the researcher.',
   },
   backgroundCirclesLabel: {
     id: 'protocolBuilder.networkCanvas.backgroundCirclesLabel',
     defaultMessage: 'Number of concentric circles',
     description:
       'Label of the box holding how many rings are drawn behind the nodes.',
-  },
-  backgroundCirclesHint: {
-    id: 'protocolBuilder.networkCanvas.backgroundCirclesHint',
-    defaultMessage:
-      'The rings drawn behind the nodes. Participants often use them to place people closer to or further from themselves.',
-    description: 'Guidance under the number-of-circles box.',
   },
   backgroundCirclesWholeNumber: {
     id: 'protocolBuilder.networkCanvas.backgroundCirclesWholeNumber',
@@ -103,14 +104,14 @@ const messages = defineMessages({
   },
   backgroundSkewLabel: {
     id: 'protocolBuilder.networkCanvas.backgroundSkewLabel',
-    defaultMessage: 'Make the inner circles larger',
+    defaultMessage: 'Skew circle sizes',
     description:
       'Label of the switch giving the rings nearest the centre more room than the outer ones.',
   },
   backgroundSkewHint: {
     id: 'protocolBuilder.networkCanvas.backgroundSkewHint',
     defaultMessage:
-      'Gives the inner rings more room than the outer ones, so nodes placed near the center overlap less.',
+      'When enabled, the inner circles will be proportionally larger than the outer circles, which can help reduce overlap of nodes in the center of the canvas.',
     description: 'Guidance under the larger-inner-circles switch.',
   },
   backgroundImageLabel: {
@@ -122,11 +123,32 @@ const messages = defineMessages({
   backgroundImageHint: {
     id: 'protocolBuilder.networkCanvas.backgroundImageHint',
     defaultMessage:
-      'Scaled to fill the canvas. A responsive SVG keeps its labels readable in both portrait and landscape.',
+      'Choose an image to use as the background for this prompt. The image will be scaled to fit the canvas.',
+    description: 'Guidance under the background-image picker.',
+  },
+  backgroundImageResponsiveHint: {
+    id: 'protocolBuilder.networkCanvas.backgroundImageResponsiveHint',
+    defaultMessage:
+      'A responsive SVG can span the canvas in portrait and landscape while keeping labels readable. <link>Learn how to create a responsive SVG background</link>.',
     description:
-      'Guidance under the background-image picker. SVG is a file format name and is not translated.',
+      'Second paragraph of the guidance under the background-image picker, ending in a link to the documentation page about responsive SVG backgrounds. The link is a tag inside the sentence rather than markup around a fragment of it, so a translator moves the whole clause and the link text together. SVG is a file format name and is not translated.',
   },
 });
+
+/**
+ * Held at module scope so it keeps one identity across renders: an inline
+ * arrow returning JSX is a component defined during render.
+ */
+const renderResponsiveSvgLink = (chunks: ReactNode) => (
+  <NativeLink
+    key="responsiveSvgBackgrounds"
+    href={protocolAuthoringLinks.responsiveSvgBackgrounds}
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    {chunks}
+  </NativeLink>
+);
 
 /**
  * Encoded rather than formatted, because the rule is handed to the form store
@@ -256,7 +278,6 @@ export default function BackgroundSection() {
             name={CIRCLES_FIELD}
             component={IntegerFieldControl}
             label={intl.formatMessage(messages.backgroundCirclesLabel)}
-            hint={intl.formatMessage(messages.backgroundCirclesHint)}
             required={REQUIRED}
             {...circlesValidation}
           />
@@ -274,7 +295,16 @@ export default function BackgroundSection() {
           component={ResourcePicker}
           kind="image"
           label={intl.formatMessage(messages.backgroundImageLabel)}
-          hint={intl.formatMessage(messages.backgroundImageHint)}
+          hint={
+            <>
+              <p>{intl.formatMessage(messages.backgroundImageHint)}</p>
+              <p>
+                {intl.formatMessage(messages.backgroundImageResponsiveHint, {
+                  link: renderResponsiveSvgLink,
+                })}
+              </p>
+            </>
+          }
           required={REQUIRED}
         />
       )}

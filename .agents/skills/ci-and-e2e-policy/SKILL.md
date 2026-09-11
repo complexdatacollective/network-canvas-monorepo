@@ -50,6 +50,17 @@ job uses its matching `CHROMATIC_PROJECT_TOKEN_FRESCO_UI`,
 `CHROMATIC_PROJECT_TOKEN_INTERVIEW`, or
 `CHROMATIC_PROJECT_TOKEN_INTERVIEWER` repository secret.
 
+`build-storybook` therefore runs in CI for those three as Chromatic's upload
+input, and for `@codaco/protocol-builder` — which has no Chromatic project — as
+its own `quality-support` step. Without that step nothing in CI builds that
+Storybook at all: `turbo run build --filter='./packages/*'` skips a package with
+no `build` script, and `test:storybook` serves stories through Vite's dev server
+rather than producing the static bundle. Nor does `test:storybook` read the
+generated docs entries — a CSF file with `tags: ['autodocs']` and no story
+exports is reported as a skipped file and contributes no test — so a Storybook
+whose docs cannot be built is green there. A workspace that gains a Storybook
+and no Chromatic project needs a step too.
+
 Each project's `build-storybook` script must emit `preview-stats.json` with
 Storybook's `--stats-json` option. Its `chromatic` script uploads the prebuilt
 `storybook-static` directory with `--only-changed` and the correct
@@ -99,7 +110,7 @@ selection: only suites whose subjects ship in that release lane run. The normal
 Changesets lane (`changeset-release/main`) runs all three because it versions
 libraries, Architect, and Interviewer; the Documentation, Website, and Studio
 lanes run none. The mapping and feature-PR classifier live in
-`scripts/release-e2e-policy.mjs`, with tests derived from the real package.json
+`scripts/ci/release-e2e-policy.mjs`, with tests derived from the real package.json
 dependency graph. The required `quality` check requires exactly the suites the
 policy selects.
 
@@ -114,7 +125,7 @@ macOS hosts and compared in Linux CI. The split key is the selector each
 suite's `test:e2e:update-snapshots` script already uses (`--grep @visual`, or
 `--project=*-visual` for Interview), so the lanes cannot drift from the
 regeneration workflow. Both halves are required by `quality`, and
-`E2E_JOB_NAMES` in `scripts/release-e2e-policy.mjs` requires both to be green
+`E2E_JOB_NAMES` in `scripts/ci/release-e2e-policy.mjs` requires both to be green
 before a verdict can be reused. The capture helpers throw when
 `E2E_PIXEL_LANE=native` is set, so a mis-tagged visual test fails loudly
 instead of silently comparing container baselines against a runner's fonts.
@@ -145,7 +156,7 @@ verdict, or any unrecognised path (root configs, `.github/`, `scripts/`, the
 lockfile) re-runs the suite. Force-pushed refreshes of a release PR after
 unrelated merges to `main` therefore keep their E2E verdicts without
 re-running, while any change that ships in the lane re-runs as before (see
-`scripts/release-e2e-policy.mjs` and
+`scripts/ci/release-e2e-policy.mjs` and
 `docs/superpowers/specs/2026-07-17-release-e2e-equivalence-reuse-design.md`).
 
 Merge groups run only a lightweight `quality` acknowledgement. The main

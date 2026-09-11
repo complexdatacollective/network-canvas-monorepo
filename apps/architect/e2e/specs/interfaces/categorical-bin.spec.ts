@@ -4,10 +4,6 @@ import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readProtocolJson, readStageJson } from '../../helpers/read-store.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
-import {
-  createVariableViaSpotlight,
-  createVariableWithOptions,
-} from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -44,9 +40,9 @@ function toCodebookVariable(value: unknown): CodebookVariable {
 }
 
 // Walks `codebook.node.*.variables` (rather than looking the node type id up
-// separately) for the given variable id — confirms `createVariableWithOptions`
-// actually persisted the variable + its options into the codebook, not just
-// closed the NewVariableWindow dialog without error.
+// separately) for the given variable id — confirms the prompt dialog's
+// "Create a new attribute" flow actually persisted the attribute + its values
+// into the codebook, not just closed its editor without error.
 function findNodeCodebookVariable(
   protocol: Record<string, unknown>,
   variableId: string,
@@ -78,30 +74,72 @@ test('creates a valid CategoricalBin stage from scratch', async ({
   await editor.createNew('CategoricalBin');
   await editor.setStageName('Group These');
 
-  // FilteredNodeType (StageEditor/Interfaces.tsx: CategoricalBin's sections
-  // are `[FilteredNodeType, CategoricalBinPrompts, SkipLogic,
-  // InterviewScript]` — no IntroductionPanel).
+  // The subject picker (@codaco/protocol-builder's `subjectPicker({ entity:
+  // 'node', filter: true })`): CategoricalBin's editor is
+  // `[stageHeading, subjectPicker, categoricalBinPrompts, skipLogic,
+  // interviewerGuidance]` — no introduction section.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // Same shared `PromptText` component as OrdinalBin (`label: 'Prompt
-  // text'`). CategoricalBinPrompts/PromptFields.tsx's "Categorical
-  // Variable" `VariablePicker` wires `onCreateOption` to `handleNewVariable
-  // = (name) => openNewVariableWindow({ initialValues: { name, type:
-  // 'categorical' } }, { field: 'variable' })` — the same pre-locked-type
-  // NewVariableWindow pattern as OrdinalBin/TieStrengthCensus, so
-  // `createVariableWithOptions` again takes the disabled-combobox branch.
+  // The shared `PromptTextField` the whole census/bin family renders
+  // (`label: 'Prompt text'`, censusMessages.promptTextLabel).
+  //
+  // "The bins" is a `BinAttributeField`: a picker over the node type's
+  // existing categorical attributes, plus a `CreateVariableButton` labelled
+  // "Create a new attribute" that opens the codebook's own attribute editor
+  // (VariableEditor). The editor is opened with `allowedVariableTypes:
+  // ['categorical']`, so its "Attribute type" select is already on Categorical
+  // and is never touched here; the values are authored in place — one "Add
+  // option" press per value, each row exposing its own numbered "Option N
+  // label"/"Option N value" boxes — and committed by "Create attribute".
+  // Nothing is pre-seeded, so both rows are added below.
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Group these');
-    await createVariableViaSpotlight(architectPage, { variableName: 'group' });
-    await createVariableWithOptions(architectPage, {
-      variableName: 'group',
-      options: ['Family', 'Friends'],
-      type: 'categorical',
+    // Scoped to the attribute editor's own dialog: the prompt dialog behind it
+    // is still mounted, and the stage behind that.
+    const attributeEditor = architectPage.getByRole('dialog', {
+      name: 'Create a new attribute',
+      exact: true,
     });
-    // Deliberately NOT expanding the "Follow-up other option" section
-    // (`toggleable`, `defaultOpen={!!currentOtherVariable}` — collapsed by
-    // default here since `otherVariable` is unset): expanding it would add
-    // three more required fields (`otherVariable`, `otherOptionLabel`,
+    await architectPage
+      .getByRole('button', { name: 'Create a new attribute', exact: true })
+      .click();
+    await attributeEditor
+      .getByRole('textbox', { name: 'Attribute name', exact: true })
+      .fill('group');
+    for (const [index, option] of [
+      { label: 'Family', value: 'family' },
+      { label: 'Friends', value: 'friends' },
+    ].entries()) {
+      await attributeEditor
+        .getByRole('button', { name: 'Create new option', exact: true })
+        .click();
+      await attributeEditor
+        .getByRole('textbox', {
+          name: `Option ${index + 1} label`,
+          exact: true,
+        })
+        .fill(option.label);
+      await attributeEditor
+        .getByRole('textbox', {
+          name: `Option ${index + 1} value`,
+          exact: true,
+        })
+        .fill(option.value);
+    }
+    await attributeEditor
+      .getByRole('button', { name: 'Create attribute', exact: true })
+      .click();
+    // The dialog holds itself open until the codebook write lands, renaming
+    // its submit while the request is in flight — so the DIALOG going is the
+    // signal that the attribute exists and has been bound to this prompt, not
+    // the button. Waiting matters for the reason prompts.ts gives: the prompt
+    // dialog behind this one must not be driven through a modal still on
+    // screen.
+    await attributeEditor.waitFor({ state: 'hidden' });
+    // Deliberately NOT switching on the "A bin for anything else" section
+    // (`toggleable`, `defaultOpen={committedOther !== undefined}` — closed
+    // here since `otherVariable` is unset): opening it would add three more
+    // required fields (`otherVariable`, `otherOptionLabel`,
     // `otherVariablePrompt`) this spec doesn't need to exercise. There is no
     // `color` field on CategoricalBin at all (unlike OrdinalBin).
   });
@@ -130,12 +168,12 @@ test('creates a valid CategoricalBin stage from scratch', async ({
     );
   }
   expect(prompt.variable).not.toBe('');
-  // The untouched "Follow-up Other Option" fields must not have leaked in.
+  // The untouched "A bin for anything else" fields must not have leaked in.
   expect(prompt).not.toHaveProperty('otherVariable');
 
-  // Confirm `createVariableWithOptions` actually persisted the categorical
-  // variable + its two options into the codebook (not just the prompt's
-  // `variable` reference).
+  // Confirm the attribute editor actually persisted the categorical attribute
+  // + its two values into the codebook (not just the prompt's `variable`
+  // reference).
   const protocol = await readProtocolJson(architectPage);
   const codebookVariable = findNodeCodebookVariable(protocol, prompt.variable);
   expect(codebookVariable.type).toBe('categorical');

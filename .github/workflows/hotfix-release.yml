@@ -17,7 +17,7 @@ name: Hotfix Release
 # fix cherry-picked onto a Fresco hotfix branch would never reach the image on
 # its own. The Fresco path therefore mirrors the branch with every workspace
 # package changed since the release tag (and its dependents) vendored as
-# tarballs the image installs instead (scripts/mirror-app.mjs
+# tarballs the image installs instead (scripts/release/mirror-app.mjs
 # --vendor-changed-since). Nothing is published to npm.
 #
 # The workflow is dispatched FROM main and takes the branch to release as an
@@ -92,7 +92,12 @@ jobs:
     # protocol-builder. Its conformance suites need a Postgres on 127.0.0.1:54318
     # and refuse to skip under CI, so without this service the verify step
     # aborts before anything is released (run 34223425194 did exactly that).
-    # Mirrors the `test` job's service in ci-and-release.yml.
+    # Same image and settings as the Postgres that ci-and-release.yml's
+    # `seed-turbo-cache` job declares. Not a copy of the `test` job's, which
+    # no longer has one: that job is sharded, only one shard holds a suite
+    # needing a database, and `services:` cannot be varied per matrix leg, so
+    # it starts an equivalent container from a step. This job runs one
+    # unsharded verify, so a job-level service is still the simpler fit.
     services:
       postgres:
         image: postgres:18
@@ -288,7 +293,7 @@ jobs:
             echo "::error::No released fresco@ tag to vendor against. A hotfix presupposes a release; the first Fresco release goes through the normal lane." >&2
             exit 1
           fi
-          node .hotfix-lane/scripts/mirror-app.mjs \
+          node .hotfix-lane/scripts/release/mirror-app.mjs \
             --app apps/fresco \
             --repo complexdatacollective/Fresco \
             --branch main \
@@ -382,7 +387,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           SINCE: ${{ steps.version.outputs.newest }}
         run: >-
-          node .hotfix-lane/scripts/release-notes.mjs
+          node .hotfix-lane/scripts/release/release-notes.mjs
           --app "apps/$APP"
           --pkg "$PKG"
           --version "$VERSION"
@@ -536,7 +541,7 @@ jobs:
           MONOREPO_SHA: ${{ needs.hotfix-release.outputs.sha }}
           VERSION: ${{ steps.version.outputs.version }}
         run: >-
-          node .hotfix-lane/scripts/mirror-app.mjs
+          node .hotfix-lane/scripts/release/mirror-app.mjs
           --publish-from "${RUNNER_TEMP}/fresco-mirror/stage"
           --expect-app fresco
           --repo complexdatacollective/Fresco

@@ -30,9 +30,9 @@ import {
   createTypeAsync,
   updateTypeAsync,
 } from '~/ducks/modules/protocol/codebook';
-import { commitStageEditorDraft } from '~/ducks/modules/protocol/commitStageEditorDraft';
+import { commitStage } from '~/ducks/modules/protocol/commitStage';
 import { actionCreators as stageActionCreators } from '~/ducks/modules/protocol/stages';
-import { getAssetManifest, getCanonicalProtocol } from '~/selectors/protocol';
+import { getAssetManifest, getProtocol } from '~/selectors/protocol';
 
 import type { ArchitectStore } from './architectStore.ts';
 
@@ -140,9 +140,7 @@ function submitStage(
 ): SectionWrite {
   const parsed = stageSchema.safeParse(document);
   if (!parsed.success) return refuseParse(parsed.error);
-  store.dispatch(
-    commitStageEditorDraft({ stageId, stage: parsed.data, codebook: null }),
-  );
+  store.dispatch(commitStage({ stageId, stage: parsed.data }));
   return { status: 'written' };
 }
 
@@ -172,7 +170,7 @@ function submitStageOrder(
 ): SectionWrite {
   const parsed = StageOrderSectionSchema.safeParse(document);
   if (!parsed.success) return refuseParse(parsed.error);
-  const current = (getCanonicalProtocol(store.getState())?.stages ?? []).map(
+  const current = (getProtocol(store.getState())?.stages ?? []).map(
     (stage) => stage.id,
   );
   const move = singleRelocation(current, parsed.data.stages);
@@ -186,7 +184,7 @@ function submitStageOrder(
   // `moveStage` drops a reorder that would put a stage before the stage its
   // skip logic jumps to, and says nothing. Read the order back, so the refusal
   // reaches the caller rather than passing as a write that did nothing.
-  const written = (getCanonicalProtocol(store.getState())?.stages ?? []).map(
+  const written = (getProtocol(store.getState())?.stages ?? []).map(
     (stage) => stage.id,
   );
   if (!written.every((id, index) => id === parsed.data.stages[index])) {
@@ -278,7 +276,7 @@ export async function deleteStageSection(
   store: ArchitectStore,
   stageId: string,
 ): Promise<SectionDeletion> {
-  const protocol = getCanonicalProtocol(store.getState());
+  const protocol = getProtocol(store.getState());
   const remaining =
     protocol === null
       ? []
@@ -294,7 +292,7 @@ export async function deleteStageSection(
 /**
  * Creates a section and registers its pointer in the same dispatch.
  *
- * A created stage rides `commitStageEditorDraft` with a null `stageId`, which
+ * A created stage rides `commitStage` with a null `stageId`, which
  * is what Architect already uses for exactly this: the stages reducer splices
  * it in at `index`, so the stage and its place in the order land together.
  */
@@ -311,10 +309,9 @@ export async function createSection(
     if (!parsed.success)
       return { ...refuseParse(parsed.error), sectionId: target };
     store.dispatch(
-      commitStageEditorDraft({
+      commitStage({
         stageId: null,
         stage: parsed.data,
-        codebook: null,
         ...(position === undefined ? {} : { index: position }),
       }),
     );
@@ -326,7 +323,7 @@ export async function createSection(
   // section, and adding the first one is what creates it.
   if (kind === 'codebookEgo') {
     const target = sectionId({ kind });
-    if (getCanonicalProtocol(store.getState())?.codebook.ego !== undefined) {
+    if (getProtocol(store.getState())?.codebook.ego !== undefined) {
       return { status: 'exists', sectionId: target };
     }
     const parsed = EgoDefinitionSchema.safeParse(document);

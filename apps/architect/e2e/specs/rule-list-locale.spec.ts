@@ -81,7 +81,11 @@ for (const { kind, label } of [
         await expect(surface.locator('html')).toHaveAttribute('lang', locale);
         const values = surface.locator('[data-rule-part="value"]');
         await expect(values).toHaveText(['Bravo', 'Zulu', 'Isabel']);
-        await expect(values.first().locator('..')).toHaveText(expected);
+        // The operand list names itself, because the editor's own rule card
+        // and the printable summary wrap it in different markup.
+        await expect(surface.locator('[data-rule-part="operand"]')).toHaveText(
+          expected,
+        );
         await expect(values.last().locator('em')).toHaveText('Isabel');
         expect(await readProtocolJson(surface)).toEqual(before);
       }

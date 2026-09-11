@@ -20,7 +20,6 @@ import {
   type ResourceDescriptor,
   type ResourceResult,
   type ResourceSecretStorage,
-  type StagedSecret,
   type StageSecretRequest,
 } from '../types.ts';
 import { discardAbandonedStaging } from './abandonedStaging.ts';
@@ -290,7 +289,7 @@ export default function ResourceSecretControl({
     void (async () => {
       const repeated = await resources.stageSecret(request);
       if (repeated.status !== 'ok') return;
-      discardAbandonedStaging(resources, repeated.data.descriptor);
+      discardAbandonedStaging(resources, repeated.data);
     })();
   };
 
@@ -353,17 +352,17 @@ export default function ResourceSecretControl({
         requestId.current = uuid();
         setStatus(
           createMessageError(messages.addedAnnouncement, {
-            name: staged.descriptor.name,
+            name: staged.name,
           }),
         );
-        onStaged(staged.descriptor);
+        onStaged(staged);
       },
       // The key was staged for a form nobody is watching any more — the
       // researcher edited it into a new intent, or closed the browser. A
       // secret held by the host for a choice that no longer exists is worse
       // than abandoned bytes, so it goes now rather than when the edit closes.
-      (staged: StagedSecret) =>
-        discardAbandonedStaging(resources, staged.descriptor),
+      (staged: ResourceDescriptor) =>
+        discardAbandonedStaging(resources, staged),
     );
   };
 

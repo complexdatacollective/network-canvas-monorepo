@@ -105,7 +105,7 @@ describe('the editor for a page of content', () => {
       'Welcome',
     );
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create new content block' }),
+      screen.getByRole('button', { name: 'Create new content item' }),
     );
     await harness.user.click(
       await screen.findByRole('radio', { name: 'Text' }),

@@ -4,10 +4,6 @@ import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readProtocolJson, readStageJson } from '../../helpers/read-store.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
-import {
-  createVariableViaSpotlight,
-  createVariableWithOptions,
-} from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -44,9 +40,9 @@ function toCodebookVariable(value: unknown): CodebookVariable {
 }
 
 // Walks `codebook.node.*.variables` (rather than looking the node type id up
-// separately) for the given variable id — confirms `createVariableWithOptions`
-// actually persisted the variable + its options into the codebook, not just
-// closed the NewVariableWindow dialog without error.
+// separately) for the given variable id — confirms the prompt dialog's
+// "Create a new attribute" flow actually persisted the attribute + its values
+// into the codebook, not just closed its editor without error.
 function findNodeCodebookVariable(
   protocol: Record<string, unknown>,
   variableId: string,
@@ -78,40 +74,72 @@ test('creates a valid OrdinalBin stage from scratch', async ({
   await editor.createNew('OrdinalBin');
   await editor.setStageName('Rank These');
 
-  // FilteredNodeType (StageEditor/Interfaces.tsx: OrdinalBin's sections are
-  // `[FilteredNodeType, OrdinalBinPrompts, SkipLogic, InterviewScript]` — no
-  // IntroductionPanel, unlike the census family).
+  // The subject picker (@codaco/protocol-builder's `subjectPicker({ entity:
+  // 'node', filter: true })`): OrdinalBin's editor is
+  // `[stageHeading, subjectPicker, ordinalBinPrompts, skipLogic,
+  // interviewerGuidance]` — no introduction section, unlike the two pairwise
+  // censuses.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // OrdinalBinPrompts/PromptFields.tsx renders the shared `PromptText`
-  // component (`~/components/sections/PromptText`, the SAME component
-  // NameGenerator's prompt dialogs use) rather than a bespoke RichText field
-  // like the census family's `PromptFields.tsx` — its `label` prop is
-  // `'Prompt text'` (lowercase "text"), confirmed against that component's
-  // source rather than assumed from another interface's capitalisation.
+  // The shared `PromptTextField` the whole census/bin family renders
+  // (`label: 'Prompt text'`, censusMessages.promptTextLabel).
   //
-  // The "Ordinal Variable" `VariablePicker`'s `onCreateOption` is wired to
-  // `handleNewVariable = (name) => openNewVariableWindow({ initialValues: {
-  // name, type: 'ordinal' } }, { field: 'variable' })` — byte-for-byte the
-  // same pre-locked-type pattern TieStrengthCensus's `edgeVariable` picker
-  // uses (task 17). So `createVariableWithOptions`'s existing
-  // `typeCombobox.isEnabled()` branch again takes the disabled path: this is
-  // OrdinalBin's *second* live exercise of that branch, not a first for the
-  // "must click through the combobox" path — that remains unverified by any
-  // bin/census interface discovered so far.
+  // "The scale" is the same `BinAttributeField` CategoricalBin uses, only
+  // asking for an ordinal attribute: a picker over what the node type already
+  // has, plus a `CreateVariableButton` labelled "Create a new attribute" that
+  // opens the codebook's attribute editor with `allowedVariableTypes:
+  // ['ordinal']` — so its "Attribute type" select is already on Ordinal and is
+  // never touched here. Values are authored in place, one "Create new option"
+  // press per value, and committed by "Create attribute".
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Rank these');
-    await createVariableViaSpotlight(architectPage, { variableName: 'rank' });
-    await createVariableWithOptions(architectPage, {
-      variableName: 'rank',
-      options: ['Low', 'High'],
-      type: 'ordinal',
+    // Scoped to the attribute editor's own dialog: the prompt dialog behind it
+    // is still mounted, and the stage behind that.
+    const attributeEditor = architectPage.getByRole('dialog', {
+      name: 'Create a new attribute',
+      exact: true,
     });
-    // `color` is deliberately left untouched: OrdinalBinPrompts.tsx's
-    // DialogArrayField sets `itemTemplate: () => ({ color:
-    // 'ord-color-seq-1' })`, so a brand-new prompt item's `color` is already
-    // populated the moment the "Create new" dialog opens — the required
-    // `ColorPicker` field never blocks the save.
+    await architectPage
+      .getByRole('button', { name: 'Create a new attribute', exact: true })
+      .click();
+    await attributeEditor
+      .getByRole('textbox', { name: 'Attribute name', exact: true })
+      .fill('rank');
+    for (const [index, option] of [
+      { label: 'Low', value: 'low' },
+      { label: 'High', value: 'high' },
+    ].entries()) {
+      await attributeEditor
+        .getByRole('button', { name: 'Create new option', exact: true })
+        .click();
+      await attributeEditor
+        .getByRole('textbox', {
+          name: `Option ${index + 1} label`,
+          exact: true,
+        })
+        .fill(option.label);
+      await attributeEditor
+        .getByRole('textbox', {
+          name: `Option ${index + 1} value`,
+          exact: true,
+        })
+        .fill(option.value);
+    }
+    await attributeEditor
+      .getByRole('button', { name: 'Create attribute', exact: true })
+      .click();
+    // The dialog holds itself open until the codebook write lands, renaming
+    // its submit while the request is in flight — so the DIALOG going is the
+    // signal that the attribute exists and has been bound to this prompt, not
+    // the button. Waiting matters for the reason prompts.ts gives: the prompt
+    // dialog behind this one must not be driven through a modal still on
+    // screen.
+    await attributeEditor.waitFor({ state: 'hidden' });
+    // The "Color of the scale" section is deliberately left untouched:
+    // OrdinalBinPromptsSection.tsx passes `itemTemplate: () => ({ color:
+    // FIRST_ORDINAL_COLOR })` to the shared prompts section, so a brand-new
+    // prompt row already carries `ord-color-seq-1` the moment its dialog
+    // opens — the required `ColorPicker` field never blocks the save.
   });
 
   await editor.expectNoIssues();
@@ -139,9 +167,9 @@ test('creates a valid OrdinalBin stage from scratch', async ({
   }
   expect(prompt.variable).not.toBe('');
 
-  // Confirm `createVariableWithOptions` actually persisted the ordinal
-  // variable + its two options into the codebook (not just the prompt's
-  // `variable` reference).
+  // Confirm the attribute editor actually persisted the ordinal attribute +
+  // its two values into the codebook (not just the prompt's `variable`
+  // reference).
   const protocol = await readProtocolJson(architectPage);
   const codebookVariable = findNodeCodebookVariable(protocol, prompt.variable);
   expect(codebookVariable.type).toBe('ordinal');

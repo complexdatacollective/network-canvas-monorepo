@@ -12,9 +12,9 @@ import { StageEditor } from '../../pageobjects/stage-editor.js';
 // A minimal schema-8 protocol carrying one `network`-type assetManifest
 // entry, shaped exactly like `packages/protocols/e2e/all-interfaces/protocol.json`'s
 // `roster_data` entry (`{ name, type: 'network', source }`). Seeding this
-// straight into IndexedDB (via `seed`'s `assets` option) lets the spec pick
-// a real resource in the ResourceBrowser dialog without driving a file
-// upload.
+// straight into IndexedDB (via `seed`'s `assets` option) lets the spec pick a
+// real resource out of the editor's own resource browser without driving a
+// file import.
 function rosterProtocol(): CurrentProtocol {
   return {
     ...emptyProtocol(),
@@ -47,20 +47,19 @@ test('creates a valid NameGeneratorRoster stage from scratch', async ({
   await editor.createNew('NameGeneratorRoster');
   await editor.setStageName('Select From Roster');
 
-  // Same plain NodeType.tsx section as NameGenerator (`Section title="Node
-  // setup"`). ExternalDataSource.tsx's OWN section is ALSO gated by
-  // `withDisabledSubjectRequired` (unlike Form configuration, this is
-  // the section itself, not just its field array), so this must run first.
+  // Same shared subject picker as NameGenerator ("Node type"). The data file
+  // comes right after the type it creates, because everything after it names
+  // one of that file's columns.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // ExternalDataSource.tsx exposes the owning `dataSource` field. The prompts
-  // field below (NameGeneratorRosterPrompts.tsx) is gated by that value, so
-  // this must run before it.
+  // The "Roster source" section (`@codaco/protocol-builder`'s
+  // `editors/name-generator-roster/sections/ExternalDataSourceSection.tsx`)
+  // owns the `dataSource` field. The card, order and search sections are all
+  // gated on its value, so this runs before anything that reads it.
   await selectNetworkAsset(editor.field('dataSource'), 'Roster');
 
-  // NameGeneratorRosterPrompts.tsx exposes the `prompts` ArchitectArrayField
-  // (same PromptText.tsx RichText field, accessible name "Prompt text" — see
-  // name-generator.spec.ts for why, not the brief's guessed `'text'`).
+  // The same shared `prompts` list as the other two name generators —
+  // accessible name "Prompt text", see name-generator.spec.ts.
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Choose someone from the roster');
   });

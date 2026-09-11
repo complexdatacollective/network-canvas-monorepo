@@ -4,10 +4,6 @@ import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readProtocolJson, readStageJson } from '../../helpers/read-store.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
-import {
-  createVariableViaSpotlight,
-  createVariableWithOptions,
-} from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 type TieStrengthPrompt = {
@@ -21,11 +17,12 @@ type TieStrengthPrompt = {
 // Narrow one element of the saved `prompts` array with a real runtime guard
 // (mirroring `toStage` in timeline.spec.ts) rather than an `as` cast: the
 // schema (`tieStrengthCensusPromptSchema`, a `z.strictObject`) rejects any
-// extra key, including the `variableOptions` the editor's `withVariableOptions`
-// enhancer syncs onto the *draft* form — `withPromptChangeHandler.tsx`'s
-// `onBeforeSave` strips it back out before the array item is committed, so
-// asserting this exact key set is a real check that the strip actually
-// happened, not just that the stage saved successfully.
+// extra key, and the row dialog assembles what it commits from whatever is
+// mounted inside it (`documentFromSubmission`, then the prompts section's own
+// `withoutAbsentValues` normalise). Asserting this exact key set is a real
+// check that nothing the dialog rendered — the attribute editor's draft, an
+// untouched optional group — rode into the committed row, not just that the
+// stage saved successfully.
 function toTieStrengthPrompt(value: unknown): TieStrengthPrompt {
   if (
     typeof value === 'object' &&
@@ -66,9 +63,10 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   await editor.createNew('TieStrengthCensus');
   await editor.setStageName('How Strong Is This Tie?');
 
-  // Same `FilteredNodeType` subject + shared `IntroductionPanel.tsx` as
-  // DyadCensus (StageEditor/Interfaces.tsx registers
-  // `[FilteredNodeType, IntroductionPanel, TieStrengthCensusPrompts, ...]`).
+  // Same subject picker + shared `introduction()` section as DyadCensus
+  // (TieStrengthCensusStageEditor.ts composes `[stageHeading, subjectPicker,
+  // introduction, tieStrengthCensusPrompts, skipLogic,
+  // interviewerGuidance]`).
   await selectOrCreateNodeType(architectPage, 'person');
   await editor
     .field('introductionPanel.title')
@@ -79,69 +77,92 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
     'We would like to ask you how close you are with the people you know.',
   );
 
-  // TieStrengthCensusPrompts.tsx's PromptFields.tsx is the heaviest prompt
-  // editor in the census family, and diverges from DyadCensus/
-  // OneToManyDyadCensus in two ways:
+  // TieStrengthCensusPromptsSection.tsx is the heaviest prompt editor in the
+  // census family. Its row dialog holds four groups:
   //
-  // - `createEdge` is a `NativeSelect` (Form/Fields/NativeSelect.tsx, wrapping
-  //   fresco-ui's real `<select>`) — NOT an `EntitySelectField` pill picker.
-  //   Exercise its inline creation flow directly. This guards the async
-  //   contract between `handleCreateEdge` and `handleChangeCreateEdge`: the
-  //   created edge-type id, never the pending Promise, must become the form
-  //   value before the ordinal variable is created.
-  // - `edgeVariable` is a `VariablePicker` (same "Select variable" button +
-  //   VariableSpotlight `createVariableViaSpotlight` already drives), but its
-  //   `onCreateOption` is wired to `handleNewVariable`, which opens
-  //   `NewVariableWindow` with `initialValues: { name, type: 'ordinal' }` —
-  //   i.e. this IS the "locked-type" NewVariableWindow flow
-  //   `createVariableWithOptions`'s own doc comment calls out. Both
-  //   variables.ts helpers are needed together here:
-  //   `createVariableViaSpotlight` opens the spotlight and clicks "Create new
-  //   variable called…" (which is what actually opens NewVariableWindow,
-  //   pre-filled with that name and its "Variable type" combobox already
-  //   disabled/set to "Ordinal" via `initialValues.type`), then
-  //   `createVariableWithOptions` fills in and submits that already-open
-  //   dialog. Confirmed live: `NewVariableWindow.tsx`'s "Variable type"
-  //   combobox is disabled here (`disabled: !!initialValues?.type`), so
-  //   `createVariableWithOptions`'s existing `isEnabled()` branch already
-  //   does the right thing without modification — the helper needed no fix
-  //   for this call site.
+  // - "Participant prompt": the family's shared `PromptTextField`
+  //   (`label: 'Prompt text'`).
+  // - "Connection rated": the same `CreateEdgeField` the two dyad censuses
+  //   use, so the connection type is invented through the codebook entity
+  //   editor ("Edge type name", committed by "Save entity").
+  // - "The scale": an ordinal attribute OF that connection type. `ScaleField`
+  //   renders nothing at all until `createEdge` holds a real type id
+  //   (`edgeSubjectOf` answers `undefined` for anything that is not a
+  //   non-empty string), so waiting for that section is a genuine check that
+  //   the created edge-type id — not a pending Promise, not an object — became
+  //   the form value before the attribute is created against it. The
+  //   attribute itself comes from a `CreateVariableButton` labelled "Create a
+  //   new attribute", opening the codebook attribute editor with
+  //   `allowedVariableTypes: ['ordinal']` — its "Attribute type" select is
+  //   already on Ordinal and is never touched here.
+  // - "Answering that there is no connection": a RichText "Decline answer".
   //
-  // After `edgeVariable` is set, a "Variable Options" `<Options
-  // name="variableOptions" .../>` section appears — but it's just a *draft
-  // mirror* of the variable's own options (`withVariableOptions.tsx`'s
-  // `updateFormVariableOptions` lifecycle copies them in whenever
-  // `edgeVariable` changes) that the author *could* edit further here.
-  // `withPromptChangeHandler.tsx`'s `onBeforeSave` strips `variableOptions`
-  // back out of the saved prompt (it already persisted the options onto the
-  // variable itself via `updateVariableAsync`), so this test deliberately
-  // leaves that mirror section untouched and asserts its absence below via
-  // `toTieStrengthPrompt`.
+  // Nothing mirrors the attribute's values onto the prompt any more, so there
+  // is no draft-only key to strip; `toTieStrengthPrompt` below asserts the
+  // committed row is exactly the five keys the schema names.
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'How close are you?');
 
+    // Both codebook editors open as dialogs over the prompt dialog, and each
+    // holds itself open until its write lands, renaming its submit while the
+    // request is in flight — so the DIALOG going is the signal, not the
+    // button, and everything typed into one is scoped to it.
+    const edgeTypeEditor = architectPage.getByRole('dialog', {
+      name: 'Create a new connection type',
+      exact: true,
+    });
     await architectPage
-      .getByLabel('Edge type')
-      .selectOption({ label: '✨ Create new edge type ✨' });
-    await architectPage
-      .getByRole('textbox', { name: 'New edge type name' })
+      .getByRole('button', {
+        name: 'Create a new connection type',
+        exact: true,
+      })
+      .click();
+    await edgeTypeEditor
+      .getByRole('textbox', { name: 'Edge type name', exact: true })
       .fill('close');
-    await architectPage.getByRole('button', { name: 'Create' }).click();
+    await edgeTypeEditor
+      .getByRole('button', { name: 'Save entity', exact: true })
+      .click();
+    await edgeTypeEditor.waitFor({ state: 'hidden' });
 
-    await expect(
-      architectPage.getByRole('button', { name: 'Select attribute' }),
-    ).toBeVisible();
+    await expect(editor.section('The scale')).toBeVisible();
 
-    await createVariableViaSpotlight(architectPage, {
-      variableName: 'strength',
+    const attributeEditor = architectPage.getByRole('dialog', {
+      name: 'Create a new attribute',
+      exact: true,
     });
-    await createVariableWithOptions(architectPage, {
-      variableName: 'strength',
-      options: ['Low', 'High'],
-      type: 'ordinal',
-    });
+    await architectPage
+      .getByRole('button', { name: 'Create a new attribute', exact: true })
+      .click();
+    await attributeEditor
+      .getByRole('textbox', { name: 'Attribute name', exact: true })
+      .fill('strength');
+    for (const [index, option] of [
+      { label: 'Low', value: 'low' },
+      { label: 'High', value: 'high' },
+    ].entries()) {
+      await attributeEditor
+        .getByRole('button', { name: 'Create new option', exact: true })
+        .click();
+      await attributeEditor
+        .getByRole('textbox', {
+          name: `Option ${index + 1} label`,
+          exact: true,
+        })
+        .fill(option.label);
+      await attributeEditor
+        .getByRole('textbox', {
+          name: `Option ${index + 1} value`,
+          exact: true,
+        })
+        .fill(option.value);
+    }
+    await attributeEditor
+      .getByRole('button', { name: 'Create attribute', exact: true })
+      .click();
+    await attributeEditor.waitFor({ state: 'hidden' });
 
-    await editor.fillRichText('Decline option', 'We are not close');
+    await editor.fillRichText('Decline answer', 'We are not close');
   });
 
   await editor.expectNoIssues();

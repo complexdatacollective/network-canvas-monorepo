@@ -22,7 +22,7 @@ import { useAppDispatch, useAppSelector } from '~/ducks/hooks';
 import { getActiveProtocolId } from '~/ducks/modules/app';
 import { useProtocolUndoRedo } from '~/hooks/useProtocolUndoRedo';
 import { useSingleFlight } from '~/hooks/useSingleFlight';
-import { getCanonicalProtocol } from '~/selectors/protocol';
+import { getProtocol } from '~/selectors/protocol';
 import type { ProtocolSourceRef } from '~/templates';
 import {
   isProtocolSourceAuthoringEnabled,
@@ -179,7 +179,7 @@ const ProjectActions = ({
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
   const activeProtocolId = useAppSelector(getActiveProtocolId);
-  const protocol = useAppSelector(getCanonicalProtocol);
+  const protocol = useAppSelector(getProtocol);
   const { openDialog } = useDialog();
   const {
     canUndo,

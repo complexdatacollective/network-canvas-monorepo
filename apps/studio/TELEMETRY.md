@@ -65,7 +65,7 @@ still reaches the configured relay; this is not a mechanism for hiding a client'
 network address from the relay operator.
 
 Client, Node and preview-function builds reuse
-`scripts/posthog-source-maps-plugin.ts`. Only builds with
+`scripts/build/posthog-source-maps-plugin.ts`. Only builds with
 `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID` emit and upload hidden source
 maps; the plugin deletes maps after upload. These are build credentials, never
 runtime or client settings. `POSTHOG_CLI_BINARY_PATH` supports the existing local/CI
