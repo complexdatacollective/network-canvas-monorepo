@@ -1,12 +1,16 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { unvalidatedElsewhereMessage } from '../../../codebook/variableValidation.ts';
+import {
+  unvalidatedElsewhereMessage,
+  validatedElsewhereMessage,
+} from '../../../codebook/variableValidation.ts';
 import { readMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   addPersonVariable,
   addRow,
+  collectInAnAlterForm,
   composerHolding,
   edgeFormFieldsOf,
   edgesOf,
@@ -1050,5 +1054,88 @@ describe('what a composer field’s control accepts', () => {
     expect(
       nodeFormFieldsOf(saved?.stageDocument ?? {})[0]?.parameters,
     ).toBeUndefined();
+  });
+});
+
+/**
+ * The save-time half of the two rules the stage's own pickers apply.
+ *
+ * A picker keeps the value it arrived holding whatever the filters say — one
+ * that dropped its own pick would blank the control and write the blank over
+ * the reference the researcher has to resolve — so a protocol carrying a
+ * conflict opens here with nothing on screen filtered and nothing refusing it.
+ * The stage then saved an export that mixes a checked answer with one this
+ * stage wrote around the codebook. Neither case below is a pick the researcher
+ * made here: the pickers keep those apart on their own.
+ */
+describe('a composer pick that conflicts with the rest of the protocol', () => {
+  it('refuses the save for a grouping attribute a form elsewhere collects', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ convexHullVariable: 'contactType' }),
+    );
+    // A second categorical attribute, so the collaborator's edit below has
+    // something this picker can be WATCHED for: the attribute under test is
+    // the one the picker is holding, which it goes on offering either way.
+    addPersonVariable(harness, 'region', {
+      name: 'region',
+      type: 'categorical',
+      options: [
+        { label: 'North', value: 'north' },
+        { label: 'South', value: 'south' },
+      ],
+    });
+    const grouping = await screen.findByRole('combobox', {
+      name: 'Grouping attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(grouping).getByRole('option', { name: 'region' }),
+      ).toBeInTheDocument(),
+    );
+
+    collectInAnAlterForm(harness, 'contactType', 'region');
+    await waitFor(() =>
+      expect(
+        within(grouping).queryByRole('option', { name: 'region' }),
+      ).toBeNull(),
+    );
+    expect(
+      within(grouping).getByRole('option', { name: 'contactType' }),
+    ).toBeInTheDocument();
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        readMessage(validatedElsewhereMessage('contactType')),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /** The same rule the other way round, on the box that adds a node. */
+  it('refuses the save for an attribute another stage stamps', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+    const quickAdd = await screen.findByRole('combobox', {
+      name: 'Attribute filled in when a node is added',
+    });
+    expect(quickAdd).toHaveValue('composerName');
+
+    // Two claims in one edit, for the same reason: `composerName` is what this
+    // picker is holding, so its leaving is not something a test can watch for.
+    highlightInASociogram(harness, 'composerName', 'relationship_to_ego');
+    await waitFor(() =>
+      expect(
+        within(quickAdd).queryByRole('option', { name: 'relationship_to_ego' }),
+      ).toBeNull(),
+    );
+    expect(
+      within(quickAdd).getByRole('option', { name: 'composerName' }),
+    ).toBeInTheDocument();
+
+    expect(await harness.submit()).toBeNull();
+    expect(
+      await screen.findByText(
+        readMessage(unvalidatedElsewhereMessage('composerName')),
+      ),
+    ).toBeInTheDocument();
   });
 });

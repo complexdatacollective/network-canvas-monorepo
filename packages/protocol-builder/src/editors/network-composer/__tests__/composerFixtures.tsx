@@ -35,6 +35,11 @@ const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 const SOCIOGRAM_SECTION = sectionId({ kind: 'stage', stageId: 'sociogram-1' });
 
+const ALTER_FORM_SECTION = sectionId({
+  kind: 'stage',
+  stageId: 'alter-form-1',
+});
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -201,14 +206,17 @@ export const retypePersonVariable = (
  */
 export const highlightInASociogram = (
   harness: StageEditorHarness,
-  variableId: string,
+  ...variableIds: readonly string[]
 ): void => {
   const stage = harness.protocolSections()[SOCIOGRAM_SECTION];
   if (stage === undefined) throw new Error('the fixture has no sociogram');
   const prompts = Array.isArray(stage.prompts) ? stage.prompts : [];
   // The fixture's own marking prompt, repointed rather than a new prompt
   // appended: what makes this a conflict is the attribute, and the prompt
-  // around it stays a prompt the schema already accepts.
+  // around it stays a prompt the schema already accepts. A caller asking for
+  // more than one gets copies of that same prompt, which is how a test that
+  // cannot watch its own claim arrive — a picker goes on offering the value it
+  // is holding, whatever the filters say — can watch a second one instead.
   const marking = prompts.findIndex(
     (prompt) =>
       isRecord(prompt) &&
@@ -219,14 +227,53 @@ export const highlightInASociogram = (
   if (!isRecord(held)) {
     throw new Error('the fixture sociogram has no marking prompt');
   }
+  const marked = variableIds.map((variableId, index) => ({
+    ...held,
+    id: index === 0 ? held.id : `${String(held.id)}-marking-${String(index)}`,
+    highlight: { allowHighlighting: true, variable: variableId },
+  }));
   const updated: SectionDoc = {
     ...stage,
-    prompts: prompts.with(marking, {
-      ...held,
-      highlight: { allowHighlighting: true, variable: variableId },
-    }),
+    prompts: [...prompts.with(marking, marked[0] ?? held), ...marked.slice(1)],
   };
   act(() => {
     harness.host.store.applyAsCollaborator(SOCIOGRAM_SECTION, updated);
+  });
+};
+
+/**
+ * A form in ANOTHER stage starting to collect some of this type's attributes,
+ * put there by a collaborator while this editor is open.
+ *
+ * The opposite writer class from the composer's grouping tool, which writes
+ * what the participant lassoes straight onto the node. The protocol is read
+ * live, so this is how the conflict a composer can only be REPOINTED out of
+ * reaches an editor that is already open — and, for a test, the only way to
+ * put it there at all: the fixture protocol collects no categorical attribute
+ * of `person` anywhere.
+ */
+export const collectInAnAlterForm = (
+  harness: StageEditorHarness,
+  ...variableIds: readonly string[]
+): void => {
+  const stage = harness.protocolSections()[ALTER_FORM_SECTION];
+  if (stage === undefined) throw new Error('the fixture has no alter form');
+  const form = isRecord(stage.form) ? stage.form : {};
+  const fields = Array.isArray(form.fields) ? form.fields : [];
+  const updated: SectionDoc = {
+    ...stage,
+    form: {
+      ...form,
+      fields: [
+        ...fields,
+        ...variableIds.map((variable) => ({
+          variable,
+          prompt: `What is this person's ${variable}?`,
+        })),
+      ],
+    },
+  };
+  act(() => {
+    harness.host.store.applyAsCollaborator(ALTER_FORM_SECTION, updated);
   });
 };
