@@ -50,7 +50,7 @@ export const OrderingTheRoster: Story = {
     );
 
     const sortable = await canvas.findByRole('list', {
-      name: /Attributes the participant may sort by/,
+      name: /Sortable properties/,
     });
     await userEvent.selectOptions(
       within(sortable).getByRole('combobox', { name: /Attribute/ }),
