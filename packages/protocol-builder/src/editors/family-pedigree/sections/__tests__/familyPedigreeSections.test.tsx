@@ -2148,8 +2148,14 @@ describe('a pedigree whose node type changes', () => {
  *
  * The clear has to reach the document and not only the control it emptied: the
  * union has no room for a terminology beside a participant choice, and a
- * cleared field that parked its emptiness in the form store alone would put
- * the old terminology back the next time the control mounted.
+ * document still holding a terminology beside a participant choice is not a
+ * framing the schema accepts.
+ *
+ * Coming back to a fixed framing is the other half of the same decision, and
+ * it is not a decision to stop using the words the stage already uses: the
+ * committed terminology is put back, or the canonical one for a stage that was
+ * saved as a participant choice, so a round trip through the other branch
+ * leaves a stage that still saves.
  */
 describe('what a framing change costs', () => {
   /** Seeded away from the schema's canonical framing, so a fallback shows. */
@@ -2167,10 +2173,10 @@ describe('what a framing change costs', () => {
     await harness.user.click(screen.getByRole('radio', { name }));
   };
 
-  it('leaves the terminology gone when the researcher goes back to a fixed framing', async () => {
-    const harness = renderStageEditor(openWithGenderedFraming());
-    expect(await terminology()).toHaveValue('gendered');
-
+  /** The round trip, with nothing else changed: a save the researcher expects. */
+  const roundTripThroughParticipantChoice = async (
+    harness: StageEditorHarness,
+  ) => {
     await chooseMode(harness, 'Let the participant choose');
     await waitFor(() =>
       expect(
@@ -2178,16 +2184,57 @@ describe('what a framing change costs', () => {
       ).not.toBeInTheDocument(),
     );
     await chooseMode(harness, 'Fixed framing');
+  };
 
-    // Empty rather than back at what the fixed framing used to say — and the
-    // stage is refused, because a fixed framing with no terminology is not a
-    // framing the union accepts.
-    expect(await terminology()).toHaveValue('');
-    expect(await harness.submit()).toBeNull();
+  it('drops the terminology while the participant is the one choosing', async () => {
+    const harness = renderStageEditor(openWithGenderedFraming());
+    expect(await terminology()).toHaveValue('gendered');
 
-    // Answered afresh, it saves the answer the researcher gave rather than the
-    // one they left behind.
+    await chooseMode(harness, 'Let the participant choose');
+
+    expect((await savedStage(harness)).framing).toEqual({
+      mode: 'participantChoice',
+    });
+  });
+
+  it('puts the committed terminology back when the researcher returns to a fixed framing', async () => {
+    const harness = renderStageEditor(openWithGenderedFraming());
+    expect(await terminology()).toHaveValue('gendered');
+
+    await roundTripThroughParticipantChoice(harness);
+
+    expect(await terminology()).toHaveValue('gendered');
+    expect((await savedStage(harness)).framing).toEqual({
+      mode: 'fixed',
+      value: 'gendered',
+    });
+  });
+
+  it('falls back to the canonical framing for a stage saved as a participant choice', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        framing: { mode: 'participantChoice' },
+      }),
+      sections: pedigreeSections,
+    });
+    await harness.opened();
+
+    await chooseMode(harness, 'Fixed framing');
+
+    expect(await terminology()).toHaveValue('gamete');
+    expect((await savedStage(harness)).framing).toEqual({
+      mode: 'fixed',
+      value: 'gamete',
+    });
+  });
+
+  it('still saves the answer the researcher gives instead', async () => {
+    const harness = renderStageEditor(openWithGenderedFraming());
+    await terminology();
+
+    await roundTripThroughParticipantChoice(harness);
     await harness.user.selectOptions(await terminology(), 'gamete');
+
     expect((await savedStage(harness)).framing).toEqual({
       mode: 'fixed',
       value: 'gamete',

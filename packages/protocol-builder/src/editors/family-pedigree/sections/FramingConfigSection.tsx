@@ -68,6 +68,15 @@ const boldTerm = (chunks: ReactNode) => <strong>{chunks}</strong>;
  * what every field is seeded from as it mounts, so a clear that lived only in
  * the form would hand the old terminology back the moment the researcher
  * returned to a fixed framing.
+ *
+ * Coming BACK is its own act, and it puts the committed terminology back —
+ * or the canonical framing, for a stage that was saved as a participant
+ * choice. A round trip through the other branch is not a decision to stop
+ * using the words the stage already uses, and leaving the control empty
+ * refused the save of a stage the researcher had changed nothing about. The
+ * value is written here rather than left to the control's own `initialValue`
+ * because the discard tombstones the form field, and a tombstone is exactly
+ * what stops a re-registering control from taking its initial value.
  */
 export default function FramingConfigSection() {
   const intl = useAppIntl();
@@ -75,27 +84,46 @@ export default function FramingConfigSection() {
   const chosenMode = useStageValue(MODE_FIELD);
   const mode = chosenMode ?? 'fixed';
   const discardStageValues = useDiscardStageValues();
+  const { storeApi } = useStageEditorForm();
   const isFixed = mode === 'fixed';
   // The AGREED framing, not the live one: an initial value that moved with the
   // control would re-register the field on every change.
   const committedMode: unknown = get(committedFields, MODE_FIELD);
   const committedValue: unknown = get(committedFields, VALUE_FIELD);
+  /**
+   * What a fixed framing says, here and on every return to it.
+   *
+   * Read once, from the stage as the editor opened it. The discard below
+   * writes the mode change structurally, and the terminology it threw away is
+   * gone from the document by the time the researcher comes back — so a value
+   * read again at that point would only ever be the canonical framing, and a
+   * stage saved as gendered would silently return as gamete.
+   */
+  const seededValueRef = useRef(
+    typeof committedValue === 'string' ? committedValue : DEFAULT_FRAMING,
+  );
+  const seededValue = seededValueRef.current;
 
   const wasFixed = useRef(isFixed);
   useEffect(() => {
     const leaving = wasFixed.current && !isFixed;
+    const returning = !wasFixed.current && isFixed;
     wasFixed.current = isFixed;
     // Only the researcher LEAVING the fixed branch throws anything away. The
     // first render is a stage being opened on what it was saved with, which
     // already has whatever terminology belongs to its own framing.
-    if (!leaving) return;
-    // The mode in front of the terminology it cost, in one write, so the
-    // document never holds half a framing.
-    discardStageValues([VALUE_FIELD], {
-      path: MODE_FIELD,
-      value: chosenMode,
-    });
-  }, [chosenMode, discardStageValues, isFixed]);
+    if (leaving) {
+      // The mode in front of the terminology it cost, in one write, so the
+      // document never holds half a framing.
+      discardStageValues([VALUE_FIELD], {
+        path: MODE_FIELD,
+        value: chosenMode,
+      });
+      return;
+    }
+    if (!returning) return;
+    storeApi.getState().setFieldValue(VALUE_FIELD, seededValue);
+  }, [chosenMode, discardStageValues, isFixed, seededValue, storeApi]);
 
   const modeOptions = useMemo(
     () =>
@@ -155,13 +183,9 @@ export default function FramingConfigSection() {
           name={VALUE_FIELD}
           component={NativeSelectField}
           label={intl.formatMessage(pedigreeMessages.framingValueLabel)}
-          // Falls back to the canonical framing so switching back from a
-          // participant choice always registers a value the union accepts.
-          initialValue={
-            typeof committedValue === 'string'
-              ? committedValue
-              : DEFAULT_FRAMING
-          }
+          // Falls back to the canonical framing so a stage saved as a
+          // participant choice registers a value the union accepts.
+          initialValue={seededValue}
           options={framingOptions}
           required={REQUIRED}
         />
