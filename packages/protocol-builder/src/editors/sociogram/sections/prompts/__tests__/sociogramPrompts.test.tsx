@@ -9,6 +9,7 @@ import { validatedElsewhereMessage } from '../../../../../form/arrayFields/cross
 import {
   attributeField,
   chooseAttributeById,
+  inventAttribute,
 } from '../../../../../testing/attributePicker.ts';
 import { enIntl, readMessage } from '../../../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
@@ -692,28 +693,23 @@ describe('what tapping a node does, against what the prompt already said', () =>
 });
 
 /**
- * The attribute a prompt needs, created from inside the prompt's own dialog.
+ * The attribute a prompt needs, invented from inside the prompt's own picker.
  *
- * Two dialogs are then open at once — the prompt's, and the editor for the
- * attribute — so the inner one is reached through the control it owns rather
- * than by asking for "the dialog": which of the two `getByRole` answers with
- * is not this test's to depend on.
+ * A position attribute is finished the moment it is named — there is no list
+ * of values and no control a participant answers it through — so the create
+ * row writes it and the window closes on the new pill. No second dialog, and
+ * no sibling button: looking for the attribute and finding it does not exist
+ * are one act, in one control.
  */
 describe('creating an attribute a prompt needs without leaving the stage', () => {
   it('binds the prompt to the attribute the codebook now holds', async () => {
     const harness = renderStageEditor(openEditor());
 
     const prompt = await openPrompt(harness);
-    await harness.user.click(
-      prompt.getByRole('button', { name: 'Create a new position attribute' }),
-    );
-    const name = await screen.findByRole('textbox', {
-      name: 'Attribute name',
-    });
-    const creator = within(name.closest('[role="dialog"]') as HTMLElement);
-    await harness.user.type(name, 'second_canvas');
-    await harness.user.click(
-      creator.getByRole('button', { name: 'Create attribute' }),
+    await inventAttribute(
+      harness.user,
+      await promptAttributeField('Position attribute'),
+      'second_canvas',
     );
 
     await waitFor(() => {

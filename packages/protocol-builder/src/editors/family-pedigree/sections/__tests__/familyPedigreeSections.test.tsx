@@ -18,6 +18,7 @@ import {
   attributeField,
   chooseAttributeById,
   closeAttributePicker,
+  inventAttribute,
   offeredAttributes,
   openAttributePicker,
 } from '../../../../testing/attributePicker.ts';
@@ -1357,22 +1358,14 @@ describe('a codebook that changes while the pedigree is open', () => {
 describe('creating an attribute a slot needs without leaving the stage', () => {
   it('puts the attribute in the codebook, and binds it here', async () => {
     const harness = renderStageEditor(openFixture());
+    await harness.opened();
 
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new display label attribute',
-      }),
-    );
-    // Scoped to the dialog: `screen` would compute an accessible name for
-    // every control in the editor behind it to answer a question about one
-    // inside it.
-    const creator = within(await screen.findByRole('dialog'));
-    await harness.user.type(
-      creator.getByRole('textbox', { name: 'Attribute name' }),
+    // A display label is a box someone types into, so it is finished the
+    // moment it is named: the create row writes it and the window closes.
+    await inventAttribute(
+      harness.user,
+      attributeField('Display label'),
       'nickname',
-    );
-    await harness.user.click(
-      creator.getByRole('button', { name: 'Create attribute' }),
     );
 
     await waitFor(() =>
@@ -1396,13 +1389,18 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
   it('locks a slot’s canonical values so a researcher cannot edit them', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new relationship type attribute',
-      }),
+    await harness.opened();
+    // A relationship type is a list of values the interface owns, so the
+    // create row escalates to the codebook's own editor on the typed name.
+    await inventAttribute(
+      harness.user,
+      attributeField('Relationship type'),
+      'kinship',
     );
 
-    await screen.findByRole('textbox', { name: 'Attribute name' });
+    expect(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    ).toHaveValue('kinship');
     // EXACTLY the schema's own set, in its own order: the protocol refuses an
     // attribute bound to this slot whose values differ, so seeding anything
     // else would create an attribute the picker then hides and the schema then
@@ -1464,18 +1462,15 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
    */
   it('withholds every way out until the codebook answers', async () => {
     const harness = renderStageEditor(openFixture());
+    await harness.opened();
     const release = holdTheCodebookWrite(harness);
 
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new display label attribute',
-      }),
+    await inventAttribute(
+      harness.user,
+      attributeField('Biological sex'),
+      'sexAtBirth',
     );
     const creator = within(await screen.findByRole('dialog'));
-    await harness.user.type(
-      creator.getByRole('textbox', { name: 'Attribute name' }),
-      'nickname',
-    );
     await harness.user.click(
       creator.getByRole('button', { name: 'Create attribute' }),
     );
@@ -1485,7 +1480,7 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     await harness.user.keyboard('{Escape}');
     await harness.user.click(document.body);
     expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
-      'nickname',
+      'sexAtBirth',
     );
     expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
 
@@ -1493,14 +1488,16 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     // And the answer lands on the surface that asked for it: the slot now
     // holds the attribute the codebook holds.
     await waitFor(() =>
-      expect(variableIdByName(harness, 'nickname')).toEqual(expect.any(String)),
+      expect(variableIdByName(harness, 'sexAtBirth')).toEqual(
+        expect.any(String),
+      ),
     );
     // Awaited: the attribute reaches this picker over the protocol's own
     // channel, so the slot is pointed at it a microtask before the control can
     // name it.
     await waitFor(() =>
       expect(
-        within(attributeField('Display label')).getByText('nickname'),
+        within(attributeField('Biological sex')).getByText('sexAtBirth'),
       ).toBeVisible(),
     );
   });
@@ -1508,15 +1505,20 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
   it('is not offered to a spectator', async () => {
     renderStageEditor({ ...openFixture(), readOnly: true });
 
+    // The create row lives inside the window, and a spectator cannot open one:
+    // the trigger is disabled rather than absent, so what the stage already
+    // holds is still on screen to read.
+    //
     // Awaited, because nothing tells the editor the stage is somebody else's
     // until the host answers its acquire.
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('button', {
-          name: 'Create a new display label attribute',
-        }),
-      ).not.toBeInTheDocument(),
-    );
+    await waitFor(() => {
+      const triggers = within(attributeField('Display label')).getAllByRole(
+        'button',
+        { name: /attribute/iu },
+      );
+      expect(triggers).not.toHaveLength(0);
+      for (const trigger of triggers) expect(trigger).toBeDisabled();
+    });
   });
 });
 
@@ -2116,10 +2118,9 @@ describe('a pedigree whose node type changes', () => {
     // relationship type, whether a relationship is current, who carried each
     // pregnancy and each parent's gamete.
     //
-    // Read as the slot having nothing to open at all: the new type carries no
-    // attributes, so each picker stands its field down behind its empty-state
-    // sentence — and a slot still holding one would go on offering the window
-    // in which the researcher could see the choice it can no longer offer.
+    // Read as each slot having nothing left to choose: the new type carries no
+    // attributes, so every window is empty of them — a slot still offering the
+    // old type's would be offering a choice it can no longer make.
     for (const slot of [
       'Relationship type',
       'Active status',
@@ -2127,10 +2128,8 @@ describe('a pedigree whose node type changes', () => {
       'Gamete role',
     ]) {
       expect(
-        within(attributeField(slot)).queryByRole('button', {
-          name: /attribute$/u,
-        }),
-      ).not.toBeInTheDocument();
+        await offeredAttributes(harness.user, attributeField(slot)),
+      ).toEqual([]);
     }
   });
 

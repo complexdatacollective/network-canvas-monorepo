@@ -29,14 +29,20 @@ export type EdgeTypeChoice = Readonly<{ value: string; label: string }>;
  * type list it was asked for, and an array literal written at a call site is a
  * new one on every render.
  */
-export const LAYOUT_TYPES: readonly VariableType[] = Object.freeze(['layout']);
+export const LAYOUT_TYPE = 'layout';
+export const BOOLEAN_TYPE = 'boolean';
+export const CATEGORICAL_TYPE = 'categorical';
+export const TEXT_TYPE = 'text';
+export const LAYOUT_TYPES: readonly VariableType[] = Object.freeze([
+  LAYOUT_TYPE,
+]);
 export const BOOLEAN_TYPES: readonly VariableType[] = Object.freeze([
-  'boolean',
+  BOOLEAN_TYPE,
 ]);
 export const CATEGORICAL_TYPES: readonly VariableType[] = Object.freeze([
-  'categorical',
+  CATEGORICAL_TYPE,
 ]);
-export const TEXT_TYPES: readonly VariableType[] = Object.freeze(['text']);
+export const TEXT_TYPES: readonly VariableType[] = Object.freeze([TEXT_TYPE]);
 
 /**
  * Every kind of answer a form can ask for, which is the pool a form field's

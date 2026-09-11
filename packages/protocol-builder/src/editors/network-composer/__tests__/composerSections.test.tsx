@@ -5,6 +5,7 @@ import { unvalidatedElsewhereMessage } from '../../../codebook/variableValidatio
 import {
   attributeField,
   chooseAttributeById,
+  inventAttribute,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
 import { readMessage } from '../../../testing/i18n.ts';
@@ -523,21 +524,11 @@ describe('what a network composer lets the participant build', () => {
   it('creates a position attribute without leaving the stage', async () => {
     const harness = renderStageEditor(composerHolding({ layoutVariable: '' }));
 
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new position attribute',
-      }),
-    );
-    const name = await screen.findByRole('textbox', {
-      name: 'Attribute name',
-    });
-    const creator = within(name.closest('[role="dialog"]') as HTMLElement);
-    await harness.user.type(name, 'placedAt');
-    await harness.user.click(
-      creator.getByRole('button', { name: 'Create attribute' }),
-    );
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    await harness.opened();
+    await inventAttribute(
+      harness.user,
+      picker('Position attribute'),
+      'placedAt',
     );
 
     // Bound here, not merely created: the researcher asked for it from this

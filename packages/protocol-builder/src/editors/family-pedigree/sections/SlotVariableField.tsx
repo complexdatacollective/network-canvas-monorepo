@@ -18,7 +18,7 @@ import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
-import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
+import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
@@ -82,7 +82,15 @@ export type SlotVariableFieldProps = Readonly<{
    * refused at the save when its values stop matching it.
    */
   lockedOptions?: readonly InterfaceOwnedOption[];
-  /** Visible text and accessible name of the create control. */
+  /**
+   * What inventing this slot's attribute is called.
+   *
+   * Titles the codebook editor the picker's create row escalates to, for the
+   * kinds of answer a name alone cannot finish — a list of values, a set the
+   * interface owns. Whole rather than a generic "Create": a pedigree editor
+   * binds several slots at once and a shared title would say nothing about
+   * which of them the open dialog is for.
+   */
   createLabel: MessageDescriptor;
   /** Said in place of the list when the codebook offers nothing usable. */
   emptyMessage: MessageDescriptor;
@@ -119,6 +127,14 @@ export default function SlotVariableField({
   const draftValue = useStageValue(name);
   const currentValue = typeof draftValue === 'string' ? draftValue : undefined;
   const committedValue: unknown = get(committedFields, name);
+  const { createProps, editor } = useCreateAttributeForSlot({
+    subject,
+    variableType,
+    ...(lockedOptions === undefined ? {} : { lockedOptions }),
+    title: intl.formatMessage(createLabel),
+    onCreated: (variableId) =>
+      storeApi.getState().setFieldValue(name, variableId),
+  });
 
   const allVariables = useMemo(
     () =>
@@ -254,16 +270,9 @@ export default function SlotVariableField({
         options={pickerOptions}
         emptyMessage={intl.formatMessage(emptyMessage)}
         custom={crossClassValidation}
+        {...createProps}
       />
-      <CreateVariableButton
-        subject={subject}
-        variableType={variableType}
-        {...(lockedOptions === undefined ? {} : { lockedOptions })}
-        label={intl.formatMessage(createLabel)}
-        onCreated={(variableId) =>
-          storeApi.getState().setFieldValue(name, variableId)
-        }
-      />
+      {editor}
     </>
   );
 }

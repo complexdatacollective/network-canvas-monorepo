@@ -1,7 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { attributeField } from '../../../testing/attributePicker.ts';
+import {
+  attributeField,
+  createRowIn,
+} from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   narrativeEditor,
@@ -69,11 +72,17 @@ describe('the narrative sections, read in Spanish', () => {
         attributeField('Atributo de posición', screen.getByRole('dialog')),
       ).getByRole('button', { name: 'Cambiar atributo' }),
     ).toBeInTheDocument();
+    // Inventing one is offered from inside that window, on the term the
+    // researcher typed, and in their language: the sections no longer carry a
+    // create control of their own.
     expect(
-      preset.getByRole('button', {
-        name: 'Crear un nuevo atributo de posición',
-      }),
-    ).toBeInTheDocument();
+      await createRowIn(
+        harness.user,
+        attributeField('Atributo de posición', screen.getByRole('dialog')),
+        'Busca o crea un atributo',
+        (term) => `Crear un atributo nuevo llamado “${term}”.`,
+      ),
+    ).not.toBeNull();
     expect(preset.getByText('Nodos resaltados')).toBeInTheDocument();
   });
 

@@ -8,6 +8,7 @@ import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
 import {
   attributeField,
   chooseAttributeById,
+  inventAttribute,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
@@ -482,18 +483,11 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
   it('writes the attribute to the codebook, and saves the stage bound to it', async () => {
     const harness = openFixture();
 
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new display label attribute',
-      }),
-    );
-    const creator = within(await screen.findByRole('dialog'));
-    await harness.user.type(
-      creator.getByRole('textbox', { name: 'Attribute name' }),
+    await harness.opened();
+    await inventAttribute(
+      harness.user,
+      attributeField('Display label'),
       'nickname',
-    );
-    await harness.user.click(
-      creator.getByRole('button', { name: 'Create attribute' }),
     );
 
     await waitFor(() =>

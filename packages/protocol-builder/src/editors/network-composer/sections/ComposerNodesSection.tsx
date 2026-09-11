@@ -10,13 +10,16 @@ import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import {
+  CATEGORICAL_TYPE,
   CATEGORICAL_TYPES,
+  LAYOUT_TYPE,
   LAYOUT_TYPES,
+  TEXT_TYPE,
   TEXT_TYPES,
   useVariableChoices,
 } from '../../../sections/canvas/codebookChoices.ts';
 import { asText } from '../../../sections/canvas/rowValues.ts';
-import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
+import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import { composerFormFieldMessages } from '../../../sections/form-fields/composerFormFieldMessages.ts';
 import { ComposerFormFieldsField } from '../../../sections/form-fields/ComposerFormFields.tsx';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
@@ -171,6 +174,25 @@ export default function ComposerNodesSection() {
     [setStageValue],
   );
 
+  const quickAddCreate = useCreateAttributeForSlot({
+    subject,
+    variableType: TEXT_TYPE,
+    title: intl.formatMessage(messages.quickAddCreateLabel),
+    onCreated: bindQuickAdd,
+  });
+  const layoutCreate = useCreateAttributeForSlot({
+    subject,
+    variableType: LAYOUT_TYPE,
+    title: intl.formatMessage(messages.layoutCreateLabel),
+    onCreated: bindLayout,
+  });
+  const hullCreate = useCreateAttributeForSlot({
+    subject,
+    variableType: CATEGORICAL_TYPE,
+    title: intl.formatMessage(messages.hullCreateLabel),
+    onCreated: bindHull,
+  });
+
   return (
     <BuilderSection
       title={intl.formatMessage(messages.nodesTitle)}
@@ -187,13 +209,9 @@ export default function ComposerNodesSection() {
         options={quickAddOptions}
         emptyMessage={intl.formatMessage(messages.quickAddEmpty)}
         required={REQUIRED}
+        {...quickAddCreate.createProps}
       />
-      <CreateVariableButton
-        subject={subject ?? null}
-        variableType="text"
-        label={intl.formatMessage(messages.quickAddCreateLabel)}
-        onCreated={bindQuickAdd}
-      />
+      {quickAddCreate.editor}
 
       <Field<typeof VariablePickerField>
         name={LAYOUT_VARIABLE_FIELD}
@@ -203,13 +221,9 @@ export default function ComposerNodesSection() {
         options={layoutOptions}
         emptyMessage={intl.formatMessage(messages.layoutEmpty)}
         required={REQUIRED}
+        {...layoutCreate.createProps}
       />
-      <CreateVariableButton
-        subject={subject ?? null}
-        variableType="layout"
-        label={intl.formatMessage(messages.layoutCreateLabel)}
-        onCreated={bindLayout}
-      />
+      {layoutCreate.editor}
 
       <Field<typeof VariablePickerField>
         name={CONVEX_HULL_FIELD}
@@ -218,13 +232,9 @@ export default function ComposerNodesSection() {
         hint={intl.formatMessage(messages.hullHint)}
         options={hullOptions}
         emptyMessage={intl.formatMessage(messages.hullEmpty)}
+        {...hullCreate.createProps}
       />
-      <CreateVariableButton
-        subject={subject ?? null}
-        variableType="categorical"
-        label={intl.formatMessage(messages.hullCreateLabel)}
-        onCreated={bindHull}
-      />
+      {hullCreate.editor}
 
       <BuilderSection
         title={intl.formatMessage(messages.nodeFormTitle)}

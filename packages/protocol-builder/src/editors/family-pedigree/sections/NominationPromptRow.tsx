@@ -16,7 +16,7 @@ import type {
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
-import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
+import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
@@ -29,6 +29,14 @@ import {
 const TEXT_FIELD = 'text';
 const VARIABLE_FIELD = 'variable';
 const FORM_FIELD_PATH = 'nodeConfig.form';
+
+/**
+ * What a nomination prompt marks people with: a flag, set by tapping them.
+ *
+ * The participant is not asked anything about it, so there is nothing for any
+ * other kind of answer to hold.
+ */
+const NOMINATION_TYPE = 'boolean';
 
 /**
  * The node type a nomination prompt's attribute belongs to.
@@ -72,6 +80,12 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
   const { roleMap, slotMap, draftSlotMap } = usePedigreeVariableIndexes();
   const subject = useNominationSubject();
   const setFieldValue = useFormStore((state) => state.setFieldValue);
+  const { createProps, editor } = useCreateAttributeForSlot({
+    subject,
+    variableType: NOMINATION_TYPE,
+    title: intl.formatMessage(pedigreeMessages.nominationCreateLabel),
+    onCreated: (variableId) => setFieldValue(VARIABLE_FIELD, variableId),
+  });
   const { variable } = useFormValue([VARIABLE_FIELD] as const);
   const currentValue = asString(variable) ?? asString(item.variable);
   // The stage form behind this dialog, which the dialog's own form store does
@@ -137,13 +151,9 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
         required={intl.formatMessage(
           pedigreeMessages.nominationVariableRequired,
         )}
+        {...createProps}
       />
-      <CreateVariableButton
-        subject={subject}
-        variableType="boolean"
-        label={intl.formatMessage(pedigreeMessages.nominationCreateLabel)}
-        onCreated={(variableId) => setFieldValue(VARIABLE_FIELD, variableId)}
-      />
+      {editor}
     </>
   );
 }

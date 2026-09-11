@@ -29,7 +29,9 @@ import type {
 import { variablesForSubject } from '../../../../protocol-context.ts';
 import { canvasMessages } from '../../../../sections/canvas/canvasMessages.ts';
 import {
+  BOOLEAN_TYPE,
   BOOLEAN_TYPES,
+  LAYOUT_TYPE,
   LAYOUT_TYPES,
   useEdgeTypeChoices,
   useVariableChoices,
@@ -43,7 +45,7 @@ import {
   useStableIdList,
 } from '../../../../sections/canvas/rowValues.ts';
 import { useLostReferences } from '../../../../sections/canvas/useLostReferences.ts';
-import CreateVariableButton from '../../../../sections/create-variable/CreateVariableButton.tsx';
+import { useCreateAttributeForSlot } from '../../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import SortOrderRows from '../../../../sections/prompts/SortOrderRows.tsx';
 import { useStageSubject } from '../../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../../state/protocolContext.ts';
@@ -124,6 +126,19 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
   // Writes reach THIS dialog's form, not the stage's: the prompt is the
   // researcher's unsaved row until they save it.
   const setRowValue = useFormStore((store) => store.setFieldValue);
+  const layoutCreate = useCreateAttributeForSlot({
+    subject,
+    variableType: LAYOUT_TYPE,
+    title: intl.formatMessage(messages.promptCreateLayoutLabel),
+    onCreated: (variableId) => setRowValue(LAYOUT_VARIABLE_FIELD, variableId),
+  });
+  const highlightCreate = useCreateAttributeForSlot({
+    subject,
+    variableType: BOOLEAN_TYPE,
+    title: intl.formatMessage(messages.promptCreateHighlightLabel),
+    onCreated: (variableId) =>
+      setRowValue(HIGHLIGHT_VARIABLE_FIELD, variableId),
+  });
   const edgeChoicesOffered = useEdgeTypeChoices();
 
   /**
@@ -398,15 +413,9 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           emptyMessage={intl.formatMessage(messages.promptLayoutEmpty)}
           initialValue={committedLayout}
           required={intl.formatMessage(messages.promptLayoutRequired)}
+          {...layoutCreate.createProps}
         />
-        <CreateVariableButton
-          subject={subject ?? null}
-          variableType="layout"
-          label={intl.formatMessage(messages.promptCreateLayoutLabel)}
-          onCreated={(variableId) =>
-            setRowValue(LAYOUT_VARIABLE_FIELD, variableId)
-          }
-        />
+        {layoutCreate.editor}
         {/*
           The package's shared sort-order group, told which key this prompt
           keeps its rules at. What a sort order IS — an ordered list of
@@ -473,15 +482,9 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
               emptyMessage={intl.formatMessage(messages.promptHighlightEmpty)}
               initialValue={committedHighlight}
               required={intl.formatMessage(messages.promptHighlightRequired)}
+              {...highlightCreate.createProps}
             />
-            <CreateVariableButton
-              subject={subject ?? null}
-              variableType="boolean"
-              label={intl.formatMessage(messages.promptCreateHighlightLabel)}
-              onCreated={(variableId) =>
-                setRowValue(HIGHLIGHT_VARIABLE_FIELD, variableId)
-              }
-            />
+            {highlightCreate.editor}
           </>
         )}
       </Section>

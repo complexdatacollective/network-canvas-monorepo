@@ -38,7 +38,7 @@ export const binMessages = defineMessages({
     id: 'protocolBuilder.censusPrompts.attributeCreateLabel',
     defaultMessage: 'Create a new attribute',
     description:
-      'Button that opens the codebook editor for inventing an attribute this prompt can write to. Also the title of the dialog it opens.',
+      'Names the act of inventing an attribute this prompt can write to, and titles the codebook editor the attribute picker’s create row opens for it. Reached from inside that picker, on the name the researcher typed.',
   },
   binAttributeRequired: {
     id: 'protocolBuilder.censusPrompts.binAttributeRequired',

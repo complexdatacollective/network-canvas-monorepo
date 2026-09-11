@@ -50,12 +50,25 @@ const SPOTLIGHT = '[data-variable-spotlight]';
 const openWindow = (): HTMLElement | null =>
   document.body.querySelector<HTMLElement>(SPOTLIGHT);
 
+/**
+ * The button that opens this field's window.
+ *
+ * Found by the marker the picker puts on it rather than by its name, because
+ * the name is copy: the locale suites mount the same control in Spanish, and a
+ * helper that only knew the English would find nothing there. Within one field
+ * it is the picker's trigger and nothing else. The names are still asserted —
+ * by the tests that are about them.
+ */
+const triggerOf = (field: HTMLElement): HTMLElement =>
+  field.querySelector<HTMLElement>('button[data-field-focus-target]') ??
+  within(field).getByRole('button', { name: isTrigger });
+
 /** Opens one picker's window and hands it back. */
 export async function openAttributePicker(
   user: HarnessUser,
   field: HTMLElement,
 ): Promise<HTMLElement> {
-  await user.click(within(field).getByRole('button', { name: isTrigger }));
+  await user.click(triggerOf(field));
   await waitFor(() => {
     if (openWindow() === null) {
       throw new Error('the attribute window did not open');
@@ -153,3 +166,92 @@ const waitForTheWindowToClose = async (): Promise<void> => {
     }
   });
 };
+
+/**
+ * The row the window offers to invent an attribute from the typed name.
+ *
+ * Named after the name rather than found by position: it is the first row when
+ * it is offered at all, and a test that took the first row would pass against
+ * a window offering none.
+ */
+export function createRow(dialog: HTMLElement, name: string): HTMLElement {
+  return within(dialog).getByRole('option', {
+    name: `Create new attribute called “${name}”.`,
+  });
+}
+
+/**
+ * Invents an attribute of this name through the window, as a researcher does:
+ * types it into the search box and takes the create row.
+ *
+ * Hands the window back rather than waiting for it to close, because what
+ * happens next is the thing under test — a slot whose attribute is finished by
+ * a name closes it, one that needs a value set opens the codebook's editor on
+ * top of it, and a refusal keeps it open on the name to correct.
+ */
+export async function inventAttribute(
+  user: HarnessUser,
+  field: HTMLElement,
+  attributeName: string,
+): Promise<HTMLElement> {
+  const dialog = await openAttributePicker(user, field);
+  await user.type(
+    within(dialog).getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    }),
+    attributeName,
+  );
+  await user.click(createRow(dialog, attributeName));
+  return dialog;
+}
+
+/**
+ * Whether this picker offers to invent an attribute at all.
+ *
+ * Asked of a term nothing matches, because that is the only state a create row
+ * is offered in. Leaves the window as it found it: closed.
+ */
+export async function offersCreation(
+  user: HarnessUser,
+  field: HTMLElement,
+  term = 'a name nothing in this codebook has',
+): Promise<boolean> {
+  const dialog = await openAttributePicker(user, field);
+  await user.type(
+    within(dialog).getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    }),
+    term,
+  );
+  const offered =
+    within(dialog).queryByRole('option', {
+      name: `Create new attribute called “${term}”.`,
+    }) !== null;
+  await closeAttributePicker(user);
+  return offered;
+}
+
+/**
+ * The create row, asked for in the reader's own language.
+ *
+ * The window's own words are the picker's — a section that offers creation
+ * says so through this row rather than through a control of its own — so a
+ * section's locale test names the field and the search box's label and reads
+ * the row back. Leaves the window as it found it: closed.
+ */
+export async function createRowIn(
+  user: HarnessUser,
+  field: HTMLElement,
+  searchLabel: string,
+  rowName: (term: string) => string,
+  term = 'nuevo',
+): Promise<HTMLElement | null> {
+  const dialog = await openAttributePicker(user, field);
+  await user.type(
+    within(dialog).getByRole('searchbox', { name: searchLabel }),
+    term,
+  );
+  const row = within(dialog).queryByRole('option', { name: rowName(term) });
+  await closeAttributePicker(user);
+  return row;
+}

@@ -1,7 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { attributeField } from '../../../testing/attributePicker.ts';
+import {
+  attributeField,
+  createRowIn,
+} from '../../../testing/attributePicker.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -119,7 +122,7 @@ describe('the geospatial sections, read in Spanish', () => {
     // would have nothing to choose and the picker would not be drawn at all.
     // A row's own pick is always offered back, which is the state that has
     // both controls on screen to be named.
-    const dialog = await openPrompt(harness, 'Editar pregunta');
+    await openPrompt(harness, 'Editar pregunta');
 
     // The picker is a labelled field holding a trigger, so the label and the
     // words on the button are two separate translations and both are asserted.
@@ -130,10 +133,16 @@ describe('the geospatial sections, read in Spanish', () => {
         attributeField('Atributo de ubicación', screen.getByRole('dialog')),
       ).getByRole('button', { name: 'Cambiar atributo' }),
     ).toBeInTheDocument();
+    // Inventing one is offered from inside that window, on the term the
+    // researcher typed, and in their language: the sections no longer carry a
+    // create control of their own.
     expect(
-      dialog.getByRole('button', {
-        name: 'Crear un nuevo atributo de ubicación',
-      }),
-    ).toBeInTheDocument();
+      await createRowIn(
+        harness.user,
+        attributeField('Atributo de ubicación', screen.getByRole('dialog')),
+        'Busca o crea un atributo',
+        (term) => `Crear un atributo nuevo llamado “${term}”.`,
+      ),
+    ).not.toBeNull();
   });
 });

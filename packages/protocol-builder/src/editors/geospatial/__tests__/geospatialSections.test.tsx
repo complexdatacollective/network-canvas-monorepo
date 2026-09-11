@@ -6,6 +6,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import {
   attributeField,
   chooseAttributeById,
+  inventAttribute,
   offeredAttributes,
 } from '../../../testing/attributePicker.ts';
 import {
@@ -381,14 +382,15 @@ describe('the places a geospatial stage asks about', () => {
     await harness.opened();
 
     const dialog = await openPrompt(harness, 'Create new prompt');
-    // No trigger at all rather than a window offering nothing: with nothing to
-    // choose and no way to create one from inside it, the field says so where
-    // the control would have been.
+    // Nothing to choose — and the field says so where the chosen attribute
+    // would be. The trigger stays, because inventing one is still offered from
+    // inside the window, which is the answer to having nothing free.
     expect(
-      within(attributeField('Location attribute')).queryByRole('button', {
-        name: /^(Select|Change) attribute$/,
-      }),
-    ).toBeNull();
+      await offeredAttributes(
+        harness.user,
+        attributeField('Location attribute'),
+      ),
+    ).toEqual([]);
     expect(
       dialog.getByText(
         'No location attribute is free for this prompt. Create one to record where the participant chooses.',
@@ -507,10 +509,11 @@ describe('the places a geospatial stage asks about', () => {
 
     const after = await openPrompt(harness, 'Create new prompt');
     expect(
-      within(attributeField('Location attribute')).queryByRole('button', {
-        name: /^(Select|Change) attribute$/,
-      }),
-    ).toBeNull();
+      await offeredAttributes(
+        harness.user,
+        attributeField('Location attribute'),
+      ),
+    ).toEqual([]);
     expect(
       after.getByText(
         'No location attribute is free for this prompt. Create one to record where the participant chooses.',
@@ -532,15 +535,10 @@ describe('the places a geospatial stage asks about', () => {
       dialog.getByRole('textbox', { name: 'Prompt text' }),
       'Where were you born?',
     );
-    await harness.user.click(
-      dialog.getByRole('button', { name: 'Create a new location attribute' }),
-    );
-    const nameBox = await screen.findByRole('textbox', {
-      name: 'Attribute name',
-    });
-    await harness.user.type(nameBox, 'born');
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create attribute' }),
+    await inventAttribute(
+      harness.user,
+      attributeField('Location attribute'),
+      'born',
     );
 
     await waitFor(() => {

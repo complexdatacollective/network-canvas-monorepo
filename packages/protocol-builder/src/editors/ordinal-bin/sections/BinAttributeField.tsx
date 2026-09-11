@@ -38,7 +38,7 @@ import { variablesForSubject } from '../../../protocol-context.ts';
 import AttributeCodebookControls, {
   useRowValue,
 } from '../../../sections/AttributeCodebookControls.tsx';
-import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
+import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { binMessages } from './binMessages.ts';
 
@@ -193,6 +193,12 @@ export default function BinAttributeField({
   // so a reader that looked past it to the stage would never see the
   // researcher choose anything.
   const picked = asString(useRowValue(slot.name)) ?? committed;
+  const { createProps, editor } = useCreateAttributeForSlot({
+    subject,
+    variableType: slot.variableType,
+    title: createLabel,
+    onCreated: (variableId) => setFieldValue(slot.name, variableId),
+  });
 
   const allVariables = useMemo(
     () =>
@@ -259,20 +265,15 @@ export default function BinAttributeField({
         emptyMessage={emptyMessage}
         initialValue={committed}
         required={requiredMessage}
+        {...createProps}
       />
       {/*
-        Creating one opens the codebook's own attribute editor rather than
-        asking for a name: an attribute a participant is sorted BY is its list
-        of values, and the schema refuses one with fewer than two — so a name
-        box would send the researcher to the codebook and back to finish what
-        they had just started.
+        The create row escalates to the codebook's own attribute editor for a
+        kind of answer a name cannot finish: an attribute a participant is
+        sorted BY is its list of values, and the schema refuses one with fewer
+        than two.
       */}
-      <CreateVariableButton
-        subject={subject ?? null}
-        variableType={slot.variableType}
-        label={createLabel}
-        onCreated={(variableId) => setFieldValue(slot.name, variableId)}
-      />
+      {editor}
       {locked === undefined ? (
         <AttributeCodebookControls
           subject={subject}

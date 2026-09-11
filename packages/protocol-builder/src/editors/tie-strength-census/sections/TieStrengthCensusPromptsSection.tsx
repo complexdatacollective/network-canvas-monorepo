@@ -31,7 +31,7 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
-import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
+import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
@@ -143,7 +143,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleCreateLabel',
     defaultMessage: 'Create a new attribute',
     description:
-      'Button that opens the codebook editor for inventing the attribute whose ordered values become the points of the scale. Also the title of the dialog it opens.',
+      'Names the act of inventing the attribute whose ordered values become the points of the scale, and titles the codebook editor the attribute picker’s create row opens for it.',
   },
   scaleGoneRefusal: {
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleGoneRefusal',
@@ -271,6 +271,12 @@ function ScaleField({
     SCALE_FIELD,
   ] as const);
   const subject = useMemo(() => edgeSubjectOf(createEdge), [createEdge]);
+  const { createProps, editor } = useCreateAttributeForSlot({
+    subject,
+    variableType: SCALE_TYPE,
+    title: intl.formatMessage(messages.scaleCreateLabel),
+    onCreated: (variableId) => setFieldValue(SCALE_FIELD, variableId),
+  });
   const picked = asString(edgeVariable) ?? committed;
 
   const allVariables = useMemo(
@@ -327,18 +333,14 @@ function ScaleField({
         emptyMessage={intl.formatMessage(messages.scaleEmpty)}
         initialValue={committed}
         required={intl.formatMessage(messages.scaleRequired)}
+        {...createProps}
       />
       {/*
-        The codebook's own attribute editor rather than a name box: an ordinal
-        attribute IS its list of ordered values, and the schema refuses one
-        with fewer than two.
+        The create row escalates to the codebook's own attribute editor rather
+        than creating from the typed name: an ordinal attribute IS its list of
+        ordered values, and the schema refuses one with fewer than two.
       */}
-      <CreateVariableButton
-        subject={subject}
-        variableType={SCALE_TYPE}
-        label={intl.formatMessage(messages.scaleCreateLabel)}
-        onCreated={(variableId) => setFieldValue(SCALE_FIELD, variableId)}
-      />
+      {editor}
       {valueCount > SCALE_LIMIT && (
         <Alert variant="warning" className="mt-6">
           <AlertTitle>

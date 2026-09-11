@@ -7,6 +7,7 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 import {
   attributeField,
   chooseAttributeById,
+  inventAttribute,
   offeredAttributes,
   openAttributePicker,
 } from '../../../../testing/attributePicker.ts';
@@ -314,13 +315,10 @@ describe('creating a scale from inside a tie-strength prompt', () => {
     await findScaleField();
     expect(screen.queryAllByRole('dialog')).toHaveLength(1);
 
-    await harness.user.click(
-      screen.getByRole('button', { name: 'Create a new attribute' }),
-    );
-    await harness.user.type(
+    await inventAttribute(harness.user, await findScaleField(), 'trust');
+    expect(
       await screen.findByRole('textbox', { name: 'Attribute name' }),
-      'trust',
-    );
+    ).toHaveValue('trust');
     await addOption(harness, 1, 'Some', 1);
     await addOption(harness, 2, 'Lots', 2);
     await harness.user.click(
