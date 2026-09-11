@@ -322,11 +322,9 @@ const StageEditorPage = () => {
               Where the section list goes. The editor publishes its sections on
               the action slot, which is called inside the form — so the chrome
               rendered there portals the list up into this column, and the list
-              reads a form it is not rendered inside. `min-w-0`: a grid item's
-              own minimum is its content, and the strip of sections below the
-              two-column breakpoint is as wide as the whole list.
+              reads a form it is not rendered inside.
             */}
-            <div ref={setOutlineHost} className="min-w-0" />
+            <div ref={setOutlineHost} />
             {/*
               No `EnclosingHeadingLevel` around the editor: the heading above it
               is this page's `h1`, which is the top of the ladder and what the
