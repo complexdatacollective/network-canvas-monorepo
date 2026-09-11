@@ -65,6 +65,20 @@ cmd_bootstrap() {
   fi
 
   limactl shell "$NAME" bash -s -- "$remote" "$REPO_ROOT" "$name" "$email" < "$HERE/bootstrap.sh"
+  sync_terminfo
+}
+
+# Terminals such as Ghostty ship a terminfo entry the guest's ncurses does not
+# have; without it ssh sessions get "missing or unsuitable terminal". The
+# compiled entry lands in the persistent guest home, so this is a one-off.
+sync_terminfo() {
+  local term="${TERM:-}"
+  [ -n "$term" ] || return 0
+  if ! limactl shell "$NAME" infocmp "$term" >/dev/null 2>&1; then
+    if infocmp -x "$term" 2>/dev/null | limactl shell "$NAME" tic -x - 2>/dev/null; then
+      printf 'Installed the %s terminfo entry in the guest.\n' "$term"
+    fi
+  fi
 }
 
 cmd_sync_claude() {

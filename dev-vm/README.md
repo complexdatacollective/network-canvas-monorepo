@@ -190,6 +190,10 @@ their upstream apt repositories at provisioning time.
   Fix the script, then `dev-vm/vm rebuild`.
 - **`docker: permission denied`** right after the first boot: the group
   membership applies to new logins; reconnect.
+- **`missing or unsuitable terminal: xterm-ghostty`** (or another terminal
+  the guest's ncurses does not know): `dev-vm/vm bootstrap` copies the host's
+  `$TERM` entry in; by hand it is
+  `infocmp -x "$TERM" | ssh lima-nc 'tic -x -'`.
 - **Ports not forwarded**: Lima forwards ports bound on `127.0.0.1` or
   `0.0.0.0` inside the guest; a server bound only to the guest's LAN IP is not
   forwarded.
