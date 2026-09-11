@@ -23,6 +23,12 @@ export type MapCenterFieldProps = CreateFormFieldProps<
     zoomFieldName: string;
     /** The stored key the map is drawn with. Never the key itself. */
     tokenAssetId?: string;
+    /**
+     * The basemap the stage is configured to show. Passed through to the
+     * preview so the view is framed on what the participant will see rather
+     * than on whatever style the host credentialled for the key.
+     */
+    style?: string;
   }
 >;
 
@@ -103,6 +109,7 @@ export default function MapCenterField({
   onFocus,
   zoomFieldName,
   tokenAssetId,
+  style,
   disabled = false,
   readOnly = false,
   'aria-describedby': ariaDescribedBy,
@@ -221,6 +228,7 @@ export default function MapCenterField({
       {mapOpen && (
         <MapPreviewDialog
           tokenAssetId={tokenAssetId}
+          style={style}
           center={value}
           zoom={resolveZoom(
             storeApi.getState().getValue(zoomFieldName) as unknown,

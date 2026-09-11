@@ -55,6 +55,11 @@ const zoomValidation = {
 export default function MapAppearanceSection() {
   const intl = useAppIntl();
   const tokenAssetId = useStageValue(TOKEN_FIELD);
+  // The basemap chosen in the section above, read live: the starting view is
+  // framed on the map the participant will actually be looking at, so the
+  // preview has to be drawn on the style the researcher has just picked rather
+  // than on whichever one the host credentialled for the key.
+  const chosenStyle = useStageValue(STYLE_FIELD);
 
   // Held for as long as the reader's language does not change: a control's
   // options are part of what it registers with, and a fresh array every render
@@ -126,6 +131,7 @@ export default function MapAppearanceSection() {
           tokenAssetId={
             typeof tokenAssetId === 'string' ? tokenAssetId : undefined
           }
+          style={typeof chosenStyle === 'string' ? chosenStyle : undefined}
           label={intl.formatMessage(geospatialMessages.centerLabel)}
           hint={intl.formatMessage(geospatialMessages.centerHint)}
           required={REQUIRED}

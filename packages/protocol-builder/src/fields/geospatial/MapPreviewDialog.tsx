@@ -24,6 +24,12 @@ import {
 export type MapPreviewDialogProps = Readonly<{
   /** The stored key this map is drawn with. The VALUE never comes here. */
   tokenAssetId: string | undefined;
+  /**
+   * The basemap the STAGE is configured to show, which is what the framing is
+   * being done against. Absent while the researcher has chosen none, and the
+   * preview then stays on whatever the host resolved.
+   */
+  style: string | undefined;
   center: unknown;
   zoom: unknown;
   onSave(center: MapCenter, zoom: number): void;
@@ -45,9 +51,23 @@ type MapStatus = 'loading' | 'ready' | 'error';
  * here and sets the same two numbers by hand in the section behind this
  * dialog, which is why those boxes are the control and this is the
  * convenience.
+ *
+ * ## What a host has to do for a map to appear here at all
+ *
+ * `resolvePreview` has to answer for an `apikey` resource with a style URL the
+ * host has credentialled itself — a tile-serving endpoint carrying the stored
+ * key, or a signed style URL. Every host today answers `unsupported-kind` for
+ * a secret (`testing/host/resourceStore.ts`, and Architect's own
+ * `resourceBridge.ts`), so the researcher is told the map is unavailable and
+ * sets the starting view by hand. The style the researcher chose is passed in
+ * either way and applied as soon as a map exists, so the framing is done on
+ * the basemap the participant will see rather than on whatever the host
+ * happened to credential — which is what Architect does by building its map
+ * with the chosen style and the key it holds.
  */
 export default function MapPreviewDialog({
   tokenAssetId,
+  style,
   center,
   zoom,
   onSave,
@@ -63,6 +83,7 @@ export default function MapPreviewDialog({
     resolveCenter(center),
   );
   const [viewZoom, setViewZoom] = useState(() => resolveZoom(zoom));
+  const chosenStyle = style === '' ? undefined : style;
 
   useEffect(() => {
     if (tokenAssetId === undefined || tokenAssetId === '') {
@@ -98,6 +119,13 @@ export default function MapPreviewDialog({
       map.on('load', () => {
         if (disposed) return;
         setStatus((current) => (current === 'error' ? current : 'ready'));
+        // The host's URL is what CREDENTIALS the map; the researcher's choice
+        // is what it should be showing. Swapped once the credentialled style
+        // has loaded rather than built from, because the chosen style is a
+        // bare `mapbox://` value with no key of its own — and swapped rather
+        // than left alone, or the starting view would be framed on a basemap
+        // the participant never sees.
+        if (chosenStyle !== undefined) map?.setStyle(chosenStyle);
       });
       map.on('error', () => {
         if (disposed) return;
@@ -130,7 +158,7 @@ export default function MapPreviewDialog({
     // map moves would rebuild the map under the researcher's hand on every
     // pan.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [container, styleUrl]);
+  }, [chosenStyle, container, styleUrl]);
 
   const missingKey = tokenAssetId === undefined || tokenAssetId === '';
   const moved = hasMapViewChanged(viewCenter, viewZoom, center, zoom);

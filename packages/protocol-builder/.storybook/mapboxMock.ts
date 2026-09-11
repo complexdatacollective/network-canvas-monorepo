@@ -81,6 +81,11 @@ export class Map {
     return this;
   }
 
+  /** The style swap the preview makes once the host's map has loaded. */
+  setStyle(): this {
+    return this;
+  }
+
   getCenter(): { lng: number; lat: number } {
     return this.center;
   }

@@ -13,6 +13,7 @@ import {
   mapsRemoved,
   resetMapboxMock,
   setMapView,
+  stylesApplied,
 } from '../../../testing/mapboxMock.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
@@ -137,6 +138,48 @@ describe('setting the starting view on a map', () => {
     });
     // Zoom controls, so the view can be set without a scroll wheel.
     expect(mapControlsAdded()).toBe(1);
+  });
+
+  /**
+   * And then shows the basemap the STAGE is set to.
+   *
+   * The framing is the whole purpose of this dialog, and a view framed on a
+   * satellite basemap is a different decision from the same view framed on a
+   * street map: labels, landmarks and coastlines are what a researcher aims
+   * at. The host's URL is what credentials the map, and the researcher's own
+   * choice is what it has to be showing — so the chosen style is swapped in as
+   * soon as the credentialled one has loaded, which is what Architect achieves
+   * by building its map with the chosen style and the key it holds.
+   */
+  it('shows the basemap the researcher chose, once the host map has loaded', async () => {
+    servedStyle = HOSTED_STYLE;
+    const harness = openEditor({
+      style: 'mapbox://styles/mapbox/satellite-v9',
+    });
+
+    await openMap(harness);
+    await waitFor(() => expect(mapsBuilt()).toHaveLength(1));
+    expect(stylesApplied()).toEqual([]);
+
+    act(() => emitMapEvent('load'));
+
+    expect(stylesApplied()).toEqual(['mapbox://styles/mapbox/satellite-v9']);
+  });
+
+  /**
+   * A stage with no basemap chosen is left on whatever the host resolved.
+   * Swapping in nothing would leave the researcher framing a view on a map
+   * that had gone blank.
+   */
+  it('leaves the host map alone when the stage names no basemap', async () => {
+    servedStyle = HOSTED_STYLE;
+    const harness = openEditor({ style: undefined });
+
+    await openMap(harness);
+    await waitFor(() => expect(mapsBuilt()).toHaveLength(1));
+    act(() => emitMapEvent('load'));
+
+    expect(stylesApplied()).toEqual([]);
   });
 
   /**
