@@ -106,7 +106,7 @@ after the fact is marked in place.
 | `multiSelect`               | `form/arrayFields/MultiSelect.tsx`                                                                                                                                                                                                                                    | i18n-2b   |
 | `option`                    | `form/arrayFields/Option.tsx`, `form/arrayFields/Options.tsx`                                                                                                                                                                                                         | i18n-2b   |
 | `entitySelect`              | `fields/EntityTypePickerField.tsx`                                                                                                                                                                                                                                    | i18n-2b   |
-| `variablePicker`            | `fields/VariablePickerField.tsx`                                                                                                                                                                                                                                      | i18n-2b   |
+| `variablePicker`            | `fields/VariablePickerField.tsx`, `fields/VariableSpotlight.tsx` (added by the parity loop)                                                                                                                                                                           | i18n-2b   |
 | `skipLogicDestination`      | `fields/stageDestination.ts`                                                                                                                                                                                                                                          | i18n-2b   |
 | `networkFilter`             | `sections/network-filter/NetworkFilterSection.tsx`                                                                                                                                                                                                                    | i18n-2b   |
 | `skipLogic`                 | `sections/skip-logic/SkipLogicSection.tsx`                                                                                                                                                                                                                            | i18n-2b   |
@@ -375,13 +375,12 @@ for something else or reopens a decision that has been made:
   the hint, the empty state — belongs to the section that mounts it
   (`subjectSection`) or to the picker itself (`entitySelect`). The name stays
   reserved rather than being reused for something else.
-- **`variablePicker`'s five `create*` ids are not on any screen yet.**
-  `fields/VariablePickerField.tsx` pairs a picker over what exists with a
-  name box that creates an attribute under that name and selects it. Nothing in
-  the product mounts it: `FormFieldsSection` answers the same question through
-  the `#create-new-attribute` sentinel in its own picker, and the control is
-  there for the `variablePickerComponent` seam a family PR will fill. Said here
-  so the native-Spanish review pass is not asked to check copy nobody can see.
+- **`variablePicker`'s `create*` ids are on screen at two call sites.** Quick
+  add and the attribute row pass `onCreateOption`, so their pickers offer the
+  create row inside `fields/VariableSpotlight.tsx`. Every other section's
+  picker only chooses; `FormFieldsSection` answers the same question through
+  the `#create-new-attribute` sentinel in its own option list until the
+  sibling create buttons are folded into the picker.
 - **`attributeCodebookControls`** owns the words on its own buttons, and the
   one sentence its dialogs carry that the editor inside them cannot say.
   Almost everything a dialog it opens says is the codebook editor's
