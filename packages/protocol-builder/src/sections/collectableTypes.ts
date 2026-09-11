@@ -125,6 +125,20 @@ const CONTROL_LABELS = defineMessages({
 } satisfies Record<keyof typeof ComponentTypes, MessageDescriptor>);
 
 /**
+ * What one input control is called, for a surface naming a control the
+ * researcher has already chosen rather than offering the list.
+ *
+ * `undefined` for a `component` the schema does not know, which is what a
+ * protocol authored against a later schema arrives holding.
+ */
+export const controlLabel = (
+  component: string | undefined,
+): MessageDescriptor | undefined =>
+  component !== undefined && component in CONTROL_LABELS
+    ? CONTROL_LABELS[component as keyof typeof CONTROL_LABELS]
+    : undefined;
+
+/**
  * The controls a given kind of answer may be collected with, each with the
  * descriptor it is named by.
  *

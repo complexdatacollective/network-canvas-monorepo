@@ -120,12 +120,6 @@ export const composerMessages = defineMessages({
     description:
       'Description of the node-attributes section of a network composer.',
   },
-  nodeFormLabel: {
-    id: 'protocolBuilder.networkCanvas.nodeFormFieldsLabel',
-    defaultMessage: 'Form fields',
-    description:
-      'Label of the list holding the questions asked about each node of a network composer.',
-  },
   nodeFormHint: {
     id: 'protocolBuilder.networkCanvas.nodeFormFieldsHint',
     defaultMessage:

@@ -76,14 +76,17 @@ export async function openValidationSection(dialog: Locator): Promise<Locator> {
  *
  * `VariableEditor`'s own rows, not the array field forms use elsewhere: each
  * row is a pair of plain inputs named "Option {n} label" / "Option {n} value"
- * (1-based), and "Add option" appends an empty one. Nothing is committed until
+ * (1-based), and "Create new option" appends an empty one. Nothing is committed until
  * the editor's own submit, so the rows are filled in one pass.
  */
 async function fillCodebookOptions(
   editor: Locator,
   rows: readonly OptionRow[],
 ): Promise<void> {
-  const add = editor.getByRole('button', { name: 'Add option', exact: true });
+  const add = editor.getByRole('button', {
+    name: 'Create new option',
+    exact: true,
+  });
   for (const [index, row] of rows.entries()) {
     await add.click();
     const position = index + 1;
@@ -228,7 +231,7 @@ export async function addConfiguredFormField(
   if (spec.required) {
     const rules = await openValidationSection(editDialog);
     await rules
-      .getByRole('checkbox', { name: 'Required', exact: true })
+      .getByRole('checkbox', { name: 'Required answer', exact: true })
       .check();
     await rules
       .getByRole('button', { name: 'Save validation', exact: true })

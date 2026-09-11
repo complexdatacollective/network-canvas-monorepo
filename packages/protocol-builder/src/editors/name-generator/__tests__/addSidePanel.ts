@@ -35,7 +35,7 @@ export async function addInterviewNetworkPanel(
 ): Promise<void> {
   await harness.user.click(screen.getByRole('switch', { name: 'Side panels' }));
   await harness.user.click(
-    await screen.findByRole('button', { name: 'Create new panel' }),
+    await screen.findByRole('button', { name: 'Add new panel' }),
   );
   const dialog = within(await screen.findByRole('dialog'));
   await writeInto(

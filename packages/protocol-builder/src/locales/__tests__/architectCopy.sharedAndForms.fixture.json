@@ -1,0 +1,632 @@
+{
+  "protocolBuilder.subjectSection.nodeTitle": {
+    "en": "Node setup",
+    "es": "Configuración de nodos",
+    "from": "74a07e626 architect.sections.nodeType.nodeSetup"
+  },
+  "protocolBuilder.subjectSection.edgeTitle": {
+    "en": "Edge setup",
+    "es": "Configuración de vínculos",
+    "from": "74a07e626 architect.sections.filteredEdgeType.edgeSetup"
+  },
+  "protocolBuilder.subjectSection.nodeDescription": {
+    "en": "Choose the node type this stage creates.",
+    "es": "Elige el tipo de nodo que crea esta etapa.",
+    "from": "74a07e626 architect.sections.nodeType.chooseTheNodeTypeThisStage, minus the filter clause (§3 is its own section here)"
+  },
+  "protocolBuilder.subjectSection.edgeDescription": {
+    "en": "Choose the edge type this stage uses.",
+    "es": "Elige el tipo de vínculo que utiliza esta etapa.",
+    "from": "74a07e626 architect.sections.filteredEdgeType.chooseTheEdgeTypeThisStage, minus the filter clause (§3 is its own section here)"
+  },
+  "protocolBuilder.subjectSection.nodeFieldHint": {
+    "en": "Select the type of node that this stage will create.",
+    "es": "Selecciona el tipo de nodo que creará esta etapa.",
+    "from": "74a07e626 architect.sections.nodeType.selectTheTypeOfNodeThat"
+  },
+  "protocolBuilder.subjectSection.nodeCreateLabel": {
+    "en": "Create new node type",
+    "es": "Crear nuevo tipo de nodo",
+    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.createNewType (entityType: node)"
+  },
+  "protocolBuilder.subjectSection.edgeCreateLabel": {
+    "en": "Create new edge type",
+    "es": "Crear nuevo tipo de vínculo",
+    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.createNewType (entityType: edge)"
+  },
+  "protocolBuilder.subjectSection.nodeChangeTitle": {
+    "en": "Change node type?",
+    "es": "¿Cambiar el tipo de nodo?",
+    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.changeType (entityType: node)"
+  },
+  "protocolBuilder.subjectSection.edgeChangeTitle": {
+    "en": "Change edge type?",
+    "es": "¿Cambiar el tipo de vínculo?",
+    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.changeType (entityType: edge)"
+  },
+  "protocolBuilder.networkFilter.description": {
+    "en": "Create rules that filter which nodes or edges are displayed on this stage.",
+    "es": "Crea reglas que filtren los nodos o vínculos que se muestran en esta etapa.",
+    "from": "josh 2026-09-11 (§3.7); es adapted from 74a07e626 architect.sections.filter.createRulesThatLimitWhichNodes"
+  },
+  "protocolBuilder.networkFilter.rulesHint": {
+    "en": "Create one or more rules to filter what is shown on this stage.",
+    "es": "Crea una o varias reglas para filtrar lo que se muestra en esta etapa.",
+    "from": "74a07e626 architect.sections.filter.createOneOrMoreRulesTo"
+  },
+  "protocolBuilder.networkFilter.hiddenEdgesDescription": {
+    "en": "This stage has edge creation or display values that will not be shown based on the current filter rules.",
+    "es": "Esta etapa tiene valores de creación o visualización de vínculos que no se mostrarán con las reglas de filtrado actuales.",
+    "from": "74a07e626 architect.sections.filter.thisStageHasEdgeCreationOr"
+  },
+  "protocolBuilder.skipLogic.description": {
+    "en": "Determine whether this stage is shown and where the interview continues when it is skipped.",
+    "es": "Determina si se muestra esta etapa y dónde continúa la entrevista cuando se omite.",
+    "from": "74a07e626 architect.sections.skipLogic.determineWhetherThisStageIsShown"
+  },
+  "protocolBuilder.introduction.description": {
+    "en": "Introduce the task before participants complete its forms.",
+    "es": "Presenta la tarea antes de que los participantes completen sus formularios.",
+    "from": "74a07e626 architect.sections.introductionPanel.introduceTheTaskBeforeParticipantsComplete"
+  },
+  "protocolBuilder.introduction.headingLabel": {
+    "en": "Title",
+    "es": "Título",
+    "from": "74a07e626 architect.sections.introductionPanel.title"
+  },
+  "protocolBuilder.pageContent.pageDescription": {
+    "en": "Set the page heading and build the sequence of text and media blocks participants will see.",
+    "es": "Define el encabezado de la página y construye la secuencia de bloques de texto y medios que verán los participantes.",
+    "from": "74a07e626 architect.sections.contentGrid.contentGrid.setThePageHeadingAndBuild"
+  },
+  "protocolBuilder.pageContent.headingHint": {
+    "en": "Use the page heading to show a large title element on your information stage.",
+    "es": "Usa el encabezado de página para mostrar un título grande en la etapa de información.",
+    "from": "74a07e626 architect.sections.contentGrid.contentGrid.useThePageHeadingToShow"
+  },
+  "protocolBuilder.pageContent.headingPlaceholder": {
+    "en": "Enter your title here...",
+    "es": "Introduce el título aquí...",
+    "from": "74a07e626 architect.sections.contentGrid.contentGrid.enterYourTitleHere"
+  },
+  "protocolBuilder.pageContent.pageItemsLabel": {
+    "en": "Items",
+    "es": "Elementos",
+    "from": "74a07e626 architect.sections.contentGrid.contentGrid.items"
+  },
+  "protocolBuilder.pageContent.pageItemsHint": {
+    "en": "Add text, image, video, and audio blocks below, and drag them to reorder. Participants can scroll through the screen, so add as many blocks as you need. Image and video blocks can be given a display size.",
+    "es": "Añade bloques de texto, imagen, video y audio abajo, y arrástralos para cambiar su orden. Los participantes pueden desplazarse por la pantalla, así que añade tantos bloques como necesites. Los bloques de imagen y video pueden tener un tamaño de visualización definido.",
+    "from": "74a07e626 architect.sections.contentGrid.contentGrid.addTextImageVideoAndAudio"
+  },
+  "protocolBuilder.pageContent.pageAddLabel": {
+    "en": "Create new content item",
+    "es": "Crear nuevo elemento de contenido",
+    "from": "74a07e626 architect.additional.sections.contentGrid.contentGrid.createNewContentItem"
+  },
+  "protocolBuilder.pageContent.pageItemNoun": {
+    "en": "item",
+    "es": "elemento",
+    "from": "74a07e626 architect.arrayItem.item"
+  },
+  "protocolBuilder.pageContent.pageEmptyState": {
+    "en": "No items have been created yet. Click \"Create new content item\" to add text or media.",
+    "es": "Todavía no se han creado elementos. Pulsa «Crear nuevo elemento de contenido» para añadir texto o medios.",
+    "from": "74a07e626 architect.additional.sections.contentGrid.contentGrid.noItemsHaveBeenCreatedYet"
+  },
+  "protocolBuilder.pageContent.pageAddTitle": {
+    "en": "Create item",
+    "es": "Crear elemento",
+    "from": "exception 2 — 74a07e626 architect.remaining.sections.contentGrid.contentGrid.editItem (\"Edit Item\") is one title for both; kept as a pair in Architect’s word, sentence case"
+  },
+  "protocolBuilder.pageContent.pageEditTitle": {
+    "en": "Edit item",
+    "es": "Editar elemento",
+    "from": "exception 2 — 74a07e626 architect.remaining.sections.contentGrid.contentGrid.editItem, sentence case"
+  },
+  "protocolBuilder.contentBlock.sectionTitle": {
+    "en": "Item details",
+    "es": "Detalles del elemento",
+    "from": "74a07e626 architect.sections.contentGrid.itemEditor.itemDetails"
+  },
+  "protocolBuilder.contentBlock.sectionDescription": {
+    "en": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
+    "es": "Elige el tipo de contenido, proporciona lo que verán los participantes y ajusta su presentación cuando sea posible.",
+    "from": "74a07e626 architect.sections.contentGrid.itemEditor.chooseTheContentTypeProvideWhat"
+  },
+  "protocolBuilder.contentBlock.kindHint": {
+    "en": "Choose the type of content this item will show.",
+    "es": "Elige el tipo de contenido que mostrará este elemento.",
+    "from": "74a07e626 architect.sections.contentGrid.itemEditor.chooseTheTypeOfContentThis"
+  },
+  "protocolBuilder.contentBlock.contentHint": {
+    "en": "Provide the {slotType, select, text {text} image {image} audio {audio} other {video}} content for this item. This is what participants will see when they reach this item in the study.",
+    "es": "Proporciona el contenido de {slotType, select, text {texto} image {imagen} audio {audio} other {video}} para este elemento. Esto es lo que verán los participantes cuando lleguen a este elemento del estudio.",
+    "from": "74a07e626 architect.sections.contentGrid.itemEditor.provideTheContentForThisItem"
+  },
+  "protocolBuilder.contentBlock.sizeHint": {
+    "en": "Optionally constrain the height of this item. Full size lets it display at its natural height.",
+    "es": "Puedes limitar la altura de este elemento. El tamaño completo permite mostrarlo con su altura natural.",
+    "from": "74a07e626 architect.sections.contentGrid.itemEditor.optionallyConstrainTheHeightOfThis"
+  },
+  "protocolBuilder.contentBlock.missingResource": {
+    "en": "This item’s resource is no longer in this protocol. Choose a content type above to replace it.",
+    "es": "El recurso de este elemento ya no está en el protocolo. Elige un tipo de contenido arriba para sustituirlo.",
+    "from": "74a07e626 architect.notice.missingResourceNotice"
+  },
+  "protocolBuilder.contentBlock.unpresentableResource": {
+    "en": "This item’s resource is not an image, audio or video file, so this item cannot show it. Choose a content type above to replace it.",
+    "es": "El recurso de este elemento no es un archivo de imagen, audio o vídeo, por lo que el elemento no puede mostrarlo. Elige un tipo de contenido arriba para sustituirlo.",
+    "from": "74a07e626 architect.notice.unpresentableResourceNotice"
+  },
+  "protocolBuilder.promptsSection.title": {
+    "en": "Prompt collection",
+    "es": "Conjunto de preguntas",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.nameGeneratorPrompts.promptCollection"
+  },
+  "protocolBuilder.promptsSection.description": {
+    "en": "Create and reorder the prompts shown in this stage.",
+    "es": "Crea y ordena las preguntas que se muestran en esta etapa.",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.nameGeneratorPrompts.createAndReorderThePromptsShown"
+  },
+  "protocolBuilder.promptsSection.fieldHint": {
+    "en": "Add at least one prompt and drag prompts to reorder them.",
+    "es": "Añade al menos una pregunta y arrastra las preguntas para cambiar su orden.",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.nameGeneratorPrompts.addAtLeastOnePromptAnd"
+  },
+  "protocolBuilder.promptsSection.emptyState": {
+    "en": "No items have been created yet.",
+    "es": "Todavía no se ha creado ningún elemento.",
+    "from": "74a07e626 architect.defaults.components.Form.arrayFields.DialogArrayField.emptyStateMessage"
+  },
+  "protocolBuilder.nameGeneratorPrompts.promptGroupDescription": {
+    "en": "Write the instruction or question participants see for this task.",
+    "es": "Escribe la instrucción o pregunta que ven los participantes para esta tarea.",
+    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants"
+  },
+  "protocolBuilder.nameGeneratorPrompts.textPlaceholder": {
+    "en": "Enter your prompt...",
+    "es": "Introduce la pregunta...",
+    "from": "74a07e626 architect.sections.promptText.enterYourPrompt"
+  },
+  "protocolBuilder.nameGeneratorPrompts.attributesGroupDescription": {
+    "en": "Assign fixed attribute values to nodes created from this prompt.",
+    "es": "Asigna valores fijos de atributos a los nodos creados desde esta pregunta.",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.promptFields.assignFixedAttributeValuesToNodes"
+  },
+  "protocolBuilder.nameGeneratorPrompts.assignmentsHint": {
+    "en": "Use assigned values in skip logic or stage filtering rules.",
+    "es": "Usa los valores asignados en las reglas de lógica de salto o de filtrado de etapas.",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.promptFields.useAssignedValuesInSkipLogic"
+  },
+  "protocolBuilder.censusPrompts.binOrderTitle": {
+    "en": "Bin order",
+    "es": "Orden del contenedor",
+    "from": "74a07e626 architect.sections.binSortOrderSection.binOrder"
+  },
+  "protocolBuilder.censusPrompts.binOrderDescription": {
+    "en": "Set the order of nodes after they have been placed into a bin.",
+    "es": "Establece el orden de los nodos después de colocarlos en un contenedor.",
+    "from": "74a07e626 architect.defaults.components.sections.BinSortOrderSection.description"
+  },
+  "protocolBuilder.censusPrompts.binOrderLabel": {
+    "en": "Bin sort rules",
+    "es": "Reglas de orden del contenedor",
+    "from": "74a07e626 architect.sections.binSortOrderSection.binSortRules"
+  },
+  "protocolBuilder.censusPrompts.sortRulesDroppedHint": {
+    "en": "Add one or more rules to determine the order in which nodes are displayed in the bin after they have been placed. Use the asterisk property to sort by the order that nodes were placed.",
+    "es": "Añade una o varias reglas para determinar el orden de los nodos en el contenedor después de colocarlos. Usa la propiedad asterisco para ordenar por el momento en que se colocaron.",
+    "from": "74a07e626 architect.sections.binSortOrderSection.addOneOrMoreRulesTo"
+  },
+  "protocolBuilder.censusPrompts.binOrderAddLabel": {
+    "en": "Add new bin sort rule",
+    "es": "Añadir nueva regla de orden de contenedores",
+    "from": "74a07e626 architect.additional.sections.binSortOrderSection.addNewBinSortRule"
+  },
+  "protocolBuilder.censusPrompts.binOrderEmptyState": {
+    "en": "No sort rules have been created yet.",
+    "es": "Todavía no se han creado reglas de orden.",
+    "from": "74a07e626 architect.additional.sections.binSortOrderSection.noSortRulesHaveBeenCreated"
+  },
+  "protocolBuilder.censusPrompts.bucketOrderTitle": {
+    "en": "Bucket order",
+    "es": "Orden de la reserva",
+    "from": "74a07e626 architect.sections.bucketSortOrderSection.bucketOrder"
+  },
+  "protocolBuilder.censusPrompts.bucketOrderDescription": {
+    "en": "Set the order of nodes before they are placed.",
+    "es": "Establece el orden de los nodos antes de colocarlos.",
+    "from": "74a07e626 architect.defaults.components.sections.BucketSortOrderSection.description"
+  },
+  "protocolBuilder.censusPrompts.bucketOrderLabel": {
+    "en": "Bucket sort rules",
+    "es": "Reglas de orden de la reserva",
+    "from": "74a07e626 architect.sections.bucketSortOrderSection.bucketSortRules"
+  },
+  "protocolBuilder.censusPrompts.sortRulesAddedHint": {
+    "en": "Add one or more rules to determine the order in which nodes are displayed in the bucket before they are placed. Use the asterisk property to sort by the order that nodes were created.",
+    "es": "Añade una o varias reglas para determinar el orden de los nodos en la reserva antes de colocarlos. Usa la propiedad asterisco para ordenar por el momento en que se crearon.",
+    "from": "74a07e626 architect.sections.bucketSortOrderSection.addOneOrMoreRulesTo"
+  },
+  "protocolBuilder.censusPrompts.bucketOrderAddLabel": {
+    "en": "Add new bucket sort rule",
+    "es": "Añadir nueva regla de orden de categorías",
+    "from": "74a07e626 architect.additional.sections.bucketSortOrderSection.addNewBucketSortRule"
+  },
+  "protocolBuilder.censusPrompts.bucketOrderEmptyState": {
+    "en": "No sort rules have been created yet.",
+    "es": "Todavía no se han creado reglas de orden.",
+    "from": "74a07e626 architect.additional.sections.bucketSortOrderSection.noSortRulesHaveBeenCreated"
+  },
+  "protocolBuilder.sortOptions.title": {
+    "en": "Roster sorting",
+    "es": "Orden de la lista",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.rosterSorting"
+  },
+  "protocolBuilder.sortOptions.description": {
+    "en": "Configure the initial card order and the attributes participants can sort by.",
+    "es": "Configura el orden inicial de las tarjetas y los atributos por los que los participantes pueden ordenar.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.configureTheInitialCardOrderAnd"
+  },
+  "protocolBuilder.sortOptions.waitingDescription": {
+    "en": "Select a roster data source before configuring sorting.",
+    "es": "Selecciona una fuente de datos para la lista antes de configurar el orden.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.selectARosterDataSourceBefore"
+  },
+  "protocolBuilder.sortOptions.orderLabel": {
+    "en": "Sort rule",
+    "es": "Regla de orden",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.sortRule"
+  },
+  "protocolBuilder.sortOptions.orderHint": {
+    "en": "Set the roster's initial sort order. Without a rule, nodes keep their order from the data file.",
+    "es": "Establece el orden inicial de la lista. Sin una regla, los nodos conservan su orden en el archivo de datos.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.setTheRosterSInitialSortOrder"
+  },
+  "protocolBuilder.sortOptions.orderEmptyState": {
+    "en": "No sort rules have been created yet.",
+    "es": "Todavía no se han creado reglas de orden.",
+    "from": "74a07e626 architect.additional.sections.binSortOrderSection.noSortRulesHaveBeenCreated"
+  },
+  "protocolBuilder.sortOptions.sortableLabel": {
+    "en": "Sortable properties",
+    "es": "Propiedades ordenables",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.sortableProperties"
+  },
+  "protocolBuilder.sortOptions.sortableHint": {
+    "en": "Select attributes that help participants locate a specific roster member.",
+    "es": "Selecciona atributos que ayuden a los participantes a encontrar a un miembro específico de la lista.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.selectAttributesThatHelpParticipantsLocate"
+  },
+  "protocolBuilder.sortOptions.sortableAddLabel": {
+    "en": "Add new sortable property",
+    "es": "Añadir nueva propiedad ordenable",
+    "from": "74a07e626 architect.additional.sections.sortOptionsForExternalData.sortOptionsForExternalData.addNewSortableProperty"
+  },
+  "protocolBuilder.sortOptions.sortableEmptyState": {
+    "en": "No items available.",
+    "es": "No hay elementos disponibles.",
+    "from": "74a07e626 architect.defaults.components.Form.arrayFields.MultiSelect.emptyStateMessage"
+  },
+  "protocolBuilder.sortOptions.labelPlaceholder": {
+    "en": "Label",
+    "es": "Etiqueta",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.config.label"
+  },
+  "protocolBuilder.networkCanvas.backgroundDescription": {
+    "en": "Choose concentric circles or a custom image as the graphical background for this prompt.",
+    "es": "Elige círculos concéntricos o una imagen personalizada como fondo gráfico de esta pregunta.",
+    "from": "74a07e626 architect.sections.background.background.chooseConcentricCirclesOrACustom"
+  },
+  "protocolBuilder.networkCanvas.backgroundModeLabel": {
+    "en": "Choose a background type",
+    "es": "Elige un tipo de fondo",
+    "from": "74a07e626 architect.sections.background.background.chooseABackgroundType"
+  },
+  "protocolBuilder.networkCanvas.backgroundCirclesOptionLabel": {
+    "en": "Concentric Circles",
+    "es": "Círculos concéntricos",
+    "from": "74a07e626 architect.sections.background.background.config.concentricCircles"
+  },
+  "protocolBuilder.networkCanvas.backgroundCirclesOptionDescription": {
+    "en": "Use the conventional concentric circles sociogram background.",
+    "es": "Usar el fondo convencional de círculos concéntricos del sociograma.",
+    "from": "74a07e626 architect.sections.background.background.config.useTheConventionalConcentricCirclesSociogram"
+  },
+  "protocolBuilder.networkCanvas.backgroundImageOptionDescription": {
+    "en": "Use a custom image of your choosing as the background.",
+    "es": "Usar una imagen personalizada como fondo.",
+    "from": "74a07e626 architect.sections.background.background.config.useACustomImageOfYour"
+  },
+  "protocolBuilder.networkCanvas.backgroundSkewLabel": {
+    "en": "Skew circle sizes",
+    "es": "Modificar las proporciones de los círculos",
+    "from": "74a07e626 architect.sections.background.background.skewCircleSizes"
+  },
+  "protocolBuilder.networkCanvas.backgroundSkewHint": {
+    "en": "When enabled, the inner circles will be proportionally larger than the outer circles, which can help reduce overlap of nodes in the center of the canvas.",
+    "es": "Al activar esta opción, los círculos interiores serán proporcionalmente mayores que los exteriores, lo que puede reducir la superposición de nodos en el centro del lienzo.",
+    "from": "74a07e626 architect.sections.background.background.whenEnabledTheInnerCirclesWill"
+  },
+  "protocolBuilder.networkCanvas.backgroundImageHint": {
+    "en": "Choose an image to use as the background for this prompt. The image will be scaled to fit the canvas.",
+    "es": "Elige una imagen de fondo para esta pregunta. La imagen se ajustará al tamaño del lienzo.",
+    "from": "74a07e626 architect.sections.background.background.chooseAnImageToUseAs"
+  },
+  "protocolBuilder.networkCanvas.backgroundImageResponsiveHint": {
+    "en": "A responsive SVG can span the canvas in portrait and landscape while keeping labels readable. <link>Learn how to create a responsive SVG background</link>.",
+    "es": "Un SVG adaptable puede cubrir el lienzo en orientación vertical y horizontal manteniendo la legibilidad de las etiquetas. <link>Aprenda a crear un fondo SVG adaptable</link>.",
+    "from": "74a07e626 architect.additional.sections.background.background.aResponsiveSVGCanSpanThe with architect.sections.background.background.learnHowToCreateAResponsive inside its tag, as one whole sentence"
+  },
+  "protocolBuilder.nodePanels.description": {
+    "en": "Configure up to two side panels for this name generator.",
+    "es": "Configura hasta dos paneles laterales para este generador de nombres.",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanels.configureUpToTwoSidePanels"
+  },
+  "protocolBuilder.nodePanels.waitingDescription": {
+    "en": "Select a node type to configure side panels.",
+    "es": "Selecciona un tipo de nodo para configurar paneles laterales.",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanels.selectANodeTypeToConfigure"
+  },
+  "protocolBuilder.nodePanels.addLabel": {
+    "en": "Add new panel",
+    "es": "Añadir nuevo panel",
+    "from": "74a07e626 architect.additional.sections.nodePanels.nodePanels.addNewPanel"
+  },
+  "protocolBuilder.nodePanels.emptyState": {
+    "en": "No side panels configured.",
+    "es": "No hay paneles laterales configurados.",
+    "from": "74a07e626 architect.additional.sections.nodePanels.nodePanels.noSidePanelsConfigured"
+  },
+  "protocolBuilder.nodePanels.panelTitleHint": {
+    "en": "The panel title will be shown above the list of nodes within the panel.",
+    "es": "El título del panel se mostrará encima de la lista de nodos del panel.",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanel.thePanelTitleWillBeShown"
+  },
+  "protocolBuilder.nodePanels.sourceLabel": {
+    "en": "Data source for panel {position, number}",
+    "es": "Fuente de datos del panel {position, number}",
+    "from": "74a07e626 architect.nodePanel.dataSource"
+  },
+  "protocolBuilder.nodePanels.sourceHint": {
+    "en": "Choose where this panel’s data comes from: the in-progress interview session (“People you have already named”), or a network data file you have added to this protocol.",
+    "es": "Elige de dónde proceden los datos de este panel: de la sesión de entrevista en curso («Personas que ya has nombrado») o de un archivo de datos de red que hayas añadido a este protocolo.",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanel.chooseWhereThisPanelRsquoSDataComes"
+  },
+  "protocolBuilder.nodePanels.clearTitle": {
+    "en": "This will delete your panel configuration",
+    "es": "Esto eliminará la configuración de los paneles",
+    "from": "74a07e626 architect.utility.sections.nodePanels.nodePanels.thisWillDeleteYourPanelConfiguration"
+  },
+  "protocolBuilder.nodePanels.clearDescription": {
+    "en": "This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?",
+    "es": "Esto borrará la configuración de los paneles y eliminará las reglas de filtro que hayas creado. ¿Quieres continuar?",
+    "from": "74a07e626 architect.utility.sections.nodePanels.nodePanels.thisWillClearYourPanelConfiguration"
+  },
+  "protocolBuilder.quickAdd.title": {
+    "en": "Quick add configuration",
+    "es": "Configuración de adición rápida",
+    "from": "74a07e626 architect.sections.quickAdd.quickAdd.quickAddConfiguration"
+  },
+  "protocolBuilder.quickAdd.description": {
+    "en": "Choose the attribute populated when a participant creates a node with Quick Add.",
+    "es": "Elige el atributo que se completa cuando un participante crea un nodo con Adición rápida.",
+    "from": "74a07e626 architect.sections.quickAdd.quickAdd.chooseTheAttributePopulatedWhenA"
+  },
+  "protocolBuilder.quickAdd.waitingDescription": {
+    "en": "Select a node type above to configure this section.",
+    "es": "Selecciona un tipo de nodo arriba para configurar esta sección.",
+    "from": "74a07e626 architect.sections.selectType with entity: node — quick add belongs to a node generator, so the tag never renders its edge branch here"
+  },
+  "protocolBuilder.quickAdd.fieldLabel": {
+    "en": "Select an attribute",
+    "es": "Selecciona un atributo",
+    "from": "74a07e626 architect.sections.quickAdd.quickAdd.selectAnAttribute"
+  },
+  "protocolBuilder.quickAdd.fieldHint": {
+    "en": "Select the attribute that is assigned a value when creating a new node using the Quick Add button. Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview.",
+    "es": "Selecciona el atributo al que se asigna un valor al crear un nodo mediante el botón Adición rápida. Usa un atributo llamado «name», salvo que tengas un motivo para elegir otro. Interviewer utilizará automáticamente ese atributo como etiqueta del nodo durante la entrevista.",
+    "from": "74a07e626 architect.sections.quickAdd.quickAdd.selectTheAttributeThatIsAssigned"
+  },
+  "protocolBuilder.formFields.title": {
+    "en": "Form configuration",
+    "es": "Configuración del formulario",
+    "from": "74a07e626 architect.sections.form.form.formConfiguration"
+  },
+  "protocolBuilder.formFields.description": {
+    "en": "Map attributes to input controls and define the validation rules for this form.",
+    "es": "Asigna atributos a los controles de entrada y define las reglas de validación de este formulario.",
+    "from": "74a07e626 architect.sections.form.form.mapAttributesToInputControlsAnd"
+  },
+  "protocolBuilder.formFields.formTitleHint": {
+    "en": "Shown at the top of the form. Use a short descriptive title such as 'Add a contact'.",
+    "es": "Se muestra en la parte superior del formulario. Usa un título descriptivo breve, como «Añadir un contacto».",
+    "from": "74a07e626 architect.sections.form.form.shownAtTheTopOfThe"
+  },
+  "protocolBuilder.formFields.formTitlePlaceholder": {
+    "en": "Enter a title...",
+    "es": "Introduce un título...",
+    "from": "74a07e626 architect.sections.form.form.enterATitle"
+  },
+  "protocolBuilder.formFields.fieldLabel": {
+    "en": "Form fields",
+    "es": "Campos del formulario",
+    "from": "74a07e626 architect.sections.form.form.formFields"
+  },
+  "protocolBuilder.formFields.fieldHint": {
+    "en": "Add one or more fields to your form to collect attributes. Use the drag handle on the left of each prompt to adjust its order.",
+    "es": "Añade uno o varios campos al formulario para recoger atributos. Usa el control de arrastre a la izquierda de cada pregunta para ajustar su orden.",
+    "from": "74a07e626 architect.sections.form.form.addOneOrMoreFieldsTo"
+  },
+  "protocolBuilder.formFields.emptyState": {
+    "en": "No items have been created yet.",
+    "es": "Todavía no se ha creado ningún elemento.",
+    "from": "74a07e626 architect.defaults.components.Form.arrayFields.DialogArrayField.emptyStateMessage"
+  },
+  "protocolBuilder.formFields.attributeSectionTitle": {
+    "en": "Attribute selection",
+    "es": "Selección de atributo",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.attributeSelection"
+  },
+  "protocolBuilder.formFields.attributeSectionDescription": {
+    "en": "Choose the attribute this form field will collect.",
+    "es": "Elige el atributo que recogerá este campo de formulario.",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.chooseTheAttributeThisFormField"
+  },
+  "protocolBuilder.formFields.attributeHint": {
+    "en": "Select an attribute",
+    "es": "Selecciona un atributo",
+    "from": "74a07e626 architect.sections.form.fieldFields.selectAnAttribute"
+  },
+  "protocolBuilder.formFields.questionSectionTitle": {
+    "en": "Field configuration",
+    "es": "Configuración del campo",
+    "from": "74a07e626 architect.sections.form.fieldFields.fieldConfiguration"
+  },
+  "protocolBuilder.formFields.questionSectionDescription": {
+    "en": "Write the participant-facing prompt and choose how the response is collected.",
+    "es": "Escribe la pregunta para el participante y elige cómo se recoge la respuesta.",
+    "from": "74a07e626 architect.sections.form.fieldFields.writeTheParticipantFacingPromptAndChoose"
+  },
+  "protocolBuilder.formFields.componentHint": {
+    "en": "How the answer is collected. For detailed information about these options, see our <link>documentation</link>.",
+    "es": "Cómo se recoge la respuesta. Consulta nuestra <link>documentación</link> para obtener información detallada sobre estas opciones.",
+    "from": "74a07e626 architect.additional.sections.form.variableDefinitionFields.howTheAnswerIsCollectedFor, its <ExternalLink> tag renamed and its extraction spacing closed up"
+  },
+  "protocolBuilder.formFields.promptHint": {
+    "en": "The question to display to the participant. Supports markdown formatting.",
+    "es": "La pregunta que se mostrará al participante. Admite formato Markdown.",
+    "from": "74a07e626 architect.sections.form.fieldFields.theQuestionToDisplayToThe"
+  },
+  "protocolBuilder.formFields.promptPlaceholder": {
+    "en": "What is this person's name?",
+    "es": "¿Cómo se llama esta persona?",
+    "from": "74a07e626 architect.sections.form.fieldFields.whatIsThisPersonSName"
+  },
+  "protocolBuilder.formFields.hintHint": {
+    "en": "Optionally display a markdown-formatted hint below the question, to help participants understand how to answer.",
+    "es": "Puedes mostrar una indicación con formato Markdown debajo de la pregunta para ayudar a los participantes a entender cómo responder.",
+    "from": "74a07e626 architect.sections.form.fieldFields.optionallyDisplayAMarkdownFormattedHintBelow"
+  },
+  "protocolBuilder.formFields.hintPlaceholder": {
+    "en": "e.g. Select all that apply...",
+    "es": "p. ej., Selecciona todas las opciones que correspondan...",
+    "from": "74a07e626 architect.sections.form.fieldFields.eGSelectAllThatApply"
+  },
+  "protocolBuilder.formFields.validationHintsHint": {
+    "en": "Automatically display hints derived from this field's validation rules, helping participants understand input requirements.",
+    "es": "Mostrar automáticamente indicaciones derivadas de las reglas de validación de este campo para ayudar a los participantes a entender los requisitos de entrada.",
+    "from": "74a07e626 architect.sections.form.fieldFields.automaticallyDisplayHintsDerivedFromThis"
+  },
+  "protocolBuilder.formFields.lockedTypeTitle": {
+    "en": "Attribute type is locked",
+    "es": "El tipo de atributo está bloqueado",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.attributeTypeIsLocked"
+  },
+  "protocolBuilder.formFields.lockedTypeDescription": {
+    "en": "A pre-existing attribute is currently selected. You cannot change an attribute type after it has been created, so only <strong>{variableType}</strong> compatible input controls can be selected above. If you would like to use a different input control type, you will need to create a new attribute.",
+    "es": "Hay un atributo existente seleccionado. No se puede cambiar el tipo de un atributo después de crearlo, por lo que arriba solo se pueden seleccionar controles de entrada compatibles con <strong>{variableType}</strong>. Si quieres usar otro tipo de control de entrada, deberás crear un nuevo atributo.",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.aPreExistingAttributeIsCurrentlySelected"
+  },
+  "protocolBuilder.formFields.newTypeNotice": {
+    "en": "The selected input control will cause this attribute to be defined as type <strong>{variableType}</strong>. Once set, this cannot be changed (although you may change the input control within this type).",
+    "es": "El control de entrada seleccionado hará que este atributo se defina con el tipo <strong>{variableType}</strong>. Una vez establecido, no se puede cambiar, aunque podrás cambiar el control de entrada dentro de este tipo.",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.theSelectedInputControlWillCause"
+  },
+  "protocolBuilder.formFields.attributeControlBadge": {
+    "en": "<type>{typeLabel}</type> attribute using <control>{controlLabel}</control> input control",
+    "es": "Atributo de tipo <type>{typeLabel}</type> con control <control>{controlLabel}</control>",
+    "from": "74a07e626 architect.form.attributeControlDescription"
+  },
+  "protocolBuilder.codebookVariable.optionsLegend": {
+    "en": "Choice values",
+    "es": "Valores de las opciones",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.choiceValues"
+  },
+  "protocolBuilder.codebookVariable.optionsHint": {
+    "en": "Define the values participants can choose for this categorical or ordinal attribute.",
+    "es": "Define los valores que los participantes pueden elegir para este atributo categórico u ordinal.",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.defineTheValuesParticipantsCanChoose"
+  },
+  "protocolBuilder.codebookVariable.addOption": {
+    "en": "Create new option",
+    "es": "Crear nueva opción",
+    "from": "74a07e626 architect.additional.sections.form.variableDefinitionFields.createNewOption"
+  },
+  "protocolBuilder.codebookVariable.answersLegend": {
+    "en": "Boolean values",
+    "es": "Valores booleanos",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.booleanValues"
+  },
+  "protocolBuilder.codebookVariable.answersHint": {
+    "en": "Define the values stored for the on and off states.",
+    "es": "Define los valores que se guardan para los estados activado y desactivado.",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.defineTheValuesStoredForThe"
+  },
+  "protocolBuilder.codebookVariable.parametersLegend": {
+    "en": "Control settings",
+    "es": "Ajustes del control",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.controlSettings"
+  },
+  "protocolBuilder.codebookVariable.parametersHint": {
+    "en": "Configure the settings available for this input control.",
+    "es": "Configura los ajustes disponibles para este control de entrada.",
+    "from": "74a07e626 architect.sections.form.variableDefinitionFields.configureTheSettingsAvailableForThis"
+  },
+  "protocolBuilder.codebookVariable.lockedOptionsCaption": {
+    "en": "These options are automatically configured by the interface and cannot be modified.",
+    "es": "La interfaz configura estas opciones automáticamente y no se pueden modificar.",
+    "from": "74a07e626 architect.notice.caption"
+  },
+  "protocolBuilder.entitySelect.nodeEmptyState": {
+    "en": "No node types currently defined",
+    "es": "Todavía no hay tipos de nodo definidos",
+    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.noTypesCurrentlyDefined (entityType: node)"
+  },
+  "protocolBuilder.entitySelect.edgeEmptyState": {
+    "en": "No edge types currently defined",
+    "es": "Todavía no hay tipos de vínculo definidos",
+    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.noTypesCurrentlyDefined (entityType: edge)"
+  },
+  "protocolBuilder.entitySelect.nodeChangeBlockedTitle": {
+    "en": "Cannot change node type",
+    "es": "No se puede cambiar el tipo de nodo",
+    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.cannotChangeType (entityType: node)"
+  },
+  "protocolBuilder.entitySelect.edgeChangeBlockedTitle": {
+    "en": "Cannot change edge type",
+    "es": "No se puede cambiar el tipo de vínculo",
+    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.cannotChangeType (entityType: edge)"
+  },
+  "protocolBuilder.entitySelect.nodeGroupLabel": {
+    "en": "Node type options",
+    "es": "Opciones de tipo de nodo",
+    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.typeOptions (value1: true)"
+  },
+  "protocolBuilder.entitySelect.edgeGroupLabel": {
+    "en": "Edge type options",
+    "es": "Opciones de tipo de vínculo",
+    "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.typeOptions (value1: false)"
+  },
+  "protocolBuilder.externalDataSource.description": {
+    "en": "Select the network data file that supplies nodes for this roster.",
+    "es": "Selecciona el archivo de datos de red que proporciona los nodos de esta lista.",
+    "from": "74a07e626 architect.sections.externalDataSource.selectTheNetworkDataFileThat"
+  },
+  "protocolBuilder.externalDataSource.fieldLabel": {
+    "en": "Roster data source",
+    "es": "Fuente de datos de la lista",
+    "from": "74a07e626 architect.sections.externalDataSource.rosterDataSource"
+  },
+  "protocolBuilder.externalDataSource.fieldHint": {
+    "en": "This stage needs a source of nodes to populate the roster. Select a network data file to use.",
+    "es": "Esta etapa necesita una fuente de nodos para completar la lista. Selecciona un archivo de datos de red.",
+    "from": "74a07e626 architect.sections.externalDataSource.thisStageNeedsASourceOf"
+  },
+  "protocolBuilder.resourcePicker.importedFileOption": {
+    "en": "Use a network data file",
+    "es": "Usar un archivo de datos de red",
+    "from": "74a07e626 architect.form.fields.dataSource.useANetworkDataFile"
+  }
+}

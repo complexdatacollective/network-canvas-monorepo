@@ -142,13 +142,13 @@ const typeOption = (
 const EMPTY_MESSAGES = defineMessages({
   node: {
     id: 'protocolBuilder.entitySelect.nodeEmptyState',
-    defaultMessage: 'This protocol has no node types yet.',
+    defaultMessage: 'No node types currently defined',
     description:
       'Shown in place of the chips when a researcher is asked to choose a node type and the protocol’s codebook defines none. A node type is a kind of network member the study records, such as a person or a place.',
   },
   edge: {
     id: 'protocolBuilder.entitySelect.edgeEmptyState',
-    defaultMessage: 'This protocol has no edge types yet.',
+    defaultMessage: 'No edge types currently defined',
     description:
       'Shown in place of the chips when a researcher is asked to choose an edge type and the protocol’s codebook defines none. An edge type is a kind of relationship between two network members, such as a friendship.',
   },
@@ -162,13 +162,13 @@ const EMPTY_MESSAGES = defineMessages({
 const GROUP_LABELS = defineMessages({
   node: {
     id: 'protocolBuilder.entitySelect.nodeGroupLabel',
-    defaultMessage: 'Node type',
+    defaultMessage: 'Node type options',
     description:
       'Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place.',
   },
   edge: {
     id: 'protocolBuilder.entitySelect.edgeGroupLabel',
-    defaultMessage: 'Edge type',
+    defaultMessage: 'Edge type options',
     description:
       'Accessible name of the group of chips a researcher picks an edge type from. An edge type is a kind of relationship between two network members, such as a friendship.',
   },
@@ -182,13 +182,13 @@ const GROUP_LABELS = defineMessages({
 const BLOCKED_TITLES = defineMessages({
   node: {
     id: 'protocolBuilder.entitySelect.nodeChangeBlockedTitle',
-    defaultMessage: 'This node type cannot be changed',
+    defaultMessage: 'Cannot change node type',
     description:
       'Title of the message shown when a researcher tries to change the node type of a stage something else in the protocol depends on, and the change is refused. A node type is a kind of network member the study records, such as a person or a place.',
   },
   edge: {
     id: 'protocolBuilder.entitySelect.edgeChangeBlockedTitle',
-    defaultMessage: 'This edge type cannot be changed',
+    defaultMessage: 'Cannot change edge type',
     description:
       'Title of the message shown when a researcher tries to change the edge type of a stage something else in the protocol depends on, and the change is refused. An edge type is a kind of relationship between two network members, such as a friendship.',
   },

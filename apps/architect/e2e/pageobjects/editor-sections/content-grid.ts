@@ -7,8 +7,8 @@ import { pickResource, uploadIntoResourceBrowser } from './asset-upload.js';
 // page section (`sections/page-content/PageContentSection.tsx`, `page`
 // variant) given the content-block editor
 // (`sections/content-blocks/ContentBlockEditor.tsx`). The list adds a block
-// through "Create new content block"; the dialog that opens is titled "Create
-// content block" for a new one and "Edit content block" for one that already
+// through "Create new content item"; the dialog that opens is titled "Create
+// item" for a new one and "Edit item" for one that already
 // exists; its content-type radios are 'Image' / 'Video' / 'Audio' / 'Text';
 // the Content field mounts once a type is chosen; a media block also offers an
 // optional "Description"; and 'Display size' radios ('Full size' / 'Small' /
@@ -42,10 +42,10 @@ async function openFreshItemDialog(
   editor: StageEditor,
   page: Page,
 ): Promise<Locator> {
-  const dialog = page.getByRole('dialog', { name: 'Create content block' });
+  const dialog = page.getByRole('dialog', { name: 'Create item' });
   const create = editor
     .field('items')
-    .getByRole('button', { name: 'Create new content block', exact: true });
+    .getByRole('button', { name: 'Create new content item', exact: true });
   await create.click();
   await expect(dialog).toBeVisible();
   // A fresh block has no type, so no per-type content control: the editor

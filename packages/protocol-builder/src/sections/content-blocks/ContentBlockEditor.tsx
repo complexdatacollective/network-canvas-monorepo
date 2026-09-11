@@ -38,14 +38,14 @@ const ResourcePicker = AssetPickerField as ComponentType<
 const messages = defineMessages({
   sectionTitle: {
     id: 'protocolBuilder.contentBlock.sectionTitle',
-    defaultMessage: 'Block details',
+    defaultMessage: 'Item details',
     description:
       'Heading of the dialog where a researcher says what one piece of a page holds and provides it.',
   },
   sectionDescription: {
     id: 'protocolBuilder.contentBlock.sectionDescription',
     defaultMessage:
-      'Choose what kind of content this block holds, and provide the content itself.',
+      'Choose the content type, provide what participants will see, and adjust its presentation when available.',
     description: 'Description under the block-details heading.',
   },
   kindLabel: {
@@ -56,7 +56,7 @@ const messages = defineMessages({
   },
   kindHint: {
     id: 'protocolBuilder.contentBlock.kindHint',
-    defaultMessage: 'Choose what this block shows the participant.',
+    defaultMessage: 'Choose the type of content this item will show.',
     description: 'Guidance under the content-type control.',
   },
   kindRequired: {
@@ -74,14 +74,14 @@ const messages = defineMessages({
   missingResource: {
     id: 'protocolBuilder.contentBlock.missingResource',
     defaultMessage:
-      'This block’s resource is no longer in this protocol. Choose a content type above to replace it.',
+      'This item’s resource is no longer in this protocol. Choose a content type above to replace it.',
     description:
       'Warning body shown when a piece of a page points at a file that has been deleted from the protocol, so it needs replacing.',
   },
   unpresentableResource: {
     id: 'protocolBuilder.contentBlock.unpresentableResource',
     defaultMessage:
-      'This block’s resource is not an image, audio or video file, so this block cannot show it. Choose a content type above to replace it.',
+      'This item’s resource is not an image, audio or video file, so this item cannot show it. Choose a content type above to replace it.',
     description:
       'Warning body shown when a piece of a page points at a file that IS in the protocol but is not something a page can present — a roster of people, a map layer, a key. Distinct from a deleted file, because there is nothing missing to go looking for.',
   },
@@ -91,12 +91,12 @@ const messages = defineMessages({
     description:
       'Label of the control holding what one piece of a page actually shows, whichever kind it is.',
   },
-  textHint: {
-    id: 'protocolBuilder.contentBlock.textHint',
+  contentHint: {
+    id: 'protocolBuilder.contentBlock.contentHint',
     defaultMessage:
-      'What the participant reads when they reach this block. Supports markdown formatting.',
+      'Provide the {slotType, select, text {text} image {image} audio {audio} other {video}} content for this item. This is what participants will see when they reach this item in the study.',
     description:
-      'Guidance under the control holding the prose of a text block. Markdown is the name of the formatting syntax and is not translated.',
+      'Guidance under the control holding what one piece of a page shows, whichever kind it is. slotType is the kind of content, chosen in the control above.',
   },
   textPlaceholder: {
     id: 'protocolBuilder.contentBlock.textPlaceholder',
@@ -110,38 +110,17 @@ const messages = defineMessages({
     description:
       'Refusal shown under the prose control of a text block when it has been left empty.',
   },
-  imageHint: {
-    id: 'protocolBuilder.contentBlock.imageHint',
-    defaultMessage:
-      'The image the participant sees when they reach this block.',
-    description:
-      'Guidance under the file picker of a block that shows a picture.',
-  },
   imageRequired: {
     id: 'protocolBuilder.contentBlock.imageRequired',
     defaultMessage: 'Choose the image this block shows.',
     description:
       'Refusal shown under the file picker of a picture block when nothing has been chosen.',
   },
-  audioHint: {
-    id: 'protocolBuilder.contentBlock.audioHint',
-    defaultMessage:
-      'The audio the participant can play when they reach this block.',
-    description:
-      'Guidance under the file picker of a block that plays an audio recording.',
-  },
   audioRequired: {
     id: 'protocolBuilder.contentBlock.audioRequired',
     defaultMessage: 'Choose the audio file this block plays.',
     description:
       'Refusal shown under the file picker of an audio block when nothing has been chosen.',
-  },
-  videoHint: {
-    id: 'protocolBuilder.contentBlock.videoHint',
-    defaultMessage:
-      'The video the participant can play when they reach this block.',
-    description:
-      'Guidance under the file picker of a block that plays a video.',
   },
   videoRequired: {
     id: 'protocolBuilder.contentBlock.videoRequired',
@@ -185,7 +164,7 @@ const messages = defineMessages({
   sizeHint: {
     id: 'protocolBuilder.contentBlock.sizeHint',
     defaultMessage:
-      'Optionally constrain the height of this block. Full size lets it show at its natural height.',
+      'Optionally constrain the height of this item. Full size lets it display at its natural height.',
     description:
       'Guidance under the display-size control. "Full size" is the wording of the unconstrained choice it offers.',
   },
@@ -193,10 +172,6 @@ const messages = defineMessages({
 
 /**
  * What each kind of media block asks for.
- *
- * Whole sentences per kind rather than a noun dropped into a template: the
- * hint is the only place a researcher is told what this control holds, and a
- * translated sentence is not the English one with a word swapped.
  *
  * `description` is the words that stand in for the file itself, and the reason
  * only media kinds have one: the interview runtime reads a block's
@@ -209,24 +184,20 @@ const MEDIA_COPY: Readonly<
   Record<
     Exclude<ContentBlockKind, 'text'>,
     Readonly<{
-      hint: MessageDescriptor;
       required: MessageDescriptor;
       description: MessageDescriptor;
     }>
   >
 > = Object.freeze({
   image: Object.freeze({
-    hint: messages.imageHint,
     required: messages.imageRequired,
     description: messages.imageDescriptionHint,
   }),
   audio: Object.freeze({
-    hint: messages.audioHint,
     required: messages.audioRequired,
     description: messages.audioDescriptionHint,
   }),
   video: Object.freeze({
-    hint: messages.videoHint,
     required: messages.videoRequired,
     description: messages.videoDescriptionHint,
   }),
@@ -312,7 +283,9 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
           name={CONTENT_BLOCK_SLOTS.text}
           component={RichTextField}
           label={intl.formatMessage(messages.contentLabel)}
-          hint={intl.formatMessage(messages.textHint)}
+          hint={intl.formatMessage(messages.contentHint, {
+            slotType: 'text',
+          })}
           placeholder={intl.formatMessage(messages.textPlaceholder)}
           required={intl.formatMessage(messages.textRequired)}
         />
@@ -323,7 +296,9 @@ export default function ContentBlockEditor({ item }: RowEditorProps) {
             name={CONTENT_BLOCK_SLOTS[kind]}
             component={ResourcePicker}
             label={intl.formatMessage(messages.contentLabel)}
-            hint={intl.formatMessage(MEDIA_COPY[kind].hint)}
+            hint={intl.formatMessage(messages.contentHint, {
+              slotType: kind,
+            })}
             kind={kind}
             required={intl.formatMessage(MEDIA_COPY[kind].required)}
           />

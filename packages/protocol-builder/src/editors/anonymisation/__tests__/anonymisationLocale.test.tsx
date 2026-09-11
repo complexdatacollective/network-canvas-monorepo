@@ -95,13 +95,13 @@ describe('the anonymisation sections, read in Spanish', () => {
    * The field is found by its Spanish name: `VariableValidationEditor` labels
    * every rule's control with `rule.label`, which is `maxLengthLabel` read
    * through this harness's `intl` — so under `locale: 'es'` the accessible
-   * name is "Longitud máxima", not the English default.
+   * name is "Longitud máxima del texto", not the English default.
    */
   it('refuses impossible passphrase lengths in Spanish', async () => {
     const harness = openEditor();
 
     const maximum = await screen.findByRole('spinbutton', {
-      name: 'Longitud máxima',
+      name: 'Longitud máxima del texto',
     });
     await harness.user.clear(maximum);
     await harness.user.type(maximum, '2');

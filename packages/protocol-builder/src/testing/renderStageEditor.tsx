@@ -19,6 +19,7 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
 import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import type { Codebook, StageType } from '@codaco/protocol-validation';
+import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import {
   parseSectionId,
@@ -553,10 +554,17 @@ function LocaleFrame({
     <AppI18nProvider
       locale={locale}
       locales={ecosystemLocales}
+      // The layers a host actually mounts, in the order `architectCatalogs`
+      // merges them. `@codaco/protocol-validation`'s is not optional: the
+      // validation rule names a researcher ticks are its descriptors, so
+      // leaving it out renders them in English under a Spanish harness and a
+      // locale sweep would read that as copy this package failed to
+      // translate.
       messages={mergeCatalogs(
         commonCatalogs[locale] ?? {},
         frescoUiCatalogs[locale] ?? {},
         protocolBuilderCatalogs[locale] ?? {},
+        protocolValidationCatalogs[locale] ?? {},
       )}
       manageDocument={false}
     >

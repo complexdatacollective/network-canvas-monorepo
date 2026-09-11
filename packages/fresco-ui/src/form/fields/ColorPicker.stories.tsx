@@ -478,6 +478,10 @@ export const PaletteNames: Story = {
       const group = within(canvas.getByRole('radiogroup', { name: groupName }));
 
       for (const { label } of palette) {
+        // Every swatch in these palettes is named by its caller; a palette
+        // that left the naming to the picker has nothing for this play to
+        // resolve a token from.
+        if (label === undefined) throw new Error('this palette names nothing');
         // Painted with the theme's token for the name the swatch carries.
         // Cleared first: an invalid value leaves the previous one in place.
         probe.style.backgroundColor = '';

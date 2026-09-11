@@ -89,8 +89,8 @@ test('creates a valid OrdinalBin stage from scratch', async ({
   // has, plus a `CreateVariableButton` labelled "Create a new attribute" that
   // opens the codebook's attribute editor with `allowedVariableTypes:
   // ['ordinal']` — so its "Attribute type" select is already on Ordinal and is
-  // never touched here. Values are authored in place, one "Add option" press
-  // per value, and committed by "Create attribute".
+  // never touched here. Values are authored in place, one "Create new option"
+  // press per value, and committed by "Create attribute".
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Rank these');
     // Scoped to the attribute editor's own dialog: the prompt dialog behind it
@@ -110,7 +110,7 @@ test('creates a valid OrdinalBin stage from scratch', async ({
       { label: 'High', value: 'high' },
     ].entries()) {
       await attributeEditor
-        .getByRole('button', { name: 'Add option', exact: true })
+        .getByRole('button', { name: 'Create new option', exact: true })
         .click();
       await attributeEditor
         .getByRole('textbox', {
