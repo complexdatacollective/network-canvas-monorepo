@@ -46,7 +46,6 @@ const QUICK_ADD = 'quickAdd';
  * attributes can be offered.
  */
 const QUICK_ADD_TYPE = 'text';
-const QUICK_ADD_COMPONENT = 'Text';
 
 /**
  * A quick-add attribute must hold a value from the moment the node exists:
@@ -225,14 +224,15 @@ export default function QuickAddSection() {
     async (variableName: string): Promise<CreateOptionOutcome> => {
       if (subject === undefined) return { status: 'refused' };
       const asked = { subject, fillsIn };
+      // The attribute and nothing else. What quick add needs of it — that an
+      // answer is required — is a rule about the attribute, and the section
+      // offers it below rather than writing it here: an attribute created from
+      // this stage belongs to the codebook, is read by every other stage that
+      // uses it, and a rule nobody asked for is content in the protocol the
+      // researcher did not write.
       const outcome = await createVariable({
         name: variableName,
         type: QUICK_ADD_TYPE,
-        component: QUICK_ADD_COMPONENT,
-        // Required from the start: this attribute is the only thing the
-        // participant gave, so the rule the role needs is never something they
-        // have to be asked about afterwards.
-        validation: QUICK_ADD_VALIDATION,
       });
       if (outcome.status === 'refused') {
         setProblem(outcome.message);

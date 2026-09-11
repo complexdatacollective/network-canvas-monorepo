@@ -8,6 +8,7 @@ import {
   VARIABLE_TYPE_COMPONENTS,
   type VariableType,
 } from '@codaco/protocol-validation';
+import { VariableNameSchema } from '@codaco/shared-consts';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type {
@@ -145,7 +146,11 @@ export const createVariableRefused = messages.refusedUnchanged;
  * As much of the refused draft as reading its refusal needs: which kind of
  * answer it was to hold, and which control it was to be collected with.
  */
-type RefusedDraft = Readonly<{ type: unknown; component: unknown }>;
+type RefusedDraft = Readonly<{
+  name: unknown;
+  type: unknown;
+  component: unknown;
+}>;
 
 const isVariableType = (value: unknown): value is VariableType =>
   typeof value === 'string' && Object.hasOwn(VARIABLE_TYPE_COMPONENTS, value);
@@ -186,13 +191,19 @@ const draftIssueMessage = (
     return intl.formatMessage(messages.unsupportedControl);
   }
   // `VariableSchema` is a plain union of eleven whole variable shapes, so a
-  // control the kind of answer cannot take fails every branch and zod hoists
-  // nothing: what arrives is ONE issue at the empty path saying this is not any
-  // kind of attribute. The draft it judged is what settles it, and a control
-  // the answer is never collected with is the refusal the researcher just made
-  // and can undo. Every other unanchored refusal is left to the fallback.
-  if (issue.path.length === 0 && controlIsNotOffered(draft)) {
-    return intl.formatMessage(messages.unsupportedControl);
+  // draft no branch accepts fails every one of them and zod hoists nothing:
+  // what arrives is ONE issue at the empty path saying this is not any kind of
+  // attribute. The draft it judged is what settles which refusal that is — the
+  // control the answer is never collected with, or the name the codebook will
+  // not take — and both are refusals the researcher just made and can undo.
+  // Every other unanchored refusal is left to the fallback.
+  if (issue.path.length === 0) {
+    if (controlIsNotOffered(draft)) {
+      return intl.formatMessage(messages.unsupportedControl);
+    }
+    if (!VariableNameSchema.safeParse(draft.name).success) {
+      return intl.formatMessage(messages.nameInvalid);
+    }
   }
   return undefined;
 };
@@ -322,7 +333,11 @@ export function useCreateCodebookVariable(
         } catch (error: unknown) {
           refusal = refusalMessage(
             error,
-            { type: variable.type, component: variable.component },
+            {
+              name: variable.name,
+              type: variable.type,
+              component: variable.component,
+            },
             intl.formatMessage(messages.refusedUnchanged),
             intl,
           );
@@ -437,7 +452,7 @@ export function useSetVariableComponent(
         } catch (error: unknown) {
           refusal = refusalMessage(
             error,
-            { type, component },
+            { name: Reflect.get(current, 'name'), type, component },
             intl.formatMessage(messages.refusedControlUnchanged),
             intl,
           );
@@ -572,14 +587,26 @@ function variableComponent(
     : undefined;
 }
 
-/** The authoritative section document one subject's attributes live in. */
+/**
+ * The authoritative section document one subject's attributes live in.
+ *
+ * `undefined` means there is no section to write to, which for a node or edge
+ * type means the type has been deleted — the one fact every control that
+ * offers to edit the codebook is gated on.
+ *
+ * The participant is not such a type. Every protocol has exactly one, nobody
+ * creates or deletes it, and `codebook.ego` is absent only until the first
+ * attribute is written there — so an absent ego section is an EMPTY one. Read
+ * as missing instead, the very first ego attribute of a protocol could never
+ * be invented from a form field: the controls that open the codebook's own
+ * editor are offered only against a section that exists, and the kinds that
+ * can ONLY be made there — a list of answers, a scale — had no other way in.
+ */
 function codebookDocument(
   protocolContext: ProtocolBuilderProtocolContext,
   subject: CodebookSubject,
 ): SectionDoc | undefined {
-  const definition =
-    subject.entity === 'ego'
-      ? protocolContext.codebook.ego
-      : protocolContext.codebook[subject.entity]?.[subject.type];
+  if (subject.entity === 'ego') return { ...protocolContext.codebook.ego };
+  const definition = protocolContext.codebook[subject.entity]?.[subject.type];
   return definition === undefined ? undefined : { ...definition };
 }

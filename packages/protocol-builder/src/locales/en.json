@@ -6367,6 +6367,10 @@
     "defaultMessage": "Save validation",
     "description": "Button that saves the rules an answer to this attribute must satisfy."
   },
+  "protocolBuilder.variableValidation.thisAttribute": {
+    "defaultMessage": "this attribute",
+    "description": "Stands in for an attribute’s name inside a refusal about it, while the attribute is still being drafted and has not been named. Spliced mid-sentence into the repair guidance for a contradiction between rules, so it is lower case."
+  },
   "protocolBuilder.variableValidation.title": {
     "defaultMessage": "Edit validation for {name}",
     "description": "Heading of the surface where a researcher sets the rules an answer to one attribute must satisfy. name is the researcher’s own name for that attribute."

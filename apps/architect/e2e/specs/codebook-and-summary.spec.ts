@@ -414,9 +414,15 @@ test('lands keyboard focus on the destination heading of a Used In link', async 
   expect(focused.isRouteTarget).toBe(true);
   expect(focused.text).toBe(destination?.trim());
 
+  // …and the next Tab continues INTO the editor rather than restarting at the
+  // app header: the first thing after the heading is the editor's own section
+  // outline, which is what a reader arriving here is offered first.
   await architectPage.keyboard.press('Tab');
   await expect(
-    architectPage.getByRole('textbox', { name: 'Stage name' }),
+    architectPage
+      .getByRole('navigation', { name: 'Stage sections' })
+      .getByRole('button')
+      .first(),
   ).toBeFocused();
 });
 

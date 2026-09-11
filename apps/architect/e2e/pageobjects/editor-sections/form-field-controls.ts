@@ -1,50 +1,46 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
-import { typeInlineRun } from '../stage-editor.js';
-import {
-  createVariableViaSpotlight,
-  fillOptionRows,
-  type OptionRow,
-} from './variables.js';
+import { inventAttributeInFieldDialog } from './forms.js';
+import { type OptionRow } from './variables.js';
 
-// Extended form-field authoring for the 'Edit Field' dialog
-// (sections/Form/FieldFields.tsx) — the full-parameter sibling of forms.ts's
-// minimal addFormField. Facts verified against source:
-// - The codebook variable is created ONLY at dialog submit
-//   (withFormHandlers.handleChangeFields → createVariableAsync), assembled
-//   from the chosen Input control's derived type plus whatever
-//   options/parameters/validation the dialog holds — configure everything
-//   BEFORE clicking 'Add', and pick the Input control before options/
-//   parameters/validation (a component change nulls all three).
-// - 'Input control' is a native select (labels from config/variables.ts:
-//   'Text Input', 'Text Area', 'DatePicker', 'Toggle Button Group',
-//   'Radio Group', 'LikertScale', 'VisualAnalogScale', 'Checkbox Group',
-//   'BooleanChoice', …).
-// - DatePicker writes parameters:{type:'full'} by default (mount effect);
-//   'Start range' is a native date input reached via getByLabel.
-// - VisualAnalogScale exposes required 'Minimum label'/'Maximum label'
-//   plain inputs.
-// - BooleanChoice seeds options [{label:'Yes',value:true},
-//   {label:'No',value:false,negative:true}]; labels are block RichText
-//   fields both named 'Label' (scoped via their data-field-name); the
-//   negative switches are 'Style Option One as negative' / 'Style Option
-//   Two as negative'. A toggle click writes the boolean explicitly and the
-//   key can never be removed once written — so: omit → never touch,
-//   explicit false on option one → click twice (on→off), explicit false on
-//   option two → click once (its default is true).
-// - Field dialogs keep validation in an optional Section. Open that Section
-//   before interacting with an individual rule such as 'Required'.
+// Extended form-field authoring — the full-parameter sibling of forms.ts's
+// minimal `addFormField`. Both drive `@codaco/protocol-builder`'s
+// `FormFieldsSection`; this one also reaches the CODEBOOK editors the field
+// dialog launches, which is where an attribute's values, its settings and its
+// rules are authored now.
+//
+// The shape of the interaction, read off the source:
+//
+// - A form field row says which attribute it collects and how it asks for it.
+//   Everything ABOUT the attribute — its values, what its control accepts, the
+//   rules an answer must satisfy — belongs to the codebook and is reached
+//   through `AttributeCodebookControls`, rendered inside the row dialog as a
+//   row of buttons named for what they open.
+// - Those buttons are offered against an attribute that EXISTS. While one is
+//   still being invented the row holds a sentinel, so `Set rules for this
+//   answer` and `Set what this field accepts` are not on screen at all — which
+//   is why anything beyond values and scale labels needs the field to be added
+//   first and then reopened. See `addConfiguredFormField`'s two phases.
+// - "Create this attribute and its values" / "Create this attribute and what
+//   it accepts" are the exception: a list of answers and a scale cannot be
+//   made from a name, so those two are authored during creation (forms.ts's
+//   `inventAttributeInFieldDialog`, through `inEditor`).
+
 export type BooleanOptionSpec = {
+  /** The words this answer shows the participant. */
   label: string;
-  // 'omit' → never touch the toggle (option one only — option two defaults
-  // to true); true → leave option two untouched; false → explicit false.
+  // 'omit' → leave the switch where the editor put it; otherwise require it
+  // to end up in the named state.
   negative: 'omit' | boolean;
 };
 
 export type FormFieldSpec = {
   variableName: string;
   promptText: string;
+  /** A `CONTROL_LABELS` label — see forms.ts's `VARIABLE_TYPE_FOR_CONTROL`. */
   inputControl: string;
+  /** Only where the control does not already say it. */
+  variableType?: string;
   options?: OptionRow[];
   booleanOptions?: { positive: BooleanOptionSpec; negative: BooleanOptionSpec };
   scalarParameters?: { minLabel: string; maxLabel: string };
@@ -52,61 +48,103 @@ export type FormFieldSpec = {
   required?: boolean;
 };
 
-export async function openValidationSection(dialog: Locator): Promise<void> {
-  const toggle = dialog.getByRole('switch', {
-    name: 'Validation',
-    exact: true,
-  });
-  if (!(await toggle.isChecked())) {
-    await toggle.click();
-  }
-  await expect(toggle).toBeChecked();
+/**
+ * Open the rules a participant's answer has to satisfy, for the attribute the
+ * given form-field dialog collects, and hand back the editor.
+ *
+ * The rules used to be a section of the field dialog itself. They are the
+ * CODEBOOK's — one attribute is checked the same way wherever it is asked for
+ * — so they now live behind this button, in an editor of their own
+ * (`CodebookVariableValidationEditor`) whose own submit reads "Save
+ * validation". The button is offered only for an attribute that already
+ * exists, which is what makes this reachable from a reopened field and not
+ * from the dialog that invents one.
+ */
+export async function openValidationSection(dialog: Locator): Promise<Locator> {
+  const label = 'Set rules for this answer';
+  await dialog.getByRole('button', { name: label, exact: true }).click();
+  // The editor takes the button's own words as its title
+  // (`AttributeCodebookControls`'s `editorTitle`), which is what tells it from
+  // the field dialog underneath while both are open.
+  const rules = dialog.page().getByRole('dialog', { name: label, exact: true });
+  await expect(rules).toBeVisible();
+  return rules;
 }
 
-async function replaceRichTextContent(
-  page: Page,
-  editorBox: Locator,
-  text: string,
+/**
+ * Fill an attribute editor's list of allowed values.
+ *
+ * `VariableEditor`'s own rows, not the array field forms use elsewhere: each
+ * row is a pair of plain inputs named "Option {n} label" / "Option {n} value"
+ * (1-based), and "Add option" appends an empty one. Nothing is committed until
+ * the editor's own submit, so the rows are filled in one pass.
+ */
+async function fillCodebookOptions(
+  editor: Locator,
+  rows: readonly OptionRow[],
 ): Promise<void> {
-  await editorBox.click();
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('Delete');
-  await typeInlineRun(page, text);
+  const add = editor.getByRole('button', { name: 'Add option', exact: true });
+  for (const [index, row] of rows.entries()) {
+    await add.click();
+    const position = index + 1;
+    await editor
+      .getByRole('textbox', { name: `Option ${position} label`, exact: true })
+      .fill(row.label);
+    await editor
+      .getByRole('textbox', { name: `Option ${position} value`, exact: true })
+      .fill(row.value);
+  }
 }
 
-async function setBooleanOption(
-  page: Page,
-  dialog: Locator,
-  index: 0 | 1,
+/**
+ * One of a yes/no attribute's two answers.
+ *
+ * `records` is the value the answer stores — the editor names its controls for
+ * that rather than for a position, because which of the two reads as "yes" is
+ * the researcher's to write. The quotation marks in those names are the
+ * typographic pair the catalog uses (`VariableBooleanAnswerFields`'s
+ * `answerLabel`/`negativeLabel`), not the ASCII one.
+ */
+async function setBooleanAnswer(
+  editor: Locator,
+  records: 'true' | 'false',
   spec: BooleanOptionSpec,
 ): Promise<void> {
-  await replaceRichTextContent(
-    page,
-    dialog
-      .locator(`[data-field-name="options[${index}].label"]`)
-      .getByRole('textbox'),
-    spec.label,
-  );
-  const toggleName =
-    index === 0
-      ? 'Style Option One as negative'
-      : 'Style Option Two as negative';
-  if (index === 0) {
-    if (spec.negative === false) {
-      // Defaults to no key; on→off writes an explicit false.
-      await dialog.getByRole('switch', { name: toggleName }).click();
-      await dialog.getByRole('switch', { name: toggleName }).click();
-    } else if (spec.negative === true) {
-      await dialog.getByRole('switch', { name: toggleName }).click();
-    }
-  } else {
-    // Option two defaults to negative: true.
-    if (spec.negative === false) {
-      await dialog.getByRole('switch', { name: toggleName }).click();
-    } else if (spec.negative === 'omit') {
-      throw new Error('option two always carries a negative key (seeded true)');
-    }
+  await editor
+    .getByRole('textbox', {
+      name: `Label for “${records}”`,
+      exact: true,
+    })
+    .fill(spec.label);
+  if (spec.negative === 'omit') return;
+  const negative = editor.getByRole('switch', {
+    name: `Style “${records}” as negative`,
+    exact: true,
+  });
+  // Driven to a state rather than clicked a counted number of times: the
+  // editor seeds these from the codebook, so a click count only lands on the
+  // right answer for one starting position.
+  if ((await negative.isChecked()) !== spec.negative) {
+    await negative.click();
   }
+  await expect(negative).toBeChecked({ checked: spec.negative });
+}
+
+/** Open a codebook editor from a field dialog, run `fill`, and save it. */
+async function inCodebookEditor(
+  dialog: Locator,
+  label: string,
+  fill: (editor: Locator) => Promise<void>,
+): Promise<void> {
+  await dialog.getByRole('button', { name: label, exact: true }).click();
+  const editor = dialog
+    .page()
+    .getByRole('dialog', { name: label, exact: true });
+  await fill(editor);
+  await editor
+    .getByRole('button', { name: 'Save attribute', exact: true })
+    .click();
+  await editor.waitFor({ state: 'detached' });
 }
 
 export async function addConfiguredFormField(
@@ -114,72 +152,90 @@ export async function addConfiguredFormField(
   spec: FormFieldSpec,
 ): Promise<void> {
   const page = section.page();
-  const dialog = page.getByRole('dialog', { name: 'Edit Field' });
 
-  const create = section.getByRole('button', {
-    name: 'Create new form field',
-    exact: true,
-  });
-  await create.click();
-  // Fresh-dialog guard (see prompts.ts): a genuinely new field dialog shows
-  // the unset variable picker. If the shared dialog form resurrected the
-  // previous field's state, cancel — forcing the unmount that destroys the
-  // form — and reopen.
-  const freshSign = dialog.getByRole('button', { name: 'Select attribute' });
-  try {
-    await freshSign.waitFor({ state: 'visible', timeout: 3_000 });
-  } catch {
-    const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true });
-    await cancel.click();
-    await cancel.waitFor({ state: 'detached' });
-    await create.click();
-    await freshSign.waitFor({ state: 'visible' });
-  }
-  await createVariableViaSpotlight(page, {
+  // Phase one: the row, and everything the attribute cannot exist without.
+  await section
+    .getByRole('button', { name: 'Create new form field', exact: true })
+    .click();
+  const addDialog = page.getByRole('dialog', { name: 'Create form field' });
+  await inventAttributeInFieldDialog(addDialog, {
     variableName: spec.variableName,
-    until: dialog.getByRole('button', { name: 'Change attribute' }),
+    ...(spec.variableType === undefined
+      ? {}
+      : { variableType: spec.variableType }),
+    inputControl: spec.inputControl,
+    inEditor: async (editor) => {
+      if (spec.options) await fillCodebookOptions(editor, spec.options);
+      if (spec.scalarParameters) {
+        await editor
+          .getByRole('textbox', { name: 'Minimum label', exact: true })
+          .fill(spec.scalarParameters.minLabel);
+        await editor
+          .getByRole('textbox', { name: 'Maximum label', exact: true })
+          .fill(spec.scalarParameters.maxLabel);
+      }
+    },
   });
 
-  const prompt = page.getByRole('textbox', { name: 'Question text' });
+  const prompt = addDialog.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
   await prompt.fill(spec.promptText);
+  await addDialog.getByRole('button', { name: 'Add', exact: true }).click();
+  // Full unmount, not just hidden: phase two reopens the same dialog, and the
+  // row's own Edit control is behind this one until it has gone.
+  await addDialog.waitFor({ state: 'detached' });
 
-  await page
-    .getByLabel('Input control')
-    .selectOption({ label: spec.inputControl });
+  const needsSecondPass =
+    spec.booleanOptions !== undefined ||
+    spec.dateMin !== undefined ||
+    spec.required === true;
+  if (!needsSecondPass) return;
 
-  if (spec.options) {
-    await fillOptionRows(dialog, spec.options);
+  // Phase two: everything that is ABOUT an attribute, and so is only offered
+  // once one exists. The row just added is the last in the list.
+  await section
+    .getByRole('button', { name: 'Edit field', exact: true })
+    .last()
+    .click();
+  const editDialog = page.getByRole('dialog', { name: 'Edit form field' });
+  await expect(editDialog).toBeVisible();
+
+  const booleanOptions = spec.booleanOptions;
+  if (booleanOptions) {
+    await inCodebookEditor(
+      editDialog,
+      'Change this attribute’s answer labels',
+      async (editor) => {
+        await setBooleanAnswer(editor, 'true', booleanOptions.positive);
+        await setBooleanAnswer(editor, 'false', booleanOptions.negative);
+      },
+    );
   }
 
-  if (spec.booleanOptions) {
-    await setBooleanOption(page, dialog, 0, spec.booleanOptions.positive);
-    await setBooleanOption(page, dialog, 1, spec.booleanOptions.negative);
-  }
-
-  if (spec.scalarParameters) {
-    await page
-      .getByRole('textbox', { name: 'Minimum label' })
-      .fill(spec.scalarParameters.minLabel);
-    await page
-      .getByRole('textbox', { name: 'Maximum label' })
-      .fill(spec.scalarParameters.maxLabel);
-  }
-
-  if (spec.dateMin) {
-    await page.getByLabel('Start range').fill(spec.dateMin);
+  const dateMin = spec.dateMin;
+  if (dateMin) {
+    await inCodebookEditor(
+      editDialog,
+      'Set what this field accepts',
+      async (editor) => {
+        await editor
+          .getByRole('textbox', { name: 'Earliest date', exact: true })
+          .fill(dateMin);
+      },
+    );
   }
 
   if (spec.required) {
-    await openValidationSection(dialog);
-    await dialog
-      .getByRole('switch', { name: 'Required answer', exact: true })
+    const rules = await openValidationSection(editDialog);
+    await rules
+      .getByRole('checkbox', { name: 'Required', exact: true })
+      .check();
+    await rules
+      .getByRole('button', { name: 'Save validation', exact: true })
       .click();
+    await rules.waitFor({ state: 'detached' });
   }
 
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  // Full unmount, not just hidden: the shared 'editable-list-form' dialog
-  // form never reinitializes while mounted (see prompts.ts) — a
-  // back-to-back field add would otherwise reuse this field's values/id.
-  await dialog.waitFor({ state: 'detached' });
+  await editDialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await editDialog.waitFor({ state: 'detached' });
 }

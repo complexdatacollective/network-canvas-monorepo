@@ -134,7 +134,6 @@ function RuleSetControl({
   readOnly = false,
   'aria-labelledby': ariaLabelledBy,
   'aria-describedby': ariaDescribedBy,
-  'aria-required': ariaRequired,
   'aria-invalid': ariaInvalid,
 }: RuleSetFieldProps) {
   const protocolContext = useProtocolContext();
@@ -189,7 +188,11 @@ function RuleSetControl({
       onFocus={onFocus}
       aria-labelledby={ariaLabelledBy}
       aria-describedby={ariaDescribedBy}
-      aria-required={ariaRequired}
+      // No `aria-required` here: `group` is not a role that may carry it (axe
+      // reports `aria-allowed-attr`), and a rule set that announced it that
+      // way would be announcing it in a place assistive technology is entitled
+      // to ignore. The field's own "Required" marker is in the description
+      // above, which is where it is read.
       aria-invalid={ariaInvalid}
       className="flex flex-col gap-8"
     >

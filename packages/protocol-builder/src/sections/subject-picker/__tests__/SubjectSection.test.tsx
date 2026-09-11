@@ -16,7 +16,7 @@ import {
 } from '../../__tests__/rowFixtures.tsx';
 import IntroductionSection from '../../introduction/IntroductionSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
-import SubjectSection, { NEW_ENTITY_DRAFT } from '../SubjectSection.tsx';
+import SubjectSection, { newEntityDraft } from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
 
 type Harness = ReturnType<typeof renderStageEditor>;
@@ -310,9 +310,15 @@ describe('creating the type a stage needs without leaving it', () => {
       await screen.findByRole('button', { name: 'Create a new node type' }),
     );
 
-    const color = draftString(NEW_ENTITY_DRAFT.node, 'color');
-    const shape = draftString(NEW_ENTITY_DRAFT.node, 'shape', 'default');
-    const icon = draftString(NEW_ENTITY_DRAFT.node, 'icon');
+    // The fixture protocol's own node types are what the next colour counts
+    // past, so the draft under test is the one this codebook produces.
+    const draft = newEntityDraft(
+      'node',
+      Object.keys(harness.hostCodebook().node ?? {}).length,
+    );
+    const color = draftString(draft, 'color');
+    const shape = draftString(draft, 'shape', 'default');
+    const icon = draftString(draft, 'icon');
     // Asserted before they are compared against: a draft that stopped
     // pre-filling one of these would answer '' here, and an empty control
     // would then match it.

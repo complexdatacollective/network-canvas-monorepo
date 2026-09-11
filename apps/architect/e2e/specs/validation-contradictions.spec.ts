@@ -1,25 +1,30 @@
+import { type Page } from '@playwright/test';
+
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { emptyProtocol } from '../fixtures/seed.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 import { openValidationSection } from '../pageobjects/editor-sections/form-field-controls.js';
-import { createVariableViaSpotlight } from '../pageobjects/editor-sections/variables.js';
+import { addFormField } from '../pageobjects/editor-sections/forms.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 
-test('the field editor blocks an inverted min/max validation pair', async ({
-  architectPage,
-  seed,
-}) => {
-  await seed(emptyProtocol());
-  await gotoProtocol(architectPage);
+// The repair guidance a researcher is given for an inverted min/max pair
+// (`validationContradictionMessages.invertedBounds`, protocol-validation's own
+// catalog), with the attribute named because by the time rules can be set the
+// attribute exists and has a name.
+const INVERTED_BOUNDS =
+  'The minimum and maximum rules for age leave no permitted answer. Adjust the bounds or the required-answer rule.';
 
+/**
+ * An EgoForm carrying one number field on a new `age` attribute, left open.
+ *
+ * The introduction panel is filled because both its halves are
+ * `z.string().min(1)` (protocol-validation's `IntroductionPanelSchema`), so
+ * the stage cannot be saved without them — mirrors ego-form.spec.ts.
+ */
+async function egoFormWithAgeField(architectPage: Page): Promise<StageEditor> {
   const editor = new StageEditor(architectPage);
   await editor.createNew('EgoForm');
   await editor.setStageName('About You');
-
-  // EgoForm's introductionPanel title/text are both `z.string().min(1)`
-  // (protocol-validation's IntroductionPanelSchema), so the dialog-level
-  // submit validation fails `editor.save()` without them — mirrors
-  // ego-form.spec.ts's create-from-scratch spec.
   await editor
     .field('introductionPanel.title')
     .getByRole('textbox')
@@ -28,65 +33,89 @@ test('the field editor blocks an inverted min/max validation pair', async ({
     'Introduction text',
     'Thanks for taking part in this study.',
   );
+  await addFormField(editor.section('Form fields'), {
+    variableName: 'age',
+    promptText: 'How old are you?',
+    inputControl: 'Number input',
+  });
+  return editor;
+}
 
-  // Open the field dialog and configure a number variable (mirrors
-  // pageobjects/editor-sections/forms.ts's addFormField, inlined so the
-  // dialog stays open for the validation controls).
-  const page = architectPage;
-  await editor
-    .section('Form configuration')
-    .getByRole('button', { name: 'Create new form field', exact: true })
+/**
+ * Reopen the field just added and open the codebook rules for its attribute.
+ *
+ * Two steps rather than one because the rules are the CODEBOOK's now: they are
+ * offered against an attribute that exists, and while one is still being
+ * invented the button that opens them is not on screen at all. So the field is
+ * added first — which is what creates the attribute — and reopened.
+ */
+async function openAgeRules(editor: StageEditor) {
+  const section = editor.section('Form fields');
+  await section
+    .getByRole('button', { name: 'Edit field', exact: true })
     .click();
-  await createVariableViaSpotlight(page, { variableName: 'age' });
-  const prompt = page.getByRole('textbox', { name: 'Question text' });
-  await prompt.click();
-  await prompt.fill('How old are you?');
-  await page
-    .getByLabel('Input control')
-    .selectOption({ label: 'Number Input' });
+  const fieldDialog = section
+    .page()
+    .getByRole('dialog', { name: 'Edit form field' });
+  await expect(fieldDialog).toBeVisible();
+  return { fieldDialog, rules: await openValidationSection(fieldDialog) };
+}
 
-  const validationControls = page.getByRole('dialog', {
-    name: 'Edit Field',
+test('the field editor blocks an inverted min/max validation pair', async ({
+  architectPage,
+  seed,
+}) => {
+  await seed(emptyProtocol());
+  await gotoProtocol(architectPage);
+
+  const editor = await egoFormWithAgeField(architectPage);
+  const { fieldDialog, rules } = await openAgeRules(editor);
+
+  // Each rule is a checkbox that switches it on, with the value beside it in
+  // a number input carrying the same (visually hidden) name — role tells the
+  // two apart (`VariableValidationEditor`).
+  const minValue = rules.getByRole('spinbutton', {
+    name: 'Minimum value',
     exact: true,
   });
-  await openValidationSection(validationControls);
+  const maxValue = rules.getByRole('spinbutton', {
+    name: 'Maximum value',
+    exact: true,
+  });
+  const saveRules = rules.getByRole('button', {
+    name: 'Save validation',
+    exact: true,
+  });
 
-  const minValue = page.locator('input[name="validation-value-minValue"]');
-  const maxValue = page.locator('input[name="validation-value-maxValue"]');
-
-  await validationControls
-    .getByRole('switch', { name: 'Minimum value', exact: true })
-    .click();
+  await rules
+    .getByRole('checkbox', { name: 'Minimum value', exact: true })
+    .check();
   await minValue.fill('10');
   await minValue.blur();
 
-  // Attempt maxValue 2 — the reason must show against both ends of the pair,
-  // and the value must be held for correction rather than dropped.
-  await validationControls
-    .getByRole('switch', { name: 'Maximum value', exact: true })
-    .click();
+  // Attempt maxValue 2 — the reason must be shown, and the value must be held
+  // for correction rather than dropped.
+  await rules
+    .getByRole('checkbox', { name: 'Maximum value', exact: true })
+    .check();
   await maxValue.fill('2');
-  await expect(
-    page
-      .getByText(
-        'The minimum and maximum rules for this attribute leave no permitted answer. Adjust the bounds or the required-answer rule.',
-        { exact: true },
-      )
-      .first(),
-  ).toBeVisible();
-  await expect(maxValue).toHaveAttribute('aria-invalid', 'true');
+  await expect(rules.getByText(INVERTED_BOUNDS, { exact: true })).toBeVisible();
+  // The pair being refused is what the editor's own save reports now: it is
+  // held shut for as long as the rule map has an issue. (The old field-level
+  // `aria-invalid` marked a rule switched on with no value at all, which this
+  // is not — both ends carry a number.)
+  await expect(saveRules).toBeDisabled();
   await maxValue.blur();
   await expect(maxValue).toHaveValue('2');
 
-  // Correcting the value clears the row's complaint. No explicit blur here:
-  // clicking the dialog's Add button is what takes focus off the field, which
-  // is the realistic path and the one blur-commit has to survive. The row is
-  // asserted through its own `aria-invalid` rather than through the message
-  // text: the FIELD-level error tracks the COMMITTED rule map, so it
-  // legitimately stands until that very blur commits the corrected value.
+  // Correcting the value clears the complaint and lets the write through.
   await maxValue.fill('20');
-  await expect(maxValue).not.toHaveAttribute('aria-invalid', 'true');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(saveRules).toBeEnabled();
+  await saveRules.click();
+  await rules.waitFor({ state: 'detached' });
+
+  await fieldDialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await fieldDialog.waitFor({ state: 'detached' });
 
   await editor.expectNoIssues();
   await editor.save();
@@ -105,7 +134,7 @@ test('the field editor blocks an inverted min/max validation pair', async ({
 });
 
 // Issue #1383. The spec above only proves the CORRECTED pair saves. The
-// failure it was filed for is the uncorrected path: the dialog closed, the
+// failure it was filed for is the uncorrected path: the editor closed, the
 // save succeeded, and the offending rule was gone from the codebook without a
 // word.
 test('the field editor refuses to save an uncorrected min/max pair', async ({
@@ -115,74 +144,55 @@ test('the field editor refuses to save an uncorrected min/max pair', async ({
   await seed(emptyProtocol());
   await gotoProtocol(architectPage);
 
-  const page = architectPage;
-  const editor = new StageEditor(architectPage);
-  await editor.createNew('EgoForm');
-  await editor.setStageName('About You');
-  await editor
-    .field('introductionPanel.title')
-    .getByRole('textbox')
-    .fill('About You');
-  await editor.fillRichText(
-    'Introduction text',
-    'Thanks for taking part in this study.',
-  );
+  const editor = await egoFormWithAgeField(architectPage);
+  const { rules } = await openAgeRules(editor);
 
-  await editor
-    .section('Form configuration')
-    .getByRole('button', { name: 'Create new form field', exact: true })
-    .click();
-  await createVariableViaSpotlight(page, { variableName: 'age' });
-  const prompt = page.getByRole('textbox', { name: 'Question text' });
-  await prompt.click();
-  await prompt.fill('How old are you?');
-  await page
-    .getByLabel('Input control')
-    .selectOption({ label: 'Number Input' });
-
-  const validationControls = page.getByRole('dialog', {
-    name: 'Edit Field',
+  const minValue = rules.getByRole('spinbutton', {
+    name: 'Minimum value',
     exact: true,
   });
-  await openValidationSection(validationControls);
-  const minValue = page.locator('input[name="validation-value-minValue"]');
-  const maxValue = page.locator('input[name="validation-value-maxValue"]');
+  const maxValue = rules.getByRole('spinbutton', {
+    name: 'Maximum value',
+    exact: true,
+  });
 
-  await validationControls
-    .getByRole('switch', { name: 'Minimum value', exact: true })
-    .click();
+  await rules
+    .getByRole('checkbox', { name: 'Minimum value', exact: true })
+    .check();
   await minValue.fill('100');
   await minValue.blur();
-  await validationControls
-    .getByRole('switch', { name: 'Maximum value', exact: true })
-    .click();
+  await rules
+    .getByRole('checkbox', { name: 'Maximum value', exact: true })
+    .check();
   await maxValue.fill('50');
   await maxValue.blur();
 
   // Attempt the save without correcting anything.
-  const addButton = page.getByRole('button', { name: 'Add', exact: true });
-  await addButton.click();
+  const saveRules = rules.getByRole('button', {
+    name: 'Save validation',
+    exact: true,
+  });
+  await expect(saveRules).toBeDisabled();
 
-  // The dialog stays open with both entered values intact, and says why.
-  await expect(addButton).toBeVisible();
-  await expect(
-    page
-      .getByText(
-        'The minimum and maximum rules for this attribute leave no permitted answer. Adjust the bounds or the required-answer rule.',
-        { exact: true },
-      )
-      .first(),
-  ).toBeVisible();
+  // The editor stays open with both entered values intact, and says why.
+  await expect(rules).toBeVisible();
+  await expect(rules.getByText(INVERTED_BOUNDS, { exact: true })).toBeVisible();
   await expect(minValue).toHaveValue('100');
   await expect(maxValue).toHaveValue('50');
 
-  // Nothing reached the codebook: the variable does not exist at all, because
-  // it is the dialog's own save that would have created it.
+  // The attribute itself is in the codebook: it was written when the field ROW
+  // was saved, and an attribute belongs to the codebook rather than to the
+  // stage that collects it. The refused rule map is not: neither bound reached
+  // it, which is exactly the failure #1383 was filed for — the editor closing,
+  // the save succeeding, and the offending rule gone without a word.
   const protocol = await readProtocolJson(architectPage);
   const variables = protocol.codebook.ego?.variables ?? {};
-  expect(
-    Object.values(variables).some((variable) => variable.name === 'age'),
-  ).toBe(false);
+  const ageVariable = Object.values(variables).find((v) => v.name === 'age');
+  if (!ageVariable || ageVariable.type !== 'number') {
+    throw new Error('expected a saved number variable named "age"');
+  }
+  expect(ageVariable.validation?.minValue).toBeUndefined();
+  expect(ageVariable.validation?.maxValue).toBeUndefined();
 });
 
 // Issue #1383. `Café` written with the precomposed U+00E9 and `Café` written
@@ -209,25 +219,47 @@ test('the option editor rejects canonically equivalent labels', async ({
   );
 
   await editor
-    .section('Form configuration')
+    .section('Form fields')
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
-  await createVariableViaSpotlight(page, { variableName: 'venue' });
-  const prompt = page.getByRole('textbox', { name: 'Question text' });
-  await prompt.click();
-  await prompt.fill('Where did you meet?');
-  await page
-    .getByLabel('Input control')
-    .selectOption({ label: 'Checkbox Group' });
-
-  const addOption = page.getByRole('button', {
-    name: 'Create new option',
+  const fieldDialog = page.getByRole('dialog', { name: 'Create form field' });
+  await fieldDialog
+    .getByRole('combobox', { name: 'Attribute', exact: true })
+    .selectOption({ label: 'Create a new attribute…' });
+  // An attribute a participant chooses an answer from IS its list of values —
+  // the schema refuses fewer than two — so it is invented in the codebook's
+  // own editor rather than from a name and a type. Driven here rather than
+  // through forms.ts's helper because the whole point is the refusal, which
+  // that helper would wait for a successful create through.
+  await fieldDialog
+    .getByRole('combobox', { name: 'Kind of answer', exact: true })
+    .selectOption({ label: 'Categorical' });
+  const openEditor = 'Create this attribute and its values';
+  await fieldDialog
+    .getByRole('button', { name: openEditor, exact: true })
+    .click();
+  const attributeEditor = page.getByRole('dialog', {
+    name: openEditor,
     exact: true,
   });
-  const optionLabel = (index: number) =>
-    page.locator(`[name="options[${index}].label"]`);
-  const optionValue = (index: number) =>
-    page.locator(`[name="options[${index}].value"]`);
+  await attributeEditor
+    .getByRole('textbox', { name: 'Attribute name', exact: true })
+    .fill('venue');
+
+  const addOption = attributeEditor.getByRole('button', {
+    name: 'Add option',
+    exact: true,
+  });
+  const optionLabel = (position: number) =>
+    attributeEditor.getByRole('textbox', {
+      name: `Option ${position} label`,
+      exact: true,
+    });
+  const optionValue = (position: number) =>
+    attributeEditor.getByRole('textbox', {
+      name: `Option ${position} value`,
+      exact: true,
+    });
 
   // Written with explicit escapes so the source file's own encoding cannot
   // quietly normalise the decomposed spelling into the precomposed one.
@@ -235,18 +267,21 @@ test('the option editor rejects canonically equivalent labels', async ({
   const DECOMPOSED = 'Cafe\u0301';
 
   await addOption.click();
-  await optionLabel(0).fill(PRECOMPOSED);
-  await optionValue(0).fill('cafe_a');
+  await optionLabel(1).fill(PRECOMPOSED);
+  await optionValue(1).fill('cafe_a');
   await addOption.click();
-  await optionLabel(1).fill(DECOMPOSED);
-  await optionValue(1).fill('cafe_b');
+  await optionLabel(2).fill(DECOMPOSED);
+  await optionValue(2).fill('cafe_b');
 
-  const addButton = page.getByRole('button', { name: 'Add', exact: true });
-  await addButton.click();
+  const createAttribute = attributeEditor.getByRole('button', {
+    name: 'Create attribute',
+    exact: true,
+  });
+  await createAttribute.click();
 
-  await expect(addButton).toBeVisible();
+  await expect(createAttribute).toBeVisible();
   await expect(
-    page.getByText('Every option needs a unique label.').first(),
+    attributeEditor.getByText('Every option needs a unique label.').first(),
   ).toBeVisible();
 
   const protocol = await readProtocolJson(architectPage);

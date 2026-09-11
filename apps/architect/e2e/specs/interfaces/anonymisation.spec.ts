@@ -19,35 +19,38 @@ test('creates a valid Anonymisation stage from scratch', async ({
   await editor.createNew('Anonymisation');
   await editor.setStageName('Anonymise Your Data');
 
-  // Anonymisation's sections are `[AnonymisationExplanation,
-  // AnonymisationValidation, EncryptedVariables, SkipLogic, InterviewScript]`
-  // (StageEditor/Interfaces.tsx) — no `FilteredNodeType`/`NodeType` subject
-  // section and no `prompts` array, unlike every other interface this suite
-  // covers so far. SkipLogic stays collapsed here (toggleable, off by
-  // default), so it registers nothing and the saved stage is unchanged.
+  // Anonymisation's sections are `[stageHeading, taskExplanation,
+  // passphraseRules, encryptedAttributes, skipLogic, interviewerGuidance]`
+  // (`@codaco/protocol-builder`'s `editors/anonymisation/
+  // AnonymisationStageEditor.ts`) — no subject section and no `prompts` array,
+  // unlike every other interface this suite covers so far. Skip logic stays
+  // switched off here (a capability, off by default), so it registers nothing
+  // and the saved stage is unchanged.
   //
-  // AnonymisationExplanation.tsx's "Title" field is a plain
-  // `FrescoReduxField`/`InputField` (`ValidatedField label="Title"
-  // name="explanationText.title"`), so it's a real accessible-name match
-  // rather than the `data-field-name` seam.
-  await architectPage.getByLabel('Title').fill('Protecting Your Privacy');
+  // Both halves of the explanation keep their schema paths
+  // (`explanationText.title` / `explanationText.body`, TaskExplanationSection.tsx)
+  // while the CONTROLS are now named for what they are: "Explanation heading"
+  // and "Explanation". They are reached through the `data-field-name` seam
+  // because a role+name query for the body would also match the heading, whose
+  // accessible name contains it.
+  await editor
+    .field('explanationText.title')
+    .getByRole('textbox', { name: 'Explanation heading', exact: true })
+    .fill('Protecting Your Privacy');
 
-  // The "Body" field is a `RichText` field (`ValidatedField label="Body"
-  // name="explanationText.body" component={RichText}`) — `fillRichText`
-  // resolves by the field's `label` prop text, NOT its `name`
-  // (confirmed against `RichTextField.tsx`, which passes `label={label ??
-  // input.name ?? ''}` down to the Tiptap editor's `aria-label`/
-  // `aria-labelledby`), so the accessible name is `'Body'`, not
-  // `'explanationText.body'`.
-  await editor.fillRichText(
-    'Body',
-    'Enter your passphrase below, then continue.',
-  );
+  // The explanation body is a RichText field. `RichTextField` passes its
+  // `label` down to the Tiptap editor's accessible name, so the name is the
+  // section's own wording rather than the field's path.
+  const explanation = editor
+    .field('explanationText.body')
+    .getByRole('textbox', { name: 'Explanation', exact: true });
+  await expect(explanation).toBeEditable();
+  await explanation.fill('Enter your passphrase below, then continue.');
 
-  // `AnonymisationValidation` (toggleable, collapsed by default) and
-  // `EncryptedVariables` (per-node-type checkbox groups, and this protocol
-  // has no node types yet) are both left untouched — everything they cover
-  // is optional per `anonymisationStage`'s zod schema.
+  // The passphrase rules (a capability, switched off by default) and the
+  // encrypted attributes (per-type checkbox groups, and this protocol has no
+  // types yet) are both left untouched — everything they cover is optional per
+  // `anonymisationStage`'s zod schema.
 
   await editor.expectNoIssues();
   await editor.save();

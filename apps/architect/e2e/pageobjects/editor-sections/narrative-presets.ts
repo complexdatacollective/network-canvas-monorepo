@@ -1,29 +1,88 @@
-import { type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
 import { addPrompt } from './prompts.js';
-import { createVariableViaSpotlight } from './variables.js';
 
-// NarrativePresets + NarrativeBehaviours sections. Facts verified against
-// source (sections/NarrativePresets/*, sections/NarrativeBehaviours.tsx):
-// - The preset dialog ('Edit Preset') exposes a visible "Preset label" field,
-//   layoutVariable (VariablePicker; typing an existing variable's exact name
-//   Enter-selects it), and three toggleable nested sections — Node grouping
-//   (disallowCreation picker), Displayed edges and Node highlighting (checkbox
-//   groups whose accessible names are the codebook entity/variable names;
-//   arrays fill in click order).
-// - normalizePreset drops groupVariable/edges/highlight when empty, so only
-//   configured keys persist.
-// - Behaviour switches are named by their field LABEL ('Free-draw',
-//   'Automatic layout', 'Allow repositioning'); the sentence beneath each one
-//   ('Allow drawing on the canvas', …) is the field's `hint`, exposed as the
-//   switch's accessible DESCRIPTION via `aria-describedby`, not its name.
-//   (Pre-migration the sentence was the redux-form Field's `label` and so
-//   became the accessible name, while the short label was a bare `<Heading>`
-//   associated with nothing — the migrated markup names and describes the
-//   control properly, so these selectors follow the label.) The Narrative
-//   template seeds automaticLayout:true/allowRepositioning:true and the
-//   Toggle mount effect adds freeDraw:false.
+// A narrative stage's presets and the permissions beneath them, as
+// `@codaco/protocol-builder` renders them.
+//
+// `NarrativePresetsSection` is the section "Visualization presets", whose list
+// adds through "Create new preset" and whose row dialog is titled "Create
+// preset" (submitted with "Add", like every other row dialog in the package).
+// `NarrativePresetFields` fills that dialog with five always-open groups —
+// there are no capability switches inside it any more, so nothing has to be
+// turned on before it can be filled in:
+// - "Preset identity" holds "Preset name" (`label`).
+// - "Node positions" holds the picker "Position attribute" (`layoutVariable`)
+//   and the button "Create a new position attribute" beside it.
+// - "Node grouping" holds the picker "Grouping attribute" (`groupVariable`)
+//   and NO create button: a preset groups by a categorical attribute the
+//   protocol already collects, so there is nothing here to invent.
+// - "Connections" holds the tick list "Connection types shown"
+//   (`edges.display`), and "Highlighted nodes" the tick list "Highlight
+//   attributes" (`highlight`). Both name codebook entries, and both drop the
+//   key entirely when nothing is ticked.
+//
+// The behaviours are no longer one section: what the participant may DO is
+// `CanvasPermissionsSection` ("Canvas interaction" — "Allow drawing on the
+// canvas" at `behaviours.freeDraw`, "Allow moving nodes" at
+// `behaviours.allowRepositioning`), while how the stage arranges nodes when it
+// opens is the shared `NodeLayoutSection` ("Node layout"), which is not a
+// switch at all but a choice of "Layout mode" between "Manual mode" and
+// "Automatic mode" written to `behaviours.automaticLayout`. The Narrative
+// template seeds automaticLayout and allowRepositioning true.
+
+/**
+ * Chooses a codebook attribute in one of the preset dialog's pickers.
+ *
+ * `VariablePickerField` is handed options and no `onCreateOption` here, so it
+ * is a native `<select>` over the attributes that exist (or a sentence, and no
+ * `<select>` at all, when the type has none of the kind). Where the group
+ * offers a `CreateVariableButton`, `createLabel` names it: it opens the
+ * codebook's own attribute editor — "Attribute name", submitted with "Create
+ * attribute" — in a dialog titled with the button's own label.
+ */
+async function chooseAttribute(
+  page: Page,
+  field: Locator,
+  opts: { name: string; createLabel?: string; scope: Locator },
+): Promise<void> {
+  const select = field.locator('select');
+  if (await select.count()) {
+    // Compared whole rather than by substring: an attribute called "group"
+    // must not be answered by an existing "group_size".
+    const offered = await select.locator('option').allInnerTexts();
+    if (offered.includes(opts.name)) {
+      await select.selectOption({ label: opts.name });
+      await expect(field.locator('option:checked')).toHaveText(opts.name);
+      return;
+    }
+  }
+  if (opts.createLabel === undefined) {
+    throw new Error(
+      `The attribute "${opts.name}" is not offered here and this control cannot create one. Add it to the codebook first.`,
+    );
+  }
+  await opts.scope
+    .getByRole('button', { name: opts.createLabel, exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: opts.createLabel,
+    exact: true,
+  });
+  await editor
+    .getByRole('textbox', { name: 'Attribute name', exact: true })
+    .fill(opts.name);
+  await editor
+    .getByRole('button', { name: 'Create attribute', exact: true })
+    .click();
+  // The write goes to the codebook under its section's own lock and the id
+  // comes back afterwards, so the picker holds the new attribute only once the
+  // editor has closed.
+  await editor.waitFor({ state: 'detached' });
+  await expect(field.locator('option:checked')).toHaveText(opts.name);
+}
+
 export async function addNarrativePreset(
   editor: StageEditor,
   page: Page,
@@ -39,60 +98,33 @@ export async function addNarrativePreset(
     editor.field('presets'),
     async () => {
       await page
-        .getByPlaceholder('Enter a label for the preset...')
+        .getByRole('textbox', { name: 'Preset name', exact: true })
         .fill(spec.label);
-      await createVariableViaSpotlight(page, {
-        variableName: spec.layoutVariable,
-        scope: editor.field('layoutVariable'),
-        until: editor
-          .field('layoutVariable')
-          .getByRole('button', { name: 'Change attribute' }),
+      await chooseAttribute(page, editor.field('layoutVariable'), {
+        name: spec.layoutVariable,
+        createLabel: 'Create a new position attribute',
+        scope: editor.section('Node positions'),
       });
       if (spec.groupVariable) {
-        await editor
-          .section('Node grouping')
-          .getByRole('switch', { name: 'Node grouping', exact: true })
-          .click();
-        await createVariableViaSpotlight(page, {
-          variableName: spec.groupVariable,
-          scope: editor.field('groupVariable'),
-          until: editor
-            .field('groupVariable')
-            .getByRole('button', { name: 'Change attribute' }),
+        await chooseAttribute(page, editor.field('groupVariable'), {
+          name: spec.groupVariable,
+          scope: editor.section('Node grouping'),
         });
       }
-      if (spec.displayEdges) {
+      for (const edgeName of spec.displayEdges ?? []) {
         await editor
-          .section('Displayed edges')
-          .getByRole('switch', { name: 'Displayed edges', exact: true })
-          .click();
-        for (const edgeName of spec.displayEdges) {
-          await editor
-            .field('edges.display')
-            .getByRole('checkbox', { name: edgeName, exact: true })
-            .check();
-        }
+          .field('edges.display')
+          .getByRole('checkbox', { name: edgeName, exact: true })
+          .check();
       }
-      if (spec.highlight) {
+      for (const variableName of spec.highlight ?? []) {
         await editor
-          .section('Node highlighting')
-          .getByRole('switch', { name: 'Node highlighting', exact: true })
-          .click();
-        for (const variableName of spec.highlight) {
-          await editor
-            .field('highlight')
-            .getByRole('checkbox', { name: variableName, exact: true })
-            .check();
-        }
+          .field('highlight')
+          .getByRole('checkbox', { name: variableName, exact: true })
+          .check();
       }
     },
-    {
-      addButtonLabel: 'Create new preset',
-      freshSign: (candidate) =>
-        candidate
-          .locator('[data-field-name="layoutVariable"]')
-          .getByRole('button', { name: 'Select attribute' }),
-    },
+    { addButtonLabel: 'Create new preset' },
   );
 }
 
@@ -100,13 +132,17 @@ export async function setNarrativeBehaviours(
   editor: StageEditor,
   opts: { freeDraw?: boolean; automaticLayout?: boolean },
 ): Promise<void> {
-  const section = editor.section('Narrative behaviors');
-  // Template defaults: automaticLayout true, allowRepositioning true,
-  // freeDraw false (mount effect) — only click switches that must change.
   if (opts.freeDraw) {
-    await section.getByRole('switch', { name: 'Free-draw' }).click();
+    await editor
+      .field('behaviours.freeDraw')
+      .getByRole('switch', { name: 'Allow drawing on the canvas', exact: true })
+      .click();
   }
   if (opts.automaticLayout === false) {
-    await section.getByRole('switch', { name: 'Automatic layout' }).click();
+    await editor
+      .field('behaviours.automaticLayout')
+      .getByRole('listbox', { name: 'Layout mode', exact: true })
+      .getByRole('option', { name: /^Manual mode/ })
+      .click();
   }
 }

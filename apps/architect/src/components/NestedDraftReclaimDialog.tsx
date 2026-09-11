@@ -10,7 +10,6 @@ import {
   getProtocolLockState,
   getProtocolReclaimChoiceRequest,
 } from '~/ducks/modules/app';
-import { getStageEditorCodebookTransactionOpen } from '~/selectors/stageEditorDraft';
 const messages = defineMessages({
   backToTheEditor: {
     id: 'architect.nestedDraftReclaimDialog.backToTheEditor',
@@ -58,21 +57,11 @@ const TITLE = defineMessages({
   },
 }).message;
 
-// One whole message per situation, never assembled, so both can be localised.
-// They differ in what finishing the inner editor would actually achieve, and
-// promising the wrong one is how a researcher loses work believing they saved
-// it.
-const IN_STAGE_EDITOR_DESCRIPTION = defineMessages({
-  message: {
-    id: 'architect.constants.components.nesteddraftreclaimdialog.inStageEditorDescription',
-    defaultMessage:
-      'The other tab has been closed, so this protocol can be edited here again. Before that can happen, the editor you have open needs to be dealt with: anything in it is not part of this stage yet, and it exists nowhere else. Finish that editor to move its changes into this stage, or cancel it to discard them. You will then be asked what to do about your unsaved changes to this stage.',
-    description:
-      'Researcher-facing status or validation message. Context: components/NestedDraftReclaimDialog.tsx.',
-  },
-}).message;
-
-const ELSEWHERE_DESCRIPTION = defineMessages({
+// One whole message, never assembled, so it can be localised. Every editor
+// this dialog waits on writes the canonical protocol when it is finished —
+// a write this tab cannot make — so there is one thing to say about all of
+// them.
+const DESCRIPTION = defineMessages({
   message: {
     id: 'architect.constants.components.nesteddraftreclaimdialog.elsewhereDescription',
     defaultMessage:
@@ -88,10 +77,6 @@ const NestedDraftReclaimDialog = () => {
   const blocked = useAppSelector(
     (state) => getProtocolLockState(state) === 'reclaim-blocked',
   );
-  // Whether finishing the inner editor would write the stage editor's own draft
-  // (safe, and the way to keep the work) or the canonical protocol (refused —
-  // see DialogForm). Read at ask time, like everything else here.
-  const inStageEditor = useAppSelector(getStageEditorCodebookTransactionOpen);
   // Bumped by ProtocolLockBanner when the researcher asks to see the
   // explanation again after dismissing it.
   const choiceRequest = useAppSelector(getProtocolReclaimChoiceRequest);
@@ -100,8 +85,8 @@ const NestedDraftReclaimDialog = () => {
 
   // Read at the moment they are used, so a changed identity cannot restart the
   // effect and stack a second dialog on the first.
-  const latest = useRef({ closeDialog, inStageEditor, openDialog });
-  latest.current = { closeDialog, inStageEditor, openDialog };
+  const latest = useRef({ closeDialog, openDialog });
+  latest.current = { closeDialog, openDialog };
 
   const openDialogId = useRef<string | null>(null);
 
@@ -125,9 +110,7 @@ const NestedDraftReclaimDialog = () => {
         intent: 'info',
         size: 'readable',
         title: createElement(AppMessage, { message: TITLE }),
-        description: latest.current.inStageEditor
-          ? createElement(AppMessage, { message: IN_STAGE_EDITOR_DESCRIPTION })
-          : createElement(AppMessage, { message: ELSEWHERE_DESCRIPTION }),
+        description: createElement(AppMessage, { message: DESCRIPTION }),
         actions: {
           // Both actions merely close this, because only the editor itself can
           // validate a Finish or say what a Cancel would discard — duplicating

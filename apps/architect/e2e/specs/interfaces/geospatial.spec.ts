@@ -5,23 +5,21 @@ import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readStageJson } from '../../helpers/read-store.js';
-import { selectNetworkAsset } from '../../pageobjects/editor-sections/data-source.js';
+import {
+  addApiKey,
+  selectResource,
+} from '../../pageobjects/editor-sections/data-source.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
-import {
-  createVariableViaSpotlight,
-  createVariableWithOptions,
-} from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 // A minimal two-feature FeatureCollection, each with a `name` property —
 // mirrors `packages/protocols/e2e/all-interfaces/assets/regions.geojson`
 // (inlined rather than read from disk: the e2e project has no established
 // cross-package file-read pattern, and a literal here keeps the seeded asset
-// self-contained). `mapOptions.targetFeatureProperty` needs at least one
-// feature property to populate the "Which property..." select
-// (useVariablesFromExternalData -> getGeoJsonVariables reads
-// `features[0].properties`).
+// self-contained). "Recorded property" needs at least one feature property to
+// choose from: the control reads them out of the chosen layer's own
+// `features[0].properties`.
 const REGIONS_GEOJSON = JSON.stringify({
   type: 'FeatureCollection',
   features: [
@@ -60,18 +58,13 @@ const REGIONS_GEOJSON = JSON.stringify({
   ],
 });
 
-// Only the GeoJSON data source is seeded into the protocol: GeoDataSource.tsx
-// (Form/Fields/Geospatial/GeoDataSource.tsx) is a plain `File` resource
-// picker with no inline "create" flow — an author can only ever SELECT an
-// existing library asset, so one has to already exist. The Mapbox API key is
-// deliberately NOT pre-seeded: APIKeyBrowser.tsx (unlike GeoDataSource) has
-// its own inline "Create API key" form wired straight to a synchronous
-// `addApiKeyAsset` dispatch (no async IDB round trip — api-key assets store
-// their value directly on the manifest entry, not as a blob; see
-// `assetTools.ts`'s `saveProtocolAssets`, which explicitly skips
-// string-valued/apikey assets), so this spec drives that live create-and-
-// select flow instead, exactly as a real author configuring this stage for
-// the first time would.
+// Only the map layer is seeded into the protocol. Both halves of the map are
+// stored resources chosen through the package's own `AssetPickerField`, and
+// the two differ in what the browser it opens can ADD: a map layer is a file
+// to import, so one has to exist already for a spec that does not drive a file
+// import; an API key is typed in ("Name", "Key", "Add API key"), so this spec
+// drives that live add-and-select exactly as a researcher configuring the
+// stage for the first time would.
 function protocolWithGeoDataAsset(): CurrentProtocol {
   return {
     ...emptyProtocol(),
@@ -81,51 +74,6 @@ function protocolWithGeoDataAsset(): CurrentProtocol {
         type: 'geojson',
         source: 'regions.geojson',
       },
-    },
-  };
-}
-
-// mapbox-gl-js's own `unproject`/`project` round trip introduces tiny
-// floating-point jitter into `getCenter()` — live-verified across ~15 repeat
-// runs to differ in the 5th/6th decimal degree (sub-metre) between otherwise
-// identical runs, even for a ZOOM-ONLY camera change with no panning
-// involved at all. That is real (if minuscule) noise from the library's own
-// projection math, not something a test can control, and far finer than any
-// author would care about for an initial map view — rounding it out here,
-// before the exact-string-compare snapshot, is the correct fix rather than a
-// workaround. 4 decimal places is ~11m of precision at the equator.
-function roundCoordinate(value: number): number {
-  return Math.round(value * 10_000) / 10_000;
-}
-
-// Mirrors `isRow` in `read-store.ts`: a real runtime guard (not an `as`
-// cast) so an unexpectedly-shaped `mapOptions`/`center` just skips rounding
-// instead of throwing.
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function withRoundedCenter(
-  stage: Record<string, unknown>,
-): Record<string, unknown> {
-  const { mapOptions } = stage;
-  if (!isRecord(mapOptions)) {
-    return stage;
-  }
-  const { center } = mapOptions;
-  if (
-    !Array.isArray(center) ||
-    center.length !== 2 ||
-    typeof center[0] !== 'number' ||
-    typeof center[1] !== 'number'
-  ) {
-    return stage;
-  }
-  return {
-    ...stage,
-    mapOptions: {
-      ...mapOptions,
-      center: [roundCoordinate(center[0]), roundCoordinate(center[1])],
     },
   };
 }
@@ -145,188 +93,117 @@ test('creates a valid Geospatial stage from scratch', async ({
   await editor.createNew('Geospatial');
   await editor.setStageName('Where Do You Live?');
 
-  // StageEditor/Interfaces.tsx: `Geospatial.sections = [FilteredNodeType,
-  // MapOptions, GeospatialPrompts, SkipLogic, InterviewScript]`.
+  // `geospatialStageEditor` is [stage heading, subject picker, map source,
+  // prompts, map appearance, skip logic, interviewer guidance], where "map
+  // source" is two sections — "Map access" and "Map layer" — and "map
+  // appearance" is another two, "Map appearance" and "Starting map view".
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // MapOptions.tsx: `mapOptions.tokenAssetId` renders through GeoAPIKey.tsx
-  // (same "receives raw WrappedFieldProps directly, wraps itself in
-  // FrescoReduxField" pattern as VariablePicker/ColorPicker/MapSelection, so
-  // `editor.field(...)` resolves it correctly). Its button reads "Select API
-  // key" and opens APIKeyBrowser.tsx — a DIFFERENT dialog shape from
-  // `selectNetworkAsset`'s "Resource Browser" (title "API Key Browser", with
-  // its own inline create form ahead of the "Resource Library" listbox), so
-  // this drives it inline rather than reusing that helper.
+  // "Map access" holds `mapOptions.tokenAssetId`. The field stores an asset id
+  // and nothing else: the key's value is consumed by the host's resource
+  // gateway and never reaches the editor, which is why the map preview asks
+  // the host to resolve a map for the id rather than asking for the key.
   const apiKeyField = editor.field('mapOptions.tokenAssetId');
-  await apiKeyField.getByRole('button', { name: 'Select API key' }).click();
-  const apiKeyDialog = architectPage.getByRole('dialog', {
-    name: 'API Key Browser',
+  await addApiKey(architectPage, apiKeyField, {
+    name: 'E2E Mapbox Key',
+    value: TESTING_MAPBOX_TOKEN,
   });
-  await apiKeyDialog
-    .getByRole('textbox', { name: 'Key name' })
-    .fill('E2E Mapbox Key');
-  await apiKeyDialog
-    .getByRole('textbox', { name: 'Key value' })
-    .fill(TESTING_MAPBOX_TOKEN);
-  // Creating a key selects it and closes the dialog (#1394) — there is no
-  // second step of picking the new card out of the Resource Library, and no
-  // window in which pressing Create again would mint a duplicate. The field
-  // shows the selection by relabelling its own button.
-  await apiKeyDialog.getByRole('button', { name: 'Create Key' }).click();
-  await expect(apiKeyDialog).toBeHidden();
-  const updateApiKeyButton = apiKeyField.getByRole('button', {
-    name: 'Update API key',
-  });
-  await expect(updateApiKeyButton).toBeVisible();
-  // Closing hands focus back to the control that opened the dialog, so the
-  // keyboard route continues from where it left off rather than at <body>.
-  await expect(updateApiKeyButton).toBeFocused();
+  // The field's own live region has to describe what it holds NOW: adding a
+  // key selects it, and it is announced as a selection rather than as an
+  // addition, so a later change to the same field cannot leave an older
+  // sentence standing over it.
+  await expect(
+    apiKeyField.locator('[aria-live="polite"][aria-atomic="true"]'),
+  ).toHaveText('E2E Mapbox Key is now selected.');
 
-  // The other route through this dialog: picking a card out of the real
-  // Resource Library listbox, which is the only place the manifest lookup
-  // behind the announcement meets the real `Assets`/`Collection` wiring. The
-  // field's status region has to describe what it holds NOW — announcing only
-  // creations left "…created and selected." standing over a later selection
-  // that was itself announced by nothing.
-  const apiKeyStatus = apiKeyField.getByTestId('api-key-status');
-  await expect(apiKeyStatus).toHaveText(
-    'API key E2E Mapbox Key created and selected.',
-  );
-  await updateApiKeyButton.click();
-  await apiKeyDialog
-    .getByRole('listbox', { name: 'Resource library' })
-    .getByRole('heading', { level: 4, name: 'E2E Mapbox Key', exact: true })
-    .click();
-  await expect(apiKeyDialog).toBeHidden();
-  await expect(apiKeyStatus).toHaveText('API key E2E Mapbox Key selected.');
-
-  // `mapOptions.dataSourceAssetId` renders through GeoDataSource.tsx, which
-  // wraps the same `File`/`ResourcePickerControl` + `AssetBrowserWindow`
-  // ("Resource Browser") that `selectNetworkAsset` already drives for
-  // NetworkComposer/name-generator-roster's network-file field — reused
-  // unmodified.
-  await selectNetworkAsset(
+  // "Map layer" holds `mapOptions.dataSourceAssetId` — the same resource
+  // picker, asking for a GeoJSON layer — and, beneath it, the property every
+  // prompt's answer is recorded as. That property list is read from the layer
+  // just chosen, so it only has anything in it once the layer is set.
+  await selectResource(
+    architectPage,
     editor.field('mapOptions.dataSourceAssetId'),
+    'geojson',
     'Regions',
   );
-
-  // `mapOptions.targetFeatureProperty` only renders once
-  // `useVariablesFromExternalData` resolves the seeded GeoJSON's feature
-  // properties (a NativeSelectField via FrescoReduxField, so
-  // `editor.field(...)` -> the real `<select>` inside it).
   await editor
     .field('mapOptions.targetFeatureProperty')
     .locator('select')
     .selectOption({ label: 'name' });
 
-  // ColorPicker (`palette: 'ord-color-seq'`, `paletteRange: 8`) — same Base
-  // UI radio-swatch pattern as NarrativePedigree's disease color.
-  await editor.field('mapOptions.color').getByRole('radio').first().click();
+  // One prompt: the question, and the location attribute the participant's
+  // chosen area is stored in. The picker only chooses, so the empty codebook
+  // is filled by the "Create a new location attribute" button beside it, which
+  // opens the codebook's own attribute editor locked to the location type.
+  await addPrompt(editor.field('prompts'), async () => {
+    await editor.fillRichText('Prompt text', 'Where do you live?');
+    const dialog = architectPage.getByRole('dialog', {
+      name: 'Create prompt',
+      exact: true,
+    });
+    await dialog
+      .getByRole('button', {
+        name: 'Create a new location attribute',
+        exact: true,
+      })
+      .click();
+    const attributeEditor = architectPage.getByRole('dialog', {
+      name: 'Create a new location attribute',
+      exact: true,
+    });
+    await attributeEditor
+      .getByRole('textbox', { name: 'Attribute name', exact: true })
+      .fill('location');
+    await attributeEditor
+      .getByRole('button', { name: 'Create attribute', exact: true })
+      .click();
+    // The write goes to the codebook under its section's own lock and the id
+    // comes back afterwards, so the prompt holds it only once the editor has
+    // closed.
+    await attributeEditor.waitFor({ state: 'detached' });
+    await expect(editor.field('variable').locator('option:checked')).toHaveText(
+      'location',
+    );
+  });
+
+  // "Map appearance": the basemap is a native select over Mapbox's own style
+  // URLs, and the highlight colour a radio per position in the theme's ordinal
+  // palette, each named for that position so it can be said aloud.
   await editor
     .field('mapOptions.style')
     .locator('select')
     .selectOption({ label: 'Streets' });
-
-  // MapSelection.tsx: button reads "Set map view" (lower-case "map view" —
-  // `value.center ? 'Edit map view' : 'Set map view'`) and opens MapView.tsx,
-  // a REAL `mapboxgl.Map` instance (title "Initial Map View"). Its style,
-  // tiles and search go to the `installMapboxMocks` routes the `architect-test`
-  // fixture installs on the browser context, so nothing here reaches Mapbox —
-  // and the fixture fails the test if anything does.
   await editor
-    .field('mapOptions')
-    .getByRole('button', { name: 'Set map view' })
+    .field('mapOptions.color')
+    .getByRole('radio', { name: 'Highlight color 1', exact: true })
     .click();
 
-  // A brand-new stage's `mapOptions.center` is unset, so
-  // `hasMapViewChanged` (MapView.tsx) is true from the moment the map
-  // finishes loading — "Save Changes" only gates on `mapStatus === 'ready'`
-  // (the map's own 'load' event), making it a genuine "map ready" signal,
-  // more reliable than probing canvas visibility (which mounts well before
-  // 'load' fires).
-  const saveChangesButton = architectPage.getByRole('button', {
-    name: 'Save Changes',
-  });
-  await expect(saveChangesButton).toBeVisible({ timeout: 20_000 });
-
-  // Genuine pan gestures were tried extensively (see below) but none proved
-  // reproducible enough for a committed snapshot's exact string compare, so
-  // this deliberately zooms only, leaving `center` at MapView.tsx's own
-  // unset-value default ([0, 0], from `resolveCenter(mapOptions.center)`
-  // with `mapOptions.center` undefined) — a genuine, schema-valid, non-empty
-  // coordinate an author saving this exact interaction sequence would
-  // produce, just not a geographically "interesting" one. mapbox-gl-js's
-  // own NavigationControl (`showCompass: false`, so only the zoom buttons
-  // render) — `aria-label="Zoom in"` confirmed against the installed
-  // mapbox-gl package's `NavigationControl.ZoomIn` UI string, not guessed.
-  // `zoomIn()` eases via `Camera.easeTo`, but `contextOptions.reducedMotion:
-  // 'reduce'` (playwright.config.ts) makes `_prefersReducedMotion()` true,
-  // which `Camera._ease` special-cases: with the resulting `duration === 0`
-  // it calls the interpolator with `t = 1` (the fully-eased target)
-  // SYNCHRONOUSLY, never scheduling a `requestAnimationFrame` tick at all
-  // (confirmed directly in the installed mapbox-gl package's `_ease`
-  // method) — a purely zoom-based `getZoom() + 1` calculation with no
-  // canvas-pixel/projection math involved, so unlike panning below it never
-  // flaked across every run tried (~40+ across this investigation).
-  //
-  // What WAS tried and abandoned, in order, each because live repeat runs
-  // showed the resulting `center` was not reproducible byte-for-byte:
-  //   - A real mouse drag (mousedown/mousemove/mouseup on the canvas,
-  //     mirroring mapbox-gl-js's `DragPanHandler`): the handler applies
-  //     momentum/"inertia" on release by default, and the glide distance it
-  //     computes depends on the REAL elapsed wall-clock time between
-  //     recorded drag points (not just their pixel delta). Every variant
-  //     tried — a multi-step interpolated drag, a single mousemove with a
-  //     frame-accurate release, a >160ms motionless hold before releasing
-  //     to drain mapbox-gl's own inertia buffer — still left the final
-  //     longitude varying between otherwise-identical runs, up to a full
-  //     degree in the worst case.
-  //   - Keyboard panning (ArrowRight/ArrowDown, mapbox-gl-js's
-  //     `KeyboardHandler`, panStep 100 CSS px, no inertia/velocity state at
-  //     all): far more stable, but still measurably non-deterministic in
-  //     the 4th/5th decimal degree, recurring as the SAME small set of
-  //     discrete alternate values across many runs — consistent with the
-  //     canvas's actual bitmap width settling to one of a few different
-  //     rounded values depending on timing (mapbox-gl's own
-  //     `ResizeObserver` on the map container, and/or web-font-swap reflow
-  //     of the dialog's surrounding text) at the moment each 100px pan step
-  //     was applied. `document.fonts.ready` plus an explicit poll requiring
-  //     the canvas's bitmap `width`/`height` to read identically across
-  //     several spaced-out reads before panning reduced but did not
-  //     eliminate the flake (observed down to roughly 1-in-9, but also
-  //     observed to get WORSE, not better, with a longer/stricter version
-  //     of the same poll — inconsistent with a simple "wait longer" fix,
-  //     and not worth further root-causing against a test-only dialog for
-  //     one interface's e2e coverage).
-  const zoomInButton = architectPage.getByRole('button', { name: 'Zoom in' });
-  await zoomInButton.click();
-  await zoomInButton.click();
-
-  await saveChangesButton.click();
-
-  // GeospatialPrompts.tsx's PromptFields.tsx: shared `PromptText` ("Prompt
-  // text", same as sociogram.spec.ts/name-generator.spec.ts) followed by a
-  // "Selection Variable" `VariablePicker` whose `onCreateOption` opens
-  // NewVariableWindow locked to `type: 'location'` — the
-  // spotlight-then-window two-step already proven by tie-strength-census.spec.ts's
-  // locked-ordinal `edgeVariable`.
-  await addPrompt(editor.field('prompts'), async () => {
-    await editor.fillRichText('Prompt text', 'Where do you live?');
-    await createVariableViaSpotlight(architectPage, {
-      variableName: 'location',
-    });
-    await createVariableWithOptions(architectPage, {
-      variableName: 'location',
-      options: [],
-    });
-  });
+  // "Starting map view" is two numbers and a zoom, typed. The map behind
+  // "Set the starting view on a map" sets the same three by panning, for a
+  // researcher who knows the place rather than its coordinates — but a pan is
+  // not reproducible to the last decimal degree (mapbox-gl's own drag inertia
+  // and its projection's round trip both move the centre between otherwise
+  // identical runs), and the typed controls are the only way to state an exact
+  // one. A half-entered pair is no centre at all, so both coordinates are
+  // filled before the field holds anything.
+  const startingView = editor.field('mapOptions.center');
+  await startingView
+    .getByRole('spinbutton', { name: 'Longitude', exact: true })
+    .fill('0');
+  await startingView
+    .getByRole('spinbutton', { name: 'Latitude', exact: true })
+    .fill('0');
+  await editor
+    .field('mapOptions.initialZoom')
+    .getByRole('spinbutton')
+    .fill('2');
 
   await editor.expectNoIssues();
   await editor.save();
 
   const stage = await readStageJson(architectPage, 0);
   expect(stage.type).toBe('Geospatial');
-  expect(await stageSnapshotJson(withRoundedCenter(stage))).toMatchSnapshot(
+  expect(await stageSnapshotJson(stage)).toMatchSnapshot(
     'geospatial-stage.json',
   );
 });

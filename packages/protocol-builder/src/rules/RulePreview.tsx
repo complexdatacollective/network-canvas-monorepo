@@ -1,4 +1,4 @@
-import { Fragment, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -8,7 +8,10 @@ import Node, {
   type NodeColorSequence,
 } from '@codaco/fresco-ui/Node';
 import Pill from '@codaco/fresco-ui/Pill';
-import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import {
+  getMarkdownLabelText,
+  RenderMarkdown,
+} from '@codaco/fresco-ui/RenderMarkdown';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 import type { ColorReference } from '@codaco/protocol-validation';
 
@@ -173,16 +176,43 @@ function RuleOperand({
   operand: RuleDescriptionOperand;
   plain: boolean;
 }) {
-  return operand.items.map((item, index) => (
-    <Fragment key={`${typeof item}-${String(item)}-${index}`}>
-      {index > 0 && ', '}
-      <OperandToken
-        value={item}
-        plain={plain}
-        markdown={operand.authoredLabels}
-      />
-    </Fragment>
-  ));
+  const intl = useAppIntl();
+
+  // Joined through the reader's own list grammar rather than with commas:
+  // English puts "and" before the last item, Spanish "e" rather than "y"
+  // before one that begins with an i sound. Which of those it is depends on
+  // the WORDS, so the parts are computed from the operands as they read —
+  // markdown syntax stripped exactly as the renderer strips it, which would
+  // otherwise hide the initial sound — and each value part is then replaced,
+  // by position, with the token that renders the authored value untouched.
+  const labels = operand.items.map((item) =>
+    operand.authoredLabels
+      ? getMarkdownLabelText(String(item)).trim()
+      : String(item).trim(),
+  );
+  let nextValue = 0;
+
+  // Named as one part, because it IS one: the operand list reads the same in
+  // the editor's own list and in a printable summary, whose surrounding
+  // markup differs.
+  return (
+    <span data-rule-part="operand">
+      {intl.formatListToParts(labels).map((part, partIndex) => {
+        if (part.type === 'literal') return part.value;
+        const index = nextValue++;
+        const item = operand.items[index];
+        if (item === undefined) return part.value;
+        return (
+          <OperandToken
+            key={`${typeof item}-${String(item)}-${index}-${partIndex}`}
+            value={item}
+            plain={plain}
+            markdown={operand.authoredLabels}
+          />
+        );
+      })}
+    </span>
+  );
 }
 
 export type RulePreviewProps = Readonly<{

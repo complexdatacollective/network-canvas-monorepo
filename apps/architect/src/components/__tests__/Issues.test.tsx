@@ -1,13 +1,68 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { configureStore } from '@reduxjs/toolkit';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useContext, type ReactNode } from 'react';
+import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
+import FormStoreProvider, {
+  FormStoreContext,
+} from '@codaco/fresco-ui/form/store/formStoreProvider';
 import { SegmentedToolbar } from '@codaco/fresco-ui/SegmentedToolbar';
 
 import ArchitectField from '../Form/ArchitectField';
 import IssueAnchor from '../IssueAnchor';
 import { useIssuesToolbarControl } from '../Issues';
-import { renderStageForm } from '../StageEditor/__tests__/stageFormTestHarness';
+
+type FormStoreApi = NonNullable<React.ContextType<typeof FormStoreContext>>;
+
+/**
+ * The panel over a bare form store.
+ *
+ * The stage editor's form is the protocol-builder package's now, and what this
+ * panel reads of it is only what any Fresco form has: the field errors, and
+ * whether a submission has been refused. `requestErrorFocus` is how a form
+ * records the second — `useForm` ticks it for a submit its own validation
+ * blocked and for one the host answered with errors — so a test drives it the
+ * same way rather than through a stage editor.
+ */
+const renderStageForm = ({ children }: { children: ReactNode }) => {
+  const store = configureStore({ reducer: () => ({}) });
+  let storeApi: FormStoreApi | null = null;
+
+  const Probe = () => {
+    storeApi = useContext(FormStoreContext) ?? null;
+    return null;
+  };
+
+  const view = render(
+    <Provider store={store}>
+      <FormStoreProvider>
+        <Probe />
+        {children}
+      </FormStoreProvider>
+    </Provider>,
+  );
+
+  const getStoreApi = () => {
+    if (!storeApi) throw new Error('the form store was not captured');
+    return storeApi;
+  };
+
+  return {
+    ...view,
+    getStoreApi,
+    reportRefusedSubmit: () => {
+      getStoreApi().getState().requestErrorFocus();
+    },
+  };
+};
 
 vi.mock('../../utils/scrollTo', () => ({ default: vi.fn() }));
 const scrollTo = vi.mocked((await import('../../utils/scrollTo')).default);
@@ -39,7 +94,7 @@ describe('<Issues />', () => {
 
     act(() => {
       view.getStoreApi().getState().setErrors({ formErrors: [], fieldErrors });
-      view.getContext().markSubmitFailed();
+      view.reportRefusedSubmit();
     });
 
     // Popover content lives in a portal mounted to document.body, and opens
@@ -52,7 +107,7 @@ describe('<Issues />', () => {
 
     act(() => {
       view.getStoreApi().getState().setErrors({ formErrors: [], fieldErrors });
-      view.getContext().markSubmitFailed();
+      view.reportRefusedSubmit();
     });
 
     expect(screen.getByRole('button', { name: 'Issues (3)' })).toHaveClass(
@@ -97,7 +152,7 @@ describe('<Issues />', () => {
         });
 
       setErrors();
-      act(() => view.getContext().markSubmitFailed());
+      act(() => view.reportRefusedSubmit());
       await screen.findAllByTestId('issue');
 
       // Deliberately NO second `setErrors()` here. Base UI mounts the
@@ -237,7 +292,7 @@ describe('<Issues /> focus', () => {
             [TEXT]: ['This field is required.'],
           },
         });
-      view.getContext().markSubmitFailed();
+      view.reportRefusedSubmit();
     });
     await screen.findAllByTestId('issue');
     return view;
@@ -323,7 +378,7 @@ describe('<Issues /> focus', () => {
         .getStoreApi()
         .getState()
         .setErrors({ formErrors: [], fieldErrors: { prompts: ['Required'] } });
-      view.getContext().markSubmitFailed();
+      view.reportRefusedSubmit();
     });
     await screen.findAllByTestId('issue');
     scrollTo.mockClear();

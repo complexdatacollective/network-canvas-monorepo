@@ -12,7 +12,6 @@ import {
   importAssetAsync,
 } from '~/ducks/modules/protocol/assetManifest';
 import { timelineOptions } from '~/ducks/modules/root';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 vi.mock('~/utils/protocols/assetTools', () => ({
   validateAsset: vi.fn(),
@@ -40,7 +39,6 @@ const makeStore = () =>
     reducer: combineReducers({
       app,
       activeProtocol: createTimeline(activeProtocol, timelineOptions),
-      stageEditorDraft,
     }),
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),

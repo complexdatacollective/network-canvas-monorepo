@@ -9,11 +9,11 @@ import { useEffect, useRef, useSyncExternalStore } from 'react';
  *
  * A nested editor — a form field, a nomination prompt, an ordinal option, a
  * skip-logic rule — keeps its draft in its own store or in component state and
- * only reports it through `onSubmit`. None of it reaches
- * `getLiveStageDraftDirty`, which reads the stage form's Redux mirror and was
- * the single predicate every one of those guards consulted. So an open,
- * half-typed nested editor left them all reading "pristine", and Back, a
- * refresh, a demotion or a reclaim discarded it with no warning at all.
+ * only reports it through `onSubmit`. None of it reaches the stage draft
+ * beacon's `dirty`, which was the single predicate every one of those guards
+ * consulted. So an open, half-typed nested editor left them all reading
+ * "pristine", and Back, a refresh, a demotion or a reclaim discarded it with no
+ * warning at all.
  *
  * Module state rather than Redux, deliberately: this is per-mount UI state that
  * must never be persisted, undone or redone — the same reasoning as
@@ -38,8 +38,8 @@ export const hasDirtyNestedDraft = (): boolean => {
  *
  * Dirtiness flips back to clean the moment the researcher undoes their typing,
  * and a guard keyed on it would tear the editor away mid-edit — the same
- * reasoning that keys `held-stage-editor` on the route rather than on
- * `getLiveStageDraftDirty`. An editor being open, by contrast, only changes
+ * reasoning that keys `held-stage-editor` on the route rather than on the
+ * stage draft's dirtiness. An editor being open, by contrast, only changes
  * when the researcher opens or closes one.
  *
  * And an open editor does not have to be dirty to be a hazard. It was seeded

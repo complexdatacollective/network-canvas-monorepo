@@ -51,11 +51,11 @@ const VariablePicker = VariablePickerField as ComponentType<
  *
  * The interview sets the configured value on the node as it is created, with
  * nobody to answer anything — so a stamp is a flag, and the researcher is
- * asked only for its name. `Toggle` is how the codebook editors offer a
- * boolean, and an attribute created here has to read the same way there.
+ * asked only for its name. Nothing else is written with it: an attribute set
+ * without being asked has no control to be answered through, and a default one
+ * recorded here would be a decision about a question nobody puts.
  */
 const STAMP_TYPE = 'boolean';
-const STAMP_COMPONENT = 'Toggle';
 
 const messages = defineMessages({
   promptGroupTitle: {
@@ -285,7 +285,6 @@ function AdditionalAttributes({
       const outcome = await createVariable({
         name: variableName,
         type: STAMP_TYPE,
-        component: STAMP_COMPONENT,
       });
       if (outcome.status === 'refused') {
         setCreateProblem(outcome.message);

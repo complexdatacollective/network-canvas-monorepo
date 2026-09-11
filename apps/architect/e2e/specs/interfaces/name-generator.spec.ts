@@ -18,36 +18,30 @@ test('creates a valid NameGenerator stage from scratch', async ({
   await editor.createNew('NameGenerator');
   await editor.setStageName('Friends');
 
-  // NameGenerator's subject is a node type (sections/NodeType.tsx — the
-  // PLAIN `NodeType`, not `FilteredNodeType`; NameGenerator's registry entry
-  // (StageEditor/Interfaces.tsx) uses `NodeType` directly, `Section
-  // title="Node setup"`). Form.tsx's `withDisabledSubjectRequired` disables
-  // Form configuration until `subject.type` is set — same reasoning as
-  // alter-form.spec.ts.
+  // NameGenerator's subject is a node type, taken by the shared subject picker
+  // (`@codaco/protocol-builder`'s `sections/subject-picker`, "Node type").
+  // Every section below it is disabled until the stage has a subject — the
+  // form describes the people the prompts ask for — so this runs first.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // Form.tsx's `form.title` field only renders when `disableFormTitle` is
-  // false (withDisabledFormTitle.tsx sets it true ONLY for EgoForm/
-  // AlterForm/AlterEdgeForm — NameGenerator keeps it), rendered through
-  // FrescoReduxField so the `data-field-name="form.title"` seam (Task 2)
-  // applies directly, matching Title.tsx's pattern in information.spec.ts
-  // rather than the brief's `getByLabel` guess.
+  // The shared form section (`sections/form-fields/FormFieldsSection.tsx`,
+  // "Form fields") renders the form's own title only when the interface asks
+  // for one: `nameGeneratorFormFields` passes `hasTitle`, which the three form
+  // stages do not. It is an ordinary field at `form.title`, so the
+  // `data-field-name` seam reaches it directly.
   await editor.field('form.title').getByRole('textbox').fill('Add a person');
 
-  await addFormField(editor.section('Form configuration'), {
+  await addFormField(editor.section('Form fields'), {
     variableName: 'age',
     promptText: 'What is your name?',
-    inputControl: 'Text Input',
+    inputControl: 'Text input',
   });
 
-  // NameGeneratorPrompts.tsx's `prompts` field is a SECOND DialogArrayField
-  // rendered alongside Form's own field array (both share the default "Create
-  // new" label), hence addPrompt's field-scoped open click (see prompts.ts's
-  // own comment). Inside the opened dialog,
-  // PromptFields.tsx renders PromptText.tsx's RichText field (name `text`)
-  // with an explicit `label="Prompt text"` that wins over the name fallback
-  // (same rule ego-form.spec.ts / alter-form.spec.ts already documented for
-  // IntroductionPanel) — NOT the brief's guessed accessible name `'text'`.
+  // The `prompts` list (`sections/name-generator-prompts/`) is a second
+  // list-in-a-dialog rendered alongside the form's own, hence addPrompt's
+  // field-scoped open click (see prompts.ts). Inside the dialog the prompt's
+  // RichText field is labelled "Prompt text" (`NameGeneratorPromptsSection`'s
+  // `textLabel`), which is what its accessible name resolves to.
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Name someone you know');
   });

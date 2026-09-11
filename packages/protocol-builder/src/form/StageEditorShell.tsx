@@ -237,16 +237,23 @@ function StageEditorFormBody({
     setRefusedWrite(message);
   }, []);
 
-  /** The document right now: what the controls hold, over what has been written. */
+  /**
+   * The document right now: what the controls hold, over what has been written.
+   *
+   * The values come from the form's own `getFormValues`, which is what a
+   * submit is handed — and it has to be, because `documentFromSubmission`
+   * reads them by field PATH. Assembled here by field NAME instead, every
+   * control registered beneath a top-level key (`form.title`, `form.fields`)
+   * looked to that read like a field the submission never carried, and was
+   * skipped: this answered with the committed document wherever a section
+   * writes into a nested part of the stage, so a host reading it saw a
+   * researcher's unsaved form as no change at all.
+   */
   const liveDraft = useCallback((): StageFormDraft => {
     if (storeApi === undefined) return working.current;
-    const submittedValues: Record<string, FieldValue> = {};
-    for (const [name, field] of storeApi.getState().fields) {
-      submittedValues[name] = field.value;
-    }
     return documentFromSubmission({
       currentFields: working.current,
-      submittedValues,
+      submittedValues: storeApi.getState().getFormValues(),
       mountedPaths: mountedPathsOf(storeApi),
       dormantFields: dormantFieldsOf(storeApi),
     });
@@ -425,6 +432,7 @@ function StageEditorFormBody({
             formId,
             storeApi,
             committedFields: document,
+            liveDraft,
             applyOwnCommands,
             reportRefusedWrite,
             identity,
@@ -438,6 +446,7 @@ function StageEditorFormBody({
       document,
       formId,
       identity,
+      liveDraft,
       outline,
       readOnly,
       reportRefusedWrite,

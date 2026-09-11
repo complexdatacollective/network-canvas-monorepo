@@ -65,14 +65,12 @@ export const canRedo = (state: UndoableState | undefined): boolean =>
   (state?.future?.length ?? 0) > 0;
 
 type TimelineOptions = {
-  name?: string;
   limit?: number;
   exclude?: (action: UnknownAction) => boolean;
   getPath?: () => string;
 };
 
 const defaultOptions: Required<TimelineOptions> = {
-  name: 'timeline',
   limit: 1000,
   exclude: () => false,
   getPath: () =>
@@ -81,18 +79,12 @@ const defaultOptions: Required<TimelineOptions> = {
       : '',
 };
 
-// Create instance-scoped actions using createAction. Action types are
-// namespaced by `name` so multiple wrapped slices don't respond to the
-// same timeline action.
-export const createTimelineActions = (name = 'timeline') => ({
-  jump: createAction<string>(`${name}/jump`),
-  reset: createAction(`${name}/reset`, (payload?: unknown) => ({ payload })),
-  undo: createAction(`${name}/undo`),
-  redo: createAction(`${name}/redo`),
-});
-
-// Default-named instance, preserved for existing imports.
-export const timelineActions = createTimelineActions('timeline');
+export const timelineActions = {
+  jump: createAction<string>('timeline/jump'),
+  reset: createAction('timeline/reset', (payload?: unknown) => ({ payload })),
+  undo: createAction('timeline/undo'),
+  redo: createAction('timeline/redo'),
+};
 
 const createTimelineReducer = <T>(
   reducer: Reducer<T>,
@@ -102,10 +94,6 @@ const createTimelineReducer = <T>(
     ...defaultOptions,
     ...customOptions,
   };
-
-  // Instance-scoped actions, so this slice only responds to its own
-  // `${name}/undo` etc.
-  const actions = createTimelineActions(options.name);
 
   const initialState: TimelineState<T> = {
     past: [],
@@ -117,12 +105,12 @@ const createTimelineReducer = <T>(
 
   // Create slice that handles both timeline actions and wraps the original reducer
   const timelineSlice = createSlice({
-    name: options.name,
+    name: 'timeline',
     initialState,
     reducers: {},
     extraReducers: (builder) => {
       builder
-        .addCase(actions.undo, (state) => {
+        .addCase(timelineActions.undo, (state) => {
           const {
             past,
             present,
@@ -156,42 +144,45 @@ const createTimelineReducer = <T>(
             futureTimeline: newFutureTimeline,
           });
         })
-        .addCase(actions.jump, (state, action: PayloadAction<string>) => {
-          const { past, timeline } = state;
-          const locusId = action.payload;
+        .addCase(
+          timelineActions.jump,
+          (state, action: PayloadAction<string>) => {
+            const { past, timeline } = state;
+            const locusId = action.payload;
 
-          if (!locusId) {
-            return state;
-          }
+            if (!locusId) {
+              return state;
+            }
 
-          const locusIndex = timeline.findIndex(
-            (entry) => entry.id === locusId,
-          );
+            const locusIndex = timeline.findIndex(
+              (entry) => entry.id === locusId,
+            );
 
-          // If point in timeline cannot be found do nothing
-          if (locusIndex === -1) {
-            return;
-          }
+            // If point in timeline cannot be found do nothing
+            if (locusIndex === -1) {
+              return;
+            }
 
-          // no events in timeline yet
-          if (timeline.length === 1) {
-            return;
-          }
+            // no events in timeline yet
+            if (timeline.length === 1) {
+              return;
+            }
 
-          // the last point in the timeline is the present
-          if (locusIndex === timeline.length - 1) {
-            return;
-          }
+            // the last point in the timeline is the present
+            if (locusIndex === timeline.length - 1) {
+              return;
+            }
 
-          const newPresent = past[locusIndex];
+            const newPresent = past[locusIndex];
 
-          Object.assign(state, {
-            past: past.slice(0, locusIndex),
-            present: newPresent,
-            timeline: timeline.slice(0, locusIndex + 1),
-          });
-        })
-        .addCase(actions.redo, (state) => {
+            Object.assign(state, {
+              past: past.slice(0, locusIndex),
+              present: newPresent,
+              timeline: timeline.slice(0, locusIndex + 1),
+            });
+          },
+        )
+        .addCase(timelineActions.redo, (state) => {
           const {
             future = [],
             futureTimeline = [],
@@ -222,7 +213,7 @@ const createTimelineReducer = <T>(
             futureTimeline: futureTimeline.slice(1),
           });
         })
-        .addCase(actions.reset, (state, action) => {
+        .addCase(timelineActions.reset, (state, action) => {
           const newLocus: Locus = { id: uuid(), path: options.getPath() };
 
           // If a payload is provided, seed `present` with it directly;
@@ -251,10 +242,10 @@ const createTimelineReducer = <T>(
           // Don't process timeline actions here - they're handled by the cases above
           if (
             action &&
-            (actions.jump.match(action) ||
-              actions.reset.match(action) ||
-              actions.undo.match(action) ||
-              actions.redo.match(action))
+            (timelineActions.jump.match(action) ||
+              timelineActions.reset.match(action) ||
+              timelineActions.undo.match(action) ||
+              timelineActions.redo.match(action))
           ) {
             return state;
           }

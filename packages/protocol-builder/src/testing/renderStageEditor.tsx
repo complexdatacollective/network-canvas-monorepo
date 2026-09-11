@@ -467,21 +467,18 @@ export type RenderStageEditorOptions<T extends StageType = StageType> =
     }>[];
     /**
      * Wraps the seeded host's own client, the way `renderResourceEditor` does,
-     * for a test about a host that holds its answer, or about a fact a real
-     * host KNOWS that this in-memory one does not work out for itself.
+     * for a test about a host that holds its answer.
      *
      * Between the editor and the host rather than inside it: this host answers
      * in a microtask, so a request that is still in flight is something only
      * the transport can be. A stubbed store method would be answering for a
      * write the host decides, and would go on compiling after the host stopped
-     * asking it the same question.
+     * asking it the same question. Everything the wrapper does not override
+     * stays the real host's.
      *
-     * The fact so far is what is inside an imported data file: `inspect`
-     * answers with the manifest entry, and a roster stage's card, sort and
-     * search sections are all chosen from that file's columns — so a test about
-     * one of them has to say what the file holds, exactly as
-     * `AssetPickerField.test.tsx` already does for the picker's own summary.
-     * Everything the wrapper does not override stays the real host's.
+     * NOT the way to say what is inside an imported data file: this host reads
+     * the bytes it holds, so a roster's columns are seeded through
+     * `assetBytes` and come back through the host's own `inspect`.
      */
     client?: (host: InMemoryHost) => ProtocolBuilderClient;
   }> &

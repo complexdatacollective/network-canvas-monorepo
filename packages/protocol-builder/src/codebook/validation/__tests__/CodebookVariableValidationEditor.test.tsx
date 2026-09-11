@@ -175,7 +175,12 @@ describe('CodebookVariableValidationEditor', () => {
     expect(
       screen.getByRole('spinbutton', { name: 'Maximum value' }),
     ).toHaveValue(2);
-    expect(screen.getByRole('alert')).toHaveTextContent('is greater than');
+    // The repair guidance, not the analyser's own technical diagnostic
+    // (`Attribute "Age": minValue (10) is greater than maxValue (2)`), which
+    // names the schema's rule keys and is written for a validation report.
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The minimum and maximum rules for Age leave no permitted answer. Adjust the bounds or the required-answer rule.',
+    );
     expect(
       screen.getByRole('button', { name: 'Save validation' }),
     ).toBeDisabled();

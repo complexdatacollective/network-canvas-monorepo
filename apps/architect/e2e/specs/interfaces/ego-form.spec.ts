@@ -16,39 +16,33 @@ test('creates a valid EgoForm stage from scratch', async ({
   await editor.createNew('EgoForm');
   await editor.setStageName('About You');
 
-  // IntroductionPanel.tsx's `introductionPanel.title` field renders through
-  // `component={FrescoReduxField}`, so `data-field-name="introductionPanel.title"`
-  // (Task 2's seam) is the reliable locator — matching Task 14's Title.tsx
-  // pattern rather than the accessible name (which happens to be "Title"
-  // here too, since `ValidatedField`'s own `label="Title"` prop wins).
+  // `introductionPanel.title` keeps its path in
+  // `@codaco/protocol-builder`'s `IntroductionSection`, so the
+  // `data-field-name` seam still resolves it. Located that way rather than by
+  // accessible name because the name is the researcher-facing label
+  // ("Introduction heading"), which is copy, while the path is the document.
   await editor
     .field('introductionPanel.title')
     .getByRole('textbox')
     .fill('About You');
 
-  // IntroductionPanel.tsx passes `componentProps={{ label: 'Introduction text' }}`
-  // to its RichText field. That explicit `label` wins over RichTextField's
-  // `label ?? input.name` fallback, so the rendered control's accessible name
-  // (wired via fresco-ui's UnconnectedField `aria-labelledby` -> a real
-  // `<label>`) is the literal string "Introduction text" — NOT the field's
-  // field name `introductionPanel.text`. Confirmed against
-  // IntroductionPanel.tsx / RichText/Field.tsx / UnconnectedField.tsx source,
-  // not guessed.
+  // The rich text control's accessible name is the literal label
+  // `IntroductionSection` passes, "Introduction text" — not the field's path
+  // `introductionPanel.text`.
   await editor.fillRichText(
     'Introduction text',
     'Thanks for taking part in this study.',
   );
 
-  // EgoForm's subject always defaults to `{ entity: 'ego', type: null }`
-  // (enhancers/withSubject.tsx's `defaultSubject`), and
-  // `withDisabledSubjectRequired` only disables Form configuration when
-  // `interfaceType !== 'EgoForm' && !type` (enhancers/withDisabledSubjectRequired.tsx)
-  // — so, unlike AlterForm/AlterEdgeForm, no subject-selection step is needed
-  // before this section is interactive.
-  await addFormField(editor.section('Form configuration'), {
+  // An ego form is the one form interface with no subject section: it always
+  // collects against the interview's ego, so `egoFormStageEditor` composes
+  // `formFields({ subject: 'ego' })` with no `subjectPicker` at all. There is
+  // nothing to choose first, and the section is available from the moment the
+  // editor opens — unlike AlterForm/AlterEdgeForm.
+  await addFormField(editor.section('Form fields'), {
     variableName: 'age',
     promptText: 'What is your name?',
-    inputControl: 'Text Input',
+    inputControl: 'Text input',
   });
 
   await editor.expectNoIssues();

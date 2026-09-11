@@ -4,8 +4,6 @@ import {
   protocolAuthoringLinks,
 } from '@codaco/protocol-builder/interfaces/documentation';
 
-export { interfaceDocumentationUrl };
-
 export const documentationLinks = {
   home: DOCS_BASE_URL,
   skipLogic: protocolAuthoringLinks.skipLogic,

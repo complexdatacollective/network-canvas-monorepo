@@ -13,6 +13,7 @@ import {
   type ValidationContradiction,
   type ValidationName,
 } from '@codaco/protocol-validation';
+import { validationContradictionMessages } from '@codaco/protocol-validation/messages';
 
 import type { CodebookSubject } from '../protocol-context.ts';
 import {
@@ -207,6 +208,12 @@ const messages = defineMessages({
       '"{variableName}" is collected by this stage\'s form, so it cannot be assigned by this prompt (values assigned here would bypass its validation)',
     description:
       'The same refusal as validatedElsewhere, when the form doing the collecting belongs to the stage being edited. variableName is the researcher’s own name for the attribute. A prompt is the question a participant reads.',
+  },
+  thisAttribute: {
+    id: 'protocolBuilder.variableValidation.thisAttribute',
+    defaultMessage: 'this attribute',
+    description:
+      'Stands in for an attribute’s name inside a refusal about it, while the attribute is still being drafted and has not been named. Spliced mid-sentence into the repair guidance for a contradiction between rules, so it is lower case.',
   },
   draftUnvalidatedElsewhere: {
     id: 'protocolBuilder.variableValidation.draftUnvalidatedElsewhere',
@@ -582,6 +589,60 @@ const baselineContradictions = (
   return contradictions;
 };
 
+/**
+ * What a contradiction between rules says to the researcher who caused it.
+ *
+ * A `ValidationContradiction` carries two different things: `class`, which is
+ * what went wrong, and `message`, which `@codaco/protocol-validation` writes
+ * for a developer reading a validation report — `Attribute "age": minValue
+ * (10) is greater than maxValue (2)`, in English, naming the schema's own rule
+ * keys. The researcher-facing half is the catalog keyed by that class
+ * (`validationContradictionMessages`), which says what to do about it and is
+ * translated. This picks the second and fills in the attribute names, which
+ * are the researcher's own words and are never translated.
+ *
+ * Encoded rather than formatted: every issue in this module travels as a
+ * string through contracts that have no `intl`, and is decoded wherever it is
+ * finally rendered — so the reader's language is the one they are reading in,
+ * not the one that was active when the rule was typed.
+ */
+const describeDraftContradiction = (
+  contradiction: ValidationContradiction,
+  draft: ProspectiveDraft,
+): string => {
+  // The attribute being drafted is not in `allVariables` under any name the
+  // researcher would recognise: it is seeded into the analyser under a
+  // synthesized id, and only the draft knows what has been typed into the name
+  // field so far. Everything else is named from the codebook.
+  const draftId =
+    draft.currentVariableId || draftVariableId(draft.allVariables);
+  // `MessageErrorValues` allows more shapes than a LIST item does, so the
+  // name is typed as what the list takes: the researcher's own word, or a
+  // reference to a descriptor the reader's own locale resolves.
+  type NameValue = string | Readonly<{ messageError: string }>;
+  const unnamed = (): NameValue => ({
+    messageError: createMessageError(messages.thisAttribute),
+  });
+  const nameOf = (id: string): NameValue => {
+    if (id === draftId && !Object.hasOwn(draft.allVariables, draftId)) {
+      const authored = draft.draftVariableName;
+      return typeof authored === 'string' && authored.trim() !== ''
+        ? authored
+        : unnamed();
+    }
+    const variable = draft.allVariables[id];
+    return isRecord(variable) &&
+      typeof variable.name === 'string' &&
+      variable.name !== ''
+      ? variable.name
+      : unnamed();
+  };
+  return createMessageError(
+    validationContradictionMessages[contradiction.class],
+    { variables: { list: contradiction.variableIds.map(nameOf) } },
+  );
+};
+
 export const findDraftContradictions = (
   draft: ProspectiveDraft,
 ): ValidationContradiction[] => {
@@ -939,7 +1000,7 @@ export const ruleMapIssue = (
   if (!isValidationMap(value)) return undefined;
   const { issue, complete } = ruleMapPrecheck(value);
   if (issue !== undefined || context.variableType === '') return issue;
-  return findDraftContradictions({
+  const draft: ProspectiveDraft = {
     allVariables: context.allVariables,
     currentVariableId: context.currentVariableId,
     variableType: context.variableType,
@@ -949,7 +1010,11 @@ export const ruleMapIssue = (
     parameters: context.parameters,
     draftVariableName: context.draftVariableName,
     stageEffectiveComponents: context.stageEffectiveComponents,
-  })[0]?.message;
+  };
+  const contradiction = findDraftContradictions(draft)[0];
+  return contradiction === undefined
+    ? undefined
+    : describeDraftContradiction(contradiction, draft);
 };
 
 export type VariableOverlay = Record<
@@ -1120,7 +1185,7 @@ export const makeFieldEditorValidate = (
               ([id]) => !unknownRendering.includes(id),
             ),
           );
-    const first = findDraftContradictions({
+    const visibleDraft: ProspectiveDraft = {
       allVariables: visibleVariables,
       currentVariableId,
       variableType,
@@ -1130,8 +1195,11 @@ export const makeFieldEditorValidate = (
       parameters: values.parameters,
       draftVariableName: values._createNewVariable,
       stageEffectiveComponents: overlay !== undefined,
-    })[0];
-    if (first !== undefined) return { validation: first.message };
+    };
+    const first = findDraftContradictions(visibleDraft)[0];
+    if (first !== undefined) {
+      return { validation: describeDraftContradiction(first, visibleDraft) };
+    }
 
     if (resolvedViews.length > 0) {
       const allResolvedRenderedVariableIds = new Set(
@@ -1191,7 +1259,9 @@ export const makeFieldEditorValidate = (
           resolvedViewDraftRendering,
         )[0];
         if (contradiction !== undefined) {
-          return { validation: contradiction.message };
+          return {
+            validation: describeDraftContradiction(contradiction, draft),
+          };
         }
       }
     }

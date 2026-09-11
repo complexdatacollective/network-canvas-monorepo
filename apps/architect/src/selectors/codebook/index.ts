@@ -39,20 +39,6 @@ type VariableOption = {
   options?: VariableOptions;
 };
 
-type NodeTypes = Record<string, NodeDefinition>;
-type EdgeTypes = Record<string, EdgeDefinition>;
-
-// Basic selectors
-export const getNodeTypes = createSelector(
-  [getCodebook],
-  (codebook): NodeTypes => get(codebook, 'node', {}) as NodeTypes,
-);
-
-export const getEdgeTypes = createSelector(
-  [getCodebook],
-  (codebook): EdgeTypes => get(codebook, 'edge', {}) as EdgeTypes,
-);
-
 // Memoized selector for getting a specific type
 const getTypeSelector = createSelector(
   [getCodebook, (_state: RootState, subject: Subject) => subject],
@@ -81,10 +67,10 @@ export const getType = (state: RootState, subject: Subject) =>
 // the returned reference (e.g. makeFieldEditorValidate's useMemo). Callers
 // guarding an invalid subject should also return this same reference rather
 // than an inline `{}`.
-export const EMPTY_VARIABLES: Variables = Object.freeze({});
+const EMPTY_VARIABLES: Variables = Object.freeze({});
 
 // Memoized selector for getting variables for a subject
-export const getVariablesForSubjectSelector = createSelector(
+const getVariablesForSubjectSelector = createSelector(
   [getCodebook, (_state: RootState, subject: Subject) => subject],
   (codebook, subject): Variables => {
     if (!subject || !codebook) return EMPTY_VARIABLES;
@@ -282,39 +268,22 @@ export const makeGetVariable = (uuid: string) => (state: RootState) => {
 // identity across unrelated store changes, and consumers' `useSelector` /
 // `shallowEqual` guards actually hold. Taking whole state as an input here
 // would mint a fresh array per dispatch and defeat every such guard.
-export const getVariableOptionsForSubjectSelector = createSelector(
+const getVariableOptionsForSubjectSelector = createSelector(
   [getIsUsed, getVariablesForSubjectSelector],
   (isUsed, variables): VariableOption[] =>
     asOptions(variables).map((option) => ({
       ...option,
       isUsed: isUsed[option.value] ?? false,
     })),
+  // No memo on the ARGUMENTS, for the reason `getIsUsed` has none: the stage
+  // the editor is holding is not in the state this is handed, and it changes
+  // without anything being dispatched. The inputs are memoised and both hand
+  // back their previous result unchanged, so the identity guard above still
+  // holds.
+  { argsMemoize: (selector) => selector },
 );
 
 export const getVariableOptionsForSubject = (
   state: RootState,
   subject: Subject,
 ): VariableOption[] => getVariableOptionsForSubjectSelector(state, subject);
-
-// Internal memoized selector for getting options for a specific variable (used by getOptionsForVariable below)
-const getOptionsForVariableSelector = createSelector(
-  [
-    getVariablesForSubjectSelector,
-    (_state: RootState, _subject: Subject, variable: string) => variable,
-  ],
-  (variables, variable): unknown[] => {
-    return get(variables, [variable, 'options'], []);
-  },
-);
-
-// Get options for a specific variable
-export const getOptionsForVariable = (
-  state: RootState,
-  {
-    entity,
-    type,
-    variable,
-  }: { entity: 'node' | 'edge' | 'ego'; type?: string; variable: string },
-): unknown[] => {
-  return getOptionsForVariableSelector(state, { entity, type }, variable);
-};
