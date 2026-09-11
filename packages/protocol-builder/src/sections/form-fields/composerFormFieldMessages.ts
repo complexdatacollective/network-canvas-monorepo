@@ -147,6 +147,13 @@ export const composerFormFieldMessages = defineMessages({
     description:
       'How a network composer form field with no question and no attribute reads in the list when its dialog is closed.',
   },
+  missingAttribute: {
+    id: 'protocolBuilder.networkCanvas.formFieldMissingAttribute',
+    defaultMessage:
+      '{attributeId} — this attribute is no longer in the codebook',
+    description:
+      'How a network composer form field reads in the list when the attribute it records into has been deleted from the codebook and the field has no question of its own to be named by. attributeId is the raw stored identifier: there is no name left to show, because the definition it would have come from has been deleted.',
+  },
   recordsAttribute: {
     id: 'protocolBuilder.networkCanvas.formFieldRecordsAttribute',
     defaultMessage: 'Records the attribute “{attributeName}”',

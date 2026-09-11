@@ -709,6 +709,7 @@
   "protocolBuilder.networkCanvas.formFieldHelpHint": "Se muestra bajo la pregunta, para cualquier cosa que el participante pueda necesitar que se le explique. Opcional.",
   "protocolBuilder.networkCanvas.formFieldHelpLabel": "Texto de ayuda",
   "protocolBuilder.networkCanvas.formFieldHelpPlaceholder": "Introduce el texto de ayuda…",
+  "protocolBuilder.networkCanvas.formFieldMissingAttribute": "{attributeId}: este atributo ya no está en el libro de códigos",
   "protocolBuilder.networkCanvas.formFieldNoun": "campo del formulario",
   "protocolBuilder.networkCanvas.formFieldQuestionHint": "Lo que se le pregunta al participante. Déjalo vacío para usar el nombre del propio atributo.",
   "protocolBuilder.networkCanvas.formFieldQuestionLabel": "Pregunta",

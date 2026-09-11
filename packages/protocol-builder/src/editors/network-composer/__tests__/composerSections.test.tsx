@@ -234,6 +234,30 @@ describe('what a network composer lets the participant build', () => {
   });
 
   /**
+   * The same rule one row down: a form field naming an attribute the codebook
+   * has lost is a reference only the researcher can repair, and the row read
+   * "Empty field" — which says the field asks for nothing at all.
+   */
+  it('names the attribute a form field has lost, rather than reading as empty', async () => {
+    renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            { id: 'field-1', variable: 'former_attribute', component: 'Text' },
+          ],
+        },
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'former_attribute — this attribute is no longer in the codebook',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Empty field')).not.toBeInTheDocument();
+  });
+
+  /**
    * The list renders from the value rather than from the codebook, so a type a
    * collaborator deletes is still on screen and can still be taken out. Hidden,
    * the only way out would be deleting the whole stage.

@@ -686,10 +686,20 @@ function ComposerFormFieldPreview({ item }: RowPreviewProps) {
 
   return (
     <div className="flex flex-col gap-2.5">
+      {/*
+        The stored id where the codebook no longer defines the attribute, as
+        every other preview in this package names a reference it cannot
+        resolve: "Empty field" said the row asked for nothing, when what it
+        asks for is a reference only the researcher can repair.
+      */}
       <span>
         {asText(item[LABEL_FIELD]) ??
           attribute?.name ??
-          intl.formatMessage(messages.emptyPreview)}
+          (variableId === undefined
+            ? intl.formatMessage(messages.emptyPreview)
+            : intl.formatMessage(messages.missingAttribute, {
+                attributeId: variableId,
+              }))}
       </span>
       {(attribute !== undefined || control !== undefined) && (
         <div className="flex flex-wrap gap-2.5">
