@@ -289,7 +289,7 @@ const CASES: readonly EditorCase[] = [
       'Node type',
       'Stage filter',
       'Task introduction',
-      'Prompts',
+      'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -329,7 +329,7 @@ const CASES: readonly EditorCase[] = [
       'Node type',
       'Stage filter',
       'Task introduction',
-      'Prompts',
+      'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -349,13 +349,13 @@ const CASES: readonly EditorCase[] = [
     authoredBy: {
       text: [{ role: 'textbox', name: 'Prompt text' }],
       createEdge: [{ role: 'radio', name: 'knows', checked: true }],
-      edgeVariable: [{ role: 'combobox', name: 'Attribute' }],
-      negativeLabel: [{ role: 'textbox', name: 'Decline answer' }],
+      edgeVariable: [{ role: 'combobox', name: 'Ordinal attribute' }],
+      negativeLabel: [{ role: 'textbox', name: 'Decline option' }],
     },
     rewrite: {
       key: 'negativeLabel',
       value: 'Never met',
-      write: (harness) => retype(harness, 'Decline answer', 'Never met'),
+      write: (harness) => retype(harness, 'Decline option', 'Never met'),
     },
   },
   {
@@ -366,7 +366,7 @@ const CASES: readonly EditorCase[] = [
       'Stage name',
       'Node type',
       'Stage filter',
-      'Prompts',
+      'Prompt collection',
       'Node availability',
       'Skip logic',
       'Interviewer guidance',
@@ -412,7 +412,7 @@ const CASES: readonly EditorCase[] = [
       'Stage name',
       'Node type',
       'Stage filter',
-      'Prompts',
+      'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -454,7 +454,7 @@ const CASES: readonly EditorCase[] = [
       'Stage name',
       'Node type',
       'Stage filter',
-      'Prompts',
+      'Prompt collection',
       'Skip logic',
       'Interviewer guidance',
     ],
@@ -474,25 +474,25 @@ const CASES: readonly EditorCase[] = [
       text: [{ role: 'textbox', name: 'Prompt text' }],
       variable: [{ role: 'combobox', name: 'Attribute' }],
       otherVariable: [
-        { role: 'switch', name: 'A bin for anything else', checked: true },
+        { role: 'switch', name: 'Follow-up other option', checked: true },
         {
           role: 'combobox',
-          name: 'Attribute the answer is stored in',
-          within: 'A bin for anything else',
+          name: 'Other attribute',
+          within: 'Follow-up other option',
         },
       ],
       otherOptionLabel: [
         {
           role: 'textbox',
-          name: 'Bin label',
-          within: 'A bin for anything else',
+          name: 'Other bin label',
+          within: 'Follow-up other option',
         },
       ],
       otherVariablePrompt: [
         {
           role: 'textbox',
           name: 'Follow-up question',
-          within: 'A bin for anything else',
+          within: 'Follow-up other option',
         },
       ],
       bucketSortOrder: sortRuleControls(
@@ -503,7 +503,7 @@ const CASES: readonly EditorCase[] = [
     rewrite: {
       key: 'otherOptionLabel',
       value: 'Anything else',
-      write: (harness) => retype(harness, 'Bin label', 'Anything else'),
+      write: (harness) => retype(harness, 'Other bin label', 'Anything else'),
     },
   },
   {
@@ -514,7 +514,7 @@ const CASES: readonly EditorCase[] = [
       'Stage name',
       'Node type',
       'Quick add',
-      'Prompts',
+      'Prompt collection',
       'Side panels',
       'Nomination limits',
       'Skip logic',
@@ -549,16 +549,16 @@ const CASES: readonly EditorCase[] = [
       'Stage name',
       'Node type',
       'Roster source',
-      'Prompts',
-      'Card details',
-      'Roster order',
+      'Prompt collection',
+      'Card display',
+      'Roster sorting',
       'Roster search',
       'Nomination limits',
       'Skip logic',
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Detalles de las tarjetas',
+      'Visualización de tarjetas',
       'Orden de la lista',
       'Búsqueda en la lista',
       'Límites de nominación',
@@ -898,6 +898,95 @@ describe('the family’s editors, swept under es', () => {
         renderStageEditor({ stageId, locale: 'es', registry: editor }),
         optionalSections,
       );
+    },
+  );
+});
+
+/**
+ * What Architect calls the group a prompt's question is written in, and what
+ * it calls the connection control inside or beside it.
+ *
+ * Neither is one string. Architect heads the group "Prompt configuration"
+ * where the connection an answer creates is chosen in the same group, and
+ * "Participant prompt" where the group holds only the question; it names the
+ * connection control "Created edge type" in the two censuses answered yes or
+ * no, and "Edge type" in the one answered on a scale. The package rendered one
+ * heading, one description and one label for all five, which is what this
+ * pins.
+ */
+const PROMPT_GROUPS = [
+  {
+    interfaceName: 'DyadCensus',
+    stageId: 'dyad-census-1',
+    editor: dyadCensusStageEditor,
+    title: 'Prompt configuration',
+    description:
+      'Write the participant prompt and select the edge type created by an affirmative response.',
+    edgeLabel: 'Created edge type',
+  },
+  {
+    interfaceName: 'OneToManyDyadCensus',
+    stageId: 'one-to-many-dyad-census-1',
+    editor: oneToManyDyadCensusStageEditor,
+    title: 'Prompt configuration',
+    description:
+      'Write the participant prompt and select the edge type created for chosen nodes.',
+    edgeLabel: 'Created edge type',
+  },
+  {
+    interfaceName: 'TieStrengthCensus',
+    stageId: 'tie-strength-census-1',
+    editor: tieStrengthCensusStageEditor,
+    title: 'Participant prompt',
+    description:
+      'Explain the relationship participants should evaluate for each pair.',
+    edgeLabel: 'Edge type',
+  },
+  {
+    interfaceName: 'OrdinalBin',
+    stageId: 'ordinal-bin-1',
+    editor: ordinalBinStageEditor,
+    title: 'Participant prompt',
+    description:
+      'Write the instruction or question participants see for this task.',
+    edgeLabel: undefined,
+  },
+  {
+    interfaceName: 'CategoricalBin',
+    stageId: 'categorical-bin-1',
+    editor: categoricalBinStageEditor,
+    title: 'Participant prompt',
+    description:
+      'Write the instruction or question participants see for this task.',
+    edgeLabel: undefined,
+  },
+] as const satisfies readonly {
+  interfaceName: StageType;
+  stageId: FixtureStageId;
+  editor: Partial<StageEditorRegistry>;
+  title: string;
+  description: string;
+  edgeLabel: string | undefined;
+}[];
+
+describe('the group a census or bin prompt is written in', () => {
+  it.each(PROMPT_GROUPS)(
+    'heads a $interfaceName prompt the way Architect does',
+    async ({ stageId, editor, title, description, edgeLabel }) => {
+      const harness = renderStageEditor({ stageId, registry: editor });
+
+      await harness.user.click(
+        screen.getByRole('button', { name: 'Edit prompt' }),
+      );
+      const dialog = within(await screen.findByRole('dialog'));
+
+      expect(dialog.getByRole('heading', { name: title })).toBeInTheDocument();
+      expect(dialog.getByText(description)).toBeInTheDocument();
+      if (edgeLabel !== undefined) {
+        expect(
+          dialog.getByRole('radiogroup', { name: edgeLabel }),
+        ).toBeInTheDocument();
+      }
     },
   );
 });

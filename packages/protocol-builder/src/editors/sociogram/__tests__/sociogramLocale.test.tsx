@@ -37,7 +37,7 @@ describe('the canvas sections, read in Spanish', () => {
     // halfway.
     await waitFor(() => expect(harness.outline()).toHaveLength(3));
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Preguntas',
+      'Conjunto de preguntas',
       'Disposición de nodos',
       'Fondo',
     ]);

@@ -62,7 +62,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
 
     expect(await screen.findByRole('radio', { name: 'knows' })).toBeChecked();
     // The scale is the CONNECTION's attribute, not the person's.
-    const picker = screen.getByRole('combobox', { name: 'Attribute' });
+    const picker = screen.getByRole('combobox', { name: 'Ordinal attribute' });
     expect(
       [...picker.querySelectorAll('option')]
         .map((option) => option.value)
@@ -70,7 +70,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     ).toEqual(['closeness']);
     expect(picker).toHaveValue('closeness');
     expect(
-      screen.getByRole('textbox', { name: 'Decline answer' }),
+      screen.getByRole('textbox', { name: 'Decline option' }),
     ).toHaveTextContent("Don't know each other");
   });
 
@@ -86,7 +86,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await screen.findByRole('radio', { name: 'knows' });
     expect(
-      screen.queryByRole('combobox', { name: 'Attribute' }),
+      screen.queryByRole('combobox', { name: 'Ordinal attribute' }),
     ).not.toBeInTheDocument();
 
     await harness.user.click(
@@ -121,7 +121,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
     expect(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
     ).toHaveValue('closeness');
 
     await harness.user.click(
@@ -157,7 +157,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await screen.findByRole('combobox', { name: 'Ordinal attribute' });
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -183,7 +183,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
       'closeness',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -209,12 +209,12 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
       'closeness',
     );
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Decline answer' }),
+      screen.getByRole('textbox', { name: 'Decline option' }),
       'Not at all',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -243,7 +243,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await writeInto(
       harness,
-      await screen.findByRole('textbox', { name: 'Decline answer' }),
+      await screen.findByRole('textbox', { name: 'Decline option' }),
       'Never met',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -280,7 +280,7 @@ describe('creating a scale from inside a tie-strength prompt', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await screen.findByRole('combobox', { name: 'Ordinal attribute' });
     expect(screen.queryAllByRole('dialog')).toHaveLength(1);
 
     await harness.user.click(
@@ -296,7 +296,9 @@ describe('creating a scale from inside a tie-strength prompt', () => {
       screen.getByRole('button', { name: 'Create attribute' }),
     );
 
-    const picker = await screen.findByRole('combobox', { name: 'Attribute' });
+    const picker = await screen.findByRole('combobox', {
+      name: 'Ordinal attribute',
+    });
     await waitFor(() =>
       expect(
         within(picker).getByRole('option', { name: 'trust' }),
@@ -337,7 +339,7 @@ describe('a tie-strength prompt whose scale has gone', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await screen.findByRole('combobox', { name: 'Ordinal attribute' });
 
     harness.receiveCodebookUpdate({
       edge: {
@@ -466,7 +468,7 @@ describe('a tie-strength prompt whose scale a pedigree sets', () => {
     // Still the prompt's own pick, and still on offer: blanking it would hide
     // the reference the researcher has to repair.
     expect(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
     ).toHaveValue(SCALE_VARIABLE);
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));

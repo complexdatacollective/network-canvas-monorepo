@@ -105,7 +105,7 @@ describe('the editor for a form about each relationship', () => {
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      screen.getByRole('textbox', { name: 'Title' }),
       'About each relationship',
     );
     await writeInto(
@@ -175,11 +175,9 @@ describe('the editor for a form about each relationship', () => {
   it('writes nothing when the researcher discards the edit', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await harness.user.clear(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-    );
+    await harness.user.clear(screen.getByRole('textbox', { name: 'Title' }));
     await harness.user.type(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      screen.getByRole('textbox', { name: 'Title' }),
       'A heading nobody kept',
     );
     expectStageUntouched(harness);
@@ -225,9 +223,7 @@ describe('the editor for a form about each relationship', () => {
     const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
     await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: 'Introduction heading' }),
-      ).toBeDisabled(),
+      expect(screen.getByRole('textbox', { name: 'Title' })).toBeDisabled(),
     );
 
     // The shell's refusal is the guarantee, not the chrome above it: a

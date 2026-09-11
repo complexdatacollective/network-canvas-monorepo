@@ -68,9 +68,9 @@ describe('the editor for a form about each person', () => {
       'Alter Form',
     );
     expect(screen.getByRole('radio', { name: 'person' })).toBeChecked();
-    expect(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-    ).toHaveValue('Introduction to the alter form');
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
+      'Introduction to the alter form',
+    );
     expect(
       await screen.findByText("What is this person's relationship to you?", {
         exact: false,
@@ -140,7 +140,7 @@ describe('the editor for a form about each person', () => {
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      screen.getByRole('textbox', { name: 'Title' }),
       'About each person',
     );
     await writeInto(
@@ -211,11 +211,9 @@ describe('the editor for a form about each person', () => {
   it('writes nothing when the researcher discards the edit', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await harness.user.clear(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-    );
+    await harness.user.clear(screen.getByRole('textbox', { name: 'Title' }));
     await harness.user.type(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      screen.getByRole('textbox', { name: 'Title' }),
       'A heading nobody kept',
     );
     expectStageUntouched(harness);
@@ -264,9 +262,7 @@ describe('the editor for a form about each person', () => {
     const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
     await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: 'Introduction heading' }),
-      ).toBeDisabled(),
+      expect(screen.getByRole('textbox', { name: 'Title' })).toBeDisabled(),
     );
 
     // The shell's refusal is the guarantee, not the chrome above it: a

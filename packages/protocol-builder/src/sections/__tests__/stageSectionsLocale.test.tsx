@@ -103,12 +103,10 @@ describe('the shared stage sections, read in Spanish', () => {
       sections: <IntroductionSection />,
     });
 
-    expect(
-      screen.getByRole('textbox', { name: 'Encabezado de la introducción' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Título' })).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Presenta esta tarea al participante antes de que la empiece.',
+        'Presenta la tarea antes de que los participantes completen sus formularios.',
       ),
     ).toBeInTheDocument();
   });
@@ -150,34 +148,6 @@ describe('the shared stage sections, read in Spanish', () => {
     expect(
       await screen.findByRole('button', { name: 'Editar pregunta' }),
     ).toBeInTheDocument();
-  });
-});
-
-/**
- * The empty field is where a placeholder is read, so the stage is seeded with
- * one: a placeholder is the only thing a researcher who has written nothing
- * yet has to go on, and the rich text control carries it as
- * `aria-placeholder` rather than as text.
- */
-describe('the introduction section’s empty prose field, read in Spanish', () => {
-  it('offers the Spanish placeholder to a researcher who has written nothing', async () => {
-    renderStageEditor({
-      stage: {
-        id: 'sociogram-empty-introduction',
-        type: 'Sociogram',
-        fields: {
-          label: 'Sociograma',
-          subject: { entity: 'node', type: 'person' },
-          introductionPanel: { title: '', text: '' },
-        },
-      },
-      locale: 'es',
-      sections: <IntroductionSection />,
-    });
-
-    expect(
-      await screen.findByRole('textbox', { name: 'Texto de introducción' }),
-    ).toHaveAttribute('aria-placeholder', 'Introduce aquí tu introducción...');
   });
 });
 
@@ -711,7 +681,7 @@ describe('the introduction-screen variant, read in Spanish', () => {
  * asks the participant nothing.
  */
 describe('the prompts section, read in Spanish', () => {
-  it('says what it is waiting for before a subject is chosen', async () => {
+  it('reads in Spanish, and offers no way in, before a subject is chosen', async () => {
     const harness = renderStageEditor({
       create: { type: 'NameGenerator', position: 0 },
       locale: 'es',
@@ -723,11 +693,17 @@ describe('the prompts section, read in Spanish', () => {
       ),
     });
 
+    // Architect keeps one sentence for both states and only switches the
+    // section off, so this is the section's own description, in Spanish, with
+    // the way in unusable.
     expect(
       await screen.findByText(
-        'Elige con qué trabaja esta etapa antes de escribir sus preguntas.',
+        'Crea y ordena las preguntas que se muestran en esta etapa.',
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Crear nueva pregunta' }),
+    ).toBeDisabled();
     expectNoLocaleLeaks(
       'the prompts section waiting on a subject',
       researcherWords(harness),
@@ -755,9 +731,7 @@ describe('the prompts section, read in Spanish', () => {
     });
 
     expect(
-      await screen.findByText(
-        'Todavía no hay preguntas. Crea una para indicar qué le pregunta esta etapa al participante.',
-      ),
+      await screen.findByText('Todavía no se ha creado ningún elemento.'),
     ).toBeInTheDocument();
 
     expect(await harness.submit()).toBeNull();

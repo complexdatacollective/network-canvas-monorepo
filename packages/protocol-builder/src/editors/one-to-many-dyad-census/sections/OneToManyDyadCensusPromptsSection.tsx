@@ -37,37 +37,16 @@ const messages = defineMessages({
   },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.oneToManyPlaceholder',
-    defaultMessage: 'Which of these people does this person know?',
+    defaultMessage: 'Enter text for the prompt here...',
     description:
-      'Example question in the empty box where a researcher writes a One-to-Many Dyad Census prompt.',
+      'Placeholder shown in the empty box where a researcher writes a One-to-Many Dyad Census prompt. The trailing dots are an ellipsis written as three full stops.',
   },
-  description: {
-    id: 'protocolBuilder.censusPrompts.oneToManyDescription',
+  promptTextDescription: {
+    id: 'protocolBuilder.censusPrompts.oneToManyPromptTextDescription',
     defaultMessage:
-      'Write the questions this stage asks about one person and the group around them, and drag them into the order the participant answers them.',
+      'Write the participant prompt and select the edge type created for chosen nodes.',
     description:
-      'Description of the prompts section in a stage that shows the participant one network member alongside all the others and asks which of the others the question applies to. A stage is one step of an interview; a prompt is one question the participant is asked.',
-  },
-  fieldHint: {
-    id: 'protocolBuilder.censusPrompts.oneToManyFieldHint',
-    defaultMessage:
-      'The participant is shown one person at a time and chooses who among the others the question applies to.',
-    description:
-      'Guidance under the list of prompts in a One-to-Many Dyad Census stage, where the participant selects any number of the remaining network members for the person in front of them.',
-  },
-  edgeDescription: {
-    id: 'protocolBuilder.censusPrompts.oneToManyEdgeDescription',
-    defaultMessage:
-      'Choose the kind of connection an affirmative answer records between the two people.',
-    description:
-      'Description of the group that says what selecting someone records between them and the person the prompt asked about.',
-  },
-  edgeHint: {
-    id: 'protocolBuilder.censusPrompts.oneToManyEdgeHint',
-    defaultMessage:
-      'A connection of this type is created from the person being asked about to everyone the participant selects.',
-    description:
-      'Guidance under the control that picks what selecting someone records between them and the person the prompt asked about.',
+      'Description of the group holding a One-to-Many Dyad Census prompt’s question and the kind of connection selecting someone records.',
   },
   askedOrderTitle: {
     id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderTitle',
@@ -78,7 +57,7 @@ const messages = defineMessages({
   askedOrderDescription: {
     id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderDescription',
     defaultMessage:
-      'Choose the order the participant is asked about each person in.',
+      'Order focal nodes before they are presented for evaluation.',
     description:
       'Description of the group holding the rules that order the people the participant is asked about, one at a time.',
   },
@@ -109,8 +88,7 @@ const messages = defineMessages({
   },
   choiceOrderDescription: {
     id: 'protocolBuilder.censusPrompts.oneToManyChoiceOrderDescription',
-    defaultMessage:
-      'Choose the order the people the participant selects from are shown in.',
+    defaultMessage: 'Order target nodes after they are placed in the bin.',
     description:
       'Description of the group holding the rules that order the people the participant picks from for whoever they were asked about.',
   },
@@ -196,17 +174,24 @@ function OneToManyDyadCensusPromptEditor({ item }: RowEditorProps) {
 
   return (
     <>
+      {/*
+        The connection type sits INSIDE the prompt group, as Architect's does:
+        the group's own description is what says a selection creates one.
+      */}
       <PromptTextField
         item={item}
         guidance={<OneToManyGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
-      />
-      <CreateEdgeField
-        title={intl.formatMessage(censusMessages.affirmativeTitle)}
-        description={intl.formatMessage(messages.edgeDescription)}
-        hint={intl.formatMessage(messages.edgeHint)}
-        requiredMessage={intl.formatMessage(censusMessages.affirmativeRequired)}
-      />
+        title={intl.formatMessage(censusMessages.promptConfigurationTitle)}
+        description={intl.formatMessage(messages.promptTextDescription)}
+      >
+        <CreateEdgeField
+          label={intl.formatMessage(censusMessages.edgeLabel)}
+          requiredMessage={intl.formatMessage(
+            censusMessages.affirmativeRequired,
+          )}
+        />
+      </PromptTextField>
       {/*
         Both orders wait on the connection type, as Architect's do: until one is
         chosen the prompt does not yet describe a task to order anything within.
@@ -269,8 +254,6 @@ export default function OneToManyDyadCensusPromptsSection() {
       PromptEditor={OneToManyDyadCensusPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
-      description={messages.description}
-      fieldHint={messages.fieldHint}
     />
   );
 }

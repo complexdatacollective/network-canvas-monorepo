@@ -148,7 +148,7 @@ const lists: readonly ListCase[] = [
   {
     list: 'the panels a name generator shows',
     noun: 'panel',
-    addLabel: 'Create new panel',
+    addLabel: 'Add new panel',
     read: rowsAt('panels'),
     row: (id, text) => ({ id, title: text, dataSource: 'existing' }),
     label: (row) => row.title,

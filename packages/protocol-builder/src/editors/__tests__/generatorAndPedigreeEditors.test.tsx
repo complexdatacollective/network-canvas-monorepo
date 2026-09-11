@@ -43,7 +43,7 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
       'Stage name',
       'Node type',
       'Form fields',
-      'Prompts',
+      'Prompt collection',
       'Side panels',
       'Nomination limits',
       'Skip logic',

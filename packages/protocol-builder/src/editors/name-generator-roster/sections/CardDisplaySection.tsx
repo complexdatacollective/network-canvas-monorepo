@@ -28,48 +28,34 @@ const CARD_PROPERTIES = 'cardOptions.additionalProperties';
 const messages = defineMessages({
   title: {
     id: 'protocolBuilder.cardDisplay.title',
-    defaultMessage: 'Card details',
+    defaultMessage: 'Card display',
     description:
       'Heading of the section choosing what each card in a roster shows about a person besides their name. A roster is a list of people imported from a data file.',
   },
   description: {
     id: 'protocolBuilder.cardDisplay.description',
-    defaultMessage:
-      'Show extra attributes on each roster card, so the participant can tell two similar people apart.',
+    defaultMessage: 'Configure how roster cards are displayed to participants.',
     description:
       'Description of the card-details section. An attribute is one field the data file records about a person.',
   },
-  waitingDescription: {
-    id: 'protocolBuilder.cardDisplay.waitingDescription',
-    defaultMessage:
-      'Choose a roster data file before deciding what its cards show.',
-    description:
-      'Shown in place of the card-details section’s description while no data file has been chosen, so there are no columns for a card to show.',
-  },
   fieldLabel: {
     id: 'protocolBuilder.cardDisplay.fieldLabel',
-    defaultMessage: 'Attributes shown on a card',
+    defaultMessage: 'Additional display properties',
     description:
       'Label of the list of extra attributes each roster card shows beneath the person’s name.',
   },
   fieldHint: {
     id: 'protocolBuilder.cardDisplay.fieldHint',
     defaultMessage:
-      'Each attribute appears beneath the name, under the label you give it here.',
+      'Choose any additional roster attributes that will help participants recognize an alter.',
     description:
       'Guidance under the list of extra attributes shown on a roster card.',
   },
   addLabel: {
     id: 'protocolBuilder.cardDisplay.addLabel',
-    defaultMessage: 'Add new card detail',
+    defaultMessage: 'Add new display property',
     description:
       'Button that adds one more attribute to what a roster card shows. Whole rather than a generic "Add", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons.',
-  },
-  emptyState: {
-    id: 'protocolBuilder.cardDisplay.emptyState',
-    defaultMessage: 'No extra attributes are shown on a card.',
-    description:
-      'Shown in place of the list while a roster card shows nothing but the person’s name.',
   },
   titledByName: {
     id: 'protocolBuilder.cardDisplay.titledByName',
@@ -167,11 +153,7 @@ export default function CardDisplaySection() {
     columns.names,
   );
   const options = useColumnOptionGetter(columns.names, orphans.options);
-  const shell = useColumnSectionShell(
-    columns,
-    messages.description,
-    messages.waitingDescription,
-  );
+  const shell = useColumnSectionShell(columns, messages.description);
   const properties = useMemo(() => cardPropertyColumns(intl), [intl]);
   const validation = useMemo(
     () => makeMultiSelectValidation(properties, orphans.dangling),
@@ -230,7 +212,6 @@ export default function CardDisplaySection() {
         // An orphan counts: the row holding it is one of the rows this limit
         // is counting, and it has to stay removable.
         maxItems={(columns.names?.length ?? 0) + orphans.options.length}
-        emptyStateMessage={intl.formatMessage(messages.emptyState)}
         {...validation}
       />
     </BuilderSection>

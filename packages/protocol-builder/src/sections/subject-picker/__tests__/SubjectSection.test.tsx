@@ -138,7 +138,7 @@ describe('the section that says what a stage is about', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Node type',
-      'Prompts',
+      'Prompt collection',
     ]);
   });
 
