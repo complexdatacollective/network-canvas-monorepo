@@ -56,8 +56,9 @@ dev-vm/vm shell       # you are now in the VM, in the same directory you were in
 installation); later starts take seconds. `bootstrap` is idempotent and safe
 to re-run after pulling changes to `.nvmrc`, `packageManager` or the lockfile.
 
-Add this to `~/.ssh/config` and the VM is `ssh lima-nc` for VS Code Remote-SSH,
-rsync and anything else that speaks SSH:
+Add this as the **first line** of `~/.ssh/config` (an `Include` placed after a
+`Host` block only applies to that host) and the VM is `ssh lima-nc` for VS Code
+Remote-SSH, rsync and anything else that speaks SSH:
 
 ```
 Include ~/.lima/nc/ssh.config
