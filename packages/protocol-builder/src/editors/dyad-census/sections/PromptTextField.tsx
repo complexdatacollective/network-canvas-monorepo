@@ -26,6 +26,21 @@ export type PromptTextFieldProps = Readonly<{
    */
   guidance: ReactNode;
   placeholder: string;
+  /**
+   * What this editor's prompt group is called, and what it says.
+   *
+   * Per editor rather than shared: the group holds the question alone in
+   * three of the five families and the question plus the connection an answer
+   * records in the other two, so Architect names and explains it differently
+   * in each.
+   */
+  title: string;
+  description: string;
+  /**
+   * Anything else the group holds — the connection type, where the family
+   * keeps it inside this group rather than beside it.
+   */
+  children?: ReactNode;
 }>;
 
 /**
@@ -40,14 +55,14 @@ export function PromptTextField({
   item,
   guidance,
   placeholder,
+  title,
+  description,
+  children,
 }: PromptTextFieldProps) {
   const intl = useAppIntl();
 
   return (
-    <Section
-      title={intl.formatMessage(censusMessages.promptTextTitle)}
-      description={intl.formatMessage(censusMessages.promptTextDescription)}
-    >
+    <Section title={title} description={description}>
       {guidance}
       <Field<typeof RichTextField>
         name="text"
@@ -58,6 +73,7 @@ export function PromptTextField({
         initialValue={asString(item.text)}
         required={WRITE_THE_QUESTION}
       />
+      {children}
     </Section>
   );
 }

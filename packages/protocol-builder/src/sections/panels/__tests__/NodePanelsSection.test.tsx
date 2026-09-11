@@ -224,45 +224,42 @@ describe('the side panels a name generator shows', () => {
   });
 
   /**
-   * A stage may hold two panels and nothing else in the dialog says which of
-   * them is open, so the source control is numbered — the way Architect
-   * numbers it. A panel being added is the next one, and an existing panel is
-   * the one it is in the list, counting from one.
+   * A stage holds two panels at most and their controls are otherwise
+   * identical, so Architect numbers the source control by the panel it belongs
+   * to — "Data source for panel 1", "Data source for panel 2" — and that
+   * number is the only thing telling the two apart to anyone reading the label
+   * or hearing it. One shared sentence would name both the same.
    */
-  it('numbers the source control after the panel being added', async () => {
+  it('numbers each panel’s source control by the panel it belongs to', async () => {
     const harness = renderStageEditor({
       stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
-      ]),
-      sections: panels,
-    });
-
-    const dialog = await openPanel(harness, 'Add new panel');
-
-    expect(dialog.getByText('Data source for panel 2')).toBeInTheDocument();
-  });
-
-  it('numbers the source control after the panel being edited', async () => {
-    const harness = renderStageEditor({
-      stage: nameGeneratorWith([
-        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
-        { id: 'panel-2', title: 'Second panel', dataSource: 'existing' },
+        {
+          id: 'panel-1',
+          title: 'People you named earlier',
+          dataSource: 'existing',
+        },
+        {
+          id: 'panel-2',
+          title: 'People from the roster',
+          dataSource: 'existing',
+        },
       ]),
       sections: panels,
     });
 
     const first = await openPanel(harness, 'Edit panel', 0);
-    expect(first.getByText('Data source for panel 1')).toBeInTheDocument();
     expect(
-      first.queryByText('Data source for panel 2'),
-    ).not.toBeInTheDocument();
+      first.getByRole('radiogroup', { name: 'Data source for panel 1' }),
+    ).toBeInTheDocument();
     await harness.user.click(first.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
     );
 
     const second = await openPanel(harness, 'Edit panel', 1);
-    expect(second.getByText('Data source for panel 2')).toBeInTheDocument();
+    expect(
+      second.getByRole('radiogroup', { name: 'Data source for panel 2' }),
+    ).toBeInTheDocument();
   });
 
   /**

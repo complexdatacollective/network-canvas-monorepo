@@ -152,7 +152,7 @@ describe('a capability whose prerequisite starts absent', () => {
         <>
           {rosterFileSection}
           <BuilderSection
-            title="Card details"
+            title="Card display"
             capability={cardOptionsCapability}
             resetOn="dataSource"
           >
@@ -164,7 +164,7 @@ describe('a capability whose prerequisite starts absent', () => {
 
     // The stage opens configured, which is what puts the section on.
     expect(
-      await screen.findByRole('switch', { name: 'Card details' }),
+      await screen.findByRole('switch', { name: 'Card display' }),
     ).toBeChecked();
 
     await pickTheRosterFile(harness.user);
@@ -175,7 +175,7 @@ describe('a capability whose prerequisite starts absent', () => {
     // nothing.
     await waitFor(() => {
       expect(
-        screen.getByRole('switch', { name: 'Card details' }),
+        screen.getByRole('switch', { name: 'Card display' }),
       ).not.toBeChecked();
     });
   });
