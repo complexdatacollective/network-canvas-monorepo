@@ -5,6 +5,7 @@ import { emptyProtocol } from '../fixtures/seed.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 import { openValidationSection } from '../pageobjects/editor-sections/form-field-controls.js';
 import { addFormField } from '../pageobjects/editor-sections/forms.js';
+import { chooseAttribute } from '../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 
 // The repair guidance a researcher is given for an inverted min/max pair
@@ -223,9 +224,10 @@ test('the option editor rejects canonically equivalent labels', async ({
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   const fieldDialog = page.getByRole('dialog', { name: 'Create form field' });
-  await fieldDialog
-    .getByRole('combobox', { name: 'Attribute', exact: true })
-    .selectOption({ label: 'Create a new attribute…' });
+  await chooseAttribute(
+    fieldDialog.locator('[data-field-name="variable"]'),
+    'Create a new attribute…',
+  );
   // An attribute a participant chooses an answer from IS its list of values —
   // the schema refuses fewer than two — so it is invented in the codebook's
   // own editor rather than from a name and a type. Driven here rather than
