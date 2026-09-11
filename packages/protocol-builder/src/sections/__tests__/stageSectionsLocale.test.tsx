@@ -86,13 +86,15 @@ describe('the shared stage sections, read in Spanish', () => {
     expect(
       screen.getByRole('button', { name: 'Crear nuevo bloque de contenido' }),
     ).toBeInTheDocument();
-    // The outline reads its state out of the same catalog, so a section named
-    // in Spanish and reported in English would fail here rather than pass
-    // halfway.
+    // The section the editor publishes to its host carries the SAME title the
+    // card shows, so a section named in Spanish on screen and published in
+    // English would fail here rather than pass halfway. Its state is the
+    // harness's own English reading of the store — the words belong to
+    // whichever host draws the list, not to this package.
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline()[1]).toEqual({
       title: 'Contenido de la página',
-      state: 'Terminado',
+      state: 'Finished',
     });
   });
 

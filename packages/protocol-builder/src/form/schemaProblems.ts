@@ -191,8 +191,9 @@ const COPY_BY_CODE: ReadonlyMap<string, SchemaProblemCopy> = new Map(
  *
  * Encoded rather than formatted: this runs in `SectionOutlineStore`, which has
  * no reader and no language, and its answer is held on the outline snapshot
- * until something replaces it. `SectionOutline` decodes it where it is read, so
- * a problem already on screen follows a change of language — and a host's own
+ * until something replaces it. The host that renders the section list decodes
+ * it where it is read, so a problem already on screen follows a change of
+ * language — and a host's own
  * plain sentence, or the validator's under `custom`, passes straight through
  * the same `formatMessageError(text, intl) ?? text`.
  *

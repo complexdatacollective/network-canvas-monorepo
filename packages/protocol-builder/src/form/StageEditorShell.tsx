@@ -54,11 +54,11 @@ import {
   type SectionValidationIssue,
 } from './outlineStore.ts';
 import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
-import SectionOutline from './SectionOutline.tsx';
 import {
   type OwnCommandsResult,
   StageEditorFormContext,
 } from './stageEditorContext.ts';
+import { createStageSectionsStore } from './stageSections.ts';
 
 /**
  * Where the slot's own types live is `stage-editor-contract.ts`: they are part
@@ -83,8 +83,9 @@ export type StageEditorShellProps = Readonly<{
  *
  * Every named editor composes sections into this shell, and the shell owns
  * everything a stage editor does regardless of which stage it is editing: one
- * form store holding the whole document, the section outline, the submit that
- * hands the document back, and a slot where the host puts its own buttons.
+ * form store holding the whole document, the register of which sections are
+ * mounted and how each one stands, the submit that hands the document back,
+ * and a slot where the host puts its own buttons.
  *
  * The store is keyed by the stage and by how many drafts have been discarded,
  * because Fresco forms have no reinitialise: opening a different stage is a
@@ -213,6 +214,17 @@ function StageEditorFormBody({
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
   const outline = useMemo(() => new SectionOutlineStore(), []);
+  // Beside the registry rather than derived from it on every render: a host
+  // reads this with `useSyncExternalStore`, which re-subscribes whenever the
+  // store's identity moves, and a new store per render would tear its list
+  // down and build it again on every keystroke.
+  const sections = useMemo(
+    () =>
+      storeApi === undefined
+        ? undefined
+        : createStageSectionsStore(outline, storeApi),
+    [outline, storeApi],
+  );
 
   const [refusedWrite, setRefusedWrite] = useState<string | undefined>(
     undefined,
@@ -308,9 +320,9 @@ function StageEditorFormBody({
       // hold them rather than to one sentence at the top of the page. The rest
       // are about the stage as a whole and have no section to belong to, so
       // they are said in the schema's own words at the top.
-      const { sections, whole } = stageProblems(identity, fields);
-      outline.setValidationIssues(sections);
-      if (sections.length > 0 || whole.length > 0) {
+      const { sections: anchored, whole } = stageProblems(identity, fields);
+      outline.setValidationIssues(anchored);
+      if (anchored.length > 0 || whole.length > 0) {
         return {
           success: false,
           formErrors: whole.length > 0 ? whole : [INVALID_STAGE_MESSAGE],
@@ -454,13 +466,22 @@ function StageEditorFormBody({
     ],
   );
 
-  if (context === null) return null;
+  if (context === null || sections === undefined) return null;
 
   return (
     <StageEditorFormContext value={context}>
-      <div className={cx('@container flex w-full flex-col gap-6', className)}>
-        <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
-          <SectionOutline />
+      <div className={cx('@container flex w-full flex-col', className)}>
+        {/*
+          One column, at the width and with the gutters Architect's stage
+          editor has always had. A host that wants a list of the sections
+          beside the form renders it in its own chrome, out of `sections` on
+          the action slot; this package draws no list of its own.
+
+          `@container` stays on the element above rather than here, so a
+          section asking about the space it has is answered about the room the
+          host gave the editor and not about this column's own cap.
+        */}
+        <div className="phone-landscape:px-6 mx-auto flex w-full max-w-4xl flex-col gap-6 px-4">
           <form
             id={formId}
             ref={formRef}
@@ -492,8 +513,8 @@ function StageEditorFormBody({
               </EnclosingHeadingLevel>
             </LayoutGroup>
           </form>
+          {actions?.({ formId, readOnly, sections })}
         </div>
-        {actions?.({ formId, readOnly })}
       </div>
     </StageEditorFormContext>
   );

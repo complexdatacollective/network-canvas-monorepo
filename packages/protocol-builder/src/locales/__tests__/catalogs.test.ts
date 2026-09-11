@@ -51,6 +51,28 @@ describe('the package’s own protocolBuilder.* catalogs', () => {
     }
   });
 
+  it('names no section-list copy, in any language', () => {
+    // The words a list of the stage's sections is read out with — the five
+    // states, the landmark's name and the punctuation between a state and what
+    // is wrong — belong to whichever host draws that list. The package
+    // publishes the sections and draws nothing, so it translates nothing about
+    // them; every catalog is asked, because a stale translation of copy no
+    // component reads is invisible to the freshness check.
+    const offenders = Object.entries(protocolBuilderCatalogs).flatMap(
+      ([locale, catalog]) =>
+        Object.keys(catalog)
+          .filter((id) => id.startsWith('protocolBuilder.outline.'))
+          .map((id) => `${locale}: ${id}`),
+    );
+
+    expect([
+      ...offenders,
+      ...Object.keys(committedEn).filter((id) =>
+        id.startsWith('protocolBuilder.outline.'),
+      ),
+    ]).toEqual([]);
+  });
+
   it('leaves the shared common.* messages to @codaco/app-i18n', () => {
     // Components import `commonMessages` rather than redefining those verbs,
     // so no `common.*` id may be declared — or translated — here.

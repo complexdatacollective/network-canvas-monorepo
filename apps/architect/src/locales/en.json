@@ -2475,6 +2475,34 @@
     "defaultMessage": "Untitled stage",
     "description": "Display of a skip-logic destination, preserving the authored stage label."
   },
+  "architect.stageEditor.sectionOutline.completeStatus": {
+    "defaultMessage": "Finished",
+    "description": "Spoken state of one section of a stage editor: everything it asks for has been filled in and nothing in it is invalid. Read out after the section’s own name, and never shown on screen."
+  },
+  "architect.stageEditor.sectionOutline.errorStatus": {
+    "defaultMessage": "Has a problem",
+    "description": "Spoken state of one section of a stage editor (a stage is one step of an interview): something the researcher has entered in it is not valid. Read out after the section’s own name, and never shown on screen — the same state is drawn as a color and an icon."
+  },
+  "architect.stageEditor.sectionOutline.incompleteStatus": {
+    "defaultMessage": "Not finished",
+    "description": "Spoken state of one section of a stage editor: it still has required fields the researcher has not filled in. Read out after the section’s own name, and never shown on screen."
+  },
+  "architect.stageEditor.sectionOutline.landmarkLabel": {
+    "defaultMessage": "Stage sections",
+    "description": "Accessible name of the navigation landmark listing the sections of the stage being edited. A stage is one step of an interview."
+  },
+  "architect.stageEditor.sectionOutline.statusWithProblems": {
+    "defaultMessage": "{status}. {problems}",
+    "description": "Read out for a section of a stage editor whose only account of what is wrong is here. status is the section’s spoken state (\"Has a problem\"); problems is one or more whole sentences describing what the protocol refused, already in the reader’s language. Both are complete sentences, so this is only the punctuation that separates them."
+  },
+  "architect.stageEditor.sectionOutline.switchedOffStatus": {
+    "defaultMessage": "Switched off",
+    "description": "Spoken state of one section of a stage editor: the researcher has turned this optional part of the stage off, so it asks for nothing. Read out after the section’s own name, and never shown on screen."
+  },
+  "architect.stageEditor.sectionOutline.unavailableStatus": {
+    "defaultMessage": "Not available yet",
+    "description": "Spoken state of one section of a stage editor: it cannot be filled in until something else in the stage has been chosen. Read out after the section’s own name, and never shown on screen."
+  },
   "architect.stageEditor.stageDraftConflictDialog.decideLater": {
     "defaultMessage": "Decide Later",
     "description": "The label text in components / StageEditor / StageDraftConflictDialog."
