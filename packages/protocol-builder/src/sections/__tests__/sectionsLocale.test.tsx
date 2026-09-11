@@ -189,15 +189,17 @@ describe('the shared stage-editor sections in Spanish', () => {
  * The form-fields section read in Spanish.
  *
  * The other shared sections are swept in `stageSectionsLocale.test.tsx`. This
- * one is here because it is the only surface in the package that splices a
- * researcher's own attribute name into a sentence.
+ * one is here because its collapsed rows assemble a sentence out of two
+ * values read from the codebook — the kind of attribute and the control it is
+ * collected with — which used to reach the screen as the schema's own tokens
+ * in every language.
  *
  * The words are asserted as literals rather than by re-formatting the same
  * descriptor the component read: `esIntl.formatMessage(messages.x)` would pass
  * whatever the catalog said, including nothing at all.
  */
 describe('the form-fields section, read in Spanish', () => {
-  it('splices a researcher’s own attribute into the Spanish sentence', () => {
+  it('says what a row collects with both halves translated', async () => {
     renderStageEditor({
       stageId: 'alter-form-1',
       locale: 'es',
@@ -205,8 +207,23 @@ describe('the form-fields section, read in Spanish', () => {
     });
 
     expect(
-      screen.getByRole('textbox', { name: 'Título del formulario' }),
+      await screen.findByRole('textbox', { name: 'Título del formulario' }),
     ).toBeInTheDocument();
+
+    // `relationship_to_ego` is a `text` attribute collected with `Text`, and
+    // neither token appears: the row names the kind of answer and the control
+    // in the reader's own language, inside one sentence the translator moved
+    // whole.
+    //
+    // Matched on `textContent` because the sentence emphasises both halves, so
+    // it is broken across elements; the innermost element carrying the whole
+    // of it is the badge itself, and its ancestors match too.
+    const sentence = 'Atributo de tipo Texto con control Campo de texto';
+    expect(
+      screen
+        .getAllByText((_, element) => element?.textContent === sentence)
+        .at(-1),
+    ).toBeVisible();
   });
 
   /**
