@@ -2439,38 +2439,6 @@
     "defaultMessage": "Y-linked",
     "description": "One choice in the inheritance-pattern list: a condition carried on the Y chromosome. Standard clinical genetics terminology; \"Y\" is the chromosome’s letter and is not translated."
   },
-  "protocolBuilder.narrativePedigree.nodeColorSeq1": {
-    "defaultMessage": "Neon Coral",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A colour name rather than a position, because a researcher choosing what a disease is drawn in has to be able to say which colour they chose. A pinkish red."
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq2": {
-    "defaultMessage": "Sea Serpent",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A blue-green."
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq3": {
-    "defaultMessage": "Purple Pizazz",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A bright purple."
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq4": {
-    "defaultMessage": "Neon Carrot",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A bright orange."
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq5": {
-    "defaultMessage": "Kiwi",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A yellow-green."
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq6": {
-    "defaultMessage": "Cerulean Blue",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A deep sky blue."
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq7": {
-    "defaultMessage": "Paradise Pink",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A warm pink."
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq8": {
-    "defaultMessage": "Mustard",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A dark yellow."
-  },
   "protocolBuilder.narrativePedigree.sourceAfterThisStage": {
     "defaultMessage": "The Family Pedigree stage this one reads now runs after it, so the family would still be empty. Move it earlier in the interview, or choose a pedigree that runs before this stage.",
     "description": "Shown when the stage this one draws its family from has been moved to run later in the interview, so the participant would not have built the family yet."

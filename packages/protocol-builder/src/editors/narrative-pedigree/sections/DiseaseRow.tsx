@@ -26,7 +26,6 @@ import type {
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
-import { diseaseColorOptions } from './diseaseColors.ts';
 import {
   diseaseRowIssue,
   diseaseVariableOptions,
@@ -150,9 +149,14 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
    * The swatches are what the researcher chooses from — a colour named "Color
    * 3" and not shown is a shade they meet for the first time in an interview —
    * so each is announced by the hue the theme gives it, as Architect announced
-   * them.
+   * them. No `label`: the colour picker names a sequence swatch after that
+   * hue itself, so the node sequence is named in one place rather than once
+   * per picker that offers it.
    */
-  const colorOptions = useMemo(() => diseaseColorOptions(intl), [intl]);
+  const colorOptions = useMemo(
+    () => NodeColorSequence.map((value) => ({ value })),
+    [],
+  );
 
   const options = useMemo(
     () =>

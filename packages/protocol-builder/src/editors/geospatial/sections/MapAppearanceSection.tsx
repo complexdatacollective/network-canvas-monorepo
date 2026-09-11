@@ -64,9 +64,9 @@ export default function MapAppearanceSection() {
   // Named rather than only shown, because a colour has to be sayable by people
   // who are not looking at the control — and named after the hue the theme
   // resolves each position to, as Architect named them, rather than counted.
-  // The same table the ordinal bin's gradient picker reads: one sequence, one
-  // set of names, so the same swatch is not two things in two editors.
-  const colorOptions = useMemo(() => ordinalColorOptions(intl), [intl]);
+  // The colour picker does the naming, so the ordinal sequence is named in one
+  // place rather than once per picker that offers it.
+  const colorOptions = useMemo(() => ordinalColorOptions(), []);
 
   return (
     <>

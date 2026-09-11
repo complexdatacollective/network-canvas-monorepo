@@ -274,46 +274,6 @@
     "es": "Asignaciones de enfermedades",
     "from": "74a07e626 architect.sections.narrativePedigree.diseases.diseaseMappings"
   },
-  "protocolBuilder.narrativePedigree.nodeColorSeq1": {
-    "en": "Neon Coral",
-    "es": "Coral neón",
-    "from": "74a07e626 architect.config.neonCoral"
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq2": {
-    "en": "Sea Serpent",
-    "es": "Turquesa marino",
-    "from": "74a07e626 architect.config.seaSerpent"
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq3": {
-    "en": "Purple Pizazz",
-    "es": "Púrpura brillante",
-    "from": "74a07e626 architect.config.purplePizazz"
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq4": {
-    "en": "Neon Carrot",
-    "es": "Zanahoria neón",
-    "from": "74a07e626 architect.config.neonCarrot"
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq5": {
-    "en": "Kiwi",
-    "es": "Kiwi",
-    "from": "74a07e626 architect.config.kiwi"
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq6": {
-    "en": "Cerulean Blue",
-    "es": "Azul cerúleo",
-    "from": "74a07e626 architect.config.ceruleanBlue"
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq7": {
-    "en": "Paradise Pink",
-    "es": "Rosa paraíso",
-    "from": "74a07e626 architect.config.paradisePink"
-  },
-  "protocolBuilder.narrativePedigree.nodeColorSeq8": {
-    "en": "Mustard",
-    "es": "Mostaza",
-    "from": "74a07e626 architect.config.mustard"
-  },
   "protocolBuilder.narrativePedigree.sourceHint": {
     "en": "Select the Family Pedigree stage whose network data this Narrative Pedigree will visualize. Only Family Pedigree stages are listed here.",
     "es": "Selecciona la etapa de genealogía familiar cuyos datos de red visualizará esta genealogía narrativa. Aquí solo se muestran etapas de genealogía familiar.",
