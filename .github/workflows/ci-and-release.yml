@@ -1523,7 +1523,10 @@ jobs:
       && (github.head_ref == 'changeset-release/documentation'
       || github.head_ref == 'changeset-release/website')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Budgets a 15-minute Netlify status poll plus the crawl. Every link is a
+    # browser navigation now, so a cold cache is minutes rather than seconds;
+    # the site's own pages are never cached and set the floor.
+    timeout-minutes: 45
     permissions:
       contents: read
       statuses: read
@@ -1618,24 +1621,10 @@ jobs:
           done
           echo "::error::Netlify documentation preview is not reachable at $DOCS_URL"
           exit 1
-      - name: Dead-link check
-        env:
-          DEAD_LINK_CHECK_USER_AGENT: >-
-            Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)
-            Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
-          DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
-        run: >-
-          node scripts/dead-link-checker.mjs "$DOCS_URL" --github-actions --concurrent=1
-          --report="$RUNNER_TEMP/docs-dead-link-report.json"
-          --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
-      - name: Upload dead-link report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: ./.github/actions/dead-link-check
         with:
-          name: docs-dead-link-report
-          path: ${{ runner.temp }}/docs-dead-link-report.json
-          if-no-files-found: error
-          retention-days: 7
+          url: ${{ steps.netlify-preview.outputs.url }}
+          report-name: docs-dead-link-report
       - name: Redirect test
         working-directory: apps/documentation
         env:
@@ -1653,8 +1642,10 @@ jobs:
       || github.head_ref == 'changeset-release/website')
     runs-on: ubuntu-latest
     # Budgets two sequential 15-minute Netlify status polls (website, then
-    # documentation) plus the reachability probes and the crawl itself.
-    timeout-minutes: 40
+    # documentation) plus the reachability probes and the crawl itself. Every
+    # link is a browser navigation now, so the crawl's share is minutes rather
+    # than seconds on a cold cache.
+    timeout-minutes: 55
     permissions:
       contents: read
       statuses: read
@@ -1836,24 +1827,10 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Dead-link check
-        env:
-          DEAD_LINK_CHECK_USER_AGENT: >-
-            Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)
-            Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
-          WEBSITE_URL: ${{ steps.netlify-preview.outputs.url }}
-        run: >-
-          node scripts/dead-link-checker.mjs "$WEBSITE_URL/en-US/" --github-actions --concurrent=1
-          --report="$RUNNER_TEMP/website-dead-link-report.json"
-          --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
-      - name: Upload dead-link report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: ./.github/actions/dead-link-check
         with:
-          name: website-dead-link-report
-          path: ${{ runner.temp }}/website-dead-link-report.json
-          if-no-files-found: error
-          retention-days: 7
+          url: ${{ steps.netlify-preview.outputs.url }}/en-US/
+          report-name: website-dead-link-report
 
   interview-e2e:
     # Runs when the policy requires the interview suite. The Dockerized suite
