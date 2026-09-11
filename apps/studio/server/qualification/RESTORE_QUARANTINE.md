@@ -8,10 +8,14 @@ or an RTO result.
 The executable fake-Docker harness exercises the complete restore script:
 
 ```sh
-node --test scripts/studio/studio-restore-quarantine.test.mjs
+pnpm exec vitest run --config scripts/vitest.config.ts \
+  scripts/studio/studio-restore-quarantine.test.mjs
 ```
 
-All 14 tests passed. They cover successful closure, PostgreSQL restore failure,
+All 11 cases passed. (The original run reported 14 under `node --test`,
+which counted the three grouping wrappers as tests of their own; the vitest
+migration reports only the leaves. The behaviours below are unchanged.) They
+cover successful closure, PostgreSQL restore failure,
 session-termination failure, foreground MinIO initialization failure, `TERM`,
 symlinked inputs, a caller mutation after the private snapshot, and existing
 Compose project, named-volume, and network collisions. Every post-start exit

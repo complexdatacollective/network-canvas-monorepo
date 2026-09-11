@@ -406,12 +406,23 @@
     // a tree the guard no longer describes, which is the one failure this
     // task exists to prevent.
     "//#test:scripts": {
+      // Every tree the suite reads has to be here, or a change confined to one
+      // of them restores a stale green instead of re-running the guard that
+      // covers it. The agent-skills test walks .claude/skills and
+      // .agents/skills; the release-test suites read .claude/workflows; the
+      // changeset guards read .changeset; the release guards read the fresco
+      // and studio deployment trees.
       "inputs": [
         "scripts/**",
         ".github/**",
+        ".claude/**",
+        ".agents/**",
+        ".changeset/**",
         "**/package.json",
         "turbo.json",
         "pnpm-workspace.yaml",
+        "apps/fresco/release-test/**",
+        "apps/fresco/CLAUDE.md",
         "apps/studio/deployment/**",
         "workers/studio-ingress/src/**",
         "tooling/vitest/**",
