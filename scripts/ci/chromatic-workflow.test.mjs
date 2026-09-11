@@ -1,28 +1,29 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import test from 'node:test';
+
+import { test } from 'vitest';
 
 const workflow = readFileSync(
-  new URL('../.github/workflows/chromatic.yml', import.meta.url),
+  new URL('../../.github/workflows/chromatic.yml', import.meta.url),
   'utf8',
 );
 
 const packages = {
   'fresco-ui': JSON.parse(
     readFileSync(
-      new URL('../packages/fresco-ui/package.json', import.meta.url),
+      new URL('../../packages/fresco-ui/package.json', import.meta.url),
       'utf8',
     ),
   ),
   'interview': JSON.parse(
     readFileSync(
-      new URL('../packages/interview/package.json', import.meta.url),
+      new URL('../../packages/interview/package.json', import.meta.url),
       'utf8',
     ),
   ),
   'interviewer': JSON.parse(
     readFileSync(
-      new URL('../apps/interviewer/package.json', import.meta.url),
+      new URL('../../apps/interviewer/package.json', import.meta.url),
       'utf8',
     ),
   ),
@@ -107,7 +108,7 @@ test('Chromatic diagnostic logs are retained briefly without changing status sem
 test('release selection uses the fail-closed lockfile-aware detector', () => {
   const detect = job('detect');
   assert.ok(detect, 'detect job exists');
-  assert.match(detect, /scripts\/chromatic-affected\.mjs/);
+  assert.match(detect, /scripts\/ci\/chromatic-affected\.mjs/);
   assert.match(detect, /--base "\$BEFORE_SHA"/);
   assert.match(detect, /--release-ref "\$GITHUB_REF_NAME"/);
   assert.match(detect, /--main "origin\/\$DEFAULT_BRANCH"/);

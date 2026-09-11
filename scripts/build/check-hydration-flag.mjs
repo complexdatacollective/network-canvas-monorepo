@@ -30,7 +30,7 @@
 // not run for a copy added to an app, and a full run could reuse an earlier
 // green.
 //
-// Usage: node scripts/check-hydration-flag.mjs   (from anywhere inside the repo)
+// Usage: node scripts/build/check-hydration-flag.mjs   (from anywhere inside the repo)
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';

@@ -38,7 +38,7 @@ import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const repoRoot = fileURLToPath(new URL('..', import.meta.url));
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 const packagesDir = join(repoRoot, 'packages');
 const SWAP_FIELDS = ['exports', 'main', 'module', 'types'];
 

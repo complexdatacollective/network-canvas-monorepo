@@ -14,10 +14,11 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const repository = join(dirname(fileURLToPath(import.meta.url)), '..');
+import { describe, test } from 'vitest';
+
+const repository = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const restoreSource =
   process.env.STUDIO_RESTORE_SCRIPT ??
   join(repository, 'apps/studio/deployment/restore.sh');
@@ -244,9 +245,9 @@ test('restore closes every writer before the first write and on successful exit'
   );
 });
 
-test('restore failure or signal retries quarantine and termination cannot roll it back', async (t) => {
+describe('restore failure or signal retries quarantine and termination cannot roll it back', () => {
   for (const failAt of ['pg-restore', 'terminate', 'minio-init', 'signal'])
-    await t.test(failAt, async () => {
+    test(failAt, async () => {
       const { result, log, roleState } = await makeHarness({ failAt });
       assert.notEqual(result.status, 0);
       assertEveryWriterClosed(log);
@@ -257,9 +258,9 @@ test('restore failure or signal retries quarantine and termination cannot roll i
     });
 });
 
-test('restore rejects symlinked inputs before loading images', async (t) => {
+describe('restore rejects symlinked inputs before loading images', () => {
   for (const symlinkInput of ['backup', 'custody'])
-    await t.test(symlinkInput, async () => {
+    test(symlinkInput, async () => {
       const { result, log } = await makeHarness({ symlinkInput });
       assert.notEqual(result.status, 0);
       assert.match(result.stderr, /must not be symbolic links/);
@@ -267,9 +268,9 @@ test('restore rejects symlinked inputs before loading images', async (t) => {
     });
 });
 
-test('restore refuses existing project resources before any SQL or service start', async (t) => {
+describe('restore refuses existing project resources before any SQL or service start', () => {
   for (const collision of ['project', 'volume', 'network'])
-    await t.test(collision, async () => {
+    test(collision, async () => {
       const { result, log } = await makeHarness({ collision });
       assert.notEqual(result.status, 0);
       assert.match(

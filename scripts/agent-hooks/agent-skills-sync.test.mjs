@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { lstatSync, readdirSync, readlinkSync, statSync } from 'node:fs';
 import path from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 // Repository agent skills are single-sourced: the canonical copy lives in
 // .agents/skills/<name>/ and every .claude/skills/<name> entry must be a
@@ -10,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 // carried independent copies and six skills silently drifted apart.
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
+  '..',
   '..',
 );
 const claudeSkillsDir = path.join(repoRoot, '.claude', 'skills');

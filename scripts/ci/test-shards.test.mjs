@@ -3,8 +3,9 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 import {
   assertShardCoverage,
@@ -16,7 +17,7 @@ import {
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(scriptDir, 'test-shards.mjs');
-const REPO_ROOT = resolve(scriptDir, '..');
+const REPO_ROOT = resolve(scriptDir, '..', '..');
 
 test('every workspace test suite belongs to exactly one shard', () => {
   // The whole point of the guard: a package that gains a `test` script but no

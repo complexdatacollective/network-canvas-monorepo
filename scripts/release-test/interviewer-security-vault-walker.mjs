@@ -15,7 +15,7 @@
 // release-test agent rebuild this from scratch.
 //
 // Usage (from the repo root):
-//   node scripts/interviewer-security-vault-walker.mjs \
+//   node scripts/release-test/interviewer-security-vault-walker.mjs \
 //     --url https://interviewer.networkcanvas.dev \
 //     --artifacts /path/to/artifacts [--timeout-ms 600000]
 //
@@ -31,6 +31,7 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
+  '..',
   '..',
 );
 const require = createRequire(

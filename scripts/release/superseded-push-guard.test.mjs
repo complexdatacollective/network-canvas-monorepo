@@ -3,11 +3,13 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 const SCRIPT = join(
   dirname(fileURLToPath(import.meta.url)),
+  '..',
   '..',
   '.github',
   'scripts',

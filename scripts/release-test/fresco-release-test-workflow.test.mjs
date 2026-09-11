@@ -23,10 +23,11 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+import { test } from 'vitest';
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const source = readFileSync(
   join(repoRoot, '.claude/workflows/fresco-release-test.js'),
   'utf8',
@@ -2598,7 +2599,7 @@ test('the stack aliases the relay hostname onto a sink the app waits for', () =>
 // list rather than assumed to agree with it.
 test('the sink covers the port the relay constant actually names', async () => {
   const { SINK_PORTS } =
-    await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
+    await import('../../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
   const url = relayUrl();
   const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
   assert.ok(
@@ -2609,7 +2610,7 @@ test('the sink covers the port the relay constant actually names', async () => {
 
 test('the sink and the reader agree on the wire contract', async () => {
   const { PROBE_MARKER, classify } =
-    await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
+    await import('../../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
   // Only the marker is a probe. Everything else — a TLS ClientHello, a bare
   // http request, or a connection that said nothing — is egress, because a
   // sink that cannot tell what it received must not report silence.
@@ -2655,7 +2656,7 @@ test('each lane reads its sink after it has finished exercising the app', async 
 // derived from that timeout rather than picked to be "long enough".
 test("the sink reader outlasts the sink's identification timeout", async () => {
   const { IDENTIFY_MS, SETTLE_WAIT_MS } =
-    await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
+    await import('../../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
   assert.ok(
     SETTLE_WAIT_MS > IDENTIFY_MS,
     `a reader waiting ${SETTLE_WAIT_MS}ms cannot see a connection the sink classifies after ${IDENTIFY_MS}ms`,
@@ -2683,7 +2684,7 @@ test("the sink reader outlasts the sink's identification timeout", async () => {
 // one.
 test('the log tally counts anything unidentified as egress', async () => {
   const { tally } =
-    await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
+    await import('../../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
   const line = (o) => JSON.stringify(o);
   const clean = [
     line({ kind: 'listening', ports: [443, 80] }),
@@ -2809,7 +2810,7 @@ test('the sink reader proves the sink outlived the window it reports on', () => 
 // pattern-matching the source, which cannot tell a live guard from a dead one.
 test('the window is only trusted when the sink was watching throughout', async () => {
   const { windowIntegrity } =
-    await import('../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
+    await import('../../apps/fresco/release-test/scripts/relay-sink-protocol.mjs');
   const at = '2026-08-28T09:00:00Z';
   const sound = {
     before: { running: true, startedAt: at },

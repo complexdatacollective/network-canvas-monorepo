@@ -1,35 +1,38 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import test from 'node:test';
 
+import { test } from 'vitest';
 import { parse } from 'yaml';
 
-import { GATED_PRODUCT_RELEASE_LANES } from './changeset-app-utils.mjs';
+import { GATED_PRODUCT_RELEASE_LANES } from '../release/changeset-app-utils.mjs';
 import { E2E_JOB_NAMES } from './release-e2e-policy.mjs';
 import { TEST_SHARDS } from './test-shards.mjs';
 
 const workflow = readFileSync(
-  new URL('../.github/workflows/ci-and-release.yml', import.meta.url),
+  new URL('../../.github/workflows/ci-and-release.yml', import.meta.url),
   'utf8',
 );
 const deadLinkChecker = readFileSync(
-  new URL('./dead-link-checker.mjs', import.meta.url),
+  new URL('../dead-links/dead-link-checker.mjs', import.meta.url),
   'utf8',
 );
 const rootPackage = JSON.parse(
-  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+  readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
 );
 const deadLinkAction = parse(
   readFileSync(
-    new URL('../.github/actions/dead-link-check/action.yml', import.meta.url),
+    new URL(
+      '../../.github/actions/dead-link-check/action.yml',
+      import.meta.url,
+    ),
     'utf8',
   ),
 );
 const refreshWorkflow = parse(
   readFileSync(
     new URL(
-      '../.github/workflows/dead-link-cache-refresh.yml',
+      '../../.github/workflows/dead-link-cache-refresh.yml',
       import.meta.url,
     ),
     'utf8',
@@ -38,13 +41,16 @@ const refreshWorkflow = parse(
 const parsedWorkflow = parse(workflow);
 const snapshotWorkflow = readFileSync(
   new URL(
-    '../.github/workflows/open-e2e-snapshot-update-pr.yml',
+    '../../.github/workflows/open-e2e-snapshot-update-pr.yml',
     import.meta.url,
   ),
   'utf8',
 );
 const frescoPackage = JSON.parse(
-  readFileSync(new URL('../apps/fresco/package.json', import.meta.url), 'utf8'),
+  readFileSync(
+    new URL('../../apps/fresco/package.json', import.meta.url),
+    'utf8',
+  ),
 );
 
 const topLevelConcurrency = workflow.match(
@@ -189,6 +195,7 @@ test('both public sites are crawled only for their generated release PRs', () =>
     assert.ok(deadLinkStep, `${jobName} runs the dead-link-check action`);
     assert.equal(deadLinkStep.with?.url, crawlURL);
     assert.equal(deadLinkStep.with?.['report-name'], reportName);
+
     // A pull request must never write the shared cache: its entry would be
     // visible only to that PR, while the weekly refresh on main is what every
     // run actually reads.
@@ -247,6 +254,14 @@ test('the dead-link action runs headed Chrome and reads a shared cache', () => {
   // since burst behaviour is what provokes the WAF blocks the checker now
   // correctly reports as dead.
   assert.equal(deadLinkAction.inputs.concurrent.default, '4');
+  // A 401/403 from someone else's host is excused only for URLs listed by
+  // hand. It has to be a list and not a count: a count lets a link that starts
+  // refusing us hide behind one that stopped.
+  assert.equal(
+    deadLinkAction.inputs['allow-refused'].default,
+    '.github/dead-link-refusals.json',
+  );
+  assert.match(check.run, /--allow-refused="\$CHECK_ALLOW_REFUSED"/);
   assert.match(check.run, /--concurrent="\$CHECK_CONCURRENT"/);
 
   const restore = steps.find(
@@ -584,7 +599,8 @@ test('short quality checks share one setup without joining the critical path', (
     support,
     /pnpm --filter @codaco\/studio-server check:schema-docs/,
   );
-  assert.match(support, /pnpm test:scripts/);
+  // Through turbo, so the guard suite is cached like every other test task.
+  assert.match(support, /turbo run \/\/#test:scripts/);
   assert.match(support, /turbo run build --filter='\.\/packages\/\*'/);
   assert.match(support, /turbo run typecheck/);
 
@@ -687,7 +703,7 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   }
   assert.match(
     testJob,
-    /if ! node scripts\/test-shards\.mjs filters "\$SHARD" >/,
+    /if ! node scripts\/ci\/test-shards\.mjs filters "\$SHARD" >/,
     'the shard filters are gated on the exit status, not on the output being non-empty',
   );
   assert.doesNotMatch(
@@ -707,7 +723,7 @@ test('unit tests use affected task selection for PRs and skip merge groups', () 
   );
 });
 
-test('the test matrix runs exactly the shards scripts/test-shards.mjs defines', () => {
+test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines', () => {
   // The dangerous drift is a bucket with no runner: its packages are negated
   // by every shard that DOES run, so nothing executes them and CI stays
   // green while those suites silently stop running.
@@ -753,7 +769,7 @@ test('the test matrix runs exactly the shards scripts/test-shards.mjs defines', 
   const testJob = job('test');
   assert.match(
     testJob,
-    /node scripts\/test-shards\.mjs filters "\$SHARD"/,
+    /node scripts\/ci\/test-shards\.mjs filters "\$SHARD"/,
     'each shard derives its bucket from the one source of truth',
   );
   assert.match(
@@ -809,7 +825,7 @@ test('release job prunes ignored-lane changesets before changesets/action', () =
   assert.ok(releaseJob, 'release job exists');
 
   const pruneIndex = releaseJob.indexOf(
-    'run: node scripts/prune-ignored-changesets.mjs',
+    'run: node scripts/release/prune-ignored-changesets.mjs',
   );
   const actionIndex = releaseJob.indexOf('uses: changesets/action@');
   assert.ok(pruneIndex !== -1, 'release job runs prune-ignored-changesets.mjs');
@@ -928,7 +944,7 @@ test('release-sensitive app builds run before merge', () => {
   assert.match(supportJob, /POSTHOG_PROJECT_ID: '1'/);
   assert.match(
     supportJob,
-    /POSTHOG_CLI_BINARY_PATH: \$\{\{ github\.workspace \}\}\/scripts\/posthog-cli-upload-stub\.mjs/,
+    /POSTHOG_CLI_BINARY_PATH: \$\{\{ github\.workspace \}\}\/scripts\/build\/posthog-cli-upload-stub\.mjs/,
   );
   assert.match(supportJob, /pnpm --filter=@codaco\/architect build/);
   assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
@@ -1028,7 +1044,7 @@ test('changed public npm versions are checked against the registry before merge'
   );
   assert.match(
     supportJob,
-    /if \[\[ "\$GITHUB_EVENT_NAME" != "pull_request" \]\]; then[\s\S]*?node scripts\/check-npm-version-collisions\.mjs --base "\$BASE_SHA"/,
+    /if \[\[ "\$GITHUB_EVENT_NAME" != "pull_request" \]\]; then[\s\S]*?node scripts\/release\/check-npm-version-collisions\.mjs --base "\$BASE_SHA"/,
   );
   assert.match(
     supportJob,
@@ -1225,7 +1241,7 @@ test('a stale Version Packages PR cannot merge', () => {
   assert.doesNotMatch(resolve.run, /\|\| true|2>\/dev\/null|set \+e/);
   assert.match(
     freshness,
-    /if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/check-version-packages-freshness\.mjs/,
+    /if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/release\/check-version-packages-freshness\.mjs/,
   );
 
   const quality = job('quality');
@@ -1520,7 +1536,7 @@ test('Architect E2E builds disable both animation systems', () => {
   );
 
   const dockerRunner = readFileSync(
-    new URL('../apps/architect/e2e/scripts/run.sh', import.meta.url),
+    new URL('../../apps/architect/e2e/scripts/run.sh', import.meta.url),
     'utf8',
   );
   assert.match(
@@ -1535,10 +1551,10 @@ test('release job refuses a first publication on the publish path before changes
   assert.ok(releaseJob, 'release job exists');
 
   const pruneIndex = releaseJob.indexOf(
-    'run: node scripts/prune-ignored-changesets.mjs',
+    'run: node scripts/release/prune-ignored-changesets.mjs',
   );
   const checkIndex = releaseJob.indexOf(
-    'run: node scripts/check-first-publications.mjs --publish-path-only',
+    'run: node scripts/release/check-first-publications.mjs --publish-path-only',
   );
   const actionIndex = releaseJob.indexOf('uses: changesets/action@');
   assert.ok(checkIndex !== -1, 'release job runs check-first-publications.mjs');
@@ -1559,7 +1575,7 @@ test('the Version Packages merge check refuses a publish npm cannot make', () =>
   assert.ok(freshnessJob, 'version-packages-freshness job exists');
   assert.match(
     freshnessJob,
-    /- name: Refuse a release PR whose publish needs a package npm does not know\n\s+if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/check-first-publications\.mjs\n/,
+    /- name: Refuse a release PR whose publish needs a package npm does not know\n\s+if: steps\.head\.outputs\.release_pr == 'true'\n\s+run: node scripts\/release\/check-first-publications\.mjs\n/,
     'the merge check runs check-first-publications.mjs on the tree that merges the release PR',
   );
 });

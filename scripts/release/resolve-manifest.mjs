@@ -11,7 +11,7 @@
 // After rewriting, it asserts that no `workspace:`/`catalog:` specifier remains.
 //
 // Usage:
-//   node scripts/resolve-manifest.mjs <appDir> [--out <path>]
+//   node scripts/release/resolve-manifest.mjs <appDir> [--out <path>]
 //   (omit --out to print the resolved manifest to stdout)
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -172,7 +172,7 @@ function main() {
   const appDir = argv[0];
   if (!appDir) {
     console.error(
-      'Usage: node scripts/resolve-manifest.mjs <appDir> [--out <path>]',
+      'Usage: node scripts/release/resolve-manifest.mjs <appDir> [--out <path>]',
     );
     process.exit(1);
   }

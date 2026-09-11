@@ -4,8 +4,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { onTestFinished, test } from 'vitest';
 
 import {
   classifyLanePackages,
@@ -21,9 +22,9 @@ const SCRIPT = join(
 // published public package, a public package nobody has published yet (the
 // @codaco/app-i18n case of 2026-09-08), a private package, and a public
 // package in the changeset ignore list (a separately gated product).
-function fixture(t, { changesets = {} } = {}) {
+function fixture({ changesets = {} } = {}) {
   const repoRoot = mkdtempSync(join(tmpdir(), 'first-publications-'));
-  t.after(() => rmSync(repoRoot, { recursive: true, force: true }));
+  onTestFinished(() => rmSync(repoRoot, { recursive: true, force: true }));
   writeFileSync(
     join(repoRoot, 'pnpm-workspace.yaml'),
     "packages:\n  - 'packages/*'\n",
@@ -55,7 +56,7 @@ function fixture(t, { changesets = {} } = {}) {
 
 // An npm registry that knows @codaco/established (at 1.1.0 only) and nothing
 // else; answers on 127.0.0.1 so the CLI's fetch goes nowhere near npm.
-function registry(t) {
+function registry() {
   const requested = [];
   const server = createServer((req, res) => {
     requested.push(decodeURIComponent(req.url.slice(1)));
@@ -72,7 +73,7 @@ function registry(t) {
     res.writeHead(404, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ error: 'Not found' }));
   });
-  t.after(() => server.close());
+  onTestFinished(() => server.close());
   return new Promise((resolve) => {
     server.listen(0, '127.0.0.1', () => {
       resolve({
@@ -128,8 +129,8 @@ function run(cwd, args = [], env = {}) {
   });
 }
 
-test('lane packages are the public workspace packages outside the ignore list', (t) => {
-  const repoRoot = fixture(t);
+test('lane packages are the public workspace packages outside the ignore list', () => {
+  const repoRoot = fixture();
   assert.deepEqual(lanePackages(repoRoot), [
     { name: '@codaco/app-i18n', version: '0.1.0', dir: 'packages/app-i18n' },
     {
@@ -269,9 +270,9 @@ test('anything short of a definite answer from npm is a refusal', async () => {
   );
 });
 
-test('the CLI refuses a tree whose publish needs a package npm does not know', async (t) => {
-  const repoRoot = fixture(t);
-  const { url, requested } = await registry(t);
+test('the CLI refuses a tree whose publish needs a package npm does not know', async () => {
+  const repoRoot = fixture();
+  const { url, requested } = await registry();
   const result = await run(repoRoot, [], { NPM_REGISTRY_URL: url });
   assert.equal(result.status, 1, result.stdout + result.stderr);
   assert.match(
@@ -289,10 +290,10 @@ test('the CLI refuses a tree whose publish needs a package npm does not know', a
   ]);
 });
 
-test('the CLI passes once npm knows every lane package, naming what the publish adds', async (t) => {
-  const repoRoot = fixture(t);
+test('the CLI passes once npm knows every lane package, naming what the publish adds', async () => {
+  const repoRoot = fixture();
   rmSync(join(repoRoot, 'packages', 'app-i18n'), { recursive: true });
-  const { url } = await registry(t);
+  const { url } = await registry();
   const result = await run(repoRoot, [], { NPM_REGISTRY_URL: url });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(
@@ -301,8 +302,8 @@ test('the CLI passes once npm knows every lane package, naming what the publish 
   );
 });
 
-test('--publish-path-only leaves a version-PR run alone without consulting npm', async (t) => {
-  const repoRoot = fixture(t, {
+test('--publish-path-only leaves a version-PR run alone without consulting npm', async () => {
+  const repoRoot = fixture({
     changesets: {
       'pending.md': `---\n"@codaco/established": minor\n---\n\nsomething`,
     },
@@ -315,13 +316,13 @@ test('--publish-path-only leaves a version-PR run alone without consulting npm',
   assert.match(result.stdout, /1 normal-lane changeset\(s\) pending/);
 });
 
-test('--publish-path-only still checks when only ignored-lane changesets remain', async (t) => {
-  const repoRoot = fixture(t, {
+test('--publish-path-only still checks when only ignored-lane changesets remain', async () => {
+  const repoRoot = fixture({
     changesets: {
       'studio.md': `---\n"@codaco/studio-client": minor\n---\n\nstudio`,
     },
   });
-  const { url } = await registry(t);
+  const { url } = await registry();
   const result = await run(repoRoot, ['--publish-path-only'], {
     NPM_REGISTRY_URL: url,
   });
@@ -329,8 +330,8 @@ test('--publish-path-only still checks when only ignored-lane changesets remain'
   assert.match(result.stderr, /@codaco\/app-i18n@0\.1\.0/);
 });
 
-test('the CLI fails closed when npm cannot be reached', async (t) => {
-  const repoRoot = fixture(t);
+test('the CLI fails closed when npm cannot be reached', async () => {
+  const repoRoot = fixture();
   const result = await run(repoRoot, [], {
     NPM_REGISTRY_URL: 'http://127.0.0.1:1/',
   });
@@ -338,8 +339,8 @@ test('the CLI fails closed when npm cannot be reached', async (t) => {
   assert.match(result.stderr, /Could not verify @codaco\/app-i18n against npm/);
 });
 
-test('the CLI rejects arguments it does not know', async (t) => {
-  const repoRoot = fixture(t);
+test('the CLI rejects arguments it does not know', async () => {
+  const repoRoot = fixture();
   const result = await run(repoRoot, ['--force']);
   assert.equal(result.status, 1);
   assert.match(result.stderr, /Unknown argument\(s\): --force/);

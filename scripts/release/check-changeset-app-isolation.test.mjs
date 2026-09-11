@@ -3,8 +3,9 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const GUARD = join(scriptDir, 'check-changeset-app-isolation.mjs');

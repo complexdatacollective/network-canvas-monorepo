@@ -4,7 +4,7 @@
 // matters twice over: Electron patches fs and Module._resolveFilename with
 // asar support (so the archive reads like a directory tree with no extra
 // dependencies), and resolution follows exactly the semantics the app uses at
-// runtime. Spawned by scripts/verify-packaged-app.mjs.
+// runtime. Spawned by scripts/release/verify-packaged-app.mjs.
 //
 // Every statically-written require()/import specifier in the asar must
 // resolve within the packed tree. Failures are classified by reachability:

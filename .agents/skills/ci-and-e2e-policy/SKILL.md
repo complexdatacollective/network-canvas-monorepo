@@ -110,7 +110,7 @@ selection: only suites whose subjects ship in that release lane run. The normal
 Changesets lane (`changeset-release/main`) runs all three because it versions
 libraries, Architect, and Interviewer; the Documentation, Website, and Studio
 lanes run none. The mapping and feature-PR classifier live in
-`scripts/release-e2e-policy.mjs`, with tests derived from the real package.json
+`scripts/ci/release-e2e-policy.mjs`, with tests derived from the real package.json
 dependency graph. The required `quality` check requires exactly the suites the
 policy selects.
 
@@ -125,7 +125,7 @@ macOS hosts and compared in Linux CI. The split key is the selector each
 suite's `test:e2e:update-snapshots` script already uses (`--grep @visual`, or
 `--project=*-visual` for Interview), so the lanes cannot drift from the
 regeneration workflow. Both halves are required by `quality`, and
-`E2E_JOB_NAMES` in `scripts/release-e2e-policy.mjs` requires both to be green
+`E2E_JOB_NAMES` in `scripts/ci/release-e2e-policy.mjs` requires both to be green
 before a verdict can be reused. The capture helpers throw when
 `E2E_PIXEL_LANE=native` is set, so a mis-tagged visual test fails loudly
 instead of silently comparing container baselines against a runner's fonts.
@@ -156,7 +156,7 @@ verdict, or any unrecognised path (root configs, `.github/`, `scripts/`, the
 lockfile) re-runs the suite. Force-pushed refreshes of a release PR after
 unrelated merges to `main` therefore keep their E2E verdicts without
 re-running, while any change that ships in the lane re-runs as before (see
-`scripts/release-e2e-policy.mjs` and
+`scripts/ci/release-e2e-policy.mjs` and
 `docs/superpowers/specs/2026-07-17-release-e2e-equivalence-reuse-design.md`).
 
 Merge groups run only a lightweight `quality` acknowledgement. The main

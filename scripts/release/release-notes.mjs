@@ -9,12 +9,12 @@
 //   3. Otherwise a minimal "Release v<version>" line.
 //
 // Usage:
-//   node scripts/release-notes.mjs --app <appDir> --pkg <packageName> --version <version> [--out <path>]
+//   node scripts/release/release-notes.mjs --app <appDir> --pkg <packageName> --version <version> [--out <path>]
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // Split a changeset markdown file into { frontmatter, body }.
 function splitChangeset(contents) {
@@ -132,7 +132,7 @@ function main() {
   const { app, pkg, version, since, out } = parseArgs(process.argv.slice(2));
   if (!app || !pkg || !version) {
     console.error(
-      'Usage: node scripts/release-notes.mjs --app <appDir> --pkg <packageName> --version <version> [--since <version>] [--out <path>]',
+      'Usage: node scripts/release/release-notes.mjs --app <appDir> --pkg <packageName> --version <version> [--since <version>] [--out <path>]',
     );
     process.exit(1);
   }

@@ -19,7 +19,7 @@
 // release-test agent rebuild this from scratch.
 //
 // Usage (from the repo root):
-//   node scripts/interviewer-release-smoke-walker.mjs \
+//   node scripts/release-test/interviewer-release-smoke-walker.mjs \
 //     --url https://interviewer.networkcanvas.dev \
 //     --artifacts /path/to/artifacts \
 //     [--protocol packages/protocols/e2e/release-smoke/protocol.json] \
@@ -37,6 +37,7 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
+  '..',
   '..',
 );
 const require = createRequire(

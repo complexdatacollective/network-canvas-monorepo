@@ -10,14 +10,15 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import test from 'node:test';
+import { test } from 'vitest';
 import { fileURLToPath } from 'node:url';
 
-import { vendorSharedVitestConfig } from './mirror-app.mjs';
-import { resolveManifest } from './resolve-manifest.mjs';
+import { vendorSharedVitestConfig } from '../release/mirror-app.mjs';
+import { resolveManifest } from '../release/resolve-manifest.mjs';
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
+  '..',
   '..',
 );
 const sharedSetupPath = 'tooling/vitest/modern/disable-animations.js';

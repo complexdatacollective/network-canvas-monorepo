@@ -3,8 +3,9 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { onTestFinished, test } from 'vitest';
 
 import {
   classifyPlaywrightSnapshotFailure,
@@ -336,11 +337,11 @@ test('requires expected, actual, and diff PNG attachments for every error', () =
   );
 });
 
-test('missing and invalid reports classify as false', (context) => {
+test('missing and invalid reports classify as false', () => {
   const directory = mkdtempSync(join(tmpdir(), 'playwright-report-test-'));
   const invalidPath = join(directory, 'invalid.json');
   writeFileSync(invalidPath, '{invalid json');
-  context.after(() => rmSync(directory, { force: true, recursive: true }));
+  onTestFinished(() => rmSync(directory, { force: true, recursive: true }));
 
   assert.equal(classifyPlaywrightSnapshotFailure(), false);
   assert.equal(
@@ -350,12 +351,12 @@ test('missing and invalid reports classify as false', (context) => {
   assert.equal(classifyPlaywrightSnapshotFailure(invalidPath), false);
 });
 
-test('CLI prints only true or false and exits successfully', (context) => {
+test('CLI prints only true or false and exits successfully', () => {
   const directory = mkdtempSync(join(tmpdir(), 'playwright-report-cli-test-'));
   const validPath = join(directory, 'valid.json');
   const invalidPath = `${validPath}.missing`;
   writeFileSync(validPath, JSON.stringify(report([unexpectedTest()])));
-  context.after(() => rmSync(directory, { force: true, recursive: true }));
+  onTestFinished(() => rmSync(directory, { force: true, recursive: true }));
 
   assert.equal(runClassifier(validPath), 'true\n');
   assert.equal(runClassifier(invalidPath), 'false\n');

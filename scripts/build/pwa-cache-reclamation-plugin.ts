@@ -4,7 +4,7 @@ import {
   PWA_BUILD_LEASE_READY,
   PWA_BUILD_LEASE_REQUEST,
   PWA_BUILD_LEASE_RESPONSE,
-} from '../packages/fresco-ui/src/appUpdate/pwaBuildLeaseMessages.ts';
+} from '../../packages/fresco-ui/src/appUpdate/pwaBuildLeaseMessages.ts';
 
 type PwaCacheReclamationPluginOptions = {
   appCachePrefix: string;

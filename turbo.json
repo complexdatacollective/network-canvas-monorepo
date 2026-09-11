@@ -100,8 +100,8 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
-        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/scripts/pwa-cache-reclamation-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "scripts/**",
         "public/**",
@@ -131,7 +131,7 @@
     "@codaco/studio-client#build": {
       "dependsOn": ["^topo"],
       "inputs": [
-        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/apps/studio/scripts/telemetry-plugins.ts",
         ".env*",
         "index.html",
@@ -152,7 +152,7 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/apps/studio/scripts/telemetry-plugins.ts"
       ],
       "env": [
@@ -168,8 +168,8 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
-        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/scripts/pwa-cache-reclamation-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "scripts/**",
         "public/**",
@@ -394,6 +394,31 @@
       "outputs": [],
       "dependsOn": ["fresco#codegen"]
     },
+    // The guard scripts' suite. It is a root task rather than a workspace
+    // package's `test` because scripts/ has no source to build and shares the
+    // root's devDependencies instead of declaring a second copy of yaml,
+    // jsdom and playwright.
+    //
+    // The inputs are wide on purpose: these suites assert things ABOUT the
+    // repository — which script each workflow invokes, that every workspace
+    // with a `test` script lands in exactly one shard, that the packaged apps
+    // resolve their dependencies. A narrow glob here would cache a pass over
+    // a tree the guard no longer describes, which is the one failure this
+    // task exists to prevent.
+    "//#test:scripts": {
+      "inputs": [
+        "scripts/**",
+        ".github/**",
+        "**/package.json",
+        "turbo.json",
+        "pnpm-workspace.yaml",
+        "apps/studio/deployment/**",
+        "workers/studio-ingress/src/**",
+        "tooling/vitest/**",
+        "!**/node_modules/**"
+      ],
+      "outputs": []
+    },
     "dev": {
       "cache": false,
       "persistent": true
@@ -477,8 +502,8 @@
       "dependsOn": ["^topo"],
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/**",
-        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/scripts/pwa-cache-reclamation-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "e2e/**/*.ts",
         "e2e/**/*.tsx",
@@ -499,8 +524,8 @@
       "inputs": [
         "$TURBO_ROOT$/packages/protocols/development/**",
         "$TURBO_ROOT$/packages/protocols/sample/**",
-        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
-        "$TURBO_ROOT$/scripts/pwa-cache-reclamation-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/pwa-cache-reclamation-plugin.ts",
         "src/**",
         "e2e/**/*.ts",
         "e2e/**/*.tsx",
@@ -522,7 +547,7 @@
     "@codaco/studio-client#typecheck": {
       "dependsOn": ["^topo"],
       "inputs": [
-        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/apps/studio/scripts/**",
         "src/**",
         "*.config.ts",
@@ -535,7 +560,7 @@
     "@codaco/studio-server#typecheck": {
       "dependsOn": ["^topo"],
       "inputs": [
-        "$TURBO_ROOT$/scripts/posthog-source-maps-plugin.ts",
+        "$TURBO_ROOT$/scripts/build/posthog-source-maps-plugin.ts",
         "$TURBO_ROOT$/apps/studio/scripts/**",
         "src/**",
         "scripts/**",

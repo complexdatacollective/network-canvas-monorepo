@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { collectWorkspacePackages } from './release-e2e-policy.mjs';
+import { collectWorkspacePackages } from '../ci/release-e2e-policy.mjs';
 
 export const DEFAULT_REGISTRY_URL = 'https://registry.npmjs.org/';
 const FIRST_PUBLICATION_APPROVALS_PATH = '.github/npm-first-publications.json';
@@ -349,6 +349,7 @@ async function main() {
     DEFAULT_REGISTRY_URL;
   const repoRoot = path.resolve(
     path.dirname(fileURLToPath(import.meta.url)),
+    '..',
     '..',
   );
   const checked = await checkNpmVersionCollisions({

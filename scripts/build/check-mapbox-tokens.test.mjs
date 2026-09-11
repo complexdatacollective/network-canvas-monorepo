@@ -3,14 +3,14 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import { fileURLToPath } from 'node:url';
 
 import JSZip from 'jszip';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const GUARD = join(scriptDir, 'check-mapbox-tokens.mjs');
-const REPO_ROOT = resolve(scriptDir, '..');
+const REPO_ROOT = resolve(scriptDir, '..', '..');
 
 // Tokens are built at runtime from their payload so that no token-shaped
 // literal is written into this file: the guard under test scans this file too.

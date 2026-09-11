@@ -10,8 +10,9 @@ import {
 } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 import {
   changeFingerprint,
@@ -40,10 +41,11 @@ import {
   takeCommandStart,
   updateState,
   workspacePackages,
-} from './agent-hooks/lib.mjs';
+} from './lib.mjs';
 
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
+  '..',
   '..',
 );
 

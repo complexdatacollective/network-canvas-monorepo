@@ -2,12 +2,12 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { test } from 'vitest';
 import { parse } from 'yaml';
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WORKFLOW_PATH = join(
   REPO_ROOT,
   '.github',

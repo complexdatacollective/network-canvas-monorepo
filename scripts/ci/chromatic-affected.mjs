@@ -36,7 +36,7 @@ const GLOBAL_PATHS = new Set([
   '.node-version',
   '.nvmrc',
   'package.json',
-  'scripts/chromatic-affected.mjs',
+  'scripts/ci/chromatic-affected.mjs',
   'turbo.json',
 ]);
 

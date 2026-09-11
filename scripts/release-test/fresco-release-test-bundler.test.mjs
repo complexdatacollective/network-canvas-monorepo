@@ -4,14 +4,15 @@
 // versions npm does not have yet — is vendored; everything else resolves from
 // the registry, as the released image will.
 import assert from 'node:assert/strict';
-import test from 'node:test';
+
+import { test } from 'vitest';
 
 import {
   partitionClosure,
   unpublishedAtCurrentVersion,
-} from '../apps/fresco/release-test/scripts/bundle-pending-packages.mjs';
-import { readWorkspacePackages } from './resolve-manifest.mjs';
-import { collectClosure } from './vendor-workspace-packages.mjs';
+} from '../../apps/fresco/release-test/scripts/bundle-pending-packages.mjs';
+import { readWorkspacePackages } from '../release/resolve-manifest.mjs';
+import { collectClosure } from '../release/vendor-workspace-packages.mjs';
 
 const WS = {
   '@codaco/app-i18n': { version: '0.1.0', private: false },

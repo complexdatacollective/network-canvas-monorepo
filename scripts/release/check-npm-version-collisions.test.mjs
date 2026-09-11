@@ -3,7 +3,8 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import test from 'node:test';
+
+import { onTestFinished, test } from 'vitest';
 
 import {
   changedPublicPackageVersions,
@@ -40,7 +41,6 @@ function writeFirstPublicationApprovals(repoRoot, approvals) {
 }
 
 function repository(
-  t,
   basePackages,
   changedPackages,
   { baseApprovals = [], changedApprovals = baseApprovals } = {},
@@ -48,7 +48,7 @@ function repository(
   const repoRoot = mkdtempSync(
     path.join(tmpdir(), 'npm-version-collision-test-'),
   );
-  t.after(() => rmSync(repoRoot, { recursive: true, force: true }));
+  onTestFinished(() => rmSync(repoRoot, { recursive: true, force: true }));
 
   git(repoRoot, 'init', '--initial-branch=main');
   git(repoRoot, 'config', 'user.name', 'CI Test');
@@ -94,9 +94,8 @@ test('encodes a scoped package as one npm registry path segment', () => {
   );
 });
 
-test('rejects a changed public version that npm already serves', async (t) => {
+test('rejects a changed public version that npm already serves', async () => {
   const { baseRef, repoRoot } = repository(
-    t,
     { 'network-exporters': exportersV1 },
     { 'network-exporters': exportersV2 },
   );
@@ -119,9 +118,8 @@ test('rejects a changed public version that npm already serves', async (t) => {
   ]);
 });
 
-test('checks public packages in tooling workspaces', async (t) => {
+test('checks public packages in tooling workspaces', async () => {
   const { baseRef, repoRoot } = repository(
-    t,
     {
       'tooling/tailwind': {
         name: '@codaco/tailwind-config',
@@ -155,9 +153,8 @@ test('checks public packages in tooling workspaces', async (t) => {
   ]);
 });
 
-test('accepts a changed public version when npm returns 404', async (t) => {
+test('accepts a changed public version when npm returns 404', async () => {
   const { baseRef, repoRoot } = repository(
-    t,
     { 'network-exporters': exportersV1 },
     { 'network-exporters': exportersV2 },
   );
@@ -190,7 +187,7 @@ test('accepts a changed public version when npm returns 404', async (t) => {
   ]);
 });
 
-test('skips unchanged public versions and changed private packages', async (t) => {
+test('skips unchanged public versions and changed private packages', async () => {
   const unchangedBase = {
     name: '@codaco/unchanged',
     version: '1.0.0',
@@ -202,7 +199,6 @@ test('skips unchanged public versions and changed private packages', async (t) =
     version: '1.0.0',
   };
   const { baseRef, repoRoot } = repository(
-    t,
     { unchanged: unchangedBase, private: privateBase },
     {
       unchanged: { ...unchangedBase, description: 'after' },
@@ -225,9 +221,8 @@ test('skips unchanged public versions and changed private packages', async (t) =
   assert.deepEqual(changedPublicPackageVersions({ repoRoot, baseRef }), []);
 });
 
-test('checks a renamed public package even when its version is unchanged', async (t) => {
+test('checks a renamed public package even when its version is unchanged', async () => {
   const { baseRef, repoRoot } = repository(
-    t,
     { renamed: { name: '@codaco/old-name', version: '1.0.0' } },
     { renamed: { name: '@codaco/new-name', version: '1.0.0' } },
   );
@@ -251,9 +246,8 @@ test('checks a renamed public package even when its version is unchanged', async
   ]);
 });
 
-test('checks a newly public package even when its version is unchanged', async (t) => {
+test('checks a newly public package even when its version is unchanged', async () => {
   const { baseRef, repoRoot } = repository(
-    t,
     {
       publicized: {
         name: '@codaco/publicized',
@@ -283,9 +277,8 @@ test('checks a newly public package even when its version is unchanged', async (
   ]);
 });
 
-test('rejects an unpublished version retained in npm package history', async (t) => {
+test('rejects an unpublished version retained in npm package history', async () => {
   const { baseRef, repoRoot } = repository(
-    t,
     { 'network-exporters': exportersV1 },
     { 'network-exporters': exportersV2 },
   );
@@ -308,9 +301,8 @@ test('rejects an unpublished version retained in npm package history', async (t)
   );
 });
 
-test('fails closed when npm has no package history', async (t) => {
+test('fails closed when npm has no package history', async () => {
   const { baseRef, repoRoot } = repository(
-    t,
     { 'network-exporters': exportersV1 },
     { 'network-exporters': exportersV2 },
   );
@@ -325,7 +317,7 @@ test('fails closed when npm has no package history', async (t) => {
   );
 });
 
-test('accepts a first publication only with an exact approval added in the pull request', async (t) => {
+test('accepts a first publication only with an exact approval added in the pull request', async () => {
   const approval = {
     manifestPath: 'packages/new-package/package.json',
     name: '@codaco/new-package',
@@ -333,7 +325,6 @@ test('accepts a first publication only with an exact approval added in the pull 
     reason: 'Initial publication approved in this pull request.',
   };
   const { baseRef, repoRoot } = repository(
-    t,
     {},
     {
       'new-package': {
@@ -360,7 +351,7 @@ test('accepts a first publication only with an exact approval added in the pull 
   ]);
 });
 
-test('does not reuse a first-publication approval already present on the base branch', async (t) => {
+test('does not reuse a first-publication approval already present on the base branch', async () => {
   const approval = {
     manifestPath: 'packages/new-package/package.json',
     name: '@codaco/new-package',
@@ -368,7 +359,6 @@ test('does not reuse a first-publication approval already present on the base br
     reason: 'Historical approval must not bypass a later tombstone.',
   };
   const { baseRef, repoRoot } = repository(
-    t,
     {
       'new-package': {
         name: '@codaco/new-package',
@@ -394,9 +384,8 @@ test('does not reuse a first-publication approval already present on the base br
   );
 });
 
-test('rejects a first-publication approval that no current candidate uses', async (t) => {
+test('rejects a first-publication approval that no current candidate uses', async () => {
   const { baseRef, repoRoot } = repository(
-    t,
     { 'network-exporters': exportersV1 },
     { 'network-exporters': exportersV2 },
     {
@@ -424,9 +413,8 @@ test('rejects a first-publication approval that no current candidate uses', asyn
   );
 });
 
-test('fails closed when npm returns a server error', async (t) => {
+test('fails closed when npm returns a server error', async () => {
   const { baseRef, repoRoot } = repository(
-    t,
     { 'network-exporters': exportersV1 },
     { 'network-exporters': exportersV2 },
   );
@@ -441,9 +429,8 @@ test('fails closed when npm returns a server error', async (t) => {
   );
 });
 
-test('fails closed when npm cannot be reached', async (t) => {
+test('fails closed when npm cannot be reached', async () => {
   const { baseRef, repoRoot } = repository(
-    t,
     { 'network-exporters': exportersV1 },
     { 'network-exporters': exportersV2 },
   );

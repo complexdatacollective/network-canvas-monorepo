@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 // Offline tests for the verdict logic of the Interviewer release smoke-test
 // workflow (.claude/workflows/interviewer-release-test.js). The workflow body
@@ -12,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 // for mutation-testing the guards.
 const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
+  '..',
   '..',
 );
 const workflowPath =
@@ -753,11 +755,15 @@ test('evidence schema matches what the audit prompt produces', () => {
     'checkpoint extraction must be png-scoped',
   );
   assert.ok(
-    source.includes('scripts/interviewer-release-smoke-walker.mjs'),
+    source.includes(
+      'scripts/release-test/interviewer-release-smoke-walker.mjs',
+    ),
     'conduct-offline must invoke the committed walker',
   );
   assert.ok(
-    source.includes('scripts/interviewer-security-vault-walker.mjs'),
+    source.includes(
+      'scripts/release-test/interviewer-security-vault-walker.mjs',
+    ),
     'security-vault must invoke the committed walker',
   );
 });

@@ -4,7 +4,7 @@
 // Two checks, run against every runnable packaged build found under the app's
 // release-builds directory:
 //
-//   1. Resolution sweep — scripts/verify-packaged-app-sweep.cjs runs inside
+//   1. Resolution sweep — scripts/release/verify-packaged-app-sweep.cjs runs inside
 //      the packaged binary (ELECTRON_RUN_AS_NODE) and verifies that every
 //      statically-written require()/import specifier in the asar resolves
 //      within the packed tree. Laziness-proof: catches modules that
@@ -36,7 +36,7 @@
 // Architect, missing lodash/defaults in Interviewer) fail check 1 instantly
 // and check 2 within its timeout.
 //
-// Usage: node scripts/verify-packaged-app.mjs --app apps/architect-classic
+// Usage: node scripts/release/verify-packaged-app.mjs --app apps/architect-classic
 //        [--no-smoke]
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';

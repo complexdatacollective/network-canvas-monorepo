@@ -27,13 +27,13 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { collectWorkspacePackages } from '../ci/release-e2e-policy.mjs';
 import { readChangesets } from './changeset-app-utils.mjs';
 import {
   DEFAULT_REGISTRY_URL,
   npmPackageUrl,
 } from './check-npm-version-collisions.mjs';
 import { unconsumedChangesets } from './check-version-packages-freshness.mjs';
-import { collectWorkspacePackages } from './release-e2e-policy.mjs';
 
 const ABBREVIATED_PACKUMENT_ACCEPT =
   'application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8';
@@ -140,7 +140,7 @@ async function main() {
   if (unknown.length > 0) {
     console.error(
       `Unknown argument(s): ${unknown.join(' ')}\n` +
-        'Usage: node scripts/check-first-publications.mjs [--publish-path-only]',
+        'Usage: node scripts/release/check-first-publications.mjs [--publish-path-only]',
     );
     process.exitCode = 1;
     return;

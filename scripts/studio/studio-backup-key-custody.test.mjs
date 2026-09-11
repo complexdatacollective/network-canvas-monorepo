@@ -14,10 +14,11 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-const repository = join(dirname(fileURLToPath(import.meta.url)), '..');
+import { describe, onTestFinished, test } from 'vitest';
+
+const repository = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const backupSource =
   process.env.STUDIO_BACKUP_SCRIPT ??
   join(repository, 'apps/studio/deployment/backup.sh');
@@ -28,16 +29,13 @@ const writerRoles = [
   'studio_migrator',
 ];
 
-async function makeHarness(
-  t,
-  {
-    failAt = '',
-    rotateAfterPreflight = false,
-    rotateDuringVerification = false,
-  } = {},
-) {
+async function makeHarness({
+  failAt = '',
+  rotateAfterPreflight = false,
+  rotateDuringVerification = false,
+} = {}) {
   const scratch = await mkdtemp(join(tmpdir(), 'studio-backup-custody-test-'));
-  t.after(() => rm(scratch, { recursive: true, force: true }));
+  onTestFinished(() => rm(scratch, { recursive: true, force: true }));
   const root = join(scratch, 'studio');
   const deployment = join(root, 'deployment');
   const backup = join(scratch, 'backup');
@@ -218,8 +216,8 @@ async function assertNoComplete(backup) {
   await assert.rejects(access(join(backup, 'COMPLETE')));
 }
 
-test('a key rotation after preflight refuses capture under closed admission', async (t) => {
-  const { result, backup, roleState, log } = await makeHarness(t, {
+test('a key rotation after preflight refuses capture under closed admission', async () => {
+  const { result, backup, roleState, log } = await makeHarness({
     rotateAfterPreflight: true,
   });
   assert.notEqual(result.status, 0);
@@ -233,8 +231,8 @@ test('a key rotation after preflight refuses capture under closed admission', as
   );
 });
 
-test('a stable proof captures the complete backup artifact set', async (t) => {
-  const { result, backup, custody, roleState } = await makeHarness(t);
+test('a stable proof captures the complete backup artifact set', async () => {
+  const { result, backup, custody, roleState } = await makeHarness();
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Backup complete/);
   assertEveryWriterClosed(roleState);
@@ -253,8 +251,8 @@ test('a stable proof captures the complete backup artifact set', async (t) => {
   assert.equal(await readFile(custody, 'utf8'), 'FIXTURE_ROOT=key-a\n');
 });
 
-test('plaintext custody snapshots stay beside the encrypted input, outside TMPDIR', async (t) => {
-  const { result, log, recoveryDirectory, privateTmp } = await makeHarness(t);
+test('plaintext custody snapshots stay beside the encrypted input, outside TMPDIR', async () => {
+  const { result, log, recoveryDirectory, privateTmp } = await makeHarness();
   assert.equal(result.status, 0, result.stderr);
   const snapshots = [
     ...new Set(
@@ -271,13 +269,12 @@ test('plaintext custody snapshots stay beside the encrypted input, outside TMPDI
   }
 });
 
-test('second verification failure and signals clean up with every writer closed', async (t) => {
+describe('second verification failure and signals clean up with every writer closed', () => {
   for (const failAt of ['second-verify', 'signal'])
-    await t.test(failAt, async (child) => {
-      const { result, backup, roleState, privateTmp } = await makeHarness(
-        child,
-        { failAt },
-      );
+    test(failAt, async () => {
+      const { result, backup, roleState, privateTmp } = await makeHarness({
+        failAt,
+      });
       assert.notEqual(result.status, 0);
       await assertNoComplete(backup);
       assertEveryWriterClosed(roleState);
@@ -285,8 +282,8 @@ test('second verification failure and signals clean up with every writer closed'
     });
 });
 
-test('a second operator cannot rotate keys during the post-drain custody check', async (t) => {
-  const { result, backup, roleState, proofState, log } = await makeHarness(t, {
+test('a second operator cannot rotate keys during the post-drain custody check', async () => {
+  const { result, backup, roleState, proofState, log } = await makeHarness({
     rotateDuringVerification: true,
   });
   assert.equal(result.status, 0, result.stderr);

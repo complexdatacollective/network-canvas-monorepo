@@ -91,7 +91,7 @@ import { fileURLToPath } from 'node:url';
 
 import { parse } from 'yaml';
 
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /**
  * Packages that carry a `test` script but are deliberately not in any bucket,
@@ -249,7 +249,7 @@ export function assertShardCoverage(testPackages = workspaceTestPackages()) {
   );
   if (unassigned.length > 0) {
     throw new Error(
-      `these workspace packages declare a "test" script but belong to no test shard, so no shard would run them: ${unassigned.join(', ')}. Add each to a bucket in scripts/test-shards.mjs (or to NOT_SHARDED with the job that does run it).`,
+      `these workspace packages declare a "test" script but belong to no test shard, so no shard would run them: ${unassigned.join(', ')}. Add each to a bucket in scripts/ci/test-shards.mjs (or to NOT_SHARDED with the job that does run it).`,
     );
   }
 }

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Stop force-pushed refreshes of generated release PRs from re-running release E2E suites when nothing relevant to a suite changed, by adding equivalence-based suite reuse to `scripts/release-e2e-policy.mjs` (spec: `docs/superpowers/specs/2026-07-17-release-e2e-equivalence-reuse-design.md`).
+**Goal:** Stop force-pushed refreshes of generated release PRs from re-running release E2E suites when nothing relevant to a suite changed, by adding equivalence-based suite reuse to `scripts/ci/release-e2e-policy.mjs` (spec: `docs/superpowers/specs/2026-07-17-release-e2e-equivalence-reuse-design.md`).
 
 **Architecture:** Branch generation is untouched. The `e2e-policy` job's script gains an equivalence primitive: a suite is skipped when the newest conclusive native `pull_request` run of that suite on the same `changeset-release/*` branch succeeded at commit X, and `git diff X→H` touches only paths that provably cannot affect the suite. The primitive is applied at PR time (H = PR tip) and merge-queue time (H = merge commit, replacing the byte-identical fast path, which becomes the empty-diff trivial case). Every doubt fails closed (suite runs).
 
@@ -17,7 +17,7 @@
 - Comment only what the code cannot say (constraints, invariants) — match the existing comment style in `release-e2e-policy.mjs`.
 - Never re-export or add exports beyond what tests/consumers actually import.
 - Commit messages: conventional style (`feat:`/`fix:`/`ci:`/`test:`/`docs:`), no Co-Authored-By/attribution lines. Before committing run `eval "$(fnm env 2>/dev/null)"` so the husky hook finds pnpm.
-- Run tests with `pnpm test:scripts` (wraps `node --test scripts/*.test.mjs`). A single file: `node --test scripts/release-e2e-policy.test.mjs`.
+- Run tests with `pnpm test:scripts` (wraps `node --test scripts/*.test.mjs`). A single file: `node --test scripts/ci/release-e2e-policy.test.mjs`.
 - Work happens on branch `claude/ci-release-pr-force-push-4968a1` in this worktree.
 
 ---
@@ -26,8 +26,8 @@
 
 **Files:**
 
-- Modify: `scripts/release-e2e-policy.mjs`
-- Test: `scripts/release-e2e-policy.test.mjs`
+- Modify: `scripts/ci/release-e2e-policy.mjs`
+- Test: `scripts/ci/release-e2e-policy.test.mjs`
 
 **Interfaces:**
 
@@ -39,7 +39,7 @@
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `scripts/release-e2e-policy.test.mjs` (extend the existing import list from `./release-e2e-policy.mjs` with the three new names):
+Append to `scripts/ci/release-e2e-policy.test.mjs` (extend the existing import list from `./release-e2e-policy.mjs` with the three new names):
 
 ```js
 // Scaffold a repo-shaped directory tree (no git needed for these tests):
@@ -126,7 +126,7 @@ test('diff classification is fail-closed', () => {
   // Paths outside every workspace package fail closed.
   for (const unrecognised of [
     '.github/workflows/ci-and-release.yml',
-    'scripts/release-e2e-policy.mjs',
+    'scripts/ci/release-e2e-policy.mjs',
     'pnpm-lock.yaml',
     'pnpm-workspace.yaml',
     'turbo.json',
@@ -156,12 +156,12 @@ test('diff classification is fail-closed', () => {
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `node --test scripts/release-e2e-policy.test.mjs`
+Run: `node --test scripts/ci/release-e2e-policy.test.mjs`
 Expected: FAIL — `collectWorkspacePackages` is not exported.
 
 - [ ] **Step 3: Implement the helpers**
 
-In `scripts/release-e2e-policy.mjs`, extend the imports:
+In `scripts/ci/release-e2e-policy.mjs`, extend the imports:
 
 ```js
 import { execFileSync } from 'node:child_process';
@@ -251,14 +251,14 @@ export function diffIrrelevantToSuite(changedPaths, relevanceDirs, packages) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `node --test scripts/release-e2e-policy.test.mjs`
+Run: `node --test scripts/ci/release-e2e-policy.test.mjs`
 Expected: PASS (all existing tests plus the two new ones).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 eval "$(fnm env 2>/dev/null)"
-git add scripts/release-e2e-policy.mjs scripts/release-e2e-policy.test.mjs
+git add scripts/ci/release-e2e-policy.mjs scripts/ci/release-e2e-policy.test.mjs
 git commit -m "ci: add suite path-relevance helpers to release E2E policy"
 ```
 
@@ -268,8 +268,8 @@ git commit -m "ci: add suite path-relevance helpers to release E2E policy"
 
 **Files:**
 
-- Modify: `scripts/release-e2e-policy.mjs`
-- Test: `scripts/release-e2e-policy.test.mjs`
+- Modify: `scripts/ci/release-e2e-policy.mjs`
+- Test: `scripts/ci/release-e2e-policy.test.mjs`
 
 **Interfaces:**
 
@@ -279,7 +279,7 @@ git commit -m "ci: add suite path-relevance helpers to release E2E policy"
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `scripts/release-e2e-policy.test.mjs` (add `equivalentValidatedSuites` to the import list). These use real temp git repos (existing `initRepo`/`commitManifest` helpers) plus a fake Actions API:
+Append to `scripts/ci/release-e2e-policy.test.mjs` (add `equivalentValidatedSuites` to the import list). These use real temp git repos (existing `initRepo`/`commitManifest` helpers) plus a fake Actions API:
 
 ```js
 // A fake Actions REST API: one runs-listing endpoint plus per-run jobs
@@ -547,12 +547,12 @@ test('equivalence reuse trusts only same-repo runs and healthy inputs', async ()
 
 - [ ] **Step 2: Run tests to verify they fail**
 
-Run: `node --test scripts/release-e2e-policy.test.mjs`
+Run: `node --test scripts/ci/release-e2e-policy.test.mjs`
 Expected: FAIL — `equivalentValidatedSuites` is not exported.
 
 - [ ] **Step 3: Implement the primitive**
 
-In `scripts/release-e2e-policy.mjs`, add below the Task 1 helpers:
+In `scripts/ci/release-e2e-policy.mjs`, add below the Task 1 helpers:
 
 ```js
 const CONCLUSIVE = new Set(['success', 'failure', 'timed_out']);
@@ -660,14 +660,14 @@ export async function equivalentValidatedSuites({
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `node --test scripts/release-e2e-policy.test.mjs`
+Run: `node --test scripts/ci/release-e2e-policy.test.mjs`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 eval "$(fnm env 2>/dev/null)"
-git add scripts/release-e2e-policy.mjs scripts/release-e2e-policy.test.mjs
+git add scripts/ci/release-e2e-policy.mjs scripts/ci/release-e2e-policy.test.mjs
 git commit -m "ci: add equivalence-based release E2E suite reuse primitive"
 ```
 
@@ -677,12 +677,12 @@ git commit -m "ci: add equivalence-based release E2E suite reuse primitive"
 
 **Files:**
 
-- Modify: `scripts/release-e2e-policy.mjs`
-- Test: `scripts/release-e2e-policy.test.mjs`
+- Modify: `scripts/ci/release-e2e-policy.mjs`
+- Test: `scripts/ci/release-e2e-policy.test.mjs`
 
 **Interfaces:**
 
-- Consumes (from Task 2): `equivalentValidatedSuites({cwd, repository, token, branch, headSha, requiredSuites, fetcher})`; test helpers already present in `scripts/release-e2e-policy.test.mjs` from Task 2 — `fakeActionsApi({runs, jobsByRun, failRuns, failJobs})` and `fakeRun(id, headSha, createdAt?)` (higher id = newer run).
+- Consumes (from Task 2): `equivalentValidatedSuites({cwd, repository, token, branch, headSha, requiredSuites, fetcher})`; test helpers already present in `scripts/ci/release-e2e-policy.test.mjs` from Task 2 — `fakeActionsApi({runs, jobsByRun, failRuns, failJobs})` and `fakeRun(id, headSha, createdAt?)` (higher id = newer run).
 - Produces:
   - `releaseBranchForMergeQueue(cwd: string): string` — the `changeset-release/*` ref name whose `origin/<ref>` tip equals `HEAD^2`, or `''`.
   - `main()` behaviour consumed by the workflow (Task 4): reads new envs `HEAD_SHA` and `HEAD_REPO` on `pull_request` events; existing `EVENT_NAME`, `HEAD_REF`, `REF_NAME`, `GITHUB_REPOSITORY`, `GH_TOKEN` unchanged. Output JSON shape unchanged.
@@ -690,7 +690,7 @@ git commit -m "ci: add equivalence-based release E2E suite reuse primitive"
 
 - [ ] **Step 1: Rewrite the merge-queue tests for the new semantics**
 
-In `scripts/release-e2e-policy.test.mjs`:
+In `scripts/ci/release-e2e-policy.test.mjs`:
 
 1. Remove `alreadyValidatedSuites` from the import list; add `releaseBranchForMergeQueue`.
 2. Extend `initMergeQueueRepo` so main can move with an arbitrary file (replace the existing `advanceMainBeforeMerge` boolean and its call sites):
@@ -837,12 +837,12 @@ Note: `fakeActionsApi` asserts the `branch=` query param starts with `changeset-
 
 - [ ] **Step 2: Run tests to verify the new ones fail**
 
-Run: `node --test scripts/release-e2e-policy.test.mjs`
+Run: `node --test scripts/ci/release-e2e-policy.test.mjs`
 Expected: FAIL — `releaseBranchForMergeQueue` is not exported (and the removed-import tests are gone).
 
 - [ ] **Step 3: Implement `releaseBranchForMergeQueue`, rewire `main()`, delete `alreadyValidatedSuites`**
 
-In `scripts/release-e2e-policy.mjs`:
+In `scripts/ci/release-e2e-policy.mjs`:
 
 1. Delete the entire `alreadyValidatedSuites` function and its doc comment. First verify nothing else references it: `grep -rn alreadyValidatedSuites scripts/ .github/` must only show the definition and `main()`.
 2. Add:
@@ -924,7 +924,7 @@ Expected: PASS — all files, including the untouched detect/versioning tests.
 
 ```bash
 eval "$(fnm env 2>/dev/null)"
-git add scripts/release-e2e-policy.mjs scripts/release-e2e-policy.test.mjs
+git add scripts/ci/release-e2e-policy.mjs scripts/ci/release-e2e-policy.test.mjs
 git commit -m "ci: apply release E2E equivalence reuse at PR time and in the merge queue"
 ```
 
@@ -935,7 +935,7 @@ git commit -m "ci: apply release E2E equivalence reuse at PR time and in the mer
 **Files:**
 
 - Modify: `.github/workflows/ci-and-release.yml`
-- Test: `scripts/ci-workflow.test.mjs`
+- Test: `scripts/ci/ci-workflow.test.mjs`
 
 **Interfaces:**
 
@@ -944,7 +944,7 @@ git commit -m "ci: apply release E2E equivalence reuse at PR time and in the mer
 
 - [ ] **Step 1: Write the failing workflow test**
 
-Append to `scripts/ci-workflow.test.mjs`:
+Append to `scripts/ci/ci-workflow.test.mjs`:
 
 ```js
 test('e2e-policy receives the equivalence-reuse inputs', () => {
@@ -965,7 +965,7 @@ test('e2e-policy receives the equivalence-reuse inputs', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `node --test scripts/ci-workflow.test.mjs`
+Run: `node --test scripts/ci/ci-workflow.test.mjs`
 Expected: FAIL — `HEAD_SHA` env does not match the new expression.
 
 - [ ] **Step 3: Update the workflow**
@@ -991,7 +991,7 @@ with
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
 ```
 
-2. Replace the `e2e-policy` job's leading comment (currently "Decides per suite whether release E2E must run for this ref: each release lane requires only the suites whose subject package ships in its deploy, and a merge-group run skips suites already validated by the native PR run on an identical tree (see scripts/release-e2e-policy.mjs).") with:
+2. Replace the `e2e-policy` job's leading comment (currently "Decides per suite whether release E2E must run for this ref: each release lane requires only the suites whose subject package ships in its deploy, and a merge-group run skips suites already validated by the native PR run on an identical tree (see scripts/ci/release-e2e-policy.mjs).") with:
 
 ```yaml
   # Decides per suite whether release E2E must run for this ref: each release
@@ -999,7 +999,7 @@ with
   # and both release-PR refreshes and merge-group runs skip suites already
   # validated by an earlier native PR run whose commit differs only in paths
   # that cannot affect the suite (equivalence reuse — see
-  # scripts/release-e2e-policy.mjs; every guard fails closed).
+  # scripts/ci/release-e2e-policy.mjs; every guard fails closed).
 ```
 
 3. In the `carry-forward-statuses` comment, replace the sentence
@@ -1021,14 +1021,14 @@ with
 
 - [ ] **Step 4: Run the workflow tests**
 
-Run: `node --test scripts/ci-workflow.test.mjs`
+Run: `node --test scripts/ci/ci-workflow.test.mjs`
 Expected: PASS (including the untouched existing assertions — job names, policy flags, quality gate).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 eval "$(fnm env 2>/dev/null)"
-git add .github/workflows/ci-and-release.yml scripts/ci-workflow.test.mjs
+git add .github/workflows/ci-and-release.yml scripts/ci/ci-workflow.test.mjs
 git commit -m "ci: feed release E2E equivalence reuse from the pull_request event"
 ```
 
@@ -1078,7 +1078,7 @@ or any unrecognised path (root configs, `.github/`, `scripts/`, the
 lockfile) re-runs the suite. Force-pushed refreshes of a release PR after
 unrelated merges to `main` therefore keep their E2E verdicts without
 re-running, while any change that ships in the lane re-runs as before (see
-`scripts/release-e2e-policy.mjs` and
+`scripts/ci/release-e2e-policy.mjs` and
 `docs/superpowers/specs/2026-07-17-release-e2e-equivalence-reuse-design.md`).
 ```
 

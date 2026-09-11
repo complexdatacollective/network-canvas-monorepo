@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { describe, it } from 'vitest';
 import vm from 'node:vm';
 
 import {
   PWA_BUILD_LEASE_READY,
   PWA_BUILD_LEASE_REQUEST,
   PWA_BUILD_LEASE_RESPONSE,
-} from '../packages/fresco-ui/src/appUpdate/pwaBuildLeaseMessages.ts';
+} from '../../packages/fresco-ui/src/appUpdate/pwaBuildLeaseMessages.ts';
 import {
   createPwaCacheReclamationWorkerSource,
   getPwaCacheReclamationScriptFileName,

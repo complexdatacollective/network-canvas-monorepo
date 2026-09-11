@@ -20,7 +20,7 @@
 // read as text. Tracked files only: an untracked scratch protocol on a
 // contributor's disk is not a leak, and CI scans exactly what the commit holds.
 //
-// Usage: node scripts/check-mapbox-tokens.mjs   (from anywhere inside the repo)
+// Usage: node scripts/build/check-mapbox-tokens.mjs   (from anywhere inside the repo)
 // MAPBOX_TOKEN_ALLOWLIST="tok1,tok2" overrides the allowed set (tests only).
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -28,7 +28,7 @@ import { extname } from 'node:path';
 
 import JSZip from 'jszip';
 
-import { TESTING_MAPBOX_TOKEN } from '../apps/architect/src/templates/testingMapboxToken.ts';
+import { TESTING_MAPBOX_TOKEN } from '../../apps/architect/src/templates/testingMapboxToken.ts';
 
 // Mapbox access tokens are `<prefix>.<base64url JSON>.<base64url signature>`
 // with prefix `pk` (public), `sk` (secret) or `tk` (temporary). No word

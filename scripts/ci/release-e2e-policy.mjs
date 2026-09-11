@@ -18,7 +18,7 @@ export const E2E_SUITE_SUBJECTS = {
 // committed pixel baselines, and the native half that runs everything else.
 // A suite's verdict is the AND of both — reusing a green pixel verdict while
 // the functional half was red would skip exactly the coverage that failed.
-// Exported so scripts/ci-workflow.test.mjs can assert every name here is a
+// Exported so scripts/ci/ci-workflow.test.mjs can assert every name here is a
 // real job that the quality gate requires: an exact-string mismatch here does
 // not fail loudly, it silently disables verdict reuse.
 export const E2E_JOB_NAMES = {

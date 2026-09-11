@@ -70,7 +70,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // ---------------------------------------------------------------------------
 
 function printHelp() {
-  console.log(`Usage: node scripts/ci-metrics.mjs [--days N] [--repo owner/name] [--json]
+  console.log(`Usage: node scripts/ci/ci-metrics.mjs [--days N] [--repo owner/name] [--json]
 
   --days N        Measurement window, in days ending now. Default: 7.
   --repo o/name   Repository to query. Default: ${DEFAULT_REPO}.

@@ -162,7 +162,7 @@ export function formatChromaticSummary(project, mode, result) {
 
 function usageError(message) {
   throw new Error(
-    `${message}\nUsage: node scripts/chromatic-observability.mjs <project> <log-path> <affected|skipped>`,
+    `${message}\nUsage: node scripts/ci/chromatic-observability.mjs <project> <log-path> <affected|skipped>`,
   );
 }
 

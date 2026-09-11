@@ -9,8 +9,9 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 import {
   affectedSuitesForPaths,
@@ -31,12 +32,12 @@ function reasonForEverySuite(reason) {
   return Object.fromEntries(SUITE_KEYS.map((key) => [key, reason]));
 }
 
-const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url));
+const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const NORMAL_RELEASE_REF = 'changeset-release/main';
 
 test('the pre-install policy has no runtime package imports', () => {
   const source = readFileSync(
-    join(REPO_ROOT, 'scripts/release-e2e-policy.mjs'),
+    join(REPO_ROOT, 'scripts/ci/release-e2e-policy.mjs'),
     'utf8',
   );
   const runtimePackages = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)]
@@ -620,7 +621,7 @@ test('diff classification is fail-closed', () => {
         'packages/interview/src/Example.test.tsx',
         'packages/interview/src/__tests__/fixture.ts',
         'tooling/vitest/modern/disable-animations.js',
-        'scripts/vitest-animation-setup.test.mjs',
+        'scripts/build/vitest-animation-setup.test.mjs',
         '.changeset/lucky-pandas-dance.md',
         'docs/superpowers/specs/example.md',
         'README.md',
@@ -648,7 +649,7 @@ test('diff classification is fail-closed', () => {
   // Paths outside every workspace package fail closed.
   for (const unrecognised of [
     '.github/workflows/ci-and-release.yml',
-    'scripts/release-e2e-policy.mjs',
+    'scripts/ci/release-e2e-policy.mjs',
     'pnpm-lock.yaml',
     'pnpm-workspace.yaml',
     'turbo.json',
@@ -686,7 +687,7 @@ test('unit-only and unrelated nested-workspace changes select no E2E suites', ()
     'tooling/vitest/modern/disable-animations.js',
     'tooling/vitest/legacy/disable-animations.js',
     'tooling/vitest/package.json',
-    'scripts/vitest-animation-setup.test.mjs',
+    'scripts/build/vitest-animation-setup.test.mjs',
     'apps/studio/client/vitest.config.ts',
     'apps/studio/client/src/main.tsx',
     'apps/architect/vitest.config.ts',

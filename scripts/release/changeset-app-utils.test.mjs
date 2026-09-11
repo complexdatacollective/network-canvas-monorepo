@@ -8,7 +8,8 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { test } from 'node:test';
+
+import { test } from 'vitest';
 
 import {
   BUNDLED_RUNTIME_DEPENDENTS,
@@ -29,7 +30,10 @@ import {
 
 test('normal Changesets versions private Architect and Interviewer packages', () => {
   const config = JSON.parse(
-    readFileSync(new URL('../.changeset/config.json', import.meta.url), 'utf8'),
+    readFileSync(
+      new URL('../../.changeset/config.json', import.meta.url),
+      'utf8',
+    ),
   );
   assert.deepEqual(config.privatePackages, { version: true, tag: false });
   assert.ok(!config.ignore.includes('@codaco/architect'));
@@ -42,7 +46,10 @@ test('every separately gated product is in the changesets ignore list', () => {
   // (dependency bumps included), which is exactly the lane split this module
   // exists to prevent.
   const config = JSON.parse(
-    readFileSync(new URL('../.changeset/config.json', import.meta.url), 'utf8'),
+    readFileSync(
+      new URL('../../.changeset/config.json', import.meta.url),
+      'utf8',
+    ),
   );
   for (const pkg of GATED_PRODUCT_PACKAGES) {
     assert.ok(config.ignore.includes(pkg), `${pkg} must be ignored`);
@@ -195,7 +202,7 @@ test('BUNDLED_RUNTIME_DEPENDENTS matches the apps that really bundle each runtim
   // The guard's map is static so it works on changeset fixtures; this test
   // pins it to the workspace's actual dependency graph. If it fails, an app
   // adopted or dropped a bundled runtime — update BUNDLED_RUNTIME_DEPENDENTS.
-  const root = new URL('..', import.meta.url);
+  const root = new URL('../..', import.meta.url);
   const { ignore } = JSON.parse(
     readFileSync(new URL('.changeset/config.json', root), 'utf8'),
   );
@@ -245,7 +252,7 @@ test('UNRELEASED_PACKAGES holds every workspace with no release path at all', ()
   // `@codaco/art` and `@codaco/interface-images` are all private and versioned
   // in the normal lane, and the Studio packages are private and released by
   // the Studio lane.
-  const root = new URL('..', import.meta.url);
+  const root = new URL('../..', import.meta.url);
   const { ignore } = JSON.parse(
     readFileSync(new URL('.changeset/config.json', root), 'utf8'),
   );

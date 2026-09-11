@@ -8,7 +8,7 @@
 //   - apps/fresco/release-test/scripts/bundle-pending-packages.mjs vendors the
 //     packages the pending Changesets release plan will publish, so the
 //     release-test image approximates the future released artifact.
-//   - scripts/mirror-app.mjs --vendor-changed-since <ref> vendors the packages
+//   - scripts/release/mirror-app.mjs --vendor-changed-since <ref> vendors the packages
 //     whose source differs from <ref>, so a hotfix cut from a release tag
 //     ships its cherry-picked library fixes without publishing anything to npm.
 //
@@ -24,7 +24,7 @@
 // another branch's tree.
 //
 // CLI:
-//   node scripts/vendor-workspace-packages.mjs --assert-lockfile <stage-dir>
+//   node scripts/release/vendor-workspace-packages.mjs --assert-lockfile <stage-dir>
 //     Fails unless the staged lockfile resolves every package named in
 //     <stage-dir>/bundle-manifest.json to its tarball and nowhere else.
 import { spawnSync } from 'node:child_process';
@@ -711,7 +711,7 @@ export function vendorPackages({ stageDir, names, closure, wsPackages, note }) {
   const workspaceYaml = readFileSync(workspaceYamlPath, 'utf8');
   if (!/^overrides:$/m.test(workspaceYaml)) {
     throw new Error(
-      `${workspaceYamlPath} has no overrides: block to extend; check frescoWorkspaceYaml in scripts/mirror-app.mjs.`,
+      `${workspaceYamlPath} has no overrides: block to extend; check frescoWorkspaceYaml in scripts/release/mirror-app.mjs.`,
     );
   }
   const overrideLines = names
@@ -781,7 +781,7 @@ function main(argv) {
   const stageDir = at !== -1 && argv[at + 1] ? resolve(argv[at + 1]) : null;
   if (!stageDir) {
     console.error(
-      'Usage: node scripts/vendor-workspace-packages.mjs --assert-lockfile <stage-dir>',
+      'Usage: node scripts/release/vendor-workspace-packages.mjs --assert-lockfile <stage-dir>',
     );
     process.exit(1);
   }

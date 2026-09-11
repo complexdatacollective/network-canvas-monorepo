@@ -12,8 +12,9 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { onTestFinished, test } from 'vitest';
 
 import {
   assertCommitPinnedActionUses,
@@ -24,8 +25,8 @@ import {
 } from './mirror-app.mjs';
 import { parseCatalog } from './resolve-manifest.mjs';
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SCRIPT = join(REPO_ROOT, 'scripts', 'mirror-app.mjs');
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const SCRIPT = join(REPO_ROOT, 'scripts', 'release', 'mirror-app.mjs');
 
 test('Fresco publisher pins every external action to a commit SHA', () => {
   const workflowPath = join(
@@ -91,9 +92,9 @@ function git(cwd, ...args) {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 }
 
-test('Fresco mirror keeps only its matching GHCR publisher workflow', (t) => {
+test('Fresco mirror keeps only its matching GHCR publisher workflow', () => {
   const directory = mkdtempSync(join(tmpdir(), 'fresco-mirror-test-'));
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  onTestFinished(() => rmSync(directory, { recursive: true, force: true }));
 
   const fresco = join(directory, 'fresco');
   const remote = join(directory, 'remote.git');
@@ -193,9 +194,9 @@ test('Fresco mirror keeps only its matching GHCR publisher workflow', (t) => {
 // staged tree must therefore be enough on its own: `--publish-from` reads the
 // app name and the publisher workflow from it, and pushes what `--stage-only`
 // left behind.
-test('a staged tree can be published later, from a checkout that never staged it', (t) => {
+test('a staged tree can be published later, from a checkout that never staged it', () => {
   const directory = mkdtempSync(join(tmpdir(), 'fresco-two-phase-'));
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  onTestFinished(() => rmSync(directory, { recursive: true, force: true }));
 
   const fresco = join(directory, 'fresco');
   const remote = join(directory, 'remote.git');
@@ -421,9 +422,9 @@ test('a staged tree can be published later, from a checkout that never staged it
 // The seed is what keeps a hotfix's unchanged dependencies at the versions
 // the release installed: both the lockfile and the generated workspace policy
 // come from the mirror at the release, and a ref that lacks either is refused.
-test('seeding a stage copies the released lockfile and workspace policy', (t) => {
+test('seeding a stage copies the released lockfile and workspace policy', () => {
   const directory = mkdtempSync(join(tmpdir(), 'fresco-seed-'));
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  onTestFinished(() => rmSync(directory, { recursive: true, force: true }));
   const remote = join(directory, 'remote.git');
   const seed = join(directory, 'seed');
   const stage = join(directory, 'stage');
