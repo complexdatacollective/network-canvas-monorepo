@@ -1139,3 +1139,67 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
     ).toBeInTheDocument();
   });
 });
+
+/**
+ * A composer field keeps its own input control and that control's settings on
+ * the STAGE (`ComposerFormFieldSchema`), and the contradiction analyser reads
+ * both: a date field's allowed window is the picker's own bounds. Judged
+ * against the codebook's pair instead, a rule this one dialog is able to
+ * contradict in a single sitting was reported nowhere.
+ */
+describe('the rules a composer field authors', () => {
+  const YEAR_PICKER = (min: string, max: string) => ({
+    component: 'DatePicker',
+    parameters: { type: 'year', min, max },
+  });
+
+  it('judges them against the window the FIELD renders', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            {
+              id: 'field-1',
+              variable: 'metOn',
+              ...YEAR_PICKER('2020', '2025'),
+            },
+          ],
+        },
+      }),
+    );
+    // Both attributes accept the same years in the CODEBOOK, so "same as"
+    // between them is satisfiable there — and unsatisfiable only through the
+    // window this field puts on one of them.
+    addPersonVariable(harness, 'bornOn', {
+      name: 'bornOn',
+      type: 'datetime',
+      ...YEAR_PICKER('1990', '1995'),
+    });
+    addPersonVariable(harness, 'metOn', {
+      name: 'metOn',
+      type: 'datetime',
+      ...YEAR_PICKER('1990', '1995'),
+    });
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Same as' }),
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Same as' }),
+      'bornOn',
+    );
+
+    expect(
+      await screen.findByText(
+        'The comparisons for bornOn and metOn cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Save validation' }),
+    ).toBeDisabled();
+  });
+});

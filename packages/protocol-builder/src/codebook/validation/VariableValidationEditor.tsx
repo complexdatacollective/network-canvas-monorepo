@@ -71,6 +71,19 @@ type VariableValidationEditorProps = Readonly<{
    * message is added to it while the editor is stating one.
    */
   'aria-describedby'?: string;
+  /**
+   * What this attribute is actually rendered by, where the STAGE owns that
+   * rather than the codebook.
+   *
+   * A network composer's form field keeps its own `component` and `parameters`
+   * (`ComposerFormFieldSchema`), and the contradiction analyser reads both: a
+   * date window is the picker's own `before`/`after`, and a boolean's domain
+   * is the control's, not the codebook's. Judged against the codebook's pair
+   * instead, a contradiction this one dialog is able to author went
+   * unreported. Omitted wherever the codebook's own control is what the
+   * interview renders, which is every other caller.
+   */
+  'stageRendering'?: Readonly<{ component?: unknown; parameters?: unknown }>;
 }>;
 
 const messages = defineMessages({
@@ -178,6 +191,7 @@ export default function VariableValidationEditor({
   'aria-invalid': ariaInvalid,
   fieldIssue,
   'aria-describedby': fieldDescribedBy,
+  stageRendering,
 }: VariableValidationEditorProps) {
   const intl = useAppIntl();
   const editorId = useId();
@@ -246,6 +260,7 @@ export default function VariableValidationEditor({
             allVariables: { ...allVariables },
             currentVariableId,
             variableType,
+            ...stageRendering,
           }),
           intl,
         )

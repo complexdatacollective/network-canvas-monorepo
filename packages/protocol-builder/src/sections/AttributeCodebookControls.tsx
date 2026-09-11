@@ -1,6 +1,7 @@
 import {
   useCallback,
   useContext,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -38,6 +39,9 @@ import { isCollectableType, isOptionType } from './collectableTypes.ts';
 
 /** Where a row that binds an attribute usually keeps the attribute it binds. */
 const DEFAULT_VARIABLE_FIELD = 'variable';
+
+/** Where a row that keeps its own control's settings usually keeps them. */
+const DEFAULT_PARAMETERS_FIELD = 'parameters';
 
 /**
  * What inside a field container can be handed focus, most preferred first.
@@ -190,6 +194,17 @@ export type AttributeCodebookControlsProps = Readonly<{
    */
   componentField: string;
   /**
+   * Where in the row the settings that control takes live, for a caller whose
+   * row keeps them (`offerParameters` false).
+   *
+   * Read only to be handed to the rules editor, which judges a rule against
+   * what the field will actually render: the two date pickers' windows, and a
+   * boolean's domain, are the field's `component` and `parameters` rather than
+   * the codebook's. Never written here — that is what `offerParameters` is
+   * about.
+   */
+  parametersField?: string;
+  /**
    * The type of an attribute being invented WITH its values, if that is what
    * this row is doing.
    */
@@ -251,6 +266,7 @@ export default function AttributeCodebookControls({
   committedVariable,
   variableField = DEFAULT_VARIABLE_FIELD,
   componentField,
+  parametersField = DEFAULT_PARAMETERS_FIELD,
   inventingType,
   offerParameters = true,
   offerRules = true,
@@ -266,6 +282,7 @@ export default function AttributeCodebookControls({
   const chosen =
     asString(useRowValue(variableField) ?? committedVariable) ?? '';
   const liveComponent = useRowValue(componentField);
+  const liveParameters = useRowValue(parametersField);
   const [editing, setEditing] = useState<Readonly<{
     /** Fresh for every open, so the editor starts from the draft it is given. */
     openId: string;
@@ -440,6 +457,20 @@ export default function AttributeCodebookControls({
     picked !== undefined &&
     parameterShapeFor(pickedType, pickedComponent) !== null;
   const canEditRules = offerRules && picked !== undefined;
+  /**
+   * What the rules editor judges this attribute's rules against.
+   *
+   * Only where the STAGE owns the rendering: everywhere else the codebook's
+   * own pair is already on the attribute the editor reads, and restating it
+   * here would say nothing.
+   */
+  const stageRendering = useMemo(
+    () =>
+      offerParameters
+        ? undefined
+        : { component: pickedComponent, parameters: liveParameters },
+    [liveParameters, offerParameters, pickedComponent],
+  );
   const canCreate =
     inventingType !== undefined && isCollectableType(inventingType);
   /**
@@ -920,6 +951,7 @@ export default function AttributeCodebookControls({
             authoritativeEntityDocument={openEditor.document}
             allSubjectVariables={editorVariables}
             readOnly={editorReadOnly}
+            {...(stageRendering === undefined ? {} : { stageRendering })}
             onSubmitDocument={submitEdit(
               openEditor.subject,
               openEditor.variableId,

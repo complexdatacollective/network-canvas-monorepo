@@ -621,6 +621,7 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
         subject={subject}
         committedVariable={item[VARIABLE_FIELD]}
         componentField={COMPONENT_FIELD}
+        parametersField={PARAMETERS_FIELD}
         offerParameters={false}
       />
       {shape !== null && (
