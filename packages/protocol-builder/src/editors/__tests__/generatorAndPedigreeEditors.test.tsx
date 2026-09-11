@@ -41,9 +41,9 @@ const SECTION_LIST_EDITORS: SectionListEditorCase[] = [
     editor: nameGeneratorStageEditor,
     sections: [
       'Stage name',
-      'Node type',
-      'Form fields',
-      'Prompts',
+      'Node setup',
+      'Form configuration',
+      'Prompt collection',
       'Side panels',
       'Nomination limits',
       'Skip logic',

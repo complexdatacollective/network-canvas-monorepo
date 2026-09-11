@@ -111,7 +111,7 @@ const chooseImportedNetwork = async (
   dialog: ReturnType<typeof within>,
 ) => {
   await harness.user.click(
-    dialog.getByRole('radio', { name: 'Use an imported data file' }),
+    dialog.getByRole('radio', { name: 'Use a network data file' }),
   );
   await harness.user.click(
     await screen.findByRole('button', { name: 'Roster' }),
@@ -130,7 +130,7 @@ const importNetworkFile = async (
   fileName: string,
 ) => {
   await harness.user.click(
-    dialog.getByRole('radio', { name: 'Use an imported data file' }),
+    dialog.getByRole('radio', { name: 'Use a network data file' }),
   );
   await harness.user.upload(
     await screen.findByLabelText('Choose a file from your computer'),
@@ -204,7 +204,7 @@ describe('the side panels a name generator shows', () => {
     await harness.user.click(
       screen.getByRole('switch', { name: 'Side panels' }),
     );
-    const dialog = await openPanel(harness, 'Create new panel');
+    const dialog = await openPanel(harness, 'Add new panel');
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Panel title' }),
       'People you named earlier',
@@ -357,7 +357,7 @@ describe('the side panels a name generator shows', () => {
 
     expect(await screen.findByText('Second panel')).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Create new panel' }),
+      screen.queryByRole('button', { name: 'Add new panel' }),
     ).not.toBeInTheDocument();
 
     // And one panel is one short of the cap, so the control is there.
@@ -370,7 +370,7 @@ describe('the side panels a name generator shows', () => {
     });
 
     expect(
-      await screen.findByRole('button', { name: 'Create new panel' }),
+      await screen.findByRole('button', { name: 'Add new panel' }),
     ).toBeInTheDocument();
   });
 
@@ -447,9 +447,7 @@ describe('the side panels a name generator shows', () => {
     });
 
     expect(
-      await screen.findByText(
-        'Choose what this stage works with before adding side panels.',
-      ),
+      await screen.findByText('Select a node type to configure side panels.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Side panels' })).toBeDisabled();
   });
@@ -721,7 +719,7 @@ const pickTheStagedFile = async (
   fileName: string,
 ) => {
   await harness.user.click(
-    dialog.getByRole('radio', { name: 'Use an imported data file' }),
+    dialog.getByRole('radio', { name: 'Use a network data file' }),
   );
   await harness.user.click(
     await screen.findByRole('button', { name: fileName }),
@@ -901,7 +899,7 @@ describe('discarding an imported network from a panel dialog', () => {
       screen.getByRole('button', { name: 'Keep editing' }),
     );
     expect(
-      await dialog.findByRole('radio', { name: 'Use an imported data file' }),
+      await dialog.findByRole('radio', { name: 'Use a network data file' }),
     ).toBeChecked();
   });
 });

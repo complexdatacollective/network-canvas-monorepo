@@ -102,7 +102,7 @@ export const censusMessages = defineMessages({
   sortRulesAddedHint: {
     id: 'protocolBuilder.censusPrompts.sortRulesAddedHint',
     defaultMessage:
-      'Rules are applied in order. Use the asterisk to keep the order the people were added in.',
+      'Add one or more rules to determine the order in which nodes are displayed in the bucket before they are placed. Use the asterisk property to sort by the order that nodes were created.',
     description:
       'Guidance under a list of sort rules whose fallback is the order the people were added to the network. The asterisk is the wildcard option offered in the rule’s own property picker.',
   },

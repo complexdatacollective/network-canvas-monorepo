@@ -34,6 +34,7 @@ import {
   type RowEditorProps,
   type RowPreviewProps,
 } from '../../form/rowDialog.tsx';
+import { useStageValue } from '../../form/stageFormHooks.ts';
 import { useStagedResources } from '../../resources/client.tsx';
 import { acceptsResourceKind } from '../../resources/components/resourceKinds.ts';
 import type {
@@ -79,15 +80,13 @@ const messages = defineMessages({
   },
   description: {
     id: 'protocolBuilder.nodePanels.description',
-    defaultMessage:
-      'Show a list of people beside this stage, so the participant can nominate someone without typing their name again.',
+    defaultMessage: 'Configure up to two side panels for this name generator.',
     description:
       'Description of the side-panels section. A stage is one step of an interview.',
   },
   waitingDescription: {
     id: 'protocolBuilder.nodePanels.waitingDescription',
-    defaultMessage:
-      'Choose what this stage works with before adding side panels.',
+    defaultMessage: 'Select a node type to configure side panels.',
     description:
       'Shown in place of the side-panels section’s description while the researcher has not yet chosen which node type the stage is about, so a panel would have nothing to be about.',
   },
@@ -104,7 +103,7 @@ const messages = defineMessages({
   },
   addLabel: {
     id: 'protocolBuilder.nodePanels.addLabel',
-    defaultMessage: 'Create new panel',
+    defaultMessage: 'Add new panel',
     description:
       'Button that opens the dialog for adding one more side panel. Whole rather than a generic "Add", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons.',
   },
@@ -128,8 +127,7 @@ const messages = defineMessages({
   },
   emptyState: {
     id: 'protocolBuilder.nodePanels.emptyState',
-    defaultMessage:
-      'No panels yet. Create one to offer people the participant has already named.',
+    defaultMessage: 'No side panels configured.',
     description:
       'Shown in place of the side-panel list while the stage has none.',
   },
@@ -168,9 +166,8 @@ const messages = defineMessages({
   panelTitleHint: {
     id: 'protocolBuilder.nodePanels.panelTitleHint',
     defaultMessage:
-      'Shown above the panel. Say what is in it, such as “People you named earlier”.',
-    description:
-      'Guidance under the panel-title box. The quoted phrase is an example title a researcher might write, and should read naturally rather than literally.',
+      'The panel title will be shown above the list of nodes within the panel.',
+    description: 'Guidance under the panel-title box.',
   },
   panelTitlePlaceholder: {
     id: 'protocolBuilder.nodePanels.panelTitlePlaceholder',
@@ -186,16 +183,16 @@ const messages = defineMessages({
   },
   sourceLabel: {
     id: 'protocolBuilder.nodePanels.sourceLabel',
-    defaultMessage: 'People in this panel',
+    defaultMessage: 'Data source for panel {position, number}',
     description:
-      'Label of the control choosing where the people one side panel lists come from.',
+      'Label of the control choosing where the people one side panel lists come from. position is which of the stage’s panels this is, counting from one, because a stage may have two and they are otherwise identically labelled.',
   },
   sourceHint: {
     id: 'protocolBuilder.nodePanels.sourceHint',
     defaultMessage:
-      "The interview's own network so far, or a network file you have imported.",
+      'Choose where this panel’s data comes from: the in-progress interview session (“People you have already named”), or a network data file you have added to this protocol.',
     description:
-      'Guidance under the control choosing where one side panel’s people come from, naming the two kinds of source.',
+      'Guidance under the control choosing where one side panel’s people come from, naming the two kinds of source. The quoted phrase is the wording the interview itself uses for its own network.',
   },
   sourceNotNetwork: {
     id: 'protocolBuilder.nodePanels.sourceNotNetwork',
@@ -274,14 +271,14 @@ const messages = defineMessages({
   },
   clearTitle: {
     id: 'protocolBuilder.nodePanels.clearTitle',
-    defaultMessage: 'This will delete your side panels',
+    defaultMessage: 'This will delete your panel configuration',
     description:
       'Title of the dialog asking a researcher to confirm switching off the section that adds panels of people beside a name generator for the participant to nominate from.',
   },
   clearDescription: {
     id: 'protocolBuilder.nodePanels.clearDescription',
     defaultMessage:
-      'This will remove every side panel on this stage, and delete any filter rules you have created for them. Do you want to continue?',
+      'This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?',
     description:
       'Body of the dialog confirming that switching off the side panels discards the panels and the filter rules written for them. A stage is one step of an interview.',
   },
@@ -570,8 +567,14 @@ const PANEL_ROWS: RowListConfig = {
  * connected fields of THAT form — the panel is committed whole when the dialog
  * saves, and no part of it is ever registered on the stage.
  */
-function PanelEditor({ item }: RowEditorProps) {
+function PanelEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
+  // Which of the stage's panels this is, counting from one. Architect numbers
+  // the source control because a stage may hold two panels and nothing else in
+  // the dialog says which one is open; a panel being added is the next one.
+  const panels = useStageValue(PANELS);
+  const position =
+    (editIndex ?? (Array.isArray(panels) ? panels.length : 0)) + 1;
   const dataSource =
     asString(useRowValue('dataSource') ?? item.dataSource) ?? INTERVIEW_NETWORK;
   /**
@@ -618,7 +621,7 @@ function PanelEditor({ item }: RowEditorProps) {
         <Field<typeof ResourcePicker>
           name="dataSource"
           component={ResourcePicker}
-          label={intl.formatMessage(messages.sourceLabel)}
+          label={intl.formatMessage(messages.sourceLabel, { position })}
           hint={intl.formatMessage(messages.sourceHint)}
           kind={PANEL_SOURCE_KIND}
           canUseExisting

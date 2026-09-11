@@ -1374,7 +1374,9 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
     });
 
     // Seeded with a form, so the capability opens switched on.
-    const toggle = await screen.findByRole('switch', { name: 'Form fields' });
+    const toggle = await screen.findByRole('switch', {
+      name: 'Form configuration',
+    });
     expect(toggle).toBeChecked();
 
     await harness.user.click(toggle);
@@ -1387,8 +1389,9 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
 
     await waitFor(() =>
       expect(
-        harness.outline().find((section) => section.title === 'Form fields')
-          ?.state,
+        harness
+          .outline()
+          .find((section) => section.title === 'Form configuration')?.state,
       ).toBe('Switched off'),
     );
 

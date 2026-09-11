@@ -19,9 +19,9 @@ describe('the introduction a participant reads before a task', () => {
       sections: introduction,
     });
 
-    expect(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-    ).toHaveValue('Introduction to the alter edge form');
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
+      'Introduction to the alter edge form',
+    );
     expect(
       await screen.findByRole('textbox', { name: 'Introduction text' }),
     ).toHaveTextContent('A few questions about each relationship.');
@@ -62,9 +62,7 @@ describe('the introduction a participant reads before a task', () => {
       sections: introduction,
     });
 
-    await harness.user.clear(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-    );
+    await harness.user.clear(screen.getByRole('textbox', { name: 'Title' }));
     await waitFor(() =>
       expect(harness.outline()[1]?.state).toBe('Not finished'),
     );
@@ -121,7 +119,7 @@ describe('the introduction a participant reads before a task', () => {
     const before = harness.seeded.fields.introductionPanel;
 
     const heading = screen.getByRole('textbox', {
-      name: 'Introduction heading',
+      name: 'Title',
     });
     await harness.user.clear(heading);
     await harness.user.type(heading, 'About you');
@@ -148,7 +146,7 @@ describe('the length of an introduction heading', () => {
     });
 
     const heading = screen.getByRole('textbox', {
-      name: 'Introduction heading',
+      name: 'Title',
     });
     await harness.user.clear(heading);
     await harness.user.type(heading, 'A'.repeat(60));
@@ -167,7 +165,7 @@ describe('the length of an introduction heading', () => {
     });
 
     const heading = screen.getByRole('textbox', {
-      name: 'Introduction heading',
+      name: 'Title',
     });
     await harness.user.clear(heading);
     await harness.user.type(heading, 'A'.repeat(50));

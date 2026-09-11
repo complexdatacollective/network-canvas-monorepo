@@ -121,7 +121,7 @@ describe('the name-generator sections, read in Spanish', () => {
     });
 
     expect(
-      await screen.findByRole('button', { name: 'Crear nuevo panel' }),
+      await screen.findByRole('button', { name: 'Añadir nuevo panel' }),
     ).toBeInTheDocument();
     // The panel's source is a clause of the same sentence rather than a
     // fragment concatenated onto it, so an English source phrase inside the

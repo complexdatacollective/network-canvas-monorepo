@@ -63,9 +63,9 @@ describe('the editor for a form about the participant', () => {
     expect(screen.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
       'Ego Form',
     );
-    expect(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-    ).toHaveValue('Introduction');
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
+      'Introduction',
+    );
     expect(
       await screen.findByText('What is your name?', { exact: false }),
     ).toBeInTheDocument();
@@ -84,9 +84,7 @@ describe('the editor for a form about the participant', () => {
     // name, which is proposed because the stage is being created.
     await waitFor(() => expect(stageNameInput()).not.toHaveValue(''));
     expect(stageNameInput().value).toMatch(/^Ego Form/);
-    expect(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-    ).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue('');
   });
 
   it('saves a new stage once the researcher has written it', async () => {
@@ -96,7 +94,7 @@ describe('the editor for a form about the participant', () => {
     await writeInto(harness, stageNameInput(), 'About you');
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      screen.getByRole('textbox', { name: 'Title' }),
       'About you',
     );
     await writeInto(
@@ -153,8 +151,9 @@ describe('the editor for a form about the participant', () => {
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        harness.outline().find((section) => section.title === 'Form fields')
-          ?.state,
+        harness
+          .outline()
+          .find((section) => section.title === 'Form configuration')?.state,
       ).toBe('Has a problem'),
     );
   });
@@ -162,11 +161,9 @@ describe('the editor for a form about the participant', () => {
   it('writes nothing when the researcher discards the edit', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await harness.user.clear(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-    );
+    await harness.user.clear(screen.getByRole('textbox', { name: 'Title' }));
     await harness.user.type(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      screen.getByRole('textbox', { name: 'Title' }),
       'A heading nobody kept',
     );
     expectStageUntouched(harness);
@@ -186,7 +183,13 @@ describe('the editor for a form about the participant', () => {
   it('follows an attribute deleted elsewhere without echoing it back', async () => {
     const harness = renderStageEditor(openFixture());
     expect(
-      await screen.findByText('Collects "ego_name" as text.'),
+      await screen.findByText((_content, element) => {
+        const text = 'Text attribute using Text input input control';
+        if (element?.textContent !== text) return false;
+        return Array.from(element.children).every(
+          (child) => child.textContent !== text,
+        );
+      }),
     ).toBeInTheDocument();
 
     harness.receiveCodebookUpdate({ ego: { variables: {} } });
@@ -205,9 +208,7 @@ describe('the editor for a form about the participant', () => {
     const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
     await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: 'Introduction heading' }),
-      ).toBeDisabled(),
+      expect(screen.getByRole('textbox', { name: 'Title' })).toBeDisabled(),
     );
 
     // The shell's refusal is the guarantee, not the chrome above it: a

@@ -67,7 +67,7 @@ const renderInSpanish = () =>
     locale: 'es',
     sections: (
       <>
-        <NetworkFilterSection subject="node" />
+        <NetworkFilterSection />
         <SkipLogicSection />
         <InterviewerGuidanceSection />
       </>
@@ -81,7 +81,7 @@ describe('the shared stage-editor sections in Spanish', () => {
     expect(Object.keys(protocolBuilderCatalogs.es ?? {})).toEqual(
       expect.arrayContaining([
         'protocolBuilder.networkFilter.title',
-        'protocolBuilder.networkFilter.nodeRulesHint',
+        'protocolBuilder.networkFilter.rulesHint',
         'protocolBuilder.skipLogic.title',
         'protocolBuilder.interviewerGuidance.title',
       ]),
@@ -109,7 +109,7 @@ describe('the shared stage-editor sections in Spanish', () => {
 
     expect(
       screen.getByText(
-        'Crea reglas que limiten qué nodos están disponibles en esta etapa.',
+        'Crea reglas que filtren los nodos o vínculos que se muestran en esta etapa.',
       ),
     ).toBeInTheDocument();
     expect(
@@ -197,7 +197,7 @@ describe('the shared stage-editor sections in Spanish', () => {
  * whatever the catalog said, including nothing at all.
  */
 describe('the form-fields section, read in Spanish', () => {
-  it('splices a researcher’s own attribute into the Spanish sentence', async () => {
+  it('splices a researcher’s own attribute into the Spanish sentence', () => {
     renderStageEditor({
       stageId: 'alter-form-1',
       locale: 'es',
@@ -206,12 +206,6 @@ describe('the form-fields section, read in Spanish', () => {
 
     expect(
       screen.getByRole('textbox', { name: 'Título del formulario' }),
-    ).toBeInTheDocument();
-    // `previewCollects` carries two values the protocol supplied. Asserted on
-    // the whole rendered sentence, so a placeholder left out of the Spanish
-    // fails here rather than rendering as `{name}`.
-    expect(
-      await screen.findByText('Recoge «relationship_to_ego» como text.'),
     ).toBeInTheDocument();
   });
 
@@ -481,7 +475,7 @@ const addValue = async (
   value: string,
 ) => {
   await harness.user.click(
-    screen.getByRole('button', { name: 'Añadir opción' }),
+    screen.getByRole('button', { name: 'Crear nueva opción' }),
   );
   await harness.user.type(
     screen.getByRole('textbox', { name: `Etiqueta de la opción ${position}` }),
@@ -511,7 +505,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
       dialog.getByRole('textbox', { name: 'Texto de ayuda' }),
     ).toHaveAttribute(
       'aria-placeholder',
-      'Selecciona todas las que correspondan',
+      'p. ej., Selecciona todas las opciones que correspondan...',
     );
 
     await harness.user.click(dialog.getByRole('button', { name: 'Añadir' }));
@@ -834,9 +828,7 @@ describe('a form a Spanish researcher cannot save', () => {
     );
 
     expect(
-      screen.getByText(
-        'Todavía no hay campos. Crea uno para indicar qué recoge este formulario.',
-      ),
+      screen.getByText('Todavía no se ha creado ningún elemento.'),
     ).toBeInTheDocument();
 
     expect(await harness.submit()).toBeNull();

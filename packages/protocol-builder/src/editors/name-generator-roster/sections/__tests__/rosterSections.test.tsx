@@ -236,9 +236,7 @@ describe("a roster stage's data file", () => {
     // cell over a value the researcher cannot see is the state the message
     // above is there to explain.
     expect(attributeCellIn(/Attributes shown on a card/)).toBeDisabled();
-    expect(
-      attributeCellIn(/Attributes the participant may sort by/),
-    ).toBeDisabled();
+    expect(attributeCellIn(/Sortable properties/)).toBeDisabled();
     expect(
       screen.getByRole('group', { name: /Attributes a search matches/ }),
     ).toBeDisabled();
@@ -491,7 +489,7 @@ describe('how a roster is ordered', () => {
     });
 
     await waitFor(() =>
-      expect(attributeCellIn(/Starting order/).value).toBe('nickname'),
+      expect(attributeCellIn(/Sort rule/).value).toBe('nickname'),
     );
 
     expect(await harness.submit()).toBeNull();
@@ -519,10 +517,8 @@ describe('how a roster is ordered', () => {
       sections: <SortOptionsSection />,
     });
 
-    await removeTheOnlyRow(harness, /Starting order/);
-    await screen.findByText(
-      'People appear in the order the data file lists them.',
-    );
+    await removeTheOnlyRow(harness, /Sort rule/);
+    await screen.findByText('No sort rules have been created yet.');
 
     const request = await harness.submit();
     expect(request?.stageDocument.sortOptions).toEqual({
@@ -532,7 +528,7 @@ describe('how a roster is ordered', () => {
     // The capability still holds a decision, so it is still switched on.
     reopenSaved(harness, request!.stageDocument, <SortOptionsSection />);
     expect(
-      await screen.findByRole('switch', { name: 'Roster order' }),
+      await screen.findByRole('switch', { name: 'Roster sorting' }),
     ).toBeChecked();
   });
 
@@ -553,12 +549,14 @@ describe('how a roster is ordered', () => {
       sections: <SortOptionsSection />,
     });
 
-    await removeTheOnlyRow(harness, /Starting order/);
-    await removeTheOnlyRow(harness, /Attributes the participant may sort by/);
-    await screen.findByText('The participant cannot reorder the roster.');
+    await removeTheOnlyRow(harness, /Sort rule/);
+    await removeTheOnlyRow(harness, /Sortable properties/);
+    await screen.findByText('No items available.');
 
     // Still on, because the researcher has not said otherwise.
-    expect(screen.getByRole('switch', { name: 'Roster order' })).toBeChecked();
+    expect(
+      screen.getByRole('switch', { name: 'Roster sorting' }),
+    ).toBeChecked();
 
     const request = await harness.submit();
     expect(request).not.toBeNull();
@@ -568,7 +566,7 @@ describe('how a roster is ordered', () => {
 
     reopenSaved(harness, request!.stageDocument, <SortOptionsSection />);
     expect(
-      await screen.findByRole('switch', { name: 'Roster order' }),
+      await screen.findByRole('switch', { name: 'Roster sorting' }),
     ).not.toBeChecked();
   });
 
