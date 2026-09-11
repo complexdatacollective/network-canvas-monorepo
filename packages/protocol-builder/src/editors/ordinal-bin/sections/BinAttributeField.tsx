@@ -83,8 +83,15 @@ const valueCount = (
  * labels cannot tell what this prompt records. The reason is the table's
  * CAPTION, so it reaches a screen reader as the table's own name rather than
  * through the padlock and the dimmed background alone.
+ *
+ * Exported because a tie-strength census prompt binds an ordinal attribute the
+ * same way and shows the same list beside it, on the same terms this family
+ * shares `BinAttributeField` itself: the first editor of the family owns what
+ * its siblings also need, so the words are declared once.
  */
-function LockedOptions({ options }: Readonly<{ options: LockedOptionList }>) {
+export function LockedOptions({
+  options,
+}: Readonly<{ options: LockedOptionList }>) {
   const intl = useAppIntl();
 
   return (

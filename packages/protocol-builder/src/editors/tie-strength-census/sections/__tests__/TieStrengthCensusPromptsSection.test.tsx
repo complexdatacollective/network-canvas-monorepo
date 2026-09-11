@@ -170,6 +170,52 @@ describe('the questions a tie-strength census asks about a pair', () => {
     });
   });
 
+  /**
+   * The points ARE the stage: a tie-strength census asks one question and
+   * records the answer as one of the scale's values, so a researcher reading
+   * the prompt has to be able to see what those values say — and change them.
+   * Architect showed the list under this very picker; without it the points
+   * were reachable only from the codebook screen.
+   *
+   * They belong to the codebook attribute rather than to the prompt, so the
+   * change lands in the connection type's own section.
+   */
+  it('shows the scale’s points beside the prompt and writes an edit to them', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    await screen.findByRole('combobox', { name: 'Attribute' });
+
+    await harness.user.click(
+      await screen.findByRole('button', {
+        name: 'Change this attribute’s values',
+      }),
+    );
+    const label = await screen.findByRole('textbox', {
+      name: 'Option 1 label',
+    });
+    expect(label).toHaveValue('Very close');
+    await harness.user.clear(label);
+    await harness.user.type(label, 'Inseparable');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        harness.hostCodebook().edge?.knows?.variables?.closeness,
+      ).toMatchObject({
+        options: [
+          { label: 'Inseparable', value: 3 },
+          { label: 'Somewhat close', value: 2 },
+          { label: 'Not close', value: 1 },
+        ],
+      }),
+    );
+  });
+
   it('refuses a prompt with no way to decline, and says which one', async () => {
     const harness = renderStageEditor(openSection());
 

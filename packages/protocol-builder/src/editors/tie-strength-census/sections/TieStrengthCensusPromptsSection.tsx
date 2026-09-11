@@ -11,11 +11,14 @@ import type { VariableType } from '@codaco/protocol-validation';
 
 import {
   buildExclusiveVariableSlotMap,
+  buildInterfaceOwnedOptionMap,
   buildVariableRoleMap,
   excludeInterfaceOwned,
   excludeValidatedUses,
   hasValidatedUse,
   interfaceOwnedPickIssue,
+  lockedVariableOptions,
+  variableRoleKey,
 } from '../../../codebook/variableRoles.ts';
 import RichTextField from '../../../fields/RichTextField.tsx';
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
@@ -31,6 +34,7 @@ import type {
 } from '../../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
+import AttributeCodebookControls from '../../../sections/AttributeCodebookControls.tsx';
 import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
@@ -44,12 +48,21 @@ import {
   PromptTextField,
   PromptTextPreview,
 } from '../../dyad-census/sections/PromptTextField.tsx';
+import { LockedOptions } from '../../ordinal-bin/sections/BinAttributeField.tsx';
 
 const SCALE_FIELD = 'edgeVariable';
 const DECLINE_FIELD = 'negativeLabel';
 
 /** The strength is a point on a scale, so only an ordinal attribute holds it. */
 const SCALE_TYPE = 'ordinal' as const satisfies VariableType;
+
+/**
+ * A tie-strength prompt keeps no input control of its own: the participant taps
+ * one of the scale's points and the value is written as it is. So the key named
+ * here is one the row never holds, and the codebook's own control is what the
+ * attribute's settings are keyed on.
+ */
+const NO_ROW_COMPONENT = 'component';
 
 /**
  * How many points the scale itself can carry. The decline answer is drawn
@@ -308,6 +321,24 @@ function ScaleField({
   const valueCount =
     pickedVariable?.type === SCALE_TYPE ? pickedVariable.options.length : 0;
 
+  // An attribute whose VALUES another interface owns is still a legitimate
+  // scale — a family pedigree's relationship kinds, say — but its points are
+  // that interface's to decide, so they are shown rather than offered for
+  // editing.
+  const locked = useMemo(
+    () =>
+      subject === undefined || picked === undefined
+        ? undefined
+        : lockedVariableOptions(
+            allVariables,
+            picked,
+            buildInterfaceOwnedOptionMap(protocolContext)[
+              variableRoleKey(subject, picked)
+            ],
+          ),
+    [allVariables, picked, protocolContext, subject],
+  );
+
   // The scale belongs to the connection, so there is nothing to choose from
   // until the connection type is known — and it is that type's own attributes
   // that are offered, never the person's.
@@ -339,6 +370,28 @@ function ScaleField({
         label={intl.formatMessage(messages.scaleCreateLabel)}
         onCreated={(variableId) => setFieldValue(SCALE_FIELD, variableId)}
       />
+      {/*
+        The points ARE the stage: a scale whose values cannot be read from here
+        sends the researcher to the codebook screen to find out what their own
+        question asks. Reached rather than inlined, for the reason every
+        codebook edit in this package is — the attribute lives in another
+        section of the protocol and commits on its own.
+      */}
+      {locked === undefined ? (
+        <AttributeCodebookControls
+          subject={subject}
+          variableField={SCALE_FIELD}
+          committedVariable={committed}
+          componentField={NO_ROW_COMPONENT}
+          // The participant taps a point and the value is written as it is,
+          // with nothing to check it — the schema says so by declaring this
+          // reference `unvalidatedAttribute` — so rules authored here would
+          // never run.
+          offerRules={false}
+        />
+      ) : (
+        <LockedOptions options={locked} />
+      )}
       {valueCount > SCALE_LIMIT && (
         <Alert variant="warning" className="mt-6">
           <AlertTitle>
