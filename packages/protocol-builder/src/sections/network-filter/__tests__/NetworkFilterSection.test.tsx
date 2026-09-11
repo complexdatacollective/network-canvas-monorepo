@@ -110,7 +110,7 @@ describe('what the section says it is for', () => {
 
     expect(
       screen.getByText(
-        'Create rules that limit which nodes are available on this stage.',
+        'Create rules that filter which nodes or edges are displayed on this stage.',
       ),
     ).toBeInTheDocument();
   });
@@ -120,7 +120,7 @@ describe('what the section says it is for', () => {
 
     expect(
       screen.getByText(
-        'Create rules that limit which edges are available on this stage.',
+        'Create rules that filter which nodes or edges are displayed on this stage.',
       ),
     ).toBeInTheDocument();
   });
