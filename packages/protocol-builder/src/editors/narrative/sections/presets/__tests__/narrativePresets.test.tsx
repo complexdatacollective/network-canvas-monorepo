@@ -1,6 +1,12 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  attributeField,
+  chooseAttributeById,
+  closeAttributePicker,
+  openAttributePicker,
+} from '../../../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
 import {
   addPreset,
@@ -69,8 +75,9 @@ describe('the ways of looking at the network a narrative stage offers', () => {
       preset.getByRole('textbox', { name: 'Preset name' }),
       'All',
     );
-    await harness.user.selectOptions(
-      preset.getByRole('combobox', { name: 'Position attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Position attribute'),
       'layout',
     );
     await harness.user.click(preset.getByRole('button', { name: 'Add' }));
@@ -287,8 +294,14 @@ describe('a codebook change made while a preset dialog is open', () => {
   it('reaches the position picker without the dialog asking', async () => {
     const harness = renderStageEditor(openEditor());
 
-    const preset = await openPreset(harness);
-    const picker = preset.getByRole('combobox', { name: 'Position attribute' });
+    await openPreset(harness);
+    // The window is left open across the collaborator's change, which is the
+    // point: the list a researcher is reading is the codebook as it stands,
+    // not the snapshot it was opened on.
+    const picker = await openAttributePicker(
+      harness.user,
+      attributeField('Position attribute'),
+    );
     expect(
       within(picker).queryByRole('option', { name: 'seating' }),
     ).not.toBeInTheDocument();
@@ -305,5 +318,6 @@ describe('a codebook change made while a preset dialog is open', () => {
     expect(
       await within(picker).findByRole('option', { name: 'seating' }),
     ).toBeInTheDocument();
+    await closeAttributePicker(harness.user);
   });
 });

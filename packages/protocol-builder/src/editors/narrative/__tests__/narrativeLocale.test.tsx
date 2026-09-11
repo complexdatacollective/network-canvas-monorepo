@@ -1,6 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { attributeField } from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   narrativeEditor,
@@ -59,8 +60,14 @@ describe('the narrative sections, read in Spanish', () => {
     });
 
     const preset = await openPreset(harness, 0, 'Editar vista predefinida');
+    // The picker is a labelled field holding a trigger, so the label and the
+    // words on the button are two separate translations and both are asserted.
+    // This preset already positions by an attribute, which is the state the
+    // trigger says "change" rather than "select" in.
     expect(
-      preset.getByRole('combobox', { name: 'Atributo de posición' }),
+      within(
+        attributeField('Atributo de posición', screen.getByRole('dialog')),
+      ).getByRole('button', { name: 'Cambiar atributo' }),
     ).toBeInTheDocument();
     expect(
       preset.getByRole('button', {

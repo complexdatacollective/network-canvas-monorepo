@@ -5,6 +5,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
+import { attributeField } from '../../testing/attributePicker.ts';
 import {
   expectNoLocaleLeaks,
   protocolStrings,
@@ -238,11 +239,8 @@ describe('the form-fields section, read in Spanish', () => {
         name: 'Crear nuevo campo de formulario',
       }),
     );
-    const dialog = within(await screen.findByRole('dialog'));
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Atributo' }),
-      '#create-new-attribute',
-    );
+    const dialog = asDialog(await screen.findByRole('dialog'));
+    await chooseAttribute(harness, dialog, '#create-new-attribute');
 
     const kind = await dialog.findByRole('combobox', {
       name: 'Tipo de respuesta',
@@ -371,16 +369,28 @@ const alterFormInSpanish = () =>
     sections: <FormFieldsSection subject="node" />,
   });
 
+/**
+ * A row's open dialog, with the element it was found as.
+ *
+ * The element is carried because the attribute picker opens a SECOND dialog on
+ * top of a row editor, so "the dialog" is ambiguous while its window is up:
+ * the window is the one that is not this element.
+ */
+type OpenDialog = ReturnType<typeof within> & { element: HTMLElement };
+
+const asDialog = (element: HTMLElement): OpenDialog =>
+  Object.assign(within(element), { element });
+
 /** Opens one row's dialog. Several rows carry the same affordance, so which. */
 const openFieldDialog = async (
   harness: StageEditorHarness,
   name: string,
   index = 0,
-) => {
+): Promise<OpenDialog> => {
   const trigger = screen.getAllByRole('button', { name })[index];
   if (trigger === undefined) throw new Error(`There is no "${name}" ${index}.`);
   await harness.user.click(trigger);
-  return within(await screen.findByRole('dialog'));
+  return asDialog(await screen.findByRole('dialog'));
 };
 
 /**
@@ -413,21 +423,55 @@ const seedPersonVariables = (
   });
 };
 
+/** The two names the attribute picker's trigger goes by, in Spanish. */
+const isPickerTrigger = (name: string) =>
+  name === 'Seleccionar atributo' || name === 'Cambiar atributo';
+
 /**
  * Chooses the attribute a field collects, once the picker is offering it.
  *
  * A codebook change reaches a subscribed component on a microtask, so an
- * attribute seeded a line above is not on the picker the moment the seeding
- * call returns.
+ * attribute seeded a line above is not in the window the moment the seeding
+ * call returns — which is why the row it is chosen by is waited for rather
+ * than read once.
+ *
+ * Named by the id the field stores, which for every attribute seeded here is
+ * also the name the researcher reads.
  */
 const chooseAttribute = async (
   harness: StageEditorHarness,
-  dialog: ReturnType<typeof within>,
-  name: string,
+  dialog: OpenDialog,
+  attributeId: string,
 ) => {
-  const picker = dialog.getByRole('combobox', { name: 'Atributo' });
-  await within(picker).findByRole('option', { name });
-  await harness.user.selectOptions(picker, name);
+  await harness.user.click(
+    within(attributeField('Atributo', dialog.element)).getByRole('button', {
+      name: isPickerTrigger,
+    }),
+  );
+  const window = await waitFor(() => {
+    const found = screen
+      .getAllByRole('dialog')
+      .find((element) => element !== dialog.element);
+    if (found === undefined) {
+      throw new Error('the attribute window did not open');
+    }
+    return found;
+  });
+  const row = await waitFor(() => {
+    const found = window.querySelector<HTMLElement>(
+      `[role="option"][data-attribute-id="${attributeId}"]`,
+    );
+    if (found === null) {
+      throw new Error(`the window is not offering "${attributeId}"`);
+    }
+    return found;
+  });
+  await harness.user.click(row);
+  // The pick is written as the window closes, so nothing may carry on while it
+  // is still covering the row.
+  await waitFor(() => {
+    if (window.isConnected) throw new Error('the attribute window is open');
+  });
 };
 
 /**
@@ -456,10 +500,7 @@ const inventAttribute = async (
     harness,
     'Crear nuevo campo de formulario',
   );
-  await harness.user.selectOptions(
-    dialog.getByRole('combobox', { name: 'Atributo' }),
-    '#create-new-attribute',
-  );
+  await chooseAttribute(harness, dialog, '#create-new-attribute');
   await harness.user.type(
     await dialog.findByRole('textbox', { name: 'Nombre del atributo' }),
     attributeName,
@@ -530,10 +571,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
       harness,
       'Crear nuevo campo de formulario',
     );
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Atributo' }),
-      '#create-new-attribute',
-    );
+    await chooseAttribute(harness, dialog, '#create-new-attribute');
 
     // An example of a name, translated as one — not a value that is stored.
     expect(
@@ -563,10 +601,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
       harness,
       'Crear nuevo campo de formulario',
     );
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Atributo' }),
-      '#create-new-attribute',
-    );
+    await chooseAttribute(harness, dialog, '#create-new-attribute');
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Tipo de respuesta' }),
       'categorical',
@@ -597,10 +632,7 @@ describe('the form-fields row dialog, read in Spanish', () => {
       harness,
       'Crear nuevo campo de formulario',
     );
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Atributo' }),
-      '#create-new-attribute',
-    );
+    await chooseAttribute(harness, dialog, '#create-new-attribute');
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Tipo de respuesta' }),
       'categorical',

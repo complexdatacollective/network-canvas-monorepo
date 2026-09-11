@@ -2,6 +2,10 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
+  attributeField,
+  offeredAttributes,
+} from '../../../testing/attributePicker.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
@@ -12,7 +16,6 @@ import {
   fixtureDisease,
   narrativePedigreeHolding,
   openDisease,
-  optionsOf,
   receiveSection,
   reorderStages,
   sourcePedigreeDocument,
@@ -51,6 +54,21 @@ const offeredSources = (): string[] =>
         !(option as HTMLOptionElement).disabled,
     )
     .map((option) => option.value);
+
+/**
+ * The attributes one disease's affected-status picker is offering, by the ids
+ * choosing one would store.
+ *
+ * The picker is a trigger and a window now, so reading what it offers means
+ * opening the window and closing it again — which is what `offeredAttributes`
+ * does. Scoped to the open row dialog, because a stage with several diseases
+ * has a field of this name in each of them.
+ */
+const offeredAttributesOf = (harness: StageEditorHarness): Promise<string[]> =>
+  offeredAttributes(
+    harness.user,
+    attributeField('Affected-status attribute', screen.getByRole('dialog')),
+  );
 
 /** The source pedigree with its only nomination prompt taken away. */
 const pedigreeRecordingNothing = () => {
@@ -231,16 +249,20 @@ describe('the diseases a narrative pedigree defines', () => {
     const harness = openFixture();
     alsoRecording(harness, { hasConditionZ: 'boolean' }, ['is_ego']);
 
-    const dialog = await addDisease(harness);
-    const picker = await dialog.findByRole('combobox', {
-      name: 'Affected-status attribute',
+    await addDisease(harness);
+    // The prompt and the codebook both arrive over the protocol's own channel,
+    // so the window is read until it has been told about the attribute this
+    // case turns on rather than once, before either landed.
+    const offered = await waitFor(async () => {
+      const list = await offeredAttributesOf(harness);
+      expect(list).toContain('hasConditionZ');
+      return list;
     });
-    await waitFor(() => expect(optionsOf(picker)).toContain('hasConditionZ'));
     // `is_ego` is the pedigree's participant marker, so a disease mapped to it
     // would paint the participant as affected in every interview;
     // `hasConditionX` is already mapped by the disease this stage holds.
-    expect(optionsOf(picker)).not.toContain('is_ego');
-    expect(optionsOf(picker)).not.toContain('hasConditionX');
+    expect(offered).not.toContain('is_ego');
+    expect(offered).not.toContain('hasConditionX');
   });
 
   /**
@@ -255,12 +277,13 @@ describe('the diseases a narrative pedigree defines', () => {
       conditionNotes: 'text',
     });
 
-    const dialog = await addDisease(harness);
-    const picker = await dialog.findByRole('combobox', {
-      name: 'Affected-status attribute',
+    await addDisease(harness);
+    const offered = await waitFor(async () => {
+      const list = await offeredAttributesOf(harness);
+      expect(list).toContain('hasConditionZ');
+      return list;
     });
-    await waitFor(() => expect(optionsOf(picker)).toContain('hasConditionZ'));
-    expect(optionsOf(picker)).not.toContain('conditionNotes');
+    expect(offered).not.toContain('conditionNotes');
   });
 
   /**
@@ -301,13 +324,8 @@ describe('the diseases a narrative pedigree defines', () => {
     const harness = openFixture();
 
     const dialog = await openDisease(harness);
-    expect(
-      optionsOf(
-        await dialog.findByRole('combobox', {
-          name: 'Affected-status attribute',
-        }),
-      ),
-    ).toContain('hasConditionX');
+    await dialog.findByText('Affected-status attribute', { selector: 'label' });
+    expect(await offeredAttributesOf(harness)).toContain('hasConditionX');
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
     expect(await harness.submit()).not.toBeNull();

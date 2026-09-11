@@ -10,6 +10,7 @@ import {
   mountedAs,
   authorsDateSettingsFromField,
   authorsValuesFromField,
+  collectAttribute,
   openField,
   removeRow,
   stageNameInput,
@@ -115,10 +116,7 @@ describe('the editor for a form about each relationship', () => {
     );
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'edgeNotes',
-    );
+    await collectAttribute(harness, dialog, 'edgeNotes');
     await writeInto(
       harness,
       dialog.getByRole('textbox', { name: 'Question text' }),

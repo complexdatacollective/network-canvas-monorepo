@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -9,6 +9,10 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../testing/attributePicker.ts';
 import { enIntl, esIntl } from '../../testing/i18n.ts';
 import { describeRule } from '../ruleDescription.ts';
 import { ruleDraftRefusal } from '../RuleEditorDialog.tsx';
@@ -214,8 +218,9 @@ describe('a rule being written when the language changes', () => {
         name: 'Ego - match one of the ego attributes.',
       }),
     );
-    await user.selectOptions(
-      await screen.findByRole('combobox', { name: /Ego attribute/ }),
+    await chooseAttributeById(
+      user,
+      await waitFor(() => attributeField('Ego attribute')),
       'egoName',
     );
 
@@ -228,8 +233,11 @@ describe('a rule being written when the language changes', () => {
         name: 'Ego: comprobar uno de los atributos de ego.',
       }),
     ).toBeChecked();
+    // Found by the field's Spanish label, and still holding the attribute the
+    // researcher chose: the picker shows the codebook's own name for it, which
+    // is the researcher's and is never translated.
     expect(
-      screen.getByRole('combobox', { name: /atributo de ego/i }),
-    ).toHaveValue('egoName');
+      within(attributeField('Atributo de ego')).getByText('EgoName'),
+    ).toBeVisible();
   });
 });

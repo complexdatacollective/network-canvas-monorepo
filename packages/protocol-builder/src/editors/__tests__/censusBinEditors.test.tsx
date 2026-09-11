@@ -5,6 +5,7 @@ import type { StageType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import type { StageEditorRegistry } from '../../stage-editor-contract.ts';
+import { attributeField } from '../../testing/attributePicker.ts';
 import {
   expectNoLocaleLeaks,
   protocolStrings,
@@ -89,7 +90,16 @@ const COMMON: SectionDoc = {
 
 /** One control a researcher writes a prompt key through. */
 type Control = Readonly<{
-  role: 'textbox' | 'combobox' | 'switch' | 'radio';
+  /**
+   * What the researcher reaches for.
+   *
+   * `attribute` is not an ARIA role: an attribute is chosen in a window the
+   * field's trigger opens, and that trigger is named for what it does —
+   * "Select attribute" — rather than for the question it answers. So the
+   * picker is named here the way the researcher reads it, by the label of the
+   * FIELD, and found through that.
+   */
+  role: 'textbox' | 'combobox' | 'switch' | 'radio' | 'attribute';
   /** Its accessible name, as the researcher reads it. */
   name: string;
   /**
@@ -223,7 +233,7 @@ const NAME_GENERATOR_PROMPT_CONTROLS: Readonly<
 > = {
   text: [{ role: 'textbox', name: 'Prompt text' }],
   additionalAttributes: [
-    { role: 'combobox', name: 'Create or select an attribute' },
+    { role: 'attribute', name: 'Create or select an attribute' },
     { role: 'radio', name: 'True', checked: true },
   ],
 };
@@ -349,7 +359,7 @@ const CASES: readonly EditorCase[] = [
     authoredBy: {
       text: [{ role: 'textbox', name: 'Prompt text' }],
       createEdge: [{ role: 'radio', name: 'knows', checked: true }],
-      edgeVariable: [{ role: 'combobox', name: 'Attribute' }],
+      edgeVariable: [{ role: 'attribute', name: 'Attribute' }],
       negativeLabel: [{ role: 'textbox', name: 'Decline answer' }],
     },
     rewrite: {
@@ -430,7 +440,7 @@ const CASES: readonly EditorCase[] = [
     prompt: ORDINAL_BIN_PROMPT,
     authoredBy: {
       text: [{ role: 'textbox', name: 'Prompt text' }],
-      variable: [{ role: 'combobox', name: 'Attribute' }],
+      variable: [{ role: 'attribute', name: 'Attribute' }],
       // `ord-color-seq-1` is the first swatch of the schema's own sequence.
       color: [{ role: 'radio', name: 'Sea Green', checked: true }],
       bucketSortOrder: sortRuleControls(
@@ -472,11 +482,11 @@ const CASES: readonly EditorCase[] = [
     prompt: CATEGORICAL_BIN_PROMPT,
     authoredBy: {
       text: [{ role: 'textbox', name: 'Prompt text' }],
-      variable: [{ role: 'combobox', name: 'Attribute' }],
+      variable: [{ role: 'attribute', name: 'Attribute' }],
       otherVariable: [
         { role: 'switch', name: 'A bin for anything else', checked: true },
         {
-          role: 'combobox',
+          role: 'attribute',
           name: 'Attribute the answer is stored in',
           within: 'A bin for anything else',
         },
@@ -596,13 +606,30 @@ const CASES: readonly EditorCase[] = [
   },
 ];
 
+/** The two names an attribute picker's trigger goes by, held or not. */
+const isPickerTrigger = (name: string) =>
+  name === 'Select attribute' || name === 'Change attribute';
+
 /** Asserts one named control is mounted, and switched on where it must be. */
 function expectControl(control: Control): void {
-  const scope =
+  const scopeElement =
     control.within === undefined
-      ? screen
-      : within(screen.getByRole('region', { name: control.within }));
-  const found = scope.getAllByRole(control.role, { name: control.name });
+      ? document.body
+      : screen.getByRole('region', { name: control.within });
+  if (control.role === 'attribute') {
+    // Mounted means the researcher can reach the choice: the field is on
+    // screen AND it offers the trigger that opens the window, rather than the
+    // sentence a picker with nothing to offer shows in its place.
+    expect(
+      within(attributeField(control.name, scopeElement)).getByRole('button', {
+        name: isPickerTrigger,
+      }),
+    ).toBeInTheDocument();
+    return;
+  }
+  const found = within(scopeElement).getAllByRole(control.role, {
+    name: control.name,
+  });
   if (control.checked === true) {
     for (const element of found) expect(element).toBeChecked();
   }

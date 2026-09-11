@@ -135,12 +135,6 @@ export function familyMemberCodebook(
   return { ...definition, variables: next };
 }
 
-/** The attributes a native picker is currently offering, by their ids. */
-export const optionsOf = (element: HTMLElement): string[] =>
-  [...element.querySelectorAll('option')]
-    .map((option) => option.value)
-    .filter((value) => value !== '');
-
 /** Opens one disease row and answers with its dialog. */
 export const openDisease = async (
   harness: StageEditorHarness,

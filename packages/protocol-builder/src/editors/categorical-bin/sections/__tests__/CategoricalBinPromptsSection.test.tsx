@@ -2,11 +2,34 @@ import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import {
+  attributeField,
+  chooseAttributeById,
+  offeredAttributes,
+} from '../../../../testing/attributePicker.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import CategoricalBinPromptsSection from '../CategoricalBinPromptsSection.tsx';
+
+/** The label of the field the bins' own attribute is chosen in. */
+const BINS_LABEL = 'Attribute';
+
+/** The two names the picker's trigger goes by, held or not. */
+const TRIGGER = /^(Select|Change) attribute$/u;
+
+/**
+ * The field the bins' attribute is chosen in, once the prompt has drawn it.
+ *
+ * A scope rather than a control: the attribute is picked in a window the
+ * field's trigger opens, so everything a test does to it, it does through
+ * here.
+ */
+const findBinsField = async (): Promise<HTMLElement> => {
+  await screen.findByText(BINS_LABEL, { selector: 'label' });
+  return attributeField(BINS_LABEL);
+};
 
 const openSection = () => ({
   stageId: 'categorical-bin-1' as const,
@@ -42,13 +65,13 @@ describe('the questions a categorical bin asks', () => {
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
 
-    const picker = await screen.findByRole('combobox', { name: 'Attribute' });
-    expect(
-      [...picker.querySelectorAll('option')]
-        .map((option) => option.value)
-        .filter((value) => value !== ''),
-    ).toEqual(['contactType']);
-    expect(picker).toHaveValue('contactType');
+    const picker = await findBinsField();
+    expect(await offeredAttributes(harness.user, picker)).toEqual([
+      'contactType',
+    ]);
+    await waitFor(() =>
+      expect(within(picker).getByText('contactType')).toBeVisible(),
+    );
   });
 
   /**
@@ -104,7 +127,9 @@ describe('the questions a categorical bin asks', () => {
         'This type has no categorical attributes yet. Create one to say what the bins are.',
       ),
     ).toBeInTheDocument();
-    expect(dialog.queryByRole('combobox', { name: 'Attribute' })).toBeNull();
+    // Nothing to open a window over, either: with nothing to choose and no way
+    // to create one here, the field says so in place of its trigger.
+    expect(dialog.queryByRole('button', { name: TRIGGER })).toBeNull();
     expect(dialog.queryByText('contactStyle')).toBeNull();
   });
 
@@ -145,8 +170,9 @@ describe('the questions a categorical bin asks', () => {
       await screen.findByRole('textbox', { name: 'Prompt text' }),
       'Who most?',
     );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await findBinsField(),
       'contactType',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -179,13 +205,14 @@ describe('the questions a categorical bin asks', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findBinsField();
     expect(
       screen.getByRole('switch', { name: 'A bin for anything else' }),
     ).toBeDisabled();
 
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributeField(BINS_LABEL),
       'contactType',
     );
 
@@ -230,11 +257,13 @@ describe('the questions a categorical bin asks', () => {
         screen.getByRole('switch', { name: 'A bin for anything else' }),
       ).toBeChecked(),
     );
-    expect(
-      screen.getByRole('combobox', {
-        name: 'Attribute the answer is stored in',
-      }),
-    ).toHaveValue('relationship_to_ego');
+    await waitFor(() =>
+      expect(
+        within(attributeField('Attribute the answer is stored in')).getByText(
+          'relationship_to_ego',
+        ),
+      ).toBeVisible(),
+    );
     expect(
       screen.getByRole('textbox', { name: 'Bin label' }),
     ).toHaveTextContent('Other');
@@ -448,7 +477,7 @@ describe('a categorical bin prompt whose attributes are not the kind it needs', 
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findBinsField();
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(
@@ -546,7 +575,7 @@ describe('a categorical bin with more bins than fit on one screen', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findBinsField();
     if (followUpBin) {
       await waitFor(() =>
         expect(

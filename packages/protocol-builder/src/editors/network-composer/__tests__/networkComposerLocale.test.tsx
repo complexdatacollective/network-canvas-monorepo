@@ -1,6 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { attributeField } from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   composerEditor,
@@ -45,14 +46,23 @@ describe('the network composer sections, read in Spanish', () => {
       'Atributos de nodo',
       'Vínculos',
     ]);
-    expect(
-      screen.getByRole('combobox', {
-        name: 'Atributo que se rellena al añadir un nodo',
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('combobox', { name: 'Atributo de agrupación' }),
-    ).toBeInTheDocument();
+    // Each attribute is chosen in a window its field's trigger opens, so the
+    // control is named by the field's own label — which is what
+    // `attributeField` finds, and what fails here if a section held an English
+    // string instead.
+    const quickAdd = attributeField(
+      'Atributo que se rellena al añadir un nodo',
+    );
+    // The stage arrives holding one, so its trigger says the word for changing
+    // that choice rather than the word for making one: the picker's own words
+    // come from the same catalog as the label above it. Waited for, because
+    // the field is drawn before the stage's own value reaches it.
+    await waitFor(() =>
+      expect(
+        within(quickAdd).getByRole('button', { name: 'Cambiar atributo' }),
+      ).toBeInTheDocument(),
+    );
+    expect(attributeField('Atributo de agrupación')).toBeInTheDocument();
   });
 
   /**

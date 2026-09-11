@@ -15,6 +15,10 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../testing/attributePicker.ts';
 import type { RuleDraft } from '../rule.ts';
 import {
   describeRule,
@@ -205,8 +209,11 @@ const buildNodeAttributeRuleUpTo = async (
   );
   await user.click(await screen.findByRole('radio', { name: 'Person' }));
   await user.click(await screen.findByRole('option', { name: /Attribute/ }));
-  await user.selectOptions(
-    await screen.findByRole('combobox', { name: /Node attribute/ }),
+  // Chosen through the picker's own window, by the id the rule stores: what
+  // every test below reads back is the saved rule, not the words on screen.
+  await chooseAttributeById(
+    user,
+    await waitFor(() => attributeField('Node attribute')),
     attribute,
   );
   await user.selectOptions(
@@ -242,8 +249,9 @@ const buildEgoRuleUpTo = async (
       name: 'Ego - match one of the ego attributes.',
     }),
   );
-  await user.selectOptions(
-    await screen.findByRole('combobox', { name: /Ego attribute/ }),
+  await chooseAttributeById(
+    user,
+    await waitFor(() => attributeField('Ego attribute')),
     'egoName',
   );
   await user.selectOptions(
@@ -915,14 +923,15 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
 
     await openExistingRule(user);
 
-    const attribute = await screen.findByRole('combobox', {
-      name: /Node attribute/,
-    });
-    expect(attribute).toHaveValue('home');
+    const attribute = await waitFor(() => attributeField('Node attribute'));
+    // The rule's own choice is still held — the trigger offers to CHANGE it
+    // rather than to make one...
     expect(
-      within(attribute).getByRole('option', {
-        name: 'Home — cannot be used in a rule',
-      }),
+      within(attribute).getByRole('button', { name: 'Change attribute' }),
+    ).toBeInTheDocument();
+    // ...and it is shown named for what is wrong with it.
+    expect(
+      within(attribute).getByText('Home — cannot be used in a rule'),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -1273,10 +1282,7 @@ describe('a choice that invalidates the choices below it', () => {
       '30',
     );
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: /Node attribute/ }),
-      'height',
-    );
+    await chooseAttributeById(user, attributeField('Node attribute'), 'height');
 
     // The new attribute still offers "is greater than", so an operator left
     // standing here would be one carried over rather than one chosen — and the

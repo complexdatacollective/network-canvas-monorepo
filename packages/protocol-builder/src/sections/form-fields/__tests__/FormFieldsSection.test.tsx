@@ -13,6 +13,12 @@ import {
 import { draftAdditionalAttributeVariableIds } from '../../../codebook/variableValidation.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { protocolContextFromSections } from '../../../protocol-context.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+  offeredAttributes,
+  openAttributePicker,
+} from '../../../testing/attributePicker.ts';
 import type { InMemoryClient } from '../../../testing/host/createInMemoryHost.ts';
 import { fixtureMessage } from '../../../testing/i18n.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
@@ -59,6 +65,22 @@ vi.mock('../../fields/RichTextField.tsx', () => ({
  */
 const CREATE_NEW_ATTRIBUTE = '#create-new-attribute';
 
+/**
+ * A row's open editor: the queries scoped to it, and the element itself.
+ *
+ * The element is carried because the row editor is a `dialog` and the
+ * attribute picker opens a SECOND one on top of it — Base UI leaves the row's
+ * own popup in the accessibility tree underneath, so "the dialog on screen"
+ * names two things from the moment the window opens. A test that reaches back
+ * into the row names the element it captured instead, and the window is
+ * reached through the shared picker helpers, which find it by the mark the
+ * spotlight puts on its own popup.
+ */
+type RowDialog = ReturnType<typeof within> & { element: HTMLElement };
+
+const rowDialog = (element: HTMLElement): RowDialog =>
+  Object.assign(within(element), { element });
+
 /** Opens a row's editor. Several rows carry the same affordance, so which. */
 const openField = async (
   harness: ReturnType<typeof renderStageEditor>,
@@ -68,13 +90,36 @@ const openField = async (
   const trigger = screen.getAllByRole('button', { name })[index];
   if (trigger === undefined) throw new Error(`There is no "${name}" ${index}.`);
   await harness.user.click(trigger);
-  return within(await screen.findByRole('dialog'));
+  return rowDialog(await screen.findByRole('dialog'));
 };
 
-const offeredAttributes = (dialog: ReturnType<typeof within>) =>
-  within(dialog.getByRole('combobox', { name: 'Attribute' }))
-    .getAllByRole('option')
-    .map((option) => (option as HTMLOptionElement).value);
+/**
+ * The row's Attribute picker, as the field the shared helpers work from.
+ *
+ * The control is a button that opens a window of attributes, not a select, so
+ * what a test holds is the FIELD around it — scoped to this row's dialog,
+ * because more than one of them can be on screen.
+ */
+const attributePicker = (dialog: RowDialog): HTMLElement =>
+  attributeField('Attribute', dialog.element);
+
+/** The name the picker shows for whatever the row currently collects. */
+const collectedAttributeName = (dialog: RowDialog, name: string) =>
+  within(attributePicker(dialog)).getByText(name);
+
+/**
+ * The button that opens the picker's window, under either of its two names.
+ *
+ * It says what it does rather than which question it answers, and which of the
+ * two it says depends on whether the row has chosen anything yet — so a test
+ * about where focus lands names both.
+ */
+const attributeTrigger = (dialog: RowDialog): HTMLElement =>
+  within(attributePicker(dialog)).getByRole('button', {
+    name: (accessibleName: string) =>
+      accessibleName === 'Select attribute' ||
+      accessibleName === 'Change attribute',
+  });
 
 /**
  * Fills in a field that collects an attribute nobody has declared yet, and
@@ -86,8 +131,9 @@ const addInventedAttribute = async (
   attributeName: string,
 ) => {
   const dialog = await openField(harness, 'Create new form field');
-  await harness.user.selectOptions(
-    dialog.getByRole('combobox', { name: 'Attribute' }),
+  await chooseAttributeById(
+    harness.user,
+    attributePicker(dialog),
     CREATE_NEW_ATTRIBUTE,
   );
   await harness.user.type(
@@ -229,10 +275,7 @@ describe('the fields a form collects', () => {
     });
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'age',
-    );
+    await chooseAttributeById(harness.user, attributePicker(dialog), 'age');
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
       'How old are they?',
@@ -266,7 +309,10 @@ describe('the fields a form collects', () => {
     });
 
     const dialog = await openField(harness, 'Create new form field');
-    const offered = offeredAttributes(dialog);
+    const offered = await offeredAttributes(
+      harness.user,
+      attributePicker(dialog),
+    );
 
     expect(offered).toContain('age');
     expect(offered).not.toContain('highlighted');
@@ -348,7 +394,9 @@ describe('the fields a form collects', () => {
     });
 
     const dialog = await openField(harness, 'Edit field');
-    expect(offeredAttributes(dialog)).toContain('ego_name');
+    expect(
+      await offeredAttributes(harness.user, attributePicker(dialog)),
+    ).toContain('ego_name');
     await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
@@ -382,8 +430,9 @@ describe('the fields a form collects', () => {
     });
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributePicker(dialog),
       CREATE_NEW_ATTRIBUTE,
     );
     await harness.user.selectOptions(
@@ -407,7 +456,10 @@ describe('the fields a form collects', () => {
     const dialog = await openField(harness, 'Edit field');
     // The relationship's own attributes, and none of a person's: which
     // codebook a form reads is the whole of what `subject` decides.
-    const offered = offeredAttributes(dialog);
+    const offered = await offeredAttributes(
+      harness.user,
+      attributePicker(dialog),
+    );
     expect(offered).toContain('edgeNotes');
     expect(offered).not.toContain('name');
     await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
@@ -501,7 +553,9 @@ describe('the fields a form collects', () => {
     });
 
     const dialog = await openField(harness, 'Create new form field');
-    expect(offeredAttributes(dialog)).toContain('nickname');
+    expect(
+      await offeredAttributes(harness.user, attributePicker(dialog)),
+    ).toContain('nickname');
 
     await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
@@ -629,8 +683,9 @@ describe('the fields a form collects', () => {
 
     // Already collected with a text box, so the codebook has nothing to write:
     // this is about the dialog letting go, not about a control being recorded.
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributePicker(dialog),
       'relationship_to_ego',
     );
 
@@ -803,10 +858,7 @@ describe('a codebook write a field needs, refused', () => {
     const dialog = await openField(harness, 'Create new form field');
     // An attribute the codebook records no control for, so settling one here
     // is a codebook write rather than a repeat of what it already says.
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'age',
-    );
+    await chooseAttributeById(harness.user, attributePicker(dialog), 'age');
     await dialog.findByRole('combobox', { name: 'Input control' });
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
@@ -892,7 +944,10 @@ describe('an attribute the open stage itself writes unvalidated', () => {
     });
 
     const dialog = await openField(harness, 'Create new form field');
-    const offered = offeredAttributes(dialog);
+    const offered = await offeredAttributes(
+      harness.user,
+      attributePicker(dialog),
+    );
 
     // Not the empty picker: everything else about this subject is still there.
     expect(offered).toContain('age');
@@ -1028,7 +1083,9 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
 
     // Nothing writes `flagged` unvalidated yet, here or anywhere else.
     const before = await openField(harness, 'Create new form field');
-    expect(offeredAttributes(before)).toContain('flagged');
+    expect(
+      await offeredAttributes(harness.user, attributePicker(before)),
+    ).toContain('flagged');
     await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
@@ -1037,7 +1094,10 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
     act(() => handle.bind?.());
 
     const after = await openField(harness, 'Create new form field');
-    const offered = offeredAttributes(after);
+    const offered = await offeredAttributes(
+      harness.user,
+      attributePicker(after),
+    );
     // Not the empty picker: everything else about this subject is still there.
     expect(offered).toContain('age');
     expect(offered).not.toContain('flagged');
@@ -1062,7 +1122,9 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
     });
 
     const before = await openField(harness, 'Create new form field');
-    expect(offeredAttributes(before)).not.toContain('flagged');
+    expect(
+      await offeredAttributes(harness.user, attributePicker(before)),
+    ).not.toContain('flagged');
     await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryAllByRole('dialog')).toHaveLength(0),
@@ -1071,14 +1133,13 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
     act(() => handle.unbind?.());
 
     const after = await openField(harness, 'Create new form field');
-    expect(offeredAttributes(after)).toContain('flagged');
+    expect(
+      await offeredAttributes(harness.user, attributePicker(after)),
+    ).toContain('flagged');
 
     // And the save-time gate asks the same question of the same two sources,
     // so the row it now offers is a row that commits.
-    await harness.user.selectOptions(
-      after.getByRole('combobox', { name: 'Attribute' }),
-      'flagged',
-    );
+    await chooseAttributeById(harness.user, attributePicker(after), 'flagged');
     await harness.user.type(
       after.getByRole('textbox', { name: 'Question text' }),
       'Are they flagged?',
@@ -1103,10 +1164,7 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
     });
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'flagged',
-    );
+    await chooseAttributeById(harness.user, attributePicker(dialog), 'flagged');
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
       'Are they flagged?',
@@ -1146,11 +1204,10 @@ describe('an attribute the open stage’s DRAFT writes unvalidated', () => {
     act(() => handle.bind?.());
 
     const dialog = await openField(harness, 'Create new form field');
-    expect(offeredAttributes(dialog)).toContain('flagged');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'flagged',
-    );
+    expect(
+      await offeredAttributes(harness.user, attributePicker(dialog)),
+    ).toContain('flagged');
+    await chooseAttributeById(harness.user, attributePicker(dialog), 'flagged');
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
       'Are they flagged?',
@@ -1285,7 +1342,10 @@ describe('a form the stage keeps somewhere other than `form.fields`', () => {
     });
 
     const dialog = await openField(harness, 'Create new form field');
-    const offered = offeredAttributes(dialog);
+    const offered = await offeredAttributes(
+      harness.user,
+      attributePicker(dialog),
+    );
 
     // A family member's attributes, not a person's: `nodeConfig.type` is the
     // only place this interface says which codebook the form collects into,
@@ -1473,11 +1533,12 @@ const nameBothAnswers = async (
  */
 const createContactSetting = async (
   harness: ReturnType<typeof renderStageEditor>,
-  dialog: ReturnType<typeof within>,
+  dialog: RowDialog,
   name = 'contact_setting',
 ) => {
-  await harness.user.selectOptions(
-    dialog.getByRole('combobox', { name: 'Attribute' }),
+  await chooseAttributeById(
+    harness.user,
+    attributePicker(dialog),
     CREATE_NEW_ATTRIBUTE,
   );
   await harness.user.selectOptions(
@@ -1639,8 +1700,9 @@ const addFieldCollecting = async (
   prompt: string,
 ) => {
   const creating = await openField(harness, 'Create new form field');
-  await harness.user.selectOptions(
-    creating.getByRole('combobox', { name: 'Attribute' }),
+  await chooseAttributeById(
+    harness.user,
+    attributePicker(creating),
     variableId,
   );
   await harness.user.type(
@@ -1696,16 +1758,15 @@ describe('the codebook an attribute a form field collects lives in', () => {
         screen.queryByRole('button', { name: 'Create attribute' }),
       ).toBeNull(),
     );
-    expect(document.activeElement).toBe(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-    );
+    expect(document.activeElement).toBe(attributeTrigger(dialog));
 
     // The row is left collecting what was just invented for it: the researcher
     // asked for an attribute they did not have, and the answer to "which one
-    // does this field collect?" is the one they finished authoring.
-    expect(dialog.getByRole('combobox', { name: 'Attribute' })).toHaveValue(
-      created[0],
-    );
+    // does this field collect?" is the one they finished authoring. Read as
+    // the name the picker shows, which is the only account of the held id the
+    // closed control gives — and an id it could not resolve would read as
+    // "not available here" rather than as the attribute just authored.
+    expect(collectedAttributeName(dialog, 'contact_setting')).toBeVisible();
   });
 
   /**
@@ -1732,8 +1793,9 @@ describe('the codebook an attribute a form field collects lives in', () => {
     const variableId = seedContactSetting(harness);
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributePicker(dialog),
       variableId,
     );
     await harness.user.selectOptions(
@@ -1808,8 +1870,9 @@ describe('the codebook an attribute a form field collects lives in', () => {
     const variableId = seedContactSetting(harness);
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributePicker(dialog),
       variableId,
     );
     await harness.user.click(
@@ -1887,8 +1950,9 @@ describe('the codebook an attribute a form field collects lives in', () => {
     const variableId = seedContactSetting(harness);
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributePicker(dialog),
       variableId,
     );
     await harness.user.click(
@@ -2204,8 +2268,9 @@ describe('the codebook an attribute a form field collects lives in', () => {
     });
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributePicker(dialog),
       CREATE_NEW_ATTRIBUTE,
     );
     await harness.user.selectOptions(
@@ -2345,9 +2410,8 @@ describe('rebinding a form field to another attribute', () => {
     collectNotesInATextArea(harness);
 
     const dialog = await openField(harness, 'Create new form field');
-    const attribute = dialog.getByRole('combobox', { name: 'Attribute' });
 
-    await harness.user.selectOptions(attribute, 'notes');
+    await chooseAttributeById(harness.user, attributePicker(dialog), 'notes');
     expect(
       await dialog.findByRole('combobox', { name: 'Input control' }),
     ).toHaveValue('TextArea');
@@ -2355,10 +2419,10 @@ describe('rebinding a form field to another attribute', () => {
     // Both attributes are text, so both offer the same two controls and the
     // field is never unmounted between them: whatever the control says now is
     // what the row will write to `name`.
-    await harness.user.selectOptions(attribute, 'name');
+    await chooseAttributeById(harness.user, attributePicker(dialog), 'name');
     await waitFor(() => expect(inputControl(dialog)).toHaveValue('Text'));
 
-    await harness.user.selectOptions(attribute, 'notes');
+    await chooseAttributeById(harness.user, attributePicker(dialog), 'notes');
     await waitFor(() => expect(inputControl(dialog)).toHaveValue('TextArea'));
   });
 
@@ -2370,10 +2434,9 @@ describe('rebinding a form field to another attribute', () => {
     collectNotesInATextArea(harness);
 
     const dialog = await openField(harness, 'Create new form field');
-    const attribute = dialog.getByRole('combobox', { name: 'Attribute' });
-    await harness.user.selectOptions(attribute, 'notes');
+    await chooseAttributeById(harness.user, attributePicker(dialog), 'notes');
     await dialog.findByRole('combobox', { name: 'Input control' });
-    await harness.user.selectOptions(attribute, 'name');
+    await chooseAttributeById(harness.user, attributePicker(dialog), 'name');
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Question text' }),
       'What are they called?',
@@ -2403,8 +2466,9 @@ describe('rebinding a form field to another attribute', () => {
     });
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributePicker(dialog),
       CREATE_NEW_ATTRIBUTE,
     );
     const kind = await dialog.findByRole('combobox', {
@@ -2677,15 +2741,23 @@ describe('an attribute id that collides with the create option', () => {
 
     const dialog = await openField(harness, 'Create new form field');
 
-    expect(
-      offeredAttributes(dialog).filter((value) => value === COLLIDING_ID),
-    ).toEqual([COLLIDING_ID]);
+    const offered = await offeredAttributes(
+      harness.user,
+      attributePicker(dialog),
+    );
+    expect(offered.filter((value) => value === COLLIDING_ID)).toEqual([
+      COLLIDING_ID,
+    ]);
     // And the create option is still there, under a value the codebook could
     // not have given an attribute even if a researcher had tried.
-    const createOption = within(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-    ).getByRole('option', { name: 'Create a new attribute…' });
-    expect((createOption as HTMLOptionElement).value).not.toMatch(
+    const pickerWindow = await openAttributePicker(
+      harness.user,
+      attributePicker(dialog),
+    );
+    const createOption = within(pickerWindow).getByRole('option', {
+      name: 'Create a new attribute…',
+    });
+    expect(createOption.getAttribute('data-attribute-id')).not.toMatch(
       /^[a-zA-Z0-9._:-]+$/,
     );
   });
@@ -2699,8 +2771,9 @@ describe('an attribute id that collides with the create option', () => {
     const before = Object.keys(personVariables(harness)).length;
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributePicker(dialog),
       COLLIDING_ID,
     );
     // The attribute exists, so the row has nothing to name and nothing to
@@ -2827,10 +2900,7 @@ describe('an attribute that stops being collectable under an open row', () => {
     deleteFromTheCodebook(harness, 'relationship_to_ego');
     await dialog.findByText(NO_WAY_TO_ANSWER);
 
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'name',
-    );
+    await chooseAttributeById(harness.user, attributePicker(dialog), 'name');
     await waitFor(() =>
       expect(dialog.queryByText(NO_WAY_TO_ANSWER)).toBeNull(),
     );
@@ -2910,9 +2980,7 @@ describe('closing a codebook editor whose trigger has gone', () => {
     );
 
     await closeTheEditor(harness);
-    expect(document.activeElement).toBe(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-    );
+    expect(document.activeElement).toBe(attributeTrigger(dialog));
   });
 
   it('returns to the row’s picker when the attribute is deleted', async () => {
@@ -2939,9 +3007,7 @@ describe('closing a codebook editor whose trigger has gone', () => {
     );
 
     await closeTheEditor(harness);
-    expect(document.activeElement).toBe(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-    );
+    expect(document.activeElement).toBe(attributeTrigger(dialog));
   });
 });
 
@@ -3216,8 +3282,9 @@ describe('inventing an attribute answered on a scale', () => {
     harness: ReturnType<typeof renderStageEditor>,
   ) => {
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributePicker(dialog),
       CREATE_NEW_ATTRIBUTE,
     );
     await harness.user.selectOptions(
@@ -3587,22 +3654,18 @@ describe('the control a row saves for the attribute it finally collects', () => 
 
   type Route = (
     harness: ReturnType<typeof renderStageEditor>,
-    dialog: ReturnType<typeof within>,
+    dialog: RowDialog,
   ) => Promise<Collected>;
 
   const chooseAttribute = (
     harness: ReturnType<typeof renderStageEditor>,
-    dialog: ReturnType<typeof within>,
+    dialog: RowDialog,
     value: string,
-  ) =>
-    harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      value,
-    );
+  ) => chooseAttributeById(harness.user, attributePicker(dialog), value);
 
   const chooseControl = async (
     harness: ReturnType<typeof renderStageEditor>,
-    dialog: ReturnType<typeof within>,
+    dialog: RowDialog,
     value: string,
   ) =>
     harness.user.selectOptions(
@@ -3631,7 +3694,7 @@ describe('the control a row saves for the attribute it finally collects', () => 
    */
   const chooseAControlForTheSeededAttribute = async (
     harness: ReturnType<typeof renderStageEditor>,
-    dialog: ReturnType<typeof within>,
+    dialog: RowDialog,
   ) => {
     await chooseAttribute(harness, dialog, SEEDED_CONTACT_SETTING);
     await chooseControl(harness, dialog, 'ToggleButtonGroup');
@@ -3640,7 +3703,7 @@ describe('the control a row saves for the attribute it finally collects', () => 
   /** Names the kind of answer an invented attribute holds. */
   const chooseKind = async (
     harness: ReturnType<typeof renderStageEditor>,
-    dialog: ReturnType<typeof within>,
+    dialog: RowDialog,
     kind: string,
   ) => {
     await chooseAttribute(harness, dialog, CREATE_NEW_ATTRIBUTE);

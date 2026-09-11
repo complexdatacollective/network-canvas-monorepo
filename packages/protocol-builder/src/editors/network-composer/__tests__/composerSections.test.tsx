@@ -2,6 +2,11 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { unvalidatedElsewhereMessage } from '../../../codebook/variableValidation.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+  offeredAttributes,
+} from '../../../testing/attributePicker.ts';
 import { readMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
@@ -20,6 +25,17 @@ const KNOWS_ENTRY = {
   id: 'composer-edge-1',
   subject: { entity: 'edge', type: 'knows' },
 };
+
+/**
+ * The field one attribute is chosen in, by the label of the question it
+ * answers.
+ *
+ * A scope rather than a control: every attribute here is picked in a window
+ * the field's trigger opens, so everything a test does to a picker it does
+ * through the field. The row's own field is labelled "Attribute", which no
+ * other label on these sections is.
+ */
+const picker = (label: string): HTMLElement => attributeField(label);
 
 /** The node form is a capability, so a stage that has none opens with it off. */
 const switchOnNodeForm = async (
@@ -261,10 +277,7 @@ describe('what a network composer lets the participant build', () => {
       }),
     );
     const dialog = within(await screen.findByRole('dialog'));
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'edgeNotes',
-    );
+    await chooseAttributeById(harness.user, picker('Attribute'), 'edgeNotes');
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -328,8 +341,9 @@ describe('what a network composer lets the participant build', () => {
     await switchOnNodeForm(harness);
 
     const dialog = await addRow(harness, 'Create new node attribute field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      picker('Attribute'),
       'composerName',
     );
     await waitFor(() =>
@@ -384,13 +398,12 @@ describe('what a network composer lets the participant build', () => {
     );
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
-    expect(
-      dialog.queryByRole('option', { name: 'contactType' }),
-    ).not.toBeInTheDocument();
+    await addRow(harness, 'Create new node attribute field');
+    const offered = await offeredAttributes(harness.user, picker('Attribute'));
+    expect(offered).not.toContain('contactType');
     // And something nothing on this stage claims still is, so the case is
     // about the grouping rather than about an empty list.
-    expect(dialog.getByRole('option', { name: 'age' })).toBeInTheDocument();
+    expect(offered).toContain('age');
   });
 
   /**
@@ -417,24 +430,21 @@ describe('what a network composer lets the participant build', () => {
       ],
     });
 
-    const grouping = await screen.findByRole('combobox', {
-      name: 'Grouping attribute',
-    });
-    await waitFor(() =>
-      expect(
-        within(grouping).getByRole('option', { name: 'circle' }),
-      ).toBeInTheDocument(),
+    const grouping = await waitFor(() => picker('Grouping attribute'));
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, grouping)).toContain(
+        'circle',
+      ),
     );
-    await harness.user.selectOptions(grouping, 'circle');
+    await chooseAttributeById(harness.user, grouping, 'circle');
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
-    expect(
-      dialog.queryByRole('option', { name: 'circle' }),
-    ).not.toBeInTheDocument();
+    await addRow(harness, 'Create new node attribute field');
+    const offered = await offeredAttributes(harness.user, picker('Attribute'));
+    expect(offered).not.toContain('circle');
     // And something nothing on this stage claims still is, so the case is
     // about the pick rather than about an empty list.
-    expect(dialog.getByRole('option', { name: 'age' })).toBeInTheDocument();
+    expect(offered).toContain('age');
   });
 
   it('stops offering an attribute the node form collects to the grouping', async () => {
@@ -463,17 +473,15 @@ describe('what a network composer lets the participant build', () => {
       ],
     });
 
-    const grouping = await screen.findByRole('combobox', {
-      name: 'Grouping attribute',
-    });
-    await waitFor(() =>
-      expect(
-        within(grouping).getByRole('option', { name: 'circle' }),
-      ).toBeInTheDocument(),
+    const grouping = await waitFor(() => picker('Grouping attribute'));
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, grouping)).toContain(
+        'circle',
+      ),
     );
-    expect(
-      within(grouping).queryByRole('option', { name: 'contactType' }),
-    ).not.toBeInTheDocument();
+    expect(await offeredAttributes(harness.user, grouping)).not.toContain(
+      'contactType',
+    );
   });
 
   /**
@@ -534,15 +542,11 @@ describe('what a network composer lets the participant build', () => {
 
     // Bound here, not merely created: the researcher asked for it from this
     // control, so finding it in a list that has just grown is not the answer.
-    const picker = await screen.findByRole('combobox', {
-      name: 'Position attribute',
-    });
+    // Read off the field itself: what it SHOWS is the attribute it holds.
     await waitFor(() =>
       expect(
-        within(picker).getByRole('option', {
-          name: 'placedAt',
-        }),
-      ).toHaveProperty('selected', true),
+        within(picker('Position attribute')).getByText('placedAt'),
+      ).toBeVisible(),
     );
   });
 
@@ -635,14 +639,13 @@ describe('an attribute another stage starts writing mid-edit', () => {
     await switchOnNodeForm(harness);
 
     const dialog = await addRow(harness, 'Create new node attribute field');
-    const attribute = dialog.getByRole('combobox', { name: 'Attribute' });
     // The fixture's marking prompt already claims `highlighted`, so the picker
     // is not offering it — which is what makes the same picker offering it a
     // moment later the collaborator's change ARRIVING rather than a guess.
     expect(
-      within(attribute).queryByRole('option', { name: 'highlighted' }),
-    ).toBeNull();
-    await harness.user.selectOptions(attribute, 'flagged');
+      await offeredAttributes(harness.user, picker('Attribute')),
+    ).not.toContain('highlighted');
+    await chooseAttributeById(harness.user, picker('Attribute'), 'flagged');
 
     highlightInASociogram(harness, 'flagged');
     // Waited for rather than assumed: a save clicked before the change lands
@@ -651,10 +654,14 @@ describe('an attribute another stage starts writing mid-edit', () => {
     // value the row is holding would blank the control and write the blank
     // over the reference the researcher has to resolve — so the row's own gate
     // is the only thing left that can refuse it.
-    await within(attribute).findByRole('option', { name: 'highlighted' });
+    await waitFor(async () =>
+      expect(
+        await offeredAttributes(harness.user, picker('Attribute')),
+      ).toContain('highlighted'),
+    );
     expect(
-      within(attribute).getByRole('option', { name: 'flagged' }),
-    ).toBeInTheDocument();
+      await offeredAttributes(harness.user, picker('Attribute')),
+    ).toContain('flagged');
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
 
     // The dialog staying open IS the refusal, and the reason is the one the
@@ -720,10 +727,7 @@ describe('an attribute a collaborator retypes mid-edit', () => {
     await switchOnNodeForm(harness);
 
     const dialog = await addRow(harness, 'Create new node attribute field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'age',
-    );
+    await chooseAttributeById(harness.user, picker('Attribute'), 'age');
     const control = dialog.getByRole('combobox', { name: 'Input control' });
     // A number attribute arrives paired with the one control that can ask for
     // a number, which is what makes the pairing below the collaborator's doing.

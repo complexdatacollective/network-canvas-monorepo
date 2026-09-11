@@ -1,6 +1,7 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { attributeField } from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   openPrompt,
@@ -84,8 +85,14 @@ describe('the canvas sections, read in Spanish', () => {
     });
 
     const prompt = await openPrompt(harness, 0, 'Editar pregunta');
+    // The picker is a labelled field holding a trigger, so the label and the
+    // words on the button are two separate translations and both are asserted.
+    // This prompt already positions by an attribute, which is the state the
+    // trigger says "change" rather than "select" in.
     expect(
-      prompt.getByRole('combobox', { name: 'Atributo de posición' }),
+      within(
+        attributeField('Atributo de posición', screen.getByRole('dialog')),
+      ).getByRole('button', { name: 'Cambiar atributo' }),
     ).toBeInTheDocument();
     expect(
       prompt.getByRole('button', {

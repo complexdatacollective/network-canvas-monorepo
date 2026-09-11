@@ -9,6 +9,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId, sectionId } from '@codaco/studio-sync/taxonomy';
 
 import BuilderSection from '../../sections/BuilderSection.tsx';
+import {
+  attributeField,
+  openAttributePicker,
+} from '../../testing/attributePicker.ts';
 import type { InMemoryProtocolStore } from '../../testing/host/protocolStore.ts';
 import type { RuleDraft } from '../rule.ts';
 import type { RuleSetValue } from '../ruleSet.ts';
@@ -216,11 +220,12 @@ describe('the rule set field', () => {
       }),
     );
 
-    const attribute = await screen.findByRole('combobox', {
-      name: /Ego attribute/,
-    });
+    const picker = await openAttributePicker(
+      user,
+      await waitFor(() => attributeField('Ego attribute')),
+    );
     expect(
-      within(attribute).getByRole('option', { name: 'EgoName' }),
+      within(picker).getByRole('option', { name: 'EgoName' }),
     ).toBeInTheDocument();
   });
 

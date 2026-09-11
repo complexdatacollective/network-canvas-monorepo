@@ -6,12 +6,17 @@ import {
   missingSortPropertyLabel,
 } from '../../../../../fields/sortOrderOptions.ts';
 import { validatedElsewhereMessage } from '../../../../../form/arrayFields/crossClassPick.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../../../../testing/attributePicker.ts';
 import { enIntl, readMessage } from '../../../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
 import { sociogramPromptMessages } from '../sociogramPromptMessages.ts';
 import {
   collectInAForm,
   openPrompt,
+  promptAttributeField,
   personVariables,
   promptsOf,
   sociogramHolding,
@@ -93,8 +98,9 @@ describe('the tasks a sociogram sets', () => {
     await harness.user.click(
       prompt.getByRole('option', { name: /Mark the node/ }),
     );
-    await harness.user.selectOptions(
-      await prompt.findByRole('combobox', { name: 'Attribute marked' }),
+    await chooseAttributeById(
+      harness.user,
+      await promptAttributeField('Attribute marked'),
       'highlighted',
     );
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
@@ -156,8 +162,9 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
     await harness.user.click(
       prompt.getByRole('option', { name: /Mark the node/ }),
     );
-    await harness.user.selectOptions(
-      await prompt.findByRole('combobox', { name: 'Attribute marked' }),
+    await chooseAttributeById(
+      harness.user,
+      await promptAttributeField('Attribute marked'),
       'highlighted',
     );
 
@@ -167,9 +174,9 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
     // the row's own gate has to refuse from. Waited for rather than assumed:
     // a save clicked before the change lands is refused by nothing, which is
     // the defect this test exists for.
-    await prompt.findByRole('option', {
-      name: 'highlighted — this attribute is not available here',
-    });
+    await within(await promptAttributeField('Attribute marked')).findByText(
+      'highlighted — this attribute is not available here',
+    );
 
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
 
@@ -639,8 +646,9 @@ describe('what tapping a node does, against what the prompt already said', () =>
     for (const tap of scenario.taps) {
       await harness.user.click(prompt.getByRole('option', { name: tap }));
       if (tap === MARK && scenario.marks !== undefined) {
-        await harness.user.selectOptions(
-          await prompt.findByRole('combobox', { name: 'Attribute marked' }),
+        await chooseAttributeById(
+          harness.user,
+          await promptAttributeField('Attribute marked'),
           scenario.marks,
         );
       }
@@ -718,15 +726,27 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
     });
 
     // Created and BOUND: the picker holds the new attribute, so the prompt the
-    // researcher was writing is the one the attribute was created for.
+    // researcher was writing is the one the attribute was created for. The
+    // picker shows the researcher's NAME for it, and the prompt stores the id,
+    // so both are read — the field for what is on screen, and the saved stage
+    // for the reference that survives the dialog.
     const created = Object.entries(
       harness.hostCodebook().node?.person?.variables ?? {},
     ).find(([, variable]) => variable.name === 'second_canvas')?.[0];
     await waitFor(() =>
       expect(
-        prompt.getByRole('combobox', { name: 'Position attribute' }),
-      ).toHaveValue(created),
+        within(attributeField('Position attribute')).getByText('second_canvas'),
+      ).toBeInTheDocument(),
     );
+
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]?.layout).toEqual({
+      layoutVariable: created,
+    });
   });
 });
 

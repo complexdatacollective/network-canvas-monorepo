@@ -16,6 +16,8 @@ import AssignAttributes, {
   committedAttributeVariableIds,
   makeAssignAttributesValidation,
   type AttributeValue,
+  type CreateAttributeOutcome,
+  type CreateAttributeVariable,
 } from '../AssignAttributes.tsx';
 
 type HarnessUser = ReturnType<typeof userEvent.setup>;
@@ -97,7 +99,7 @@ function renderAttributeList(
   committed: unknown,
   extra?: Readonly<{
     picker?: ComponentType<Record<string, unknown>>;
-    onCreateVariable?: (variableName: string) => Promise<string | undefined>;
+    onCreateVariable?: CreateAttributeVariable;
   }>,
 ) {
   const controls: { setDisabled: (value: boolean) => void } = {
@@ -339,7 +341,7 @@ describe('a stage document holding something that is not a list', () => {
 describe('a variable created while the list is moving', () => {
   const openList = (
     attributes: readonly AttributeValue[],
-    onCreateVariable: (variableName: string) => Promise<string | undefined>,
+    onCreateVariable: CreateAttributeVariable,
   ) =>
     renderAttributeList(attributes, attributes, {
       picker: CreatingVariablePicker as ComponentType<Record<string, unknown>>,
@@ -368,7 +370,7 @@ describe('a variable created while the list is moving', () => {
   it('assigns the new attribute to the row it was created from', async () => {
     const { user, attributes } = openList(
       [{ variable: 'highlighted', value: true }],
-      () => Promise.resolve('invented'),
+      () => Promise.resolve({ status: 'created', variableId: 'invented' }),
     );
 
     await startCreating(user);
@@ -389,8 +391,9 @@ describe('a variable created while the list is moving', () => {
    */
   it('says where the attribute went when the list stops accepting changes', async () => {
     let finishCreation: (id: string) => void = () => undefined;
-    const created = new Promise<string | undefined>((resolve) => {
-      finishCreation = resolve;
+    const created = new Promise<CreateAttributeOutcome>((resolve) => {
+      finishCreation = (variableId: string) =>
+        resolve({ status: 'created', variableId });
     });
     const held = [{ variable: 'highlighted', value: true }];
     const { user, attributes, stopAcceptingChanges } = openList(
@@ -429,8 +432,9 @@ describe('a variable created while the list is moving', () => {
    */
   it('says where the attribute went when the row it was created from has gone', async () => {
     let finishCreation: (id: string) => void = () => undefined;
-    const created = new Promise<string | undefined>((resolve) => {
-      finishCreation = resolve;
+    const created = new Promise<CreateAttributeOutcome>((resolve) => {
+      finishCreation = (variableId: string) =>
+        resolve({ status: 'created', variableId });
     });
     const { user, attributes } = openList(
       [{ variable: 'highlighted', value: true }],
@@ -466,7 +470,7 @@ describe('a variable created while the list is moving', () => {
   it('answers a create the host refused with a refusal', async () => {
     const held = [{ variable: 'highlighted', value: true }];
     const { user, attributes } = openList(held, () =>
-      Promise.resolve(undefined),
+      Promise.resolve({ status: 'refused' }),
     );
 
     await startCreating(user);

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { attributeField } from '../../../testing/attributePicker.ts';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
@@ -68,12 +69,82 @@ const createFixture = () => ({
 const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
 
+/**
+ * A dialog, with the element it was found as.
+ *
+ * The element is carried because the attribute picker opens a SECOND dialog on
+ * top of a row editor, so "the dialog" is ambiguous while its window is up:
+ * the window is the one that is not this element.
+ */
+type OpenDialog = ReturnType<typeof within> & { element: HTMLElement };
+
 const openDialog = async (
   harness: ReturnType<typeof renderStageEditor>,
   name: string,
-) => {
+): Promise<OpenDialog> => {
   await harness.user.click(screen.getByRole('button', { name }));
-  return within(await screen.findByRole('dialog'));
+  const element = await screen.findByRole('dialog');
+  return Object.assign(within(element), { element });
+};
+
+/** The two names the attribute picker's trigger goes by, before and after. */
+const isPickerTrigger = (name: string) =>
+  name === 'Select attribute' || name === 'Change attribute';
+
+/**
+ * Opens the attribute picker of the field this row labels, and hands back the
+ * window it opened.
+ */
+const openPicker = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  dialog: OpenDialog,
+  label: string,
+): Promise<HTMLElement> => {
+  await harness.user.click(
+    within(attributeField(label, dialog.element)).getByRole('button', {
+      name: isPickerTrigger,
+    }),
+  );
+  return await waitFor(() => {
+    const window = screen
+      .getAllByRole('dialog')
+      .find((element) => element !== dialog.element);
+    if (window === undefined) {
+      throw new Error('the attribute window did not open');
+    }
+    return window;
+  });
+};
+
+const expectWindowClosed = async (window: HTMLElement) => {
+  await waitFor(() => {
+    if (window.isConnected) throw new Error('the attribute window is open');
+  });
+};
+
+/**
+ * Points that field at the attribute the codebook files under this id.
+ *
+ * By id rather than by name because the id is what the row stores, and the
+ * window shows only the researcher's name for it.
+ */
+const choosePickerOption = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  dialog: OpenDialog,
+  label: string,
+  attributeId: string,
+) => {
+  const window = await openPicker(harness, dialog, label);
+  const row = window.querySelector<HTMLElement>(
+    `[role="option"][data-attribute-id="${attributeId}"]`,
+  );
+  if (row === null) {
+    throw new Error(`The window is not offering "${attributeId}".`);
+  }
+  await harness.user.click(row);
+  // The pick is written as the window closes, so nothing may carry on while
+  // it is still covering the row.
+  await expectWindowClosed(window);
 };
 
 /**
@@ -156,10 +227,7 @@ describe('the name generator editor', () => {
       'Add a person',
     );
     const field = await openDialog(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      field.getByRole('combobox', { name: 'Attribute' }),
-      'name',
-    );
+    await choosePickerOption(harness, field, 'Attribute', 'name');
     await writeInto(
       harness,
       field.getByRole('textbox', { name: 'Question text' }),
@@ -467,11 +535,22 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
     });
   };
 
-  /** Which attributes a form-field dialog is offering. */
-  const offeredAttributes = (dialog: ReturnType<typeof within>): string[] =>
-    within(dialog.getByRole('combobox', { name: 'Attribute' }))
-      .getAllByRole('option')
-      .map((option) => (option as HTMLOptionElement).value);
+  /**
+   * Which attributes a form-field dialog is offering, by the id choosing one
+   * would store. Leaves the window as it found it: closed.
+   */
+  const offeredAttributes = async (
+    harness: ReturnType<typeof renderStageEditor>,
+    dialog: OpenDialog,
+  ): Promise<string[]> => {
+    const window = await openPicker(harness, dialog, 'Attribute');
+    const offered = [...window.querySelectorAll('[role="option"]')].map(
+      (row) => row.getAttribute('data-attribute-id') ?? '',
+    );
+    await harness.user.keyboard('{Escape}');
+    await expectWindowClosed(window);
+    return offered;
+  };
 
   it('offers the form an attribute nothing writes yet', async () => {
     const harness = mountFixture();
@@ -479,7 +558,7 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
     addFreeAttribute(harness);
 
     const dialog = await openDialog(harness, 'Create new form field');
-    expect(offeredAttributes(dialog)).toContain(FREE_ATTRIBUTE);
+    expect(await offeredAttributes(harness, dialog)).toContain(FREE_ATTRIBUTE);
   });
 
   it('withdraws it from the form the moment a prompt stamps it', async () => {
@@ -494,10 +573,10 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
     await harness.user.click(
       prompt.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    await harness.user.selectOptions(
-      await prompt.findByRole('combobox', {
-        name: 'Create or select an attribute',
-      }),
+    await choosePickerOption(
+      harness,
+      prompt,
+      'Create or select an attribute',
       FREE_ATTRIBUTE,
     );
     await harness.user.click(prompt.getByRole('radio', { name: 'True' }));
@@ -511,7 +590,7 @@ describe('a form field and a prompt stamp reaching for the same attribute', () =
     expectStageUntouched(harness);
 
     const after = await openDialog(harness, 'Create new form field');
-    const offered = offeredAttributes(after);
+    const offered = await offeredAttributes(harness, after);
     // Not the empty picker: everything else about this node type is still
     // offered, so the section is filtering rather than failing.
     expect(offered).toContain('flagged');

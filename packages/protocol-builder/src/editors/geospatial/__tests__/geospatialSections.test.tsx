@@ -4,6 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
+  attributeField,
+  chooseAttributeById,
+  offeredAttributes,
+} from '../../../testing/attributePicker.ts';
+import {
   expectMapboxMocked,
   mapsBuilt,
   resetMapboxMock,
@@ -55,23 +60,6 @@ const ALTER_FORM = sectionId({ kind: 'stage', stageId: 'alter-form-1' });
 
 /** The node type both of them are about. */
 const PERSON = sectionId({ kind: 'codebookNode', typeId: 'person' });
-
-/**
- * The attributes a prompt's dialog is offering, by id.
- *
- * Without the select's own "choose something" entry, which is presentation
- * rather than an attribute the researcher may record an answer in.
- */
-const offeredAttributes = (
-  dialog: ReturnType<typeof within>,
-): (string | undefined)[] =>
-  [
-    ...dialog
-      .getByRole('combobox', { name: 'Location attribute' })
-      .querySelectorAll('option'),
-  ]
-    .map((option) => option.value)
-    .filter((value) => value !== '');
 
 /**
  * Rewrites one section of the protocol as somebody else's change.
@@ -358,13 +346,11 @@ describe('the places a geospatial stage asks about', () => {
     );
     // The attribute the stage's own prompt already records is not among them:
     // this list is what is left.
-    await waitFor(() =>
-      expect(offeredAttributes(dialog)).toEqual(['workplace']),
-    );
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Location attribute' }),
+    const picker = attributeField('Location attribute');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([
       'workplace',
-    );
+    ]);
+    await chooseAttributeById(harness.user, picker, 'workplace');
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -395,8 +381,13 @@ describe('the places a geospatial stage asks about', () => {
     await harness.opened();
 
     const dialog = await openPrompt(harness, 'Create new prompt');
+    // No trigger at all rather than a window offering nothing: with nothing to
+    // choose and no way to create one from inside it, the field says so where
+    // the control would have been.
     expect(
-      dialog.queryByRole('combobox', { name: 'Location attribute' }),
+      within(attributeField('Location attribute')).queryByRole('button', {
+        name: /^(Select|Change) attribute$/,
+      }),
     ).toBeNull();
     expect(
       dialog.getByText(
@@ -420,8 +411,8 @@ describe('the places a geospatial stage asks about', () => {
     );
     const dialog = within(await screen.findByRole('dialog'));
     expect(
-      dialog.getByRole('combobox', { name: 'Location attribute' }),
-    ).toHaveValue('location');
+      within(attributeField('Location attribute')).getByText('location'),
+    ).toBeVisible();
 
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
@@ -460,10 +451,13 @@ describe('the places a geospatial stage asks about', () => {
       },
     }));
 
-    const dialog = await openPrompt(harness, 'Create new prompt');
-    await waitFor(() =>
-      expect(offeredAttributes(dialog)).toEqual(['workplace']),
-    );
+    await openPrompt(harness, 'Create new prompt');
+    expect(
+      await offeredAttributes(
+        harness.user,
+        attributeField('Location attribute'),
+      ),
+    ).toEqual(['workplace']);
   });
 
   /**
@@ -486,9 +480,12 @@ describe('the places a geospatial stage asks about', () => {
     addLocationAttribute(harness, 'workplace');
 
     const before = await openPrompt(harness, 'Create new prompt');
-    await waitFor(() =>
-      expect(offeredAttributes(before)).toEqual(['workplace']),
-    );
+    expect(
+      await offeredAttributes(
+        harness.user,
+        attributeField('Location attribute'),
+      ),
+    ).toEqual(['workplace']);
     await harness.user.click(before.getByRole('button', { name: 'Cancel' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -510,7 +507,9 @@ describe('the places a geospatial stage asks about', () => {
 
     const after = await openPrompt(harness, 'Create new prompt');
     expect(
-      after.queryByRole('combobox', { name: 'Location attribute' }),
+      within(attributeField('Location attribute')).queryByRole('button', {
+        name: /^(Select|Change) attribute$/,
+      }),
     ).toBeNull();
     expect(
       after.getByText(
@@ -529,6 +528,10 @@ describe('the places a geospatial stage asks about', () => {
     const harness = openEditor();
 
     const dialog = await openPrompt(harness, 'Create new prompt');
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Prompt text' }),
+      'Where were you born?',
+    );
     await harness.user.click(
       dialog.getByRole('button', { name: 'Create a new location attribute' }),
     );
@@ -553,11 +556,25 @@ describe('the places a geospatial stage asks about', () => {
     const created = Object.entries(
       harness.hostCodebook().node?.person?.variables ?? {},
     ).find(([, variable]) => variable.name === 'born')?.[0];
+    // The picker shows the researcher's NAME for the attribute, and the prompt
+    // stores its id, so both are read: the field for what is on screen, and the
+    // saved stage for the reference that outlives the dialog.
     await waitFor(() =>
       expect(
-        dialog.getByRole('combobox', { name: 'Location attribute' }),
-      ).toHaveValue(created),
+        within(attributeField('Location attribute')).getByText('born'),
+      ).toBeVisible(),
     );
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const request = await harness.submit();
+    const prompts = request?.stageDocument.prompts;
+    expect((Array.isArray(prompts) ? prompts : [])[1]).toMatchObject({
+      text: 'Where were you born?',
+      variable: created,
+    });
   });
 
   it('refuses a stage that asks nothing', async () => {
