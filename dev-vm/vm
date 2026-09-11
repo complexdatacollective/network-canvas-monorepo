@@ -46,6 +46,9 @@ cmd_up() {
     limactl start "$NAME"
   else
     limactl start --name "$NAME" --tty=false "$HERE/lima.yaml"
+    # Lima opens its multiplexed ssh connection before provisioning adds the
+    # user to the docker group; drop it so new sessions pick the group up.
+    ssh -O exit -F "$LIMA_HOME/$NAME/ssh.config" "lima-$NAME" >/dev/null 2>&1 || true
   fi
   exclude_from_backups
   printf '\nVM is up. Next: dev-vm/vm bootstrap (first time), then dev-vm/vm shell\n'

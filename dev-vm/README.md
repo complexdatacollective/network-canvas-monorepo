@@ -188,8 +188,11 @@ their upstream apt repositories at provisioning time.
 
 - **Provisioning failed**: `dev-vm/vm shell -- sudo cat /var/log/cloud-init-output.log`.
   Fix the script, then `dev-vm/vm rebuild`.
-- **`docker: permission denied`** right after the first boot: the group
-  membership applies to new logins; reconnect.
+- **`permission denied … docker.sock`**: the session predates the `docker`
+  group grant (Lima's multiplexed ssh connection was opened before
+  provisioning finished). `vm up` drops that connection after a first boot;
+  if it still happens, `ssh -O exit lima-nc`, then open a new shell (or
+  `newgrp docker` in the current one).
 - **`missing or unsuitable terminal: xterm-ghostty`** (or another terminal
   the guest's ncurses does not know): `dev-vm/vm bootstrap` copies the host's
   `$TERM` entry in; by hand it is
