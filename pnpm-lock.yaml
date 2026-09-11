@@ -383,6 +383,9 @@ importers:
       oxlint-tsgolint:
         specifier: ^7.0.2001
         version: 7.0.2001
+      playwright:
+        specifier: 'catalog:'
+        version: 1.63.0
       turbo:
         specifier: ^2.10.4
         version: 2.10.4

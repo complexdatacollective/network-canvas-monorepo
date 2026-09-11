@@ -20,6 +20,21 @@ const deadLinkChecker = readFileSync(
 const rootPackage = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
 );
+const deadLinkAction = parse(
+  readFileSync(
+    new URL('../.github/actions/dead-link-check/action.yml', import.meta.url),
+    'utf8',
+  ),
+);
+const refreshWorkflow = parse(
+  readFileSync(
+    new URL(
+      '../.github/workflows/dead-link-cache-refresh.yml',
+      import.meta.url,
+    ),
+    'utf8',
+  ),
+);
 const parsedWorkflow = parse(workflow);
 const snapshotWorkflow = readFileSync(
   new URL(
@@ -109,19 +124,19 @@ test('both public sites are crawled only for their generated release PRs', () =>
     'a change to either public site triggers both preview crawls',
   );
 
-  for (const [jobName, flag, siteName, startPath, reportName] of [
+  for (const [jobName, flag, siteName, crawlURL, reportName] of [
     [
       'docs-preview-checks',
       'docs',
       'documentation-dev',
-      'DOCS_URL',
+      '${{ steps.netlify-preview.outputs.url }}',
       'docs-dead-link-report',
     ],
     [
       'website-preview-checks',
       'website',
       'networkcanvasdotdev',
-      'WEBSITE_URL/en-US/',
+      '${{ steps.netlify-preview.outputs.url }}/en-US/',
       'website-dead-link-report',
     ],
   ]) {
@@ -163,47 +178,30 @@ test('both public sites are crawled only for their generated release PRs', () =>
       /previewUrl\.hostname === 'app\.netlify\.com'/,
       'the ignored-deploy fallback only accepts Netlify dashboard URLs',
     );
-    assert.match(previewJob, /node scripts\/dead-link-checker\.mjs/);
-    assert.doesNotMatch(previewJob, /xvfb-run/);
-    assert.match(previewJob, /--concurrent=1/);
-    assert.match(previewJob, new RegExp(`"\\$${startPath}"`));
-    assert.match(previewJob, /--user-agent="\$DEAD_LINK_CHECK_USER_AGENT"/);
-    assert.match(previewJob, /--github-actions/);
-    assert.match(
-      previewJob,
-      new RegExp(`--report="\\$RUNNER_TEMP/${reportName}\\.json"`),
-    );
-    assert.doesNotMatch(previewJob, /dead-link-checker\.mjs[^\n]* (-v|--yes)/);
     assert.match(previewJob, /uses: actions\/checkout@/);
     assert.match(previewJob, /uses: pnpm\/setup@/);
     assert.match(previewJob, /uses: actions\/setup-node@/);
     assert.match(previewJob, /pnpm install --frozen-lockfile --ignore-scripts/);
-    assert.ok(
-      previewJob.indexOf('uses: actions/checkout@') <
-        previewJob.indexOf('node scripts/dead-link-checker.mjs'),
-      `${jobName} checks out the local checker before running it`,
-    );
 
     const deadLinkStep = parsedWorkflow.jobs[jobName].steps.find(
-      ({ name }) => name === 'Dead-link check',
+      ({ uses }) => uses === './.github/actions/dead-link-check',
     );
-    assert.match(
-      deadLinkStep?.env?.DEAD_LINK_CHECK_USER_AGENT,
-      /^Mozilla\/5\.0 .* NetworkCanvasLinkChecker\/1\.0$/,
-      `${jobName} supplies a browser-compatible user agent`,
+    assert.ok(deadLinkStep, `${jobName} runs the dead-link-check action`);
+    assert.equal(deadLinkStep.with?.url, crawlURL);
+    assert.equal(deadLinkStep.with?.['report-name'], reportName);
+    // A pull request must never write the shared cache: its entry would be
+    // visible only to that PR, while the weekly refresh on main is what every
+    // run actually reads.
+    assert.notEqual(
+      deadLinkStep.with?.['save-cache'],
+      'true',
+      `${jobName} does not publish a branch-scoped cache`,
     );
-
-    const uploadStep = parsedWorkflow.jobs[jobName].steps.find(
-      ({ name }) => name === 'Upload dead-link report',
+    assert.ok(
+      previewJob.indexOf('uses: actions/checkout@') <
+        previewJob.indexOf('uses: ./.github/actions/dead-link-check'),
+      `${jobName} checks out the local checker and action before running them`,
     );
-    assert.equal(uploadStep?.if, 'always()');
-    assert.match(uploadStep?.uses, /^actions\/upload-artifact@/);
-    assert.equal(uploadStep?.with?.name, reportName);
-    assert.equal(
-      uploadStep?.with?.path,
-      `\${{ runner.temp }}/${reportName}.json`,
-    );
-    assert.equal(uploadStep?.with?.['if-no-files-found'], 'error');
   }
 
   const carryForward = job('carry-forward-statuses');
@@ -214,15 +212,86 @@ test('both public sites are crawled only for their generated release PRs', () =>
   assert.match(carryForward, /FLAG_WEBSITE: \["website-preview-checks"\]/);
 });
 
-test('the dead-link checker uses Node fetch without a browser fallback', () => {
-  assert.match(deadLinkChecker, /await fetch\(/);
-  assert.doesNotMatch(deadLinkChecker, /import\(['"]playwright['"]\)/);
-  assert.doesNotMatch(deadLinkChecker, /BrowserVerifier|PageSlotSemaphore/);
+test('the dead-link checker drives a browser and never an HTTP client', () => {
+  assert.match(deadLinkChecker, /import\(['"]playwright['"]\)/);
+  assert.match(deadLinkChecker, /BrowserVerifier/);
+  // The whole point of the browser-only model is that there is no second
+  // client whose disguise has to be maintained per publisher, so nothing may
+  // reintroduce a fetch path or a spoofed identity beside it.
+  assert.doesNotMatch(deadLinkChecker, /await fetch\(/);
   assert.doesNotMatch(
     deadLinkChecker,
     /rejectUnauthorized|NODE_TLS_REJECT_UNAUTHORIZED/,
   );
-  assert.equal(rootPackage.devDependencies.playwright, undefined);
+  assert.equal(rootPackage.devDependencies.playwright, 'catalog:');
+});
+
+test('the dead-link action runs headed Chrome and reads a shared cache', () => {
+  const steps = deadLinkAction.runs.steps;
+  const check = steps.find(({ name }) => name === 'Dead-link check');
+  assert.ok(check, 'the action runs the checker');
+  // Headed is the load-bearing part: challenge providers reject automated
+  // headless Chrome whatever User-Agent it sends, so a crawl that quietly
+  // lost its display server would report live links as dead.
+  assert.match(check.run, /xvfb-run --auto-servernum/);
+  assert.doesNotMatch(check.run, /--headless/);
+  // A spoofed User-Agent is what publishers fingerprint against, and sending
+  // one from real Chrome is what broke the Zenodo citations.
+  assert.doesNotMatch(check.run, /--user-agent/);
+  assert.match(check.run, /--github-actions/);
+  assert.match(check.run, /--cache=/);
+  assert.doesNotMatch(check.run, /dead-link-checker\.mjs[^\n]* (-v|--yes)/);
+
+  const restore = steps.find(
+    ({ name }) => name === 'Restore external-link cache',
+  );
+  const save = steps.find(({ name }) => name === 'Save external-link cache');
+  assert.match(restore.uses, /^actions\/cache\/restore@/);
+  assert.equal(restore.with['restore-keys'], 'dead-link-cache-v1-');
+  assert.match(save.uses, /^actions\/cache\/save@/);
+  // Only successes are cached, so saving after a failed crawl cannot carry a
+  // failure forward — and skipping the save would let one dead third-party
+  // link stop the cache refreshing for good.
+  assert.match(save.if, /always\(\)/);
+  assert.equal(restore.with.path, save.with.path);
+
+  const upload = steps.find(({ name }) => name === 'Upload dead-link report');
+  assert.equal(upload.if, 'always()');
+  assert.match(upload.uses, /^actions\/upload-artifact@/);
+  assert.equal(upload.with['if-no-files-found'], 'error');
+});
+
+test('the weekly refresh publishes the cache every pull request reads', () => {
+  // Only a run on the default branch writes a cache that other refs can
+  // restore, so the schedule is what makes the preview jobs' restores hit.
+  assert.ok(refreshWorkflow.on.schedule?.[0]?.cron, 'the refresh is scheduled');
+  assert.ok(refreshWorkflow.on.workflow_dispatch !== undefined);
+
+  const steps = refreshWorkflow.jobs.refresh.steps;
+  const crawls = steps.filter(
+    ({ uses }) => uses === './.github/actions/dead-link-check',
+  );
+  assert.equal(crawls.length, 2, 'both public sites are refreshed');
+  for (const crawl of crawls) {
+    // A dead link on one site must not skip the other site's crawl, nor the
+    // cache save; the gate step is what reports the verdict.
+    assert.equal(crawl['continue-on-error'], true);
+  }
+  const [documentation, website] = crawls;
+  assert.match(documentation.with.url, /documentation\.networkcanvas\.com/);
+  assert.match(website.with.url, /networkcanvas\.com\/en-US\//);
+  // The second crawl extends the file the first produced, so restoring again
+  // would discard what the first crawl just added.
+  assert.equal(website.with['restore-cache'], 'false');
+  assert.equal(website.with['save-cache'], 'true');
+  assert.notEqual(documentation.with['save-cache'], 'true');
+
+  const gate = steps.at(-1);
+  assert.match(gate.run, /dead-link-refresh-gate\.mjs/);
+  assert.ok(
+    !gate['continue-on-error'],
+    'the gate is what fails the run when a link is dead',
+  );
 });
 
 test('an ignored Netlify deploy reuses only its verified PR preview alias', async () => {
@@ -310,7 +379,9 @@ test('website dead-link crawl waits for the documentation preview it links to', 
   assert.match(previewJob, /Confirm documentation preview is reachable/);
 
   const docsWaitIndex = previewJob.indexOf('- id: docs-preview');
-  const crawlIndex = previewJob.indexOf('Dead-link check');
+  const crawlIndex = previewJob.indexOf(
+    'uses: ./.github/actions/dead-link-check',
+  );
   assert.ok(crawlIndex !== -1, 'website dead-link check exists');
   assert.ok(
     docsWaitIndex < crawlIndex,
