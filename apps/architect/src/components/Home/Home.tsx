@@ -344,9 +344,9 @@ const Home = () => {
                   </span>
                 </a>
               ))}
-              <AppUpdatePill />
             </>
           }
+          end={<AppUpdatePill />}
         />
 
         {/* Hero section */}

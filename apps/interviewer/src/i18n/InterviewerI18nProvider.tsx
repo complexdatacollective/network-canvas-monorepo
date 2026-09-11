@@ -27,6 +27,8 @@ import {
 type LocalePreference = Readonly<{
   locale: string;
   preference: string | null;
+  /** What the automatic entry resolves to on this device right now. */
+  automaticLocale: string;
   saveState: 'idle' | 'saved' | 'failed';
   setPreference: (locale: string | null) => void;
 }>;
@@ -35,6 +37,7 @@ type LocalePreference = Readonly<{
 const PreferenceContext = createContext<LocalePreference>({
   locale: interviewerDefaultLocale,
   preference: null,
+  automaticLocale: interviewerDefaultLocale,
   saveState: 'idle',
   setPreference: () => {},
 });
@@ -88,15 +91,16 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const negotiate = (stored: string | null) =>
+    resolveAppLocale({
+      stored,
+      requested,
+      locales: interviewerProductionLocales,
+      defaultLocale: interviewerDefaultLocale,
+    }).locale;
   const locale =
-    preference === PSEUDO_LOCALE
-      ? preference
-      : resolveAppLocale({
-          stored: preference,
-          requested,
-          locales: interviewerProductionLocales,
-          defaultLocale: interviewerDefaultLocale,
-        }).locale;
+    preference === PSEUDO_LOCALE ? preference : negotiate(preference);
+  const automaticLocale = negotiate(null);
 
   return (
     <AppI18nProvider
@@ -106,7 +110,13 @@ export function InterviewerI18nProvider({ children }: { children: ReactNode }) {
       onLocaleChange={setPreference}
     >
       <PreferenceContext.Provider
-        value={{ locale, preference, saveState, setPreference }}
+        value={{
+          locale,
+          preference,
+          automaticLocale,
+          saveState,
+          setPreference,
+        }}
       >
         <DirectionProvider
           direction={

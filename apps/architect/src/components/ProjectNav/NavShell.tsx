@@ -16,7 +16,7 @@ import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Brand from '~/components/Brand';
 import { useRunOnce } from '~/hooks/useRunOnce';
-import LanguageSettings from '~/i18n/LanguageSettings';
+import ArchitectLocaleSwitcher from '~/i18n/ArchitectLocaleSwitcher';
 import { cx } from '~/utils/cva';
 const messages = defineMessages({
   openMenu: {
@@ -36,8 +36,10 @@ const messages = defineMessages({
   },
 });
 
+// `publish-colors`: dynamic-colour controls on the bar (the language pill)
+// derive their hover from the bar's published background.
 const NAV_SURFACE =
-  'effect-shadow-md pointer-events-auto bg-fresco-purple text-fresco-purple-contrast';
+  'effect-shadow-md pointer-events-auto publish-colors bg-fresco-purple text-fresco-purple-contrast';
 
 const containerVariants: Variants = {
   hidden: {
@@ -67,9 +69,11 @@ const itemVariants: Variants = {
 type NavShellProps = {
   leading?: React.ReactNode;
   trailing?: React.ReactNode;
+  /** Chrome after the language pill, such as Home's version pill. */
+  end?: React.ReactNode;
 };
 
-const NavShell = ({ leading, trailing }: NavShellProps) => {
+const NavShell = ({ leading, trailing, end }: NavShellProps) => {
   const intl = useAppIntl();
   const shouldReduceMotion = useReducedMotion();
   const isFirstMount = useRunOnce('nav-bar-entrance');
@@ -115,7 +119,6 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
           </motion.div>
           {leading}
         </div>
-        <LanguageSettings />
         {trailing && (
           <>
             <LayoutGroup id={inlineLayoutId}>
@@ -172,6 +175,8 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
             </Modal>
           </>
         )}
+        <ArchitectLocaleSwitcher />
+        {end}
       </motion.div>
     </header>
   );

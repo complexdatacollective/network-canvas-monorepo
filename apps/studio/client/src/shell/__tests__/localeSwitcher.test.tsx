@@ -7,25 +7,27 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAppRouter } from '../../router.tsx';
 
 /**
- * `/account/language` (2026-09-04 localization design §5.3).
+ * The interface-language switcher in the app header (2026-09-04 localization
+ * design §5.3, moved out of `/account/language`).
  *
- * Three things have to be true of this screen and none of them implies the
- * others: it shows the preference the researcher actually has, choosing takes
- * effect on the spot rather than on a save that does not exist, and the choice
- * reaches the account so it follows them to their other devices.
+ * Three things have to be true of it and none of them implies the others: it
+ * shows the preference the researcher actually has, choosing takes effect on
+ * the spot rather than on a save that does not exist, and the choice reaches
+ * the account so it follows them to their other devices.
  */
 
 const fixtures = vi.hoisted(() => ({
   meLocale: null as string | null,
   /**
    * Held open to stage the window before identity resolves: the app shell's
-   * guard reads the team list, not `me`, so the screen renders while identity
+   * guard reads the team list, not `me`, so the header renders while identity
    * is still in flight.
    */
   meGate: Promise.resolve(),
@@ -134,12 +136,36 @@ function renderAt(path: string) {
   };
 }
 
-function renderLanguagePage() {
-  return renderAt('/account/language');
+/** The switcher's pill: the one combobox named for the interface language. */
+function switcherTrigger() {
+  return screen.getByRole('combobox', {
+    name: /^(Interface language|Idioma de la interfaz):/,
+  });
 }
 
-function languageSelect() {
-  return screen.getByRole('combobox', { name: /Studio language/ });
+async function openSwitcher() {
+  fireEvent.click(
+    await screen.findByRole('combobox', {
+      name: /^(Interface language|Idioma de la interfaz):/,
+    }),
+  );
+  return screen.findByRole('dialog', {
+    name: /^(Interface language|Idioma de la interfaz)$/,
+  });
+}
+
+function choose(popup: HTMLElement, name: RegExp) {
+  fireEvent.click(within(popup).getByRole('option', { name }));
+}
+
+/**
+ * The footer live region. Base UI's empty-state element is a live region too,
+ * and jsdom applies no stylesheet to hide it while the list has entries.
+ */
+function saveStatus(popup: HTMLElement) {
+  const region = within(popup).getAllByRole('status').at(-1);
+  if (!region) throw new Error('no status region');
+  return region;
 }
 
 beforeEach(() => {
@@ -177,96 +203,102 @@ beforeEach(() => {
   });
 });
 
-describe('the language screen', () => {
-  it('is a real screen, not the unbuilt placeholder', async () => {
-    renderLanguagePage();
+describe('the header language switcher', () => {
+  it('is in the header of every app screen, and the account area no longer has a language screen', async () => {
+    const { router } = renderAt('/team/team-a');
+    await expect(
+      screen.findByRole('combobox', {
+        name: 'Interface language: Automatic (English)',
+      }),
+    ).resolves.toBeInTheDocument();
 
+    await act(async () => {
+      await router.navigate({ to: '/account' });
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Profile' });
+    expect(switcherTrigger()).toBeInTheDocument();
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Language' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/This screen has not been built yet/),
+      screen.queryByRole('link', { name: 'Language' }),
     ).not.toBeInTheDocument();
-    // One h1, spread with the route's focus target, is the shell's contract
-    // for every screen (§11.2).
-    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(document.querySelectorAll('[data-route-focus-target]')).toHaveLength(
-      1,
-    );
   });
 
   it('offers the automatic entry alongside every declared locale', async () => {
-    renderLanguagePage();
-    await screen.findByRole('heading', { level: 1, name: 'Language' });
+    renderAt('/team/team-a');
+    const popup = await openSwitcher();
 
-    const select = screen.getByRole('combobox', { name: /Studio language/ });
-    const labels = Array.from(
-      select.querySelectorAll('option'),
-      (option) => option.textContent,
+    const names = within(popup)
+      .getAllByRole('option')
+      .map((option) => option.textContent);
+    expect(names[0]).toContain('Automatic (English)');
+    expect(names).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('English (UK)'),
+        expect.stringContaining('EN-GB'),
+      ]),
     );
-    expect(labels).toContain('Automatic (browser language)');
-    expect(labels).toContain('English');
-    expect(labels).toContain('English (UK)');
   });
 
   it('shows the researcher the preference their account holds', async () => {
     fixtures.meLocale = 'en-GB';
 
-    renderLanguagePage();
-    await screen.findByRole('heading', { level: 1, name: 'Language' });
+    renderAt('/team/team-a');
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('combobox', { name: /Studio language/ }),
-      ).toHaveValue('en-GB');
+      expect(switcherTrigger()).toHaveTextContent('EN-GB');
     });
+    expect(switcherTrigger()).toHaveAccessibleName(
+      'Interface language: English (UK)',
+    );
   });
 
   it('applies the choice, stores it on the account, and moves the document language', async () => {
-    renderLanguagePage();
-    await screen.findByRole('heading', { level: 1, name: 'Language' });
+    renderAt('/team/team-a');
+    const popup = await openSwitcher();
 
-    // The before/after pair is the assertion: a screen that saved the
+    // The before/after pair is the assertion: a control that saved the
     // preference but did not apply it would pass on the RPC call alone.
     expect(document.documentElement.lang).toBe('en');
 
-    fireEvent.change(
-      screen.getByRole('combobox', { name: /Studio language/ }),
-      { target: { value: 'en-GB' } },
-    );
+    choose(popup, /^English \(UK\)/);
 
     await waitFor(() => {
       expect(document.documentElement.lang).toBe('en-GB');
     });
     expect(fixtures.updateLocale).toHaveBeenCalledWith({ locale: 'en-GB' });
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
-    expect(
-      await screen.findByText(/Language saved/, { selector: '[role=status]' }),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(saveStatus(popup)).toHaveTextContent('Saved to your account.');
+    });
   });
 
-  it('keeps the local change when the account write fails, and says so', async () => {
-    fixtures.updateLocale.mockRejectedValue(new Error('offline'));
+  it('keeps the local change when the account write fails, says so, and retries', async () => {
+    fixtures.updateLocale.mockRejectedValueOnce(new Error('offline'));
 
-    renderLanguagePage();
-    await screen.findByRole('heading', { level: 1, name: 'Language' });
+    renderAt('/team/team-a');
+    const popup = await openSwitcher();
 
-    fireEvent.change(
-      screen.getByRole('combobox', { name: /Studio language/ }),
-      { target: { value: 'en-GB' } },
-    );
+    choose(popup, /^English \(UK\)/);
 
-    expect(
-      await screen.findByText(/could not save it to your account/),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(saveStatus(popup)).toHaveTextContent(
+        'Couldn’t save. The language applies for now.',
+      );
+    });
     // The device honours the choice regardless: the write failing is a fact
     // about the account, not about what this browser can render.
     expect(document.documentElement.lang).toBe('en-GB');
+    fireEvent.click(
+      within(saveStatus(popup)).getByRole('button', { name: 'Try again' }),
+    );
+    await waitFor(() => {
+      expect(saveStatus(popup)).toHaveTextContent('Saved to your account.');
+    });
+    expect(fixtures.updateLocale).toHaveBeenCalledTimes(2);
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
   });
 
   it('keeps a choice made before identity has answered, and stores it', async () => {
-    // The shell's guard reads the team list, not `me`, so this screen is on
+    // The shell's guard reads the team list, not `me`, so the header is on
     // the page while identity is still in flight — and a researcher reading it
     // has every reason to use it. A choice made in that window used to reach
     // nothing at all: no request went out, and the payload that arrived a
@@ -277,10 +309,10 @@ describe('the language screen', () => {
       admitIdentity = resolve;
     });
 
-    const { queryClient } = renderAt('/account/language');
-    await screen.findByRole('heading', { level: 1, name: 'Language' });
+    const { queryClient } = renderAt('/team/team-a');
+    const popup = await openSwitcher();
 
-    fireEvent.change(languageSelect(), { target: { value: 'en-GB' } });
+    choose(popup, /^English \(UK\)/);
     await waitFor(() => {
       expect(fixtures.updateLocale).toHaveBeenCalledWith({ locale: 'en-GB' });
     });
@@ -297,34 +329,9 @@ describe('the language screen', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    expect(languageSelect()).toHaveValue('en-GB');
+    expect(switcherTrigger()).toHaveTextContent('EN-GB');
     expect(document.documentElement.lang).toBe('en-GB');
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
-  });
-
-  it('does not report an earlier choice to whoever opens the screen next', async () => {
-    // The save state lives in the provider, which is mounted at the root and
-    // outlives every screen. Left alone it announces the result of a choice
-    // made earlier in the visit — through a live region, at somebody who has
-    // just arrived and chosen nothing.
-    const { router } = renderAt('/account/language');
-    await screen.findByRole('heading', { level: 1, name: 'Language' });
-
-    fireEvent.change(languageSelect(), { target: { value: 'en-GB' } });
-    await screen.findByText(/Language saved/, { selector: '[role=status]' });
-
-    await act(async () => {
-      await router.navigate({ to: '/account' });
-    });
-    await screen.findByRole('heading', { level: 1, name: 'Profile' });
-    await act(async () => {
-      await router.navigate({ to: '/account/language' });
-    });
-    await screen.findByRole('heading', { level: 1, name: 'Language' });
-
-    expect(screen.queryByText(/Language saved/)).not.toBeInTheDocument();
-    // The choice itself is untouched: what is forgotten is the report of it.
-    expect(languageSelect()).toHaveValue('en-GB');
   });
 });
 
@@ -340,24 +347,21 @@ describe('a researcher who belongs to no team', () => {
 
   it('can still choose the language, on the screen every route sends them to', async () => {
     // Every app route redirects a teamless session to `/no-team` (§6.4), the
-    // account area included, so the language screen is one of the addresses
-    // they cannot open. The preference is theirs and has nothing to do with
-    // teams, which is why the control is on the screen they are held on —
-    // the same reason sign-out is.
-    renderAt('/account/language');
+    // account area included, so the header switcher is out of reach. The
+    // preference is theirs and has nothing to do with teams, which is why the
+    // control is on the screen they are held on — the same reason sign-out is.
+    renderAt('/account');
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'No team yet' }),
     ).toBeInTheDocument();
 
-    fireEvent.change(languageSelect(), { target: { value: 'en-GB' } });
+    const popup = await openSwitcher();
+    choose(popup, /^English \(UK\)/);
 
     await waitFor(() => {
       expect(document.documentElement.lang).toBe('en-GB');
     });
     expect(fixtures.updateLocale).toHaveBeenCalledWith({ locale: 'en-GB' });
-    expect(
-      await screen.findByText(/Language saved/, { selector: '[role=status]' }),
-    ).toBeInTheDocument();
   });
 });

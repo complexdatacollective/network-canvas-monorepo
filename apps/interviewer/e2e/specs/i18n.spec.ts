@@ -727,7 +727,7 @@ test('welcome and setup language selectors retain the complete PIN form on a pho
   await wizard.getByTestId('wizard-next').click();
   await expect(page).toHaveURL(/\/$/);
   await expect(
-    page.getByRole('button', { name: 'Idioma de la aplicación', exact: true }),
+    page.getByRole('combobox', { name: /^Idioma de la interfaz:/ }),
   ).toBeVisible();
   expect(await vault.readPersistedVaultRaw()).not.toBe(before);
   await page.reload();
@@ -740,7 +740,7 @@ test('welcome and setup language selectors retain the complete PIN form on a pho
   await expectCompletePinRow(page, page.getByTestId('segmented-code-pin'));
   await typePin(page.getByTestId('segmented-code-pin'), '12345678');
   await expect(
-    page.getByRole('button', { name: 'Idioma de la aplicación', exact: true }),
+    page.getByRole('combobox', { name: /^Idioma de la interfaz:/ }),
   ).toBeVisible();
 });
 
