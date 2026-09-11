@@ -13,7 +13,10 @@ import {
   type ValidationContradiction,
   type ValidationName,
 } from '@codaco/protocol-validation';
-import { validationContradictionMessages } from '@codaco/protocol-validation/messages';
+import {
+  validationContradictionMessages,
+  validationRuleMessages,
+} from '@codaco/protocol-validation/messages';
 
 import type { CodebookSubject } from '../protocol-context.ts';
 import {
@@ -51,98 +54,15 @@ const NUMBER_RULES = new Set<string>([
 const VALUELESS_RULES = new Set<string>(['required', 'unique']);
 
 /**
- * What each validation rule is called, keyed by the schema's own name for it
- * so a rule the schema adds is named here or nowhere.
+ * What each validation rule is called.
  *
- * These are the words on the checkbox a researcher ticks, and the words quoted
- * back at them when the rule they ticked has no value yet.
+ * Re-exported from `@codaco/protocol-validation`, which owns the rules
+ * themselves: one rule named two things in two places is the defect this
+ * replaces (a rule offered here as "Minimum length" and reported by the
+ * validator as "Minimum text length" reads as two different rules), and the
+ * shared catalogue is the one a protocol's own validation errors already use.
  */
-const VALIDATION_LABELS = defineMessages({
-  required: {
-    id: 'protocolBuilder.variableValidation.requiredLabel',
-    defaultMessage: 'Required',
-    description:
-      'Name of the validation rule that refuses an answer left blank. Shown as the label of the checkbox that turns the rule on.',
-  },
-  unique: {
-    id: 'protocolBuilder.variableValidation.uniqueLabel',
-    defaultMessage: 'Must be unique',
-    description:
-      'Name of the validation rule that refuses an answer another network member has already given for this attribute.',
-  },
-  minLength: {
-    id: 'protocolBuilder.variableValidation.minLengthLabel',
-    defaultMessage: 'Minimum length',
-    description:
-      'Name of the validation rule setting the fewest characters an answer may have.',
-  },
-  maxLength: {
-    id: 'protocolBuilder.variableValidation.maxLengthLabel',
-    defaultMessage: 'Maximum length',
-    description:
-      'Name of the validation rule setting the most characters an answer may have.',
-  },
-  minValue: {
-    id: 'protocolBuilder.variableValidation.minValueLabel',
-    defaultMessage: 'Minimum value',
-    description:
-      'Name of the validation rule setting the smallest number an answer may be.',
-  },
-  maxValue: {
-    id: 'protocolBuilder.variableValidation.maxValueLabel',
-    defaultMessage: 'Maximum value',
-    description:
-      'Name of the validation rule setting the largest number an answer may be.',
-  },
-  minSelected: {
-    id: 'protocolBuilder.variableValidation.minSelectedLabel',
-    defaultMessage: 'Minimum selected',
-    description:
-      'Name of the validation rule setting the fewest options a participant must choose.',
-  },
-  maxSelected: {
-    id: 'protocolBuilder.variableValidation.maxSelectedLabel',
-    defaultMessage: 'Maximum selected',
-    description:
-      'Name of the validation rule setting the most options a participant may choose.',
-  },
-  differentFrom: {
-    id: 'protocolBuilder.variableValidation.differentFromLabel',
-    defaultMessage: 'Different from',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to differ from another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-  sameAs: {
-    id: 'protocolBuilder.variableValidation.sameAsLabel',
-    defaultMessage: 'Same as',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to match another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-  lessThanVariable: {
-    id: 'protocolBuilder.variableValidation.lessThanVariableLabel',
-    defaultMessage: 'Less than',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to be smaller than another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-  greaterThanVariable: {
-    id: 'protocolBuilder.variableValidation.greaterThanVariableLabel',
-    defaultMessage: 'Greater than',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to be larger than another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-  lessThanOrEqualToVariable: {
-    id: 'protocolBuilder.variableValidation.lessThanOrEqualToVariableLabel',
-    defaultMessage: 'Less than or equal to',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to be no larger than another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-  greaterThanOrEqualToVariable: {
-    id: 'protocolBuilder.variableValidation.greaterThanOrEqualToVariableLabel',
-    defaultMessage: 'Greater than or equal to',
-    description:
-      'Name of the validation rule requiring this attribute’s answer to be no smaller than another attribute’s. The attribute compared against is chosen in a control beneath.',
-  },
-}) satisfies Partial<Record<ValidationName, MessageDescriptor>>;
+const VALIDATION_LABELS = validationRuleMessages;
 
 const messages = defineMessages({
   requirementsHeading: {

@@ -49,7 +49,7 @@ describe('a page of content rather than a task', () => {
     const harness = renderStageEditor(openEditor());
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create new content block' }),
+      screen.getByRole('button', { name: 'Create new content item' }),
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Block text' }),
@@ -78,10 +78,10 @@ describe('a page of content rather than a task', () => {
     const harness = renderStageEditor(openEditor());
 
     await harness.user.click(
-      screen.getByRole('button', { name: 'Delete block' }),
+      screen.getByRole('button', { name: 'Delete item' }),
     );
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Delete block' }),
+      await screen.findByRole('button', { name: 'Delete item' }),
     );
     await waitFor(() =>
       expect(
@@ -223,7 +223,7 @@ describe('a page whose blocks can be prose or a resource', () => {
     const harness = renderStageEditor(mediaPage());
 
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit block' }))[1]!,
+      (await screen.findAllByRole('button', { name: 'Edit item' }))[1]!,
     );
 
     expect(
@@ -240,7 +240,7 @@ describe('a page whose blocks can be prose or a resource', () => {
     const harness = renderStageEditor(mediaPage());
 
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit block' }))[1]!,
+      (await screen.findAllByRole('button', { name: 'Edit item' }))[1]!,
     );
     const resource = await screen.findByRole('textbox', { name: 'Resource' });
     await harness.user.clear(resource);
@@ -288,7 +288,7 @@ describe('a block field the researcher left empty', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Edit block' }),
+      await screen.findByRole('button', { name: 'Edit item' }),
     );
     // Written and then taken back out, which is how a value becomes `''`
     // rather than simply never existing.
@@ -339,7 +339,7 @@ describe('a block whose active slot the researcher emptied', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Edit block' }),
+      await screen.findByRole('button', { name: 'Edit item' }),
     );
     await harness.user.clear(
       await screen.findByRole('textbox', { name: 'Block text' }),
@@ -421,7 +421,7 @@ describe('the expand and collapse halves of a block', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Edit block' }),
+      await screen.findByRole('button', { name: 'Edit item' }),
     );
     const text = await screen.findByRole('textbox', { name: 'Block text' });
     await harness.user.clear(text);

@@ -61,12 +61,13 @@ const messages = defineMessages({
   },
   headingHint: {
     id: 'protocolBuilder.pageContent.headingHint',
-    defaultMessage: 'The large heading shown at the top of the page.',
+    defaultMessage:
+      'Use the page heading to show a large title element on your information stage.',
     description: 'Guidance under the page-heading field.',
   },
   headingPlaceholder: {
     id: 'protocolBuilder.pageContent.headingPlaceholder',
-    defaultMessage: 'Enter a heading...',
+    defaultMessage: 'Enter your title here...',
     description:
       'Placeholder shown in the empty page-heading field. The trailing dots are an ellipsis written as three full stops.',
   },
@@ -79,49 +80,49 @@ const messages = defineMessages({
   pageDescription: {
     id: 'protocolBuilder.pageContent.pageDescription',
     defaultMessage:
-      'Write the page heading and build the sequence of blocks the participant reads.',
+      'Set the page heading and build the sequence of text and media blocks participants will see.',
     description: 'Description of the page-content section.',
   },
   pageItemsLabel: {
     id: 'protocolBuilder.pageContent.pageItemsLabel',
-    defaultMessage: 'Content blocks',
+    defaultMessage: 'Items',
     description:
       'Label of the ordered list of pieces a page is built from — passages of text, pictures, videos.',
   },
   pageItemsHint: {
     id: 'protocolBuilder.pageContent.pageItemsHint',
     defaultMessage:
-      'The participant scrolls through these in order, so add as many as you need. Drag to reorder them.',
+      'Add text, image, video, and audio blocks below, and drag them to reorder. Participants can scroll through the screen, so add as many blocks as you need. Image and video blocks can be given a display size.',
     description: 'Guidance under the list of blocks on a page.',
   },
   pageAddLabel: {
     id: 'protocolBuilder.pageContent.pageAddLabel',
-    defaultMessage: 'Create new content block',
+    defaultMessage: 'Create new content item',
     description:
       'Button that opens the dialog for adding one more piece to a page. Whole rather than a generic "Add", because a stage editor shows several lists at once.',
   },
   pageAddTitle: {
     id: 'protocolBuilder.pageContent.pageAddTitle',
-    defaultMessage: 'Create content block',
+    defaultMessage: 'Create item',
     description:
       'Title of the dialog a researcher fills in to add one more piece to a page.',
   },
   pageEditTitle: {
     id: 'protocolBuilder.pageContent.pageEditTitle',
-    defaultMessage: 'Edit content block',
+    defaultMessage: 'Edit item',
     description:
       'Title of the dialog a researcher fills in to change a piece of a page.',
   },
   pageItemNoun: {
     id: 'protocolBuilder.pageContent.pageItemNoun',
-    defaultMessage: 'block',
+    defaultMessage: 'item',
     description:
-      'What one piece of a page is called inside things said ABOUT it — "Edit block", "Delete this block?" — so it is lower case and singular.',
+      'What one piece of a page is called inside things said ABOUT it — "Edit item", "Delete this item?" — so it is lower case and singular.',
   },
   pageEmptyState: {
     id: 'protocolBuilder.pageContent.pageEmptyState',
     defaultMessage:
-      'No blocks yet. Create one to put text or media on this page.',
+      'No items have been created yet. Click "Create new content item" to add text or media.',
     description:
       'Shown in place of the list of blocks while a page holds nothing yet.',
   },

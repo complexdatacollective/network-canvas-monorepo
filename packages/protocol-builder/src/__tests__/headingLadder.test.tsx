@@ -309,7 +309,7 @@ describe('a row of a stage editor list, opened in its dialog', () => {
       screen.getByRole('switch', { name: 'Side panels' }),
     );
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new panel' }),
+      await screen.findByRole('button', { name: 'Add new panel' }),
     );
 
     expect(headingLadder(await screen.findByRole('dialog'))).toEqual([

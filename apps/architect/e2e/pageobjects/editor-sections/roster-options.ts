@@ -4,7 +4,7 @@ import { type StageEditor } from '../stage-editor.js';
 
 // NameGeneratorRoster's three list-shaped sections
 // (`@codaco/protocol-builder`'s `editors/name-generator-roster/sections/`:
-// `CardDisplaySection` "Card details", `SortOptionsSection` "Roster order",
+// `CardDisplaySection` "Card details", `SortOptionsSection` "Roster sorting",
 // `SearchOptionsSection` "Roster search"). Facts read from that source:
 // - All three are capability sections gated on `dataSource`: switched off and
 //   disabled on a fresh stage, and `resetOn={DATA_SOURCE}` clears them without
@@ -57,9 +57,9 @@ export async function configureSortOptions(
     sortableProperties: { variable: string; label: string }[];
   },
 ): Promise<void> {
-  const section = editor.section('Roster order');
+  const section = editor.section('Roster sorting');
   await section
-    .getByRole('switch', { name: 'Roster order', exact: true })
+    .getByRole('switch', { name: 'Roster sorting', exact: true })
     .click();
   await section.getByRole('button', { name: 'Add new sort rule' }).click();
   await editor
@@ -72,7 +72,7 @@ export async function configureSortOptions(
     .selectOption(opts.sortOrder.direction);
   for (const [index, row] of opts.sortableProperties.entries()) {
     await section
-      .getByRole('button', { name: 'Add new sortable attribute' })
+      .getByRole('button', { name: 'Add new sortable property' })
       .click();
     await editor
       .field(`sortOptions.sortableProperties[${index}].variable`)

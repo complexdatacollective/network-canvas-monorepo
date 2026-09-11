@@ -183,9 +183,57 @@
     "defaultMessage": "{direction, select, asc {Sort ascending, click to toggle} other {Sort descending, click to toggle}}",
     "description": "Accessible name of the sort-direction toggle button; announces the current direction."
   },
+  "frescoUi.colorPicker.barbiePink": {
+    "defaultMessage": "Barbie Pink",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A vivid pink."
+  },
+  "frescoUi.colorPicker.ceruleanBlue": {
+    "defaultMessage": "Cerulean Blue",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A deep sky blue."
+  },
   "frescoUi.colorPicker.emptyPalette": {
     "defaultMessage": "No colors are available to choose from.",
     "description": "Shown in place of the swatches when the palette handed to the color picker is empty."
+  },
+  "frescoUi.colorPicker.kiwi": {
+    "defaultMessage": "Kiwi",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A yellow-green."
+  },
+  "frescoUi.colorPicker.mustard": {
+    "defaultMessage": "Mustard",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A dark yellow."
+  },
+  "frescoUi.colorPicker.neonCarrot": {
+    "defaultMessage": "Neon Carrot",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A bright orange."
+  },
+  "frescoUi.colorPicker.neonCoral": {
+    "defaultMessage": "Neon Coral",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A warm red-pink."
+  },
+  "frescoUi.colorPicker.paradisePink": {
+    "defaultMessage": "Paradise Pink",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A warm pink."
+  },
+  "frescoUi.colorPicker.purplePizazz": {
+    "defaultMessage": "Purple Pizazz",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A bright purple."
+  },
+  "frescoUi.colorPicker.seaGreen": {
+    "defaultMessage": "Sea Green",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A green."
+  },
+  "frescoUi.colorPicker.seaSerpent": {
+    "defaultMessage": "Sea Serpent",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A blue-green."
+  },
+  "frescoUi.colorPicker.slateBlue": {
+    "defaultMessage": "Slate Blue",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A muted violet-blue."
+  },
+  "frescoUi.colorPicker.tomato": {
+    "defaultMessage": "Tomato",
+    "description": "Name of one colour swatch, announced in place of the swatch itself. A red."
   },
   "frescoUi.columnHeader.applyFilter": {
     "defaultMessage": "Apply",

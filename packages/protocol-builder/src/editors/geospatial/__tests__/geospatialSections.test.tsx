@@ -168,7 +168,7 @@ describe('the map a geospatial stage shows', () => {
     expect(harness.outline().map((entry) => entry.title)).toEqual([
       'Map access',
       'Map layer',
-      'Prompts',
+      'Prompt collection',
       'Map appearance',
       'Starting map view',
     ]);

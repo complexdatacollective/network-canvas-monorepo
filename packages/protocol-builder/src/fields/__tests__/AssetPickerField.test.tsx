@@ -1409,7 +1409,7 @@ describe('a picker the researcher backs out of', () => {
     });
 
     await user.click(
-      await screen.findByRole('radio', { name: 'Use an imported data file' }),
+      await screen.findByRole('radio', { name: 'Use a network data file' }),
     );
     await user.click(await screen.findByRole('button', { name: 'Cancel' }));
 

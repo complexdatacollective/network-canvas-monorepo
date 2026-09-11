@@ -50,7 +50,7 @@ describe('creating a tie-strength census stage', () => {
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      screen.getByRole('textbox', { name: 'Title' }),
       'Pairs',
     );
     await writeInto(
