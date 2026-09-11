@@ -93,9 +93,6 @@ describe('the editor for a form about each relationship', () => {
         exact: false,
       }),
     ).toBeInTheDocument();
-    await import('node:fs').then(({ writeFileSync }) =>
-      writeFileSync('/tmp/edge-dom.html', document.body.innerHTML),
-    );
   });
 
   it('opens a new stage on the interface template', async () => {
