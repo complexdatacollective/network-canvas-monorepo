@@ -337,7 +337,15 @@ describe('creating the type a stage needs without leaving it', () => {
     const hueName =
       COLOR_SEQUENCE_HUE_NAMES['node-color-seq']?.[colorPosition - 1]
         ?.defaultMessage;
-    expect(hueName).toBeDefined();
+    // Thrown rather than asserted, so the locator below keeps its exact name:
+    // a missing hue is this test's own setup failing, not the palette. A
+    // descriptor's `defaultMessage` is pre-parsed ICU as well as a string, and
+    // a swatch name is always the latter.
+    if (typeof hueName !== 'string') {
+      throw new Error(
+        `the node palette names no hue at position ${colorPosition}`,
+      );
+    }
     expect(screen.getByRole('radio', { name: hueName })).toBeChecked();
     expect(screen.getByRole('combobox', { name: 'Default shape' })).toHaveValue(
       shape,
