@@ -32,6 +32,7 @@ import {
   openLocalNetcanvas,
   type ProtocolOpenResult,
 } from '~/ducks/modules/userActions/userActions';
+import ArchitectLocaleSwitcher from '~/i18n/ArchitectLocaleSwitcher';
 import { formatConfig } from '~/i18n/formatConfig';
 import {
   BUNDLED_TEMPLATES,
@@ -344,6 +345,7 @@ const Home = () => {
                   </span>
                 </a>
               ))}
+              <ArchitectLocaleSwitcher />
               <AppUpdatePill />
             </>
           }

@@ -16,7 +16,6 @@ import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Brand from '~/components/Brand';
 import { useRunOnce } from '~/hooks/useRunOnce';
-import LanguageSettings from '~/i18n/LanguageSettings';
 import { cx } from '~/utils/cva';
 const messages = defineMessages({
   openMenu: {
@@ -36,8 +35,10 @@ const messages = defineMessages({
   },
 });
 
+// `publish-colors`: dynamic-colour controls on the bar (the language pill)
+// derive their hover from the bar's published background.
 const NAV_SURFACE =
-  'effect-shadow-md pointer-events-auto bg-fresco-purple text-fresco-purple-contrast';
+  'effect-shadow-md pointer-events-auto publish-colors bg-fresco-purple text-fresco-purple-contrast';
 
 const containerVariants: Variants = {
   hidden: {
@@ -115,7 +116,6 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
           </motion.div>
           {leading}
         </div>
-        <LanguageSettings />
         {trailing && (
           <>
             <LayoutGroup id={inlineLayoutId}>

@@ -24,7 +24,8 @@ import {
 
 type LocalePreference = {
   preference: string | null;
-  saved: boolean | null;
+  /** What the automatic entry resolves to on this device right now. */
+  automaticLocale: string;
   setLocale: (locale: string | null) => void;
 };
 
@@ -32,7 +33,6 @@ const PreferenceContext = createContext<LocalePreference | null>(null);
 
 export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
   const [preference, setPreference] = useState(readLocalePreference);
-  const [saved, setSaved] = useState<boolean | null>(null);
   const [browserRevision, setBrowserRevision] = useState(0);
 
   const setLocale = useCallback((locale: string | null) => {
@@ -41,7 +41,7 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
       !architectLocales.some((entry) => entry.locale === locale)
     )
       return;
-    setSaved(locale === PSEUDO_LOCALE ? null : writeLocalePreference(locale));
+    if (locale !== PSEUDO_LOCALE) writeLocalePreference(locale);
     setPreference(locale);
   }, []);
 
@@ -51,7 +51,6 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
     const preferenceChanged = (event: StorageEvent) => {
       if (event.key !== ARCHITECT_LOCALE_KEY && event.key !== null) return;
       setPreference(readLocalePreference());
-      setSaved(null);
     };
     window.addEventListener('languagechange', languageChanged);
     window.addEventListener('storage', preferenceChanged);
@@ -61,17 +60,21 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const locale = useMemo(() => {
+  const { locale, automaticLocale } = useMemo(() => {
     // The event revision invalidates browser negotiation only; explicit
     // preferences still win, including the non-persisted development locale.
     void browserRevision;
-    return import.meta.env.DEV && preference === PSEUDO_LOCALE
-      ? PSEUDO_LOCALE
-      : resolveDeviceLocale(preference);
+    return {
+      locale:
+        import.meta.env.DEV && preference === PSEUDO_LOCALE
+          ? PSEUDO_LOCALE
+          : resolveDeviceLocale(preference),
+      automaticLocale: resolveDeviceLocale(null),
+    };
   }, [preference, browserRevision]);
   const value = useMemo(
-    () => ({ preference, saved, setLocale }),
-    [preference, saved, setLocale],
+    () => ({ preference, automaticLocale, setLocale }),
+    [preference, automaticLocale, setLocale],
   );
 
   return (
