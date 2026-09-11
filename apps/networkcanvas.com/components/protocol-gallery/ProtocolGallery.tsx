@@ -33,7 +33,7 @@ const galleryFuseOptions = {
   minMatchCharLength: 1,
 } as const;
 const galleryFilterKeys = ['searchText'];
-const GRID_MIN_ITEM_WIDTH = 300;
+const GRID_MIN_ITEM_WIDTH = 360;
 const GRID_GAP_UNITS = 6;
 const GRID_MAX_COLUMNS = 3;
 

@@ -72,7 +72,7 @@ export default async function ProtocolGalleryPage({
         <Container maxWidth="full" margin="none" className="mt-12">
           <div
             id={SITE_NAVIGATION_SKIP_TARGET_ID}
-            className="tablet-landscape:grid-cols-[auto_minmax(32rem,1fr)] tablet-landscape:items-start grid gap-8"
+            className="laptop:grid-cols-[minmax(0,1fr)_minmax(32rem,min(56rem,40%))] laptop:items-start grid gap-8"
           >
             <div className="max-w-[80ch] min-w-0">
               <Heading level="h1" variant="section-heading" margin="none">

@@ -89,91 +89,93 @@ export default async function ProtocolDetailPage({
       <Header activeItemId="protocolGallery" host="protocolGallery" />
 
       <div className="type-scale-product">
-        <Container maxWidth="full" margin="none" className="mt-12">
-          <div id={SITE_NAVIGATION_SKIP_TARGET_ID}>
-            <Button
-              asChild
-              color="default"
-              size="sm"
-              icon={<ArrowLeft aria-hidden />}
-            >
-              <a href={protocolGalleryHref(locale)}>{t('detail.back')}</a>
-            </Button>
-          </div>
-
-          <div className="tablet-landscape:grid-cols-[auto_minmax(24rem,1fr)] laptop:grid-cols-[auto_minmax(38rem,1fr)] mt-8 grid grid-cols-1 gap-8">
-            <div className="max-w-[80ch] min-w-0 space-y-8">
-              <div>
-                {protocol.featured ? (
-                  <Eyebrow tone="primary">{t('intro.featured')}</Eyebrow>
-                ) : null}
-                <Heading
-                  level="h1"
-                  variant="section-heading"
-                  margin="none"
-                  className="mt-2"
-                >
-                  {protocol.shortName}
-                </Heading>
-                <Heading
-                  level="h4"
-                  variant="subtitle"
-                  margin="none"
-                  render={<p />}
-                  className="mt-3"
-                >
-                  {protocol.title}
-                </Heading>
-                <Paragraph
-                  margin="none"
-                  intent="meta"
-                  emphasis="muted"
-                  className="mt-3"
-                >
-                  {protocol.authors}
-                </Paragraph>
-                <div className="mt-6">
-                  <ProtocolDownloads
-                    downloads={protocol.downloads}
-                    supplementaryMaterials={protocol.supplementaryMaterials}
-                    sandboxUrl={protocol.sandboxUrl}
-                  />
-                </div>
-                <Paragraph margin="none" className="mt-8">
-                  {protocol.summary}
-                </Paragraph>
-              </div>
-
-              <Surface noContainer spacing="lg" shadow="md">
-                <OverlineHeading>{t('detail.demonstrates')}</OverlineHeading>
-                <Paragraph margin="none" className="mt-3">
-                  {protocol.description}
-                </Paragraph>
-              </Surface>
-
-              <ProtocolDetailFacts protocol={protocol} locale={locale} />
-
-              <ProtocolCitation
-                citation={protocol.citation}
-                publicationUrl={protocol.publicationUrl}
-              />
+        <Container maxWidth="ultrawide" margin="none" className="mt-12">
+          <div className="tablet-landscape:max-w-none mx-auto max-w-[70ch]">
+            <div id={SITE_NAVIGATION_SKIP_TARGET_ID}>
+              <Button
+                asChild
+                color="default"
+                size="sm"
+                icon={<ArrowLeft aria-hidden />}
+              >
+                <a href={protocolGalleryHref(locale)}>{t('detail.back')}</a>
+              </Button>
             </div>
 
-            <Surface
-              as="aside"
-              noContainer
-              spacing="lg"
-              shadow="md"
-              aria-labelledby={stageSequenceHeadingId}
-              className="min-w-0 self-start"
-            >
-              <OverlineHeading id={stageSequenceHeadingId}>
-                {t('stages.heading')}
-              </OverlineHeading>
-              <div className="mt-4">
-                <StageSequenceRail downloads={protocol.downloads} />
+            <div className="tablet-landscape:grid-cols-[auto_minmax(24rem,1fr)] mt-8 grid grid-cols-1 gap-8">
+              <div className="max-w-[70ch] min-w-0 space-y-8">
+                <div>
+                  {protocol.featured ? (
+                    <Eyebrow tone="primary">{t('intro.featured')}</Eyebrow>
+                  ) : null}
+                  <Heading
+                    level="h1"
+                    variant="section-heading"
+                    margin="none"
+                    className="mt-2"
+                  >
+                    {protocol.shortName}
+                  </Heading>
+                  <Heading
+                    level="h4"
+                    variant="subtitle"
+                    margin="none"
+                    render={<p />}
+                    className="mt-3"
+                  >
+                    {protocol.title}
+                  </Heading>
+                  <Paragraph
+                    margin="none"
+                    intent="meta"
+                    emphasis="muted"
+                    className="mt-3"
+                  >
+                    {protocol.authors}
+                  </Paragraph>
+                  <div className="mt-6">
+                    <ProtocolDownloads
+                      downloads={protocol.downloads}
+                      supplementaryMaterials={protocol.supplementaryMaterials}
+                      sandboxUrl={protocol.sandboxUrl}
+                    />
+                  </div>
+                  <Paragraph margin="none" className="mt-8">
+                    {protocol.summary}
+                  </Paragraph>
+                </div>
+
+                <Surface noContainer spacing="lg" shadow="md">
+                  <OverlineHeading>{t('detail.demonstrates')}</OverlineHeading>
+                  <Paragraph margin="none" className="mt-3">
+                    {protocol.description}
+                  </Paragraph>
+                </Surface>
+
+                <ProtocolDetailFacts protocol={protocol} locale={locale} />
+
+                <ProtocolCitation
+                  citation={protocol.citation}
+                  publicationUrl={protocol.publicationUrl}
+                />
               </div>
-            </Surface>
+
+              <Surface
+                as="aside"
+                noContainer
+                spacing="lg"
+                shadow="md"
+                aria-labelledby={stageSequenceHeadingId}
+                className="min-w-0 self-start"
+              >
+                <OverlineHeading id={stageSequenceHeadingId}>
+                  {t('stages.heading')}
+                </OverlineHeading>
+                <div className="mt-4">
+                  <StageSequenceRail downloads={protocol.downloads} />
+                </div>
+              </Surface>
+            </div>
           </div>
         </Container>
       </div>

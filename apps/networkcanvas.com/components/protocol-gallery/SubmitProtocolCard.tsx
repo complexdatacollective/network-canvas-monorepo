@@ -10,29 +10,28 @@ import { contactEmail } from '~/lib/content';
 export function SubmitProtocolCard() {
   const t = useTranslations('ProtocolGallery.submit');
 
+  // A sidebar on wide viewports and a full-width banner below them, so the
+  // card's width does not track the viewport and it queries its own size.
   return (
-    <Surface
-      noContainer
-      spacing="md"
-      shadow="sm"
-      className="tablet-portrait:flex-row tablet-portrait:items-center tablet-portrait:gap-6 flex flex-col gap-3"
-    >
-      <div className="min-w-0 flex-1">
-        <OverlineHeading>{t('heading')}</OverlineHeading>
-        <Paragraph margin="none" intent="smallText" className="mt-1">
-          {t('description')}
-        </Paragraph>
+    <Surface noContainer spacing="md" shadow="sm" className="@container">
+      <div className="flex flex-col gap-3 @min-xl:flex-row @min-xl:items-center @min-xl:gap-6">
+        <div className="min-w-0 flex-1">
+          <OverlineHeading>{t('heading')}</OverlineHeading>
+          <Paragraph margin="none" intent="smallText" className="mt-1">
+            {t('description')}
+          </Paragraph>
+        </div>
+        <Button
+          asChild
+          color="secondary"
+          variant="raised"
+          size="sm"
+          className="shrink-0 self-start @min-xl:self-center"
+          icon={<Mail aria-hidden />}
+        >
+          <a href={`mailto:${contactEmail}`}>{t('action')}</a>
+        </Button>
       </div>
-      <Button
-        asChild
-        color="secondary"
-        variant="raised"
-        size="sm"
-        className="tablet-portrait:self-center shrink-0 self-start"
-        icon={<Mail aria-hidden />}
-      >
-        <a href={`mailto:${contactEmail}`}>{t('action')}</a>
-      </Button>
     </Surface>
   );
 }
