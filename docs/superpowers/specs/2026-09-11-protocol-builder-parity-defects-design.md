@@ -26,6 +26,14 @@ _Josh, 2026-09-11:_ "the variable picker in architect is a sophisticated compone
 
 _Research pending — filled in from `research/parity/defect-01-variable-picker.md` (what Architect does, what the package does, why it is wrong, required behaviour, acceptance criteria, seam and size)._
 
+### 3.2 The in-editor section outline is removed
+
+_Josh, 2026-09-11:_ "the section summary sidebar that has been added was not part of the original app, and should be removed."
+
+Reading: the package's in-editor left column — `SectionOutline`, the "Stage sections" landmark listing each section with "Finished / Not finished / Has a problem" — which the extraction added (#1485, PR #1539) and every one of the nineteen editors renders inside `StageEditorShell`; not Studio's route-level "Protocol sections" list, which is Studio's own chrome.
+
+_Research pending — filled in from `research/parity/defect-02-section-outline.md` (what Architect has, what the outline does and who depends on it — the e2e `expectNoIssues()` oracle, stories, Studio — what replaces its functions, acceptance criteria, seam and size, and whether Studio's design wants it as a host option rather than a deletion)._
+
 ## 4. Sequence
 
 _To be written once the collection is complete: which defects share a seam and land together, which need a fresco-ui primitive first, and the order that keeps every intermediate main state working._
