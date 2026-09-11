@@ -26,5 +26,13 @@
   "protocolBuilder.introduction.headingHint": "The heading shown at the top of the introduction screen.",
   "protocolBuilder.introduction.headingPlaceholder": "Enter a heading...",
   "protocolBuilder.introduction.textHint": "Explain what the participant is about to do. This is the only thing they will read before the task begins.",
-  "protocolBuilder.introduction.textPlaceholder": "Enter your introduction here..."
+  "protocolBuilder.introduction.textPlaceholder": "Enter your introduction here...",
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderTitle": "Order of the people asked about",
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderLabel": "Rules for the order people are asked about",
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderAddLabel": "Add a rule for the order people are asked about",
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderEmptyState": "No rules yet, so people are asked about in the order they were added.",
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderTitle": "Order of the people to choose from",
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderLabel": "Rules for the order people are shown in",
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderAddLabel": "Add a rule for the order people are shown in",
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderEmptyState": "No rules yet, so people are shown in the order they were added."
 }

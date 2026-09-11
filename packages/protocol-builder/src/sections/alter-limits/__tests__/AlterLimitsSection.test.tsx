@@ -128,7 +128,7 @@ describe('the nomination limits a name generator may set', () => {
     });
     expect(
       await screen.findByText(
-        'Set the fewest people, the most people, or both. Switch these limits off if this stage has no limit.',
+        'Set the minimum number of alters, the maximum number of alters, or both. Switch these limits off if this stage has no limit.',
       ),
     ).toBeInTheDocument();
   });

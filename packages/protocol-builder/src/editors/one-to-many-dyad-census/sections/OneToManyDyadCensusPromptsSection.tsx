@@ -25,8 +25,13 @@ import {
   PromptTextField,
   PromptTextPreview,
 } from '../../dyad-census/sections/PromptTextField.tsx';
+import { binMessages } from '../../ordinal-bin/sections/binMessages.ts';
 
-/** What only a One-to-Many Dyad Census says; the shared words are in `censusMessages`. */
+/**
+ * What only a One-to-Many Dyad Census says. The words it shares with the rest
+ * of the census family are in `censusMessages`, and the words of the two
+ * sort-order sections Architect mounts here unchanged are in `binMessages`.
+ */
 const messages = defineMessages({
   guidance: {
     id: 'protocolBuilder.censusPrompts.oneToManyGuidance',
@@ -48,12 +53,6 @@ const messages = defineMessages({
     description:
       'Description of the group holding a One-to-Many Dyad Census prompt’s question and the kind of connection selecting someone records.',
   },
-  askedOrderTitle: {
-    id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderTitle',
-    defaultMessage: 'Order of the people asked about',
-    description:
-      'Heading of the optional group holding the rules that order the people the participant is asked about, one at a time.',
-  },
   askedOrderDescription: {
     id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderDescription',
     defaultMessage:
@@ -61,55 +60,11 @@ const messages = defineMessages({
     description:
       'Description of the group holding the rules that order the people the participant is asked about, one at a time.',
   },
-  askedOrderLabel: {
-    id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderLabel',
-    defaultMessage: 'Rules for the order people are asked about',
-    description:
-      'Label of the list of sort rules that order the people the participant is asked about, one at a time.',
-  },
-  askedOrderAddLabel: {
-    id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderAddLabel',
-    defaultMessage: 'Add a rule for the order people are asked about',
-    description:
-      'Button that appends one sort rule to the list ordering the people the participant is asked about.',
-  },
-  askedOrderEmptyState: {
-    id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderEmptyState',
-    defaultMessage:
-      'No rules yet, so people are asked about in the order they were added.',
-    description:
-      'Shown in place of the sort rules ordering the people the participant is asked about, when the researcher has written none.',
-  },
-  choiceOrderTitle: {
-    id: 'protocolBuilder.censusPrompts.oneToManyChoiceOrderTitle',
-    defaultMessage: 'Order of the people to choose from',
-    description:
-      'Heading of the optional group holding the rules that order the people the participant picks from for whoever they were asked about.',
-  },
   choiceOrderDescription: {
     id: 'protocolBuilder.censusPrompts.oneToManyChoiceOrderDescription',
     defaultMessage: 'Order target nodes after they are placed in the bin.',
     description:
       'Description of the group holding the rules that order the people the participant picks from for whoever they were asked about.',
-  },
-  choiceOrderLabel: {
-    id: 'protocolBuilder.censusPrompts.oneToManyChoiceOrderLabel',
-    defaultMessage: 'Rules for the order people are shown in',
-    description:
-      'Label of the list of sort rules that order the people the participant picks from.',
-  },
-  choiceOrderAddLabel: {
-    id: 'protocolBuilder.censusPrompts.oneToManyChoiceOrderAddLabel',
-    defaultMessage: 'Add a rule for the order people are shown in',
-    description:
-      'Button that appends one sort rule to the list ordering the people the participant picks from.',
-  },
-  choiceOrderEmptyState: {
-    id: 'protocolBuilder.censusPrompts.oneToManyChoiceOrderEmptyState',
-    defaultMessage:
-      'No rules yet, so people are shown in the order they were added.',
-    description:
-      'Shown in place of the sort rules ordering the people the participant picks from, when the researcher has written none.',
   },
 });
 
@@ -193,29 +148,36 @@ function OneToManyDyadCensusPromptEditor({ item }: RowEditorProps) {
         />
       </PromptTextField>
       {/*
+        The same two sections the bins render, because Architect mounts the very
+        same `BucketSortOrderSection` and `BinSortOrderSection` here and
+        overrides only their descriptions — so only the descriptions are this
+        editor's own words.
+
         Both orders wait on the connection type, as Architect's do: until one is
         chosen the prompt does not yet describe a task to order anything within.
       */}
       <SortOrderRows
         name="bucketSortOrder"
-        title={intl.formatMessage(messages.askedOrderTitle)}
+        title={intl.formatMessage(binMessages.bucketOrderTitle)}
         description={intl.formatMessage(messages.askedOrderDescription)}
-        label={intl.formatMessage(messages.askedOrderLabel)}
+        label={intl.formatMessage(binMessages.bucketOrderLabel)}
         hint={intl.formatMessage(censusMessages.sortRulesAddedHint)}
-        addButtonLabel={intl.formatMessage(messages.askedOrderAddLabel)}
-        emptyStateMessage={intl.formatMessage(messages.askedOrderEmptyState)}
+        addButtonLabel={intl.formatMessage(binMessages.bucketOrderAddLabel)}
+        emptyStateMessage={intl.formatMessage(
+          binMessages.bucketOrderEmptyState,
+        )}
         properties={sortableProperties}
         disabled={!chosenEdge}
         committedRules={item.bucketSortOrder}
       />
       <SortOrderRows
         name="binSortOrder"
-        title={intl.formatMessage(messages.choiceOrderTitle)}
+        title={intl.formatMessage(binMessages.binOrderTitle)}
         description={intl.formatMessage(messages.choiceOrderDescription)}
-        label={intl.formatMessage(messages.choiceOrderLabel)}
-        hint={intl.formatMessage(censusMessages.sortRulesAddedHint)}
-        addButtonLabel={intl.formatMessage(messages.choiceOrderAddLabel)}
-        emptyStateMessage={intl.formatMessage(messages.choiceOrderEmptyState)}
+        label={intl.formatMessage(binMessages.binOrderLabel)}
+        hint={intl.formatMessage(binMessages.sortRulesDroppedHint)}
+        addButtonLabel={intl.formatMessage(binMessages.binOrderAddLabel)}
+        emptyStateMessage={intl.formatMessage(binMessages.binOrderEmptyState)}
         properties={sortableProperties}
         disabled={!chosenEdge}
         committedRules={item.binSortOrder}

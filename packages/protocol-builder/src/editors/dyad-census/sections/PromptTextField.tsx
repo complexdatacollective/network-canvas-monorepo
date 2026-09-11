@@ -27,6 +27,11 @@ export type PromptTextFieldProps = Readonly<{
   guidance: ReactNode;
   placeholder: string;
   /**
+   * What the question itself has to do, where the family says so under the box
+   * rather than above it. Absent where the family says nothing there.
+   */
+  hint?: string;
+  /**
    * What this editor's prompt group is called, and what it says.
    *
    * Per editor rather than shared: the group holds the question alone in
@@ -55,6 +60,7 @@ export function PromptTextField({
   item,
   guidance,
   placeholder,
+  hint,
   title,
   description,
   children,
@@ -68,6 +74,7 @@ export function PromptTextField({
         name="text"
         component={RichTextField}
         label={intl.formatMessage(censusMessages.promptTextLabel)}
+        {...(hint === undefined ? {} : { hint })}
         placeholder={placeholder}
         singleLine
         initialValue={asString(item.text)}

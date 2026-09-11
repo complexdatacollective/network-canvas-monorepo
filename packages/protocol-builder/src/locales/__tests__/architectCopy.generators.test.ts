@@ -52,6 +52,10 @@ const removedIds = Object.keys(removed);
 
 describe('the generator, census and bin copy matches released Architect', () => {
   it('carries every id the fixture names', () => {
+    // Without this the sweep below passes on an emptied fixture: every
+    // `flatMap` would answer `[]` and `it.each([])` would register no cases
+    // at all, so the oracle would report green having checked nothing.
+    expect(fixtureEntries.length).toBeGreaterThan(0);
     expect(
       fixtureEntries.flatMap(([id]) => (id in committedEn ? [] : [id])),
     ).toEqual([]);
@@ -77,6 +81,12 @@ describe('the generator, census and bin copy matches released Architect', () => 
 });
 
 describe('the copy this package invented and Architect never showed', () => {
+  it('names the copy it is judging', () => {
+    // An emptied manifest would make both sweeps below vacuous, and a string
+    // this package invented could then come back with nothing to catch it.
+    expect(removedIds.length).toBeGreaterThan(0);
+  });
+
   it('is gone from every catalog', () => {
     const survivors = removedIds.flatMap((id) => [
       ...(id in committedEn ? [`${id} (en)`] : []),
@@ -90,7 +100,10 @@ describe('the copy this package invented and Architect never showed', () => {
     // A catalog is regenerated from the source, so an id deleted from
     // `en.json` alone comes straight back on the next extraction. The
     // descriptor itself has to go, which only a scan of the source can say.
-    const declarations = sourceFiles().flatMap((path) => {
+    const files = sourceFiles();
+    // Without this the sweep passes on an empty file list.
+    expect(files.length).toBeGreaterThan(0);
+    const declarations = files.flatMap((path) => {
       const text = readFileSync(path, 'utf8');
       return removedIds.flatMap((id) =>
         text.includes(`id: '${id}'`) ? [`${sourcePath(path)} — ${id}`] : [],
@@ -98,4 +111,64 @@ describe('the copy this package invented and Architect never showed', () => {
     });
     expect(declarations).toEqual([]);
   });
+});
+
+/**
+ * The sentences kept because Architect renders no element they could be
+ * matched against, and the controls each one sends the researcher to.
+ *
+ * Nothing above pins these — they are this package's own words — so what has
+ * to hold is that each still names a control by the name it is wearing. This
+ * family re-pointed about thirty labels at Architect's wording, and a
+ * sentence left behind tells a researcher to go and use a box that is not on
+ * the screen under that name.
+ */
+const SENTENCES_THAT_NAME_A_CONTROL = [
+  {
+    sentence: 'protocolBuilder.alterLimits.noEndAnswered',
+    names: [
+      'protocolBuilder.alterLimits.minLabel',
+      'protocolBuilder.alterLimits.maxLabel',
+    ],
+  },
+  {
+    sentence: 'protocolBuilder.cardDisplay.clearTitle',
+    names: ['protocolBuilder.cardDisplay.title'],
+  },
+  {
+    sentence: 'protocolBuilder.cardDisplay.clearConfirm',
+    names: ['protocolBuilder.cardDisplay.title'],
+  },
+] as const;
+
+// Lower-cased on both sides: a label is capitalised as a heading and these
+// sentences quote it mid-sentence, in English and in Spanish alike.
+const englishWords = (id: string): string => {
+  const entry = committedEn[id];
+  if (entry === undefined) throw new Error(`${id} is in no English catalog`);
+  return entry.defaultMessage.toLowerCase();
+};
+
+const spanishWords = (id: string): string => {
+  const entry = committedEs[id];
+  if (entry === undefined) throw new Error(`${id} is in no Spanish catalog`);
+  return entry.toLowerCase();
+};
+
+describe('the copy Architect has no element for still names what is on screen', () => {
+  it.each(SENTENCES_THAT_NAME_A_CONTROL)(
+    '$sentence names the controls it sends the researcher to',
+    ({ sentence, names }) => {
+      for (const label of names) {
+        expect(
+          englishWords(sentence),
+          `${sentence} (en) does not name ${label}`,
+        ).toContain(englishWords(label));
+        expect(
+          spanishWords(sentence),
+          `${sentence} (es) does not name ${label}`,
+        ).toContain(spanishWords(label));
+      }
+    },
+  );
 });

@@ -81,6 +81,13 @@ const messages = defineMessages({
     description:
       'Description of the group holding the question one Tie-Strength Census prompt shows the participant.',
   },
+  promptTextHint: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthPromptTextHint',
+    defaultMessage:
+      'Refer clearly to the two people shown and phrase the prompt for a yes or no response.',
+    description:
+      'Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what shape of answer it asks for.',
+  },
   edgeLabel: {
     id: 'protocolBuilder.censusPrompts.tieStrengthEdgeLabel',
     defaultMessage: 'Edge type',
@@ -374,6 +381,7 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
         placeholder={intl.formatMessage(messages.placeholder)}
         title={intl.formatMessage(censusMessages.promptTextTitle)}
         description={intl.formatMessage(messages.promptTextDescription)}
+        hint={intl.formatMessage(messages.promptTextHint)}
       />
       <CreateEdgeField
         title={intl.formatMessage(messages.edgeTitle)}

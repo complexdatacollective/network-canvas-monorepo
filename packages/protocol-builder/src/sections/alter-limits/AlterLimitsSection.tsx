@@ -79,9 +79,9 @@ const messages = defineMessages({
   noEndAnswered: {
     id: 'protocolBuilder.alterLimits.noEndAnswered',
     defaultMessage:
-      'Set the fewest people, the most people, or both. Switch these limits off if this stage has no limit.',
+      'Set the minimum number of alters, the maximum number of alters, or both. Switch these limits off if this stage has no limit.',
     description:
-      'Refusal shown against the minimum box when the researcher switched the nomination limits on and left both ends empty. Names the switch, because an unlimited stage is said by switching the section off rather than by leaving the boxes blank.',
+      'Refusal shown against the minimum box when the researcher switched the nomination limits on and left both ends empty. It names the two boxes by their own labels, and it names the switch, because an unlimited stage is said by switching the section off rather than by leaving the boxes blank.',
   },
   minBelowZero: {
     id: 'protocolBuilder.alterLimits.minBelowZero',

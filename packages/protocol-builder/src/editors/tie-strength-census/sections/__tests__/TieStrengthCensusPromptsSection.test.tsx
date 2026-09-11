@@ -77,6 +77,28 @@ describe('the questions a tie-strength census asks about a pair', () => {
   });
 
   /**
+   * Architect puts this sentence under the prompt box itself (a `hint` on the
+   * "Prompt text" field), not in the notice above it: it is about how to
+   * phrase the question, which is what a researcher is doing while the box
+   * has focus.
+   */
+  it('says under the prompt box what the question has to name', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+    ).toHaveAccessibleDescription(
+      // The field's required marker is read out first, so the hint is matched
+      // as the end of the description rather than the whole of it.
+      /Refer clearly to the two people shown and phrase the prompt for a yes or no response\.\s*$/,
+    );
+  });
+
+  /**
    * The scale belongs to the connection, so there is nothing to choose from
    * until the connection type is known.
    */
