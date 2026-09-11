@@ -530,6 +530,55 @@ describe('the pedigree’s own configuration', () => {
  * offering a refused attribute; the save-time gate is the backstop for a draft
  * that predates the rule.
  */
+/**
+ * The family-building prompt is the one prompt a researcher writes at length.
+ *
+ * Every rotating prompt in every other interface is one line, because it is
+ * one of several the participant is walked through. This one stands on screen
+ * for the whole census, so it takes full markdown — and the cost of narrowing
+ * it is not that a toolbar button is missing: the markdown a stored prompt
+ * already carries is parsed against the same restriction, so a link is dropped
+ * and the paragraphs run together the moment the editor opens, and the flattened
+ * text is written back over the researcher's own at their next keystroke.
+ */
+describe('what the family-building prompt may hold', () => {
+  const STORED_PROMPT =
+    'Who is in your family? See the [study guide](https://example.org/guide).\n\nTake as long as you need.';
+
+  const openWithStoredPrompt = () => ({
+    stage: familyPedigreeStageWith({ censusPrompt: STORED_PROMPT }),
+    sections: pedigreeSections,
+  });
+
+  it('shows the link the researcher stored', async () => {
+    const harness = renderStageEditor(openWithStoredPrompt());
+    await harness.opened();
+
+    expect(
+      within(screen.getByRole('textbox', { name: 'Census prompt' })).getByRole(
+        'link',
+        { name: 'study guide' },
+      ),
+    ).toHaveAttribute('href', 'https://example.org/guide');
+  });
+
+  it('keeps the link and the second paragraph through an edit', async () => {
+    const harness = renderStageEditor(openWithStoredPrompt());
+    await harness.opened();
+
+    // Typing lands at the start of the first paragraph — see the harness's
+    // note on where a caret goes in a rich text field under jsdom.
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Census prompt' }),
+      'Now: ',
+    );
+
+    expect((await savedStage(harness)).censusPrompt).toBe(
+      `Now: ${STORED_PROMPT}`,
+    );
+  });
+});
+
 describe('the attributes a pedigree may bind', () => {
   it('offers only attributes whose values are the ones the interface owns', () => {
     renderStageEditor(openFixture());
