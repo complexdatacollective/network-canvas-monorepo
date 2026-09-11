@@ -6,6 +6,7 @@ import {
   loadFixtureStage,
 } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
   fieldsOf,
@@ -54,6 +55,13 @@ const createFixture = () => ({
   create: { type: 'AlterForm' as const, position: ALTER_FORM_INDEX },
   editor: mountedAs(alterFormStageEditor.AlterForm),
 });
+
+/**
+ * What the collapsed field row's badge says about a `text`/`Text` attribute —
+ * true of `relationship_to_ego` both before and after it is renamed, since
+ * the badge names the attribute's kind and control, not its identifier.
+ */
+const FIELD_ROW_BADGE = 'Text attribute using Text input input control';
 
 /**
  * What is true of THIS interface and no other. The list of sections it
@@ -126,8 +134,9 @@ describe('the editor for a form about each person', () => {
     expect(screen.getByRole('radio', { name: 'person' })).not.toBeChecked();
     await waitFor(() =>
       expect(
-        harness.outline().find((section) => section.title === 'Form fields')
-          ?.state,
+        harness
+          .outline()
+          .find((section) => section.title === 'Form configuration')?.state,
       ).toBe('Not available yet'),
     );
   });
@@ -202,8 +211,9 @@ describe('the editor for a form about each person', () => {
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        harness.outline().find((section) => section.title === 'Form fields')
-          ?.state,
+        harness
+          .outline()
+          .find((section) => section.title === 'Form configuration')?.state,
       ).toBe('Has a problem'),
     );
   });
@@ -225,14 +235,15 @@ describe('the editor for a form about each person', () => {
 
   /**
    * A collaborator renaming an attribute this form collects is their edit, not
-   * this researcher's: the field now asks for something called something else,
-   * which the researcher has to be able to see, and echoing the rename back
-   * would save it as ours.
+   * this researcher's: the row's badge names the attribute's kind and control
+   * rather than its identifier, so it reads the same before and after the
+   * rename — it is `expectStageUntouched` below that proves the rename did
+   * not get echoed back into a save.
    */
   it('follows an attribute renamed elsewhere without echoing it back', async () => {
     const harness = renderStageEditor(openFixture());
     expect(
-      await screen.findByText('Collects "relationship_to_ego" as text.'),
+      await screen.findByText(exactlyText(FIELD_ROW_BADGE)),
     ).toBeInTheDocument();
 
     harness.receiveCodebookUpdate({
@@ -249,7 +260,7 @@ describe('the editor for a form about each person', () => {
     });
 
     expect(
-      await screen.findByText('Collects "how_they_know_each_other" as text.'),
+      await screen.findByText(exactlyText(FIELD_ROW_BADGE)),
     ).toBeInTheDocument();
     // Their rename is theirs. The stage still holds the field the researcher
     // authored, pointing at the attribute it always did — so a save carries

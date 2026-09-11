@@ -103,9 +103,9 @@ const messages = defineMessages({
   },
   labelPlaceholder: {
     id: 'protocolBuilder.sortOptions.labelPlaceholder',
-    defaultMessage: 'Age',
+    defaultMessage: 'Label',
     description:
-      'Example label shown in an empty label cell of the sortable-attribute list. An example rather than an instruction, so a translation should be an equally ordinary thing a study records about a person.',
+      'Placeholder shown in an empty label cell of the sortable-attribute list, naming what the cell holds.',
   },
   clearTitle: {
     id: 'protocolBuilder.sortOptions.clearTitle',

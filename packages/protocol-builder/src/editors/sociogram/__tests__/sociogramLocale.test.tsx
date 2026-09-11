@@ -51,7 +51,7 @@ describe('the canvas sections, read in Spanish', () => {
     expect(screen.getByText('Modo manual')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Elige lo que el participante ve detrás de los nodos en este lienzo: círculos concéntricos o una imagen tuya.',
+        'Elige círculos concéntricos o una imagen personalizada como fondo gráfico de esta pregunta.',
       ),
     ).toBeInTheDocument();
   });

@@ -109,7 +109,7 @@ describe('the stage sections under es, at rest', () => {
             requiresSubject={false}
           />
           <InterviewerGuidanceSection />
-          <NetworkFilterSection subject="node" />
+          <NetworkFilterSection />
           <SkipLogicSection />
         </>
       ),
@@ -301,7 +301,7 @@ describe('the row dialogs under es', () => {
 
     await harness.user.click(
       await screen.findByRole('button', {
-        name: 'Crear nuevo bloque de contenido',
+        name: 'Crear nuevo elemento de contenido',
       }),
     );
     await screen.findByRole('dialog');
@@ -372,16 +372,17 @@ describe('the sweep itself', () => {
   /**
    * The half a whole-message comparison cannot see. A message carrying an ICU
    * argument is never rendered as its pattern, so nothing matched
-   * `Node color {index, number}` — and a colour list rebuilt by hand as
-   * `` `Node color ${index + 1}` `` was reported by nothing at all. What
-   * survives formatting is the text between the arguments, so that is what is
-   * compared.
+   * `Content type changed to {kind}. Nothing has been entered for {kind}
+   * yet.` — and an announcement rebuilt by hand around that pattern was
+   * reported by nothing at all. What survives formatting is the text between
+   * the arguments, so that is what is compared.
    */
   it('names a run of English from inside a message that takes an argument', () => {
-    document.body.innerHTML = '<option>Node color 1</option>';
+    document.body.innerHTML =
+      '<p>Kind changed to Image. Nothing has been entered for Image yet.</p>';
 
     expect(localeLeaks()).toEqual([
-      'protocolBuilder.codebookEntity.nodeColorOption rendered in English: Node color',
+      'protocolBuilder.contentBlock.kindChangedEmpty rendered in English: . Nothing has been entered for',
     ]);
   });
 
@@ -417,22 +418,21 @@ describe('the sweep itself', () => {
    * "Sociogram" is exactly that collision, and not a hypothetical one: it is
    * the English of `protocolBuilder.interface.sociogram`, the name this
    * package gives that interface — and it is also what a researcher calls the
-   * stage, because the package suggested it. "Who are the people you know?" is
-   * the same collision one layer down: it is the English of
-   * `protocolBuilder.nameGeneratorPrompts.textPlaceholder`, the placeholder
-   * the name generator's own prompt field shows, and it is a sentence this
-   * package suggests BECAUSE it is the sentence a researcher writes. So both
-   * are passed as content, which is how every real sweep gets them: read out
-   * of the protocol the harness is mounted over rather than listed here. The
-   * other two need no help; the four-letter floor keeps "Age" and "No" out on
-   * their own.
+   * stage, because the package suggested it. "Enter the text for this
+   * block..." is the same collision one layer down: it is the English of
+   * `protocolBuilder.contentBlock.textPlaceholder`, the placeholder a text
+   * block's own content box shows, and a researcher can leave that block
+   * reading exactly that. So both are passed as content, which is how every
+   * real sweep gets them: read out of the protocol the harness is mounted
+   * over rather than listed here. The other two need no help; the
+   * four-letter floor keeps "Age" and "No" out on their own.
    */
   it('says nothing about a researcher’s own English', () => {
     document.body.innerHTML =
-      '<p>Who are the people you know?</p><p>Sociogram</p><p>Age</p><p>No</p>';
+      '<p>Enter the text for this block...</p><p>Sociogram</p><p>Age</p><p>No</p>';
 
     expect(
-      localeLeaks(new Set(['Sociogram', 'Who are the people you know?'])),
+      localeLeaks(new Set(['Sociogram', 'Enter the text for this block...'])),
     ).toEqual([]);
   });
 

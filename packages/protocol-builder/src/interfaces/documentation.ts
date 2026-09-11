@@ -15,4 +15,6 @@ export const interfaceDocumentationUrl = (slug: string): string =>
 export const protocolAuthoringLinks = {
   skipLogic: `${DOCS_BASE_URL}/design-protocols/key-concepts/skip-logic/`,
   networkFiltering: `${DOCS_BASE_URL}/design-protocols/key-concepts/network-filtering/`,
+  responsiveSvgBackgrounds: `${DOCS_BASE_URL}/design-protocols/key-concepts/responsive-svg-backgrounds/`,
+  inputControls: `${DOCS_BASE_URL}/design-protocols/key-concepts/input-controls/`,
 } as const;

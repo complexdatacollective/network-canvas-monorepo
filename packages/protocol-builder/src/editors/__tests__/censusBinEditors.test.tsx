@@ -286,7 +286,7 @@ const CASES: readonly EditorCase[] = [
     editor: dyadCensusStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Stage filter',
       'Task introduction',
       'Prompt collection',
@@ -326,7 +326,7 @@ const CASES: readonly EditorCase[] = [
     editor: tieStrengthCensusStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Stage filter',
       'Task introduction',
       'Prompt collection',
@@ -364,7 +364,7 @@ const CASES: readonly EditorCase[] = [
     editor: oneToManyDyadCensusStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Stage filter',
       'Prompt collection',
       'Node availability',
@@ -410,7 +410,7 @@ const CASES: readonly EditorCase[] = [
     editor: ordinalBinStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Stage filter',
       'Prompt collection',
       'Skip logic',
@@ -433,10 +433,8 @@ const CASES: readonly EditorCase[] = [
       variable: [{ role: 'combobox', name: 'Attribute' }],
       // `ord-color-seq-1` is the first swatch of the schema's own sequence.
       color: [{ role: 'radio', name: 'Sea Green', checked: true }],
-      bucketSortOrder: sortRuleControls(
-        'Order people are handed to the participant in',
-      ),
-      binSortOrder: sortRuleControls('Order within each bin'),
+      bucketSortOrder: sortRuleControls('Bucket order'),
+      binSortOrder: sortRuleControls('Bin order'),
     },
     rewrite: {
       key: 'color',
@@ -452,7 +450,7 @@ const CASES: readonly EditorCase[] = [
     editor: categoricalBinStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Stage filter',
       'Prompt collection',
       'Skip logic',
@@ -495,10 +493,8 @@ const CASES: readonly EditorCase[] = [
           within: 'Follow-up other option',
         },
       ],
-      bucketSortOrder: sortRuleControls(
-        'Order people are handed to the participant in',
-      ),
-      binSortOrder: sortRuleControls('Order within each bin'),
+      bucketSortOrder: sortRuleControls('Bucket order'),
+      binSortOrder: sortRuleControls('Bin order'),
     },
     rewrite: {
       key: 'otherOptionLabel',
@@ -512,8 +508,8 @@ const CASES: readonly EditorCase[] = [
     editor: nameGeneratorQuickAddStageEditor,
     sections: [
       'Stage name',
-      'Node type',
-      'Quick add',
+      'Node setup',
+      'Quick add configuration',
       'Prompt collection',
       'Side panels',
       'Nomination limits',
@@ -547,7 +543,7 @@ const CASES: readonly EditorCase[] = [
     editor: nameGeneratorRosterStageEditor,
     sections: [
       'Stage name',
-      'Node type',
+      'Node setup',
       'Roster source',
       'Prompt collection',
       'Card display',

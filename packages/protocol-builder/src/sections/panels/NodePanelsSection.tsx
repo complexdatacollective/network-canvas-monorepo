@@ -248,14 +248,14 @@ const messages = defineMessages({
   },
   clearTitle: {
     id: 'protocolBuilder.nodePanels.clearTitle',
-    defaultMessage: 'This will delete your side panels',
+    defaultMessage: 'This will delete your panel configuration',
     description:
       'Title of the dialog asking a researcher to confirm switching off the section that adds panels of people beside a name generator for the participant to nominate from.',
   },
   clearDescription: {
     id: 'protocolBuilder.nodePanels.clearDescription',
     defaultMessage:
-      'This will remove every side panel on this stage, and delete any filter rules you have created for them. Do you want to continue?',
+      'This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?',
     description:
       'Body of the dialog confirming that switching off the side panels discards the panels and the filter rules written for them. A stage is one step of an interview.',
   },

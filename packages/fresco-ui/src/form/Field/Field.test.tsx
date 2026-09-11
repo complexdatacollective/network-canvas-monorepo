@@ -155,6 +155,60 @@ describe('Field aria-describedby', () => {
 });
 
 /**
+ * A hint that is a string is markdown; a hint that is a tree is already
+ * rendered.
+ *
+ * The two used to be told apart child by child, after React had flattened the
+ * tree — so a hint formatted from a message with a tag in it arrived as
+ * `['…see our ', <a>documentation</a>, '.']` and each string went through
+ * markdown on its own. Markdown trims a paragraph, so the space before the
+ * link disappeared and the researcher read "see ourdocumentation".
+ */
+describe('Field hint content', () => {
+  it('keeps the spacing around a link inside a hint', () => {
+    render(
+      <Form onSubmit={() => ({ success: true })}>
+        <Field
+          name="name"
+          label="Name"
+          component={InputField}
+          hint={[
+            'Read our ',
+            <a key="docs" href="/docs">
+              documentation
+            </a>,
+            '.',
+          ]}
+        />
+      </Form>,
+    );
+
+    const control = screen.getByRole('textbox', { name: 'Name' });
+    const hint = document.getElementById(`${control.id}-hint`);
+    expect(hint).not.toBeNull();
+    expect(hint?.textContent).toBe('Read our documentation.');
+  });
+
+  it('still renders a hint written as markdown', () => {
+    render(
+      <Form onSubmit={() => ({ success: true })}>
+        <Field
+          name="name"
+          label="Name"
+          component={InputField}
+          hint="As it appears on your **ID**"
+        />
+      </Form>,
+    );
+
+    const control = screen.getByRole('textbox', { name: 'Name' });
+    const hint = document.getElementById(`${control.id}-hint`);
+    expect(hint?.textContent).toBe('As it appears on your ID');
+    expect(hint?.querySelector('strong')?.textContent).toBe('ID');
+  });
+});
+
+/**
  * A field's validation is MEMOISED, and the key it is memoised on is built by
  * serialising the validation props. `JSON.stringify` drops a function-valued
  * property entirely, so a rule rebuilt to judge something different serialises

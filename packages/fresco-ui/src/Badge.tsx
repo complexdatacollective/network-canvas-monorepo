@@ -8,7 +8,6 @@ const BADGE_BASE_CLASSES =
 type ThemeColorStyle = {
   color: string;
   contrast: string;
-  label?: string;
 };
 
 const badgeVariants = cva({
@@ -31,7 +30,6 @@ const themeColorStyles = {
   'white': {
     color: 'var(--color-white)',
     contrast: 'var(--text)',
-    label: 'var(--text)',
   },
   'black': {
     color: 'var(--color-black)',
@@ -80,12 +78,10 @@ const themeColorStyles = {
   'mustard': {
     color: 'var(--color-mustard)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'mustard-dark': {
     color: 'var(--color-mustard-dark)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'rich-black': {
     color: 'var(--color-rich-black)',
@@ -106,22 +102,18 @@ const themeColorStyles = {
   'platinum': {
     color: 'var(--color-platinum)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'platinum-dark': {
     color: 'var(--color-platinum-dark)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'sea-serpent': {
     color: 'var(--color-sea-serpent)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'sea-serpent-dark': {
     color: 'var(--color-sea-serpent-dark)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'purple-pizazz': {
     color: 'var(--color-purple-pizazz)',
@@ -150,22 +142,18 @@ const themeColorStyles = {
   'kiwi': {
     color: 'var(--color-kiwi)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'kiwi-dark': {
     color: 'var(--color-kiwi-dark)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'neon-carrot': {
     color: 'var(--color-neon-carrot)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'neon-carrot-dark': {
     color: 'var(--color-neon-carrot-dark)',
     contrast: 'var(--color-charcoal)',
-    label: 'var(--color-charcoal)',
   },
   'barbie-pink': {
     color: 'var(--color-barbie-pink)',
@@ -190,7 +178,6 @@ type BadgeColor = keyof typeof themeColorStyles;
 type BadgeStyle = React.CSSProperties & {
   '--badge-color'?: string;
   '--badge-contrast'?: string;
-  '--badge-label'?: string;
 };
 
 type BadgeProps = object &
@@ -204,8 +191,19 @@ const themedBadgeVariants = cva({
   variants: {
     variant: {
       filled: 'border-transparent bg-(--badge-color) text-(--badge-contrast)',
+      /**
+       * The colour is the border and a wash of it behind the label; the label
+       * itself is the surface's own text colour.
+       *
+       * Not the theme colour: most of this palette sits in the middle of the
+       * lightness range, where the colour reaches neither 4.5:1 against a 14%
+       * wash of itself nor against white — cerulean blue is 4.43:1 either way.
+       * The text token is the one colour the theme already guarantees against
+       * the surface this badge sits on, in light and dark alike, and a wash
+       * this thin does not move it.
+       */
       outline:
-        'border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)] text-(--badge-label)',
+        'text-text border-(--badge-color) bg-[color-mix(in_oklab,var(--badge-color)_14%,transparent)]',
     },
   },
 });
@@ -220,7 +218,6 @@ function Badge({ className, color, variant, style, ...props }: BadgeProps) {
         ...style,
         '--badge-color': colorStyle.color,
         '--badge-contrast': colorStyle.contrast,
-        '--badge-label': colorStyle.label ?? colorStyle.color,
       }
     : style;
 

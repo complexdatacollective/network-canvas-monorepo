@@ -376,43 +376,43 @@
     "description": "Heading of the warning shown when the attribute a bin prompt uses offers more values than the interview screen can draw as bins."
   },
   "protocolBuilder.censusPrompts.binOrderAddLabel": {
-    "defaultMessage": "Add a rule for the order within a bin",
+    "defaultMessage": "Add new bin sort rule",
     "description": "Button that appends one sort rule to the list ordering the people already dragged into a bin."
   },
   "protocolBuilder.censusPrompts.binOrderDescription": {
-    "defaultMessage": "Choose the order people already sorted into a bin are listed in.",
+    "defaultMessage": "Set the order of nodes after they have been placed into a bin.",
     "description": "Description of the group holding the rules that order the people already dragged into a bin."
   },
   "protocolBuilder.censusPrompts.binOrderEmptyState": {
-    "defaultMessage": "No rules yet, so people are listed in the order they were dropped in.",
+    "defaultMessage": "No sort rules have been created yet.",
     "description": "Shown in place of the sort rules ordering the people already dragged into a bin, when the researcher has written none."
   },
   "protocolBuilder.censusPrompts.binOrderLabel": {
-    "defaultMessage": "Rules for the order within a bin",
+    "defaultMessage": "Bin sort rules",
     "description": "Label of the list of sort rules that order the people already dragged into a bin."
   },
   "protocolBuilder.censusPrompts.binOrderTitle": {
-    "defaultMessage": "Order within each bin",
+    "defaultMessage": "Bin order",
     "description": "Heading of the optional group holding the rules that order the people already dragged into a bin."
   },
   "protocolBuilder.censusPrompts.bucketOrderAddLabel": {
-    "defaultMessage": "Add a rule for the order people are handed over in",
+    "defaultMessage": "Add new bucket sort rule",
     "description": "Button that appends one sort rule to the list ordering the people a bin stage has not been asked about yet."
   },
   "protocolBuilder.censusPrompts.bucketOrderDescription": {
-    "defaultMessage": "Choose the order the people still to be sorted are offered in.",
+    "defaultMessage": "Set the order of nodes before they are placed.",
     "description": "Description of the group holding the rules that order the people a bin stage has not been asked about yet."
   },
   "protocolBuilder.censusPrompts.bucketOrderEmptyState": {
-    "defaultMessage": "No rules yet, so people are handed over in the order they were added.",
+    "defaultMessage": "No sort rules have been created yet.",
     "description": "Shown in place of the sort rules ordering the people a bin stage has not been asked about yet, when the researcher has written none."
   },
   "protocolBuilder.censusPrompts.bucketOrderLabel": {
-    "defaultMessage": "Rules for handing people over",
+    "defaultMessage": "Bucket sort rules",
     "description": "Label of the list of sort rules that order the people a bin stage has not been asked about yet."
   },
   "protocolBuilder.censusPrompts.bucketOrderTitle": {
-    "defaultMessage": "Order people are handed to the participant in",
+    "defaultMessage": "Bucket order",
     "description": "Heading of the optional group holding the rules that order the people a bin stage has not been asked about yet."
   },
   "protocolBuilder.censusPrompts.categoricalBinBinsDescription": {
@@ -656,11 +656,11 @@
     "description": "Heading of the group that picks the attribute whose ordered values the participant answers on — the points running from least to most."
   },
   "protocolBuilder.censusPrompts.sortRulesAddedHint": {
-    "defaultMessage": "Rules are applied in order. Use the asterisk to keep the order the people were added in.",
+    "defaultMessage": "Add one or more rules to determine the order in which nodes are displayed in the bucket before they are placed. Use the asterisk property to sort by the order that nodes were created.",
     "description": "Guidance under a list of sort rules whose fallback is the order the people were added to the network. The asterisk is the wildcard option offered in the rule’s own property picker."
   },
   "protocolBuilder.censusPrompts.sortRulesDroppedHint": {
-    "defaultMessage": "Rules are applied in order. Use the asterisk to keep the order the people were dropped in.",
+    "defaultMessage": "Add one or more rules to determine the order in which nodes are displayed in the bin after they have been placed. Use the asterisk property to sort by the order that nodes were placed.",
     "description": "The same guidance as `sortRulesAddedHint` for a list of sort rules inside a bin, where the fallback is the order the participant dragged people into that bin. The asterisk is the wildcard option offered in the rule’s own property picker."
   },
   "protocolBuilder.censusPrompts.tieStrengthDeclineDescription": {
@@ -879,10 +879,6 @@
     "defaultMessage": "{entity, select, node {Create node type} edge {Create edge type} other {Create ego definition}}",
     "description": "Heading of the editor while a new codebook entity is being added. entity is node, edge or ego."
   },
-  "protocolBuilder.codebookEntity.edgeColorOption": {
-    "defaultMessage": "Edge color {index, number}",
-    "description": "Choice offered for an edge type’s colour, naming its position in the protocol’s edge palette rather than the colour itself, because a protocol’s theme decides what each position looks like. index is that position, counting from one."
-  },
   "protocolBuilder.codebookEntity.edgeTypesHeading": {
     "defaultMessage": "Edge types",
     "description": "Heading over the codebook’s edge types. An edge is a relationship between two network members."
@@ -983,10 +979,6 @@
     "defaultMessage": "No valid node types are available.",
     "description": "Shown in place of the node type list when the codebook defines none this page can read."
   },
-  "protocolBuilder.codebookEntity.nodeColorOption": {
-    "defaultMessage": "Node color {index, number}",
-    "description": "Choice offered for a node type’s colour, naming its position in the protocol’s node palette rather than the colour itself, because a protocol’s theme decides what each position looks like. index is that position, counting from one."
-  },
   "protocolBuilder.codebookEntity.nodeShapeCircle": {
     "defaultMessage": "Circle",
     "description": "Choice offered for the shape a node type is drawn as in the interview. A node is a member of the interview network."
@@ -1028,15 +1020,15 @@
     "description": "Button that saves the codebook entity being edited. Named for the entity because the editor is commonly mounted inside another form that has a save of its own."
   },
   "protocolBuilder.codebookVariable.addOption": {
-    "defaultMessage": "Add option",
+    "defaultMessage": "Create new option",
     "description": "Button that adds an empty row to the list of answers a participant may choose from."
   },
   "protocolBuilder.codebookVariable.answersHint": {
-    "defaultMessage": "Write what the participant chooses between. Left empty, they are offered Yes and No. A negative answer is shown in red when it is selected.",
-    "description": "Guidance under the heading over a yes/no attribute’s two answers. Naming neither is a real answer: the interview offers its own translated Yes and No when the protocol names none."
+    "defaultMessage": "Define the values stored for the on and off states.",
+    "description": "Guidance under the heading over a yes/no attribute’s two answers."
   },
   "protocolBuilder.codebookVariable.answersLegend": {
-    "defaultMessage": "The two answers",
+    "defaultMessage": "Boolean values",
     "description": "Heading over the words on the two answers a yes/no attribute puts in front of a participant."
   },
   "protocolBuilder.codebookVariable.booleanAnswerLabel": {
@@ -1104,7 +1096,7 @@
     "description": "Column heading over what the export records for each allowed answer, in the read-only list of answers an interview step owns."
   },
   "protocolBuilder.codebookVariable.lockedOptionsCaption": {
-    "defaultMessage": "These values are managed by the interface and cannot be changed.",
+    "defaultMessage": "These options are automatically configured by the interface and cannot be modified.",
     "description": "Caption over the read-only list of allowed answers for an attribute whose answers one kind of interview step owns. An interface is one kind of interview step."
   },
   "protocolBuilder.codebookVariable.nameHint": {
@@ -1124,19 +1116,19 @@
     "description": "Label of the field holding what the export records for one allowed answer. index is that answer’s position in the list, counting from one, and is passed as text because the researcher reads it as this row’s name."
   },
   "protocolBuilder.codebookVariable.optionsHint": {
-    "defaultMessage": "Add at least two participant-facing labels and their stored values.",
-    "description": "Guidance under the allowed values heading. A label is what a participant reads; its stored value is what the export records."
+    "defaultMessage": "Define the values participants can choose for this categorical or ordinal attribute.",
+    "description": "Guidance under the choice values heading. Categorical and ordinal are two kinds of attribute."
   },
   "protocolBuilder.codebookVariable.optionsLegend": {
-    "defaultMessage": "Allowed values",
+    "defaultMessage": "Choice values",
     "description": "Heading over the list of answers a participant may choose from for this attribute. A required marker follows it."
   },
   "protocolBuilder.codebookVariable.parametersHint": {
-    "defaultMessage": "These settings belong to the input control this attribute is collected with, so they apply wherever it is asked for.",
-    "description": "Guidance under the heading over an input control’s settings, saying that they follow the attribute into every interview step that asks for it."
+    "defaultMessage": "Configure the settings available for this input control.",
+    "description": "Guidance under the heading over an input control’s settings."
   },
   "protocolBuilder.codebookVariable.parametersLegend": {
-    "defaultMessage": "What this control accepts",
+    "defaultMessage": "Control settings",
     "description": "Heading over the settings the input control an attribute is collected with takes — the bounds of a date, the words at each end of a sliding scale."
   },
   "protocolBuilder.codebookVariable.removeOption": {
@@ -1255,13 +1247,13 @@
     "defaultMessage": "What this recording is, read aloud in place of the file’s name to a participant using a screen reader.",
     "description": "Guidance under the description control of a block that plays an audio recording."
   },
-  "protocolBuilder.contentBlock.audioHint": {
-    "defaultMessage": "The audio the participant can play when they reach this block.",
-    "description": "Guidance under the file picker of a block that plays an audio recording."
-  },
   "protocolBuilder.contentBlock.audioRequired": {
     "defaultMessage": "Choose the audio file this block plays.",
     "description": "Refusal shown under the file picker of an audio block when nothing has been chosen."
+  },
+  "protocolBuilder.contentBlock.contentHint": {
+    "defaultMessage": "Provide the {slotType, select, text {text} image {image} audio {audio} other {video}} content for this item. This is what participants will see when they reach this item in the study.",
+    "description": "Guidance under the control holding what one piece of a page shows, whichever kind it is. slotType is the kind of content, chosen in the control above."
   },
   "protocolBuilder.contentBlock.contentLabel": {
     "defaultMessage": "Content",
@@ -1274,10 +1266,6 @@
   "protocolBuilder.contentBlock.imageDescriptionHint": {
     "defaultMessage": "What this image shows, read aloud to a participant who cannot see it. Leave it empty if the image is decorative.",
     "description": "Guidance under the description control of a block that shows a picture. Decorative means the picture adds nothing a participant would miss."
-  },
-  "protocolBuilder.contentBlock.imageHint": {
-    "defaultMessage": "The image the participant sees when they reach this block.",
-    "description": "Guidance under the file picker of a block that shows a picture."
   },
   "protocolBuilder.contentBlock.imageRequired": {
     "defaultMessage": "Choose the image this block shows.",
@@ -1304,7 +1292,7 @@
     "description": "Announcement made when a researcher first says what kind of thing one piece of a page holds, which mounts a control for it. kind is that choice — Image, Video, Audio, Text — already in the reader’s language."
   },
   "protocolBuilder.contentBlock.kindHint": {
-    "defaultMessage": "Choose what this block shows the participant.",
+    "defaultMessage": "Choose the type of content this item will show.",
     "description": "Guidance under the content-type control."
   },
   "protocolBuilder.contentBlock.kindImage": {
@@ -1328,7 +1316,7 @@
     "description": "Choice offered for what one piece of a page holds: a video."
   },
   "protocolBuilder.contentBlock.missingResource": {
-    "defaultMessage": "This block’s resource is no longer in this protocol. Choose a content type above to replace it.",
+    "defaultMessage": "This item’s resource is no longer in this protocol. Choose a content type above to replace it.",
     "description": "Warning body shown when a piece of a page points at a file that has been deleted from the protocol, so it needs replacing."
   },
   "protocolBuilder.contentBlock.previewEmpty": {
@@ -1340,11 +1328,11 @@
     "description": "Shown in the collapsed row of a page’s list of blocks when that piece points at a file the protocol no longer holds, or at one a page cannot present — a roster of people, a map layer, a key."
   },
   "protocolBuilder.contentBlock.sectionDescription": {
-    "defaultMessage": "Choose what kind of content this block holds, and provide the content itself.",
+    "defaultMessage": "Choose the content type, provide what participants will see, and adjust its presentation when available.",
     "description": "Description under the block-details heading."
   },
   "protocolBuilder.contentBlock.sectionTitle": {
-    "defaultMessage": "Block details",
+    "defaultMessage": "Item details",
     "description": "Heading of the dialog where a researcher says what one piece of a page holds and provides it."
   },
   "protocolBuilder.contentBlock.sizeFull": {
@@ -1352,7 +1340,7 @@
     "description": "Choice offered for how tall a picture or video on a page is drawn: however tall it naturally is, unconstrained."
   },
   "protocolBuilder.contentBlock.sizeHint": {
-    "defaultMessage": "Optionally constrain the height of this block. Full size lets it show at its natural height.",
+    "defaultMessage": "Optionally constrain the height of this item. Full size lets it display at its natural height.",
     "description": "Guidance under the display-size control. \"Full size\" is the wording of the unconstrained choice it offers."
   },
   "protocolBuilder.contentBlock.sizeLabel": {
@@ -1371,10 +1359,6 @@
     "defaultMessage": "Small",
     "description": "Choice offered for how tall a picture or video on a page is drawn."
   },
-  "protocolBuilder.contentBlock.textHint": {
-    "defaultMessage": "What the participant reads when they reach this block. Supports markdown formatting.",
-    "description": "Guidance under the control holding the prose of a text block. Markdown is the name of the formatting syntax and is not translated."
-  },
   "protocolBuilder.contentBlock.textPlaceholder": {
     "defaultMessage": "Enter the text for this block...",
     "description": "Placeholder shown in the empty prose control of a text block. The trailing dots are an ellipsis written as three full stops."
@@ -1384,7 +1368,7 @@
     "description": "Refusal shown under the prose control of a text block when it has been left empty."
   },
   "protocolBuilder.contentBlock.unpresentableResource": {
-    "defaultMessage": "This block’s resource is not an image, audio or video file, so this block cannot show it. Choose a content type above to replace it.",
+    "defaultMessage": "This item’s resource is not an image, audio or video file, so this item cannot show it. Choose a content type above to replace it.",
     "description": "Warning body shown when a piece of a page points at a file that IS in the protocol but is not something a page can present — a roster of people, a map layer, a key. Distinct from a deleted file, because there is nothing missing to go looking for."
   },
   "protocolBuilder.contentBlock.unusableTitle": {
@@ -1394,10 +1378,6 @@
   "protocolBuilder.contentBlock.videoDescriptionHint": {
     "defaultMessage": "What this video shows, read aloud in place of the file’s name to a participant using a screen reader.",
     "description": "Guidance under the description control of a block that plays a video."
-  },
-  "protocolBuilder.contentBlock.videoHint": {
-    "defaultMessage": "The video the participant can play when they reach this block.",
-    "description": "Guidance under the file picker of a block that plays a video."
   },
   "protocolBuilder.contentBlock.videoRequired": {
     "defaultMessage": "Choose the video this block plays.",
@@ -1424,7 +1404,7 @@
     "description": "Accessible name of the divider a researcher drags to give more room either to the fields of an editing dialog or to the live preview beside them."
   },
   "protocolBuilder.entitySelect.edgeChangeBlockedTitle": {
-    "defaultMessage": "This edge type cannot be changed",
+    "defaultMessage": "Cannot change edge type",
     "description": "Title of the message shown when a researcher tries to change the edge type of a stage something else in the protocol depends on, and the change is refused. An edge type is a kind of relationship between two network members, such as a friendship."
   },
   "protocolBuilder.entitySelect.edgeChangeTargetDeletedTitle": {
@@ -1432,11 +1412,11 @@
     "description": "Title of the message shown when a researcher confirms a change of a stage’s edge type and the type they chose has been deleted from the codebook in the meantime, so the change is refused. An edge type is a kind of relationship between two network members, such as a friendship."
   },
   "protocolBuilder.entitySelect.edgeEmptyState": {
-    "defaultMessage": "This protocol has no edge types yet.",
+    "defaultMessage": "No edge types currently defined",
     "description": "Shown in place of the chips when a researcher is asked to choose an edge type and the protocol’s codebook defines none. An edge type is a kind of relationship between two network members, such as a friendship."
   },
   "protocolBuilder.entitySelect.edgeGroupLabel": {
-    "defaultMessage": "Edge type",
+    "defaultMessage": "Edge type options",
     "description": "Accessible name of the group of chips a researcher picks an edge type from. An edge type is a kind of relationship between two network members, such as a friendship."
   },
   "protocolBuilder.entitySelect.missingOptionLabel": {
@@ -1448,7 +1428,7 @@
     "description": "Shown when the node or edge type a researcher’s choice names has been deleted from the protocol’s codebook, so the choice has to be made again: under the chips when it is the stored choice, and in the message refusing a confirmed change whose target was deleted while the question was open."
   },
   "protocolBuilder.entitySelect.nodeChangeBlockedTitle": {
-    "defaultMessage": "This node type cannot be changed",
+    "defaultMessage": "Cannot change node type",
     "description": "Title of the message shown when a researcher tries to change the node type of a stage something else in the protocol depends on, and the change is refused. A node type is a kind of network member the study records, such as a person or a place."
   },
   "protocolBuilder.entitySelect.nodeChangeTargetDeletedTitle": {
@@ -1456,11 +1436,11 @@
     "description": "Title of the message shown when a researcher confirms a change of a stage’s node type and the type they chose has been deleted from the codebook in the meantime, so the change is refused. A node type is a kind of network member the study records, such as a person or a place."
   },
   "protocolBuilder.entitySelect.nodeEmptyState": {
-    "defaultMessage": "This protocol has no node types yet.",
+    "defaultMessage": "No node types currently defined",
     "description": "Shown in place of the chips when a researcher is asked to choose a node type and the protocol’s codebook defines none. A node type is a kind of network member the study records, such as a person or a place."
   },
   "protocolBuilder.entitySelect.nodeGroupLabel": {
-    "defaultMessage": "Node type",
+    "defaultMessage": "Node type options",
     "description": "Accessible name of the group of chips a researcher picks a node type from. A node type is a kind of network member the study records, such as a person or a place."
   },
   "protocolBuilder.externalDataSource.columnsDescription": {
@@ -1519,9 +1499,13 @@
     "defaultMessage": "Add at least one field. A form with no fields collects nothing.",
     "description": "Refusal shown above a form’s list of fields when a researcher saves a form that asks nothing. A field is one question bound to one attribute of a network member."
   },
+  "protocolBuilder.formFields.attributeControlBadge": {
+    "defaultMessage": "<type>{typeLabel}</type> attribute using <control>{controlLabel}</control> input control",
+    "description": "Shown in the collapsed row of a form’s list of questions, naming the kind of attribute it records into and the control the participant answers with. Both are already translated where they are read from, and both are emphasised inside the sentence so a translator moves them with the clause they belong to."
+  },
   "protocolBuilder.formFields.attributeHint": {
-    "defaultMessage": "The codebook attribute this field’s answer is stored in.",
-    "description": "Guidance under the attribute control. The codebook is the protocol’s definition of what an interview records."
+    "defaultMessage": "Select an attribute",
+    "description": "Guidance under the attribute control."
   },
   "protocolBuilder.formFields.attributeLabel": {
     "defaultMessage": "Attribute",
@@ -1532,11 +1516,11 @@
     "description": "Refusal shown under the attribute control when nothing has been chosen."
   },
   "protocolBuilder.formFields.attributeSectionDescription": {
-    "defaultMessage": "Choose the attribute this field collects, or create one for it.",
+    "defaultMessage": "Choose the attribute this form field will collect.",
     "description": "Description under the Attribute heading."
   },
   "protocolBuilder.formFields.attributeSectionTitle": {
-    "defaultMessage": "Attribute",
+    "defaultMessage": "Attribute selection",
     "description": "Heading of the half of the field dialog that says which attribute this question’s answer is recorded under."
   },
   "protocolBuilder.formFields.attributeTaken": {
@@ -1544,8 +1528,8 @@
     "description": "Refusal shown under the attribute control when a sibling field of the same form already records its answer under the attribute just chosen."
   },
   "protocolBuilder.formFields.componentHint": {
-    "defaultMessage": "What the participant uses to answer. Changing it changes how this attribute is collected everywhere.",
-    "description": "Guidance under the input-control field, warning that the control belongs to the attribute rather than to this one question."
+    "defaultMessage": "How the answer is collected. For detailed information about these options, see our <link>documentation</link>.",
+    "description": "Guidance under the input-control field, ending in a link to the documentation page about input controls. The link is a tag inside the sentence rather than markup around a fragment of it, so a translator moves the whole clause and the link text together."
   },
   "protocolBuilder.formFields.componentLabel": {
     "defaultMessage": "Input control",
@@ -1620,7 +1604,7 @@
     "description": "Refusal shown under the kind-of-answer control when a researcher tries to invent an attribute whose answers come from a list, which cannot be made from a name and a kind alone."
   },
   "protocolBuilder.formFields.description": {
-    "defaultMessage": "Choose the attributes this form collects, and write the question the participant answers for each.",
+    "defaultMessage": "Map attributes to input controls and define the validation rules for this form.",
     "description": "Description of the form-fields section."
   },
   "protocolBuilder.formFields.duplicateField": {
@@ -1632,19 +1616,19 @@
     "description": "Title of the dialog a researcher fills in to change a question a form already asks."
   },
   "protocolBuilder.formFields.emptyState": {
-    "defaultMessage": "No fields yet. Create one to say what this form collects.",
+    "defaultMessage": "No items have been created yet.",
     "description": "Shown in place of the list of form fields while a form asks nothing yet."
   },
   "protocolBuilder.formFields.fieldHint": {
-    "defaultMessage": "The participant answers these one after another, in this order. Add at least one.",
+    "defaultMessage": "Add one or more fields to your form to collect attributes. Use the drag handle on the left of each prompt to adjust its order.",
     "description": "Guidance under the list of form fields."
   },
   "protocolBuilder.formFields.fieldLabel": {
-    "defaultMessage": "Fields",
+    "defaultMessage": "Form fields",
     "description": "Label of the ordered list of questions a form asks."
   },
   "protocolBuilder.formFields.formTitleHint": {
-    "defaultMessage": "Shown above the form. Use a short phrase describing what it collects, such as \"Add a person\".",
+    "defaultMessage": "Shown at the top of the form. Use a short descriptive title such as 'Add a contact'.",
     "description": "Guidance under the form-title field. The quoted phrase is an example a researcher might write, and should be translated as such."
   },
   "protocolBuilder.formFields.formTitleLabel": {
@@ -1652,15 +1636,15 @@
     "description": "Label of the field holding the heading shown above the form a participant fills in."
   },
   "protocolBuilder.formFields.formTitlePlaceholder": {
-    "defaultMessage": "Add a person",
-    "description": "Example form title shown in the empty field. An example a researcher might write, not a value that is stored."
+    "defaultMessage": "Enter a title...",
+    "description": "Placeholder shown in the empty form-title field. The trailing dots are an ellipsis written as three full stops."
   },
   "protocolBuilder.formFields.formTitleRequired": {
     "defaultMessage": "Give this form a title.",
     "description": "Refusal shown under the form-title field when it has been left empty."
   },
   "protocolBuilder.formFields.hintHint": {
-    "defaultMessage": "Optional guidance shown below the question, for a field participants may find ambiguous.",
+    "defaultMessage": "Optionally display a markdown-formatted hint below the question, to help participants understand how to answer.",
     "description": "Guidance under the hint-text field."
   },
   "protocolBuilder.formFields.hintLabel": {
@@ -1668,8 +1652,8 @@
     "description": "Label of the optional field holding extra guidance shown to the participant under the question."
   },
   "protocolBuilder.formFields.hintPlaceholder": {
-    "defaultMessage": "Select all that apply",
-    "description": "Example hint shown in the empty hint-text field. An example a researcher might write, not a value that is stored."
+    "defaultMessage": "e.g. Select all that apply...",
+    "description": "Example hint shown in the empty hint-text field. An example a researcher might write, not a value that is stored. The trailing dots are an ellipsis written as three full stops."
   },
   "protocolBuilder.formFields.incompleteField": {
     "defaultMessage": "Every field needs both an attribute and a question. Open the incomplete field and finish it.",
@@ -1678,6 +1662,14 @@
   "protocolBuilder.formFields.itemNoun": {
     "defaultMessage": "field",
     "description": "What one row of a form’s list of questions is called inside things said ABOUT it — \"Edit field\", \"Delete this field?\" — so it is lower case and singular."
+  },
+  "protocolBuilder.formFields.lockedTypeDescription": {
+    "defaultMessage": "A pre-existing attribute is currently selected. You cannot change an attribute type after it has been created, so only <strong>{variableType}</strong> compatible input controls can be selected above. If you would like to use a different input control type, you will need to create a new attribute.",
+    "description": "Warning body explaining why the input-control list is narrow for an attribute that already exists. variableType is the attribute’s kind, already translated."
+  },
+  "protocolBuilder.formFields.lockedTypeTitle": {
+    "defaultMessage": "Attribute type is locked",
+    "description": "Warning heading shown when the field collects an attribute that already exists, so the list of input controls above is narrower than the whole list."
   },
   "protocolBuilder.formFields.malformedField": {
     "defaultMessage": "This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.",
@@ -1707,20 +1699,20 @@
     "defaultMessage": "Kind of answer",
     "description": "Label of the control choosing what sort of value a new attribute holds — text, a number, a date, a choice from a list."
   },
+  "protocolBuilder.formFields.newTypeNotice": {
+    "defaultMessage": "The selected input control will cause this attribute to be defined as type <strong>{variableType}</strong>. Once set, this cannot be changed (although you may change the input control within this type).",
+    "description": "Shown while the field is inventing an attribute, saying which kind the chosen input control will make it. variableType is that kind, already translated."
+  },
   "protocolBuilder.formFields.newTypeRequired": {
     "defaultMessage": "Choose what kind of answer this attribute holds.",
     "description": "Refusal shown under the kind-of-answer control when nothing has been chosen."
-  },
-  "protocolBuilder.formFields.previewCollects": {
-    "defaultMessage": "Collects \"{name}\" as {type}.",
-    "description": "Shown in the collapsed row of a form’s list of questions, saying which attribute it records into and what kind of value that holds. name is the attribute’s researcher-facing name; type is a schema token such as text, number or ordinal, which is not translated."
   },
   "protocolBuilder.formFields.previewMissing": {
     "defaultMessage": "This attribute is no longer in the codebook.",
     "description": "Shown in the collapsed row of a form’s list of questions when the attribute it records into has been deleted from the codebook."
   },
   "protocolBuilder.formFields.promptHint": {
-    "defaultMessage": "Shown to the participant above the control. Supports markdown formatting.",
+    "defaultMessage": "The question to display to the participant. Supports markdown formatting.",
     "description": "Guidance under the question-text field. Markdown is the name of the formatting syntax and is not translated."
   },
   "protocolBuilder.formFields.promptLabel": {
@@ -1728,7 +1720,7 @@
     "description": "Label of the field holding what the participant is asked for this one answer."
   },
   "protocolBuilder.formFields.promptPlaceholder": {
-    "defaultMessage": "What is this person’s name?",
+    "defaultMessage": "What is this person's name?",
     "description": "Example question shown in the empty question-text field. An example a researcher might write, not a value that is stored."
   },
   "protocolBuilder.formFields.promptRequired": {
@@ -1736,19 +1728,19 @@
     "description": "Refusal shown under the question-text field when it has been left empty."
   },
   "protocolBuilder.formFields.questionSectionDescription": {
-    "defaultMessage": "Write what the participant is asked, and how much help they are given.",
+    "defaultMessage": "Write the participant-facing prompt and choose how the response is collected.",
     "description": "Description under the Question heading."
   },
   "protocolBuilder.formFields.questionSectionTitle": {
-    "defaultMessage": "Question",
+    "defaultMessage": "Field configuration",
     "description": "Heading of the half of the field dialog that says what the participant is asked."
   },
   "protocolBuilder.formFields.title": {
-    "defaultMessage": "Form fields",
+    "defaultMessage": "Form configuration",
     "description": "Heading of the section holding the questions a form asks and the attributes each answer is recorded under."
   },
   "protocolBuilder.formFields.validationHintsHint": {
-    "defaultMessage": "Tells the participant what a valid answer looks like, derived from the attribute’s own rules.",
+    "defaultMessage": "Automatically display hints derived from this field's validation rules, helping participants understand input requirements.",
     "description": "Guidance under the validation-hints switch."
   },
   "protocolBuilder.formFields.validationHintsLabel": {
@@ -2543,20 +2535,16 @@
     "defaultMessage": "{stageName} — this stage can no longer be used",
     "description": "How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier."
   },
-  "protocolBuilder.networkCanvas.backgroundCirclesHint": {
-    "defaultMessage": "The rings drawn behind the nodes. Participants often use them to place people closer to or further from themselves.",
-    "description": "Guidance under the number-of-circles box."
-  },
   "protocolBuilder.networkCanvas.backgroundCirclesLabel": {
     "defaultMessage": "Number of concentric circles",
     "description": "Label of the box holding how many rings are drawn behind the nodes."
   },
   "protocolBuilder.networkCanvas.backgroundCirclesOptionDescription": {
-    "defaultMessage": "The conventional sociogram background: rings the participant places nodes within.",
+    "defaultMessage": "Use the conventional concentric circles sociogram background.",
     "description": "Says what a concentric-circles background is for. A sociogram is the canvas interface where a participant arranges the people in their network."
   },
   "protocolBuilder.networkCanvas.backgroundCirclesOptionLabel": {
-    "defaultMessage": "Concentric circles",
+    "defaultMessage": "Concentric Circles",
     "description": "Name of the background made of rings drawn one inside another. Offered as one of two cards; the sentence under it is backgroundCirclesOptionDescription."
   },
   "protocolBuilder.networkCanvas.backgroundCirclesWholeNumber": {
@@ -2564,35 +2552,39 @@
     "description": "Refusal shown under the number-of-circles box when it holds something that is not a whole number of zero or more. Zero is allowed: it is a canvas with no rings drawn on it."
   },
   "protocolBuilder.networkCanvas.backgroundDescription": {
-    "defaultMessage": "Choose what the participant sees behind the nodes on this canvas: concentric circles, or a picture of your own.",
+    "defaultMessage": "Choose concentric circles or a custom image as the graphical background for this prompt.",
     "description": "Description of the background section, where the researcher chooses between the two kinds of background a canvas can have."
   },
   "protocolBuilder.networkCanvas.backgroundImageHint": {
-    "defaultMessage": "Scaled to fill the canvas. A responsive SVG keeps its labels readable in both portrait and landscape.",
-    "description": "Guidance under the background-image picker. SVG is a file format name and is not translated."
+    "defaultMessage": "Choose an image to use as the background for this prompt. The image will be scaled to fit the canvas.",
+    "description": "Guidance under the background-image picker."
   },
   "protocolBuilder.networkCanvas.backgroundImageLabel": {
     "defaultMessage": "Background image",
     "description": "Label of the control choosing which protocol resource is drawn behind the nodes."
   },
   "protocolBuilder.networkCanvas.backgroundImageOptionDescription": {
-    "defaultMessage": "A picture of your own — a map, a floor plan, a diagram — filling the canvas.",
-    "description": "Says what an image background is for, with three examples of what researchers use. Addressed to the researcher."
+    "defaultMessage": "Use a custom image of your choosing as the background.",
+    "description": "Says what an image background is for. Addressed to the researcher."
   },
   "protocolBuilder.networkCanvas.backgroundImageOptionLabel": {
     "defaultMessage": "Image",
     "description": "Name of the background made of a picture the researcher supplies. Offered as one of two cards; the sentence under it is backgroundImageOptionDescription."
   },
+  "protocolBuilder.networkCanvas.backgroundImageResponsiveHint": {
+    "defaultMessage": "A responsive SVG can span the canvas in portrait and landscape while keeping labels readable. <link>Learn how to create a responsive SVG background</link>.",
+    "description": "Second paragraph of the guidance under the background-image picker, ending in a link to the documentation page about responsive SVG backgrounds. The link is a tag inside the sentence rather than markup around a fragment of it, so a translator moves the whole clause and the link text together. SVG is a file format name and is not translated."
+  },
   "protocolBuilder.networkCanvas.backgroundModeLabel": {
-    "defaultMessage": "Background type",
+    "defaultMessage": "Choose a background type",
     "description": "Label of the control choosing between the two kinds of background a canvas can have."
   },
   "protocolBuilder.networkCanvas.backgroundSkewHint": {
-    "defaultMessage": "Gives the inner rings more room than the outer ones, so nodes placed near the center overlap less.",
+    "defaultMessage": "When enabled, the inner circles will be proportionally larger than the outer circles, which can help reduce overlap of nodes in the center of the canvas.",
     "description": "Guidance under the larger-inner-circles switch."
   },
   "protocolBuilder.networkCanvas.backgroundSkewLabel": {
-    "defaultMessage": "Make the inner circles larger",
+    "defaultMessage": "Skew circle sizes",
     "description": "Label of the switch giving the rings nearest the centre more room than the outer ones."
   },
   "protocolBuilder.networkCanvas.backgroundTitle": {
@@ -2910,10 +2902,6 @@
   "protocolBuilder.networkCanvas.nodeFormFieldsHint": {
     "defaultMessage": "The participant answers these in the panel that opens when they select a node. Drag to reorder them.",
     "description": "Guidance under the list of questions asked about each node of a network composer."
-  },
-  "protocolBuilder.networkCanvas.nodeFormFieldsLabel": {
-    "defaultMessage": "Form fields",
-    "description": "Label of the list holding the questions asked about each node of a network composer."
   },
   "protocolBuilder.networkCanvas.nodeFormTitle": {
     "defaultMessage": "Node attributes",
@@ -3303,29 +3291,21 @@
     "defaultMessage": "This will clear your filter",
     "description": "Title of the confirmation asked before switching the stage filter off, which throws away every rule in it."
   },
-  "protocolBuilder.networkFilter.edgeDescription": {
-    "defaultMessage": "Create rules that limit which edges are available on this stage.",
-    "description": "Description of the stage-filter section on a stage whose filter narrows edges — the relationships between network members."
-  },
-  "protocolBuilder.networkFilter.edgeRulesHint": {
-    "defaultMessage": "Create one or more rules that must match in order for an edge to be shown on this stage.",
-    "description": "Guidance under the rule builder on a stage whose filter narrows edges — the relationships between network members."
+  "protocolBuilder.networkFilter.description": {
+    "defaultMessage": "Create rules that filter which nodes or edges are displayed on this stage.",
+    "description": "Description of the stage-filter section. One sentence for both subjects, because one filter is mounted from the node-type and the edge-type sections alike. A stage is one step of an interview."
   },
   "protocolBuilder.networkFilter.hiddenEdgesDescription": {
-    "defaultMessage": "This stage creates or displays edges that these rules will not let through, so participants will not see them.",
+    "defaultMessage": "This stage has edge creation or display values that will not be shown based on the current filter rules.",
     "description": "Warning body shown when a stage’s own filter would keep out the edges — the relationships between network members — that the same stage is configured to create or display."
   },
   "protocolBuilder.networkFilter.hiddenEdgesTitle": {
     "defaultMessage": "Filter rules hide configured values",
     "description": "Warning heading shown when a stage’s own filter would keep out the edges — the relationships between network members — that the same stage is configured to create or display."
   },
-  "protocolBuilder.networkFilter.nodeDescription": {
-    "defaultMessage": "Create rules that limit which nodes are available on this stage.",
-    "description": "Description of the stage-filter section on a stage whose filter narrows nodes — the members of the interview network."
-  },
-  "protocolBuilder.networkFilter.nodeRulesHint": {
-    "defaultMessage": "Create one or more rules that must match in order for a node to be shown on this stage.",
-    "description": "Guidance under the rule builder on a stage whose filter narrows nodes — the members of the interview network."
+  "protocolBuilder.networkFilter.rulesHint": {
+    "defaultMessage": "Create one or more rules to filter what is shown on this stage.",
+    "description": "Guidance under the rule builder of the stage filter. A stage is one step of an interview."
   },
   "protocolBuilder.networkFilter.rulesLabel": {
     "defaultMessage": "Filter rules",
@@ -3348,11 +3328,11 @@
     "description": "Action that confirms switching the side panels off and deleting them."
   },
   "protocolBuilder.nodePanels.clearDescription": {
-    "defaultMessage": "This will remove every side panel on this stage, and delete any filter rules you have created for them. Do you want to continue?",
+    "defaultMessage": "This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?",
     "description": "Body of the dialog confirming that switching off the side panels discards the panels and the filter rules written for them. A stage is one step of an interview."
   },
   "protocolBuilder.nodePanels.clearTitle": {
-    "defaultMessage": "This will delete your side panels",
+    "defaultMessage": "This will delete your panel configuration",
     "description": "Title of the dialog asking a researcher to confirm switching off the section that adds panels of people beside a name generator for the participant to nominate from."
   },
   "protocolBuilder.nodePanels.description": {
@@ -3611,46 +3591,6 @@
     "defaultMessage": "Enter a value...",
     "description": "Placeholder in the empty field holding what this option is stored and exported as."
   },
-  "protocolBuilder.ordinalColor.ordColorSeq1": {
-    "defaultMessage": "Sea Green",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A colour name rather than a position, because the researcher picks a gradient by how it looks and then has to be able to say which one they picked."
-  },
-  "protocolBuilder.ordinalColor.ordColorSeq10": {
-    "defaultMessage": "Slate Blue",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A muted violet-blue."
-  },
-  "protocolBuilder.ordinalColor.ordColorSeq2": {
-    "defaultMessage": "Sea Serpent",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A blue-green."
-  },
-  "protocolBuilder.ordinalColor.ordColorSeq3": {
-    "defaultMessage": "Tomato",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A red."
-  },
-  "protocolBuilder.ordinalColor.ordColorSeq4": {
-    "defaultMessage": "Neon Carrot",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A bright orange."
-  },
-  "protocolBuilder.ordinalColor.ordColorSeq5": {
-    "defaultMessage": "Kiwi",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A yellow-green."
-  },
-  "protocolBuilder.ordinalColor.ordColorSeq6": {
-    "defaultMessage": "Cerulean Blue",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A deep sky blue."
-  },
-  "protocolBuilder.ordinalColor.ordColorSeq7": {
-    "defaultMessage": "Paradise Pink",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A warm pink."
-  },
-  "protocolBuilder.ordinalColor.ordColorSeq8": {
-    "defaultMessage": "Mustard",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A dark yellow."
-  },
-  "protocolBuilder.ordinalColor.ordColorSeq9": {
-    "defaultMessage": "Purple Pizazz",
-    "description": "Name of one colour swatch, read out in place of the swatch itself. A bright purple."
-  },
   "protocolBuilder.outline.completeStatus": {
     "defaultMessage": "Finished",
     "description": "Spoken state of one section of a stage editor: everything it asks for has been filled in and nothing in it is invalid. Read out after the section’s own name, and never shown on screen."
@@ -3684,7 +3624,7 @@
     "description": "Refusal shown above the list of blocks when a researcher saves a page that shows nothing. A block is one piece of a page — a passage of text, a picture, a video."
   },
   "protocolBuilder.pageContent.headingHint": {
-    "defaultMessage": "The large heading shown at the top of the page.",
+    "defaultMessage": "Use the page heading to show a large title element on your information stage.",
     "description": "Guidance under the page-heading field."
   },
   "protocolBuilder.pageContent.headingLabel": {
@@ -3692,7 +3632,7 @@
     "description": "Label of the field holding the large heading at the top of a page a participant reads."
   },
   "protocolBuilder.pageContent.headingPlaceholder": {
-    "defaultMessage": "Enter a heading...",
+    "defaultMessage": "Enter your title here...",
     "description": "Placeholder shown in the empty page-heading field. The trailing dots are an ellipsis written as three full stops."
   },
   "protocolBuilder.pageContent.introAddLabel": {
@@ -3744,35 +3684,35 @@
     "description": "Heading of the section where a researcher builds a page of text and media shown before this step of the interview’s own task begins."
   },
   "protocolBuilder.pageContent.pageAddLabel": {
-    "defaultMessage": "Create new content block",
+    "defaultMessage": "Create new content item",
     "description": "Button that opens the dialog for adding one more piece to a page. Whole rather than a generic \"Add\", because a stage editor shows several lists at once."
   },
   "protocolBuilder.pageContent.pageAddTitle": {
-    "defaultMessage": "Create content block",
+    "defaultMessage": "Create item",
     "description": "Title of the dialog a researcher fills in to add one more piece to a page."
   },
   "protocolBuilder.pageContent.pageDescription": {
-    "defaultMessage": "Write the page heading and build the sequence of blocks the participant reads.",
+    "defaultMessage": "Set the page heading and build the sequence of text and media blocks participants will see.",
     "description": "Description of the page-content section."
   },
   "protocolBuilder.pageContent.pageEditTitle": {
-    "defaultMessage": "Edit content block",
+    "defaultMessage": "Edit item",
     "description": "Title of the dialog a researcher fills in to change a piece of a page."
   },
   "protocolBuilder.pageContent.pageEmptyState": {
-    "defaultMessage": "No blocks yet. Create one to put text or media on this page.",
+    "defaultMessage": "No items have been created yet. Click \"Create new content item\" to add text or media.",
     "description": "Shown in place of the list of blocks while a page holds nothing yet."
   },
   "protocolBuilder.pageContent.pageItemNoun": {
-    "defaultMessage": "block",
-    "description": "What one piece of a page is called inside things said ABOUT it — \"Edit block\", \"Delete this block?\" — so it is lower case and singular."
+    "defaultMessage": "item",
+    "description": "What one piece of a page is called inside things said ABOUT it — \"Edit item\", \"Delete this item?\" — so it is lower case and singular."
   },
   "protocolBuilder.pageContent.pageItemsHint": {
-    "defaultMessage": "The participant scrolls through these in order, so add as many as you need. Drag to reorder them.",
+    "defaultMessage": "Add text, image, video, and audio blocks below, and drag them to reorder. Participants can scroll through the screen, so add as many blocks as you need. Image and video blocks can be given a display size.",
     "description": "Guidance under the list of blocks on a page."
   },
   "protocolBuilder.pageContent.pageItemsLabel": {
-    "defaultMessage": "Content blocks",
+    "defaultMessage": "Items",
     "description": "Label of the ordered list of pieces a page is built from — passages of text, pictures, videos."
   },
   "protocolBuilder.pageContent.pageTitle": {
@@ -4344,15 +4284,15 @@
     "description": "Warning heading shown when the attribute quick add fills in does not have to be answered, so a network member could be created with no name."
   },
   "protocolBuilder.quickAdd.description": {
-    "defaultMessage": "Choose the attribute the participant fills in when they add a “{typeName}” with a single box.",
-    "description": "Description of the quick-add section. typeName is the researcher’s own name for the node type this stage adds — a person, an organisation, a place — and is not translated."
+    "defaultMessage": "Choose the attribute populated when a participant creates a node with Quick Add.",
+    "description": "Description of the quick-add section. \"Quick Add\" is the name of the button a participant uses."
   },
   "protocolBuilder.quickAdd.fieldHint": {
-    "defaultMessage": "What the participant types goes here. Use the attribute holding the name unless you have a reason not to — the interview labels what it creates by it.",
-    "description": "Guidance under the quick-add attribute control. Said without naming what is created, because this interface can add any kind of network member and the control is shown before the researcher has chosen which."
+    "defaultMessage": "Select the attribute that is assigned a value when creating a new node using the Quick Add button. Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview.",
+    "description": "Guidance under the quick-add attribute control. \"Quick Add\" is the name of the button a participant uses, \"Interviewer\" is the name of the app that runs an interview, and the quoted attribute name is a protocol identifier: none of the three is translated."
   },
   "protocolBuilder.quickAdd.fieldLabel": {
-    "defaultMessage": "Attribute filled in",
+    "defaultMessage": "Select an attribute",
     "description": "Label of the control choosing which attribute receives what the participant types into the quick-add box."
   },
   "protocolBuilder.quickAdd.fieldRequired": {
@@ -4376,12 +4316,12 @@
     "description": "Action that adds \"must be answered\" to the rules of the attribute quick add fills in."
   },
   "protocolBuilder.quickAdd.title": {
-    "defaultMessage": "Quick add",
+    "defaultMessage": "Quick add configuration",
     "description": "Heading of the section choosing which attribute a participant fills in when they add a network member with a single box. An attribute is one field the protocol records about that member, which may be a person, an organisation, a place, or anything else the study is about."
   },
   "protocolBuilder.quickAdd.waitingDescription": {
-    "defaultMessage": "Choose what this stage works with before setting up quick add.",
-    "description": "Shown in place of the quick-add section’s description while the researcher has not yet chosen which node type the stage is about, so there are no attributes to choose from."
+    "defaultMessage": "Select a node type above to configure this section.",
+    "description": "Shown in place of the quick-add section’s description while the researcher has not yet chosen which node type the stage is about, so there are no attributes to choose from. The node type is chosen in the section above this one."
   },
   "protocolBuilder.removeAfterConsideration.description": {
     "defaultMessage": "Choose whether a focal node remains available after it has been considered.",
@@ -4680,7 +4620,7 @@
     "description": "Announced to assistive technology once a copy of a resource has been saved to the researcher’s computer. name is the resource’s name."
   },
   "protocolBuilder.resourcePicker.importedFileOption": {
-    "defaultMessage": "Use an imported data file",
+    "defaultMessage": "Use a network data file",
     "description": "Radio option choosing imported participant data (a roster) rather than the network the interview has built so far."
   },
   "protocolBuilder.resourcePicker.interviewNetworkAnnouncement": {
@@ -5668,7 +5608,7 @@
     "description": "Title of the confirmation asked before switching skip logic off, which throws away every rule in it."
   },
   "protocolBuilder.skipLogic.description": {
-    "defaultMessage": "Determine whether this stage is shown, and where the interview continues when it is skipped.",
+    "defaultMessage": "Determine whether this stage is shown and where the interview continues when it is skipped.",
     "description": "Description of the skip-logic section. A stage is one step of an interview."
   },
   "protocolBuilder.skipLogic.destinationHint": {
@@ -5776,8 +5716,8 @@
     "description": "Heading of the column of the sortable-attribute list holding the words the participant reads on the control that reorders the roster."
   },
   "protocolBuilder.sortOptions.labelPlaceholder": {
-    "defaultMessage": "Age",
-    "description": "Example label shown in an empty label cell of the sortable-attribute list. An example rather than an instruction, so a translation should be an equally ordinary thing a study records about a person."
+    "defaultMessage": "Label",
+    "description": "Placeholder shown in an empty label cell of the sortable-attribute list, naming what the cell holds."
   },
   "protocolBuilder.sortOptions.orderAddLabel": {
     "defaultMessage": "Add new sort rule",
@@ -5908,20 +5848,16 @@
     "description": "Body of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured. A stage is one step of an interview."
   },
   "protocolBuilder.subjectSection.edgeChangeTitle": {
-    "defaultMessage": "Change the edge type?",
+    "defaultMessage": "Change edge type?",
     "description": "Title of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured for the one it has."
   },
   "protocolBuilder.subjectSection.edgeCreateLabel": {
-    "defaultMessage": "Create a new edge type",
+    "defaultMessage": "Create new edge type",
     "description": "Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens."
   },
   "protocolBuilder.subjectSection.edgeDescription": {
-    "defaultMessage": "Choose the type of edge this stage works with.",
+    "defaultMessage": "Choose the edge type this stage uses.",
     "description": "Description of the edge-type section. A stage is one step of an interview."
-  },
-  "protocolBuilder.subjectSection.edgeFieldHint": {
-    "defaultMessage": "Every edge this stage creates or shows will be of the type you choose here.",
-    "description": "Guidance under the edge-type control."
   },
   "protocolBuilder.subjectSection.edgeFieldLabel": {
     "defaultMessage": "Edge type",
@@ -5940,7 +5876,7 @@
     "description": "Title of the confirmation raised when a researcher picks the first kind of relationship for a stage that has none yet, but that has already been configured. A stage is one step of an interview."
   },
   "protocolBuilder.subjectSection.edgeTitle": {
-    "defaultMessage": "Edge type",
+    "defaultMessage": "Edge setup",
     "description": "Heading of the section where a researcher says which kind of relationship this step of the interview is about. An edge is a connection between two members of the network."
   },
   "protocolBuilder.subjectSection.nodeChangeConfirm": {
@@ -5952,19 +5888,19 @@
     "description": "Body of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured. A stage is one step of an interview."
   },
   "protocolBuilder.subjectSection.nodeChangeTitle": {
-    "defaultMessage": "Change the node type?",
+    "defaultMessage": "Change node type?",
     "description": "Title of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured for the one it has."
   },
   "protocolBuilder.subjectSection.nodeCreateLabel": {
-    "defaultMessage": "Create a new node type",
+    "defaultMessage": "Create new node type",
     "description": "Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens."
   },
   "protocolBuilder.subjectSection.nodeDescription": {
-    "defaultMessage": "Choose the type of node this stage works with.",
+    "defaultMessage": "Choose the node type this stage creates.",
     "description": "Description of the node-type section. A stage is one step of an interview."
   },
   "protocolBuilder.subjectSection.nodeFieldHint": {
-    "defaultMessage": "Every node this stage creates or shows will be of the type you choose here.",
+    "defaultMessage": "Select the type of node that this stage will create.",
     "description": "Guidance under the node-type control."
   },
   "protocolBuilder.subjectSection.nodeFieldLabel": {
@@ -5984,7 +5920,7 @@
     "description": "Title of the confirmation raised when a researcher picks the first kind of network member for a stage that has none yet, but that has already been configured. A stage is one step of an interview."
   },
   "protocolBuilder.subjectSection.nodeTitle": {
-    "defaultMessage": "Node type",
+    "defaultMessage": "Node setup",
     "description": "Heading of the section where a researcher says which kind of network member this step of the interview is about. A node is one member of the network a participant describes."
   },
   "protocolBuilder.variableParameters.afterHint": {
@@ -6175,10 +6111,6 @@
     "defaultMessage": "Configure requirements, limits, and comparisons for this attribute.",
     "description": "Sentence under the heading naming the three groups of validation rules the surface offers. \"Attribute\" is a codebook variable."
   },
-  "protocolBuilder.variableValidation.differentFromLabel": {
-    "defaultMessage": "Different from",
-    "description": "Name of the validation rule requiring this attribute’s answer to differ from another attribute’s. The attribute compared against is chosen in a control beneath."
-  },
   "protocolBuilder.variableValidation.draftUnvalidatedElsewhere": {
     "defaultMessage": "\"{variableName}\" is assigned without validation by a prompt in this stage, so it cannot be used as a form field",
     "description": "The same refusal as unvalidatedElsewhere, when the writer without validation is a prompt in the stage being edited. variableName is the researcher’s own name for the attribute. A prompt is the question a participant reads."
@@ -6191,14 +6123,6 @@
     "defaultMessage": "Could not save validation",
     "description": "Heading of the alert shown when saving an attribute’s validation rules was refused. The reason follows underneath."
   },
-  "protocolBuilder.variableValidation.greaterThanOrEqualToVariableLabel": {
-    "defaultMessage": "Greater than or equal to",
-    "description": "Name of the validation rule requiring this attribute’s answer to be no smaller than another attribute’s. The attribute compared against is chosen in a control beneath."
-  },
-  "protocolBuilder.variableValidation.greaterThanVariableLabel": {
-    "defaultMessage": "Greater than",
-    "description": "Name of the validation rule requiring this attribute’s answer to be larger than another attribute’s. The attribute compared against is chosen in a control beneath."
-  },
   "protocolBuilder.variableValidation.incompleteReferenceRule": {
     "defaultMessage": "Choose a comparison attribute for \"{label}\", or switch the rule off.",
     "description": "Refusal shown when a rule comparing this attribute against another one has been switched on without saying which. label is that rule’s own name, already translated."
@@ -6207,41 +6131,9 @@
     "defaultMessage": "Enter a value for \"{label}\", or switch the rule off.",
     "description": "Refusal shown when a rule that needs a number has been switched on without one. label is that rule’s own name, already translated."
   },
-  "protocolBuilder.variableValidation.lessThanOrEqualToVariableLabel": {
-    "defaultMessage": "Less than or equal to",
-    "description": "Name of the validation rule requiring this attribute’s answer to be no larger than another attribute’s. The attribute compared against is chosen in a control beneath."
-  },
-  "protocolBuilder.variableValidation.lessThanVariableLabel": {
-    "defaultMessage": "Less than",
-    "description": "Name of the validation rule requiring this attribute’s answer to be smaller than another attribute’s. The attribute compared against is chosen in a control beneath."
-  },
   "protocolBuilder.variableValidation.limitsHeading": {
     "defaultMessage": "Limits",
     "description": "Heading over the validation rules that bound an answer by a number the researcher types — a length, a value, or how many options may be chosen."
-  },
-  "protocolBuilder.variableValidation.maxLengthLabel": {
-    "defaultMessage": "Maximum length",
-    "description": "Name of the validation rule setting the most characters an answer may have."
-  },
-  "protocolBuilder.variableValidation.maxSelectedLabel": {
-    "defaultMessage": "Maximum selected",
-    "description": "Name of the validation rule setting the most options a participant may choose."
-  },
-  "protocolBuilder.variableValidation.maxValueLabel": {
-    "defaultMessage": "Maximum value",
-    "description": "Name of the validation rule setting the largest number an answer may be."
-  },
-  "protocolBuilder.variableValidation.minLengthLabel": {
-    "defaultMessage": "Minimum length",
-    "description": "Name of the validation rule setting the fewest characters an answer may have."
-  },
-  "protocolBuilder.variableValidation.minSelectedLabel": {
-    "defaultMessage": "Minimum selected",
-    "description": "Name of the validation rule setting the fewest options a participant must choose."
-  },
-  "protocolBuilder.variableValidation.minValueLabel": {
-    "defaultMessage": "Minimum value",
-    "description": "Name of the validation rule setting the smallest number an answer may be."
   },
   "protocolBuilder.variableValidation.missingComparisonTarget": {
     "defaultMessage": "The selected comparison attribute no longer exists.",
@@ -6251,10 +6143,6 @@
     "defaultMessage": "No compatible attribute can satisfy this comparison.",
     "description": "Shown beneath a comparison rule the researcher cannot switch on, because no other attribute of the same kind could satisfy it without contradicting the rules already set. \"Attribute\" is a codebook variable."
   },
-  "protocolBuilder.variableValidation.requiredLabel": {
-    "defaultMessage": "Required",
-    "description": "Name of the validation rule that refuses an answer left blank. Shown as the label of the checkbox that turns the rule on."
-  },
   "protocolBuilder.variableValidation.requirementsHeading": {
     "defaultMessage": "Requirements",
     "description": "Heading over the validation rules that say an answer must be given at all, rather than what it may contain."
@@ -6262,10 +6150,6 @@
   "protocolBuilder.variableValidation.ruleFloor": {
     "defaultMessage": "{rule} must be at least {floor, number}",
     "description": "Refusal shown when a counting rule was given a number below what it allows. rule is the schema’s own name for the rule, such as maxSelected, and is not translated; floor is the smallest number it accepts."
-  },
-  "protocolBuilder.variableValidation.sameAsLabel": {
-    "defaultMessage": "Same as",
-    "description": "Name of the validation rule requiring this attribute’s answer to match another attribute’s. The attribute compared against is chosen in a control beneath."
   },
   "protocolBuilder.variableValidation.selectTarget": {
     "defaultMessage": "Select an attribute",
@@ -6294,10 +6178,6 @@
   "protocolBuilder.variableValidation.typeChangedTitle": {
     "defaultMessage": "Attribute type changed",
     "description": "Heading of the warning shown when someone else changed what kind of answer this attribute records while its validation was being edited."
-  },
-  "protocolBuilder.variableValidation.uniqueLabel": {
-    "defaultMessage": "Must be unique",
-    "description": "Name of the validation rule that refuses an answer another network member has already given for this attribute."
   },
   "protocolBuilder.variableValidation.unvalidatedElsewhere": {
     "defaultMessage": "\"{variableName}\" is written without validation by another stage, so it cannot be used as a form field",

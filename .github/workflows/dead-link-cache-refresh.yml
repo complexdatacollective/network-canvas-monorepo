@@ -1,0 +1,87 @@
+name: Dead-link cache refresh
+
+# Re-checks every external link on the two public sites once a week and
+# republishes the result cache, so a documentation or website release PR pays
+# only for the links it actually introduces.
+#
+# This job exists on main and nowhere else on purpose. A run can restore caches
+# written by its own ref or by the default branch, so main's entry is the only
+# one every pull request can read; a cache written on a PR branch would be
+# visible to that PR alone.
+#
+# It also doubles as the early warning that a third-party link has died. The
+# preview jobs only run on the two generated release PRs, which can be weeks
+# apart — without this, a dead citation would first surface as a red release.
+
+on:
+  schedule:
+    # Mondays 04:00 UTC, comfortably before a working week starts. The cached
+    # entries carry their own one-week expiry, so a missed run degrades into a
+    # slower release PR rather than a stale verdict.
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+# One refresh at a time: two concurrent runs would each save a cache under
+# their own key, and the loser's entry would simply waste storage.
+concurrency:
+  group: dead-link-cache-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    # A cold cache is the worst case here by design: this job is what makes
+    # every other run warm.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Neither crawl restores. A restore here would defeat the job: last
+      # week's entries are minutes short of the one-week TTL when this starts,
+      # so they would be served as hits rather than rechecked, and republished
+      # with their ORIGINAL timestamps — expiring minutes into the week they
+      # were supposed to cover. Links would then be rechecked fortnightly and
+      # every other week's pull requests would restore an already-dead cache.
+      # A job whose purpose is to re-establish freshness must not consume the
+      # freshness it is re-establishing.
+      #
+      # `continue-on-error` so a dead link on the documentation site does not
+      # skip the website crawl: this run is a report on both, and the gate at
+      # the end fails for either.
+      - id: documentation
+        continue-on-error: true
+        uses: ./.github/actions/dead-link-check
+        with:
+          url: https://documentation.networkcanvas.com
+          report-name: docs-dead-link-report
+          restore-cache: 'false'
+
+      # Shares the cache file the first crawl just wrote, and is the one that
+      # saves it.
+      - id: website
+        continue-on-error: true
+        uses: ./.github/actions/dead-link-check
+        with:
+          url: https://networkcanvas.com/en-US/
+          report-name: website-dead-link-report
+          restore-cache: 'false'
+          save-cache: 'true'
+
+      - name: Report dead links
+        env:
+          DOCS_REPORT: ${{ runner.temp }}/docs-dead-link-report.json
+          WEBSITE_REPORT: ${{ runner.temp }}/website-dead-link-report.json
+        run: node scripts/dead-link-refresh-gate.mjs "$DOCS_REPORT" "$WEBSITE_REPORT"

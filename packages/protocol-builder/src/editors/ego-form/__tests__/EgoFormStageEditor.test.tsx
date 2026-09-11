@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
   fieldsOf,
@@ -151,8 +152,9 @@ describe('the editor for a form about the participant', () => {
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        harness.outline().find((section) => section.title === 'Form fields')
-          ?.state,
+        harness
+          .outline()
+          .find((section) => section.title === 'Form configuration')?.state,
       ).toBe('Has a problem'),
     );
   });
@@ -182,7 +184,9 @@ describe('the editor for a form about the participant', () => {
   it('follows an attribute deleted elsewhere without echoing it back', async () => {
     const harness = renderStageEditor(openFixture());
     expect(
-      await screen.findByText('Collects "ego_name" as text.'),
+      await screen.findByText(
+        exactlyText('Text attribute using Text input input control'),
+      ),
     ).toBeInTheDocument();
 
     harness.receiveCodebookUpdate({ ego: { variables: {} } });
