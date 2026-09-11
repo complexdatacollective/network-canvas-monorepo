@@ -111,12 +111,22 @@ export default function ComposerConnectionsSection() {
   );
 
   /**
-   * One kind of connection may only be drawable once.
+   * One kind of connection may only be drawable once, and an entry pointed at
+   * another kind does not keep the questions it used to ask.
    *
    * The protocol schema refuses duplicate types in `edges` outright, and a
    * second entry for a type would carry questions the interview could never
    * reach — it resolves a selected connection's form by TYPE. Asked of the
    * LIVE rows, so a type freed by an entry just deleted can be chosen at once.
+   *
+   * The questions go because this dialog renders the type and nothing else:
+   * `documentFromSubmission` keeps what an editor never rendered, which is
+   * right for a value the researcher cannot see and wrong for one whose whole
+   * meaning is the type beside it. Every field of the old form records an
+   * attribute of the OLD edge type, and carrying them over left the stage
+   * asking a "family" connection for what only a "knows" connection has.
+   * Cleared rather than refused: the researcher came here to change the type,
+   * and the questions are asked again below the list once it has.
    */
   const rowList = useMemo<RowListConfig>(
     () => ({
@@ -128,17 +138,21 @@ export default function ComposerConnectionsSection() {
           (sibling, index) =>
             index !== context.editIndex && typeOf(sibling) === type,
         );
-        return taken
-          ? {
-              refused: {
-                fieldErrors: {
-                  [SUBJECT_FIELD]: intl.formatMessage(
-                    messages.duplicateConnectionRefusal,
-                  ),
-                },
+        if (taken) {
+          return {
+            refused: {
+              fieldErrors: {
+                [SUBJECT_FIELD]: intl.formatMessage(
+                  messages.duplicateConnectionRefusal,
+                ),
               },
-            }
-          : { row };
+            },
+          };
+        }
+        const openedOn = typeOf(context.openedOn);
+        if (openedOn === undefined || openedOn === type) return { row };
+        const { form: _form, ...repointed } = row;
+        return { row: repointed };
       },
     }),
     [entries, intl],

@@ -182,6 +182,58 @@ describe('what a network composer lets the participant build', () => {
   });
 
   /**
+   * A form is the questions asked about ONE kind of connection, so it does not
+   * survive the entry being pointed at another kind: every field records an
+   * attribute of the type the entry used to name, and the new type does not
+   * have them.
+   *
+   * The row dialog renders the type and nothing else, so the form is a value
+   * the submit never saw — kept by the rule that an editor may not delete what
+   * it did not render, which is why this is the section's own business.
+   */
+  it('drops a connection’s questions when the entry is pointed at another type', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        edges: [
+          {
+            ...KNOWS_ENTRY,
+            form: {
+              fields: [
+                {
+                  id: 'edge-field-1',
+                  variable: 'edgeNotes',
+                  component: 'TextArea',
+                  label: 'Anything else?',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(await screen.findByText('Anything else?')).toBeInTheDocument();
+
+    const dialog = await openRow(harness, 'Edit connection type');
+    await harness.user.click(
+      dialog.getByRole('radio', { name: 'family_edge' }),
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    // On screen first: the list under the entry is what the researcher reads,
+    // and a question about the old type still standing there is the damage.
+    await waitFor(() =>
+      expect(screen.queryByText('Anything else?')).not.toBeInTheDocument(),
+    );
+    const saved = await harness.submit();
+    expect(edgesOf(saved?.stageDocument ?? {})).toEqual([
+      { id: KNOWS_ENTRY.id, subject: { entity: 'edge', type: 'family_edge' } },
+    ]);
+  });
+
+  /**
    * The list renders from the value rather than from the codebook, so a type a
    * collaborator deletes is still on screen and can still be taken out. Hidden,
    * the only way out would be deleting the whole stage.
