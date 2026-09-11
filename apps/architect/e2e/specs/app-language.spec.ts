@@ -441,7 +441,7 @@ test('renders British spelling in the actual type dialog and in the stage editor
   ).toBeVisible();
   await page.goto('/protocol/stage/geospatial-1');
   await expect(
-    page.getByRole('radiogroup', { name: 'Highlight colour' }),
+    page.getByRole('radiogroup', { name: 'Map outline and selection colour' }),
   ).toBeVisible();
   expect(await readProtocolJson(page)).toEqual(before);
 });

@@ -10,21 +10,21 @@ import { addPrompt } from './prompts.js';
 // part of that is a question the researcher answers rather than one they turn
 // on:
 // - "Participant prompt" holds the rich-text field "Prompt text" (`text`).
-// - "Node positions" holds the picker "Position attribute"
+// - "Node layout" holds the picker "Layout attribute"
 //   (`layout.layoutVariable`) and, beside it, the button "Create a new
 //   position attribute", which opens the codebook's own attribute editor
 //   locked to the layout type. The picker is a native `<select>` over the
 //   attributes that exist, so it can only ever CHOOSE; creating is the
 //   button's job, not the picker's.
-// - "Tapping a node" holds one choice, "Tap behavior", between "Nothing",
-//   "Create a connection" and "Mark the node" — mutually exclusive, because
+// - "Node interaction" holds one choice, "Interaction type", between "Nothing",
+//   "Edge creation" and "Attribute toggling" — mutually exclusive, because
 //   the stage schema refuses a prompt that both draws edges and toggles an
-//   attribute. Choosing "Create a connection" reveals the edge-type
-//   radiogroup "Connection type created" (`edges.create`); choosing "Mark the
-//   node" reveals the picker "Attribute marked" (`highlight.variable`) with
-//   its own "Create a new true-or-false attribute" button, and writes
+//   attribute. Choosing "Edge creation" reveals the edge-type
+//   radiogroup "Created edge type" (`edges.create`); choosing "Attribute
+//   toggling" reveals the picker "Boolean attribute" (`highlight.variable`)
+//   with its own "Create a new true-or-false attribute" button, and writes
 //   `highlight.allowHighlighting: true` for itself.
-// - "Connections shown" holds the tick list "Connection types shown"
+// - "Displayed edges" holds the tick list "Edge types"
 //   (`edges.display`). Choosing a connection type to CREATE here ticks that
 //   type and locks its box, so a displayed-edges list that names it is
 //   already satisfied — hence the guarded check rather than a blind one.
@@ -94,18 +94,18 @@ export async function addSociogramPrompt(
     await chooseOrCreateAttribute(page, editor.field('layout.layoutVariable'), {
       name: spec.layoutVariable,
       createLabel: 'Create a new position attribute',
-      scope: editor.section('Node positions'),
+      scope: editor.section('Node layout'),
     });
 
     const interaction = spec.interaction;
     if (interaction) {
-      const tapping = editor.section('Tapping a node');
+      const tapping = editor.section('Node interaction');
       const behaviour = editor
         .field('tap-behaviour')
-        .getByRole('listbox', { name: 'Tap behavior', exact: true });
+        .getByRole('listbox', { name: 'Interaction type', exact: true });
       if (interaction.kind === 'createEdge') {
         if (interaction.createNewEdgeType) {
-          // The prompt dialog's "Connection type created" control is
+          // The prompt dialog's "Created edge type" control is
           // `EntityTypePickerField`, which chooses among the edge types the
           // codebook already has and offers no way to add one — the "Create a
           // new edge type" button belongs to the stage's own subject section,
@@ -115,9 +115,7 @@ export async function addSociogramPrompt(
             `Cannot create the edge type "${interaction.edgeName}" from a sociogram prompt: the prompt's connection-type picker only chooses existing types. Create it first (a stage whose subject is an edge, or the codebook screen).`,
           );
         }
-        await behaviour
-          .getByRole('option', { name: /^Create a connection/ })
-          .click();
+        await behaviour.getByRole('option', { name: /^Edge creation/ }).click();
         await editor
           .field('edges.create')
           .getByRole('radio', { name: interaction.edgeName, exact: true })
@@ -126,7 +124,9 @@ export async function addSociogramPrompt(
           .locator('xpath=ancestor::label[1]')
           .click();
       } else {
-        await behaviour.getByRole('option', { name: /^Mark the node/ }).click();
+        await behaviour
+          .getByRole('option', { name: /^Attribute toggling/ })
+          .click();
         await chooseOrCreateAttribute(
           page,
           editor.field('highlight.variable'),

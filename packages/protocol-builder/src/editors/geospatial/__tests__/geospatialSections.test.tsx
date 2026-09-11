@@ -203,6 +203,25 @@ describe('the map a geospatial stage shows', () => {
   });
 
   /**
+   * A researcher without a Mapbox account cannot finish this stage, and the
+   * only way out of that is the documentation. Architect linked it from this
+   * hint, so the words have to arrive as a link a researcher can follow, not
+   * as the tags the message writes them in.
+   */
+  it('sends a researcher without a key to the interface documentation', async () => {
+    openEditor();
+
+    const documentation = await screen.findByRole('link', {
+      name: 'documentation',
+    });
+
+    expect(documentation).toHaveAttribute(
+      'href',
+      'https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/geospatial/',
+    );
+  });
+
+  /**
    * The one thing this field exists to do: the property a participant's answer
    * is stored as is read from the layer itself, not typed. The harness serves
    * the real bytes of `regions.geojson`, whose features carry `name`, so a
