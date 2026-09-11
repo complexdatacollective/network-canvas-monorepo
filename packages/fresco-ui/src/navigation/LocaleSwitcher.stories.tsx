@@ -138,7 +138,15 @@ export const WithSearch: Story = {
       within(popup).getByRole('option', { name: /^Español/ }),
     ).toBeVisible();
 
+    // An autonym sets its own base direction: Arabic reads right-to-left
+    // inside this left-to-right list.
     await userEvent.clear(search);
+    const arabic = within(popup)
+      .getByRole('option', { name: /^العربية/ })
+      .querySelector('[lang="ar"]');
+    await expect(arabic).not.toBeNull();
+    await expect(getComputedStyle(arabic!).direction).toBe('rtl');
+
     await userEvent.type(search, 'zzz');
     await expect(
       await within(popup).findByText('No languages match your search.'),
@@ -238,8 +246,8 @@ export const AutomaticEntry: Story = {
 };
 
 /**
- * In a right-to-left region the pill and the rows mirror, while each autonym
- * still renders in its own direction.
+ * In a right-to-left region the pill and the rows mirror; the autonyms keep
+ * their own direction here as everywhere.
  */
 export const RightToLeft: Story = {
   globals: { appDirection: 'rtl' },

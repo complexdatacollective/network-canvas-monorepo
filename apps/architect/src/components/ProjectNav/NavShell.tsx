@@ -16,6 +16,7 @@ import Modal from '@codaco/fresco-ui/Modal';
 import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import Brand from '~/components/Brand';
 import { useRunOnce } from '~/hooks/useRunOnce';
+import ArchitectLocaleSwitcher from '~/i18n/ArchitectLocaleSwitcher';
 import { cx } from '~/utils/cva';
 const messages = defineMessages({
   openMenu: {
@@ -68,9 +69,11 @@ const itemVariants: Variants = {
 type NavShellProps = {
   leading?: React.ReactNode;
   trailing?: React.ReactNode;
+  /** Chrome after the language pill, such as Home's version pill. */
+  end?: React.ReactNode;
 };
 
-const NavShell = ({ leading, trailing }: NavShellProps) => {
+const NavShell = ({ leading, trailing, end }: NavShellProps) => {
   const intl = useAppIntl();
   const shouldReduceMotion = useReducedMotion();
   const isFirstMount = useRunOnce('nav-bar-entrance');
@@ -172,6 +175,8 @@ const NavShell = ({ leading, trailing }: NavShellProps) => {
             </Modal>
           </>
         )}
+        <ArchitectLocaleSwitcher />
+        {end}
       </motion.div>
     </header>
   );

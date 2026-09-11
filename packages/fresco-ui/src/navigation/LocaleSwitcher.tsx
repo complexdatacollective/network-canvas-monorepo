@@ -283,6 +283,7 @@ export default function LocaleSwitcher({
                   <span
                     className="min-w-0 flex-1 font-semibold"
                     lang={item.value ?? undefined}
+                    dir={item.value === null ? undefined : 'auto'}
                   >
                     {item.autonym}
                   </span>

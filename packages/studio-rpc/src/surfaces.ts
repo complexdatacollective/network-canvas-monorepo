@@ -62,7 +62,6 @@ export const BOTH_PATHS = [
 
   // App, platform level.
   '/account',
-  '/account/language',
   '/account/sign-in-methods',
   '/account/tokens',
   '/gallery',

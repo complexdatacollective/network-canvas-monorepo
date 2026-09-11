@@ -14,7 +14,6 @@ import { Link, useLocation } from 'wouter';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { useProtocolAccessMode } from '~/hooks/useProtocolAccessMode';
-import ArchitectLocaleSwitcher from '~/i18n/ArchitectLocaleSwitcher';
 import { type MessageConfig, formatConfig } from '~/i18n/formatConfig';
 import {
   getHasUnusedAssets,
@@ -200,12 +199,7 @@ const ProjectNav = () => {
   return (
     <NavShell
       leading={<Breadcrumb items={breadcrumbItems} />}
-      trailing={
-        <>
-          {trailing}
-          <ArchitectLocaleSwitcher />
-        </>
-      }
+      trailing={trailing}
     />
   );
 };

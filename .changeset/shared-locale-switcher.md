@@ -18,4 +18,4 @@ their language selects.
 For anyone building on `@codaco/fresco-ui`: `navigation/LocaleSwitcher` is the
 new component. It takes the app's locale registry, the stored preference, the
 locale automatic resolves to, and a host-supplied footer note; its own chrome is translated once under `frescoUi.localeSwitcher.*`. A search
-box appears once the list passes `LOCALE_SWITCHER_SEARCH_THRESHOLD` entries.
+box appears once the list is longer than six entries.

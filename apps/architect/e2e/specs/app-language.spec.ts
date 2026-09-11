@@ -24,8 +24,10 @@ function languagePopover(page: Page) {
   });
 }
 
+// Each option's accessible name is its autonym followed by its code.
 const OPTION_NAMES: Record<string, RegExp> = {
   '__automatic': /^(Automático|Automatic)\b/,
+  'en': /^English\s+EN$/,
   'en-GB': /^English \(UK\)/,
   'es': /^Español/,
 };
