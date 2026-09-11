@@ -3,8 +3,9 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 const gatePath = fileURLToPath(
   new URL('./dead-link-refresh-gate.mjs', import.meta.url),
@@ -30,12 +31,18 @@ function runGate(args) {
   });
 }
 
-function report({ cache = { hits: 0 }, failures = [], summary }) {
+function report({
+  cache = { hits: 0 },
+  failures = [],
+  refusals = { count: 0, links: [], stale: [] },
+  summary,
+}) {
   return {
     cache,
     failures,
+    refusals,
     results: failures,
-    schemaVersion: 1,
+    schemaVersion: 2,
     startedAt: '2026-09-11T04:00:00.000Z',
     summary,
     target: 'https://documentation.networkcanvas.com/',
@@ -140,6 +147,90 @@ test('a missing failure count is refused rather than read as zero', async () => 
         failures: [deadLink],
         summary: { checked: 391, discovered: 391, passed: 390 },
       }),
+    ],
+    async (paths) => {
+      const result = await runGate(paths);
+      assert.notEqual(result.code, 0);
+    },
+  );
+});
+
+test('refusals are listed but do not by themselves fail the run', async () => {
+  const refusal = {
+    error: 'HTTP 403',
+    finalUrl: 'https://onlinelibrary.wiley.com/doi/10.1007/x',
+    foundOn: ['https://documentation.networkcanvas.com/en'],
+    kind: 'refused',
+    ok: false,
+    status: 403,
+    url: 'https://doi.org/10.1007/x',
+  };
+  await withReports(
+    [
+      report({
+        refusals: { count: 1, links: [refusal], stale: [] },
+        summary: {
+          checked: 391,
+          discovered: 391,
+          failed: 0,
+          passed: 390,
+          refused: 1,
+        },
+      }),
+    ],
+    async (paths) => {
+      const result = await runGate(paths);
+      assert.equal(result.code, 0, result.stderr);
+      assert.match(result.stdout, /1 refused/);
+      // Listed, so a count that climbs is visible to a person reading the run.
+      assert.match(
+        result.stdout,
+        /refused 403 https:\/\/doi\.org\/10\.1007\/x/,
+      );
+    },
+  );
+});
+
+test('a listed link that is no longer refused is reported, not failed', async () => {
+  // These walls are intermittent, so a publisher letting us through must not
+  // turn the run red — but the entry should be prunable, so it is named.
+  await withReports(
+    [
+      report({
+        refusals: {
+          count: 0,
+          links: [],
+          stale: ['https://doi.org/10.1007/x'],
+        },
+        summary: {
+          checked: 391,
+          discovered: 391,
+          failed: 0,
+          passed: 391,
+          refused: 0,
+        },
+      }),
+    ],
+    async (paths) => {
+      const result = await runGate(paths);
+      assert.equal(result.code, 0, result.stderr);
+      assert.match(result.stdout, /no longer refused, prunable/);
+    },
+  );
+});
+
+test('a report with no refusal count is refused', async () => {
+  await withReports(
+    [
+      {
+        cache: { hits: 0 },
+        failures: [],
+        results: [],
+        schemaVersion: 2,
+        startedAt: '2026-09-11T04:00:00.000Z',
+        summary: { checked: 391, discovered: 391, failed: 0, passed: 391 },
+        target: 'https://documentation.networkcanvas.com/',
+      },
     ],
     async (paths) => {
       const result = await runGate(paths);

@@ -36,6 +36,9 @@ async function readReport(path) {
   if (!Number.isInteger(report.summary?.failed)) {
     throw new Error(`${path} reports no failure count`);
   }
+  if (!Number.isInteger(report.refusals?.count)) {
+    throw new Error(`${path} reports no refusal count`);
+  }
   return report;
 }
 
@@ -53,9 +56,22 @@ if (paths.length === 0) {
     // rather than letting the smaller number decide, which is the direction a
     // gate should err in.
     dead += Math.max(failed, report.failures.length);
+    const { count, links, stale } = report.refusals;
     process.stdout.write(
-      `${report.target}: ${checked} checked, ${failed} dead, ${report.cache?.hits ?? 0} from cache\n`,
+      `${report.target}: ${checked} checked, ${failed} dead, ${count} refused, ${report.cache?.hits ?? 0} from cache\n`,
     );
+    // Refusals here are the listed ones; an unlisted refusal is already a
+    // failure in `failures`, so there is nothing to gate on — only to show.
+    for (const refusal of links) {
+      process.stdout.write(
+        `  refused ${refusal.status} ${refusal.url} -> ${refusal.finalUrl}\n`,
+      );
+    }
+    for (const url of stale ?? []) {
+      process.stdout.write(
+        `  no longer refused, prunable from the list: ${url}\n`,
+      );
+    }
     for (const failure of report.failures) {
       process.stdout.write(
         `::error title=Dead link::${failure.url} (${failure.error}) found on ${failure.foundOn.join(', ')}\n`,
@@ -64,6 +80,6 @@ if (paths.length === 0) {
   }
   if (dead > 0) {
     process.stderr.write(`\n${dead} dead link(s) across the public sites.\n`);
-    process.exitCode = 1;
   }
+  if (dead > 0) process.exitCode = 1;
 }

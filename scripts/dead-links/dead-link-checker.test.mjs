@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 import {
   MAX_GITHUB_ERROR_ANNOTATIONS,
@@ -135,13 +136,14 @@ test('every request carries Chrome own identity, never a checker signature', asy
   }
 });
 
-test('a WAF interstitial or block is reported dead, never accepted', async () => {
+test('a WAF refusal is reported unverified, never dead and never live', async () => {
   // Cloudflare serves its attestation script on a PERMANENT "you have been
   // blocked" 403 and on ordinary 200 pages alike, and announces only some
-  // interstitials with a header — so no marker identifies a solvable challenge,
-  // and an earlier attempt here accepted block pages as live because of it.
-  // Headed Chrome exists to resolve challenges; when it cannot, the run does
-  // not know the link is alive and must not say that it is.
+  // interstitials with a header — so no content marker identifies a solvable
+  // challenge, and an earlier attempt here accepted block pages as live
+  // because of it. The status line is what carries the meaning instead: 401
+  // and 403 say the client was refused, 404 and 410 say the resource is gone.
+  // Both fixtures below are refusals and neither may be reported either way.
   const CHALLENGE_SCRIPT =
     '<script src="/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1"></script>';
   const external = await startServer((request, response) => {
@@ -176,28 +178,76 @@ test('a WAF interstitial or block is reported dead, never accepted', async () =>
     response.end();
   });
 
+  const directory = await mkdtemp(join(tmpdir(), 'dead-link-refusable-'));
+  const allowAll = join(directory, 'allow-all.json');
+  await writeFile(
+    allowAll,
+    JSON.stringify({
+      refusable: [
+        { url: `${root.origin}/to-interstitial` },
+        { url: `${root.origin}/to-block` },
+      ],
+    }),
+  );
+
   try {
     const result = await runChecker([
       root.origin,
       '--format=json',
       '--delay=0',
       '--retries=0',
+      `--allow-refused=${allowAll}`,
     ]);
-    assert.equal(result.code, 1, result.stderr);
+    // Both are refusals, not dead links: a 403 from someone else's host says
+    // the client was turned away, and the run cannot tell a bot wall from a
+    // permanent one. Neither is counted dead, neither is reported as verified.
+    assert.equal(result.code, 0, result.stderr);
     const report = jsonResult(result);
-    assert.equal(report.summary.failed, 2, 'both are dead');
-    assert.equal(report.summary.passed, 1, 'only the root page passed');
+    assert.equal(report.summary.failed, 0, 'neither is counted dead');
+    assert.equal(report.summary.refused, 2);
+    assert.equal(report.refusals.count, 2);
+    assert.deepEqual(report.failures, []);
 
     for (const path of ['/to-interstitial', '/to-block']) {
-      const failure = report.failures.find(({ url }) => url.endsWith(path));
-      assert.ok(failure, `${path} is reported`);
-      assert.equal(failure.ok, false);
-      assert.equal(failure.status, 403);
-      assert.equal(failure.error, 'HTTP 403');
+      const refusal = report.refusals.links.find(({ url }) =>
+        url.endsWith(path),
+      );
+      assert.ok(refusal, `${path} is reported as refused`);
+      assert.equal(refusal.ok, false, 'refused is never "verified"');
+      assert.equal(refusal.kind, 'refused');
+      assert.equal(refusal.status, 403);
       // The redirect must not be reported as the destination reached.
-      assert.match(failure.finalUrl, /\/(interstitial|blocked)$/);
+      assert.match(refusal.finalUrl, /\/(interstitial|blocked)$/);
     }
+
+    // An unlisted refusal is a FAILURE, not a refusal: this is why the rule
+    // is a list of URLs and not a count. With only the interstitial listed,
+    // the block URL must still fail even though the total is unchanged.
+    const listPath = join(directory, 'refusable.json');
+    await writeFile(
+      listPath,
+      JSON.stringify({
+        refusable: [{ url: `${root.origin}/to-interstitial` }],
+      }),
+    );
+    const partial = await runChecker([
+      root.origin,
+      '--format=json',
+      '--delay=0',
+      '--retries=0',
+      `--allow-refused=${listPath}`,
+    ]);
+    assert.equal(partial.code, 1, 'the unlisted refusal fails the run');
+    const partialReport = JSON.parse(partial.stdout);
+    assert.equal(partialReport.summary.refused, 1);
+    assert.equal(partialReport.summary.failed, 1);
+    assert.match(
+      partialReport.failures[0].url,
+      /to-block$/,
+      'the unlisted one is the failure',
+    );
   } finally {
+    await rm(directory, { force: true, recursive: true });
     await root.stop();
     await external.stop();
   }
@@ -302,7 +352,7 @@ test('JSON, report files, annotations, and job summaries share one report', asyn
     assert.equal(result.code, 1);
     const report = JSON.parse(result.stdout);
     assert.deepEqual(JSON.parse(await readFile(reportPath, 'utf8')), report);
-    assert.equal(report.schemaVersion, 1);
+    assert.equal(report.schemaVersion, 2);
     assert.equal(report.target, `${server.origin}/`);
     assert.match(report.startedAt, /^\d{4}-\d{2}-\d{2}T/);
     assert.ok(Number.isInteger(report.durationMs) && report.durationMs >= 0);
@@ -311,6 +361,7 @@ test('JSON, report files, annotations, and job summaries share one report', asyn
       discovered: 2,
       failed: 1,
       passed: 1,
+      refused: 0,
     });
     assert.deepEqual(report.failures, [report.results[1]]);
     assert.equal(report.results[0].kind, null);
@@ -351,6 +402,7 @@ test('a body timeout after headers becomes a reportable request failure', async 
       discovered: 1,
       failed: 1,
       passed: 0,
+      refused: 0,
     });
     assert.equal(report.failures[0].kind, 'request-error');
     assert.equal(report.failures[0].status, null);
@@ -439,8 +491,9 @@ test('renderers escape workflow commands and obey explicit color selection', () 
     },
     durationMs: 1,
     failures: [failure],
+    refusals: { count: 0, links: [], stale: [] },
     results: [failure],
-    schemaVersion: 1,
+    schemaVersion: 2,
     startedAt: '2026-01-01T00:00:00.000Z',
     summary: { checked: 1, discovered: 1, failed: 1, passed: 0 },
     target: 'https://example.test/',

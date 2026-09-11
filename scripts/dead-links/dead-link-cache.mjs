@@ -69,6 +69,7 @@ export class LinkCheckCache {
   #entries = new Map();
   #hits = 0;
   #internalHosts;
+  #rootOrigin;
   #now;
   #stores = 0;
   #ttlMilliseconds;
@@ -79,19 +80,20 @@ export class LinkCheckCache {
     rootURL,
     ttlSeconds = DEFAULT_CACHE_TTL_SECONDS,
   } = {}) {
-    this.#internalHosts = [
-      ...new Set(
-        [...(rootURL ? [new URL(rootURL).hostname] : []), ...internalHosts].map(
-          normalizeHost,
-        ),
-      ),
-    ];
+    this.#internalHosts = [...new Set(internalHosts.map(normalizeHost))];
+    // The crawl root is matched by ORIGIN, not hostname: a different port is a
+    // different site, and treating every port on a host as one site would make
+    // a local fixture on :8081 internal to a root on :8080.
+    this.#rootOrigin = rootURL ? new URL(rootURL).origin : null;
     this.#now = now;
     this.#ttlMilliseconds = ttlSeconds * 1_000;
   }
 
   get internalHosts() {
-    return [...this.#internalHosts];
+    return [
+      ...(this.#rootOrigin ? [this.#rootOrigin] : []),
+      ...this.#internalHosts,
+    ];
   }
 
   get stats() {
@@ -99,12 +101,14 @@ export class LinkCheckCache {
   }
 
   isInternal(url) {
-    let hostname;
+    let parsed;
     try {
-      ({ hostname } = new URL(url));
+      parsed = new URL(url);
     } catch {
       return true;
     }
+    if (this.#rootOrigin && parsed.origin === this.#rootOrigin) return true;
+    const { hostname } = parsed;
     return this.#internalHosts.some((host) => hostMatches(hostname, host));
   }
 

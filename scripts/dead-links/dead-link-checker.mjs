@@ -92,7 +92,7 @@
  * output. Human-readable text, JSON artifacts, GitHub annotations, and the job
  * summary are all rendered from that same deterministic report.
  */
-import { appendFile, writeFile } from 'node:fs/promises';
+import { appendFile, readFile, writeFile } from 'node:fs/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
 
@@ -105,7 +105,16 @@ import {
   LinkCheckCache,
 } from './dead-link-cache.mjs';
 
-const REPORT_SCHEMA_VERSION = 1;
+const REPORT_SCHEMA_VERSION = 2;
+// "Understood, and refusing you" — not "gone". A 401/403 from someone else's
+// host says the client was turned away, and no content marker separates a bot
+// wall from a permanent refusal: Cloudflare serves its attestation script on
+// block pages and ordinary 200s alike, and some publishers send no marker at
+// all. So a refusal is excused only when the SPECIFIC URL is listed as known
+// to refuse us (see --allow-refused). An unlisted one is a failure, which
+// means a link that starts refusing us is never absorbed by a link that
+// stopped — the reason this is a list of URLs and not a count.
+const REFUSED_STATUSES = new Set([401, 403]);
 const TRANSIENT_STATUSES = new Set([429, 502, 503, 504]);
 const MAX_RETRY_DELAY_MS = 30_000;
 const BASE_RETRY_DELAY_MS = 500;
@@ -216,13 +225,14 @@ const DEFAULT_OPTIONS = {
   headless: false,
   internalHosts: DEFAULT_INTERNAL_HOSTS,
   maxRedirects: 10,
+  allowRefusedPath: undefined,
   reportPath: undefined,
   retries: 3,
   timeout: 30_000,
   verbose: false,
 };
 
-const USAGE = `Usage: node scripts/dead-link-checker.mjs <URL> [options]
+const USAGE = `Usage: node scripts/dead-links/dead-link-checker.mjs <URL> [options]
 
 Every link is checked by navigating Chrome to it. Run under a display server
 (xvfb-run --auto-servernum on CI) unless --headless is given.
@@ -235,6 +245,9 @@ Options:
   --timeout=<milliseconds>   Per-link verification timeout (default: 30000)
   --retries=<number>         Retries after the first attempt (default: 3)
   --max-redirects=<number>   Maximum redirect hops (default: 10)
+  --allow-refused=<path>     JSON listing external URLs known to answer
+                             401/403 because they refuse automation. A
+                             refusal from any other URL is a failure.
   --headless                 Launch Chrome headless (challenge providers
                              reject headless Chrome; for local use only)
   --cache=<path>             Read and write the external-link result cache
@@ -1002,6 +1015,10 @@ export function parseArguments(args) {
           }
           options.format = value;
           break;
+        case 'allow-refused':
+          if (!value) throw new UsageError('--allow-refused must not be empty');
+          options.allowRefusedPath = value;
+          break;
         case 'max-redirects':
           options.maxRedirects = optionInteger(value, name, {
             min: 0,
@@ -1161,11 +1178,42 @@ async function verifyWithRetry(url, options, verifier, captureHTML) {
   throw lastError;
 }
 
+/**
+ * Reads the list of URLs known to refuse automation. Absent means "nothing is
+ * excused", which is the safe direction: every refusal then fails.
+ */
+export async function readRefusableURLs(path) {
+  if (!path) return new Set();
+  let parsed;
+  try {
+    parsed = JSON.parse(await readFile(path, 'utf8'));
+  } catch (error) {
+    throw new Error(`Could not read the refusable-link list at ${path}`, {
+      cause: error,
+    });
+  }
+  if (!Array.isArray(parsed?.refusable)) {
+    throw new Error(`${path} has no "refusable" array`);
+  }
+  const urls = new Set();
+  for (const entry of parsed.refusable) {
+    if (typeof entry?.url !== 'string' || !entry.url) {
+      throw new Error(`${path} has an entry without a url`);
+    }
+    urls.add(entry.url);
+  }
+  return urls;
+}
+
 export async function crawl(
   inputURL,
   options,
   onProgress = () => {},
-  { cache: injectedCache, verifier: injectedVerifier } = {},
+  {
+    cache: injectedCache,
+    refusableURLs = new Set(),
+    verifier: injectedVerifier,
+  } = {},
 ) {
   const startedAtMilliseconds = Date.now();
   const cache =
@@ -1259,16 +1307,28 @@ export async function crawl(
     }
 
     if (outcome.status >= 400) {
+      // A 401/403 from someone else's host tells us about the client, not the
+      // link — but only for the URLs we have checked by hand and listed. An
+      // unlisted refusal is a failure, so a publisher that starts refusing us
+      // can never be hidden by one that stopped. The same status from a host
+      // we control is always ours to fix, which includes the deploy preview
+      // being crawled, since that is the site under test.
+      const refusable =
+        REFUSED_STATUSES.has(outcome.status) &&
+        !cache.isInternal(outcome.finalUrl) &&
+        refusableURLs.has(record.url);
       results.push(
         failureResult(
           record,
           {
-            error: `HTTP ${outcome.status}`,
+            error: refusable
+              ? `HTTP ${outcome.status}`
+              : `HTTP ${outcome.status} (add to the refusable-link list if this host refuses automation)`,
             finalUrl: outcome.finalUrl,
             redirects: outcome.redirects,
             status: outcome.status,
           },
-          'http-error',
+          refusable ? 'refused' : 'http-error',
         ),
       );
       onProgress(results.length, records.size);
@@ -1340,7 +1400,12 @@ export async function crawl(
       foundOn: [...records.get(result.url).foundOn].toSorted(compareStrings),
     }))
     .toSorted((left, right) => compareStrings(left.url, right.url));
-  const failures = normalizedResults.filter((result) => !result.ok);
+  const failures = normalizedResults.filter(
+    (result) => !result.ok && result.kind !== 'refused',
+  );
+  const refusedLinks = normalizedResults.filter(
+    (result) => result.kind === 'refused',
+  );
 
   return {
     cache: {
@@ -1351,6 +1416,20 @@ export async function crawl(
     },
     durationMs: Date.now() - startedAtMilliseconds,
     failures,
+    // Kept apart from `failures` so a refusal can never be read as a dead
+    // link, and counted so a wall that spreads to new publishers cannot pass
+    // unnoticed: `allowed` is the number this site is known to meet, and
+    // exceeding it fails the run.
+    refusals: {
+      count: refusedLinks.length,
+      links: refusedLinks,
+      // Listed but not refused this run: either the publisher let us through
+      // or the citation is gone. Reported so the list can be pruned, not
+      // failed, because these walls are intermittent.
+      stale: [...refusableURLs]
+        .filter((url) => !refusedLinks.some((link) => link.url === url))
+        .toSorted(compareStrings),
+    },
     results: normalizedResults,
     schemaVersion: REPORT_SCHEMA_VERSION,
     startedAt: new Date(startedAtMilliseconds).toISOString(),
@@ -1358,7 +1437,8 @@ export async function crawl(
       checked: normalizedResults.length,
       discovered: records.size,
       failed: failures.length,
-      passed: normalizedResults.length - failures.length,
+      passed: normalizedResults.length - failures.length - refusedLinks.length,
+      refused: refusedLinks.length,
     },
     target: inputURL,
   };
@@ -1384,6 +1464,26 @@ export function formatTextReport(
     `Discovered: ${report.summary.discovered} | Checked: ${report.summary.checked} | Passed: ${report.summary.passed} | Failed: ${report.summary.failed}`,
     `Browsed: ${report.summary.checked - report.cache.hits} | From cache: ${report.cache.hits}`,
   ];
+
+  if (report.refusals.count > 0) {
+    lines.push(
+      '',
+      `Refused by ${report.refusals.count} listed external link(s) — answered 401/403, so they could not be verified:`,
+    );
+    for (const refusal of report.refusals.links) {
+      lines.push(
+        `- ${refusal.url}`,
+        `  ${refusal.status} from ${new URL(refusal.finalUrl).hostname}`,
+      );
+    }
+  }
+  if (report.refusals.stale.length > 0) {
+    lines.push(
+      '',
+      `${report.refusals.stale.length} listed link(s) were not refused this run and can be removed from the list:`,
+    );
+    for (const url of report.refusals.stale) lines.push(`- ${url}`);
+  }
 
   if (verbose) {
     lines.push('', 'Checked URLs:');
@@ -1454,9 +1554,28 @@ export function formatGitHubSummary(report) {
   const lines = [
     '### Dead-link check',
     '',
-    `Discovered **${report.summary.discovered}** URLs and checked **${report.summary.checked}**: **${report.summary.passed} passed**, **${report.summary.failed} failed**.`,
+    `Discovered **${report.summary.discovered}** URLs and checked **${report.summary.checked}**: **${report.summary.passed} passed**, **${report.summary.failed} failed**, **${report.summary.refused} refused**.`,
     '',
   ];
+
+  // Refusals are listed even on an otherwise clean run. They are the links
+  // this check could NOT verify, and a count that quietly grows is how a
+  // publisher's bot wall spreads unnoticed.
+  if (report.refusals.count > 0) {
+    lines.push(
+      `<details><summary>${report.refusals.count} listed external link(s) refused us — 401/403, not verified</summary>`,
+      '',
+      '| Refused URL | Status | Host |',
+      '| --- | --- | --- |',
+    );
+    for (const refusal of report.refusals.links) {
+      lines.push(
+        `| ${markdownCell(refusal.url)} | ${refusal.status} | ${markdownCell(new URL(refusal.finalUrl).hostname)} |`,
+      );
+    }
+    lines.push('', '</details>', '');
+  }
+
   if (report.failures.length === 0) {
     lines.push('✅ No dead links found.', '');
     return lines.join('\n');
@@ -1522,6 +1641,7 @@ export async function run(
     ttlSeconds: options.cacheTtlSeconds,
   });
   if (options.cachePath) await cache.readFrom(options.cachePath);
+  const refusableURLs = await readRefusableURLs(options.allowRefusedPath);
 
   const showProgress = options.format === 'text' && stdout.isTTY;
   if (showProgress) stdout.write(`Checking ${inputURL}\n`);
@@ -1531,7 +1651,7 @@ export async function run(
     (checked, total) => {
       if (showProgress) stdout.write(`\rChecked ${checked}/${total} URLs`);
     },
-    { cache },
+    { cache, refusableURLs },
   );
   if (showProgress) stdout.write(`\r${' '.repeat(80)}\r`);
 
