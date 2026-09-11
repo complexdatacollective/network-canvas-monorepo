@@ -615,6 +615,34 @@
     "defaultMessage": "Select value on scale",
     "description": "Accessible name of the scale’s slider thumb, when the caller named neither the field nor the control."
   },
+  "frescoUi.localeSwitcher.automaticCode": {
+    "defaultMessage": "AUTO",
+    "description": "Short badge shown beside the automatic entry, where other entries show a language code such as EN."
+  },
+  "frescoUi.localeSwitcher.automaticCurrent": {
+    "defaultMessage": "Automatic ({language})",
+    "description": "The automatic entry and the switcher button’s accessible name while it is chosen; {language} is the own name of the language the browser resolves to."
+  },
+  "frescoUi.localeSwitcher.heading": {
+    "defaultMessage": "Interface language",
+    "description": "Heading of the popover where the user chooses the language the application speaks."
+  },
+  "frescoUi.localeSwitcher.noResults": {
+    "defaultMessage": "No languages match your search.",
+    "description": "Shown in the language list when the search box filters out every language."
+  },
+  "frescoUi.localeSwitcher.searchPlaceholder": {
+    "defaultMessage": "Search languages",
+    "description": "Placeholder of the search box that filters the list of interface languages."
+  },
+  "frescoUi.localeSwitcher.triggerAutomatic": {
+    "defaultMessage": "Auto · {code}",
+    "description": "Visible label of the switcher button while the automatic entry is chosen; {code} is the resolved language code such as EN."
+  },
+  "frescoUi.localeSwitcher.triggerName": {
+    "defaultMessage": "Interface language: {current}",
+    "description": "Accessible name of the switcher button; {current} is the chosen language’s name or the automatic wording."
+  },
   "frescoUi.node.defaultLabel": {
     "defaultMessage": "Node",
     "description": "Default label rendered inside a network node when the host supplies none."
