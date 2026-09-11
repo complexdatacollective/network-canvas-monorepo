@@ -4,7 +4,7 @@ import { type StageEditor } from '../stage-editor.js';
 
 // The quick-add section (`@codaco/protocol-builder`'s
 // `editors/name-generator-quick-add/sections/QuickAddSection.tsx`, `Quick add`)
-// holds one field, `quickAdd`, labelled "Attribute filled in" and rendered by
+// holds one field, `quickAdd`, labelled "Select an attribute" and rendered by
 // `VariablePickerField`. Facts read from that source:
 // - The picker is a native `<select>` of the node type's TEXT attributes plus,
 //   because this section passes `onCreateOption`, an inline create pair: a
@@ -30,7 +30,7 @@ export async function selectOrCreateQuickAddVariable(
   // "Create a new attribute" pair, and so does the codebook surface.
   const picker = editor.field('quickAdd');
   const chosen = picker.getByRole('combobox', {
-    name: 'Attribute filled in',
+    name: 'Select an attribute',
     exact: true,
   });
   const offered = chosen.getByRole('option', {
