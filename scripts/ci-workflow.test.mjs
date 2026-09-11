@@ -241,6 +241,13 @@ test('the dead-link action runs headed Chrome and reads a shared cache', () => {
   assert.match(check.run, /--github-actions/);
   assert.match(check.run, /--cache=/);
   assert.doesNotMatch(check.run, /dead-link-checker\.mjs[^\n]* (-v|--yes)/);
+  // The HTTP-client crawl ran serially so a cluster of links on one publisher
+  // could not look like a bot burst. A browser is slower per link, so this
+  // trades some of that back — pin the value rather than letting it drift,
+  // since burst behaviour is what provokes the WAF blocks the checker now
+  // correctly reports as dead.
+  assert.equal(deadLinkAction.inputs.concurrent.default, '4');
+  assert.match(check.run, /--concurrent="\$CHECK_CONCURRENT"/);
 
   const restore = steps.find(
     ({ name }) => name === 'Restore external-link cache',
@@ -280,8 +287,12 @@ test('the weekly refresh publishes the cache every pull request reads', () => {
   const [documentation, website] = crawls;
   assert.match(documentation.with.url, /documentation\.networkcanvas\.com/);
   assert.match(website.with.url, /networkcanvas\.com\/en-US\//);
-  // The second crawl extends the file the first produced, so restoring again
-  // would discard what the first crawl just added.
+  // NEITHER crawl restores, and that is the whole job. Last week's entries are
+  // minutes short of the one-week TTL when this starts, so a restore would
+  // serve them as hits instead of rechecking them and republish them with
+  // their original timestamps — expiring minutes into the week they were meant
+  // to cover, and rechecking links fortnightly rather than weekly.
+  assert.equal(documentation.with['restore-cache'], 'false');
   assert.equal(website.with['restore-cache'], 'false');
   assert.equal(website.with['save-cache'], 'true');
   assert.notEqual(documentation.with['save-cache'], 'true');

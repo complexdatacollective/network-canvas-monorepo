@@ -128,6 +128,52 @@ test('an unreadable or foreign cache degrades into a slow run, not a wrong one',
   }
 });
 
+test('an entry no writer could have produced is refused', () => {
+  const cache = new LinkCheckCache({ rootURL: ROOT });
+  const checkedAt = new Date().toISOString();
+  cache.load({
+    entries: {
+      // `set` stores successes only, so a stored error means the file was
+      // written by something that is not this module. Admitting it is the one
+      // way a stale store degrades into a wrong answer rather than a slow one.
+      'https://example.test/forbidden': {
+        checkedAt,
+        finalUrl: 'https://example.test/forbidden',
+        redirects: [],
+        status: 403,
+      },
+      'https://example.test/junk-redirect': {
+        checkedAt,
+        finalUrl: 'https://example.test/junk-redirect',
+        redirects: [{ junk: true }],
+        status: 200,
+      },
+    },
+    schemaVersion: CACHE_SCHEMA_VERSION,
+  });
+  assert.equal(cache.get('https://example.test/forbidden'), null);
+  assert.equal(cache.get('https://example.test/junk-redirect'), null);
+});
+
+test('load refuses our own content even before get re-checks it', () => {
+  // `get` filters internal URLs too, so this is defence in depth — but a
+  // cache file that carries our own pages is a file to distrust, and the
+  // filter is worth an oracle of its own rather than resting on the later one.
+  const cache = new LinkCheckCache({ rootURL: ROOT });
+  cache.load({
+    entries: {
+      'https://documentation.networkcanvas.com/en': {
+        checkedAt: new Date().toISOString(),
+        finalUrl: 'https://documentation.networkcanvas.com/en',
+        redirects: [],
+        status: 200,
+      },
+    },
+    schemaVersion: CACHE_SCHEMA_VERSION,
+  });
+  assert.deepEqual(cache.serialize().entries, {});
+});
+
 test('a malformed entry is dropped rather than returned as a result', () => {
   const cache = new LinkCheckCache({ rootURL: ROOT });
   const checkedAt = new Date().toISOString();

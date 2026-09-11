@@ -40,6 +40,14 @@ function normalizeHost(value) {
   return value.trim().toLowerCase().replace(/\.$/, '');
 }
 
+function isWellFormedRedirect(redirect) {
+  return (
+    typeof redirect?.from === 'string' &&
+    typeof redirect?.to === 'string' &&
+    Number.isInteger(redirect?.status)
+  );
+}
+
 export function compareStrings(left, right) {
   if (left < right) return -1;
   if (left > right) return 1;
@@ -151,8 +159,13 @@ export class LinkCheckCache {
     for (const [url, entry] of Object.entries(value.entries ?? {})) {
       if (this.isInternal(url) || !this.#isFresh(entry)) continue;
       if (typeof entry.finalUrl !== 'string') continue;
-      if (!Number.isInteger(entry.status)) continue;
+      // `set` only ever stores a success, so an entry describing an error is
+      // one no writer of this cache could have produced. Admitting it would be
+      // the one way a stale store degrades into a wrong answer rather than a
+      // slow one, which is the property this module exists to hold.
+      if (!Number.isInteger(entry.status) || entry.status >= 400) continue;
       if (!Array.isArray(entry.redirects)) continue;
+      if (!entry.redirects.every(isWellFormedRedirect)) continue;
       this.#entries.set(url, entry);
     }
     return true;

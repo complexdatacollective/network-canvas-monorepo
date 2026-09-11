@@ -80,7 +80,7 @@ function jsonResult(result) {
   return JSON.parse(result.stdout);
 }
 
-test('the user-agent option applies to every link request', async () => {
+test('every request carries Chrome own identity, never a checker signature', async () => {
   const requests = [];
   const server = await startServer((request, response) => {
     requests.push({
@@ -104,23 +104,25 @@ test('the user-agent option applies to every link request', async () => {
   });
 
   try {
-    const userAgent =
-      'Mozilla/5.0 BrowserSignature/1.0 NetworkCanvasLinkChecker/1.0';
-    const result = await runChecker([
-      server.origin,
-      '--yes',
-      '--delay=0',
-      `--user-agent=${userAgent}`,
-    ]);
+    const result = await runChecker([server.origin, '--yes', '--delay=0']);
 
     assert.equal(result.code, 0, result.stderr);
-    // A browser fetches more than the two link URLs (a favicon, at least), so
-    // the claim under test is that EVERY request carries the override, not how
-    // many requests Chrome chose to make.
-    assert.deepEqual(
-      [...new Set(requests.map((request) => request.userAgent))],
-      [userAgent],
-    );
+    const agents = [...new Set(requests.map((request) => request.userAgent))];
+    assert.equal(agents.length, 1, 'one identity for the whole crawl');
+    // Real Chrome, unmodified. There is deliberately no override: a
+    // browser-shaped string sent by something that is not that browser is
+    // precisely what publishers fingerprint against, and sending one is what
+    // made the Zenodo citations report dead.
+    assert.match(agents[0], /Chrome\/\d+/);
+    assert.doesNotMatch(agents[0], /NetworkCanvasLinkChecker|LinkChecker|bot/i);
+    // The option is gone, not merely unused by CI.
+    const rejected = await runChecker([
+      server.origin,
+      '--user-agent=Mozilla/5.0 NetworkCanvasLinkChecker/1.0',
+    ]);
+    assert.equal(rejected.code, 2);
+    assert.match(rejected.stderr, /Unknown option: --user-agent/);
+
     for (const path of ['/', '/linked']) {
       assert.ok(
         requests.some((request) => request.url === path),
@@ -130,6 +132,74 @@ test('the user-agent option applies to every link request', async () => {
     assert.doesNotMatch(result.stdout, /data:|vbscript:|mailto:|javascript:/);
   } finally {
     await server.stop();
+  }
+});
+
+test('a WAF interstitial or block is reported dead, never accepted', async () => {
+  // Cloudflare serves its attestation script on a PERMANENT "you have been
+  // blocked" 403 and on ordinary 200 pages alike, and announces only some
+  // interstitials with a header — so no marker identifies a solvable challenge,
+  // and an earlier attempt here accepted block pages as live because of it.
+  // Headed Chrome exists to resolve challenges; when it cannot, the run does
+  // not know the link is alive and must not say that it is.
+  const CHALLENGE_SCRIPT =
+    '<script src="/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1"></script>';
+  const external = await startServer((request, response) => {
+    response.statusCode = 403;
+    response.setHeader('server', 'cloudflare');
+    response.setHeader('content-type', 'text/html; charset=UTF-8');
+    if (request.url === '/interstitial') {
+      response.setHeader('cf-mitigated', 'challenge');
+      response.end(`<title>Just a moment...</title>${CHALLENGE_SCRIPT}`);
+      return;
+    }
+    // The 1020 block page: same script, no header, permanent.
+    response.end(
+      `<title>Attention Required!</title><h1>Sorry, you have been blocked</h1>${CHALLENGE_SCRIPT}`,
+    );
+  });
+  const root = await startServer((request, response) => {
+    if (request.url === '/') {
+      html(
+        response,
+        `<a href="/to-interstitial">interstitial behind a redirect</a>
+         <a href="/to-block">permanent block behind a redirect</a>`,
+      );
+      return;
+    }
+    response.writeHead(302, {
+      location:
+        request.url === '/to-interstitial'
+          ? `${external.origin}/interstitial`
+          : `${external.origin}/blocked`,
+    });
+    response.end();
+  });
+
+  try {
+    const result = await runChecker([
+      root.origin,
+      '--format=json',
+      '--delay=0',
+      '--retries=0',
+    ]);
+    assert.equal(result.code, 1, result.stderr);
+    const report = jsonResult(result);
+    assert.equal(report.summary.failed, 2, 'both are dead');
+    assert.equal(report.summary.passed, 1, 'only the root page passed');
+
+    for (const path of ['/to-interstitial', '/to-block']) {
+      const failure = report.failures.find(({ url }) => url.endsWith(path));
+      assert.ok(failure, `${path} is reported`);
+      assert.equal(failure.ok, false);
+      assert.equal(failure.status, 403);
+      assert.equal(failure.error, 'HTTP 403');
+      // The redirect must not be reported as the destination reached.
+      assert.match(failure.finalUrl, /\/(interstitial|blocked)$/);
+    }
+  } finally {
+    await root.stop();
+    await external.stop();
   }
 });
 
@@ -602,125 +672,6 @@ test('external redirects and transient responses are followed and retried', asyn
   }
 });
 
-test('only a redirected Cloudflare challenge accepts its initial redirect', async () => {
-  const challengeRequests = [];
-  const external = await startServer((request, response) => {
-    challengeRequests.push(request.url);
-    response.statusCode = 403;
-    response.setHeader('server', 'cloudflare');
-    response.setHeader('content-type', 'text/html; charset=UTF-8');
-    // Some Cloudflare deployments announce the challenge in a header. The one
-    // in front of sciencedirect.com does not, and is recognised only by the
-    // attestation script its document loads — so /script-challenge carries the
-    // script and no header.
-    if (!['/ordinary-403', '/script-challenge'].includes(request.url)) {
-      response.setHeader('cf-mitigated', 'challenge');
-    }
-    const script =
-      request.url === '/script-challenge'
-        ? '<script src="/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1"></script>'
-        : '';
-    // Every one of these says "Just a moment..." INCLUDING the ordinary 403,
-    // which must still fail: page text is not evidence, and a checker that
-    // matched on it could be talked into accepting any forbidden page.
-    response.end(`<title>Just a moment...</title>${script}`);
-  });
-  const root = await startServer((request, response) => {
-    if (request.url === '/') {
-      html(
-        response,
-        `<a href="/cloudflare-redirect">challenge behind redirect</a>
-         <a href="/script-redirect">script-only challenge behind redirect</a>
-         <a href="/ordinary-redirect">ordinary 403 behind redirect</a>
-         <a href="${external.origin}/direct-challenge">direct challenge</a>`,
-      );
-      return;
-    }
-    const targets = {
-      '/cloudflare-redirect': `${external.origin}/redirected-challenge`,
-      '/script-redirect': `${external.origin}/script-challenge`,
-    };
-    response.writeHead(302, {
-      location: targets[request.url] ?? `${external.origin}/ordinary-403`,
-    });
-    response.end();
-  });
-
-  try {
-    const result = await runChecker([
-      root.origin,
-      '--format=json',
-      '--delay=0',
-      '--retries=0',
-    ]);
-    assert.equal(result.code, 1, result.stderr);
-    const report = jsonResult(result);
-    assert.deepEqual(
-      [
-        // Subresources the browser fetches on its own are not links; keep the
-        // assertion about which link URLs were visited. (The challenge script
-        // appearing here at all is Chrome genuinely loading it.)
-        ...new Set(
-          challengeRequests.filter(
-            (url) =>
-              url !== '/favicon.ico' &&
-              !url.startsWith('/cdn-cgi/challenge-platform/'),
-          ),
-        ),
-      ].toSorted((left, right) => left.localeCompare(right)),
-      [
-        '/direct-challenge',
-        '/ordinary-403',
-        '/redirected-challenge',
-        '/script-challenge',
-      ],
-    );
-    assert.deepEqual(report.summary, {
-      checked: 5,
-      discovered: 5,
-      failed: 2,
-      passed: 3,
-    });
-
-    // The real-world case: recognised by the attestation script alone, with
-    // no header to go on.
-    const scriptOnly = report.results.find(({ url }) =>
-      url.endsWith('/script-redirect'),
-    );
-    assert.equal(scriptOnly.ok, true);
-    assert.equal(scriptOnly.status, 302);
-    assert.equal(scriptOnly.finalUrl, `${external.origin}/script-challenge`);
-
-    const accepted = report.results.find(({ url }) =>
-      url.endsWith('/cloudflare-redirect'),
-    );
-    assert.equal(accepted.ok, true);
-    assert.equal(accepted.status, 302);
-    assert.equal(accepted.finalUrl, `${external.origin}/redirected-challenge`);
-    assert.deepEqual(accepted.redirects, [
-      {
-        from: `${root.origin}/cloudflare-redirect`,
-        status: 302,
-        to: `${external.origin}/redirected-challenge`,
-      },
-    ]);
-
-    const ordinary = report.failures.find(({ url }) =>
-      url.endsWith('/ordinary-redirect'),
-    );
-    assert.equal(ordinary.status, 403);
-    assert.equal(ordinary.error, 'HTTP 403');
-
-    const direct = report.failures.find(({ url }) =>
-      url.endsWith('/direct-challenge'),
-    );
-    assert.equal(direct.status, 403);
-    assert.equal(direct.error, 'HTTP 403');
-  } finally {
-    await root.stop();
-    await external.stop();
-  }
-});
 test('timeouts are reported as link failures and retry delays are capped and deterministic', async () => {
   const server = await startServer((_request, response) => {
     setTimeout(() => response.end('late'), 100);

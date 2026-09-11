@@ -20,8 +20,21 @@ async function readReport(path) {
       cause: error,
     });
   }
-  if (!Array.isArray(report.failures) || !report.summary) {
+  if (!Array.isArray(report.failures)) {
     throw new Error(`${path} is not a dead-link report`);
+  }
+  // A crawl that checked nothing is not a clean run, it is a run that did not
+  // happen — a browser that never launched, a site that served no links. The
+  // whole point of this gate is that it cannot be satisfied by a non-event, so
+  // it insists on evidence that links were actually visited.
+  if (
+    !Number.isInteger(report.summary?.checked) ||
+    report.summary.checked < 1
+  ) {
+    throw new Error(`${path} reports no checked links`);
+  }
+  if (!Number.isInteger(report.summary?.failed)) {
+    throw new Error(`${path} reports no failure count`);
   }
   return report;
 }
@@ -35,9 +48,13 @@ if (paths.length === 0) {
   for (const path of paths) {
     const report = await readReport(path);
     const { checked, failed } = report.summary;
-    dead += failed;
+    // Count both the tally and the listed failures. They agree on any report
+    // this repo writes; taking the larger means a disagreement fails the run
+    // rather than letting the smaller number decide, which is the direction a
+    // gate should err in.
+    dead += Math.max(failed, report.failures.length);
     process.stdout.write(
-      `${report.target}: ${checked} checked, ${failed} dead, ${report.cache.hits} from cache\n`,
+      `${report.target}: ${checked} checked, ${failed} dead, ${report.cache?.hits ?? 0} from cache\n`,
     );
     for (const failure of report.failures) {
       process.stdout.write(

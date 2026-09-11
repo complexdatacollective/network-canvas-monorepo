@@ -29,10 +29,24 @@
  * for external links are cached for a week — see `dead-link-cache.mjs` for why
  * that is safe and what is deliberately never cached.
  *
- * Status semantics are strict: any final status >= 400 is an error, including
- * 403. A browser 403 that a challenge subsequently resolves is not a final
- * status, because the challenge navigates again and that later navigation is
- * what the check records; a 403 with no follow-up navigation stays an error.
+ * Status semantics are strict, and there is no exception of any kind: a link is
+ * reported live only when the browser actually reached a non-error terminal
+ * response for it, and any final status >= 400 is an error, including 403.
+ * Nothing manufactures a success from a response the run could not resolve.
+ *
+ * That is a deliberate reversal of an earlier attempt here, and the reason is
+ * worth keeping. A WAF interstitial is a verdict about the client rather than
+ * the link, which makes it tempting to accept the link anyway — but every
+ * marker that might identify one is either absent or forgeable. Cloudflare
+ * announces some interstitials with `cf-mitigated: challenge` and others not at
+ * all; its attestation script `/cdn-cgi/challenge-platform/` is served just as
+ * readily on a permanent "you have been blocked" 403 and on ordinary 200 pages,
+ * so matching it accepts exactly the blocks it must not; and a challenge drives
+ * navigations of its own, so "a redirect preceded it" stops meaning the source
+ * redirected. Headed Chrome is deployed precisely because it resolves
+ * challenges: when it still cannot, the run genuinely does not know whether the
+ * link is alive, and "I don't know" must not be recorded as "alive" — least of
+ * all into a cache that every release pull request reads for a week.
  *
  * Chrome is launched lazily and shared by the whole crawl, but every checked
  * link gets a fresh browser context so cookies, storage, cache state, and
@@ -97,22 +111,6 @@ const MAX_RETRY_DELAY_MS = 30_000;
 const BASE_RETRY_DELAY_MS = 500;
 const BROWSER_NAVIGATION_SETTLE_MS = 500;
 const BROWSER_NO_DOCUMENT_STATUSES = new Set([204, 205]);
-// Cloudflare's interstitial drives its attestation flow through main-frame
-// navigations carrying its own challenge parameter. Some deployments announce
-// themselves with `cf-mitigated: challenge`; others (sciencedirect.com, for
-// one) send no such header, and this parameter is then the only unambiguous
-// marker. Matching the parameter rather than page text or a bare 403 keeps the
-// exception to navigations Cloudflare demonstrably drove.
-const CLOUDFLARE_CHALLENGE_PARAMETER = /[?&]__cf_chl_/;
-// The challenge document loads Cloudflare's attestation runtime from this
-// path. Unlike the navigation marker above it is present whether or not the
-// challenge goes on to navigate — headed Chrome is driven through the flow
-// while headless Chrome is left sitting on the interstitial — so this is the
-// marker that does not depend on how the browser was launched. It is a
-// Cloudflare-owned asset path, not page text, so an ordinary page cannot
-// resemble it by coincidence.
-const CLOUDFLARE_CHALLENGE_SCRIPT = '/cdn-cgi/challenge-platform/';
-
 function isBrowserRedirectStatus(status) {
   return status >= 300 && status < 400 && status !== 304;
 }
@@ -221,7 +219,6 @@ const DEFAULT_OPTIONS = {
   reportPath: undefined,
   retries: 3,
   timeout: 30_000,
-  userAgent: undefined,
   verbose: false,
 };
 
@@ -238,7 +235,6 @@ Options:
   --timeout=<milliseconds>   Per-link verification timeout (default: 30000)
   --retries=<number>         Retries after the first attempt (default: 3)
   --max-redirects=<number>   Maximum redirect hops (default: 10)
-  --user-agent=<value>       User-Agent override for every navigation
   --headless                 Launch Chrome headless (challenge providers
                              reject headless Chrome; for local use only)
   --cache=<path>             Read and write the external-link result cache
@@ -350,18 +346,15 @@ export class BrowserVerifier {
   #loadChromium;
   #pageSlots;
   #resourcesPromise;
-  #userAgent;
 
   constructor({
     headless = false,
     loadChromium = loadPlaywrightChromium,
     pageLimit = 4,
-    userAgent,
   } = {}) {
     this.#headless = headless;
     this.#loadChromium = loadChromium;
     this.#pageSlots = new PageSlotSemaphore(pageLimit);
-    this.#userAgent = userAgent;
   }
 
   async #getResources(timeout) {
@@ -429,10 +422,11 @@ export class BrowserVerifier {
       const { browser } = await withDeadline(
         this.#getResources(remainingTimeout()),
       );
-      const contextPromise = browser.newContext({
-        acceptDownloads: false,
-        ...(this.#userAgent ? { userAgent: this.#userAgent } : {}),
-      });
+      // No User-Agent override. Chrome's own identity is the point: a
+      // browser-shaped string sent by something that is not that browser is
+      // exactly what publishers fingerprint against, and is what made the
+      // Zenodo citations look dead.
+      const contextPromise = browser.newContext({ acceptDownloads: false });
       try {
         context = await withDeadline(contextPromise);
       } catch (error) {
@@ -452,7 +446,6 @@ export class BrowserVerifier {
       let lifecycleVersion = 0;
       let mainFrameCommitCount = 0;
       let committedResponseCount = 0;
-      let cloudflareChallenged = false;
       let unrecoveredNavigationFailure = '';
       const notifyLifecycleChange = () => {
         lifecycleVersion++;
@@ -483,12 +476,6 @@ export class BrowserVerifier {
           responseCommitBaselines.set(response, mainFrameCommitCount);
           mainFrameResponses.push(response);
           outstandingMainFrameRequests.delete(response.request());
-          if (
-            response.headers()['cf-mitigated']?.trim().toLowerCase() ===
-            'challenge'
-          ) {
-            cloudflareChallenged = true;
-          }
           if (isTerminalNavigation(response)) {
             unrecoveredNavigationFailure = '';
           }
@@ -497,9 +484,6 @@ export class BrowserVerifier {
       });
       const recordMainFrameCommit = (value, documentKind) => {
         const commitURL = comparableBrowserURL(value);
-        if (CLOUDFLARE_CHALLENGE_PARAMETER.test(commitURL)) {
-          cloudflareChallenged = true;
-        }
         let kind = documentKind;
         if (documentKind === 'document') {
           const pendingResponses = mainFrameResponses.slice(
@@ -901,22 +885,8 @@ export class BrowserVerifier {
         terminalResponse = await waitForTerminalResponse(settleStart);
       }
 
-      // Only a 403 can be a challenge, so a healthy link never reads its
-      // document for this.
-      if (
-        !cloudflareChallenged &&
-        effectiveStatus(navigation, mainFrameResponses) === 403 &&
-        page.content
-      ) {
-        const document = await page.content().catch(() => '');
-        if (document.includes(CLOUDFLARE_CHALLENGE_SCRIPT)) {
-          cloudflareChallenged = true;
-        }
-      }
-
       const contentType = effectiveContentType(navigation, mainFrameResponses);
       return {
-        cloudflareChallenged,
         contentType,
         finalUrl: page.url(),
         html:
@@ -1050,12 +1020,6 @@ export function parseArguments(args) {
             min: 1,
             max: 300_000,
           });
-          break;
-        case 'user-agent':
-          if (!value.trim()) {
-            throw new UsageError('--user-agent must not be empty');
-          }
-          options.userAgent = value;
           break;
         default:
           throw new UsageError(`Unknown option: --${name}`);
@@ -1216,7 +1180,6 @@ export async function crawl(
     new BrowserVerifier({
       headless: options.headless,
       pageLimit: options.concurrent,
-      userAgent: options.userAgent,
     });
   const rootOrigin = new URL(inputURL).origin;
   const records = new Map();
@@ -1291,32 +1254,6 @@ export async function crawl(
           'redirect-error',
         ),
       );
-      onProgress(results.length, records.size);
-      return;
-    }
-
-    // A Cloudflare challenge is a verdict about the client, not the link.
-    // Chrome reaching the destination and being challenged there is exactly
-    // what a person is NOT shown, so the run can establish that the source
-    // redirected correctly but cannot establish what lies beyond the
-    // interstitial. Record the chain's first redirect, as the HTTP client did
-    // before it, and accept. A challenge met without any redirect still fails:
-    // there is then no verified hop to report and nothing distinguishes it
-    // from a link that is simply forbidden.
-    if (outcome.cloudflareChallenged && outcome.redirects.length > 0) {
-      const initialRedirect = outcome.redirects[0];
-      const result = {
-        cached: false,
-        error: null,
-        finalUrl: initialRedirect.to,
-        kind: null,
-        ok: true,
-        redirects: [initialRedirect],
-        status: initialRedirect.status,
-        url: record.url,
-      };
-      cache.set(record.url, result);
-      results.push(result);
       onProgress(results.length, records.size);
       return;
     }
