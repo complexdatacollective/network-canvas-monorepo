@@ -21,6 +21,7 @@ import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
 } from '../../../codebook/variableRoles.ts';
+import { draftAdditionalAttributeVariableIds } from '../../../codebook/variableValidation.ts';
 import { useCodebookSectionWrite } from '../../../codebook/writes.ts';
 import VariablePickerField, {
   type CreateOptionOutcome,
@@ -38,6 +39,9 @@ import { useProtocolContext } from '../../../state/protocolContext.ts';
 
 /** Where a quick-add name generator records what it fills in. */
 const QUICK_ADD = 'quickAdd';
+
+/** Where the same stage keeps the questions whose stamps this must avoid. */
+const PROMPTS = 'prompts';
 
 /**
  * Quick add writes the participant's typing straight into one attribute as the
@@ -184,7 +188,12 @@ const useTypeName = (subject: CodebookSubject | undefined): string => {
  *
  * The attribute is a validated writer, so the pool excludes anything written
  * unvalidated elsewhere in the protocol: an export must not mix a checked
- * answer with a value some other stage stamped.
+ * answer with a value some other stage stamped. THIS stage's own prompts are
+ * such a writer too — each of them stamps fixed values on everyone named under
+ * it — and the role map is built with the edited stage taken out, so the live
+ * prompts are read here and excluded beside it. Left out, the picker offered an
+ * attribute this stage already stamps, and the protocol the researcher saved
+ * was one the schema's role-conflict rule refuses.
  */
 export default function QuickAddSection() {
   const intl = useAppIntl();
@@ -194,10 +203,15 @@ export default function QuickAddSection() {
   const typeName = useTypeName(subject);
   const committed = useStageValue(QUICK_ADD);
   const fillsIn = typeof committed === 'string' ? committed : undefined;
+  const draftPrompts = useStageValue(PROMPTS);
 
   const roleMap = useMemo(
     () => buildVariableRoleMap(protocolContext, identity.id),
     [identity.id, protocolContext],
+  );
+  const stamped = useMemo(
+    () => draftAdditionalAttributeVariableIds(draftPrompts),
+    [draftPrompts],
   );
 
   const options = useMemo(() => {
@@ -209,8 +223,13 @@ export default function QuickAddSection() {
         label: variable.name,
         type: variable.type,
       }));
-    return excludeUnvalidatedUses(roleMap, subject, pool, fillsIn);
-  }, [fillsIn, protocolContext, roleMap, subject]);
+    return excludeUnvalidatedUses(roleMap, subject, pool, fillsIn).filter(
+      // The committed pick is offered back whatever the filters say: a picker
+      // that dropped its own value would blank the control and write the blank
+      // over the reference the researcher has to resolve.
+      ({ value }) => value === fillsIn || !stamped.has(value),
+    );
+  }, [fillsIn, protocolContext, roleMap, stamped, subject]);
 
   // Answered as an outcome rather than by writing the picker itself: the
   // control owns the name box and what becomes of the name in it, and the
