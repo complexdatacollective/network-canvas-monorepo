@@ -61,6 +61,15 @@ gates come from the main checkout's `.husky/` scripts, so they apply once
 
 ## Workspace mechanics
 
+### Development VM
+
+`dev-vm/` holds a Lima configuration for a Linux VM that carries the
+repository, the toolchain and every spawned process, so that a managed Mac's
+endpoint-security agents (which tax every process launch and file open on the
+host) never see them. `dev-vm/README.md` documents setup, daily use, and
+running Claude Code inside it. The rule that makes it work: nothing is mounted
+from the host; the repo is a clone on the VM's own data disk.
+
 ### Source-first workspace packages
 
 Internal consumption of workspace packages is **source-first**: every
