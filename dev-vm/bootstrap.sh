@@ -30,6 +30,9 @@ cd "$REPO"
 
 step "Installing Node $(cat .nvmrc) through mise"
 mise install --yes
+# Also the global default, so `ssh lima-nc node …` works outside a repo with
+# its own .nvmrc (a repo's pin still wins inside it).
+mise use --global "node@$(cat .nvmrc)"
 
 step "Enabling corepack for the pinned pnpm"
 corepack enable --install-directory "$HOME/.local/bin"

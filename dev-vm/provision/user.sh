@@ -22,11 +22,12 @@ EOF
 if ! grep -q 'mise activate bash' "$HOME/.bashrc"; then
   printf '\neval "$(%s/.local/bin/mise activate bash)"\n' '$HOME' >> "$HOME/.bashrc"
 fi
-# Ubuntu's ~/.profile (login shells; it sources ~/.bashrc and adds ~/.local/bin
-# itself) gets the shims so that ssh commands and agents find the toolchain
-# without activation.
-if ! grep -q 'mise/shims' "$HOME/.profile"; then
-  printf '\nexport PATH="$HOME/.local/share/mise/shims:$PATH"\n' >> "$HOME/.profile"
+# Non-interactive ssh commands (`ssh lima-nc node …`, VS Code Remote-SSH, CI-style
+# scripts) run bash without a login and Ubuntu's ~/.bashrc returns before any
+# user lines for non-interactive shells, so the shims go on the FIRST line of
+# ~/.bashrc; ~/.profile (login shells) sources ~/.bashrc itself.
+if ! grep -q 'mise/shims' "$HOME/.bashrc"; then
+  sed -i '1i export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"' "$HOME/.bashrc"
 fi
 
 # --- pnpm: content-addressable store on the data disk -----------------------
