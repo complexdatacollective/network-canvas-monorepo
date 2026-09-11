@@ -88,6 +88,11 @@ const replaceMinimumValue = async (value: string) => {
   const input = screen.getByRole('spinbutton', { name: 'Minimum value' });
   await user.clear(input);
   await user.type(input, value);
+  // A number box holds typing as a draft and commits it when the researcher
+  // has finished with it, so the rule map only carries this once the box has
+  // been left. Pressing Save does the same thing by blurring it first; a test
+  // reading the draft without pressing anything has to leave it itself.
+  await user.tab();
   return user;
 };
 
@@ -149,6 +154,7 @@ describe('CodebookVariableValidationEditor', () => {
     const user = userEvent.setup();
     const input = screen.getByRole('spinbutton', { name: 'Minimum value' });
     await user.clear(input);
+    await user.tab();
 
     expect(input).toHaveValue(null);
     // The dialog is not a form field and has no error region of its own, so

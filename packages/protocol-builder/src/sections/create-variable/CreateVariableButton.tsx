@@ -47,6 +47,18 @@ export type CreateVariableButtonProps = Readonly<{
    * for, and the extraction guard sees the caller's declaration either way.
    */
   label: string;
+  /**
+   * Rules the SLOT requires of an attribute created here, written with it.
+   *
+   * A quick-add box is the one place a participant's typing becomes a network
+   * member, so the attribute behind it has to hold a value from the moment
+   * that member exists — Architect seeds the same rule where it creates one
+   * (`sections/NodeConfiguration/NodeConfiguration.tsx`). The editor does not
+   * render rules, so the seed travels as an unrendered draft property and the
+   * validation section beside the picker is where the researcher sees it and
+   * can take it off.
+   */
+  seedValidation?: Readonly<Record<string, unknown>>;
   onCreated(variableId: string): void;
 }>;
 
@@ -67,6 +79,7 @@ export default function CreateVariableButton({
   variableType,
   lockedOptions,
   label,
+  seedValidation,
   onCreated,
 }: CreateVariableButtonProps) {
   const { readOnly } = useStageEditorForm();
@@ -255,7 +268,13 @@ export default function CreateVariableButton({
             authoritativeDocument={openedSection ?? session.openedDocument}
             readOnly={editorReadOnly}
             variableId={session.variableId}
-            initialDraft={{ name: '', type: variableType }}
+            initialDraft={{
+              name: '',
+              type: variableType,
+              ...(seedValidation === undefined
+                ? {}
+                : { validation: seedValidation }),
+            }}
             allowedVariableTypes={[variableType]}
             lockedOptions={lockedOptions ?? null}
             protocolContext={protocolContext}

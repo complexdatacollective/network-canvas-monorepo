@@ -25,8 +25,14 @@ test('creates a valid NameGeneratorQuickAdd stage from scratch', async ({
 
   // The "Quick add" section holds one field, `quickAdd`. A fresh protocol's
   // node type has no text attribute for it to fill in, so the picker offers
-  // only its inline create — see quick-add.ts for what that writes.
-  await selectOrCreateQuickAddVariable(editor, 'name');
+  // only its inline create — see quick-add.ts for what that writes. The
+  // attribute it creates is born requiring an answer, and the nested
+  // "Validation" section beneath the picker is where that rule is seen and
+  // taken off again: switching the section off writes the cleared rules
+  // straight to the codebook, outside this stage's draft.
+  await selectOrCreateQuickAddVariable(editor, 'name', {
+    clearRequiredValidation: true,
+  });
 
   // NameGeneratorQuickAdd reuses the same shared `prompts` list as
   // NameGenerator — see name-generator.spec.ts for why the RichText field's

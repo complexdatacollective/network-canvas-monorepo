@@ -2303,3 +2303,36 @@ describe('picks this session has already claimed', () => {
     );
   });
 });
+
+/**
+ * The display label is the one pedigree slot the PARTICIPANT types into, so
+ * the attribute's own rules are what stand between them and a family member
+ * with no name. Architect edits them under that picker and nowhere else in the
+ * editor (`sections/FamilyPedigree/NodeConfiguration.tsx:798-802`); the
+ * structural slots beside it are stamped by the interface.
+ */
+describe('the rules the display-label attribute’s answers have to satisfy', () => {
+  it('edits them under the display-label picker, and writes them', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    // `fm_name` already carries `unique`, so the section mounts open.
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        harness.hostCodebook().node?.family_member?.variables?.fm_name,
+      ).toMatchObject({ validation: { unique: true, required: true } }),
+    );
+  });
+
+  it('offers them for the display label only', async () => {
+    renderStageEditor(openFixture());
+
+    await screen.findByRole('combobox', { name: 'Display label' });
+    expect(screen.getAllByRole('switch', { name: 'Validation' })).toHaveLength(
+      1,
+    );
+  });
+});

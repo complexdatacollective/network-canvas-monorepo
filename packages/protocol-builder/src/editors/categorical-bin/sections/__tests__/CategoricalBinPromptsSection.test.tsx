@@ -646,3 +646,48 @@ describe('a prompt whose attribute’s values an interface owns', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+/**
+ * The follow-up bin is the one place in this interface where the participant
+ * TYPES an answer, so the attribute's own rules are all that stand between
+ * them and an answer the study cannot use. Architect edits them right there,
+ * under its own description
+ * (`sections/CategoricalBinPrompts/PromptFields.tsx:399-410`).
+ */
+describe('the rules the follow-up attribute’s answers have to satisfy', () => {
+  it('edits them under the follow-up picker, and writes them', async () => {
+    const harness = renderStageEditor(
+      binningPeople({
+        id: 'prompt-a',
+        text: 'What kind of contact?',
+        variable: 'contactType',
+        otherVariable: 'relationship_to_ego',
+        otherOptionLabel: 'Other',
+        otherVariablePrompt: 'Which?',
+      }),
+    );
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+
+    // `relationship_to_ego` carries no rules, so the section mounts closed and
+    // its own description says what switching it on is for.
+    await harness.user.click(
+      await dialog.findByRole('switch', { name: 'Validation' }),
+    );
+    expect(
+      dialog.getByText('Enable validation of the other attribute.'),
+    ).toBeInTheDocument();
+    await harness.user.click(
+      await dialog.findByRole('checkbox', { name: 'Required' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        harness.hostCodebook().node?.person?.variables?.relationship_to_ego,
+      ).toMatchObject({ validation: { required: true } }),
+    );
+  });
+});

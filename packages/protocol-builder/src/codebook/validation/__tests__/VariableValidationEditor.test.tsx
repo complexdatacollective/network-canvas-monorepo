@@ -39,6 +39,10 @@ describe('VariableValidationEditor', () => {
       />,
     );
     await user.clear(screen.getByRole('spinbutton', { name: 'Minimum value' }));
+    // Typing is held as a draft, so nothing has been written yet — the box is
+    // empty on screen and the rule still carries the number it had.
+    expect(onChange).toHaveBeenLastCalledWith({ minValue: 0 });
+    await user.tab();
 
     expect(onChange).toHaveBeenLastCalledWith({ minValue: null });
     rerender(
@@ -190,5 +194,93 @@ describe('VariableValidationEditor', () => {
     expect(required).toBeDisabled();
     await user.click(required);
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Architect gives every rule value a stepper pair named for the rule it
+   * moves (`components/Validations/ValidationRule.tsx:104-146`), so a screen
+   * on which several rules each hold a number does not offer three buttons all
+   * called "Increase value".
+   */
+  it('steps a rule value by one from buttons named for that rule', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="number"
+        currentVariableId="age"
+        allVariables={variables}
+        value={{ minValue: 4 }}
+        onChange={onChange}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: 'Increase Minimum value' }),
+    );
+    expect(onChange).toHaveBeenLastCalledWith({ minValue: 5 });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Decrease Minimum value' }),
+    );
+    expect(onChange).toHaveBeenLastCalledWith({ minValue: 3 });
+  });
+
+  /**
+   * Typing is held until the researcher has finished with the box. Written on
+   * every keystroke, raising a maximum from 5 to 40 passes through 4 — below
+   * the minimum — and every intermediate reaches whatever the map is written
+   * into.
+   */
+  it('holds typing as a draft and commits it when the box is left', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="number"
+        currentVariableId="age"
+        allVariables={variables}
+        value={{ maxValue: 5 }}
+        onChange={onChange}
+      />,
+    );
+
+    const box = screen.getByRole('spinbutton', { name: 'Maximum value' });
+    await user.clear(box);
+    await user.type(box, '40');
+    expect(box).toHaveValue(40);
+    expect(onChange).not.toHaveBeenCalled();
+
+    await user.tab();
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({ maxValue: 40 });
+  });
+
+  it('commits the box on Enter without submitting anything around it', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const onSubmit = vi.fn((event: React.FormEvent) => {
+      event.preventDefault();
+    });
+    render(
+      <form onSubmit={onSubmit}>
+        <VariableValidationEditor
+          entity="node"
+          variableType="number"
+          currentVariableId="age"
+          allVariables={variables}
+          value={{ maxValue: 5 }}
+          onChange={onChange}
+        />
+      </form>,
+    );
+
+    const box = screen.getByRole('spinbutton', { name: 'Maximum value' });
+    await user.clear(box);
+    await user.type(box, '9{Enter}');
+
+    expect(onChange).toHaveBeenCalledExactlyOnceWith({ maxValue: 9 });
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 });

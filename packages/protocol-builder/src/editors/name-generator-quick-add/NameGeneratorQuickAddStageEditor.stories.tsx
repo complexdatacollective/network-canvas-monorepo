@@ -37,6 +37,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * The locale control in the toolbar is global, so a play asserting on an
+ * English sentence would fail for anyone who had left it on Español. Pinning
+ * the story's own locale leaves the control free to do its job elsewhere.
+ */
+const inEnglish = { globals: { appLocale: 'en' } };
+
 /** Choosing what the single box fills in, and saving the stage. */
 export const ChoosingTheAttribute: Story = {
   play: async ({ canvasElement }) => {
@@ -60,6 +67,60 @@ export const ChoosingTheAttribute: Story = {
     await expect(
       canvas.getByRole('region', { name: 'What the host was asked to commit' }),
     ).toHaveTextContent('"quickAdd": "relationship_to_ego"');
+  },
+};
+
+/**
+ * The attribute's own rules, edited where the attribute is chosen.
+ *
+ * The rules belong to the codebook rather than to the stage, so they commit as
+ * they are made and the stage document the host is handed never carries one —
+ * which is what the recorded request below shows.
+ */
+export const RulesForTheAttribute: Story = {
+  ...inEnglish,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    // The fixture's `name` already carries a rule, so the section is open.
+    await expect(
+      canvas.getByRole('switch', { name: 'Validation' }),
+    ).toHaveAttribute('aria-checked', 'true');
+    await userEvent.click(
+      await canvas.findByRole('checkbox', { name: 'Minimum length' }),
+    );
+    // Each rule's number carries steppers named for that rule, so a screen
+    // holding several of them does not offer three buttons all called
+    // "Increase value".
+    await expect(
+      await canvas.findByRole('button', { name: 'Increase Minimum length' }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
+    await waitFor(async () => {
+      await expect(
+        canvas.getByRole('status', { name: 'Save status' }),
+      ).toHaveTextContent('Saved “Name Generator Quick Add”.');
+    });
+    const committed = canvas.getByRole('region', {
+      name: 'What the host was asked to commit',
+    });
+    await expect(committed).toHaveTextContent('"quickAdd": "name"');
+    await expect(committed).not.toHaveTextContent('validation');
+  },
+};
+
+/** The same section, read by someone working in Spanish. */
+export const RulesInSpanish: Story = {
+  globals: { appLocale: 'es' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      await canvas.findByRole('switch', { name: 'Validación' }),
+    ).toBeInTheDocument();
   },
 };
 

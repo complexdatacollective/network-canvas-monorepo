@@ -191,6 +191,64 @@ describe('the sections of an anonymisation stage', () => {
   });
 });
 
+/**
+ * Architect renders the shared rule list directly under the section's own
+ * heading (`sections/Anonymisation/AnonymisationValidation.tsx`); the package
+ * wrapped it in a control that repeated the heading as a second visible label.
+ */
+describe('how the passphrase rules are put on screen', () => {
+  it('renders the rule list under the section’s own heading, unlabelled twice', async () => {
+    openEditor();
+
+    await screen.findByRole('checkbox', { name: 'Minimum length' });
+    // The rule list is still NAMED — a control a screen reader reaches has to
+    // be — but the name is not a second heading a sighted researcher reads
+    // immediately under the one above it. `sr-only` is fresco-ui's own answer
+    // to `labelHidden`, and is what that field's own story asserts too.
+    const labels = screen
+      .getAllByText('Passphrase rules')
+      .filter((element) => element.tagName === 'LABEL');
+    expect(labels).toHaveLength(1);
+    expect(labels[0]).toHaveClass('sr-only');
+    // Still the control's own accessible name, rather than dropped.
+    expect(labels[0]).toHaveAttribute('for');
+  });
+
+  /**
+   * A protocol that ARRIVES holding a contradiction — a minimum above the
+   * maximum — is the state of anyone opening one, and nothing has been typed
+   * or blurred, so the field states nothing and the rule editor's own sentence
+   * is the whole of what the researcher reads. It has to be the repair
+   * guidance in their language, never the analyser's technical diagnostic
+   * (`Attribute "this attribute": minLength (40) is greater than maxLength
+   * (5)`), which names the schema's own rule keys and is written for a
+   * validation report.
+   */
+  it('says what to do about a contradiction that arrived with the protocol', async () => {
+    renderStageEditor({
+      stage: {
+        id: 'anonymisation-contradictory',
+        type: 'Anonymisation',
+        fields: {
+          label: 'Anonymisation',
+          explanationText: { title: 'Privacy', body: 'Choose a passphrase.' },
+          validation: { minLength: 40, maxLength: 5 },
+        },
+      },
+      registry: anonymisationStageEditor,
+    });
+
+    expect(
+      await screen.findByText(
+        'The minimum and maximum rules for this attribute leave no permitted answer. Adjust the bounds or the required-answer rule.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/is greater than maxLength/),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('the attributes a passphrase protects', () => {
   it('offers the text attributes of each type, and nothing else', async () => {
     openEditor();

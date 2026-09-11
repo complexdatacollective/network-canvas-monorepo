@@ -16,15 +16,20 @@ import { type StageEditor } from '../stage-editor.js';
 //   when it does not — a second quick-add stage on the same node type points
 //   at the attribute the first one made, and asking the codebook for a name it
 //   already holds is refused as a duplicate.
-// - Creating writes `{ type: 'text', component: 'Text', validation:
-//   { required: true } }` into the codebook and selects the new attribute
+// - Creating writes `{ name, type: 'text', validation: { required: true } }`
+//   into the codebook and selects the new attribute
 //   (`createQuickAddAttribute`). The requirement is deliberate — quick add's
-//   attribute is the only thing the participant gave — and this section offers
-//   no way to remove it: the attribute's other rules are edited from the
-//   codebook surface.
+//   attribute is the only thing the participant gave.
+// - Once an attribute is held, the section mounts a nested toggleable
+//   "Validation" section over that attribute's own rules
+//   (`codebook/validation/CodebookVariableValidationSection.tsx`). It opens
+//   when the attribute already carries a rule, and switching it off clears
+//   them — silently, straight to the codebook, outside the stage draft. That
+//   is what `clearRequiredValidation` reaches.
 export async function selectOrCreateQuickAddVariable(
   editor: StageEditor,
   variableName: string,
+  options: { clearRequiredValidation?: boolean } = {},
 ): Promise<void> {
   // Scoped to the field: a prompt dialog's attribute stamps render the same
   // "Create a new attribute" pair, and so does the codebook surface.
@@ -56,4 +61,16 @@ export async function selectOrCreateQuickAddVariable(
   // moved on answers `{ status: 'unassigned' }`: the option is there and the
   // select is still on its placeholder, whose value is empty.
   await expect(chosen).toHaveValue(/.+/);
+
+  if (options.clearRequiredValidation !== true) return;
+  const toggle = editor
+    .section('Validation')
+    .getByRole('switch', { name: 'Validation', exact: true });
+  // The attribute this stage just created carries `required`, so the section
+  // starts open; one click clears it. Asserted rather than assumed, because a
+  // section that opened switched off would take the click the other way and
+  // leave the rule in the codebook.
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
 }

@@ -50,12 +50,21 @@ export default function PassphraseRulesSection() {
       )}
       capability={capability}
     >
+      {/* The rule list sits directly under the section's own heading, as
+          Architect's does (`sections/Anonymisation/AnonymisationValidation.tsx`
+          renders the shared `Validations` with no control label of its own).
+          The field is still registered — it is what carries the rules into the
+          stage document and what refuses a save over a length no passphrase
+          could have — and its label is what names the list for assistive
+          technology, so it is hidden rather than dropped: said aloud it would
+          repeat the heading immediately above it. */}
       <Field<typeof PassphraseRulesControl>
         name={VALIDATION_FIELD}
         component={PassphraseRulesControl}
         label={intl.formatMessage(
           anonymisationMessages.passphraseRulesFieldLabel,
         )}
+        labelHidden
         hint={intl.formatMessage(
           anonymisationMessages.passphraseRulesFieldHint,
         )}
