@@ -34,6 +34,13 @@ export const languageMessages = defineMessages({
     description:
       'Status announced after persisting the administration language choice.',
   },
+  description: {
+    id: 'interviewer.language.description',
+    defaultMessage:
+      "Interviewer's interface only, on this device. Protocol content and collected data are unaffected.",
+    description:
+      'Note under the interface-language list: the choice applies to Interviewer on this device, never to protocol content or research data.',
+  },
   failed: {
     id: 'interviewer.language.failed',
     defaultMessage:
