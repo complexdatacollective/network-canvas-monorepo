@@ -283,7 +283,7 @@ export const showProtocolOpenResultDialog = async ({
             })}
           </Paragraph>
           <ProtocolFailureDetails detail={result.message} />
-          <Paragraph className="text-sm">
+          <Paragraph intent="smallText">
             {createElement(AppMessage, {
               message: additionalMessages.ifTheProblemPersistsReachOut,
               values: {
@@ -323,7 +323,7 @@ export const showProtocolOpenResultDialog = async ({
             <AppErrorMessage error={result.message} />
           )}
         </Paragraph>
-        <Paragraph className="mt-4 text-sm">
+        <Paragraph intent="smallText" className="mt-4">
           {createElement(AppMessage, {
             message: additionalMessages.ifTheProblemPersistsReachOut,
             values: {

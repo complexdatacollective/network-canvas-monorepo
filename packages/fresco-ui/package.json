@@ -56,6 +56,7 @@
     "./Popover": "./src/Popover.tsx",
     "./PortalContainer": "./src/PortalContainer.tsx",
     "./ProgressBar": "./src/ProgressBar.tsx",
+    "./ProtocolCard": "./src/ProtocolCard.tsx",
     "./RenderMarkdown": "./src/RenderMarkdown.tsx",
     "./ResizableFlexPanel": "./src/ResizableFlexPanel.tsx",
     "./RichTextRenderer": "./src/RichTextRenderer.tsx",
@@ -69,6 +70,7 @@
     "./StorageRiskBanner": "./src/StorageRiskBanner.tsx",
     "./Table": "./src/Table.tsx",
     "./Tabs": "./src/Tabs/Tabs.tsx",
+    "./Tag": "./src/Tag.tsx",
     "./ThemedRegion": "./src/ThemedRegion.tsx",
     "./TimeAgo": "./src/TimeAgo.tsx",
     "./Toast": "./src/Toast.tsx",
@@ -176,10 +178,13 @@
     "./navigation/SiteNavigation.constants": "./src/navigation/SiteNavigation.constants.ts",
     "./navigation/TeamAndStudySwitcher": "./src/navigation/TeamAndStudySwitcher.tsx",
     "./navigation/ThemeSwitcher": "./src/navigation/ThemeSwitcher.tsx",
+    "./stages/StageBar": "./src/stages/StageBar.tsx",
+    "./stages/stageTypes": "./src/stages/stageTypes.ts",
     "./storybook-support/awaitPassiveEffects": "./src/storybook-support/awaitPassiveEffects.ts",
     "./styles.css": "./src/styles.css",
     "./styles/controlVariants": "./src/styles/controlVariants.ts",
     "./typography/EnclosingHeadingLevel": "./src/typography/EnclosingHeadingLevel.tsx",
+    "./typography/Eyebrow": "./src/typography/Eyebrow.tsx",
     "./typography/Heading": "./src/typography/Heading.tsx",
     "./typography/PageHeader": "./src/typography/PageHeader.tsx",
     "./typography/Paragraph": "./src/typography/Paragraph.tsx",
@@ -352,6 +357,10 @@
         "types": "./dist/ProgressBar.d.ts",
         "default": "./dist/ProgressBar.js"
       },
+      "./ProtocolCard": {
+        "types": "./dist/ProtocolCard.d.ts",
+        "default": "./dist/ProtocolCard.js"
+      },
       "./RenderMarkdown": {
         "types": "./dist/RenderMarkdown.d.ts",
         "default": "./dist/RenderMarkdown.js"
@@ -403,6 +412,10 @@
       "./Tabs": {
         "types": "./dist/Tabs/Tabs.d.ts",
         "default": "./dist/Tabs/Tabs.js"
+      },
+      "./Tag": {
+        "types": "./dist/Tag.d.ts",
+        "default": "./dist/Tag.js"
       },
       "./ThemedRegion": {
         "types": "./dist/ThemedRegion.d.ts",
@@ -832,6 +845,14 @@
         "types": "./dist/navigation/ThemeSwitcher.d.ts",
         "default": "./dist/navigation/ThemeSwitcher.js"
       },
+      "./stages/StageBar": {
+        "types": "./dist/stages/StageBar.d.ts",
+        "default": "./dist/stages/StageBar.js"
+      },
+      "./stages/stageTypes": {
+        "types": "./dist/stages/stageTypes.d.ts",
+        "default": "./dist/stages/stageTypes.js"
+      },
       "./storybook-support/awaitPassiveEffects": {
         "types": "./dist/storybook-support/awaitPassiveEffects.d.ts",
         "default": "./dist/storybook-support/awaitPassiveEffects.js"
@@ -844,6 +865,10 @@
       "./typography/EnclosingHeadingLevel": {
         "types": "./dist/typography/EnclosingHeadingLevel.d.ts",
         "default": "./dist/typography/EnclosingHeadingLevel.js"
+      },
+      "./typography/Eyebrow": {
+        "types": "./dist/typography/Eyebrow.d.ts",
+        "default": "./dist/typography/Eyebrow.js"
       },
       "./typography/Heading": {
         "types": "./dist/typography/Heading.d.ts",
@@ -964,6 +989,7 @@
   "peerDependencies": {
     "@base-ui/react": "^1.4.0",
     "@codaco/app-i18n": "workspace:^",
+    "@codaco/protocol-validation": "workspace:^",
     "@codaco/shared-consts": "workspace:^",
     "@codaco/tailwind-config": "workspace:^",
     "@tanstack/react-table": "catalog:",
@@ -973,5 +999,10 @@
     "tailwindcss": "catalog:",
     "zod": "catalog:",
     "zustand": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "@codaco/protocol-validation": {
+      "optional": true
+    }
   }
 }

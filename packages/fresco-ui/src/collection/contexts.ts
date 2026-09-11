@@ -64,6 +64,9 @@ type CollectionItemContextValue = {
 export const CollectionItemContext =
   createContext<CollectionItemContextValue | null>(null);
 
+/** Whether rendered items keep their native link/button semantics. */
+export const NativeItemSemanticsContext = createContext(false);
+
 /**
  * Context for the SelectionManager.
  * Provides access to selection operations throughout the component tree.

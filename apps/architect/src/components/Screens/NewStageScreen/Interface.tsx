@@ -3,9 +3,9 @@ import { motion } from 'motion/react';
 import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import Tag from '@codaco/fresco-ui/Tag';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import StageTypeImage from '@codaco/protocol-builder/interfaces/StageTypeImage';
-import Tag from '~/components/Tag';
 
 import {
   getInterfaceTypes,

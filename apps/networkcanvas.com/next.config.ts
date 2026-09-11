@@ -14,6 +14,15 @@ const documentationUrl =
     ? `https://deploy-preview-${process.env.REVIEW_ID}--documentation-dev.netlify.app`
     : undefined);
 
+// The gallery subdomain is a domain alias of the production site only. Deploy
+// previews and local development serve a single host, so there the gallery
+// stays a route of this site and its links keep the `/protocol-gallery` prefix.
+const protocolGalleryUrl =
+  process.env.NEXT_PUBLIC_PROTOCOL_GALLERY_URL ||
+  (process.env.CONTEXT === 'production'
+    ? 'https://protocolgallery.networkcanvas.com'
+    : undefined);
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   ...(process.env.NODE_ENV === 'development'
@@ -42,13 +51,22 @@ const nextConfig: NextConfig = {
   // checkout's pnpm-workspace.yaml and infers the wrong root.
   turbopack: { root: join(import.meta.dirname, '..', '..') },
   // Ships untranspiled TSX from workspace source.
-  transpilePackages: ['@codaco/fresco-ui', '@codaco/interface-images'],
+  transpilePackages: [
+    '@codaco/fresco-ui',
+    '@codaco/interface-images',
+    '@codaco/protocol-validation',
+  ],
   images: {
     unoptimized: true,
   },
-  env: documentationUrl
-    ? { NEXT_PUBLIC_DOCUMENTATION_URL: documentationUrl }
-    : {},
+  env: {
+    ...(documentationUrl
+      ? { NEXT_PUBLIC_DOCUMENTATION_URL: documentationUrl }
+      : {}),
+    ...(protocolGalleryUrl
+      ? { NEXT_PUBLIC_PROTOCOL_GALLERY_URL: protocolGalleryUrl }
+      : {}),
+  },
 };
 
 // PostHog needs source maps to symbolicate the exceptions posthog-js reports

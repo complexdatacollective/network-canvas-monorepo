@@ -47,7 +47,7 @@ export default function InfoTooltip({
           {title}
         </BasePopover.Title>
         {typeof description === 'string' ? (
-          <BasePopover.Description render={<Paragraph className="text-sm" />}>
+          <BasePopover.Description render={<Paragraph intent="smallText" />}>
             {description}
           </BasePopover.Description>
         ) : (

@@ -65,8 +65,8 @@ export type TextValueExtractor<T> = (item: T) => string;
 export type ItemProps = {
   'ref': React.RefCallback<HTMLElement>;
   'id'?: string;
-  'tabIndex': number;
-  'role': string;
+  'tabIndex'?: number;
+  'role'?: string;
   'style'?: React.CSSProperties;
   'aria-selected'?: boolean;
   'aria-disabled'?: boolean;
@@ -77,7 +77,9 @@ export type ItemProps = {
   'data-dragging'?: boolean;
   'data-drop-target'?: boolean;
   'onFocus'?: React.FocusEventHandler;
+  'onClickCapture'?: React.MouseEventHandler;
   'onClick'?: React.MouseEventHandler;
+  'onKeyDownCapture'?: React.KeyboardEventHandler;
   'onKeyDown'?: React.KeyboardEventHandler;
   'onPointerDown'?: React.PointerEventHandler;
   'onPointerMove'?: React.PointerEventHandler;
@@ -200,6 +202,13 @@ export type CollectionProps<T> = SortProps &
     /** Whether empty selection is allowed (default: true) */
     'disallowEmptySelection'?: boolean;
 
+    /**
+     * Preserve the native semantics and tab order of rendered items, such as
+     * links or buttons. This disables Collection's listbox role and roving
+     * item tabindex while retaining its layout, sorting, and filtering.
+     */
+    'nativeItemSemantics'?: boolean;
+
     // Animation props
     /** Enable stagger enter animation for items */
     'animate'?: boolean;
@@ -210,6 +219,21 @@ export type CollectionProps<T> = SortProps &
     'animationKey'?: string | number;
 
     // Rendering props
+    /**
+     * Whether the collection owns scrolling.
+     *
+     * By default the items render inside a ScrollArea, so a collection in a
+     * bounded panel scrolls on its own and can be virtualised. A collection
+     * laid out in the flow of a page that already scrolls should pass
+     * `false`: the items render in a plain container, nothing is clipped at
+     * the collection's edges, and no nested scroll region or tab stop is
+     * created. Virtualisation needs a scroll container to measure against,
+     * so `virtualized` is ignored (with a development warning) and the
+     * ScrollArea options have no effect.
+     * @default true
+     */
+    'scrollable'?: boolean;
+
     /**
      * Enable virtualization for large collections.
      * When true, only items visible in the viewport are rendered.

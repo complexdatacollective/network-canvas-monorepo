@@ -1,6 +1,14 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { documentationUrl, resolveWebsiteNavigationUrl } from '../siteUrls';
+import {
+  documentationUrl,
+  protocolGalleryHref,
+  protocolGalleryUrl,
+  isSameSiteNavigationUrl,
+  resolveWebsiteNavigationUrl,
+} from '../siteUrls';
+
+const galleryOrigin = 'https://protocolgallery.networkcanvas.com';
 
 describe('website site URLs', () => {
   afterEach(() => vi.unstubAllEnvs());
@@ -23,7 +31,10 @@ describe('website site URLs', () => {
     vi.stubEnv('NEXT_PUBLIC_DOCUMENTATION_URL', 'http://localhost:3000');
 
     expect(
-      resolveWebsiteNavigationUrl('https://documentation.networkcanvas.com/en'),
+      resolveWebsiteNavigationUrl(
+        'https://documentation.networkcanvas.com/en',
+        'en-US',
+      ),
     ).toBe('http://localhost:3000/en');
   });
 
@@ -31,18 +42,135 @@ describe('website site URLs', () => {
     expect(
       resolveWebsiteNavigationUrl(
         'https://networkcanvas.com/get-started#architect-classic-downloads',
+        'en-US',
       ),
     ).toBe('/get-started#architect-classic-downloads');
+  });
+
+  it('resolves the shared navigation protocol gallery destination locally when no subdomain is configured', () => {
+    expect(resolveWebsiteNavigationUrl(`${galleryOrigin}/`, 'en-US')).toBe(
+      '/protocol-gallery',
+    );
+  });
+
+  it('keeps the gallery on this site when no subdomain is configured', () => {
+    expect(protocolGalleryHref('en-US')).toBe('/en-US/protocol-gallery/');
+    expect(protocolGalleryHref('es', 'gate')).toBe(
+      '/es/protocol-gallery/gate/',
+    );
+    expect(protocolGalleryUrl('en-GB', 'gate')).toBe(
+      'https://networkcanvas.com/en-GB/protocol-gallery/gate/',
+    );
+  });
+
+  describe('with the gallery subdomain configured', () => {
+    beforeEach(() =>
+      vi.stubEnv('NEXT_PUBLIC_PROTOCOL_GALLERY_URL', galleryOrigin),
+    );
+
+    it('drops the route prefix from same-host gallery links', () => {
+      expect(protocolGalleryHref('en-US')).toBe('/en-US/');
+      expect(protocolGalleryHref('es', 'gate')).toBe('/es/gate/');
+    });
+
+    it('builds canonicals against the gallery origin', () => {
+      expect(protocolGalleryUrl('en-GB')).toBe(`${galleryOrigin}/en-GB/`);
+      expect(protocolGalleryUrl('en-GB', 'gate')).toBe(
+        `${galleryOrigin}/en-GB/gate/`,
+      );
+    });
+
+    it('carries the locale onto the gallery origin from either host', () => {
+      expect(resolveWebsiteNavigationUrl(`${galleryOrigin}/`, 'es')).toBe(
+        `${galleryOrigin}/es/`,
+      );
+      expect(
+        resolveWebsiteNavigationUrl(
+          `${galleryOrigin}/`,
+          'en-GB',
+          'protocolGallery',
+        ),
+      ).toBe(`${galleryOrigin}/en-GB/`);
+    });
+
+    it('localizes website destinations when leaving the gallery host', () => {
+      const href =
+        'https://networkcanvas.com/get-started#architect-classic-downloads';
+
+      expect(resolveWebsiteNavigationUrl(href, 'es', 'protocolGallery')).toBe(
+        'https://networkcanvas.com/es/get-started/#architect-classic-downloads',
+      );
+      expect(resolveWebsiteNavigationUrl(href, 'es')).toBe(
+        '/get-started#architect-classic-downloads',
+      );
+    });
+
+    it('sends the shared navigation gallery link to the configured origin, not the canonical one', () => {
+      vi.stubEnv(
+        'NEXT_PUBLIC_PROTOCOL_GALLERY_URL',
+        'https://gallery.example.test',
+      );
+
+      expect(resolveWebsiteNavigationUrl(`${galleryOrigin}/`, 'es')).toBe(
+        'https://gallery.example.test/es/',
+      );
+      expect(
+        resolveWebsiteNavigationUrl(
+          `${galleryOrigin}/`,
+          'en-US',
+          'protocolGallery',
+        ),
+      ).toBe('https://gallery.example.test/en-US/');
+    });
+
+    it('treats an absolute link back onto the gallery origin as same-site on the gallery host', () => {
+      expect(
+        isSameSiteNavigationUrl(`${galleryOrigin}/es/`, 'protocolGallery'),
+      ).toBe(true);
+      expect(isSameSiteNavigationUrl(`${galleryOrigin}/es/`, 'website')).toBe(
+        false,
+      );
+      expect(
+        isSameSiteNavigationUrl(
+          'https://networkcanvas.com/es/',
+          'protocolGallery',
+        ),
+      ).toBe(false);
+      expect(isSameSiteNavigationUrl('/es/', 'website')).toBe(true);
+    });
+
+    it("sends the navigation's site-relative destinations back to the website with the locale", () => {
+      expect(resolveWebsiteNavigationUrl('/', 'es', 'protocolGallery')).toBe(
+        'https://networkcanvas.com/es/',
+      );
+      expect(
+        resolveWebsiteNavigationUrl('/get-started', 'en-GB', 'protocolGallery'),
+      ).toBe('https://networkcanvas.com/en-GB/get-started/');
+      expect(resolveWebsiteNavigationUrl('/get-started', 'es')).toBe(
+        '/get-started',
+      );
+    });
+
+    it('rejects a configured gallery URL that is not an origin', () => {
+      vi.stubEnv('NEXT_PUBLIC_PROTOCOL_GALLERY_URL', `${galleryOrigin}/en-US`);
+
+      expect(() => protocolGalleryHref('en-US')).toThrow(/must be an origin/);
+    });
   });
 
   it('does not rewrite relative, subdomain, or third-party links', () => {
     vi.stubEnv('NEXT_PUBLIC_DOCUMENTATION_URL', 'http://localhost:3000');
 
-    expect(resolveWebsiteNavigationUrl('/get-started')).toBe('/get-started');
+    expect(resolveWebsiteNavigationUrl('/get-started', 'en-US')).toBe(
+      '/get-started',
+    );
     expect(
-      resolveWebsiteNavigationUrl('https://community.networkcanvas.com/'),
+      resolveWebsiteNavigationUrl(
+        'https://community.networkcanvas.com/',
+        'en-US',
+      ),
     ).toBe('https://community.networkcanvas.com/');
-    expect(resolveWebsiteNavigationUrl('https://example.com/')).toBe(
+    expect(resolveWebsiteNavigationUrl('https://example.com/', 'en-US')).toBe(
       'https://example.com/',
     );
   });

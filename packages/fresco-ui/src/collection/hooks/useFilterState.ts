@@ -9,6 +9,7 @@ import { FilterManager } from '../filtering/FilterManager';
 import type { FilterProps, FilterState } from '../filtering/types';
 import type { KeyExtractor } from '../types';
 import { useSearchWorker } from './useSearchWorker';
+import { useSynchronousSearch } from './useSynchronousSearch';
 
 type UseFilterStateOptions<T> = FilterProps & {
   items: T[];
@@ -31,6 +32,7 @@ export function useFilterState<T extends Record<string, unknown>>(
     onFilterChange,
     onFilterResultsChange,
     filterKeys,
+    filterExecution = 'worker',
     filterFuseOptions,
     filterDebounceMs = 300,
     filterMinQueryLength = 1,
@@ -52,12 +54,26 @@ export function useFilterState<T extends Record<string, unknown>>(
   onFilterResultsChangeRef.current = onFilterResultsChange;
 
   // Initialize the search worker (always called, but with empty items if disabled)
-  const { search, isReady, isIndexing } = useSearchWorker({
+  const workerSearch = useSearchWorker({
+    enabled: isFilteringEnabled && filterExecution === 'worker',
     items: isFilteringEnabled ? items : [],
     keyExtractor,
     filterKeys: safeFilterKeys,
     fuseOptions: filterFuseOptions,
   });
+  const synchronousItems = useMemo(
+    () =>
+      isFilteringEnabled && filterExecution === 'sync' ? items : ([] as T[]),
+    [filterExecution, isFilteringEnabled, items],
+  );
+  const synchronousSearch = useSynchronousSearch({
+    items: synchronousItems,
+    keyExtractor,
+    filterKeys: safeFilterKeys,
+    fuseOptions: filterFuseOptions,
+  });
+  const { search, isReady, isIndexing } =
+    filterExecution === 'sync' ? synchronousSearch : workerSearch;
 
   // Subscribe to filter state with shallow comparison. This drives the
   // FilterManager's reactive reads for external consumers.
@@ -146,14 +162,19 @@ export function useFilterState<T extends Record<string, unknown>>(
 
   // Create debounced search function
   const debouncedSearchRef = useRef<ReturnType<typeof debounce> | null>(null);
+  const performSearchRef = useRef(performSearch);
+  performSearchRef.current = performSearch;
 
   useEffect(() => {
-    debouncedSearchRef.current = debounce(performSearch, filterDebounceMs);
+    debouncedSearchRef.current = debounce(
+      (query: string) => performSearchRef.current(query),
+      filterDebounceMs,
+    );
 
     return () => {
       debouncedSearchRef.current?.cancel();
     };
-  }, [performSearch, filterDebounceMs]);
+  }, [filterDebounceMs]);
 
   // Create setState function for FilterManager
   const setState = useCallback(
@@ -187,19 +208,26 @@ export function useFilterState<T extends Record<string, unknown>>(
     if (isControlled && isReady) {
       debouncedSearchRef.current?.(controlledFilterQuery ?? '');
     }
-  }, [isControlled, controlledFilterQuery, isReady, isFilteringEnabled]);
+  }, [
+    isControlled,
+    controlledFilterQuery,
+    isReady,
+    isFilteringEnabled,
+    search,
+  ]);
 
-  // Trigger initial search when worker becomes ready
+  // Trigger the initial uncontrolled search when the index becomes ready, and
+  // re-run it if a synchronous index is rebuilt for a different item set.
   useEffect(() => {
     if (!isFilteringEnabled) return;
-    if (isReady) {
+    if (!isControlled && isReady) {
       const store = storeApi.getState();
       const currentQuery = store.filterQuery;
       if (currentQuery) {
         debouncedSearchRef.current?.(currentQuery);
       }
     }
-  }, [isReady, storeApi, isFilteringEnabled]);
+  }, [isReady, storeApi, isFilteringEnabled, isControlled, search]);
 
   // Create FilterManager (or return default state if disabled)
   const filterManager = useMemo(() => {

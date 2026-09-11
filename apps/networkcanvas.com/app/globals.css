@@ -41,6 +41,19 @@
   }
 }
 
+/*
+ * Product (Architect) type scale for dense content pages. Pins the root-size
+ * sentinel to the fixed product base instead of the site's fluid ramp.
+ * `--spacing-base` is redeclared so the calc re-evaluates at this level rather
+ * than inheriting :root's fluid snapshot, and `font-size` is set so em-based
+ * container widths resolve against the product base too.
+ */
+@utility type-scale-product {
+  --theme-root-size: 1rem;
+  --spacing-base: calc(0.25 * var(--theme-root-size));
+  font-size: var(--theme-root-size);
+}
+
 /* Continuous horizontal marquee used by the desktop news ticker. */
 @keyframes marquee-x {
   from {

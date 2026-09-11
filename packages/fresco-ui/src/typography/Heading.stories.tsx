@@ -25,6 +25,7 @@ const meta = {
         'display-heading',
         'section-heading',
         'subheading',
+        'subtitle',
       ],
       description: 'Visual variant of the heading',
     },
@@ -97,6 +98,36 @@ export const Variants: Story = {
           Subheading (text-2xl, font-black)
         </Heading>
       </div>
+      <div>
+        <div className="mb-2 text-xs">subtitle</div>
+        <Heading level="h4" variant="subtitle">
+          Subtitle (level size, font-semibold, leading-snug)
+        </Heading>
+      </div>
+    </div>
+  ),
+};
+
+export const Subtitle: Story = {
+  render: () => (
+    <div className="max-w-xl">
+      <Heading level="h1" margin="none">
+        SNAAPS v1.0
+      </Heading>
+      <Heading level="h4" variant="subtitle" margin="none" className="mt-2">
+        Social Network Assessment for Adult Protective Services (SNAAPS),
+        version 1.0: A Network Canvas Data Collection Instrument
+      </Heading>
+      <Paragraph intent="meta" emphasis="muted" margin="none" className="mt-3">
+        Mauldin RL, Carter LE
+      </Paragraph>
+      <Paragraph margin="none" className="mt-6">
+        The subtitle variant takes its size from the level (here h4, text-lg)
+        and swaps heading weight and leading for a semibold face at
+        leading-snug, so a title that runs to several lines holds together.
+        Rendered as a <code>p</code> via the render prop when the heading above
+        already carries the semantics.
+      </Paragraph>
     </div>
   ),
 };

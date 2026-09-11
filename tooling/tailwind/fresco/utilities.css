@@ -163,6 +163,43 @@
   box-shadow: var(--effect-shadow-2xl);
 }
 
+/*
+ * Animated conic-gradient border shared by emphasized protocol/variable
+ * surfaces. Consumers expose the border by adding a small padding around an
+ * opaque inner surface. `--variable-pill-accent` preserves VariablePill's
+ * type-specific accent while other consumers fall back to the primary color.
+ */
+@utility variable-pill-effect-border {
+  --variable-pill-border-angle: 0deg;
+  background: conic-gradient(
+    from var(--variable-pill-border-angle),
+    var(--surface-3),
+    var(--variable-pill-accent, var(--primary)),
+    var(--selected),
+    var(--accent),
+    var(--variable-pill-accent, var(--primary)),
+    var(--surface-3)
+  );
+}
+
+@property --variable-pill-border-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes variable-pill-border-orbit {
+  to {
+    --variable-pill-border-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .variable-pill-effect-border {
+    animation: variable-pill-border-orbit 3.5s linear infinite;
+  }
+}
+
 /* Variant for elements with the readonly attribute. The default tailwind
    approach uses a pseudo-element selector that also matches non-editable
    elements like <select>, which we usually don't want to style as readonly. */

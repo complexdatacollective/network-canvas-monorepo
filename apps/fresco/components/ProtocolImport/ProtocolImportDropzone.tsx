@@ -103,7 +103,12 @@ export default function ProtocolImportDropzone({
             ? intl.formatMessage(messages.copyDropFilesHere)
             : intl.formatMessage(messages.copyImportProtocols)}
         </Heading>
-        <Paragraph margin="none" emphasis="muted" className="mt-1 text-sm">
+        <Paragraph
+          intent="smallText"
+          margin="none"
+          emphasis="muted"
+          className="mt-1"
+        >
           {intl.formatMessage(messages.dragDropFilesHere, {
             value1: PROTOCOL_EXTENSION,
             tag1: renderCodeChunks,
