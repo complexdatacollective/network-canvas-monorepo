@@ -23,6 +23,7 @@ import Attribute, {
 export { committedAttributeVariableIds } from './Attribute.tsx';
 export type {
   AttributeValue,
+  CreateAttributeOutcome,
   CreateAttributeVariable,
   VariableOption,
 } from './Attribute.tsx';

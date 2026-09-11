@@ -22,6 +22,7 @@ import AssignAttributes, {
   committedAttributeVariableIds,
   makeAssignAttributesValidation,
   type AttributeValue,
+  type CreateAttributeOutcome,
   type VariableOption,
 } from '../../form/arrayFields/AssignAttributes.tsx';
 import type { RowEditorProps, RowPreviewProps } from '../../form/rowDialog.tsx';
@@ -281,17 +282,17 @@ function AdditionalAttributes({
     undefined,
   );
   const createStampVariable = useCallback(
-    async (variableName: string) => {
+    async (variableName: string): Promise<CreateAttributeOutcome> => {
       const outcome = await createVariable({
         name: variableName,
         type: STAMP_TYPE,
       });
       if (outcome.status === 'refused') {
         setCreateProblem(outcome.message);
-        return undefined;
+        return { status: 'refused', message: outcome.message };
       }
       setCreateProblem(undefined);
-      return outcome.variableId;
+      return { status: 'created', variableId: outcome.variableId };
     },
     [createVariable],
   );
