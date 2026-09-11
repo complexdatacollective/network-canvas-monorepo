@@ -174,7 +174,7 @@ const waitForTheWindowToClose = async (): Promise<void> => {
  * it is offered at all, and a test that took the first row would pass against
  * a window offering none.
  */
-export function createRow(dialog: HTMLElement, name: string): HTMLElement {
+function createRow(dialog: HTMLElement, name: string): HTMLElement {
   return within(dialog).getByRole('option', {
     name: `Create new attribute called “${name}”.`,
   });
@@ -203,32 +203,6 @@ export async function inventAttribute(
   );
   await user.click(createRow(dialog, attributeName));
   return dialog;
-}
-
-/**
- * Whether this picker offers to invent an attribute at all.
- *
- * Asked of a term nothing matches, because that is the only state a create row
- * is offered in. Leaves the window as it found it: closed.
- */
-export async function offersCreation(
-  user: HarnessUser,
-  field: HTMLElement,
-  term = 'a name nothing in this codebook has',
-): Promise<boolean> {
-  const dialog = await openAttributePicker(user, field);
-  await user.type(
-    within(dialog).getByRole('searchbox', {
-      name: 'Find or create an attribute',
-    }),
-    term,
-  );
-  const offered =
-    within(dialog).queryByRole('option', {
-      name: `Create new attribute called “${term}”.`,
-    }) !== null;
-  await closeAttributePicker(user);
-  return offered;
 }
 
 /**
