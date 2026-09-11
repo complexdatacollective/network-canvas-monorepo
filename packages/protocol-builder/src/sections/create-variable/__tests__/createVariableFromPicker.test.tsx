@@ -85,7 +85,7 @@ describe('a slot whose attribute needs more than a name', () => {
     ).toHaveValue('closeness');
 
     await harness.user.click(
-      within(editor).getByRole('button', { name: 'Add option' }),
+      within(editor).getByRole('button', { name: 'Create new option' }),
     );
     await harness.user.type(
       within(editor).getByRole('textbox', { name: 'Option 1 label' }),
@@ -98,7 +98,7 @@ describe('a slot whose attribute needs more than a name', () => {
     // An ordinal is an ORDER, so one answer is not one: the schema refuses a
     // list with nothing to rank against.
     await harness.user.click(
-      within(editor).getByRole('button', { name: 'Add option' }),
+      within(editor).getByRole('button', { name: 'Create new option' }),
     );
     await harness.user.type(
       within(editor).getByRole('textbox', { name: 'Option 2 label' }),
