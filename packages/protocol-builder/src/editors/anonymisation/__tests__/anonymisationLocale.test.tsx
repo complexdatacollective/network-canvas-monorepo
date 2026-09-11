@@ -52,7 +52,10 @@ describe('the anonymisation sections, read in Spanish', () => {
    * out of the Spanish fails here rather than reading as a plausible heading.
    */
   it('splices a codebook type into the Spanish group name', async () => {
-    openEditor();
+    const harness = openEditor();
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'person' }),
+    );
 
     expect(
       await screen.findByRole('group', {

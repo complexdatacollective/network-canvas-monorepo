@@ -10,9 +10,11 @@ import {
 } from '../../../testing/renderStageEditor.tsx';
 import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
 import {
+  alreadyProtecting,
   attributeCheckbox,
   personDocument,
   personVariable,
+  switchOnType,
 } from './anonymisationFixtures.tsx';
 
 const openEditor = (): StageEditorHarness =>
@@ -193,10 +195,12 @@ describe('the sections of an anonymisation stage', () => {
 
 describe('the attributes a passphrase protects', () => {
   it('offers the text attributes of each type, and nothing else', async () => {
-    openEditor();
+    const harness = openEditor();
+    await switchOnType(harness, 'person');
+    await switchOnType(harness, 'family member');
 
     const person = within(
-      await screen.findByRole('group', {
+      screen.getByRole('group', {
         name: 'Encrypted attributes for person',
       }),
     );
@@ -226,7 +230,7 @@ describe('the attributes a passphrase protects', () => {
    */
   it('writes the flag to the codebook, and puts nothing on the stage', async () => {
     const harness = openEditor();
-    await screen.findByRole('checkbox', { name: 'name' });
+    await switchOnType(harness, 'person');
 
     await harness.user.click(attributeCheckbox('person', 'name'));
 
@@ -241,7 +245,7 @@ describe('the attributes a passphrase protects', () => {
   /** Absence is how the schema spells "not encrypted". */
   it('removes the flag rather than storing false', async () => {
     const harness = openEditor();
-    await screen.findByRole('checkbox', { name: 'name' });
+    await switchOnType(harness, 'person');
 
     await harness.user.click(attributeCheckbox('person', 'name'));
     await waitFor(() =>
@@ -268,6 +272,7 @@ describe('the attributes a passphrase protects', () => {
     });
     await harness.user.clear(heading);
     await harness.user.type(heading, 'Rewritten heading');
+    await switchOnType(harness, 'person');
 
     await harness.user.click(attributeCheckbox('person', 'name'));
     await waitFor(() =>
@@ -285,7 +290,7 @@ describe('the attributes a passphrase protects', () => {
 
   it('shows the flag as the codebook holds it, not as this section left it', async () => {
     const harness = openEditor();
-    await screen.findByRole('checkbox', { name: 'name' });
+    await switchOnType(harness, 'person');
 
     await harness.user.click(attributeCheckbox('person', 'name'));
 
@@ -304,7 +309,7 @@ describe('the attributes a passphrase protects', () => {
    */
   it('follows a collaborator changing an attribute out of text, without echoing it', async () => {
     const harness = openEditor();
-    await screen.findByRole('checkbox', { name: 'name' });
+    await switchOnType(harness, 'person');
     const person = personDocument(harness);
     const variables = {
       ...(person.variables as Record<string, unknown>),
@@ -323,6 +328,7 @@ describe('the attributes a passphrase protects', () => {
 
   it('says so when a type has nothing that can be encrypted', async () => {
     const harness = openEditor();
+    await switchOnType(harness, 'person');
     const person = personDocument(harness);
 
     harness.receiveCodebookUpdate({
@@ -352,7 +358,7 @@ describe('the attributes a passphrase protects', () => {
         },
       ],
     });
-    await screen.findByRole('checkbox', { name: 'name' });
+    await switchOnType(harness, 'person');
 
     await harness.user.click(attributeCheckbox('person', 'name'));
 
@@ -392,7 +398,7 @@ describe('the attributes a passphrase protects', () => {
         });
       },
     });
-    await screen.findByRole('checkbox', { name: 'name' });
+    await switchOnType(harness, 'person');
 
     await harness.user.click(attributeCheckbox('person', 'name'));
 
@@ -424,11 +430,176 @@ describe('the attributes a passphrase protects', () => {
     ).not.toBeChecked();
   });
 
+  /**
+   * Switching a whole type off is one decision, and it is the only affordance
+   * that can reach every attribute of that type at once.
+   *
+   * A study protecting a dozen attributes of a type is otherwise a dozen
+   * clicks to stop protecting, each its own codebook write; and an attribute
+   * retyped away from text is not among the checkboxes at all, so nothing else
+   * on screen can take its flag off.
+   */
+  describe('switching a whole type off', () => {
+    const openProtecting = (): StageEditorHarness =>
+      renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        client: alreadyProtecting('name'),
+      });
+
+    /** The confirmation this loss is worth, answered. */
+    const confirmClear = async (harness: StageEditorHarness): Promise<void> => {
+      await harness.user.click(
+        await screen.findByRole('button', {
+          name: 'Clear encrypted attributes',
+        }),
+      );
+    };
+
+    it('stands open on a type that already protects something', async () => {
+      const harness = openProtecting();
+      await harness.opened();
+
+      expect(screen.getByRole('switch', { name: 'person' })).toBeChecked();
+      await waitFor(() =>
+        expect(attributeCheckbox('person', 'name')).toBeChecked(),
+      );
+    });
+
+    it('un-encrypts every attribute of that type at once', async () => {
+      const harness = openProtecting();
+      await waitFor(() =>
+        expect(attributeCheckbox('person', 'name')).toBeChecked(),
+      );
+      await harness.user.click(
+        attributeCheckbox('person', 'relationship_to_ego'),
+      );
+      await waitFor(() =>
+        expect(personVariable(harness, 'relationship_to_ego').encrypted).toBe(
+          true,
+        ),
+      );
+
+      await harness.user.click(screen.getByRole('switch', { name: 'person' }));
+      await confirmClear(harness);
+
+      await waitFor(() =>
+        expect(
+          Object.hasOwn(personVariable(harness, 'name'), 'encrypted'),
+        ).toBe(false),
+      );
+      expect(
+        Object.hasOwn(
+          personVariable(harness, 'relationship_to_ego'),
+          'encrypted',
+        ),
+      ).toBe(false);
+      // The panel goes with them: there is nothing left for it to show.
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('group', {
+            name: 'Encrypted attributes for person',
+          }),
+        ).toBeNull(),
+      );
+    });
+
+    it('leaves them encrypted when the researcher declines', async () => {
+      const harness = openProtecting();
+      await waitFor(() =>
+        expect(attributeCheckbox('person', 'name')).toBeChecked(),
+      );
+
+      await harness.user.click(screen.getByRole('switch', { name: 'person' }));
+      await harness.user.click(
+        await screen.findByRole('button', { name: 'Cancel' }),
+      );
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', {
+            name: 'Clear encrypted attributes',
+          }),
+        ).toBeNull(),
+      );
+      expect(personVariable(harness, 'name').encrypted).toBe(true);
+      expect(attributeCheckbox('person', 'name')).toBeChecked();
+    });
+
+    /**
+     * The sweep is written against the codebook as it stands when the lock is
+     * taken, not against the boxes the researcher was looking at.
+     *
+     * A collaborator encrypting an attribute while the confirmation is on
+     * screen is the case: the researcher has just said no attribute of this
+     * type should be encrypted, and a sweep built from the stale view would
+     * close the switch over one that still is.
+     */
+    it('reaches an attribute encrypted while the confirmation was open', async () => {
+      const harness = openProtecting();
+      await waitFor(() =>
+        expect(attributeCheckbox('person', 'name')).toBeChecked(),
+      );
+
+      await harness.user.click(screen.getByRole('switch', { name: 'person' }));
+      await screen.findByRole('button', {
+        name: 'Clear encrypted attributes',
+      });
+
+      const person = personDocument(harness);
+      harness.receiveCodebookUpdate({
+        node: {
+          person: {
+            ...person,
+            variables: {
+              ...(person.variables as Record<string, unknown>),
+              relationship_to_ego: {
+                name: 'relationship_to_ego',
+                type: 'text',
+                encrypted: true,
+              },
+            },
+          },
+        },
+      });
+      await confirmClear(harness);
+
+      await waitFor(() =>
+        expect(
+          Object.hasOwn(
+            personVariable(harness, 'relationship_to_ego'),
+            'encrypted',
+          ),
+        ).toBe(false),
+      );
+      expect(Object.hasOwn(personVariable(harness, 'name'), 'encrypted')).toBe(
+        false,
+      );
+    });
+
+    /** Switching a type ON is not a decision about any attribute. */
+    it('writes nothing when a type is switched on', async () => {
+      const harness = openEditor();
+      await switchOnType(harness, 'person');
+
+      expect(Object.hasOwn(personVariable(harness, 'name'), 'encrypted')).toBe(
+        false,
+      );
+      expect(
+        screen.queryByRole('button', { name: 'Clear encrypted attributes' }),
+      ).toBeNull();
+    });
+  });
+
   it('cannot be toggled by a spectator', async () => {
+    // Opened on a protocol that already protects something, so the type's
+    // panel stands open and its checkboxes are on screen to be read — which
+    // is the only state in which a spectator could try to change one.
     renderStageEditor({
       stageId: 'anonymisation-1',
       registry: anonymisationStageEditor,
       readOnly: true,
+      client: alreadyProtecting('name'),
     });
 
     await waitFor(() =>
@@ -437,5 +608,6 @@ describe('the attributes a passphrase protects', () => {
         'true',
       ),
     );
+    expect(screen.getByRole('switch', { name: 'person' })).toBeDisabled();
   });
 });

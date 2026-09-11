@@ -182,4 +182,37 @@ export const anonymisationMessages = defineMessages({
     description:
       'Announced to a screen reader after a checkbox in the encrypted-attributes section is cleared and the codebook change has been applied. Never shown on screen. attributeName is the researcher’s own name for the attribute.',
   },
+
+  typeSwitchDescription: {
+    id: 'protocolBuilder.anonymisation.typeSwitchDescription',
+    defaultMessage: 'Enable encryption for attributes belonging to this type.',
+    description:
+      'Description under one node type’s own switch in the encrypted-attributes section, saying what switching it on is for. A node type is a kind of thing an interview records, such as "person".',
+  },
+  clearTypeConfirmTitle: {
+    id: 'protocolBuilder.anonymisation.clearTypeConfirmTitle',
+    defaultMessage: 'This will clear selected attributes',
+    description:
+      'Title of the confirmation shown when a researcher switches encryption off for a whole node type, which un-encrypts every attribute of that type at once.',
+  },
+  clearTypeConfirmDescription: {
+    id: 'protocolBuilder.anonymisation.clearTypeConfirmDescription',
+    defaultMessage:
+      'Every encrypted attribute of the {typeName} type will stop being encrypted. Do you want to continue?',
+    description:
+      'Body of the confirmation shown when a researcher switches encryption off for a whole node type. typeName is the researcher’s own name for the type, such as "person".',
+  },
+  clearTypeConfirmLabel: {
+    id: 'protocolBuilder.anonymisation.clearTypeConfirmLabel',
+    defaultMessage: 'Clear encrypted attributes',
+    description:
+      'Label of the button that confirms un-encrypting every attribute of one node type at once.',
+  },
+  clearedTypeAnnouncement: {
+    id: 'protocolBuilder.anonymisation.clearedTypeAnnouncement',
+    defaultMessage:
+      'No attribute of the {typeName} type is encrypted any more.',
+    description:
+      'Announced to a screen reader once every attribute of one node type has stopped being encrypted. Never shown on screen — the section closing is the visible confirmation. typeName is the researcher’s own name for the type.',
+  },
 });

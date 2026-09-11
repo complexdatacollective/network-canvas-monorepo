@@ -75,6 +75,22 @@
     "defaultMessage": "Encrypted attributes for {typeName}",
     "description": "Accessible name of one node type’s group of checkboxes in the encrypted-attributes section — read aloud rather than shown, because the type’s name is already a heading above it. typeName is the researcher’s own name for the node type, such as \"person\"."
   },
+  "protocolBuilder.anonymisation.clearTypeConfirmDescription": {
+    "defaultMessage": "Every encrypted attribute of the {typeName} type will stop being encrypted. Do you want to continue?",
+    "description": "Body of the confirmation shown when a researcher switches encryption off for a whole node type. typeName is the researcher’s own name for the type, such as \"person\"."
+  },
+  "protocolBuilder.anonymisation.clearTypeConfirmLabel": {
+    "defaultMessage": "Clear encrypted attributes",
+    "description": "Label of the button that confirms un-encrypting every attribute of one node type at once."
+  },
+  "protocolBuilder.anonymisation.clearTypeConfirmTitle": {
+    "defaultMessage": "This will clear selected attributes",
+    "description": "Title of the confirmation shown when a researcher switches encryption off for a whole node type, which un-encrypts every attribute of that type at once."
+  },
+  "protocolBuilder.anonymisation.clearedTypeAnnouncement": {
+    "defaultMessage": "No attribute of the {typeName} type is encrypted any more.",
+    "description": "Announced to a screen reader once every attribute of one node type has stopped being encrypted. Never shown on screen — the section closing is the visible confirmation. typeName is the researcher’s own name for the type."
+  },
   "protocolBuilder.anonymisation.encryptedAnnouncement": {
     "defaultMessage": "{attributeName} is now encrypted.",
     "description": "Announced to a screen reader after a checkbox in the encrypted-attributes section is ticked and the codebook change has been applied. Never shown on screen — the checkbox itself is the visible confirmation. attributeName is the researcher’s own name for the attribute."
@@ -170,6 +186,10 @@
   "protocolBuilder.anonymisation.storageNotice": {
     "defaultMessage": "An encrypted attribute is stored so that only the passphrase can unlock it. It cannot be read, exported, or recovered without it.",
     "description": "Notice at the top of the encrypted-attributes section, warning the researcher that encryption applies to their own copy of the data too: an answer whose passphrase is lost cannot be exported or recovered by anyone."
+  },
+  "protocolBuilder.anonymisation.typeSwitchDescription": {
+    "defaultMessage": "Enable encryption for attributes belonging to this type.",
+    "description": "Description under one node type’s own switch in the encrypted-attributes section, saying what switching it on is for. A node type is a kind of thing an interview records, such as \"person\"."
   },
   "protocolBuilder.arrayField.addSubmit": {
     "defaultMessage": "Add",
