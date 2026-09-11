@@ -14,6 +14,7 @@ import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../testing/renderStageEditor.tsx';
+import { exactlyText } from '../../testing/text.ts';
 import FormFieldsSection from '../form-fields/FormFieldsSection.tsx';
 import InterviewerGuidanceSection from '../interviewer-guidance/InterviewerGuidanceSection.tsx';
 import NetworkFilterSection from '../network-filter/NetworkFilterSection.tsx';
@@ -216,13 +217,11 @@ describe('the form-fields section, read in Spanish', () => {
     // whole.
     //
     // Matched on `textContent` because the sentence emphasises both halves, so
-    // it is broken across elements; the innermost element carrying the whole
-    // of it is the badge itself, and its ancestors match too.
-    const sentence = 'Atributo de tipo Texto con control Campo de texto';
+    // it is broken across elements and no single text node carries it.
     expect(
-      screen
-        .getAllByText((_, element) => element?.textContent === sentence)
-        .at(-1),
+      screen.getByText(
+        exactlyText('Atributo de tipo Texto con control Campo de texto'),
+      ),
     ).toBeVisible();
   });
 

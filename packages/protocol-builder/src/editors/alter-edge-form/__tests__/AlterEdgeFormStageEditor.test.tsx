@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
   fieldsOf,
@@ -54,19 +55,6 @@ const createFixture = () => ({
 
 /** What the collapsed field row's badge says about the `edgeNotes` field. */
 const FIELD_ROW_BADGE = 'Text attribute using Text area input control';
-
-/**
- * Matches an element by its exact full text where that text is split across
- * child elements (the badge above bolds the type and control names), so a
- * plain string match cannot find it. Excludes any ancestor whose child
- * already carries the whole text, so only the innermost element matches.
- */
-const exactlyText =
-  (text: string) =>
-  (_: string, element: Element | null): boolean =>
-    element !== null &&
-    element.textContent === text &&
-    ![...element.children].some((child) => child.textContent === text);
 
 /**
  * What is true of THIS interface and no other. The list of sections it
