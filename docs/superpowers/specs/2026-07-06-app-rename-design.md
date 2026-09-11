@@ -66,8 +66,8 @@ never bare-word substring swaps**, because of overlapping strings (see Hazards).
    `architect-classic/public/components/createPreviewWindow.js`.
 3. **Root config & release machinery:** `turbo.json` (4 package-scoped task keys),
    `.changeset/config.json` (ignore list), `knip.json` (dir-path and package-name
-   entries), `scripts/changeset-app-utils.mjs`, `scripts/mirror-app.mjs`,
-   `scripts/release-notes.mjs`, `scripts/interview-release-version.mjs`, and the
+   entries), `scripts/release/changeset-app-utils.mjs`, `scripts/release/mirror-app.mjs`,
+   `scripts/release/release-notes.mjs`, `scripts/interview-release-version.mjs`, and the
    co-located `*.test.mjs` fixtures that assert these names.
 4. **CI / GitHub:** `.github/workflows/ci-and-release.yml` (detect outputs, `flag`
    vars, `--filter`, `--dir`, `PKG_JSON`/`PKG_NAME`, `tag_name`, job **names**,
