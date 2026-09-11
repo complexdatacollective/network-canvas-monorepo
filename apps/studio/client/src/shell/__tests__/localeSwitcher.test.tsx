@@ -158,6 +158,16 @@ function choose(popup: HTMLElement, name: RegExp) {
   fireEvent.click(within(popup).getByRole('option', { name }));
 }
 
+/**
+ * The footer live region. Base UI's empty-state element is a live region too,
+ * and jsdom applies no stylesheet to hide it while the list has entries.
+ */
+function saveStatus(popup: HTMLElement) {
+  const region = within(popup).getAllByRole('status').at(-1);
+  if (!region) throw new Error('no status region');
+  return region;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   window.localStorage.clear();
@@ -256,14 +266,13 @@ describe('the header language switcher', () => {
     });
     expect(fixtures.updateLocale).toHaveBeenCalledWith({ locale: 'en-GB' });
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
-    // Choosing is the whole interaction: the popover closes on it.
     await waitFor(() => {
-      expect(popup).not.toBeInTheDocument();
+      expect(saveStatus(popup)).toHaveTextContent('Saved to your account.');
     });
   });
 
-  it('keeps the local change when the account write fails', async () => {
-    fixtures.updateLocale.mockRejectedValue(new Error('offline'));
+  it('keeps the local change when the account write fails, says so, and retries', async () => {
+    fixtures.updateLocale.mockRejectedValueOnce(new Error('offline'));
 
     renderAt('/team/team-a');
     const popup = await openSwitcher();
@@ -271,11 +280,20 @@ describe('the header language switcher', () => {
     choose(popup, /^English \(UK\)/);
 
     await waitFor(() => {
-      expect(fixtures.updateLocale).toHaveBeenCalledWith({ locale: 'en-GB' });
+      expect(saveStatus(popup)).toHaveTextContent(
+        'Couldn’t save. The language applies for now.',
+      );
     });
     // The device honours the choice regardless: the write failing is a fact
     // about the account, not about what this browser can render.
     expect(document.documentElement.lang).toBe('en-GB');
+    fireEvent.click(
+      within(saveStatus(popup)).getByRole('button', { name: 'Try again' }),
+    );
+    await waitFor(() => {
+      expect(saveStatus(popup)).toHaveTextContent('Saved to your account.');
+    });
+    expect(fixtures.updateLocale).toHaveBeenCalledTimes(2);
     expect(window.localStorage.getItem(MIRROR_KEY)).toBe('en-GB');
   });
 

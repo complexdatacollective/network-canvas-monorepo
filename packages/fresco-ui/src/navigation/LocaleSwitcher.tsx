@@ -7,10 +7,12 @@ import {
   ChevronUp,
   Languages,
   SearchIcon,
+  X,
 } from 'lucide-react';
 import {
   type ComponentPropsWithRef,
   type ReactNode,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -27,6 +29,7 @@ import Surface from '../layout/Surface';
 import Pill from '../Pill';
 import { usePortalContainer } from '../PortalContainer';
 import { ScrollArea } from '../ScrollArea';
+import Spinner from '../Spinner';
 import {
   dropdownItemVariants,
   proportionalLucideIconVariants,
@@ -78,7 +81,36 @@ const messages = defineMessages({
     description:
       'Shown in the language list when the search box filters out every language.',
   },
+  saving: {
+    id: 'frescoUi.localeSwitcher.saving',
+    defaultMessage: 'Saving…',
+    description:
+      'Footer status while the chosen language is being stored, beside a spinner.',
+  },
+  savedOnDevice: {
+    id: 'frescoUi.localeSwitcher.savedOnDevice',
+    defaultMessage: 'Saved on this device.',
+    description:
+      'Footer status after the chosen language was stored in this browser, beside a check mark.',
+  },
+  savedOnAccount: {
+    id: 'frescoUi.localeSwitcher.savedOnAccount',
+    defaultMessage: 'Saved to your account.',
+    description:
+      'Footer status after the chosen language was stored on the user’s account, beside a check mark.',
+  },
+  saveFailed: {
+    id: 'frescoUi.localeSwitcher.saveFailed',
+    defaultMessage: 'Couldn’t save. The language applies for now.',
+    description:
+      'Footer status when storing the chosen language failed; the language is still in use for this visit, and a retry button follows.',
+  },
 });
+
+/** How long the "saved" status stays before the footer note returns. */
+const SAVED_NOTICE_MS = 3000;
+
+export type LocaleSwitcherSaveState = 'idle' | 'saving' | 'saved' | 'failed';
 
 /** Above this many entries (the automatic one included) the list gets a search box. */
 const SEARCH_THRESHOLD = 6;
@@ -99,8 +131,18 @@ export type LocaleSwitcherProps = {
   onChange: (value: string | null) => void;
   /** Host-supplied note under the list: what the choice applies to. */
   description?: ReactNode;
+  /**
+   * Where the host's persistence stands. `saving` shows a spinner, `saved` a
+   * check mark that gives way to the note after a moment, `failed` a retry
+   * button that calls `onChange` again with the current value.
+   */
+  saveState?: LocaleSwitcherSaveState;
+  /** Which "saved" wording applies: stored in this browser, or on an account. */
+  persistence?: 'device' | 'account';
   side?: 'top' | 'bottom';
   align?: 'start' | 'center' | 'end';
+  /** Open on first render; for documentation, hosts never need it. */
+  defaultOpen?: boolean;
 };
 
 function codeOf(tag: string): string {
@@ -119,14 +161,47 @@ export default function LocaleSwitcher({
   automaticLocale,
   onChange,
   description,
+  saveState = 'idle',
+  persistence = 'device',
   side = 'bottom',
   align = 'end',
+  defaultOpen,
 }: LocaleSwitcherProps) {
   const intl = useAppIntl();
   const headingId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   const portalContainer = usePortalContainer();
   const [query, setQuery] = useState('');
+
+  // The footer shows the outcome of a choice made here. `awaiting` is set by
+  // a choice or a retry so a repeat of the host's previous state ("saved"
+  // again) still reads as a fresh outcome; the key restarts the saved timer.
+  const [awaiting, setAwaiting] = useState(false);
+  const [notice, setNotice] = useState<{
+    state: Exclude<LocaleSwitcherSaveState, 'idle'>;
+    key: number;
+  } | null>(null);
+  useEffect(() => {
+    if (saveState === 'idle') {
+      setNotice(null);
+      return;
+    }
+    setNotice((current) => ({
+      state: saveState,
+      key: (current?.key ?? 0) + 1,
+    }));
+    if (saveState !== 'saving') setAwaiting(false);
+  }, [saveState, awaiting]);
+  useEffect(() => {
+    if (notice?.state !== 'saved') return;
+    const timer = setTimeout(() => setNotice(null), SAVED_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
+  const choose = (next: string | null) => {
+    setAwaiting(true);
+    onChange(next);
+  };
 
   const autonymOf = (tag: string) =>
     options.find((entry) => entry.locale === tag)?.label ?? tag;
@@ -168,8 +243,9 @@ export default function LocaleSwitcher({
     <Combobox.Root
       items={items}
       value={selected}
+      defaultOpen={defaultOpen}
       onValueChange={(next) => {
-        if (next !== null) onChange(next.value);
+        if (next !== null) choose(next.value);
       }}
       isItemEqualToValue={(a, b) => a.value === b.value}
       itemToStringLabel={(item) =>
@@ -179,8 +255,17 @@ export default function LocaleSwitcher({
       onInputValueChange={(next, details) => {
         if (details.reason === 'input-change') setQuery(next);
       }}
-      onOpenChange={(open) => {
-        if (!open) setQuery('');
+      onOpenChange={(open, details) => {
+        // A choice keeps the popover open so its outcome is read where it was
+        // made; Escape, an outside press, or leaving still close it.
+        if (!open && details.reason === 'item-press') {
+          details.cancel();
+          return;
+        }
+        if (!open) {
+          setQuery('');
+          setNotice(null);
+        }
       }}
     >
       <Combobox.Trigger
@@ -297,15 +382,64 @@ export default function LocaleSwitcher({
                 </Combobox.Item>
               )}
             </Combobox.List>
-            {description != null && (
-              <Paragraph
-                intent="smallText"
-                emphasis="muted"
-                margin="none"
-                className="bg-surface-1 text-surface-1-contrast border-outline border-t px-4 py-3 text-xs leading-tight"
-              >
-                {description}
-              </Paragraph>
+            {(description != null || notice !== null) && (
+              <div className="bg-surface-1 text-surface-1-contrast border-outline border-t px-4 py-3 text-xs leading-tight">
+                {notice === null && (
+                  <Paragraph intent="smallText" emphasis="muted" margin="none">
+                    {description}
+                  </Paragraph>
+                )}
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className={
+                    notice === null
+                      ? 'sr-only'
+                      : 'flex min-h-6 items-center gap-2'
+                  }
+                >
+                  {notice?.state === 'saving' && (
+                    <>
+                      <Spinner size="xs" />
+                      <span>{intl.formatMessage(messages.saving)}</span>
+                    </>
+                  )}
+                  {notice?.state === 'saved' && (
+                    <>
+                      <Check
+                        aria-hidden
+                        className="text-success size-4 shrink-0"
+                      />
+                      <span>
+                        {intl.formatMessage(
+                          persistence === 'account'
+                            ? messages.savedOnAccount
+                            : messages.savedOnDevice,
+                        )}
+                      </span>
+                    </>
+                  )}
+                  {notice?.state === 'failed' && (
+                    <>
+                      <X
+                        aria-hidden
+                        className="text-destructive size-4 shrink-0"
+                      />
+                      <span className="flex-1">
+                        {intl.formatMessage(messages.saveFailed)}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="text"
+                        color="dynamic"
+                        onClick={() => choose(value)}
+                      >
+                        {intl.formatMessage(commonMessages.retry)}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
             )}
           </Combobox.Popup>
         </Combobox.Positioner>

@@ -36,6 +36,10 @@ async function selectLanguage(page: Page, locale: string) {
   await languageSwitcher(page).click();
   const popover = languagePopover(page);
   await popover.getByRole('option', { name: OPTION_NAMES[locale] }).click();
+  await expect(popover.getByRole('status').last()).toHaveText(
+    /Guardado en este dispositivo|Saved on this device/,
+  );
+  await page.keyboard.press('Escape');
   await expect(popover).toBeHidden();
 }
 
@@ -65,6 +69,12 @@ test('negotiates regional Spanish before interaction, persists a choice, and res
   ).toHaveText('Español');
   await options.filter({ hasText: /^English \(UK\)/ }).click();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en-GB');
+  // The chrome follows the new language while the popover stays open.
+  await expect(popover).toHaveAccessibleName('Interface language');
+  await expect(popover.getByRole('status').last()).toHaveText(
+    'Saved on this device.',
+  );
+  await page.keyboard.press('Escape');
   await expect(popover).toBeHidden();
   await expect(switcher).toHaveText(/EN-GB/);
   await expect(switcher).toHaveAccessibleName(

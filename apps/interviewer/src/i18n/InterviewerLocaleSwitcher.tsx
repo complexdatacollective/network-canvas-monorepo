@@ -9,13 +9,16 @@ import { interviewerLocales } from './locales';
 // bottom of the screen.
 export default function InterviewerLocaleSwitcher() {
   const intl = useAppIntl();
-  const { preference, automaticLocale, setPreference } = useInterviewerLocale();
+  const { preference, automaticLocale, saveState, setPreference } =
+    useInterviewerLocale();
   return (
     <LocaleSwitcher
       options={interviewerLocales}
       value={preference}
       automaticLocale={automaticLocale}
       onChange={setPreference}
+      saveState={saveState}
+      persistence="device"
       side="top"
       align="start"
       description={intl.formatMessage(languageMessages.description)}

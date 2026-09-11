@@ -4,7 +4,6 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
 } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -42,15 +41,22 @@ const renderAndOpen = async () => {
   return open();
 };
 
-const choose = async (name: RegExp) => {
-  const popup = screen.getByRole('dialog');
+const choose = (name: RegExp) => {
   fireEvent.click(screen.getByRole('option', { name }));
-  await waitFor(() => expect(popup).not.toBeInTheDocument());
+};
+
+// The footer live region. Base UI's empty-state element is a live region too,
+// and jsdom applies no stylesheet to hide it while the list has entries.
+const status = () => {
+  const region = screen.getAllByRole('status').at(-1);
+  if (!region) throw new Error('no status region');
+  return region;
 };
 
 it('applies a choice, stores it, and follows another tab’s change', async () => {
   await renderAndOpen();
-  await choose(/^English \(UK\)/);
+  choose(/^English \(UK\)/);
+  expect(status()).toHaveTextContent('Saved on this device.');
   expect(trigger()).toHaveTextContent('EN-GB');
   expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
   expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBe('en-GB');
@@ -70,21 +76,31 @@ it('applies a choice, stores it, and follows another tab’s change', async () =
 
 it('never persists the development locale', async () => {
   await renderAndOpen();
-  await choose(/^Þséûðö Éñglîsh/);
+  choose(/^Þséûðö Éñglîsh/);
   expect(trigger()).toHaveTextContent('EN-XA');
   expect(document.documentElement).toHaveAttribute('lang', PSEUDO_LOCALE);
   expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBeNull();
+  expect(status()).toBeEmptyDOMElement();
 });
 
-it('still applies the selected language when storage refuses the write', async () => {
+it('still applies the selected language when storage refuses the write, and offers a retry', async () => {
   await renderAndOpen();
-  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-    throw new DOMException('blocked', 'SecurityError');
-  });
-  await choose(/^English \(UK\)/);
+  const setItem = vi
+    .spyOn(Storage.prototype, 'setItem')
+    .mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+  choose(/^English \(UK\)/);
   expect(trigger()).toHaveTextContent('EN-GB');
   expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
   expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBeNull();
+  expect(status()).toHaveTextContent(
+    'Couldn’t save. The language applies for now.',
+  );
+  setItem.mockRestore();
+  fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+  expect(status()).toHaveTextContent('Saved on this device.');
+  expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBe('en-GB');
 });
 
 it('names the language automatic resolves to and returns to it', async () => {
@@ -94,10 +110,9 @@ it('names the language automatic resolves to and returns to it', async () => {
   expect(
     screen.getByRole('option', { name: /^Automático \(Español\)/ }),
   ).toBeInTheDocument();
-  await choose(/^English \(UK\)/);
+  choose(/^English \(UK\)/);
   expect(document.documentElement).toHaveAttribute('lang', 'en-GB');
-  await open();
-  await choose(/^Automatic/);
+  choose(/^Automatic/);
   expect(document.documentElement).toHaveAttribute('lang', 'es');
   expect(localStorage.getItem(ARCHITECT_LOCALE_KEY)).toBeNull();
 });

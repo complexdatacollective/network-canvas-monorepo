@@ -28,7 +28,8 @@ const messages = defineMessages({
 export default function StudioLocaleSwitcher() {
   const intl = useAppIntl();
   const { locales } = useAppLocale();
-  const { preference, automaticLocale, setLocale } = useStudioLocale();
+  const { preference, automaticLocale, saveState, setLocale } =
+    useStudioLocale();
 
   return (
     <LocaleSwitcher
@@ -38,6 +39,8 @@ export default function StudioLocaleSwitcher() {
       // No submit: the choice IS the action, and it takes effect on the spot.
       // `null` is the automatic entry, a stored answer of its own.
       onChange={setLocale}
+      saveState={saveState === 'error' ? 'failed' : saveState}
+      persistence="account"
       description={intl.formatMessage(messages.description)}
     />
   );

@@ -104,7 +104,11 @@ it('exposes a keyboard-operated language picker from the home footer', async () 
   await user.click(within(popover).getByRole('option', { name: /^Español/ }));
   expect(document.documentElement).toHaveAttribute('lang', 'es');
   expect(opener).toHaveTextContent('ES');
-  await waitFor(() => expect(popover).not.toBeInTheDocument());
+  expect(popover).toHaveAccessibleName('Idioma de la interfaz');
+  expect(within(popover).getAllByRole('status').at(-1)).toHaveTextContent(
+    'Guardado en este dispositivo.',
+  );
+  await user.keyboard('{Escape}');
   await waitFor(() =>
     expect(
       screen.getByRole('combobox', { name: 'Idioma de la interfaz: Español' }),

@@ -26,6 +26,8 @@ type LocalePreference = {
   preference: string | null;
   /** What the automatic entry resolves to on this device right now. */
   automaticLocale: string;
+  /** Outcome of the last device write; the dev-only pseudo-locale is never written. */
+  saveState: 'idle' | 'saved' | 'failed';
   setLocale: (locale: string | null) => void;
 };
 
@@ -34,6 +36,8 @@ const PreferenceContext = createContext<LocalePreference | null>(null);
 export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
   const [preference, setPreference] = useState(readLocalePreference);
   const [browserRevision, setBrowserRevision] = useState(0);
+  const [saveState, setSaveState] =
+    useState<LocalePreference['saveState']>('idle');
 
   const setLocale = useCallback((locale: string | null) => {
     if (
@@ -41,7 +45,13 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
       !architectLocales.some((entry) => entry.locale === locale)
     )
       return;
-    if (locale !== PSEUDO_LOCALE) writeLocalePreference(locale);
+    setSaveState(
+      locale === PSEUDO_LOCALE
+        ? 'idle'
+        : writeLocalePreference(locale)
+          ? 'saved'
+          : 'failed',
+    );
     setPreference(locale);
   }, []);
 
@@ -51,6 +61,7 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
     const preferenceChanged = (event: StorageEvent) => {
       if (event.key !== ARCHITECT_LOCALE_KEY && event.key !== null) return;
       setPreference(readLocalePreference());
+      setSaveState('idle');
     };
     window.addEventListener('languagechange', languageChanged);
     window.addEventListener('storage', preferenceChanged);
@@ -73,8 +84,8 @@ export function ArchitectI18nProvider({ children }: { children: ReactNode }) {
     };
   }, [preference, browserRevision]);
   const value = useMemo(
-    () => ({ preference, automaticLocale, setLocale }),
-    [preference, automaticLocale, setLocale],
+    () => ({ preference, automaticLocale, saveState, setLocale }),
+    [preference, automaticLocale, saveState, setLocale],
   );
 
   return (

@@ -1,11 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import type { AppLocale } from '@codaco/app-i18n/locales';
 
 import LocaleSwitcher from './LocaleSwitcher';
-import type { LocaleSwitcherProps } from './LocaleSwitcher';
+import type {
+  LocaleSwitcherProps,
+  LocaleSwitcherSaveState,
+} from './LocaleSwitcher';
 
 const fewLocales: AppLocale[] = [
   { locale: 'en', label: 'English', direction: 'ltr' },
@@ -48,6 +51,12 @@ import LocaleSwitcher from '@codaco/fresco-ui/navigation/LocaleSwitcher';
 - **\`automaticLocale\`** — the tag automatic resolves to right now, named on
   the automatic entry ("Automatic (English)") and in the trigger ("Auto · EN").
 - **\`description\`** — host-supplied footer note.
+- **\`saveState\`** / **\`persistence\`** — the host's persistence outcome,
+  shown in the footer in place of the note: a spinner while \`saving\`, a
+  check mark for \`saved\` ("Saved on this device." or "Saved to your
+  account.") that gives way to the note after a moment, and a retry button
+  for \`failed\`. Choosing keeps the popover open so the outcome is read
+  where the choice was made; Escape closes it.
 - **\`side\`** / **\`align\`** — where the popover opens; the Interviewer
   status bar uses \`side="top"\`.
 - A search box appears once the list is longer than six entries.
@@ -155,8 +164,9 @@ export const WithSearch: Story = {
 };
 
 /**
- * Choosing an entry reports the tag, updates the pill, closes the popover and
- * returns focus to the pill; reopening shows the check mark on the choice.
+ * Choosing an entry reports the tag, moves the check mark and updates the
+ * pill while the popover stays open; Escape closes it and returns focus to
+ * the pill.
  */
 export const OpensAndSelects: Story = {
   args: { value: 'en' },
@@ -169,18 +179,17 @@ export const OpensAndSelects: Story = {
     );
     await expect(trigger).toHaveTextContent('ES');
     await expect(trigger).toHaveAccessibleName('Interface language: Español');
-    await waitFor(() => expect(popup).not.toBeInTheDocument());
-    await expect(trigger).toHaveFocus();
-
-    const { popup: reopened } = await openSwitcher(canvasElement);
+    await expect(popup).toBeVisible();
     await expect(
-      within(reopened).getByRole('option', { name: /^Español/ }),
+      within(popup).getByRole('option', { name: /^Español/ }),
     ).toHaveAttribute('aria-selected', 'true');
     await expect(
-      within(reopened).getByRole('option', { name: 'English EN' }),
+      within(popup).getByRole('option', { name: 'English EN' }),
     ).toHaveAttribute('aria-selected', 'false');
+
     await userEvent.keyboard('{Escape}');
-    await waitFor(() => expect(reopened).not.toBeInTheDocument());
+    await waitFor(() => expect(popup).not.toBeInTheDocument());
+    await expect(trigger).toHaveFocus();
   },
 };
 
@@ -232,11 +241,9 @@ export const AutomaticEntry: Story = {
     );
     await expect(trigger).toHaveTextContent('ES');
     await expect(trigger).toHaveAccessibleName('Interface language: Español');
-    await waitFor(() => expect(popup).not.toBeInTheDocument());
 
-    const { popup: reopened } = await openSwitcher(canvasElement);
     await userEvent.click(
-      within(reopened).getByRole('option', { name: /^Automatic/ }),
+      within(popup).getByRole('option', { name: /^Automatic/ }),
     );
     await expect(trigger).toHaveTextContent('Auto · EN');
     await expect(trigger).toHaveAccessibleName(
@@ -259,4 +266,216 @@ export const RightToLeft: Story = {
     const option = within(popup).getByRole('option', { name: /^العربية/ });
     await expect(option.querySelector('[lang="ar"]')).toBeTruthy();
   },
+};
+
+/**
+ * A host whose persistence behaves as the scenario says. Device storage is
+ * synchronous; the account and failure scenarios answer after a short delay,
+ * and a failure succeeds on retry.
+ */
+type SaveScenario = 'device' | 'account' | 'saving' | 'failed';
+
+function SavingHost({
+  scenario,
+  ...rest
+}: Omit<LocaleSwitcherProps, 'value' | 'onChange' | 'saveState'> & {
+  scenario: SaveScenario;
+}) {
+  const [value, setValue] = useState<string | null>('en');
+  const [saveState, setSaveState] = useState<LocaleSwitcherSaveState>('idle');
+  const attempts = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const onChange = (next: string | null) => {
+    setValue(next);
+    attempts.current += 1;
+    clearTimeout(timer.current);
+    if (scenario === 'device') {
+      setSaveState('saved');
+      return;
+    }
+    setSaveState('saving');
+    if (scenario === 'saving') return;
+    const outcome: LocaleSwitcherSaveState =
+      scenario === 'failed' && attempts.current === 1 ? 'failed' : 'saved';
+    timer.current = setTimeout(() => setSaveState(outcome), 800);
+  };
+
+  return (
+    <LocaleSwitcher
+      {...rest}
+      persistence={scenario === 'account' ? 'account' : 'device'}
+      value={value}
+      onChange={onChange}
+      saveState={saveState}
+    />
+  );
+}
+
+/**
+ * Device storage answers at once: the check mark and "Saved on this device."
+ * replace the note, then the note returns.
+ */
+export const SavesOnDevice: Story = {
+  render: (args) => <SavingHost {...args} scenario="device" />,
+  play: async ({ canvasElement }) => {
+    const { popup } = await openSwitcher(canvasElement);
+    await userEvent.click(
+      within(popup).getByRole('option', { name: /^Español/ }),
+    );
+    const status = within(popup).getByRole('status');
+    await expect(status).toHaveTextContent('Saved on this device.');
+    await expect(popup).not.toHaveTextContent(
+      'Interface only, on this device.',
+    );
+    await waitFor(
+      () => expect(popup).toHaveTextContent('Interface only, on this device.'),
+      { timeout: 5000 },
+    );
+    await expect(status).toBeEmptyDOMElement();
+  },
+};
+
+/**
+ * An account write crosses the network: a spinner and "Saving…" first, then
+ * the check mark and "Saved to your account."
+ */
+export const SavesToAccount: Story = {
+  args: {
+    description:
+      'Interface only. Your choice follows your account to your other devices.',
+  },
+  render: (args) => <SavingHost {...args} scenario="account" />,
+  play: async ({ canvasElement }) => {
+    const { popup } = await openSwitcher(canvasElement);
+    await userEvent.click(
+      within(popup).getByRole('option', { name: /^Español/ }),
+    );
+    const status = within(popup).getByRole('status');
+    await expect(status).toHaveTextContent('Saving…');
+    await waitFor(() =>
+      expect(status).toHaveTextContent('Saved to your account.'),
+    );
+  },
+};
+
+/** The write never answers: the spinner stays. */
+export const Saving: Story = {
+  render: (args) => <SavingHost {...args} scenario="saving" />,
+  play: async ({ canvasElement }) => {
+    const { popup } = await openSwitcher(canvasElement);
+    await userEvent.click(
+      within(popup).getByRole('option', { name: /^Español/ }),
+    );
+    await expect(within(popup).getByRole('status')).toHaveTextContent(
+      'Saving…',
+    );
+  },
+};
+
+/**
+ * The write fails: the language still applies, the footer says the choice
+ * could not be saved, and "Try again" repeats the same choice — which
+ * succeeds this time.
+ */
+export const SaveFails: Story = {
+  render: (args) => <SavingHost {...args} scenario="failed" />,
+  play: async ({ canvasElement }) => {
+    const { trigger, popup } = await openSwitcher(canvasElement);
+    await userEvent.click(
+      within(popup).getByRole('option', { name: /^Español/ }),
+    );
+    await expect(trigger).toHaveTextContent('ES');
+    const status = within(popup).getByRole('status');
+    await waitFor(() =>
+      expect(status).toHaveTextContent(
+        'Couldn’t save. The language applies for now.',
+      ),
+    );
+
+    await userEvent.click(
+      within(status).getByRole('button', { name: 'Try again' }),
+    );
+    await expect(status).toHaveTextContent('Saving…');
+    await waitFor(() =>
+      expect(status).toHaveTextContent('Saved on this device.'),
+    );
+    await expect(
+      within(status).queryByRole('button', { name: 'Try again' }),
+    ).not.toBeInTheDocument();
+  },
+};
+
+/**
+ * Every footer status at once, each popover open from the start. The two
+ * "saved" instances are re-triggered every few seconds, since a saved status
+ * gives way to the note after a moment.
+ */
+function PinnedStatus({
+  saveState,
+  persistence,
+  description,
+}: {
+  saveState: Exclude<LocaleSwitcherSaveState, 'idle'>;
+  persistence: 'device' | 'account';
+  description: string;
+}) {
+  const [state, setState] = useState<LocaleSwitcherSaveState>(saveState);
+  useEffect(() => {
+    if (saveState !== 'saved') return;
+    const interval = setInterval(() => {
+      setState('idle');
+      setTimeout(() => setState('saved'), 50);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [saveState]);
+  return (
+    <LocaleSwitcher
+      options={fewLocales}
+      value="es"
+      automaticLocale="en"
+      onChange={() => undefined}
+      saveState={state}
+      persistence={persistence}
+      description={description}
+      defaultOpen
+    />
+  );
+}
+
+export const AllStatuses: Story = {
+  parameters: { layout: 'fullscreen' },
+  render: () => (
+    <div className="grid grid-cols-2 gap-6 p-6 [&>div]:h-[26rem]">
+      <div>
+        <PinnedStatus
+          saveState="saving"
+          persistence="device"
+          description="Interface only, on this device."
+        />
+      </div>
+      <div>
+        <PinnedStatus
+          saveState="failed"
+          persistence="device"
+          description="Interface only, on this device."
+        />
+      </div>
+      <div>
+        <PinnedStatus
+          saveState="saved"
+          persistence="device"
+          description="Interface only, on this device."
+        />
+      </div>
+      <div>
+        <PinnedStatus
+          saveState="saved"
+          persistence="account"
+          description="Interface only. Your choice follows your account."
+        />
+      </div>
+    </div>
+  ),
 };

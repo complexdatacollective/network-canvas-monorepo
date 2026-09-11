@@ -19,13 +19,15 @@ export default function ArchitectLocaleSwitcher() {
   const intl = useAppIntl();
   const controller = useArchitectLocale();
   if (controller === null) return null;
-  const { preference, automaticLocale, setLocale } = controller;
+  const { preference, automaticLocale, saveState, setLocale } = controller;
   return (
     <LocaleSwitcher
       options={architectLocales}
       value={preference}
       automaticLocale={automaticLocale}
       onChange={setLocale}
+      saveState={saveState}
+      persistence="device"
       description={intl.formatMessage(messages.description)}
     />
   );
