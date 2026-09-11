@@ -71,6 +71,13 @@ export const Editing: Story = {
 export const ChoosingWhatIsProtected: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    // Each type has a switch of its own, and one protecting nothing yet stands
+    // off: saying this type is protected at all is the first decision.
+    await userEvent.click(
+      await canvas.findByRole('switch', { name: 'person' }),
+    );
 
     const group = await canvas.findByRole('group', {
       name: 'Encrypted attributes for person',
