@@ -44,16 +44,16 @@ export default function AtRiskStatusesSection() {
   return (
     <BuilderSection
       title={intl.formatMessage(narrativePedigreeMessages.atRiskTitle)}
-      description={intl.formatMessage(
-        narrativePedigreeMessages.atRiskDescription,
-      )}
     >
       <Field<typeof ToggleField>
         name={FIELD_NAME}
         component={ToggleField}
         inline
         label={intl.formatMessage(narrativePedigreeMessages.atRiskFieldLabel)}
-        hint={intl.formatMessage(narrativePedigreeMessages.atRiskFieldHint)}
+        hint={intl.formatMessage(
+          narrativePedigreeMessages.atRiskFieldHint,
+          EMPHASIS,
+        )}
       />
       <AtRiskExplanation />
     </BuilderSection>

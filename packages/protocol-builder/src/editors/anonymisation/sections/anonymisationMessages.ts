@@ -19,69 +19,54 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 export const anonymisationMessages = defineMessages({
   explanationTitle: {
     id: 'protocolBuilder.anonymisation.explanationTitle',
-    defaultMessage: 'Passphrase explanation',
+    defaultMessage: 'Task explanation',
     description:
       'Heading of the section where a researcher writes what a participant reads before being asked to choose a passphrase — the secret that protects some of their own answers.',
   },
   explanationDescription: {
     id: 'protocolBuilder.anonymisation.explanationDescription',
     defaultMessage:
-      'Explain what the passphrase protects and what happens if it is lost, before the participant is asked to choose one.',
+      'Explain the anonymisation process to participants before they enter their passphrase.',
     description:
       'Description under the heading of the passphrase-explanation section, telling the researcher what this explanation has to cover.',
   },
   explanationHeadingLabel: {
     id: 'protocolBuilder.anonymisation.explanationHeadingLabel',
-    defaultMessage: 'Explanation heading',
+    defaultMessage: 'Title',
     description:
       'Label of the field holding the heading at the top of the screen where a participant is asked for a passphrase.',
   },
-  explanationHeadingHint: {
-    id: 'protocolBuilder.anonymisation.explanationHeadingHint',
-    defaultMessage:
-      'The heading at the top of the screen that asks for a passphrase.',
-    description:
-      'Guidance under the explanation-heading field, saying where in the interview that heading appears.',
-  },
   explanationHeadingPlaceholder: {
     id: 'protocolBuilder.anonymisation.explanationHeadingPlaceholder',
-    defaultMessage: 'This interview protects some of your answers',
+    defaultMessage: 'This interview uses enhanced privacy protection',
     description:
       'Placeholder shown in the empty explanation-heading field. An example of the heading a participant would read, so it is written in the participant’s second person rather than the researcher’s.',
   },
   explanationBodyLabel: {
     id: 'protocolBuilder.anonymisation.explanationBodyLabel',
-    defaultMessage: 'Explanation',
+    defaultMessage: 'Body',
     description:
       'Label of the field holding the prose a participant reads before being asked to choose a passphrase.',
-  },
-  explanationBodyHint: {
-    id: 'protocolBuilder.anonymisation.explanationBodyHint',
-    defaultMessage:
-      'Say which answers the passphrase protects, who can read them, and that the answers cannot be recovered without it. This is the only thing the participant reads before choosing one.',
-    description:
-      'Guidance under the explanation field, listing what the participant has to be told. "Recovered" is literal: an answer whose passphrase is forgotten is gone for good.',
   },
   explanationBodyPlaceholder: {
     id: 'protocolBuilder.anonymisation.explanationBodyPlaceholder',
     defaultMessage:
-      'Some of your answers are stored so that only you can unlock them. Choose a passphrase you will remember: without it, those answers cannot be read again.',
+      "Enter your passphrase below, and click the 'continue' button.",
     description:
       'Placeholder shown in the empty explanation field. An example of the prose a participant would read, so it is written in the participant’s second person rather than the researcher’s.',
   },
 
   passphraseRulesTitle: {
     id: 'protocolBuilder.anonymisation.passphraseRulesTitle',
-    defaultMessage: 'Passphrase rules',
+    defaultMessage: 'Passphrase validation',
     description:
       'Heading of the section where a researcher decides what a participant’s passphrase has to look like. The requirements are lengths only: a shortest and a longest.',
   },
   passphraseRulesDescription: {
     id: 'protocolBuilder.anonymisation.passphraseRulesDescription',
-    defaultMessage:
-      'Require the passphrase to be a certain length. Without any rules, a participant may choose anything.',
+    defaultMessage: 'Choose which validation rules apply to the passphrase.',
     description:
-      'Description under the heading of the passphrase-rules section. This capability can be switched off entirely, which is what "without any rules" means.',
+      'Description under the heading of the passphrase-rules section. A validation rule is a requirement the participant’s passphrase has to meet; here they are lengths only.',
   },
   passphraseRulesFieldLabel: {
     id: 'protocolBuilder.anonymisation.passphraseRulesFieldLabel',
@@ -139,7 +124,7 @@ export const anonymisationMessages = defineMessages({
   encryptedAttributesDescription: {
     id: 'protocolBuilder.anonymisation.encryptedAttributesDescription',
     defaultMessage:
-      'Choose which text attributes are protected by the participant’s passphrase.',
+      'Select the text attributes for each node type that should be encrypted.',
     description:
       'Description under the heading of the encrypted-attributes section. Only attributes holding text can be encrypted, which is why they are named as text attributes here.',
   },

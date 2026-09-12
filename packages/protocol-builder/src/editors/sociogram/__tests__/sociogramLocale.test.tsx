@@ -71,7 +71,7 @@ describe('the canvas sections, read in Spanish', () => {
 
     expect(
       screen.getByText(
-        'Escribe las tareas que el participante realiza en el lienzo y arrástralas al orden en que las hace.',
+        'Crea y ordena las preguntas que se muestran en esta etapa.',
       ),
     ).toBeInTheDocument();
   });
@@ -85,14 +85,14 @@ describe('the canvas sections, read in Spanish', () => {
 
     const prompt = await openPrompt(harness, 0, 'Editar pregunta');
     expect(
-      prompt.getByRole('combobox', { name: 'Atributo de posición' }),
+      prompt.getByRole('combobox', { name: 'Atributo de disposición' }),
     ).toBeInTheDocument();
     expect(
       prompt.getByRole('button', {
         name: 'Crear un nuevo atributo de posición',
       }),
     ).toBeInTheDocument();
-    expect(prompt.getByText('Marcar el nodo')).toBeInTheDocument();
+    expect(prompt.getByText('Alternar atributo')).toBeInTheDocument();
   });
 
   /**

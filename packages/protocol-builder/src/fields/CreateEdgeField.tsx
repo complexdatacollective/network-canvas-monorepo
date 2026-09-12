@@ -11,13 +11,13 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import Section from '@codaco/fresco-ui/Section';
 import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
-import CodebookEntityEditor from '../../../codebook/components/CodebookEntityEditor.tsx';
-import { useCreateCodebookEntity } from '../../../codebook/writes.ts';
-import EntityTypePickerField from '../../../fields/EntityTypePickerField.tsx';
-import type { CodebookSubject } from '../../../protocol-context.ts';
-import { newEntityDraft } from '../../../sections/subject-picker/SubjectSection.tsx';
-import { useProtocolContext } from '../../../state/protocolContext.ts';
-import { censusMessages } from './censusMessages.ts';
+import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
+import { useCreateCodebookEntity } from '../codebook/writes.ts';
+import { censusMessages } from '../editors/dyad-census/sections/censusMessages.ts';
+import type { CodebookSubject } from '../protocol-context.ts';
+import { newEntityDraft } from '../sections/subject-picker/SubjectSection.tsx';
+import { useProtocolContext } from '../state/protocolContext.ts';
+import EntityTypePickerField from './EntityTypePickerField.tsx';
 
 export const CREATE_EDGE_FIELD = 'createEdge';
 
