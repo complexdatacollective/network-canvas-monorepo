@@ -19,13 +19,13 @@ const KNOWS = sectionId({ kind: 'codebookEdge', typeId: 'knows' });
  *
  * Passed rather than read from the census catalog because they are the
  * SECTION's: each of the three censuses records something different by a yes,
- * and says so in its own sentence. These are the Dyad Census's.
+ * and says so in its own sentence. These are the Dyad Census's — which gives
+ * the control no group of its own, because Architect keeps the connection type
+ * inside the prompt group, whose description is what says an affirmative
+ * answer creates one.
  */
 const DYAD_CENSUS_WORDS = {
-  title: 'Affirmative answer',
-  description:
-    'Choose the kind of connection an affirmative answer records between the pair.',
-  hint: 'A connection of this type is created between the two people whenever the participant answers yes.',
+  label: 'Created edge type',
   requiredMessage:
     'Choose the type of connection an affirmative answer creates.',
 };

@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
+import CreateEdgeField from './CreateEdgeField.tsx';
 import { PromptTextField, PromptTextPreview } from './PromptTextField.tsx';
 
 /** The question the fixture's Dyad Census asks, as the protocol holds it. */
@@ -32,14 +33,30 @@ function DyadCensusGuidance() {
   );
 }
 
-/** One question, as a census row dialog mounts it. */
+/**
+ * One question, as a Dyad Census's row dialog mounts it.
+ *
+ * The group's name, its description and the connection type inside it are the
+ * SECTION's, passed in: three of the five families put the question in a group
+ * of its own and the other two put the connection an answer records in the
+ * same group, so Architect names and explains it differently in each. These
+ * are the Dyad Census's, and the connection picker is here because its
+ * description is what says an affirmative answer creates one.
+ */
 function TheQuestion({ item }: Readonly<{ item: Record<string, unknown> }>) {
   return (
     <PromptTextField
       item={item}
       guidance={<DyadCensusGuidance />}
       placeholder="Do these two people know each other?"
-    />
+      title="Prompt configuration"
+      description="Write the participant prompt and select the edge type created by an affirmative response."
+    >
+      <CreateEdgeField
+        label="Created edge type"
+        requiredMessage="Choose the type of connection an affirmative answer creates."
+      />
+    </PromptTextField>
   );
 }
 
@@ -51,7 +68,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The question one prompt shows the participant, written as markdown in a single line. Shared by the three censuses and the two bins, which differ only in the sentence above the box and the example inside it — and that sentence comes first, because what the participant is looking at while they answer decides how the question has to be phrased. A prompt with nothing written in it is refused when the researcher saves, not while they are still writing.',
+          'The question one prompt shows the participant, written as markdown in a single line. Shared by the three censuses and the two bins, which differ in whether there is a sentence above the box at all, in what it says, in the example inside the box, and in what the group holding it is called — and that sentence comes first, because what the participant is looking at while they answer decides how the question has to be phrased. A prompt with nothing written in it is refused when the researcher saves, not while they are still writing.',
       },
     },
   },
