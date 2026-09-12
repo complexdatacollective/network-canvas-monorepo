@@ -182,7 +182,7 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   // member form switched off, so it registers nothing and the saved stage
   // carries no `form` key.
   await expect(
-    architectPage.getByRole('switch', { name: 'Family member form' }),
+    architectPage.getByRole('switch', { name: 'Form configuration' }),
   ).not.toBeChecked();
 
   await selectOrCreateEdgeType(architectPage, 'family_edge');

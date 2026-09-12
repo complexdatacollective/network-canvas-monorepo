@@ -6,13 +6,16 @@ import type { VariableType } from '@codaco/protocol-validation';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import type { RuleChoiceOption } from '../ruleCodebook.ts';
+import {
+  RuleEditorHost,
+  STAGE_SECTION,
+} from '../../rules/__tests__/ruleEditorHost.tsx';
+import type { RuleChoiceOption } from '../../rules/ruleCodebook.ts';
 import {
   emptyRuleValue,
   RULE_VALUE_FIELD,
   RuleOperandField,
 } from '../RuleValueField.tsx';
-import { RuleEditorHost, STAGE_SECTION } from './ruleEditorHost.tsx';
 
 /**
  * What a rule's operand is reset to when the choice above it changes.

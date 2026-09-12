@@ -425,7 +425,6 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           title={intl.formatMessage(messages.promptSortTitle)}
           description={intl.formatMessage(messages.promptSortDescription)}
           label={intl.formatMessage(messages.promptSortLabel)}
-          hint={intl.formatMessage(messages.promptSortHint)}
           addButtonLabel={intl.formatMessage(messages.promptSortAddLabel)}
           emptyStateMessage={intl.formatMessage(messages.promptSortEmptyState)}
           properties={sortableProperties}
@@ -455,7 +454,6 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
           <Field<typeof EntityTypePicker>
             name={CREATE_EDGE_FIELD}
             label={intl.formatMessage(messages.promptCreateEdgeLabel)}
-            hint={intl.formatMessage(messages.promptCreateEdgeHint)}
             component={EntityTypePicker}
             entityType="edge"
             initialValue={committedCreate}
@@ -506,7 +504,6 @@ export function SociogramPromptFields({ item }: RowEditorProps) {
         <Field<typeof OptionalTickList>
           name={DISPLAY_EDGES_FIELD}
           label={intl.formatMessage(messages.promptDisplayEdgesLabel)}
-          hint={intl.formatMessage(messages.promptDisplayEdgesHint)}
           component={OptionalTickList}
           options={edgeChoices}
           initialValue={committedDisplay}

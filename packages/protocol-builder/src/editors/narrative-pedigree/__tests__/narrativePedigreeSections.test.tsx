@@ -128,7 +128,7 @@ describe('the pedigree a narrative pedigree reads', () => {
       }),
     );
     const dialog = await openDisease(harness);
-    const name = dialog.getByRole('textbox', { name: 'Disease name' });
+    const name = dialog.getByRole('textbox', { name: 'Disease label' });
     await harness.user.clear(name);
     await harness.user.type(name, 'Condition Y');
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
@@ -233,7 +233,7 @@ describe('the diseases a narrative pedigree defines', () => {
 
     const dialog = await addDisease(harness);
     const picker = await dialog.findByRole('combobox', {
-      name: 'Affected-status attribute',
+      name: 'Node attribute',
     });
     await waitFor(() => expect(optionsOf(picker)).toContain('hasConditionZ'));
     // `is_ego` is the pedigree's participant marker, so a disease mapped to it
@@ -257,7 +257,7 @@ describe('the diseases a narrative pedigree defines', () => {
 
     const dialog = await addDisease(harness);
     const picker = await dialog.findByRole('combobox', {
-      name: 'Affected-status attribute',
+      name: 'Node attribute',
     });
     await waitFor(() => expect(optionsOf(picker)).toContain('hasConditionZ'));
     expect(optionsOf(picker)).not.toContain('conditionNotes');
@@ -276,7 +276,7 @@ describe('the diseases a narrative pedigree defines', () => {
     const dialog = await addDisease(harness);
     expect(await dialog.findByText(NOTHING_LEFT_TO_MAP)).toBeInTheDocument();
     expect(
-      dialog.queryByRole('combobox', { name: 'Affected-status attribute' }),
+      dialog.queryByRole('combobox', { name: 'Node attribute' }),
     ).toBeNull();
   });
 
@@ -304,7 +304,7 @@ describe('the diseases a narrative pedigree defines', () => {
     expect(
       optionsOf(
         await dialog.findByRole('combobox', {
-          name: 'Affected-status attribute',
+          name: 'Node attribute',
         }),
       ),
     ).toContain('hasConditionX');
@@ -364,7 +364,7 @@ describe('the diseases a narrative pedigree defines', () => {
     alsoRecording(harness, { hasConditionZ: 'boolean' });
 
     const dialog = await openDisease(harness, 1);
-    const name = dialog.getByRole('textbox', { name: 'Disease name' });
+    const name = dialog.getByRole('textbox', { name: 'Disease label' });
     await harness.user.clear(name);
     await harness.user.type(name, 'Condition X');
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
@@ -405,7 +405,7 @@ describe('a disease the source pedigree stopped recording', () => {
     receiveSection(harness, SOURCE_STAGE_SECTION, pedigreeRecordingNothing());
 
     const dialog = await openDisease(harness);
-    const name = dialog.getByRole('textbox', { name: 'Disease name' });
+    const name = dialog.getByRole('textbox', { name: 'Disease label' });
     await harness.user.clear(name);
     await harness.user.type(name, 'Condition Y');
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
@@ -503,7 +503,8 @@ describe('a disease whose attribute the codebook can no longer carry', () => {
   };
 
   const diseasesOutline = (harness: StageEditorHarness) =>
-    harness.outline().find((section) => section.title === 'Diseases')?.state;
+    harness.outline().find((section) => section.title === 'Disease mappings')
+      ?.state;
 
   it('reports an attribute a collaborator deleted, and saves the stage', async () => {
     const harness = openFixture();
@@ -727,6 +728,48 @@ describe('the explanation of at-risk statuses', () => {
     expect(
       await screen.findByText(
         /child of two carriers of a recessive condition are both shown as/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The convention this explanation describes is a published one, and the
+   * released Architect cited it in both halves — the paragraph saying what a
+   * filled symbol means, and the paragraph saying why inferred risk is off by
+   * default. Without the citation a researcher reading "standard pedigree
+   * nomenclature" has no way to go and check what the standard says, which is
+   * exactly what a clinician-directed setting needs.
+   */
+  it('cites the nomenclature it follows, where Architect cited it', async () => {
+    openFixture();
+
+    expect(
+      await screen.findByText(
+        // The sentence around it is broken by the <em> marking "affected", so
+        // the citation is matched in the text node it actually sits in.
+        /\(per Bennett et al\., 2022 nomenclature\), so at-risk relatives/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Standard pedigree nomenclature \(Bennett et al\., 2022\) deliberately does not encode probabilistic risk/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The switch's own hint is Architect's, emphasis included: the word that
+   * separates an inferred status from a recorded one is marked rather than
+   * left to the reader.
+   */
+  it('marks the word that distinguishes a possible status from a certain one', async () => {
+    openFixture();
+
+    const emphasised = await screen.findByText('possible');
+    expect(emphasised.tagName).toBe('STRONG');
+    expect(
+      screen.getByText(
+        /\(at-risk\) statuses alongside the certain ones, inferred from family structure and inheritance patterns\./,
       ),
     ).toBeInTheDocument();
   });

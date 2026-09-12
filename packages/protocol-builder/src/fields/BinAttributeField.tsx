@@ -23,24 +23,24 @@ import {
   lockedVariableOptions,
   type WriterClass,
   variableRoleKey,
-} from '../../../codebook/variableRoles.ts';
+} from '../codebook/variableRoles.ts';
 import {
   crossClassConflictMessage,
   crossClassPickIssue,
-} from '../../../codebook/variableValidation.ts';
-import VariablePickerField from '../../../fields/VariablePickerField.tsx';
-import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
+} from '../codebook/variableValidation.ts';
+import { binMessages } from '../editors/ordinal-bin/sections/binMessages.ts';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import type {
   ProtocolBuilderProtocolContext,
   CodebookSubject,
-} from '../../../protocol-context.ts';
-import { variablesForSubject } from '../../../protocol-context.ts';
+} from '../protocol-context.ts';
+import { variablesForSubject } from '../protocol-context.ts';
 import AttributeCodebookControls, {
   useRowValue,
-} from '../../../sections/AttributeCodebookControls.tsx';
-import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
-import { useProtocolContext } from '../../../state/protocolContext.ts';
-import { binMessages } from './binMessages.ts';
+} from '../sections/AttributeCodebookControls.tsx';
+import CreateVariableButton from '../sections/create-variable/CreateVariableButton.tsx';
+import { useProtocolContext } from '../state/protocolContext.ts';
+import VariablePickerField from './VariablePickerField.tsx';
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;

@@ -20,10 +20,7 @@ export default function CensusPromptSection() {
   const intl = useAppIntl();
 
   return (
-    <BuilderSection
-      title={intl.formatMessage(pedigreeMessages.censusTitle)}
-      description={intl.formatMessage(pedigreeMessages.censusDescription)}
-    >
+    <BuilderSection title={intl.formatMessage(pedigreeMessages.censusTitle)}>
       <Field<typeof RichTextField>
         name={CENSUS_PROMPT_FIELD}
         component={RichTextField}

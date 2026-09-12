@@ -18,8 +18,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 export const geospatialMessages = defineMessages({
   promptsDescription: {
     id: 'protocolBuilder.geospatial.promptsDescription',
-    defaultMessage:
-      'Write the questions this stage asks about places, and drag them into the order the participant answers them.',
+    defaultMessage: 'Create and reorder the prompts shown in this stage.',
     description:
       'Description of the prompts section on a geospatial stage, whose prompts ask about locations on a map. Replaces the generic prompts description.',
   },
@@ -32,8 +31,7 @@ export const geospatialMessages = defineMessages({
   },
   promptsFieldHint: {
     id: 'protocolBuilder.geospatial.promptsFieldHint',
-    defaultMessage:
-      'Each prompt asks for one place and records it in one location attribute. Add at least one.',
+    defaultMessage: 'Add at least one prompt and drag prompts to reorder them.',
     description:
       'Guidance under the geospatial prompt list. A location attribute is the codebook variable the chosen place is stored in.',
   },
@@ -53,53 +51,52 @@ export const geospatialMessages = defineMessages({
   },
   accessDescription: {
     id: 'protocolBuilder.geospatial.accessDescription',
-    defaultMessage:
-      'This stage draws a Mapbox map, which needs an API key from your Mapbox account.',
+    defaultMessage: 'Provide the Mapbox API key required to display the map.',
     description:
       'Description of the map-access section. Mapbox is the third-party map provider, and the researcher holds their own account with it.',
   },
   tokenLabel: {
     id: 'protocolBuilder.geospatial.tokenLabel',
-    defaultMessage: 'Mapbox API key',
+    defaultMessage: 'Mapbox API Key',
     description:
       'Label of the control that chooses which stored API key this stage draws its map with. "Mapbox" is the provider’s name and stays untranslated.',
   },
   tokenHint: {
     id: 'protocolBuilder.geospatial.tokenHint',
     defaultMessage:
-      'The key is stored with the protocol and is never shown again once it is saved.',
+      'This interface requires an API key from Mapbox. For more information about Mapbox and retrieving an API key, read our <ExternalLink> documentation </ExternalLink> on the interface.',
     description:
-      'Guidance under the Mapbox API key control. The protocol is the interview document the researcher is building; the key travels inside it and this editor can never read the value back.',
+      'Guidance under the Mapbox API key control. Mapbox is the third-party map provider and stays untranslated. The <ExternalLink> tags wrap the words that become a link to this interface’s documentation, so a translator moves them with the phrase they mark.',
   },
   layerTitle: {
     id: 'protocolBuilder.geospatial.layerTitle',
-    defaultMessage: 'Map layer',
+    defaultMessage: 'Map layers',
     description:
       'Heading of the section where a researcher chooses the GeoJSON file whose areas a participant can select on the map.',
   },
   layerDescription: {
     id: 'protocolBuilder.geospatial.layerDescription',
     defaultMessage:
-      'The areas a participant can choose between come from a GeoJSON layer.',
+      'Select the GeoJSON source that provides selectable areas for prompts.',
     description:
       'Description of the map-layer section. GeoJSON is the file format the areas are drawn from and stays untranslated.',
   },
   layerLabel: {
     id: 'protocolBuilder.geospatial.layerLabel',
-    defaultMessage: 'Map layer',
+    defaultMessage: 'Layer data source',
     description:
-      'Label of the control that chooses the stored GeoJSON layer. The same words as the section heading, and translated once for each: the heading names the part of the stage, and this names the control.',
+      'Label of the control that chooses the stored GeoJSON layer. GeoJSON is the file format the selectable areas are drawn from and stays untranslated.',
   },
   layerHint: {
     id: 'protocolBuilder.geospatial.layerHint',
     defaultMessage:
-      'Each feature in the layer is one area a participant can select. Large layers, and areas outside the study region, make the map slow to open.',
+      'Choose a GeoJSON resource containing the geographic areas participants can select. Each feature should include a property that identifies the area, such as a census tract, ZIP code, or neighborhood; after selecting the resource, choose which property value to record below. Avoid very large files or features outside the study area, as they can slow map loading.',
     description:
       'Guidance under the map-layer control. A "feature" is GeoJSON’s own word for one shape in the file.',
   },
   propertyLabel: {
     id: 'protocolBuilder.geospatial.propertyLabel',
-    defaultMessage: 'Recorded property',
+    defaultMessage: 'Map selection property',
     description:
       'Label of the control that chooses which property of a selected area is stored as the participant’s answer. A property is one named field a GeoJSON feature carries.',
   },
@@ -119,75 +116,69 @@ export const geospatialMessages = defineMessages({
   },
   appearanceDescription: {
     id: 'protocolBuilder.geospatial.appearanceDescription',
-    defaultMessage: 'Choose how the map looks to the participant.',
+    defaultMessage: 'Customize the colors, style, and features of the map.',
     description: 'Description of the map-appearance section.',
   },
   styleLabel: {
     id: 'protocolBuilder.geospatial.styleLabel',
-    defaultMessage: 'Basemap',
+    defaultMessage: 'Mapbox style',
     description:
       'Label of the control that chooses which Mapbox map style is drawn beneath the selectable areas. A basemap is the background map itself — streets, terrain, satellite imagery.',
   },
   styleHint: {
     id: 'protocolBuilder.geospatial.styleHint',
     defaultMessage:
-      'The map drawn beneath the selectable areas. Check that place names on it stay readable under the highlight color.',
+      'Choose the Mapbox basemap displayed beneath the selectable GeoJSON areas. Consider the contrast between the basemap, the configured outline color, and any place labels participants need to read.',
     description:
-      'Guidance under the basemap control. The highlight colour is the colour chosen just below it, which the selectable areas are drawn in.',
+      'Guidance under the basemap control. The outline colour is the colour chosen just below it, which the selectable areas are drawn in.',
   },
   colorLabel: {
     id: 'protocolBuilder.geospatial.colorLabel',
-    defaultMessage: 'Highlight color',
+    defaultMessage: 'Map outline and selection color',
     description:
       'Label of the control that chooses the colour selectable areas are outlined and filled with.',
   },
   colorHint: {
     id: 'protocolBuilder.geospatial.colorHint',
     defaultMessage:
-      'Selectable areas are outlined in this color, and the area a participant chooses is filled with it.',
+      'Choose the color used to outline selectable GeoJSON areas and highlight the area a participant selects. Use a color that remains easy to distinguish from the chosen Mapbox style.',
     description: 'Guidance under the highlight-colour control.',
-  },
-  colorOptionLabel: {
-    id: 'protocolBuilder.geospatial.colorOptionLabel',
-    defaultMessage: 'Highlight color {position}',
-    description:
-      'Name of one swatch in the highlight-colour control. position is that colour’s place in the theme’s ordinal palette, counting from 1 — the protocol stores the position rather than a colour value, so the colours have no names of their own. Named rather than only shown because a colour has to be sayable by people who are not looking at the control.',
   },
   transitLabel: {
     id: 'protocolBuilder.geospatial.transitLabel',
-    defaultMessage: 'Show public transport',
+    defaultMessage: 'Show public transit',
     description:
       'Label of the switch that draws transit routes and stations on the participant’s map.',
   },
   transitHint: {
     id: 'protocolBuilder.geospatial.transitHint',
-    defaultMessage: 'Draw transit routes and stations on the map.',
+    defaultMessage: 'Show public transit routes and stations on the map.',
     description: 'Guidance under the public-transport switch.',
   },
   searchLabel: {
     id: 'protocolBuilder.geospatial.searchLabel',
-    defaultMessage: 'Allow searching the map',
+    defaultMessage: 'Allow location search',
     description:
       'Label of the switch that lets a participant search the map by place name instead of panning to somewhere.',
   },
   searchHint: {
     id: 'protocolBuilder.geospatial.searchHint',
     defaultMessage:
-      'Let participants search for an address, a neighborhood, or a landmark instead of panning to it.',
+      'Allow participants to search the map for addresses, neighborhoods, and points of interest.',
     description:
       'Guidance under the map-search switch. Panning is dragging the map to move it.',
   },
 
   viewTitle: {
     id: 'protocolBuilder.geospatial.viewTitle',
-    defaultMessage: 'Starting map view',
+    defaultMessage: 'Map starting position',
     description:
       'Heading of the section holding where the map is centred and how far in it is zoomed when the stage opens — and the title of the dialog that sets those two things by panning a real map. The same thing named in both places, so it is translated once.',
   },
   viewDescription: {
     id: 'protocolBuilder.geospatial.viewDescription',
     defaultMessage:
-      'Where the map is centered, and how far in it is zoomed, when the stage opens.',
+      'Set where the map is centered and how far it is zoomed when the stage opens.',
     description:
       'Description of the starting-map-view section. A stage is one step of an interview.',
   },
