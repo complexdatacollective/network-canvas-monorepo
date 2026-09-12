@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -27,6 +27,21 @@ const fieldsDirectory = join(packageSource, 'fields');
 /** A `.tsx` is a component module; a `.ts` beside it is the helper it uses. */
 const componentModules = (directory: string): string[] =>
   sourceFiles(directory).filter((file) => file.endsWith('.tsx'));
+
+/**
+ * The contract a form field is written against.
+ *
+ * `Field`'s `component` prop takes anything whose props are these — the value,
+ * the change, `disabled`, `readOnly`, and the `aria-*` the field injects — so a
+ * module naming this type IS a form field, whatever its file is called. Read as
+ * text, like everything else here: a module that imports it under another name
+ * still contains the identifier, and nothing that does not name it can be
+ * mounted as a field without the compiler saying so.
+ */
+const FIELD_PROPS_CONTRACT = 'CreateFormFieldProps';
+
+const namesTheFieldContract = (file: string): boolean =>
+  readFileSync(file, 'utf8').includes(FIELD_PROPS_CONTRACT);
 
 describe('every form field lives in `fields/` and has a story', () => {
   it('is looking at this package’s own fields', () => {
@@ -57,16 +72,27 @@ describe('every form field lives in `fields/` and has a story', () => {
   /**
    * And no field is filed anywhere else.
    *
-   * Named by suffix because that is the name the package gives a form field:
-   * a `*Field.tsx` under `editors/` or `sections/` is a control that one
-   * section found first, and the next section that wants it reimplements it.
+   * Asked two ways, because a name is not proof. The suffix is what the package
+   * calls a form field — a `*Field.tsx` under `editors/` or `sections/` is a
+   * control that one section found first, and the next section that wants it
+   * reimplements it. But the suffix is also the easiest thing in the world to
+   * avoid: `PassphraseRulesControl.tsx` sat beside its section implementing
+   * `CreateFormFieldProps` and mounted through `component={…}`, and a rule that
+   * read filenames called it something other than a field. So a module naming
+   * the field-props contract is judged as a field too, whatever it is called —
+   * that type is what `Field` mounts, so naming it is the thing a form field
+   * actually does.
+   *
+   * Both rules are one list, so a module that breaks either is reported with
+   * the path to move rather than with a rule number.
    */
-  it('keeps no `*Field.tsx` component outside `fields/`', () => {
-    const misfiled = componentModules(packageSource)
-      .map(sourcePath)
+  it('keeps no form field outside `fields/`', () => {
+    const misfiled = sourceFiles(packageSource)
       .filter(
-        (path) => path.endsWith('Field.tsx') && !path.startsWith('fields/'),
-      );
+        (file) => file.endsWith('Field.tsx') || namesTheFieldContract(file),
+      )
+      .map(sourcePath)
+      .filter((path) => !path.startsWith('fields/'));
 
     expect(misfiled).toEqual([]);
   });
