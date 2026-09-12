@@ -1443,6 +1443,10 @@
     "defaultMessage": "Choose the video this block plays.",
     "description": "Refusal shown under the file picker of a video block when nothing has been chosen."
   },
+  "protocolBuilder.dialogForm.configurationPane": {
+    "defaultMessage": "Configuration",
+    "description": "Accessible name of the half of a two-pane editing dialog that holds the controls, as opposed to the live preview of what they are describing."
+  },
   "protocolBuilder.dialogForm.discardConfirm": {
     "defaultMessage": "Discard changes",
     "description": "Button that closes an editing dialog and throws away the unsaved work in it."
@@ -1546,6 +1550,34 @@
   "protocolBuilder.field.required": {
     "defaultMessage": "This field is required.",
     "description": "Shown under any unanswered required control in a stage editor when the researcher tries to save the stage. Addresses the researcher authoring the protocol, not a participant answering it."
+  },
+  "protocolBuilder.fieldPreview.checkResponse": {
+    "defaultMessage": "Check response",
+    "description": "Button inside the preview of a form field that submits the researcher’s trial answer so the attribute’s validation rules run against it."
+  },
+  "protocolBuilder.fieldPreview.description": {
+    "defaultMessage": "Try the field as a participant. Use Check response to test its current validation rules.",
+    "description": "Explains what the preview beside a form field’s settings is for: it can be answered, and answering it runs the rules the attribute carries. \"Check response\" is the button below it, named by the checkResponse message."
+  },
+  "protocolBuilder.fieldPreview.empty": {
+    "defaultMessage": "Select an attribute and input control to preview this field.",
+    "description": "Shown in place of the preview of a form field while the two things it would need to render — which attribute the answer is recorded under, and which control collects it — have not both been chosen."
+  },
+  "protocolBuilder.fieldPreview.placeholderLabel": {
+    "defaultMessage": "Attribute label",
+    "description": "Stands in for the label of a network composer’s form field in its preview, while the researcher has authored none and the attribute it collects has no name to borrow."
+  },
+  "protocolBuilder.fieldPreview.placeholderQuestion": {
+    "defaultMessage": "Your question will appear here.",
+    "description": "Stands in for the question of a form field in its preview, while the researcher has not written one yet."
+  },
+  "protocolBuilder.fieldPreview.sharedAttribute": {
+    "defaultMessage": "When selecting an existing attribute, changes you make to the input control or validation options will also change other uses of this attribute.",
+    "description": "Notice shown in the preview of a form field bound to an attribute the codebook already holds, because the control and the rules belong to that attribute rather than to this one question."
+  },
+  "protocolBuilder.fieldPreview.title": {
+    "defaultMessage": "Interactive preview",
+    "description": "Accessible name and heading of the half of the form-field dialog that shows the question as the participant will meet it."
   },
   "protocolBuilder.formFields.addLabel": {
     "defaultMessage": "Create new form field",
