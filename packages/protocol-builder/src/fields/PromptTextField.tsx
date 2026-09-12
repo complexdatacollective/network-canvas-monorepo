@@ -6,9 +6,9 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 
-import RichTextField from '../../../fields/RichTextField.tsx';
-import type { RowPreviewProps } from '../../../form/rowDialog.tsx';
-import { censusMessages } from './censusMessages.ts';
+import { censusMessages } from '../editors/dyad-census/sections/censusMessages.ts';
+import type { RowPreviewProps } from '../form/rowDialog.tsx';
+import RichTextField from './RichTextField.tsx';
 
 const WRITE_THE_QUESTION = createMessageError(
   censusMessages.promptTextRequired,

@@ -16,13 +16,13 @@ import {
   type OperandRequirement,
   operandRequirement,
   type OperandValue,
-} from './operators.ts';
+} from '../rules/operators.ts';
 import {
   DEFAULT_DATE_PARAMETERS,
   type RuleChoiceOption,
   type RuleDateParameters,
-} from './ruleCodebook.ts';
-import { ruleEditorRequiredMessage } from './ruleMessages.ts';
+} from '../rules/ruleCodebook.ts';
+import { ruleEditorRequiredMessage } from '../rules/ruleMessages.ts';
 
 const messages = defineMessages({
   optionCountLabel: {

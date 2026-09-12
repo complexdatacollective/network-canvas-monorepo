@@ -5,6 +5,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 
 import EntityTypePickerField from '../../../fields/EntityTypePickerField.tsx';
+import SlotVariableField from '../../../fields/SlotVariableField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
@@ -15,7 +16,6 @@ import {
   useResetOnEntityTypeChange,
 } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
-import SlotVariableField from './SlotVariableField.tsx';
 import {
   PEDIGREE_EXCLUSIVE_SLOTS,
   subjectVariableOptions,

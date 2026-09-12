@@ -1,13 +1,13 @@
 import { createMessageError } from '@codaco/app-i18n/messages';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 
-import VariableValidationEditor from '../../../codebook/validation/VariableValidationEditor.tsx';
+import VariableValidationEditor from '../codebook/validation/VariableValidationEditor.tsx';
 import {
   isValidationMap,
   ruleMapPrecheck,
   type ValidationMap,
-} from '../../../codebook/variableValidation.ts';
-import { anonymisationMessages } from './anonymisationMessages.ts';
+} from '../codebook/variableValidation.ts';
+import { anonymisationMessages } from '../editors/anonymisation/sections/anonymisationMessages.ts';
 
 /**
  * The variable type whose rule catalogue is exactly the passphrase's: a
@@ -20,7 +20,7 @@ const ENTITY = 'ego';
 
 const NO_VARIABLES = Object.freeze({});
 
-export type PassphraseRulesControlProps = CreateFormFieldProps<
+export type PassphraseRulesFieldProps = CreateFormFieldProps<
   Record<string, unknown>,
   'div'
 >;
@@ -38,7 +38,7 @@ export type PassphraseRulesControlProps = CreateFormFieldProps<
  * codebook attribute and there are no sibling attributes in scope — so the
  * editor is handed no variables and offers only the two length rules.
  */
-export default function PassphraseRulesControl({
+export default function PassphraseRulesField({
   value,
   onChange,
   disabled = false,
@@ -52,7 +52,7 @@ export default function PassphraseRulesControl({
   // researcher reads is. Dropping it left the one element carrying
   // `aria-invalid` describing nothing.
   'aria-describedby': ariaDescribedBy,
-}: PassphraseRulesControlProps) {
+}: PassphraseRulesFieldProps) {
   // The refusal the field is stating, rather than the bare fact that it is
   // refusing: the field shows its error region exactly when `aria-invalid`
   // holds, and this is the message in it.

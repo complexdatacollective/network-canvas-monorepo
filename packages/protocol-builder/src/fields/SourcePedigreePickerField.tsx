@@ -7,8 +7,8 @@ import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import type { CreateFormFieldProps } from '@codaco/fresco-ui/form/Field/types';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 
-import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
-import { narrativePedigreeMessages } from './narrativePedigreeMessages.ts';
+import { narrativePedigreeMessages } from '../editors/narrative-pedigree/sections/narrativePedigreeMessages.ts';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
 
 /**
  * One pedigree on offer, in the shape the native select reads.
