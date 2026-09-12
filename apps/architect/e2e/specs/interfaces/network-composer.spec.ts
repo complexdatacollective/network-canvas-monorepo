@@ -1,49 +1,10 @@
-import type { Locator, Page } from '@playwright/test';
-
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readStageJson } from '../../helpers/read-store.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
+import { createAttribute } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
-
-/**
- * Adds a codebook attribute from beside one of the stage's pickers.
- *
- * `VariablePickerField` is handed the attributes that exist and no
- * `onCreateOption` here, so it can only choose; the `CreateVariableButton`
- * beside it is what adds one, through the codebook's own attribute editor
- * ("Attribute name", submitted with "Create attribute") in a dialog titled
- * with the button's own label. The type is the call site's — never asked for —
- * so the empty codebook this spec starts from is filled in one step per
- * picker.
- */
-async function createAttribute(
-  page: Page,
-  scope: Locator,
-  field: Locator,
-  opts: { buttonLabel: string; name: string },
-): Promise<void> {
-  await scope
-    .getByRole('button', { name: opts.buttonLabel, exact: true })
-    .click();
-  const attributeEditor = page.getByRole('dialog', {
-    name: opts.buttonLabel,
-    exact: true,
-  });
-  await attributeEditor
-    .getByRole('textbox', { name: 'Attribute name', exact: true })
-    .fill(opts.name);
-  await attributeEditor
-    .getByRole('button', { name: 'Create attribute', exact: true })
-    .click();
-  await attributeEditor.waitFor({ state: 'detached' });
-  // The write goes to the codebook under its section's own lock and the id
-  // comes back afterwards, so the picker holds the new attribute only once the
-  // editor has closed — and the picker states what it holds as a typed pill,
-  // not as a selected option.
-  await expect(field.locator('[data-attribute-type]')).toHaveText(opts.name);
-}
 
 test('creates a valid NetworkComposer stage from scratch', async ({
   architectPage,
@@ -65,18 +26,18 @@ test('creates a valid NetworkComposer stage from scratch', async ({
   // "Adding and arranging nodes" holds three pickers at once — the attribute
   // the quick-add box fills in (`quickAdd`), the one that stores each node's
   // position (`layoutVariable`) and the one nodes are grouped by
-  // (`convexHullVariable`) — plus a create button for each, named for the
-  // attribute it adds. The section is disabled until the node type is chosen,
-  // because every one of them names that type's attributes.
-  const nodes = editor.section('Adding and arranging nodes');
-  await createAttribute(architectPage, nodes, editor.field('quickAdd'), {
-    buttonLabel: 'Create a new attribute to fill in',
-    name: 'name',
-  });
-  await createAttribute(architectPage, nodes, editor.field('layoutVariable'), {
-    buttonLabel: 'Create a new position attribute',
-    name: 'layout',
-  });
+  // (`convexHullVariable`). No create control sits beside any of them: each
+  // picker's own create row invents what the slot needs. The section is
+  // disabled until the node type is chosen, because every one of them names
+  // that type's attributes.
+  //
+  // The two filled here are a `text` and a `layout` attribute, and both kinds
+  // are finished by a name — so each create row writes the codebook and binds
+  // the result without opening anything. (The grouping slot binds a
+  // `categorical`, which a name cannot finish, so its row would escalate to
+  // the codebook's editor; it is left untouched below.)
+  await createAttribute(editor.field('quickAdd'), 'name');
+  await createAttribute(editor.field('layoutVariable'), 'layout');
 
   // The Background section opens on concentric circles for this interface too
   // (a background holding no `image` key is a circles background), so the

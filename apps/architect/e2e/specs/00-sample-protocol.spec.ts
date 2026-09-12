@@ -46,7 +46,11 @@ import {
 } from '../pageobjects/editor-sections/roster-options.js';
 import { configureSkipLogic } from '../pageobjects/editor-sections/skip-logic.js';
 import { addSociogramPrompt } from '../pageobjects/editor-sections/sociogram-prompts.js';
-import { type OptionRow } from '../pageobjects/editor-sections/variables.js';
+import {
+  authorOptions,
+  createAttribute,
+  type OptionRow,
+} from '../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 
 // Build the ENTIRE canonical sample protocol
@@ -270,60 +274,26 @@ test.describe.serial('sample protocol built from scratch', () => {
   }
 
   /**
-   * Invents the attribute a bin prompt sorts by, in the codebook editor the
-   * prompt's own button opens.
+   * Invents the attribute a bin prompt sorts by, from the picker's own create
+   * row.
    *
-   * There is no attribute search here. `BinAttributeField` offers a picker
-   * over the attributes the node type already has — restricted to the one kind
-   * the bin sorts by — and a `CreateVariableButton` beside it. The editor
-   * opens locked to that kind, so its "Attribute type" is never touched, and
-   * the values are authored in place: one "Create new option" press per value, each
-   * row exposing its own numbered "Option N label" / "Option N value" boxes,
-   * committed together by "Create attribute".
+   * `BinAttributeField` offers a picker over the attributes the node type
+   * already has — restricted to the one kind the bin sorts by — and nothing
+   * beside it: creating is the window's create row, taken on the name typed
+   * into its search box. A bin attribute IS its list of values, which a name
+   * cannot finish, so the row escalates to the codebook's own editor. That
+   * editor opens locked to the one kind, so its "Attribute type" is never
+   * touched, and already holding the typed name — which `createAttribute`
+   * reads back rather than retyping.
    */
   async function createBinAttribute(
     name: string,
     options: readonly OptionRow[],
   ): Promise<void> {
-    const label = 'Create a new attribute';
-    // Scoped to the attribute editor's own dialog: the prompt dialog behind it
-    // is still mounted, and the stage behind that.
-    const attributeEditor = page.getByRole('dialog', {
-      name: label,
-      exact: true,
+    await createAttribute(editor.field('variable'), name, {
+      title: 'Create a new attribute',
+      author: authorOptions(options),
     });
-    await page.getByRole('button', { name: label, exact: true }).click();
-    await attributeEditor
-      .getByRole('textbox', { name: 'Attribute name', exact: true })
-      .fill(name);
-    const addOption = attributeEditor.getByRole('button', {
-      name: 'Create new option',
-      exact: true,
-    });
-    for (const [index, option] of options.entries()) {
-      await addOption.click();
-      const position = index + 1;
-      await attributeEditor
-        .getByRole('textbox', {
-          name: `Option ${position} label`,
-          exact: true,
-        })
-        .fill(option.label);
-      await attributeEditor
-        .getByRole('textbox', {
-          name: `Option ${position} value`,
-          exact: true,
-        })
-        .fill(option.value);
-    }
-    await attributeEditor
-      .getByRole('button', { name: 'Create attribute', exact: true })
-      .click();
-    // The editor holds itself open until the codebook write lands, renaming
-    // its submit while the request is in flight — so the DIALOG going is the
-    // signal that the attribute exists and has been bound to this prompt, not
-    // the button.
-    await attributeEditor.waitFor({ state: 'hidden' });
   }
 
   test('01 sets the description and builds the welcome information stages', async () => {
@@ -795,7 +765,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.setStageName(s('stages', 16, 'label'));
     await selectOrCreateNodeType(page, 'Person');
     await setConcentricCirclesBackground(editor, { circles: 3, skewed: true });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 16, 'prompts', 0, 'text'),
       layoutVariable: 'sociogram_layout',
     });
@@ -807,7 +777,7 @@ test.describe.serial('sample protocol built from scratch', () => {
     await setImageBackground(editor, page, {
       upload: fixture('responsive-political-compass.svg'),
     });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 17, 'prompts', 0, 'text'),
       layoutVariable: 'box_layout',
     });
@@ -841,12 +811,12 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.setStageName(s('stages', 19, 'label'));
     await selectOrCreateNodeType(page, 'Person');
     await setConcentricCirclesBackground(editor, { circles: 3, skewed: true });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 19, 'prompts', 0, 'text'),
       layoutVariable: 'sociogram_layout',
       interaction: { kind: 'createEdge', edgeName: 'know' },
     });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 19, 'prompts', 1, 'text'),
       layoutVariable: 'sociogram_layout',
       interaction: { kind: 'createEdge', edgeName: 'conflict' },
@@ -937,13 +907,13 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.setStageName(s('stages', 23, 'label'));
     await selectOrCreateNodeType(page, 'Person');
     await setConcentricCirclesBackground(editor, { circles: 3, skewed: true });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 23, 'prompts', 0, 'text'),
       layoutVariable: 'sociogram_layout',
       interaction: { kind: 'highlight', variableName: 'provides_advice' },
       displayEdges: ['know', 'conflict'],
     });
-    await addSociogramPrompt(editor, page, {
+    await addSociogramPrompt(editor, {
       text: s('stages', 23, 'prompts', 1, 'text'),
       layoutVariable: 'sociogram_layout',
       interaction: {
@@ -996,7 +966,7 @@ test.describe.serial('sample protocol built from scratch', () => {
         'group',
         optionRows('codebook', 'node', PERSON, 'variables', V_GROUP, 'options'),
       );
-      await enableOtherOption(editor, page, {
+      await enableOtherOption(editor, {
         variableName: 'group_other',
         optionLabel: s('stages', 25, 'prompts', 0, 'otherOptionLabel'),
         variablePrompt: s('stages', 25, 'prompts', 0, 'otherVariablePrompt'),
@@ -1042,7 +1012,7 @@ test.describe.serial('sample protocol built from scratch', () => {
           'options',
         ),
       );
-      await enableOtherOption(editor, page, {
+      await enableOtherOption(editor, {
         variableName: 'social_network_research_relationship_other',
         optionLabel: s('stages', 27, 'prompts', 0, 'otherOptionLabel'),
         variablePrompt: s('stages', 27, 'prompts', 0, 'otherVariablePrompt'),

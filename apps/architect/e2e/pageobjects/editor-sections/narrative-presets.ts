@@ -1,8 +1,8 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
 import { addPrompt } from './prompts.js';
-import { chooseAttributeIfOffered } from './variables.js';
+import { chooseAttribute, chooseOrCreateAttribute } from './variables.js';
 
 // A narrative stage's presets and the permissions beneath them, as
 // `@codaco/protocol-builder` renders them.
@@ -14,11 +14,14 @@ import { chooseAttributeIfOffered } from './variables.js';
 // there are no capability switches inside it any more, so nothing has to be
 // turned on before it can be filled in:
 // - "Preset identity" holds "Preset name" (`label`).
-// - "Node positions" holds the picker "Position attribute" (`layoutVariable`)
-//   and the button "Create a new position attribute" beside it.
-// - "Node grouping" holds the picker "Grouping attribute" (`groupVariable`)
-//   and NO create button: a preset groups by a categorical attribute the
-//   protocol already collects, so there is nothing here to invent.
+// - "Node positions" holds the picker "Position attribute" (`layoutVariable`),
+//   whose create row writes the `layout` attribute itself — a position is
+//   finished by its name, so no editor opens.
+// - "Node grouping" holds the picker "Grouping attribute" (`groupVariable`),
+//   which offers no creation at all: a preset groups by a categorical
+//   attribute the protocol already collects, so a fresh one would draw a
+//   single hull holding everybody. Its window has no create row, and its
+//   search box says "Find an attribute…" rather than "Find or create".
 // - "Connections" holds the tick list "Connection types shown"
 //   (`edges.display`), and "Highlighted nodes" the tick list "Highlight
 //   attributes" (`highlight`). Both name codebook entries, and both drop the
@@ -32,50 +35,6 @@ import { chooseAttributeIfOffered } from './variables.js';
 // switch at all but a choice of "Layout mode" between "Manual mode" and
 // "Automatic mode" written to `behaviours.automaticLayout`. The Narrative
 // template seeds automaticLayout and allowRepositioning true.
-
-/**
- * Chooses a codebook attribute in one of the preset dialog's pickers.
- *
- * `VariablePickerField` is handed options and no `onCreateOption` here, so
- * its window only chooses from the attributes that exist (and where the type
- * has none of the kind the field shows a sentence and no trigger). Where the
- * group
- * offers a `CreateVariableButton`, `createLabel` names it: it opens the
- * codebook's own attribute editor — "Attribute name", submitted with "Create
- * attribute" — in a dialog titled with the button's own label.
- */
-async function chooseAttribute(
-  page: Page,
-  field: Locator,
-  opts: { name: string; createLabel?: string; scope: Locator },
-): Promise<void> {
-  if (await chooseAttributeIfOffered(field, opts.name)) return;
-  if (opts.createLabel === undefined) {
-    throw new Error(
-      `The attribute "${opts.name}" is not offered here and this control cannot create one. Add it to the codebook first.`,
-    );
-  }
-  await opts.scope
-    .getByRole('button', { name: opts.createLabel, exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: opts.createLabel,
-    exact: true,
-  });
-  await editor
-    .getByRole('textbox', { name: 'Attribute name', exact: true })
-    .fill(opts.name);
-  await editor
-    .getByRole('button', { name: 'Create attribute', exact: true })
-    .click();
-  // The write goes to the codebook under its section's own lock and the id
-  // comes back afterwards, so the picker holds the new attribute only once the
-  // editor has closed.
-  await editor.waitFor({ state: 'detached' });
-  // The picker states what it holds as a typed pill, not as a selected
-  // option.
-  await expect(field.locator('[data-attribute-type]')).toHaveText(opts.name);
-}
 
 export async function addNarrativePreset(
   editor: StageEditor,
@@ -94,16 +53,18 @@ export async function addNarrativePreset(
       await page
         .getByRole('textbox', { name: 'Preset name', exact: true })
         .fill(spec.label);
-      await chooseAttribute(page, editor.field('layoutVariable'), {
-        name: spec.layoutVariable,
-        createLabel: 'Create a new position attribute',
-        scope: editor.section('Node positions'),
-      });
+      await chooseOrCreateAttribute(
+        editor.field('layoutVariable'),
+        spec.layoutVariable,
+      );
       if (spec.groupVariable) {
-        await chooseAttribute(page, editor.field('groupVariable'), {
-          name: spec.groupVariable,
-          scope: editor.section('Node grouping'),
-        });
+        // Chosen and never created: this picker has no create row, so a
+        // grouping attribute the codebook does not hold fails on the row that
+        // is not there rather than being invented behind the spec's back.
+        await chooseAttribute(
+          editor.field('groupVariable'),
+          spec.groupVariable,
+        );
       }
       for (const edgeName of spec.displayEdges ?? []) {
         await editor

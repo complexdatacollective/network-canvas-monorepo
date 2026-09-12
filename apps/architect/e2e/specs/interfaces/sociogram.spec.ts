@@ -93,7 +93,7 @@ test('creates a valid Sociogram stage from scratch', async ({
   // the position attribute created from inside it through the codebook's own
   // attribute editor. A prompt that says nothing about tapping carries no
   // `highlight` and no `edges` at all.
-  await addSociogramPrompt(editor, architectPage, {
+  await addSociogramPrompt(editor, {
     text: 'Place them',
     layoutVariable: 'layout',
   });

@@ -22,14 +22,63 @@ export type OptionRow = { label: string; value: string };
  * - Where the caller allows creation, a term matching nothing puts a row
  *   reading `Create new attribute called “X”.` first; a duplicate name or one
  *   outside `[a-zA-Z0-9._\-:]` makes that row `aria-disabled` with the reason.
+ *   A term that matches an offered attribute EXACTLY suppresses the create row
+ *   (`offersCreate` is `!exactMatch`), so a settled window offers one or the
+ *   other and never both — which is what `chooseOrCreateAttribute` waits on.
  * - Choosing, or a create that landed, closes the window. A create the
  *   codebook refused leaves it open with the name still in the box.
+ *
+ * Creating an attribute is the create ROW's job everywhere — no section keeps
+ * a create button of its own beside a picker any more. What the row does next
+ * depends on the kind of answer the slot binds
+ * (`sections/create-variable/useCreateAttributeForSlot.ts`):
+ *
+ * - A kind a name finishes — `text`, `boolean`, `layout`, `location`,
+ *   `datetime`, `number` — is written straight to the codebook and bound, and
+ *   no dialog opens at all.
+ * - A kind a name cannot finish — a list of values, a scale, or a value set
+ *   the interface owns — escalates to the codebook's own editor, which opens
+ *   ALREADY holding the name the row took (`useCreateVariableEditor`'s
+ *   `initialDraft`) under a dialog titled with the slot's own words. That
+ *   seeding is asserted rather than retyped: this is the only place the suite
+ *   reads it back end to end.
  */
 const SPOTLIGHT = '[data-variable-spotlight]';
 
 const TRIGGER = /^(Select|Change) attribute$/u;
 
 const spotlight = (field: Locator): Locator => field.page().locator(SPOTLIGHT);
+
+/** What the window calls its offer to invent an attribute under this name. */
+const createRowName = (attributeName: string): string =>
+  `Create new attribute called “${attributeName}”.`;
+
+/**
+ * What a slot's create row escalates to, for the kinds of answer a name alone
+ * cannot finish.
+ *
+ * Omitted where the kind IS finished by a name: the row writes the attribute
+ * itself, no dialog opens, and passing one would wait for a dialog that never
+ * appears.
+ */
+export type AttributeEscalation = Readonly<{
+  /**
+   * The title the escalation dialog carries, which is the slot's own words for
+   * inventing its attribute ("Create a new position attribute", …). Whole
+   * rather than generic: a pedigree editor binds eight slots and a shared
+   * title would not say which of them the open dialog is for.
+   */
+  title: string;
+  /**
+   * Authors whatever the editor asks for beyond the name — the values of a
+   * list, the two ends of a scale. Called with the editor dialog, after its
+   * seeded name has been read back and before "Create attribute" is pressed.
+   *
+   * Omitted for a slot whose values the INTERFACE owns: those arrive seeded
+   * and read-only, so the name really is the whole of the authoring.
+   */
+  author?: (editor: Locator) => Promise<void>;
+}>;
 
 /** Opens one field's attribute window and hands it back. */
 export async function openAttributeWindow(field: Locator): Promise<Locator> {
@@ -50,11 +99,78 @@ export async function searchAttributes(
 }
 
 /**
+ * That the field now HOLDS this attribute, and that the window has gone.
+ *
+ * Three readings rather than one, because they fail for different reasons. The
+ * pill is the picker's own statement of what was bound — `AttributePill`
+ * renders a `<data value>` carrying the researcher's name for it — and it is
+ * the only one that would notice a create that landed in the codebook while
+ * the slot had moved on (`{ status: 'unassigned' }`), which leaves the
+ * codebook richer and this field empty. The trigger's wording is what says a
+ * value is held at all, and the window being gone is what makes it safe for
+ * the next helper to drive the dialog underneath.
+ */
+async function expectFieldHolds(
+  field: Locator,
+  attributeName: string,
+): Promise<void> {
+  await expect(field.locator('data[value]')).toHaveAttribute(
+    'value',
+    attributeName,
+  );
+  await expect(
+    field.getByRole('button', { name: 'Change attribute' }),
+  ).toBeVisible();
+  await expect(spotlight(field)).toBeHidden();
+}
+
+/**
+ * Takes the open window's create row, and finishes in the editor where the
+ * kind of answer escalates to one.
+ */
+async function takeCreateRow(
+  field: Locator,
+  window: Locator,
+  attributeName: string,
+  escalation?: AttributeEscalation,
+): Promise<void> {
+  await window
+    .getByRole('option', { name: createRowName(attributeName), exact: true })
+    .click();
+
+  if (escalation !== undefined) {
+    const editor = field
+      .page()
+      .getByRole('dialog', { name: escalation.title, exact: true });
+    // Read back rather than typed: the row hands the name it took to the
+    // editor, and a seam that had stopped doing so would be papered over by a
+    // helper that filled the box itself.
+    await expect(
+      editor.getByRole('textbox', { name: 'Attribute name', exact: true }),
+    ).toHaveValue(attributeName);
+    await escalation.author?.(editor);
+    await editor
+      .getByRole('button', { name: 'Create attribute', exact: true })
+      .click();
+    // The write takes the codebook section's own lock and the editor holds
+    // itself open until the answer lands, renaming its submit while the
+    // request is in flight — so the DIALOG leaving the DOM is the signal that
+    // the attribute exists, not the button. Detached rather than hidden: the
+    // next slot's dialog animates in over this one's exit.
+    await editor.waitFor({ state: 'detached' });
+  }
+
+  await expectFieldHolds(field, attributeName);
+}
+
+/**
  * Chooses the attribute of this name through the window.
  *
- * The trigger flipping to "Change attribute" is the oracle: the pick is
- * written as the window closes, and a test that carried on before it had would
- * be reading a field a modal still covers.
+ * For a picker that only chooses — a rule's operand, a narrative preset's
+ * grouping attribute — and for a caller that knows the attribute is already in
+ * the codebook. The attribute has to be on offer: there is no create row to
+ * fall back to, so a name this picker is not offering fails on the row that
+ * was not there.
  */
 export async function chooseAttribute(
   field: Locator,
@@ -65,50 +181,45 @@ export async function chooseAttribute(
   await window
     .getByRole('option', { name: attributeName, exact: true })
     .click();
-  await expect(
-    field.getByRole('button', { name: 'Change attribute' }),
-  ).toBeVisible();
-  await expect(window).toBeHidden();
+  await expectFieldHolds(field, attributeName);
 }
 
 /**
- * Creates an attribute under this name through the window's create row.
+ * Invents an attribute under this name through the window's create row.
  *
- * Only for a picker whose caller offers creation; the row is absent otherwise,
- * and the failure then names the row that was not there rather than timing out
- * on a trigger that never changed.
+ * For a caller that means to CREATE — a stage built from an empty codebook, a
+ * form field inventing the attribute it collects. The row must be on offer, so
+ * a name the type already holds fails here rather than quietly binding the
+ * attribute that was already there.
  */
 export async function createAttribute(
   field: Locator,
   attributeName: string,
+  escalation?: AttributeEscalation,
 ): Promise<void> {
   const window = await openAttributeWindow(field);
   await searchAttributes(window, attributeName);
-  await window
-    .getByRole('option', {
-      name: `Create new attribute called “${attributeName}”.`,
-      exact: true,
-    })
-    .click();
-  // The create is a round trip through the host, and the codebook can refuse
-  // the name — in which case the window stays open on it. Nothing below may
-  // run until the field holds the attribute.
-  await expect(
-    field.getByRole('button', { name: 'Change attribute' }),
-  ).toBeVisible();
-  await expect(window).toBeHidden();
+  await takeCreateRow(field, window, attributeName, escalation);
 }
 
 /**
- * Chooses the attribute if the codebook already has it, and creates it if not.
+ * Chooses the attribute if the codebook already has it, and invents it if not.
  *
  * Which of the two it is depends on what earlier stages of the same protocol
  * have already added, so a caller that had to know would have to track the
  * whole run.
+ *
+ * The wait is on the two rows TOGETHER rather than on a count of the first:
+ * the search box's term reaches the list through a React render, so a reader
+ * that asked "is the attribute offered?" the instant after typing could be
+ * told no by a list that had not drawn yet and invent a duplicate. Exactly one
+ * of the two is ever present once the list has settled — an exact match
+ * suppresses the create row — so this is both the settle and the answer.
  */
 export async function chooseOrCreateAttribute(
   field: Locator,
   attributeName: string,
+  escalation?: AttributeEscalation,
 ): Promise<void> {
   const window = await openAttributeWindow(field);
   await searchAttributes(window, attributeName);
@@ -116,57 +227,50 @@ export async function chooseOrCreateAttribute(
     name: attributeName,
     exact: true,
   });
+  const create = window.getByRole('option', {
+    name: createRowName(attributeName),
+    exact: true,
+  });
+  await expect(existing.or(create)).toBeVisible();
   if (await existing.count()) {
     await existing.click();
-  } else {
-    await window
-      .getByRole('option', {
-        name: `Create new attribute called “${attributeName}”.`,
-        exact: true,
-      })
-      .click();
+    await expectFieldHolds(field, attributeName);
+    return;
   }
-  await expect(
-    field.getByRole('button', { name: 'Change attribute' }),
-  ).toBeVisible();
-  await expect(window).toBeHidden();
+  await takeCreateRow(field, window, attributeName, escalation);
 }
 
 /**
- * Chooses the attribute if this picker offers it, and answers `false` when it
- * does not — leaving the window closed either way.
+ * Authors a list of values inside an open codebook editor, for the kinds of
+ * answer that ARE their values.
  *
- * For the sections that still keep a create button of their own beside the
- * picker: they choose what exists and fall back to that button, and neither
- * half can decide which it is without looking. A picker with nothing to offer
- * and nothing to create renders no trigger at all, which is the first thing
- * this answers for.
+ * One "Create new option" press per row, each row exposing its own numbered
+ * "Option N label"/"Option N value" boxes. Shared because every slot that
+ * escalates for a list authors it the same way, and the numbering is the part
+ * a copy gets wrong.
  */
-export async function chooseAttributeIfOffered(
-  field: Locator,
-  attributeName: string,
-): Promise<boolean> {
-  if (!(await field.getByRole('button', { name: TRIGGER }).count())) {
-    return false;
-  }
-  const window = await openAttributeWindow(field);
-  await searchAttributes(window, attributeName);
-  // Compared whole rather than by substring: an attribute called "layout"
-  // must not be answered by an existing "layout_2".
-  const offered = window.getByRole('option', {
-    name: attributeName,
-    exact: true,
-  });
-  if (!(await offered.count())) {
-    await dismissAttributeWindow(window);
-    return false;
-  }
-  await offered.click();
-  await expect(
-    field.getByRole('button', { name: 'Change attribute' }),
-  ).toBeVisible();
-  await expect(window).toBeHidden();
-  return true;
+export function authorOptions(
+  options: readonly OptionRow[],
+): (editor: Locator) => Promise<void> {
+  return async (editor: Locator) => {
+    // The loop below is the whole of the authoring, and a caller that passed
+    // none would leave an editor the schema refuses — with nothing to say why.
+    expect(options.length).toBeGreaterThan(0);
+    const addOption = editor.getByRole('button', {
+      name: 'Create new option',
+      exact: true,
+    });
+    for (const [index, option] of options.entries()) {
+      await addOption.click();
+      const position = index + 1;
+      await editor
+        .getByRole('textbox', { name: `Option ${position} label`, exact: true })
+        .fill(option.label);
+      await editor
+        .getByRole('textbox', { name: `Option ${position} value`, exact: true })
+        .fill(option.value);
+    }
+  };
 }
 
 /** Closes the window without answering it. */

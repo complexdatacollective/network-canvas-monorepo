@@ -11,6 +11,7 @@ import {
 } from '../../pageobjects/editor-sections/data-source.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
+import { createAttribute } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 // A minimal two-feature FeatureCollection, each with a `name` property —
@@ -132,38 +133,17 @@ test('creates a valid Geospatial stage from scratch', async ({
     .selectOption({ label: 'name' });
 
   // One prompt: the question, and the location attribute the participant's
-  // chosen area is stored in. The picker only chooses, so the empty codebook
-  // is filled by the "Create a new location attribute" button beside it, which
-  // opens the codebook's own attribute editor locked to the location type.
+  // chosen area is stored in. The empty codebook is filled from the picker's
+  // own create row — a `location` attribute is a point, which its name
+  // finishes, so the row writes it and binds it with no editor in between.
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Where do you live?');
-    const dialog = architectPage.getByRole('dialog', {
-      name: 'Create prompt',
-      exact: true,
-    });
-    await dialog
-      .getByRole('button', {
-        name: 'Create a new location attribute',
-        exact: true,
-      })
-      .click();
-    const attributeEditor = architectPage.getByRole('dialog', {
-      name: 'Create a new location attribute',
-      exact: true,
-    });
-    await attributeEditor
-      .getByRole('textbox', { name: 'Attribute name', exact: true })
-      .fill('location');
-    await attributeEditor
-      .getByRole('button', { name: 'Create attribute', exact: true })
-      .click();
-    // The write goes to the codebook under its section's own lock and the id
-    // comes back afterwards, so the prompt holds it only once the editor has
-    // closed.
-    await attributeEditor.waitFor({ state: 'detached' });
+    await createAttribute(editor.field('variable'), 'location');
+    // And it really is a location: the slot binds one kind and nothing else,
+    // so the pill's own type is what says the row created what was asked for.
     await expect(
       editor.field('variable').locator('[data-attribute-type]'),
-    ).toHaveText('location');
+    ).toHaveAttribute('data-attribute-type', 'location');
   });
 
   // "Map appearance": the basemap is a native select over Mapbox's own style

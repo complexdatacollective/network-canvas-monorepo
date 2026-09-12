@@ -4,6 +4,10 @@ import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readProtocolJson, readStageJson } from '../../helpers/read-store.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
+import {
+  authorOptions,
+  createAttribute,
+} from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -41,7 +45,7 @@ function toCodebookVariable(value: unknown): CodebookVariable {
 
 // Walks `codebook.node.*.variables` (rather than looking the node type id up
 // separately) for the given variable id — confirms the prompt dialog's
-// "Create a new attribute" flow actually persisted the attribute + its values
+// create-row flow actually persisted the attribute + its values
 // into the codebook, not just closed its editor without error.
 function findNodeCodebookVariable(
   protocol: Record<string, unknown>,
@@ -86,55 +90,20 @@ test('creates a valid OrdinalBin stage from scratch', async ({
   //
   // "The scale" is the same `BinAttributeField` CategoricalBin uses, only
   // asking for an ordinal attribute: a picker over what the node type already
-  // has, plus a `CreateVariableButton` labelled "Create a new attribute" that
-  // opens the codebook's attribute editor with `allowedVariableTypes:
-  // ['ordinal']` — so its "Attribute type" select is already on Ordinal and is
-  // never touched here. Values are authored in place, one "Create new option"
-  // press per value, and committed by "Create attribute".
+  // has, whose own create row is the only way to invent one. A scale IS its
+  // list of values, so the row escalates to the codebook's attribute editor —
+  // titled "Create a new attribute" and opened with `allowedVariableTypes:
+  // ['ordinal']`, so its "Attribute type" select is already on Ordinal and is
+  // never touched here.
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Rank these');
-    // Scoped to the attribute editor's own dialog: the prompt dialog behind it
-    // is still mounted, and the stage behind that.
-    const attributeEditor = architectPage.getByRole('dialog', {
-      name: 'Create a new attribute',
-      exact: true,
+    await createAttribute(editor.field('variable'), 'rank', {
+      title: 'Create a new attribute',
+      author: authorOptions([
+        { label: 'Low', value: 'low' },
+        { label: 'High', value: 'high' },
+      ]),
     });
-    await architectPage
-      .getByRole('button', { name: 'Create a new attribute', exact: true })
-      .click();
-    await attributeEditor
-      .getByRole('textbox', { name: 'Attribute name', exact: true })
-      .fill('rank');
-    for (const [index, option] of [
-      { label: 'Low', value: 'low' },
-      { label: 'High', value: 'high' },
-    ].entries()) {
-      await attributeEditor
-        .getByRole('button', { name: 'Create new option', exact: true })
-        .click();
-      await attributeEditor
-        .getByRole('textbox', {
-          name: `Option ${index + 1} label`,
-          exact: true,
-        })
-        .fill(option.label);
-      await attributeEditor
-        .getByRole('textbox', {
-          name: `Option ${index + 1} value`,
-          exact: true,
-        })
-        .fill(option.value);
-    }
-    await attributeEditor
-      .getByRole('button', { name: 'Create attribute', exact: true })
-      .click();
-    // The dialog holds itself open until the codebook write lands, renaming
-    // its submit while the request is in flight — so the DIALOG going is the
-    // signal that the attribute exists and has been bound to this prompt, not
-    // the button. Waiting matters for the reason prompts.ts gives: the prompt
-    // dialog behind this one must not be driven through a modal still on
-    // screen.
-    await attributeEditor.waitFor({ state: 'hidden' });
     // The "Color of the scale" section is deliberately left untouched:
     // OrdinalBinPromptsSection.tsx passes `itemTemplate: () => ({ color:
     // FIRST_ORDINAL_COLOR })` to the shared prompts section, so a brand-new

@@ -209,10 +209,10 @@ test("excludes each writer's picker from offering the other class's variable, wh
     fieldDialog.locator('[data-field-name="variable"]'),
   );
   const formPickerItems = formWindow.getByRole('option');
-  // Four: the three attributes this picker may offer, plus the sentinel that
-  // stands for an attribute the researcher has yet to invent ("Create a new
-  // attribute…").
-  await expect(formPickerItems).toHaveCount(4);
+  // Three: the attributes this picker may offer, and nothing else. Inventing
+  // one is the window's create row, which is offered against a TYPED name —
+  // nothing has been typed here, so the list is exactly what is on offer.
+  await expect(formPickerItems).toHaveCount(3);
   await expect(formPickerItems.filter({ hasText: 'binOnlyVar' })).toHaveCount(
     0,
   );
@@ -244,9 +244,9 @@ test("excludes each writer's picker from offering the other class's variable, wh
     promptDialog.locator('[data-field-name="variable"]'),
   );
   const binPickerItems = binWindow.getByRole('option');
-  // Three rather than four: this picker invents nothing of its own — a bin
-  // attribute IS its list of values, so creating one is a separate button
-  // ("Create a new attribute") that opens the codebook editor.
+  // Three, for the same reason: this picker offers creation too — a bin
+  // attribute IS its list of values, so its create row escalates to the
+  // codebook editor — but no row is drawn until a name is typed.
   await expect(binPickerItems).toHaveCount(3);
   await expect(binPickerItems.filter({ hasText: 'formOnlyVar' })).toHaveCount(
     0,

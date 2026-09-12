@@ -1,6 +1,6 @@
-import { type Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
-import { chooseAttribute } from './variables.js';
+import { createAttribute } from './variables.js';
 
 // AlterForm/AlterEdgeForm/EgoForm's `form.fields` array is authored by
 // `@codaco/protocol-builder`'s `FormFieldsSection`
@@ -100,8 +100,9 @@ export type InventAttributeOptions = {
   /**
    * Fills in whatever the codebook editor asks for beyond a name — the values
    * of a list, the two ends of a scale. Called with the editor dialog, after
-   * its "Attribute name" is filled and before "Create attribute" is pressed.
-   * Only reached for the types in `NEEDS_CODEBOOK_EDITOR`.
+   * the name it opened holding has been read back and before "Create
+   * attribute" is pressed. Only reached for the types in
+   * `NEEDS_CODEBOOK_EDITOR`.
    */
   inEditor?: (editor: Locator) => Promise<void>;
 };
@@ -112,15 +113,19 @@ export type InventAttributeOptions = {
  *
  * `FormFieldEditor` (`sections/form-fields/FormFieldsSection.tsx`) asks which
  * attribute the answer is recorded under through the attribute picker
- * (`fields/VariablePickerField.tsx`), whose window lists the subject's
- * collectable codebook attributes plus one sentinel row, "Create a new
- * attribute…". This section passes no `onCreateOption`, so that sentinel is
- * the whole of what inventing one is here: choosing it reveals:
+ * (`fields/VariablePickerField.tsx`), and passes it an `onCreateOption` — so
+ * inventing one here is the window's own create row, taken on the name typed
+ * into its search box. The row decides nothing and promises everything: it
+ * writes the name onto the field row and closes the window, and what is left
+ * to ask appears underneath:
  *
- * - "Kind of answer" — the codebook type, asked first because it decides what
- *   else the attribute needs; and then either
- * - "Attribute name", for a kind a name finishes, or
- * - the codebook editor's own button, for a kind it does not.
+ * - "Kind of answer" — the codebook type, asked next because it decides what
+ *   else the attribute needs; and, for a kind a name cannot finish, the
+ *   codebook editor's own button.
+ *
+ * There is no "Attribute name" box on the row at all any more: the name was
+ * taken in the window, and the editor — where one opens — arrives already
+ * holding it.
  *
  * "Input control" lists only the controls that type allows and arrives already
  * showing the first of them, so selecting it says which one is meant rather
@@ -149,9 +154,14 @@ export async function inventAttributeInFieldDialog(
   // Addressed by the field's own name rather than by its label: "Attribute" is
   // also the heading of the dialog's first Section and the prefix of
   // "Attribute name".
-  await chooseAttribute(
+  //
+  // `createAttribute` rather than a choose-or-create: this helper's whole job
+  // is to INVENT, and a name the subject already holds has to fail here rather
+  // than quietly bind the attribute that was already there and leave the
+  // controls below unanswered.
+  await createAttribute(
     dialog.locator('[data-field-name="variable"]'),
-    'Create a new attribute…',
+    opts.variableName,
   );
   await dialog
     .getByRole('combobox', { name: 'Kind of answer', exact: true })
@@ -164,9 +174,14 @@ export async function inventAttributeInFieldDialog(
     // button's own words as its title (`AttributeCodebookControls`'s
     // `editorTitle`) — which is what tells the two apart while both are open.
     const editor = page.getByRole('dialog', { name: openLabel, exact: true });
-    await editor
-      .getByRole('textbox', { name: 'Attribute name', exact: true })
-      .fill(opts.variableName);
+    // Read back rather than typed. The row carries the name the create row
+    // took and seeds the editor with it (`AttributeCodebookControls`'s
+    // `initialDraft={{ name: inventing.name }}`), and this is the only place
+    // the suite reads that seeding end to end — a helper that filled the box
+    // itself would pass just as well with it broken.
+    await expect(
+      editor.getByRole('textbox', { name: 'Attribute name', exact: true }),
+    ).toHaveValue(opts.variableName);
     await opts.inEditor?.(editor);
     await editor
       .getByRole('button', { name: 'Create attribute', exact: true })
@@ -175,10 +190,6 @@ export async function inventAttributeInFieldDialog(
     // "Input control" is derived from the attribute the row now points at,
     // and it is not on screen at all while one is still being invented.
     await editor.waitFor({ state: 'detached' });
-  } else {
-    await dialog
-      .getByRole('textbox', { name: 'Attribute name', exact: true })
-      .fill(opts.variableName);
   }
 
   await dialog
