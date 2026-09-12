@@ -167,15 +167,15 @@ test('creates a valid Geospatial stage from scratch', async ({
   });
 
   // "Map appearance": the basemap is a native select over Mapbox's own style
-  // URLs, and the highlight colour a radio per position in the theme's ordinal
-  // palette, each named for that position so it can be said aloud.
+  // URLs, and the highlight colour a radio per gradient in the theme's ordinal
+  // palette, each named for its hue so it can be said aloud.
   await editor
     .field('mapOptions.style')
     .locator('select')
     .selectOption({ label: 'Streets' });
   await editor
     .field('mapOptions.color')
-    .getByRole('radio', { name: 'Highlight color 1', exact: true })
+    .getByRole('radio', { name: 'Sea Green', exact: true })
     .click();
 
   // "Starting map view" is two numbers and a zoom, typed. The map behind

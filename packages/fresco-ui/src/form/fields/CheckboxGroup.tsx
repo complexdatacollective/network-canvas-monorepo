@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { type ReactNode, useId } from 'react';
 
 import { RenderMarkdown } from '../../RenderMarkdown';
 import {
@@ -43,6 +43,16 @@ type CheckboxGroupProps = CreateFormFieldProps<
   'fieldset',
   {
     options: CheckboxOption[];
+    /**
+     * Shown inside the group when there are no options to tick.
+     *
+     * Inside it, rather than in place of it: the group is what the field's
+     * label names (`aria-labelledby`) and what its hint describes, and a
+     * caller that swapped the `<fieldset>` for a paragraph would drop both —
+     * leaving the field with no accessible name at the moment it most needs
+     * to say which list has nothing in it.
+     */
+    emptyState?: ReactNode;
     defaultValue?: (string | number)[];
     orientation?: 'horizontal' | 'vertical';
     size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -57,6 +67,7 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
     className,
     name,
     options,
+    emptyState,
     value,
     defaultValue,
     onChange,
@@ -103,6 +114,7 @@ export default function CheckboxGroupField(props: CheckboxGroupProps) {
         })}
         disabled={disabled}
       >
+        {options.length === 0 && emptyState}
         {options.map((option) => {
           const isOptionDisabled =
             Boolean(disabled) || Boolean(option.disabled);

@@ -45,19 +45,21 @@ describe('the geospatial sections, read in Spanish', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(5));
     expect(harness.outline().map((entry) => entry.title)).toEqual([
       'Acceso al mapa',
-      'Capa del mapa',
+      'Capas del mapa',
       'Conjunto de preguntas',
       'Apariencia del mapa',
-      'Vista inicial del mapa',
+      'Posición inicial del mapa',
     ]);
     expect(
-      screen.getByRole('combobox', { name: 'Mapa base' }),
+      screen.getByRole('combobox', { name: 'Estilo de Mapbox' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('spinbutton', { name: 'Zoom inicial' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('switch', { name: 'Permitir buscar en el mapa' }),
+      screen.getByRole('switch', {
+        name: 'Permitir la búsqueda de ubicaciones',
+      }),
     ).toBeInTheDocument();
   });
 
@@ -70,7 +72,9 @@ describe('the geospatial sections, read in Spanish', () => {
   it('names the basemaps the option builder produces', () => {
     openEditor();
 
-    const basemaps = within(screen.getByRole('combobox', { name: 'Mapa base' }))
+    const basemaps = within(
+      screen.getByRole('combobox', { name: 'Estilo de Mapbox' }),
+    )
       .getAllByRole('option')
       .map((option) => option.textContent ?? '');
 
@@ -79,18 +83,20 @@ describe('the geospatial sections, read in Spanish', () => {
   });
 
   /**
-   * Both carry values this package supplies — the ends of Mapbox's zoom scale,
-   * and a swatch's place in the palette — so a placeholder dropped from the
-   * Spanish fails here rather than rendering as `{min}`.
+   * The zoom hint carries values this package supplies — the ends of Mapbox's
+   * zoom scale — so a placeholder dropped from the Spanish fails here rather
+   * than rendering as `{min}`. The swatch beside it carries no placeholder at
+   * all: each is named after its hue, and the name is translated, so a swatch
+   * left in English fails here too.
    */
-  it('splices the package’s own numbers into the Spanish', () => {
+  it('splices the package’s own numbers into the Spanish, and names its swatches', () => {
     openEditor();
 
     expect(
       screen.getByText('0 muestra todo el mundo; 22 es el nivel de calle.'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('radio', { name: 'Color de resaltado 1' }),
+      screen.getByRole('radio', { name: 'Verde mar' }),
     ).toBeInTheDocument();
   });
 

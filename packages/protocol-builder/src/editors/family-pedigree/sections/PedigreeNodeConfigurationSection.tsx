@@ -289,7 +289,6 @@ export default function PedigreeNodeConfigurationSection() {
         confirmChange={confirmTypeChange}
         {...(blockChangeReason === undefined ? {} : { blockChangeReason })}
         label={intl.formatMessage(pedigreeMessages.nodeTypeLabel)}
-        hint={intl.formatMessage(pedigreeMessages.nodeTypeHint)}
         required={REQUIRED}
       />
 
@@ -389,7 +388,6 @@ export default function PedigreeNodeConfigurationSection() {
             title={pedigreeMessages.memberFormTitle}
             description={pedigreeMessages.memberFormDescription}
             fieldLabel={pedigreeMessages.memberFormFieldLabel}
-            fieldHint={pedigreeMessages.memberFormFieldHint}
             addLabel={pedigreeMessages.memberFormAddLabel}
             emptyState={pedigreeMessages.memberFormEmptyState}
           />

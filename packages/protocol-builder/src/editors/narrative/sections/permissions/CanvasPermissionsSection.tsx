@@ -11,41 +11,39 @@ const ALLOW_REPOSITIONING_FIELD = 'behaviours.allowRepositioning';
 const messages = defineMessages({
   canvasInteractionTitle: {
     id: 'protocolBuilder.networkCanvas.canvasInteractionTitle',
-    defaultMessage: 'Canvas interaction',
+    defaultMessage: 'Narrative behaviors',
     description:
       'Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology.',
   },
   canvasInteractionDescription: {
     id: 'protocolBuilder.networkCanvas.canvasInteractionDescription',
     defaultMessage:
-      'Choose what the participant may do to the picture while they tell their story.',
+      'Control automatic layout, drawing, and node repositioning on the narrative canvas.',
     description:
       'Description of the canvas-interaction section on a narrative stage, where the participant is shown the network they have already built and asked to talk about it.',
   },
   freeDrawLabel: {
     id: 'protocolBuilder.networkCanvas.freeDrawLabel',
-    defaultMessage: 'Allow drawing on the canvas',
+    defaultMessage: 'Free-draw',
     description:
       'Label of the switch letting the participant draw on the canvas.',
   },
   freeDrawHint: {
     id: 'protocolBuilder.networkCanvas.freeDrawHint',
-    defaultMessage:
-      'The participant can draw freehand annotations over the canvas, and erase them again.',
+    defaultMessage: 'Allow drawing on the canvas',
     description: 'Guidance under the drawing switch.',
   },
   repositioningLabel: {
     id: 'protocolBuilder.networkCanvas.repositioningLabel',
-    defaultMessage: 'Allow moving nodes',
+    defaultMessage: 'Allow repositioning',
     description:
       'Label of the switch letting the participant drag the network members around the canvas.',
   },
   repositioningHint: {
     id: 'protocolBuilder.networkCanvas.repositioningHint',
-    defaultMessage:
-      'The participant can drag nodes around while they talk. Nothing is recorded: the attribute the preset positions by is left as it is, and the nodes are back where the preset put them the next time the stage is opened.',
+    defaultMessage: 'Allow nodes to be repositioned',
     description:
-      'Guidance under the moving-nodes switch on a narrative stage. It says the move is temporary because a narrative stage reads positions and never writes them, so a researcher does not plan a study around movements that are never collected.',
+      'Guidance under the repositioning switch on a narrative stage, restating in the researcher’s words what the switch grants the participant.',
   },
 });
 

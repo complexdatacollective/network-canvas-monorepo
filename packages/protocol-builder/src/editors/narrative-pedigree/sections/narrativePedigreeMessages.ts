@@ -23,13 +23,6 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Heading of the section where a researcher chooses which earlier step of the interview collected the family this step draws on. A pedigree is a family tree.',
   },
-  sourceDescription: {
-    id: 'protocolBuilder.narrativePedigree.sourceDescription',
-    defaultMessage:
-      'Choose the Family Pedigree stage whose family this stage visualizes.',
-    description:
-      'Description of the pedigree-source section. "Family Pedigree" is the name of another kind of interview step, the one in which the participant builds their family tree; a stage is one step of an interview.',
-  },
   sourceLabel: {
     id: 'protocolBuilder.narrativePedigree.sourceLabel',
     defaultMessage: 'Source stage',
@@ -39,7 +32,7 @@ export const narrativePedigreeMessages = defineMessages({
   sourceHint: {
     id: 'protocolBuilder.narrativePedigree.sourceHint',
     defaultMessage:
-      'Only Family Pedigree stages that run before this one are listed: the family has to be drawn before it can be shown.',
+      'Select the Family Pedigree stage whose network data this Narrative Pedigree will visualize. Only Family Pedigree stages are listed here.',
     description:
       'Guidance under the source-stage control, explaining why the list is shorter than the interview. "Family Pedigree" names another kind of interview step; a stage is one step of an interview.',
   },
@@ -125,16 +118,9 @@ export const narrativePedigreeMessages = defineMessages({
   // ── The list of conditions drawn on that family ───────────────────────────
   diseasesTitle: {
     id: 'protocolBuilder.narrativePedigree.diseasesTitle',
-    defaultMessage: 'Diseases',
+    defaultMessage: 'Disease mappings',
     description:
       'Heading of the section listing the conditions this step of the interview draws onto the family tree.',
-  },
-  diseasesDescription: {
-    id: 'protocolBuilder.narrativePedigree.diseasesDescription',
-    defaultMessage:
-      'Define the conditions this stage draws on the family, and how each is inherited.',
-    description:
-      'Description of the diseases section. A stage is one step of an interview.',
   },
   diseasesWaitingDescription: {
     id: 'protocolBuilder.narrativePedigree.diseasesWaitingDescription',
@@ -152,9 +138,9 @@ export const narrativePedigreeMessages = defineMessages({
   diseasesFieldHint: {
     id: 'protocolBuilder.narrativePedigree.diseasesFieldHint',
     defaultMessage:
-      "Each disease maps one boolean attribute of the source pedigree's family members. Drag to reorder them in the key.",
+      'Define the diseases to visualize on the pedigree. Each disease maps to a boolean node attribute from the source Family Pedigree stage.',
     description:
-      'Guidance under the list of diseases. An attribute is one field of data recorded about a person; boolean is a yes/no attribute; the key is the legend the participant reads beside the family tree.',
+      'Guidance under the list of diseases. An attribute is one field of data recorded about a person; boolean is a yes/no attribute; the source Family Pedigree stage is the earlier step of the interview that collected the family.',
   },
   diseasesAddLabel: {
     id: 'protocolBuilder.narrativePedigree.diseasesAddLabel',
@@ -232,7 +218,7 @@ export const narrativePedigreeMessages = defineMessages({
   // ── One disease: name, colour, attribute, inheritance ─────────────────────
   diseaseNameLabel: {
     id: 'protocolBuilder.narrativePedigree.diseaseNameLabel',
-    defaultMessage: 'Disease name',
+    defaultMessage: 'Disease label',
     description:
       'Label of the field holding what one condition is called in the key the participant reads.',
   },
@@ -263,7 +249,7 @@ export const narrativePedigreeMessages = defineMessages({
   },
   diseaseColorHint: {
     id: 'protocolBuilder.narrativePedigree.diseaseColorHint',
-    defaultMessage: 'The color this disease is drawn in on the pedigree.',
+    defaultMessage: 'Select a color for this disease.',
     description:
       'Guidance under the disease-colour control. A pedigree is a family tree.',
   },
@@ -273,24 +259,17 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one.',
   },
-  diseaseColorOption: {
-    id: 'protocolBuilder.narrativePedigree.diseaseColorOption',
-    defaultMessage: 'Color {position}',
-    description:
-      'How one entry of the disease-colour list is named. The palette’s colours have no names of their own — they are the study’s own theme colours — so they are counted instead. position identifies which one, counting from 1.',
-  },
   diseaseVariableLabel: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableLabel',
-    defaultMessage: 'Affected-status attribute',
+    defaultMessage: 'Node attribute',
     description:
       'Label of the control choosing which recorded field of a family member says whether they have this condition. An attribute is one field of data recorded about a person.',
   },
   diseaseVariableHint: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableHint',
-    defaultMessage:
-      'Only attributes a nomination prompt of the source pedigree records are offered. This stage draws what that prompt collected; it collects nothing itself.',
+    defaultMessage: 'Select a boolean node attribute.',
     description:
-      'Guidance under the affected-status control, saying why the list is as short as it is. A nomination prompt is the part of a Family Pedigree stage that asks the participant who in the family a question applies to and marks everyone they name; "Nomination prompts" is what that part of the pedigree editor is called, so the two should read the same. The source pedigree is the earlier stage that collected the family.',
+      'Guidance under the node-attribute control. Boolean because a family member either has this condition recorded against them or does not.',
   },
   diseaseVariableEmpty: {
     id: 'protocolBuilder.narrativePedigree.diseaseVariableEmpty',
@@ -314,9 +293,9 @@ export const narrativePedigreeMessages = defineMessages({
   diseaseInheritanceHint: {
     id: 'protocolBuilder.narrativePedigree.diseaseInheritanceHint',
     defaultMessage:
-      'How the disease is passed on. Mendelian patterns let the pedigree infer carrier and at-risk statuses from biological relationships and recorded sex; multifactorial and unknown show affected status only.',
+      'Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.',
     description:
-      'Guidance under the inheritance-pattern control. "Mendelian" describes the classical single-gene patterns; a carrier holds a condition without developing it; "multifactorial" and "unknown" are two of the choices in the list, and are written here in lower case because they are named inside a sentence.',
+      'Guidance under the inheritance-pattern control. "Mendelian" describes the classical single-gene patterns; a carrier holds a condition without developing it; "Multifactorial" and "Unknown" are two of the choices in the list and are named here exactly as they are written there.',
   },
   diseaseInheritancePlaceholder: {
     id: 'protocolBuilder.narrativePedigree.diseaseInheritancePlaceholder',
@@ -408,13 +387,6 @@ export const narrativePedigreeMessages = defineMessages({
     description:
       'Heading of the section deciding whether the family tree also marks people who MIGHT develop or carry a condition, as well as those recorded as having it.',
   },
-  atRiskDescription: {
-    id: 'protocolBuilder.narrativePedigree.atRiskDescription',
-    defaultMessage:
-      'Choose whether the pedigree also shows inferred risk alongside recorded status.',
-    description:
-      'Description of the at-risk statuses section. Inferred risk is worked out from the family structure; recorded status is what someone actually entered. A pedigree is a family tree.',
-  },
   atRiskFieldLabel: {
     id: 'protocolBuilder.narrativePedigree.atRiskFieldLabel',
     defaultMessage: 'Show possible (at-risk) statuses',
@@ -424,16 +396,16 @@ export const narrativePedigreeMessages = defineMessages({
   atRiskFieldHint: {
     id: 'protocolBuilder.narrativePedigree.atRiskFieldHint',
     defaultMessage:
-      'Off by default. At-risk symbols are inferred rather than observed, and are intended for clinician-directed use.',
+      'Optionally show <strong>possible</strong> (at-risk) statuses alongside the certain ones, inferred from family structure and inheritance patterns.',
     description:
-      'Guidance under the at-risk switch, saying in one line why it starts off. The prose below the switch says the same thing at length.',
+      'Guidance under the at-risk switch, saying what turning it on adds to the family tree. The <strong> tag marks the word separating an inferred status from a recorded one.',
   },
   atRiskMeaning: {
     id: 'protocolBuilder.narrativePedigree.atRiskMeaning',
     defaultMessage:
-      'When this is on, the pedigree also shows a person who <em>may develop</em> a condition or <em>may carry</em> it. These are drawn as the usual status symbol with a question mark (“?”) added. A solid, filled symbol always means a clinically <em>affected</em> individual, so at-risk relatives always appear as unfilled symbols marked with a “?”.',
+      'When this is on, the pedigree also shows a person who <em>may develop</em> a condition or <em>may carry</em> it. These are drawn as the usual status symbol with a question mark (“?”) added. A solid, filled symbol always means a clinically <em>affected</em> individual (per Bennett et al., 2022 nomenclature), so at-risk relatives always appear as unfilled symbols marked with a “?”.',
     description:
-      'First paragraph of the prose explaining at-risk statuses to a researcher. The <em> tags mark the three phrases drawn from standard pedigree nomenclature; the quoted question mark is the symbol drawn on the family tree, so it stays a question mark whatever quotation marks the language uses around it.',
+      'First paragraph of the prose explaining at-risk statuses to a researcher. The <em> tags mark the three phrases drawn from standard pedigree nomenclature; the quoted question mark is the symbol drawn on the family tree, so it stays a question mark whatever quotation marks the language uses around it. The bracketed citation names the published nomenclature and is not translated.',
   },
   atRiskHowHeading: {
     id: 'protocolBuilder.narrativePedigree.atRiskHowHeading',
@@ -464,9 +436,9 @@ export const narrativePedigreeMessages = defineMessages({
   atRiskWhyOff: {
     id: 'protocolBuilder.narrativePedigree.atRiskWhyOff',
     defaultMessage:
-      'At-risk symbols are a strong visual signal that can be read as established fact rather than inferred risk. They are intended for <strong>clinician-directed use</strong>, where the result is interpreted in context. Standard pedigree nomenclature deliberately does not encode probabilistic risk, so leave this off unless a clinician is guiding interpretation.',
+      'At-risk symbols are a strong visual signal that can be read as established fact rather than inferred risk. They are intended for <strong>clinician-directed use</strong>, where the result is interpreted in context. Standard pedigree nomenclature (Bennett et al., 2022) deliberately does not encode probabilistic risk, so leave this off unless a clinician is guiding interpretation.',
     description:
-      'The argument for leaving inferred risk off. The <strong> tag marks the condition under which showing it is appropriate: a clinician deciding to, and reading the result. "Standard pedigree nomenclature" is the published convention for drawing family trees in clinical genetics.',
+      'The argument for leaving inferred risk off. The <strong> tag marks the condition under which showing it is appropriate: a clinician deciding to, and reading the result. "Standard pedigree nomenclature" is the published convention for drawing family trees in clinical genetics, and the bracketed citation naming it is not translated.',
   },
 
   // ── The source picker's own refusal ───────────────────────────────────────

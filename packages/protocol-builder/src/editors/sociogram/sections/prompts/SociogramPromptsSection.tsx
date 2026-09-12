@@ -145,7 +145,6 @@ export default function SociogramPromptsSection() {
       description={messages.sociogramPromptsDescription}
       waitingDescription={messages.sociogramPromptsWaitingDescription}
       fieldHint={messages.sociogramPromptsFieldHint}
-      emptyState={messages.sociogramPromptsEmptyState}
     />
   );
 }
