@@ -38,9 +38,6 @@ import {
   familyPedigreeStageWithout,
 } from './pedigreeFixtures.tsx';
 
-/** See `FormFieldsSection`'s own `NEW_VARIABLE` sentinel. */
-const CREATE_NEW_ATTRIBUTE = '#create-new-attribute';
-
 const pedigreeSections = (
   <>
     <FramingConfigSection />
@@ -1083,6 +1080,58 @@ describe('the pedigree’s nomination prompts', () => {
     ]);
   });
 
+  /**
+   * The flag a nomination prompt sets, invented from the prompt's own picker.
+   *
+   * A nomination answer is a yes or a no, which a name finishes, so this is
+   * written straight to the codebook and the row is left holding it — and it
+   * is written as a boolean, which is the one thing about the attribute the
+   * slot decides for the researcher.
+   */
+  it('invents the flag a nomination prompt sets', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit nomination prompt' }),
+    );
+    const prompt = await screen.findByRole('dialog');
+    await inventAttribute(
+      harness.user,
+      attributeField('Attribute', prompt),
+      'wasNominated',
+    );
+
+    const created = await waitFor(() => {
+      const entry = Object.entries(familyMemberVariables(harness)).find(
+        ([, variable]) =>
+          isRecord(variable) && variable.name === 'wasNominated',
+      );
+      if (entry === undefined) throw new Error('the flag was not created');
+      return entry;
+    });
+    expect(created[1]).toMatchObject({ type: 'boolean' });
+    await waitFor(() =>
+      expect(
+        within(attributeField('Attribute', prompt)).getByText('wasNominated'),
+      ).toBeVisible(),
+    );
+
+    await harness.user.click(
+      within(prompt).getByRole('button', { name: 'Save' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const request = await harness.submit();
+    expect(request?.stageDocument.nominationPrompts).toEqual([
+      {
+        id: 'nomination-1',
+        text: 'Who has been unwell?',
+        variable: created[0],
+      },
+    ]);
+  });
+
   it('is switched off entirely when the pedigree asks nothing', async () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWithout(['nominationPrompts']),
@@ -1647,13 +1696,16 @@ describe('what a family member form field’s attribute holds', () => {
     );
     const dialog = await screen.findByRole('dialog');
     const field = within(dialog);
-    await chooseAttributeById(
+    await inventAttribute(
       harness.user,
       attributeField('Attribute', dialog),
-      CREATE_NEW_ATTRIBUTE,
+      'household_role',
     );
-    // An attribute participants choose from IS its values, so the name box
-    // gives way to the editor that authors both.
+    await within(attributeField('Attribute', dialog)).findByText(
+      'household_role',
+    );
+    // An attribute participants choose from IS its values, so a name is not
+    // enough: the row sends the researcher to the editor that authors both.
     await harness.user.selectOptions(
       await field.findByRole('combobox', { name: 'Kind of answer' }),
       'categorical',
@@ -1663,10 +1715,9 @@ describe('what a family member form field’s attribute holds', () => {
         name: 'Create this attribute and its values',
       }),
     );
-    await harness.user.type(
+    expect(
       await screen.findByRole('textbox', { name: 'Attribute name' }),
-      'household_role',
-    );
+    ).toHaveValue('household_role');
     await addOption(harness, 1, 'Parent', 'parent');
     await addOption(harness, 2, 'Sibling', 'sibling');
     await harness.user.click(

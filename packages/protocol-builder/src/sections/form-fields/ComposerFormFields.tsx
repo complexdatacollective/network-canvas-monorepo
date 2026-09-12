@@ -61,10 +61,12 @@ import AttributeCodebookControls, {
 } from '../AttributeCodebookControls.tsx';
 import {
   COLLECTABLE_TYPES,
+  useSubjectVariableNames,
   useVariableChoices,
 } from '../canvas/codebookChoices.ts';
 import { asText } from '../canvas/rowValues.ts';
 import { controlsForType } from '../collectableTypes.ts';
+import { useCreateVariableEditor } from '../create-variable/useCreateVariableEditor.tsx';
 import { composerFormFieldMessages as messages } from './composerFormFieldMessages.ts';
 import ComposerParametersField, {
   type ComposerParameters,
@@ -518,7 +520,26 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
   useEffect(() => {
     const previous = seenVariable.current;
     seenVariable.current = chosen;
-    if (previous === chosen) return;
+    /*
+      A pick that has not moved is decided again while it has named no control
+      at all. An attribute invented from the picker's create row is bound to
+      this row the moment the codebook write lands, which is a moment before
+      the section carrying it reaches this editor — so the decision below was
+      made about an attribute there was nothing to read, and left the row
+      holding no control rather than the one that asks for the kind of answer
+      the researcher has just chosen.
+
+      Not the same question as an attribute a COLLABORATOR retypes under an
+      open row, which keeps the control it has and is refused by the save: that
+      row names one, and re-deciding it would move a pairing the researcher
+      authored.
+    */
+    if (
+      previous === chosen &&
+      (chosen === undefined || control !== undefined)
+    ) {
+      return;
+    }
     const attribute = chosen === undefined ? undefined : variables[chosen];
     const controls = controlsForType(attribute?.type ?? '');
     // The codebook's own control where the pairing allows it, because that is
@@ -530,7 +551,7 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
         ? controls.find(({ value }) => value === attribute.component)?.value
         : undefined;
     setRowValue(COMPONENT_FIELD, preferred ?? controls[0]?.value);
-  }, [chosen, setRowValue, variables]);
+  }, [chosen, control, setRowValue, variables]);
 
   const shape = shapeOf(variables, chosen, control);
   /**
@@ -597,6 +618,23 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
     [],
   );
 
+  /**
+   * Inventing the attribute this field asks for, in the codebook's own editor.
+   *
+   * Every other slot that offers this names the kind of answer it needs, and
+   * most of them are finished by a name alone. This row names none: the kind is
+   * the codebook's, and all the row decides is which control renders it. So the
+   * researcher is asked for the kind here, among everything a form can collect,
+   * which is a question only the codebook's editor has a control for.
+   */
+  const namesInUse = useSubjectVariableNames(subject);
+  const createAttribute = useCreateVariableEditor({
+    subject: subject ?? null,
+    variableTypes: COLLECTABLE_TYPES,
+    title: intl.formatMessage(messages.variableCreateTitle),
+    onCreated: (variableId) => setRowValue(VARIABLE_FIELD, variableId),
+  });
+
   return (
     <>
       <Field<typeof VariablePickerField>
@@ -605,10 +643,18 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
         label={intl.formatMessage(messages.variableLabel)}
         hint={intl.formatMessage(messages.variableHint)}
         options={variableOptions}
-        emptyMessage={intl.formatMessage(messages.variableEmpty)}
         initialValue={committed}
         required={intl.formatMessage(messages.variableRequired)}
+        // Nothing at all while no editor can be opened — no type to add the
+        // attribute to, a stage somebody else holds. The picker's own rule is
+        // that a create row exists exactly where `onCreateOption` does, and a
+        // row that opened onto a refusal would offer an act whose whole
+        // content is that it cannot be done.
+        {...(createAttribute.launchable
+          ? { onCreateOption: createAttribute.createOption, namesInUse }
+          : {})}
       />
+      {createAttribute.editor}
       <Field<typeof NativeSelectField>
         name={COMPONENT_FIELD}
         component={NativeSelectField}
@@ -620,12 +666,14 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
         required={intl.formatMessage(messages.controlRequired)}
       />
       {/*
-        No `inventingType`: this row's picker offers only attributes that
-        already exist, so there is never one being created here to author the
-        values of. The settings half is withheld because this field keeps its
-        own control and its own settings on the stage — written to the codebook
-        they would be authored against a control the codebook does not have,
-        and the variable schemas, split on `component`, refuse that outright.
+        The settings half is withheld because this field keeps its own control
+        and its own settings on the stage — written to the codebook they would
+        be authored against a control the codebook does not have, and the
+        variable schemas, split on `component`, refuse that outright.
+
+        No `inventingType`: the create this row offers is finished in the
+        codebook's own editor, which writes the attribute before the row is
+        told its id, so there is never one here waiting to be authored.
       */}
       <AttributeCodebookControls
         subject={subject}

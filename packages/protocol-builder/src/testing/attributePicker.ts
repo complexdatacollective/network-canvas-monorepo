@@ -206,6 +206,48 @@ export async function inventAttribute(
 }
 
 /**
+ * Whether this picker offers to invent an attribute at all.
+ *
+ * Asked of a term nothing matches, because that is the only state a create row
+ * is offered in. Leaves the window as it found it: closed.
+ *
+ * Both shapes of the row count — the one that offers the name and the one
+ * switched off with the reason it cannot be used — because the question here
+ * is whether creation is on offer at this site, and a site that offers it
+ * draws one or the other for every term. Reading only the enabled row would
+ * answer "no" for a name the type already holds, which is the wrong answer to
+ * a different question.
+ *
+ * The default term is a name the schema accepts, so a site that DOES offer
+ * creation answers with the enabled row rather than the refusal: a term with a
+ * space in it is refused by every picker, and a helper defaulting to one would
+ * have read the same thing at every site whatever it allowed.
+ */
+export async function offersCreation(
+  user: HarnessUser,
+  field: HTMLElement,
+  term = 'aNameNothingInThisCodebookHas',
+): Promise<boolean> {
+  const dialog = await openAttributePicker(user, field);
+  await user.type(
+    within(dialog).getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    }),
+    term,
+  );
+  const offered =
+    within(dialog).queryByRole('option', {
+      name: `Create new attribute called “${term}”.`,
+    }) !== null ||
+    within(dialog).queryByRole('option', {
+      name: (name) =>
+        name.startsWith(`Cannot create attribute named “${term}”:`),
+    }) !== null;
+  await closeAttributePicker(user);
+  return offered;
+}
+
+/**
  * The create row, asked for in the reader's own language.
  *
  * The window's own words are the picker's — a section that offers creation

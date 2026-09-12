@@ -23,11 +23,15 @@ export type CreateVariableEditorOptions = Readonly<{
   /** The type the attribute is created on. `null` while none is chosen. */
   subject: CodebookSubject | null;
   /**
-   * The attribute type this slot needs. It is the only type offered, because
-   * the slot cannot bind anything else — a pedigree's participant marker is a
-   * boolean whatever the researcher would rather it were.
+   * The attribute types this slot may create on, most often one.
+   *
+   * One is seeded and is the only type offered, because the slot cannot bind
+   * anything else — a pedigree's participant marker is a boolean whatever the
+   * researcher would rather it were. Several means the slot takes whichever of
+   * them the attribute turns out to be, so the kind of answer is left for the
+   * researcher to choose in the editor rather than decided for them here.
    */
-  variableType: VariableType;
+  variableTypes: readonly VariableType[];
   /**
    * The canonical value set the interface owns, seeded and locked.
    *
@@ -110,7 +114,7 @@ type EditorSession = Readonly<{
  */
 export function useCreateVariableEditor({
   subject,
-  variableType,
+  variableTypes,
   lockedOptions,
   title,
   onCreated,
@@ -272,6 +276,16 @@ export function useCreateVariableEditor({
     setSession(null);
   };
 
+  /**
+   * The kind of answer the draft ARRIVES on, which only a slot that allows one
+   * kind has.
+   *
+   * Where several are allowed, seeding one would answer the question the editor
+   * is open to ask — and the researcher would have to notice a choice they were
+   * never offered before correcting it.
+   */
+  const onlyType = variableTypes.length === 1 ? variableTypes[0] : undefined;
+
   const editor =
     session === null ? null : (
       <Dialog
@@ -288,8 +302,12 @@ export function useCreateVariableEditor({
           authoritativeDocument={openedSection ?? session.openedDocument}
           readOnly={editorReadOnly}
           variableId={session.variableId}
-          initialDraft={{ name: session.name, type: variableType }}
-          allowedVariableTypes={[variableType]}
+          initialDraft={
+            onlyType === undefined
+              ? { name: session.name }
+              : { name: session.name, type: onlyType }
+          }
+          allowedVariableTypes={variableTypes}
           lockedOptions={lockedOptions ?? null}
           protocolContext={protocolContext}
           onSubmitDocument={submitEdit(session.subject, session.variableId)}

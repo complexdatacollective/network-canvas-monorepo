@@ -83,7 +83,7 @@ export function useCreateAttributeForSlot({
   const createVariable = useCreateCodebookVariable(chosenSubject);
   const editorPath = useCreateVariableEditor({
     subject: subject ?? null,
-    variableType,
+    variableTypes: [variableType],
     ...(lockedOptions === undefined ? {} : { lockedOptions }),
     title,
     onCreated,

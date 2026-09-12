@@ -744,6 +744,55 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
       layoutVariable: created,
     });
   });
+
+  /**
+   * The other slot a sociogram prompt fills, and the same act: deciding to
+   * mark these people and inventing the flag to mark them with is one thought.
+   *
+   * A boolean is finished by a name too, so this one is written straight to the
+   * codebook as well — and it is written as the flag the tap will set rather
+   * than as whatever kind of answer happened to be handy, which is the only
+   * thing the slot decides on the researcher's behalf.
+   */
+  it('invents the flag a tap marks a node with', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const prompt = await openPrompt(harness);
+    await harness.user.click(
+      prompt.getByRole('option', { name: /Mark the node/ }),
+    );
+    await inventAttribute(
+      harness.user,
+      await promptAttributeField('Attribute marked'),
+      'spoke_to_recently',
+    );
+
+    const created = await waitFor(() => {
+      const entry = Object.entries(
+        harness.hostCodebook().node?.person?.variables ?? {},
+      ).find(([, variable]) => variable.name === 'spoke_to_recently');
+      if (entry === undefined) throw new Error('the flag was not created');
+      return entry;
+    });
+    expect(created[1].type).toBe('boolean');
+    await waitFor(() =>
+      expect(
+        within(attributeField('Attribute marked')).getByText(
+          'spoke_to_recently',
+        ),
+      ).toBeInTheDocument(),
+    );
+
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]?.highlight).toEqual({
+      allowHighlighting: true,
+      variable: created[0],
+    });
+  });
 });
 
 /**

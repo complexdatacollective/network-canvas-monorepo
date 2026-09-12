@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { protocolAuthoringLinks } from '../../../interfaces/documentation.ts';
 import {
   attributeField,
-  chooseAttributeById,
+  inventAttribute,
 } from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { exactlyText } from '../../../testing/text.ts';
@@ -22,9 +22,6 @@ import FormFieldsSection from '../FormFieldsSection.tsx';
  * researcher is given no way to find out why, or to learn that the decision
  * they are about to make is permanent.
  */
-
-/** The picker option standing for an attribute that does not exist yet. */
-const CREATE_NEW_ATTRIBUTE = '#create-new-attribute';
 
 const openAlterForm = () => ({
   stageId: 'alter-form-1' as const,
@@ -115,17 +112,11 @@ describe('the guidance under the input control', () => {
     const harness = renderStageEditor(openAlterForm());
     const dialog = await openField(harness, 'Create new form field');
 
-    await chooseAttributeById(
-      harness.user,
-      attributeField('Attribute', dialog.element),
-      CREATE_NEW_ATTRIBUTE,
-    );
-    await harness.user.type(
-      await dialog.findByRole('textbox', { name: 'Attribute name' }),
-      'nickname',
-    );
+    const picker = attributeField('Attribute', dialog.element);
+    await inventAttribute(harness.user, picker, 'nickname');
+    await within(picker).findByText('nickname');
     await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Kind of answer' }),
+      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
       'text',
     );
 

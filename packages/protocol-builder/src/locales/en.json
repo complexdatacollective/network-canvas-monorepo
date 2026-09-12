@@ -1631,10 +1631,6 @@
     "defaultMessage": "Visual analogue scale",
     "description": "Choice offered for the control a participant answers with: a slider they move along a continuous line."
   },
-  "protocolBuilder.formFields.createNewOption": {
-    "defaultMessage": "Create a new attribute…",
-    "description": "The last choice in the attribute list, which stands for an attribute that does not exist yet and asks the researcher to name one. The trailing character is an ellipsis."
-  },
   "protocolBuilder.formFields.createWithSettingsFirst": {
     "defaultMessage": "Create this attribute and what it accepts before adding the field that collects it.",
     "description": "The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means."
@@ -1714,22 +1710,6 @@
   "protocolBuilder.formFields.malformedField": {
     "defaultMessage": "This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.",
     "description": "Refusal shown above a form’s list of fields when the list holds an entry that is not a field at all — which an import, a migration or another session can leave behind. The list cannot render such an entry, so there is no row for the researcher to open and finish, which is why this says the protocol itself has to be repaired."
-  },
-  "protocolBuilder.formFields.newNameHint": {
-    "defaultMessage": "How this attribute is named in the codebook and in exported data.",
-    "description": "Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyzes afterwards."
-  },
-  "protocolBuilder.formFields.newNameLabel": {
-    "defaultMessage": "Attribute name",
-    "description": "Label of the field naming an attribute the researcher is inventing."
-  },
-  "protocolBuilder.formFields.newNamePlaceholder": {
-    "defaultMessage": "Nickname",
-    "description": "Example attribute name shown in the empty field. An example a researcher might write, not a value that is stored."
-  },
-  "protocolBuilder.formFields.newNameRequired": {
-    "defaultMessage": "Name the attribute this field collects.",
-    "description": "Refusal shown under the new-attribute name field when it has been left empty."
   },
   "protocolBuilder.formFields.newTypeHint": {
     "defaultMessage": "What this attribute holds. It cannot be changed once answers have been collected.",
@@ -2839,9 +2819,9 @@
     "defaultMessage": "Show validation hints",
     "description": "Label of the switch that tells the participant what a valid answer to one field of a network composer form looks like."
   },
-  "protocolBuilder.networkCanvas.formFieldVariableEmpty": {
-    "defaultMessage": "This type has no attributes a form can collect yet. Create one in the codebook to continue.",
-    "description": "Shown in place of the attribute list when the type this form is about has nothing a form could ask for. The codebook is where a protocol defines the kinds of member its network holds and the attributes recorded about each."
+  "protocolBuilder.networkCanvas.formFieldVariableCreateTitle": {
+    "defaultMessage": "Create a new attribute",
+    "description": "Titles the codebook editor that the attribute picker’s create row opens for a network composer form field. The researcher is asked for the kind of answer there, because this row does not decide it."
   },
   "protocolBuilder.networkCanvas.formFieldVariableHint": {
     "defaultMessage": "The attribute each answer is recorded in. Only attributes a form can collect are listed: a position or a location is written by the canvas rather than answered.",

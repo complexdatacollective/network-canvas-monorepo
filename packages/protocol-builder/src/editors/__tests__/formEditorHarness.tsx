@@ -6,7 +6,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId, type SectionRef } from '@codaco/studio-sync/taxonomy';
 
 import type { StageEditorComponent } from '../../stage-editor-contract.ts';
-import { attributeField } from '../../testing/attributePicker.ts';
+import {
+  attributeField,
+  inventAttribute,
+} from '../../testing/attributePicker.ts';
 import type {
   CodebookPatch,
   renderStageEditor,
@@ -153,6 +156,25 @@ export const collectAttribute = async (
   await waitFor(() => {
     if (window.isConnected) throw new Error('the attribute window is open');
   });
+};
+
+/**
+ * Starts a row off inventing an attribute of this name, the way a researcher
+ * does: searches the window for it, finds it does not exist, and takes the
+ * create row.
+ *
+ * The attribute is not written here. A row invents one as part of its own
+ * save, so what this leaves behind is a row holding the name — and the picker
+ * showing it, which is what the wait below is for: the window covers the
+ * dialog while it is up.
+ */
+const inventAttributeFromRow = async (
+  harness: Harness,
+  dialog: RowDialog,
+  attributeName: string,
+): Promise<void> => {
+  await inventAttribute(harness.user, attributePicker(dialog), attributeName);
+  await within(attributePicker(dialog)).findByText(attributeName);
 };
 
 /**
@@ -408,14 +430,10 @@ export const authorsDateSettingsFromField = async (
   subject: SectionRef,
 ) => {
   const dating = await openField(harness, 'Create new form field');
-  await collectAttribute(harness, dating, '#create-new-attribute');
+  await inventAttributeFromRow(harness, dating, 'met_on');
   await harness.user.selectOptions(
     await dating.findByRole('combobox', { name: 'Kind of answer' }),
     'datetime',
-  );
-  await harness.user.type(
-    await dating.findByRole('textbox', { name: 'Attribute name' }),
-    'met_on',
   );
   await harness.user.selectOptions(
     await dating.findByRole('combobox', { name: 'Input control' }),

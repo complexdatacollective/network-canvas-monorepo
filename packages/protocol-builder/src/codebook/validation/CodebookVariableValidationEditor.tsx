@@ -7,6 +7,7 @@ import {
   type FormEvent,
 } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -184,6 +185,45 @@ export type CodebookVariableValidationEditorProps = Readonly<{
  */
 const OWNED_PROPERTIES = ['validation'];
 
+/**
+ * The heading element these surfaces write, one step below whatever encloses
+ * them.
+ *
+ * Both are opened from a dialog, whose own title is the heading above this
+ * one: an `h2` written out sat beside the dialog's title instead of under it,
+ * and every alert the surface raises counted from the dialog and landed beside
+ * this title in turn.
+ */
+function useSurfaceHeadingTag(): 'h2' | 'h3' | 'h4' | 'h5' | 'h6' {
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  return enclosingHeadingLevel === null
+    ? 'h2'
+    : headingTagBelow(enclosingHeadingLevel);
+}
+
+/** What both rule surfaces are called, over the attribute they are about. */
+function SurfaceHeading({
+  tag,
+  name,
+}: Readonly<{ tag: 'h2' | 'h3' | 'h4' | 'h5' | 'h6'; name: string }>) {
+  const intl = useAppIntl();
+  return (
+    <div>
+      <Heading
+        level="h2"
+        margin="none"
+        // The element only — `level` still carries the type treatment.
+        {...(tag === 'h2' ? {} : { render: createElement(tag) })}
+      >
+        {intl.formatMessage(messages.title, { name })}
+      </Heading>
+      <Paragraph emphasis="muted" margin="none">
+        {intl.formatMessage(messages.description)}
+      </Paragraph>
+    </div>
+  );
+}
+
 /** Dedicated surface for one existing variable's validation rules. */
 export default function CodebookVariableValidationEditor({
   openId,
@@ -323,15 +363,7 @@ export default function CodebookVariableValidationEditor({
     }
   };
 
-  // Opened from a dialog, whose own title is the heading above this one: an
-  // `h2` written out here sat beside the dialog's title instead of under it,
-  // and every alert this editor raises counted from the dialog and landed
-  // beside this title in turn.
-  const enclosingHeadingLevel = useEnclosingHeadingLevel();
-  const headingTag =
-    enclosingHeadingLevel === null
-      ? 'h2'
-      : headingTagBelow(enclosingHeadingLevel);
+  const headingTag = useSurfaceHeadingTag();
 
   const saveLabel = intl.formatMessage(
     busy ? codebookEditingMessages.saving : messages.submit,
@@ -341,21 +373,7 @@ export default function CodebookVariableValidationEditor({
     <Surface spacing="md" shadow="md" noContainer>
       <form onSubmit={(event) => void handleSubmit(event)} noValidate>
         <div className="flex flex-col gap-6">
-          <div>
-            <Heading
-              level="h2"
-              margin="none"
-              // The element only — `level` still carries the type treatment.
-              {...(headingTag === 'h2'
-                ? {}
-                : { render: createElement(headingTag) })}
-            >
-              {intl.formatMessage(messages.title, { name: variableName })}
-            </Heading>
-            <Paragraph emphasis="muted" margin="none">
-              {intl.formatMessage(messages.description)}
-            </Paragraph>
-          </div>
+          <SurfaceHeading tag={headingTag} name={variableName} />
 
           <EnclosingHeadingLevel level={headingTag}>
             {attributeTypeChanged && (
@@ -421,6 +439,121 @@ export default function CodebookVariableValidationEditor({
                 disabled={readOnly || busy || !dirty || issue !== undefined}
               >
                 {saveLabel}
+              </Button>
+            </div>
+          </EnclosingHeadingLevel>
+        </div>
+      </form>
+    </Surface>
+  );
+}
+
+export type DraftVariableValidationEditorProps = Readonly<{
+  /** Must change every time the surface opens, even for the same draft. */
+  openId: string;
+  entity: 'node' | 'edge' | 'ego';
+  /** The attribute being invented, as the researcher has just named it. */
+  variableName: string;
+  /** The kind of answer they chose for it, which decides the rule catalogue. */
+  variableType: string;
+  /** The attributes a comparison rule may be pointed at. */
+  allVariables: Readonly<UnknownRecord>;
+  /** The rules the row is already holding for it. */
+  value: Readonly<ValidationMap>;
+  readOnly?: boolean;
+  /** Takes the rules onto the row, to be written with the create. */
+  onSave(validation: ValidationMap): void;
+}>;
+
+/**
+ * The rules for an attribute that does not exist yet.
+ *
+ * Its twin above writes the codebook, under that section's own lock, the
+ * moment the researcher saves. There is nothing to write here: the attribute
+ * is being invented by a row whose own save creates it, so these rules are
+ * part of that row until then and are written with the create. Which is what
+ * Architect does — `Form/fieldCommit.ts` puts the field's `validation` into
+ * the create request — and it is the whole of why the surfaces differ: no
+ * host to refuse anything, no draft to reconcile against an authoritative
+ * copy, and no lock.
+ *
+ * Everything a researcher sees is the twin's: the same heading, the same rule
+ * catalogue for the kind of answer, the same refusal for a pair of rules that
+ * contradict each other. Only the destination of the save is different, and
+ * that is the one thing they must not share.
+ */
+export function DraftVariableValidationEditor({
+  openId,
+  entity,
+  variableName,
+  variableType,
+  allVariables,
+  value,
+  readOnly = false,
+  onSave,
+}: DraftVariableValidationEditorProps) {
+  const intl = useAppIntl();
+  const [openKey, setOpenKey] = useState(openId);
+  const [validation, setValidation] = useState<ValidationMap>(() => ({
+    ...value,
+  }));
+
+  // The caller's open identity owns reset semantics, exactly as above: a row
+  // re-rendering around this surface must not erase what the researcher has
+  // typed into it.
+  if (openKey !== openId) {
+    setOpenKey(openId);
+    setValidation({ ...value });
+  }
+
+  const issue =
+    missingTargetIssue(validation, allVariables, intl) ??
+    ruleMapIssue(validation, {
+      allVariables: Object.fromEntries(Object.entries(allVariables)),
+      // Nothing to exclude from the comparison targets: the attribute these
+      // rules belong to has no record key yet, so no rule can point at it.
+      currentVariableId: '',
+      variableType,
+      draftVariableName: variableName,
+    });
+  const headingTag = useSurfaceHeadingTag();
+
+  return (
+    <Surface spacing="md" shadow="md" noContainer>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          // Stops at this form, for the reason its twin's submit does: a
+          // `Dialog` portals out of the DOM but stays a React descendant, so
+          // React would otherwise hand this submit to the row dialog behind
+          // it and save the row instead.
+          event.stopPropagation();
+          if (readOnly || issue !== undefined) return;
+          onSave(validation);
+        }}
+        noValidate
+      >
+        <div className="flex flex-col gap-6">
+          <SurfaceHeading tag={headingTag} name={variableName} />
+
+          <EnclosingHeadingLevel level={headingTag}>
+            <VariableValidationEditor
+              entity={entity}
+              variableType={variableType}
+              currentVariableId=""
+              allVariables={allVariables}
+              value={validation}
+              onChange={setValidation}
+              readOnly={readOnly}
+            />
+
+            <div className="flex flex-wrap justify-end gap-3">
+              <Button
+                type="submit"
+                color="primary"
+                disabled={readOnly || issue !== undefined}
+              >
+                {intl.formatMessage(commonMessages.save)}
               </Button>
             </div>
           </EnclosingHeadingLevel>

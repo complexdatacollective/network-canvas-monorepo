@@ -33,7 +33,7 @@ function OrdinalSlot() {
   const held = useStageValue(SLOT);
   const { createOption, editor } = useCreateVariableEditor({
     subject: SUBJECT,
-    variableType: 'ordinal',
+    variableTypes: ['ordinal'],
     title: 'Create a new ordinal attribute',
     onCreated: () => undefined,
   });
