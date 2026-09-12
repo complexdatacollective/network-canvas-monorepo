@@ -117,7 +117,7 @@ insufficient to validate them. Two rules follow:
   dev deployment is fine) and require a verdict free of gate-caused false
   failures — every INCOMPLETE cause and failure record must trace to the
   app or the deployment, never to the gate's own text. The offline suite
-  (`scripts/interviewer-release-test-workflow.test.mjs`) guards the
+  (`scripts/release-test/interviewer-release-test-workflow.test.mjs`) guards the
   synthesis code; only execution guards the prompts.
 - **Review findings against prompt text are adjudicated by execution.**
   Accept and fix synthesis-code findings directly (with a regression test,

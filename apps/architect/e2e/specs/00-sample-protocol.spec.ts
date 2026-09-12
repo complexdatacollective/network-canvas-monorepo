@@ -277,7 +277,7 @@ test.describe.serial('sample protocol built from scratch', () => {
    * over the attributes the node type already has — restricted to the one kind
    * the bin sorts by — and a `CreateVariableButton` beside it. The editor
    * opens locked to that kind, so its "Attribute type" is never touched, and
-   * the values are authored in place: one "Add option" press per value, each
+   * the values are authored in place: one "Create new option" press per value, each
    * row exposing its own numbered "Option N label" / "Option N value" boxes,
    * committed together by "Create attribute".
    */
@@ -297,7 +297,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       .getByRole('textbox', { name: 'Attribute name', exact: true })
       .fill(name);
     const addOption = attributeEditor.getByRole('button', {
-      name: 'Add option',
+      name: 'Create new option',
       exact: true,
     });
     for (const [index, option] of options.entries()) {
@@ -393,7 +393,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       s('stages', 3, 'introductionPanel', 'title'),
       s('stages', 3, 'introductionPanel', 'text'),
     );
-    await addConfiguredFormField(editor.section('Form fields'), {
+    await addConfiguredFormField(editor.section('Form configuration'), {
       variableName: 'participant_consent',
       promptText: s('stages', 3, 'form', 'fields', 0, 'prompt').trim(),
       inputControl: 'Yes or no buttons',
@@ -426,7 +426,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       s('stages', 4, 'introductionPanel', 'text'),
     );
 
-    const form = editor.section('Form fields');
+    const form = editor.section('Form configuration');
     const prompt = (index: number) =>
       s('stages', 4, 'form', 'fields', index, 'prompt').trim();
     await addConfiguredFormField(form, {
@@ -605,7 +605,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       .field('form.title')
       .getByRole('textbox')
       .fill(s('stages', 10, 'form', 'title'));
-    const form = editor.section('Form fields');
+    const form = editor.section('Form configuration');
     await addConfiguredFormField(form, {
       variableName: 'name',
       promptText: s('stages', 10, 'form', 'fields', 0, 'prompt').trim(),
@@ -722,7 +722,7 @@ test.describe.serial('sample protocol built from scratch', () => {
       s('stages', 14, 'introductionPanel', 'title'),
       s('stages', 14, 'introductionPanel', 'text'),
     );
-    const form = editor.section('Form fields');
+    const form = editor.section('Form configuration');
     await addConfiguredFormField(form, {
       variableName: 'visited',
       promptText: s('stages', 14, 'form', 'fields', 0, 'prompt').trim(),

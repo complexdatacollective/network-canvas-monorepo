@@ -20,7 +20,7 @@ test('creates a valid EgoForm stage from scratch', async ({
   // `@codaco/protocol-builder`'s `IntroductionSection`, so the
   // `data-field-name` seam still resolves it. Located that way rather than by
   // accessible name because the name is the researcher-facing label
-  // ("Introduction heading"), which is copy, while the path is the document.
+  // ("Title"), which is copy, while the path is the document.
   await editor
     .field('introductionPanel.title')
     .getByRole('textbox')
@@ -39,7 +39,7 @@ test('creates a valid EgoForm stage from scratch', async ({
   // `formFields({ subject: 'ego' })` with no `subjectPicker` at all. There is
   // nothing to choose first, and the section is available from the moment the
   // editor opens — unlike AlterForm/AlterEdgeForm.
-  await addFormField(editor.section('Form fields'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text input',

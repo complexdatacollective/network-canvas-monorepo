@@ -295,7 +295,7 @@ test('inserts a new Information stage at the clicked index', async ({
     .getByRole('textbox', { name: 'Page heading' })
     .fill('Inserted stage heading');
   await architectPage
-    .getByRole('button', { name: 'Create new content block' })
+    .getByRole('button', { name: 'Create new content item' })
     .click();
   await architectPage.getByRole('radio', { name: 'Text' }).click();
   const contentField = architectPage.getByRole('textbox', {

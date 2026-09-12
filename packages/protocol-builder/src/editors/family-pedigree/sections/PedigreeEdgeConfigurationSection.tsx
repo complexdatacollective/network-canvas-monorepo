@@ -106,7 +106,6 @@ export default function PedigreeEdgeConfigurationSection() {
         entityType="edge"
         confirmChange={confirmTypeChange}
         label={intl.formatMessage(pedigreeMessages.edgeTypeLabel)}
-        hint={intl.formatMessage(pedigreeMessages.edgeTypeHint)}
         required={REQUIRED}
       />
 

@@ -95,21 +95,21 @@ describe('creating a categorical bin stage', () => {
     );
     await screen.findByRole('dialog');
     await harness.user.click(
-      screen.getByRole('switch', { name: 'A bin for anything else' }),
+      screen.getByRole('switch', { name: 'Follow-up other option' }),
     );
 
     const group = within(
-      await screen.findByRole('region', { name: 'A bin for anything else' }),
+      await screen.findByRole('region', { name: 'Follow-up other option' }),
     );
     await harness.user.selectOptions(
       await group.findByRole('combobox', {
-        name: 'Attribute the answer is stored in',
+        name: 'Other attribute',
       }),
       'relationship_to_ego',
     );
     await writeInto(
       harness,
-      group.getByRole('textbox', { name: 'Bin label' }),
+      group.getByRole('textbox', { name: 'Other bin label' }),
       'Something else',
     );
     await writeInto(

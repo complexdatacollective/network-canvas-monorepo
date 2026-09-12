@@ -7,10 +7,10 @@ import { importResource, selectResource } from './data-source.js';
 // `BackgroundSection`, always-on for Sociogram/Narrative/NetworkComposer).
 // Facts read off the section's own source:
 // - Which background the canvas has is one control, a `RichSelectGroupField`
-//   labelled "Background type" holding two cards, "Concentric circles" and
-//   "Image". It renders as a listbox of options, and each option's accessible
-//   name is its title followed by its description sentence — hence the
-//   anchored name match rather than the whole paragraph.
+//   labelled "Choose a background type" holding two cards, "Concentric
+//   circles" and "Image". It renders as a listbox of options, and each
+//   option's accessible name is its title followed by its description
+//   sentence — hence the anchored name match rather than the whole paragraph.
 // - Concentric circles is what a stage with no image opens on. The count is
 //   an `IntegerField` at data-field-name="background.concentricCircles"
 //   (label "Number of concentric circles", a native number input, so role
@@ -43,7 +43,7 @@ export async function setImageBackground(
 ): Promise<void> {
   await editor
     .section('Background')
-    .getByRole('listbox', { name: 'Background type', exact: true })
+    .getByRole('listbox', { name: 'Choose a background type', exact: true })
     .getByRole('option', { name: /^Image/ })
     .click();
   const field = editor.field('background.image');

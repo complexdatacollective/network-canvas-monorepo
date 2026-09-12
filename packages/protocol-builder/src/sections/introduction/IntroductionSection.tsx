@@ -27,43 +27,20 @@ const messages = defineMessages({
   description: {
     id: 'protocolBuilder.introduction.description',
     defaultMessage:
-      'Introduce this task to the participant before they start it.',
+      'Introduce the task before participants complete its forms.',
     description: 'Description of the task-introduction section.',
   },
   headingLabel: {
     id: 'protocolBuilder.introduction.headingLabel',
-    defaultMessage: 'Introduction heading',
+    defaultMessage: 'Title',
     description:
       'Label of the field holding the heading at the top of the introduction screen a participant reads.',
-  },
-  headingHint: {
-    id: 'protocolBuilder.introduction.headingHint',
-    defaultMessage: 'The heading shown at the top of the introduction screen.',
-    description: 'Guidance under the introduction-heading field.',
-  },
-  headingPlaceholder: {
-    id: 'protocolBuilder.introduction.headingPlaceholder',
-    defaultMessage: 'Enter a heading...',
-    description:
-      'Placeholder shown in the empty introduction-heading field. The trailing dots are an ellipsis written as three full stops.',
   },
   textLabel: {
     id: 'protocolBuilder.introduction.textLabel',
     defaultMessage: 'Introduction text',
     description:
       'Label of the field holding the prose a participant reads before this step of the interview begins.',
-  },
-  textHint: {
-    id: 'protocolBuilder.introduction.textHint',
-    defaultMessage:
-      'Explain what the participant is about to do. This is the only thing they will read before the task begins.',
-    description: 'Guidance under the introduction-text field.',
-  },
-  textPlaceholder: {
-    id: 'protocolBuilder.introduction.textPlaceholder',
-    defaultMessage: 'Enter your introduction here...',
-    description:
-      'Placeholder shown in the empty introduction-text field. The trailing dots are an ellipsis written as three full stops.',
   },
 });
 
@@ -93,8 +70,6 @@ export default function IntroductionSection() {
         name={TITLE_FIELD}
         component={InputField}
         label={intl.formatMessage(messages.headingLabel)}
-        hint={intl.formatMessage(messages.headingHint)}
-        placeholder={intl.formatMessage(messages.headingPlaceholder)}
         required={REQUIRED}
         maxLength={TITLE_LIMIT}
       />
@@ -102,8 +77,6 @@ export default function IntroductionSection() {
         name={TEXT_FIELD}
         component={RichTextField}
         label={intl.formatMessage(messages.textLabel)}
-        hint={intl.formatMessage(messages.textHint)}
-        placeholder={intl.formatMessage(messages.textPlaceholder)}
         required={REQUIRED}
       />
     </BuilderSection>

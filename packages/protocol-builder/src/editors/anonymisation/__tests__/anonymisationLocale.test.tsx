@@ -33,15 +33,14 @@ describe('the anonymisation sections, read in Spanish', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Explicación de la frase de contraseña',
+        name: 'Explicación de la tarea',
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('textbox', { name: 'Encabezado de la explicación' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Título' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Cuerpo' })).toBeInTheDocument();
     expect(
       screen.getByText(
-        'El encabezado que aparece arriba en la pantalla donde se pide la frase de contraseña.',
+        'Explica el proceso de anonimización a los participantes antes de que introduzcan su frase de contraseña.',
       ),
     ).toBeInTheDocument();
   });
@@ -74,7 +73,7 @@ describe('the anonymisation sections, read in Spanish', () => {
 
     await harness.user.click(
       await screen.findByRole('switch', {
-        name: 'Reglas de la frase de contraseña',
+        name: 'Validación de la frase de contraseña',
       }),
     );
 
@@ -96,13 +95,13 @@ describe('the anonymisation sections, read in Spanish', () => {
    * The field is found by its Spanish name: `VariableValidationEditor` labels
    * every rule's control with `rule.label`, which is `maxLengthLabel` read
    * through this harness's `intl` — so under `locale: 'es'` the accessible
-   * name is "Longitud máxima", not the English default.
+   * name is "Longitud máxima del texto", not the English default.
    */
   it('refuses impossible passphrase lengths in Spanish', async () => {
     const harness = openEditor();
 
     const maximum = await screen.findByRole('spinbutton', {
-      name: 'Longitud máxima',
+      name: 'Longitud máxima del texto',
     });
     await harness.user.clear(maximum);
     await harness.user.type(maximum, '2');

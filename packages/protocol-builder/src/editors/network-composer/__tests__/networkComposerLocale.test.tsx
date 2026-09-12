@@ -41,17 +41,19 @@ describe('the network composer sections, read in Spanish', () => {
     // halfway.
     await waitFor(() => expect(harness.outline()).toHaveLength(3));
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Añadir y organizar nodos',
-      'Atributos de nodo',
-      'Vínculos',
+      'Configuración de nodos',
+      'Atributos editables',
+      'Configuración de vínculos',
     ]);
     expect(
       screen.getByRole('combobox', {
-        name: 'Atributo que se rellena al añadir un nodo',
+        name: 'Crear o seleccionar un atributo para el formulario de adición rápida',
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('combobox', { name: 'Atributo de agrupación' }),
+      screen.getByRole('combobox', {
+        name: 'Crear o seleccionar un atributo categórico para agrupar',
+      }),
     ).toBeInTheDocument();
   });
 
@@ -95,7 +97,7 @@ describe('the network composer sections, read in Spanish', () => {
     // The type's name comes from the protocol, so this is also where a
     // placeholder left out of the Spanish would render as `{typeName}`.
     expect(
-      await screen.findByText('Atributos de los vínculos «knows»'),
+      await screen.findByText('Atributos de vínculo: knows'),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', {

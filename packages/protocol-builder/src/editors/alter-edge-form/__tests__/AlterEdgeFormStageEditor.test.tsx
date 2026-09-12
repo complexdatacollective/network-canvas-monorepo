@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
+import { exactlyText } from '../../../testing/text.ts';
 import {
   expectStageUntouched,
   fieldsOf,
@@ -52,6 +53,9 @@ const createFixture = () => ({
   editor: mountedAs(alterEdgeFormStageEditor.AlterEdgeForm),
 });
 
+/** What the collapsed field row's badge says about the `edgeNotes` field. */
+const FIELD_ROW_BADGE = 'Text attribute using Text area input control';
+
 /**
  * What is true of THIS interface and no other. The list of sections it
  * composes, and the round trip over its fixture stage, are asked of all four
@@ -65,12 +69,11 @@ describe('the editor for a form about each relationship', () => {
       'Alter Edge Form',
     );
     expect(screen.getByRole('radio', { name: 'knows' })).toBeChecked();
-    // The section says what it is for, and it is edges rather than nodes: an
-    // edge stage told the researcher it filtered nodes would be describing a
-    // different network.
+    // The stage-filter section's description is one generic sentence shared
+    // by node and edge stages alike.
     expect(
       screen.getByText(
-        'Create rules that limit which edges are available on this stage.',
+        'Create rules that filter which nodes or edges are displayed on this stage.',
       ),
     ).toBeInTheDocument();
     expect(
@@ -91,8 +94,9 @@ describe('the editor for a form about each relationship', () => {
     expect(screen.getByRole('radio', { name: 'knows' })).not.toBeChecked();
     await waitFor(() =>
       expect(
-        harness.outline().find((section) => section.title === 'Form fields')
-          ?.state,
+        harness
+          .outline()
+          .find((section) => section.title === 'Form configuration')?.state,
       ).toBe('Not available yet'),
     );
   });
@@ -105,7 +109,7 @@ describe('the editor for a form about each relationship', () => {
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      screen.getByRole('textbox', { name: 'Title' }),
       'About each relationship',
     );
     await writeInto(
@@ -166,8 +170,9 @@ describe('the editor for a form about each relationship', () => {
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        harness.outline().find((section) => section.title === 'Form fields')
-          ?.state,
+        harness
+          .outline()
+          .find((section) => section.title === 'Form configuration')?.state,
       ).toBe('Has a problem'),
     );
   });
@@ -175,11 +180,9 @@ describe('the editor for a form about each relationship', () => {
   it('writes nothing when the researcher discards the edit', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await harness.user.clear(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-    );
+    await harness.user.clear(screen.getByRole('textbox', { name: 'Title' }));
     await harness.user.type(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      screen.getByRole('textbox', { name: 'Title' }),
       'A heading nobody kept',
     );
     expectStageUntouched(harness);
@@ -192,7 +195,7 @@ describe('the editor for a form about each relationship', () => {
   it('follows an attribute deleted elsewhere without echoing it back', async () => {
     const harness = renderStageEditor(openFixture());
     expect(
-      await screen.findByText('Collects "edgeNotes" as text.'),
+      await screen.findByText(exactlyText(FIELD_ROW_BADGE)),
     ).toBeInTheDocument();
 
     harness.receiveCodebookUpdate({
@@ -225,9 +228,7 @@ describe('the editor for a form about each relationship', () => {
     const harness = renderStageEditor({ ...openFixture(), readOnly: true });
 
     await waitFor(() =>
-      expect(
-        screen.getByRole('textbox', { name: 'Introduction heading' }),
-      ).toBeDisabled(),
+      expect(screen.getByRole('textbox', { name: 'Title' })).toBeDisabled(),
     );
 
     // The shell's refusal is the guarantee, not the chrome above it: a

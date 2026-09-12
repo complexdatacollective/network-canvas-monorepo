@@ -230,9 +230,6 @@ export default function SourcePedigreeSection() {
   return (
     <BuilderSection
       title={intl.formatMessage(narrativePedigreeMessages.sourceTitle)}
-      description={intl.formatMessage(
-        narrativePedigreeMessages.sourceDescription,
-      )}
     >
       {problem !== null && (
         <Alert variant="destructive">

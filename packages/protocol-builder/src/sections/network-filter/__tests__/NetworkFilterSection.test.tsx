@@ -57,11 +57,13 @@ const sociogram = (filter: unknown, prompts?: unknown) =>
 const dyadCensus = (filter: unknown) => stageHolding(DYAD_CENSUS, { filter });
 
 /**
- * The section under test, told what the stage works on and nothing more: no
- * field name, no stage path, no codebook, no selector.
+ * The section under test, told nothing at all: no subject, no field name, no
+ * stage path, no codebook, no selector. One filter is mounted from the
+ * node-type and the edge-type sections alike, and it says the same thing in
+ * both, as Architect's does.
  */
-const nodeFilterSection = <NetworkFilterSection subject="node" />;
-const edgeFilterSection = <NetworkFilterSection subject="edge" />;
+const nodeFilterSection = <NetworkFilterSection />;
+const edgeFilterSection = nodeFilterSection;
 
 const filterSwitch = () => screen.getByRole('switch', { name: 'Stage filter' });
 
@@ -108,7 +110,7 @@ describe('what the section says it is for', () => {
 
     expect(
       screen.getByText(
-        'Create rules that limit which nodes are available on this stage.',
+        'Create rules that filter which nodes or edges are displayed on this stage.',
       ),
     ).toBeInTheDocument();
   });
@@ -118,7 +120,7 @@ describe('what the section says it is for', () => {
 
     expect(
       screen.getByText(
-        'Create rules that limit which edges are available on this stage.',
+        'Create rules that filter which nodes or edges are displayed on this stage.',
       ),
     ).toBeInTheDocument();
   });

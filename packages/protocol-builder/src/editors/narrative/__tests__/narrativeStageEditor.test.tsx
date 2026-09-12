@@ -63,11 +63,9 @@ describe('the narrative stage editor', () => {
     openNewStage();
 
     expect(
-      await screen.findByRole('switch', { name: 'Allow moving nodes' }),
+      await screen.findByRole('switch', { name: 'Allow repositioning' }),
     ).toBeChecked();
-    expect(
-      screen.getByRole('switch', { name: 'Allow drawing on the canvas' }),
-    ).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Free-draw' })).not.toBeChecked();
   });
 
   /**
@@ -95,11 +93,11 @@ describe('the narrative stage editor', () => {
 
     const preset = await addPreset(harness);
     await harness.user.type(
-      preset.getByRole('textbox', { name: 'Preset name' }),
+      preset.getByRole('textbox', { name: 'Preset label' }),
       'All',
     );
     await harness.user.selectOptions(
-      preset.getByRole('combobox', { name: 'Position attribute' }),
+      preset.getByRole('combobox', { name: 'Layout attribute' }),
       'layout',
     );
     await harness.user.click(preset.getByRole('button', { name: 'Add' }));
@@ -131,16 +129,12 @@ describe('the narrative stage editor', () => {
    * the participant to place. A researcher plans a study around what this page
    * tells them, so wrong copy here is a false claim about what the study
    * collects, not a typo.
+   *
+   * The sentence saying a move is never recorded was the package's own; the
+   * released Architect's switch says only "Allow nodes to be repositioned",
+   * and copy parity took the rest of it out. What the mode cards say is still
+   * this package's and is still checked.
    */
-  it('describes moving a node as the temporary thing it is', async () => {
-    const harness = openFixture();
-    await waitFor(() => expect(harness.outline()).toHaveLength(9));
-
-    expect(
-      screen.getByText(/Nothing is recorded/, { exact: false }),
-    ).toBeInTheDocument();
-  });
-
   it('describes manual layout as a narrative stage performs it', async () => {
     const harness = openFixture();
     await waitFor(() => expect(harness.outline()).toHaveLength(9));
@@ -162,7 +156,7 @@ describe('the narrative stage editor', () => {
    * either mode, where `Sociogram.tsx` switches to `allNodes` and draws the
    * unplaced ones in; and it passes `behaviours.allowRepositioning` to the
    * canvas, so the shared sentence's unconditional "reposition nodes by hand"
-   * is the "Allow moving nodes" switch's to grant.
+   * is the "Allow repositioning" switch's to grant.
    */
   it('describes automatic layout as a narrative stage performs it', async () => {
     const harness = openFixture();

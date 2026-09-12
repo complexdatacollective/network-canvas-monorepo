@@ -23,9 +23,34 @@ export type PromptTextFieldProps = Readonly<{
   /**
    * What the participant is looking at while they answer. Above the box rather
    * than under it, because it decides how the question is phrased.
+   *
+   * Absent where Architect raises no notice above the box — a Tie-Strength
+   * Census says the same thing in the field's own `hint` instead, and a
+   * second sentence above the box would have to repeat it or disagree with
+   * it.
    */
-  guidance: ReactNode;
+  guidance?: ReactNode;
   placeholder: string;
+  /**
+   * What the question itself has to do, where the family says so under the box
+   * rather than above it. Absent where the family says nothing there.
+   */
+  hint?: string;
+  /**
+   * What this editor's prompt group is called, and what it says.
+   *
+   * Per editor rather than shared: the group holds the question alone in
+   * three of the five families and the question plus the connection an answer
+   * records in the other two, so Architect names and explains it differently
+   * in each.
+   */
+  title: string;
+  description: string;
+  /**
+   * Anything else the group holds — the connection type, where the family
+   * keeps it inside this group rather than beside it.
+   */
+  children?: ReactNode;
 }>;
 
 /**
@@ -33,31 +58,35 @@ export type PromptTextFieldProps = Readonly<{
  *
  * An ordinary connected field of the DIALOG's form, so the question reaches
  * the stage when the prompt does and a cancelled prompt takes it with it.
- * Shared by the three censuses and the two bins, which differ only in the
- * sentence above the box and the example inside it.
+ * Shared by the three censuses and the two bins, which differ in whether
+ * there is a sentence above the box at all, in what it says, and in the
+ * example inside the box.
  */
 export function PromptTextField({
   item,
   guidance,
   placeholder,
+  hint,
+  title,
+  description,
+  children,
 }: PromptTextFieldProps) {
   const intl = useAppIntl();
 
   return (
-    <Section
-      title={intl.formatMessage(censusMessages.promptTextTitle)}
-      description={intl.formatMessage(censusMessages.promptTextDescription)}
-    >
+    <Section title={title} description={description}>
       {guidance}
       <Field<typeof RichTextField>
         name="text"
         component={RichTextField}
         label={intl.formatMessage(censusMessages.promptTextLabel)}
+        {...(hint === undefined ? {} : { hint })}
         placeholder={placeholder}
         singleLine
         initialValue={asString(item.text)}
         required={WRITE_THE_QUESTION}
       />
+      {children}
     </Section>
   );
 }
