@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import { interfaceDocumentationUrl } from '../../../interfaces/documentation.ts';
 import { defaultStageImage } from '../../../interfaces/StageTypeImage.tsx';
-import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
+import {
+  fixtureStageIds,
+  loadFixtureStage,
+} from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import StageHeadingSection from '../StageHeadingSection.tsx';
 
@@ -66,14 +69,16 @@ describe('the stage heading', () => {
    * it — leaving a researcher clicking through a timeline with the stage's
    * name and a type badge to tell a Sociogram from a Narrative.
    *
-   * Every interface the fixture protocol holds is asked, and the placeholder
-   * is refused: a heading that had stopped reading the stage's type would
-   * render the Default screenshot for all of them and a test that only counted
-   * images would still pass.
+   * Every interface the fixture protocol holds is asked, the placeholder is
+   * refused, and the screenshot has to be the one captured from THIS
+   * interface. Refusing the placeholder alone is not enough: a heading that
+   * had stopped reading the stage's type would show one real screenshot on
+   * all nineteen and still pass.
    */
   it.each(fixtureStageIds())(
     'shows the interface screenshot for %s',
     (stageId) => {
+      const { type } = loadFixtureStage(stageId);
       const { container } = renderStageEditor({ stageId, sections: heading });
 
       const image = container.querySelector('img');
@@ -81,6 +86,13 @@ describe('the stage heading', () => {
       expect(image?.getAttribute('src'), stageId).not.toBe(
         defaultStageImage.src,
       );
+
+      // `@codaco/interface-images` names every generated file after the
+      // interface it was captured from (`Sociogram.4x3.960.webp`), so the
+      // file's own name is the evidence that the heading read this stage's
+      // type rather than some fixed one.
+      const file = image?.getAttribute('src')?.split('/').pop() ?? '';
+      expect(file, stageId).toMatch(new RegExp(`^${type}\\.`));
 
       // Decorative: the interface is named in the badge beside it, so the
       // picture says nothing a reader who cannot see it is not already told.
