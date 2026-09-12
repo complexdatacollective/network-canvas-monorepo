@@ -44,7 +44,7 @@ export const ChoosingTheAttribute: Story = {
     await awaitPassiveEffects();
 
     await userEvent.selectOptions(
-      await canvas.findByRole('combobox', { name: /Attribute filled in/ }),
+      await canvas.findByRole('combobox', { name: /Select an attribute/ }),
       'relationship_to_ego',
     );
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));

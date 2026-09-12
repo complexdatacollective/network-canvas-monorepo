@@ -69,7 +69,7 @@ is not ready to go out, release from the previous tag instead:
    hotfix branch is a delivery vehicle, not the source of truth.
 
 2. Bump `apps/interviewer/package.json` to the hotfix version and add the
-   matching `## <version>` section to `CHANGELOG.md`; `scripts/release-notes.mjs`
+   matching `## <version>` section to `CHANGELOG.md`; `scripts/release/release-notes.mjs`
    reads that section for the GitHub release. Do **not** run
    `changeset version` on the branch — it would consume changesets that belong
    to main's next release.

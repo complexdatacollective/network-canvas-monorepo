@@ -18,8 +18,11 @@ const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
       )
     : [];
 
-const ASKED_ORDER = 'Order of the people asked about';
-const CHOICE_ORDER = 'Order of the people to choose from';
+// Architect mounts the bins' own `BucketSortOrderSection` and
+// `BinSortOrderSection` here, overriding only their descriptions, so the two
+// groups are headed exactly as they are in a bin prompt.
+const ASKED_ORDER = 'Bucket order';
+const CHOICE_ORDER = 'Bin order';
 
 describe('the questions a one-to-many dyad census asks', () => {
   it('saves the stage it opened, unchanged', async () => {
@@ -77,7 +80,7 @@ describe('the questions a one-to-many dyad census asks', () => {
     const group = await screen.findByRole('region', { name: ASKED_ORDER });
     await harness.user.click(
       within(group).getByRole('button', {
-        name: 'Add a rule for the order people are asked about',
+        name: 'Add new bucket sort rule',
       }),
     );
 
@@ -103,7 +106,7 @@ describe('the questions a one-to-many dyad census asks', () => {
     const asked = await screen.findByRole('region', { name: ASKED_ORDER });
     await harness.user.click(
       within(asked).getByRole('button', {
-        name: 'Add a rule for the order people are asked about',
+        name: 'Add new bucket sort rule',
       }),
     );
     await harness.user.selectOptions(

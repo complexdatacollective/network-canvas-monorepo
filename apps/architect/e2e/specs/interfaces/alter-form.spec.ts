@@ -37,7 +37,7 @@ test('creates a valid AlterForm stage from scratch', async ({
     'Tell us a bit about each person you know.',
   );
 
-  await addFormField(editor.section('Form fields'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text input',

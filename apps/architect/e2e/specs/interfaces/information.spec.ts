@@ -33,7 +33,7 @@ test('creates a valid Information stage from scratch', async ({
   // The add button names what it adds, so it needs no section scoping to be
   // unambiguous — the whole point of #1391's rename.
   await pageContent
-    .getByRole('button', { name: 'Create new content block', exact: true })
+    .getByRole('button', { name: 'Create new content item', exact: true })
     .click();
 
   // The block dialog is a page-level portal (protocol-builder's
@@ -127,14 +127,14 @@ const openItemDialog = async (
 ) => {
   // Each row of the blocks list names its own affordances after the list's
   // noun ("block" — `pageItemNoun` in PageContentSection.tsx), so the row
-  // buttons read "Edit block" / "Delete block" and the dialog they open is
+  // buttons read "Edit item" / "Delete item" and the dialog they open is
   // titled for the row that already exists.
   await editor
     .field('items')
-    .getByRole('button', { name: 'Edit block', exact: true })
+    .getByRole('button', { name: 'Edit item', exact: true })
     .nth(position)
     .click();
-  const dialog = page.getByRole('dialog', { name: 'Edit content block' });
+  const dialog = page.getByRole('dialog', { name: 'Edit item' });
   await expect(dialog).toBeVisible();
   return dialog;
 };

@@ -72,12 +72,12 @@ describe('the sections of an anonymisation stage', () => {
     const harness = openEditor();
 
     const minimum = await screen.findByRole('spinbutton', {
-      name: /minimum length/i,
+      name: /minimum text length/i,
     });
     await harness.user.clear(minimum);
     await harness.user.type(minimum, '40');
     const maximum = await screen.findByRole('spinbutton', {
-      name: /maximum length/i,
+      name: /maximum text length/i,
     });
     await harness.user.clear(maximum);
     await harness.user.type(maximum, '5');
@@ -116,10 +116,10 @@ describe('the sections of an anonymisation stage', () => {
     // The minimum rule off, so this is about the maximum alone rather than
     // about a minimum that now exceeds it.
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Minimum length' }),
+      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
     );
     const maximum = await screen.findByRole('spinbutton', {
-      name: /maximum length/i,
+      name: /maximum text length/i,
     });
     await harness.user.clear(maximum);
     await harness.user.type(maximum, '0');
@@ -150,7 +150,7 @@ describe('the sections of an anonymisation stage', () => {
     const harness = openEditor();
 
     await harness.user.clear(
-      await screen.findByRole('spinbutton', { name: 'Minimum length' }),
+      await screen.findByRole('spinbutton', { name: 'Minimum text length' }),
     );
 
     expect(await harness.submit()).toBeNull();
@@ -163,11 +163,11 @@ describe('the sections of an anonymisation stage', () => {
     // this one, so the editor's own alert stands down rather than repeating it.
     expect(
       await screen.findAllByText(
-        'Enter a value for "Minimum length", or switch the rule off.',
+        'Enter a value for "Minimum text length", or switch the rule off.',
       ),
     ).toHaveLength(1);
     expect(
-      screen.getByRole('spinbutton', { name: 'Minimum length' }),
+      screen.getByRole('spinbutton', { name: 'Minimum text length' }),
     ).toHaveAttribute('aria-invalid', 'true');
   });
 

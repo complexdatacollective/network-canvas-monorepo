@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds the pending-release Fresco image the way a release would: stage the
-# mirrored single-package tree with scripts/mirror-app.mjs (dry run), bundle the
+# mirrored single-package tree with scripts/release/mirror-app.mjs (dry run), bundle the
 # pending workspace packages into it (bundle-pending-packages.mjs), generate the
 # lockfile, and build the staged tree's own Dockerfile.
 #
@@ -33,7 +33,7 @@ if [ -n "${VENDOR_CHANGED_SINCE:-}" ]; then
   # moves, and run the lockfile guard — so the image under test is the one
   # the lane would ship. Pending changesets play no part here.
   echo "[release-test] staging hotfix mirror tree (changed since $VENDOR_CHANGED_SINCE) -> $STAGE_DIR"
-  MIRROR_STAGE_DIR="$STAGE_DIR" node scripts/mirror-app.mjs \
+  MIRROR_STAGE_DIR="$STAGE_DIR" node scripts/release/mirror-app.mjs \
     --app apps/fresco --repo complexdatacollective/Fresco --branch main \
     --version "$VERSION" \
     --with-lockfile \
@@ -42,7 +42,7 @@ if [ -n "${VENDOR_CHANGED_SINCE:-}" ]; then
     --stage-only
 else
   echo "[release-test] staging mirror tree -> $STAGE_DIR"
-  MIRROR_DRY_RUN=true MIRROR_STAGE_DIR="$STAGE_DIR" node scripts/mirror-app.mjs \
+  MIRROR_DRY_RUN=true MIRROR_STAGE_DIR="$STAGE_DIR" node scripts/release/mirror-app.mjs \
     --app apps/fresco --repo complexdatacollective/Fresco --branch main \
     --version "$VERSION"
 
@@ -62,7 +62,7 @@ fi
 # does not see a failure inside a command substitution used as an argument, so
 # the echo form reported success over a stale registry resolution and went on
 # to build — and certify — the image.
-guard=$(node scripts/vendor-workspace-packages.mjs --assert-lockfile "$STAGE_DIR")
+guard=$(node scripts/release/vendor-workspace-packages.mjs --assert-lockfile "$STAGE_DIR")
 echo "[release-test] $guard"
 
 echo "[release-test] building image $IMAGE_TAG"

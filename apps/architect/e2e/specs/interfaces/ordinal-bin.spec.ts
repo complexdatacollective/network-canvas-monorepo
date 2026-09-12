@@ -84,13 +84,13 @@ test('creates a valid OrdinalBin stage from scratch', async ({
   // The shared `PromptTextField` the whole census/bin family renders
   // (`label: 'Prompt text'`, censusMessages.promptTextLabel).
   //
-  // "The scale" is the same `BinAttributeField` CategoricalBin uses, only
+  // "Ordinal response" is the same `BinAttributeField` CategoricalBin uses, only
   // asking for an ordinal attribute: a picker over what the node type already
   // has, plus a `CreateVariableButton` labelled "Create a new attribute" that
   // opens the codebook's attribute editor with `allowedVariableTypes:
   // ['ordinal']` — so its "Attribute type" select is already on Ordinal and is
-  // never touched here. Values are authored in place, one "Add option" press
-  // per value, and committed by "Create attribute".
+  // never touched here. Values are authored in place, one "Create new option"
+  // press per value, and committed by "Create attribute".
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Rank these');
     // Scoped to the attribute editor's own dialog: the prompt dialog behind it
@@ -110,7 +110,7 @@ test('creates a valid OrdinalBin stage from scratch', async ({
       { label: 'High', value: 'high' },
     ].entries()) {
       await attributeEditor
-        .getByRole('button', { name: 'Add option', exact: true })
+        .getByRole('button', { name: 'Create new option', exact: true })
         .click();
       await attributeEditor
         .getByRole('textbox', {
@@ -135,7 +135,7 @@ test('creates a valid OrdinalBin stage from scratch', async ({
     // dialog behind this one must not be driven through a modal still on
     // screen.
     await attributeEditor.waitFor({ state: 'hidden' });
-    // The "Color of the scale" section is deliberately left untouched:
+    // The "Color gradient" section is deliberately left untouched:
     // OrdinalBinPromptsSection.tsx passes `itemTemplate: () => ({ color:
     // FIRST_ORDINAL_COLOR })` to the shared prompts section, so a brand-new
     // prompt row already carries `ord-color-seq-1` the moment its dialog

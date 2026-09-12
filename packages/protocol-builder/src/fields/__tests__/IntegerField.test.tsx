@@ -54,8 +54,10 @@ const openLimits = async () => {
   );
   return {
     harness,
-    max: await screen.findByRole('spinbutton', { name: /Most people/ }),
-    min: screen.getByRole('spinbutton', { name: /Fewest people/ }),
+    max: await screen.findByRole('spinbutton', {
+      name: /Maximum number of alters/,
+    }),
+    min: screen.getByRole('spinbutton', { name: /Minimum number of alters/ }),
   };
 };
 
@@ -157,7 +159,9 @@ describe('a control that counts people', () => {
       },
       sections: <AlterLimitsSection />,
     });
-    const max = await screen.findByRole('spinbutton', { name: /Most people/ });
+    const max = await screen.findByRole('spinbutton', {
+      name: /Maximum number of alters/,
+    });
     expect(max).toHaveValue(25);
 
     await harness.user.clear(max);

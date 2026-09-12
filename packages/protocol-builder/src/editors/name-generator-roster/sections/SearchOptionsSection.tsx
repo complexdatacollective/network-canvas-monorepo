@@ -37,38 +37,38 @@ const messages = defineMessages({
   description: {
     id: 'protocolBuilder.searchOptions.description',
     defaultMessage:
-      'Let the participant find someone by typing, and choose what their typing is matched against.',
+      'Configure how participants find and select nodes from the roster.',
     description: 'Description of the roster-search section.',
   },
   waitingDescription: {
     id: 'protocolBuilder.searchOptions.waitingDescription',
-    defaultMessage: 'Choose a roster data file before setting up its search.',
+    defaultMessage: 'Select a roster data source before configuring search.',
     description:
       'Shown in place of the roster-search section’s description while no data file has been chosen, so there are no columns for a search to match against.',
   },
   matchLabel: {
     id: 'protocolBuilder.searchOptions.matchLabel',
-    defaultMessage: 'Attributes a search matches',
+    defaultMessage: 'Searchable attributes',
     description:
       'Label of the checkboxes choosing which attributes of the data file a participant’s typing is compared against.',
   },
   matchHint: {
     id: 'protocolBuilder.searchOptions.matchHint',
     defaultMessage:
-      'What the participant types is compared against these. Choose the ones they would actually search for.',
+      "You can configure which attributes are considered when matching roster nodes to the user's query.",
     description:
       'Guidance under the checkboxes choosing what a participant’s search is matched against.',
   },
   toleranceLabel: {
     id: 'protocolBuilder.searchOptions.toleranceLabel',
-    defaultMessage: 'How closely a search must match',
+    defaultMessage: 'Search accuracy',
     description:
       'Label of the scale choosing how much difference between what a participant types and what the data file holds still counts as a match.',
   },
   toleranceHint: {
     id: 'protocolBuilder.searchOptions.toleranceHint',
     defaultMessage:
-      'A stricter setting narrows a roster of similar people; a looser one forgives typos.',
+      'Search accuracy determines how closely the text the participant types must be to an attribute for it to be considered a match.',
     description:
       'Guidance under the scale choosing how closely a participant’s search must match.',
   },

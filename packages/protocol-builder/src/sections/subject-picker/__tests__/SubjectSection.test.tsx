@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { COLOR_SEQUENCE_HUE_NAMES } from '@codaco/fresco-ui/form/fields/ColorPicker';
 import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contract';
 import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -123,7 +124,7 @@ describe('the section that says what a stage is about', () => {
 
     await waitFor(() => expect(harness.outline()).toHaveLength(3));
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Edge type',
+      'Edge setup',
       'Stage filter',
       'Task introduction',
     ]);
@@ -137,8 +138,8 @@ describe('the section that says what a stage is about', () => {
 
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Node type',
-      'Prompts',
+      'Node setup',
+      'Prompt collection',
     ]);
   });
 
@@ -166,7 +167,7 @@ describe('the section that says what a stage is about', () => {
     ).toBeChecked();
     expect(await harness.submit()).toBeNull();
     expect(harness.outline()).toEqual([
-      { title: 'Edge type', state: 'Finished' },
+      { title: 'Edge setup', state: 'Finished' },
       { title: 'Stage filter', state: 'Switched off' },
     ]);
   });
@@ -264,7 +265,7 @@ const createNodeTypeNamed = async (
   name: string,
 ): Promise<void> => {
   await harness.user.click(
-    await screen.findByRole('button', { name: 'Create a new node type' }),
+    await screen.findByRole('button', { name: 'Create new node type' }),
   );
   await harness.user.type(
     await screen.findByRole('textbox', { name: 'Node type name' }),
@@ -307,7 +308,7 @@ describe('creating the type a stage needs without leaving it', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Create a new node type' }),
+      await screen.findByRole('button', { name: 'Create new node type' }),
     );
 
     // The fixture protocol's own node types are what the next colour counts
@@ -327,15 +328,25 @@ describe('creating the type a stage needs without leaving it', () => {
     expect(
       await screen.findByRole('textbox', { name: 'Node type name' }),
     ).toHaveValue('');
-    // The palette names positions rather than colours, so the swatch the draft
-    // arrives with is the one standing at its reference's place in the node
-    // sequence.
+    // The palette names each swatch after its hue rather than its position, so
+    // the swatch the draft arrives with is the one named for the hue standing
+    // at its reference's place in the node sequence.
     const colorPosition =
       NodeColorSequence.findIndex((reference) => reference === color) + 1;
     expect(colorPosition).toBeGreaterThan(0);
-    expect(
-      screen.getByRole('radio', { name: `Node color ${colorPosition}` }),
-    ).toBeChecked();
+    const hueName =
+      COLOR_SEQUENCE_HUE_NAMES['node-color-seq']?.[colorPosition - 1]
+        ?.defaultMessage;
+    // Thrown rather than asserted, so the locator below keeps its exact name:
+    // a missing hue is this test's own setup failing, not the palette. A
+    // descriptor's `defaultMessage` is pre-parsed ICU as well as a string, and
+    // a swatch name is always the latter.
+    if (typeof hueName !== 'string') {
+      throw new Error(
+        `the node palette names no hue at position ${colorPosition}`,
+      );
+    }
+    expect(screen.getByRole('radio', { name: hueName })).toBeChecked();
     expect(screen.getByRole('combobox', { name: 'Default shape' })).toHaveValue(
       shape,
     );
@@ -381,9 +392,7 @@ describe('creating the type a stage needs without leaving it', () => {
 
     await createNodeTypeNamed(harness, 'Place');
 
-    expect(
-      await screen.findByText('Change the node type?'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Change node type?')).toBeInTheDocument();
     // The type exists, and the stage has not moved.
     expect(nodeTypeNames(harness)).toContain('Place');
     expect(pickedTypeBehindTheQuestion()).toBe('person');
@@ -407,7 +416,7 @@ describe('creating the type a stage needs without leaving it', () => {
     // own, and naming which one this is says what the gesture means — backing
     // out of the SELECTION, not out of a create that has already happened.
     const question = await screen.findByRole('dialog', {
-      name: 'Change the node type?',
+      name: 'Change node type?',
     });
     await harness.user.click(
       within(question).getByRole('button', { name: 'Cancel' }),
@@ -448,7 +457,7 @@ describe('creating the type a stage needs without leaving it', () => {
     await createNodeTypeNamed(harness, 'Place');
 
     expect(await screen.findByRole('radio', { name: 'Place' })).toBeChecked();
-    expect(screen.queryByText('Change the node type?')).not.toBeInTheDocument();
+    expect(screen.queryByText('Change node type?')).not.toBeInTheDocument();
   });
 
   /**
@@ -522,7 +531,7 @@ describe('creating the type a stage needs without leaving it', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Create a new node type' }),
+      await screen.findByRole('button', { name: 'Create new node type' }),
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Node type name' }),
@@ -549,7 +558,7 @@ describe('creating the type a stage needs without leaving it', () => {
     // until the host answers its acquire.
     await waitFor(() =>
       expect(
-        screen.queryByRole('button', { name: 'Create a new node type' }),
+        screen.queryByRole('button', { name: 'Create new node type' }),
       ).not.toBeInTheDocument(),
     );
   });
@@ -658,7 +667,7 @@ describe('dismissing the create dialog while it is submitting', () => {
 
   const startTheCreate = async (harness: Harness) => {
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Create a new node type' }),
+      await screen.findByRole('button', { name: 'Create new node type' }),
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Node type name' }),
@@ -746,7 +755,7 @@ describe('naming a new type', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Create a new node type' }),
+      await screen.findByRole('button', { name: 'Create new node type' }),
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Node type name' }),
@@ -769,7 +778,7 @@ describe('naming a new type', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Create a new edge type' }),
+      await screen.findByRole('button', { name: 'Create new edge type' }),
     );
     await harness.user.type(
       await screen.findByRole('textbox', { name: 'Edge type name' }),
@@ -800,7 +809,7 @@ describe('naming a new type', () => {
  * that happens on a mis-click is out of step with both.
  */
 describe('changing a subject the stage is configured for', () => {
-  const CHANGE_TITLE = 'Change the node type?';
+  const CHANGE_TITLE = 'Change node type?';
   const CHANGE_DESCRIPTION =
     'Everything else on this stage describes the node type it works with now, and choosing a different type removes all of it.';
   const CHANGE_CONFIRM = 'Change the node type';
@@ -957,7 +966,7 @@ describe('choosing a type for a stage that has never had one', () => {
     // Its own words, not the ones about replacing a type the stage does not
     // have: the two questions share a definition, not a sentence.
     expect(screen.getByText(FIRST_CHOICE_DESCRIPTION)).toBeInTheDocument();
-    expect(screen.queryByText('Change the node type?')).not.toBeInTheDocument();
+    expect(screen.queryByText('Change node type?')).not.toBeInTheDocument();
     // Nothing has moved behind it: no type is picked, and the rule written
     // before there was a type is still there.
     expect(pickedTypeBehindTheQuestion()).toBeUndefined();
@@ -997,7 +1006,7 @@ describe('choosing a type for a stage that has never had one', () => {
     // The section is left switched on with nothing in it, which is what it
     // reports about itself.
     expect(harness.outline()).toEqual([
-      { title: 'Node type', state: 'Finished' },
+      { title: 'Node setup', state: 'Finished' },
       { title: 'Stage filter', state: 'Not finished' },
     ]);
   });

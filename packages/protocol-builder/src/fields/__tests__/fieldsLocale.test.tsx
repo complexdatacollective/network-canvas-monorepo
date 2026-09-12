@@ -193,7 +193,7 @@ describe('the fields in this directory, read in Spanish', () => {
     render(inEditor(<EntityTypePickerField entityType="node" value="ghost" />));
 
     expect(
-      screen.getByRole('radiogroup', { name: 'Tipo de nodo' }),
+      screen.getByRole('radiogroup', { name: 'Opciones de tipo de nodo' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('radio', {
@@ -217,7 +217,7 @@ describe('the fields in this directory, read in Spanish', () => {
     render(inEditor(<EntityTypePickerField entityType="node" />, withoutTypes));
 
     expect(
-      screen.getByText('Este protocolo aún no tiene tipos de nodo.'),
+      screen.getByText('Todavía no hay tipos de nodo definidos'),
     ).toBeInTheDocument();
   });
 

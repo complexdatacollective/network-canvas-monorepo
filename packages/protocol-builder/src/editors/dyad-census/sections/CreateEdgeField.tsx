@@ -57,10 +57,19 @@ export const missingEdgeTypeIssue = (
     : undefined;
 
 export type CreateEdgeFieldProps = Readonly<{
-  title: string;
+  /**
+   * The group this control makes on its own, where the family gives it one.
+   *
+   * Absent for the two censuses that keep the connection type inside the
+   * prompt group, which is where Architect keeps it: the control then renders
+   * bare, as one more field of the group around it.
+   */
+  title?: string;
   /** What answering records between the people the prompt asked about. */
-  description: string;
-  hint: string;
+  description?: string;
+  /** What this family calls the control. */
+  label: string;
+  hint?: string;
   /** Shown when the prompt is saved without a connection type. */
   requiredMessage: string;
 }>;
@@ -80,6 +89,7 @@ export type CreateEdgeFieldProps = Readonly<{
 export default function CreateEdgeField({
   title,
   description,
+  label,
   hint,
   requiredMessage,
 }: CreateEdgeFieldProps) {
@@ -116,14 +126,14 @@ export default function CreateEdgeField({
 
   const createLabel = intl.formatMessage(censusMessages.edgeCreateLabel);
 
-  return (
-    <Section title={title} description={description}>
+  const control = (
+    <>
       <Field<typeof EntityTypePickerField>
         name={CREATE_EDGE_FIELD}
         component={EntityTypePickerField}
         entityType="edge"
-        label={intl.formatMessage(censusMessages.edgeLabel)}
-        hint={hint}
+        label={label}
+        {...(hint === undefined ? {} : { hint })}
         required={requiredMessage}
       />
       <div className="mt-4">
@@ -187,6 +197,14 @@ export default function CreateEdgeField({
           />
         </Dialog>
       )}
+    </>
+  );
+
+  return title === undefined ? (
+    control
+  ) : (
+    <Section title={title} description={description}>
+      {control}
     </Section>
   );
 }

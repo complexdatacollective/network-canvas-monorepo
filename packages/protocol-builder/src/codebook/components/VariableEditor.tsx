@@ -143,29 +143,28 @@ const messages = defineMessages({
   },
   optionsLegend: {
     id: 'protocolBuilder.codebookVariable.optionsLegend',
-    defaultMessage: 'Allowed values',
+    defaultMessage: 'Choice values',
     description:
       'Heading over the list of answers a participant may choose from for this attribute. A required marker follows it.',
   },
   optionsHint: {
     id: 'protocolBuilder.codebookVariable.optionsHint',
     defaultMessage:
-      'Add at least two participant-facing labels and their stored values.',
+      'Define the values participants can choose for this categorical or ordinal attribute.',
     description:
-      'Guidance under the allowed values heading. A label is what a participant reads; its stored value is what the export records.',
+      'Guidance under the choice values heading. Categorical and ordinal are two kinds of attribute.',
   },
   answersLegend: {
     id: 'protocolBuilder.codebookVariable.answersLegend',
-    defaultMessage: 'The two answers',
+    defaultMessage: 'Boolean values',
     description:
       'Heading over the words on the two answers a yes/no attribute puts in front of a participant.',
   },
   answersHint: {
     id: 'protocolBuilder.codebookVariable.answersHint',
-    defaultMessage:
-      'Write what the participant chooses between. Left empty, they are offered Yes and No. A negative answer is shown in red when it is selected.',
+    defaultMessage: 'Define the values stored for the on and off states.',
     description:
-      'Guidance under the heading over a yes/no attribute’s two answers. Naming neither is a real answer: the interview offers its own translated Yes and No when the protocol names none.',
+      'Guidance under the heading over a yes/no attribute’s two answers.',
   },
   heldAnswersLegend: {
     id: 'protocolBuilder.codebookVariable.heldAnswersLegend',
@@ -189,16 +188,14 @@ const messages = defineMessages({
   },
   parametersLegend: {
     id: 'protocolBuilder.codebookVariable.parametersLegend',
-    defaultMessage: 'What this control accepts',
+    defaultMessage: 'Control settings',
     description:
       'Heading over the settings the input control an attribute is collected with takes — the bounds of a date, the words at each end of a sliding scale.',
   },
   parametersHint: {
     id: 'protocolBuilder.codebookVariable.parametersHint',
-    defaultMessage:
-      'These settings belong to the input control this attribute is collected with, so they apply wherever it is asked for.',
-    description:
-      'Guidance under the heading over an input control’s settings, saying that they follow the attribute into every interview step that asks for it.',
+    defaultMessage: 'Configure the settings available for this input control.',
+    description: 'Guidance under the heading over an input control’s settings.',
   },
   optionLabelField: {
     id: 'protocolBuilder.codebookVariable.optionLabelField',
@@ -220,7 +217,7 @@ const messages = defineMessages({
   },
   addOption: {
     id: 'protocolBuilder.codebookVariable.addOption',
-    defaultMessage: 'Add option',
+    defaultMessage: 'Create new option',
     description:
       'Button that adds an empty row to the list of answers a participant may choose from.',
   },
@@ -239,7 +236,7 @@ const messages = defineMessages({
   lockedOptionsCaption: {
     id: 'protocolBuilder.codebookVariable.lockedOptionsCaption',
     defaultMessage:
-      'These values are managed by the interface and cannot be changed.',
+      'These options are automatically configured by the interface and cannot be modified.',
     description:
       'Caption over the read-only list of allowed answers for an attribute whose answers one kind of interview step owns. An interface is one kind of interview step.',
   },
