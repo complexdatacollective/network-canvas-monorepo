@@ -162,7 +162,7 @@ describe('the dyad census editor', () => {
     );
     await harness.user.click(
       await screen.findByRole('button', {
-        name: 'Create a new connection type',
+        name: 'Create new edge type',
       }),
     );
     await harness.user.type(

@@ -12,10 +12,10 @@ import type {
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from './censusMessages.ts';
-import CreateEdgeField, {
+import EdgeTypeSection, {
   CREATE_EDGE_FIELD,
   missingEdgeTypeIssue,
-} from './CreateEdgeField.tsx';
+} from './EdgeTypeSection.tsx';
 import { PromptTextField, PromptTextPreview } from './PromptTextField.tsx';
 
 /** What only a Dyad Census says; the words it shares are in `censusMessages`. */
@@ -79,7 +79,7 @@ function DyadCensusPromptEditor({ item }: RowEditorProps) {
         guidance={<DyadCensusGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
       />
-      <CreateEdgeField
+      <EdgeTypeSection
         title={intl.formatMessage(censusMessages.affirmativeTitle)}
         description={intl.formatMessage(messages.edgeDescription)}
         hint={intl.formatMessage(messages.edgeHint)}

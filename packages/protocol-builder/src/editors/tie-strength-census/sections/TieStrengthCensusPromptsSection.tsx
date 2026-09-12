@@ -35,11 +35,11 @@ import { useCreateAttributeForSlot } from '../../../sections/create-variable/use
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
-import CreateEdgeField, {
+import EdgeTypeSection, {
   CREATE_EDGE_FIELD,
   edgeSubjectOf,
   missingEdgeTypeIssue,
-} from '../../dyad-census/sections/CreateEdgeField.tsx';
+} from '../../dyad-census/sections/EdgeTypeSection.tsx';
 import {
   PromptTextField,
   PromptTextPreview,
@@ -373,7 +373,7 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
         guidance={<TieStrengthGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
       />
-      <CreateEdgeField
+      <EdgeTypeSection
         title={intl.formatMessage(messages.edgeTitle)}
         description={intl.formatMessage(messages.edgeDescription)}
         hint={intl.formatMessage(messages.edgeHint)}

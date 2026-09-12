@@ -17,10 +17,10 @@ import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
-import CreateEdgeField, {
+import EdgeTypeSection, {
   CREATE_EDGE_FIELD,
   missingEdgeTypeIssue,
-} from '../../dyad-census/sections/CreateEdgeField.tsx';
+} from '../../dyad-census/sections/EdgeTypeSection.tsx';
 import {
   PromptTextField,
   PromptTextPreview,
@@ -201,7 +201,7 @@ function OneToManyDyadCensusPromptEditor({ item }: RowEditorProps) {
         guidance={<OneToManyGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
       />
-      <CreateEdgeField
+      <EdgeTypeSection
         title={intl.formatMessage(censusMessages.affirmativeTitle)}
         description={intl.formatMessage(messages.edgeDescription)}
         hint={intl.formatMessage(messages.edgeHint)}

@@ -24,12 +24,12 @@
     "es": "Selecciona el tipo de nodo que creará esta etapa.",
     "from": "74a07e626 architect.sections.nodeType.selectTheTypeOfNodeThat"
   },
-  "protocolBuilder.subjectSection.nodeCreateLabel": {
+  "protocolBuilder.entitySelect.nodeCreateLabel": {
     "en": "Create new node type",
     "es": "Crear nuevo tipo de nodo",
     "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.createNewType (entityType: node)"
   },
-  "protocolBuilder.subjectSection.edgeCreateLabel": {
+  "protocolBuilder.entitySelect.edgeCreateLabel": {
     "en": "Create new edge type",
     "es": "Crear nuevo tipo de vínculo",
     "from": "74a07e626 architect.sections.fields.entitySelectField.entitySelectField.createNewType (entityType: edge)"

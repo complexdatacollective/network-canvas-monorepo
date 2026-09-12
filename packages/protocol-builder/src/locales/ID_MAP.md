@@ -194,7 +194,7 @@ has to have exactly one:
   is declared beside that family's own markup, under the same `censusPrompts` area. It
   sits under the Dyad Census because that editor lands first and the family rule is
   that the first editor owns what its siblings also need; it moves up to `sections/`
-  with `PromptTextField` and `CreateEdgeField` once the last census or bin editor has
+  with `PromptTextField` and `EdgeTypeSection` once the last census or bin editor has
   landed.
 - `editors/ordinal-bin/sections/binMessages.ts` — the same arrangement for the two
   bins: the attribute picker, the warning about how many bins fit on a screen, and

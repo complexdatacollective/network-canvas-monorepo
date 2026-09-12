@@ -543,10 +543,6 @@
     "defaultMessage": "Do these two people know each other?",
     "description": "Example question in the empty box where a researcher writes a Dyad Census prompt."
   },
-  "protocolBuilder.censusPrompts.edgeCreateLabel": {
-    "defaultMessage": "Create a new connection type",
-    "description": "Button that opens the codebook editor for inventing a kind of connection this prompt can record. Also the title of the dialog it opens."
-  },
   "protocolBuilder.censusPrompts.edgeGoneRefusal": {
     "defaultMessage": "The connection type this prompt records is no longer in the codebook. Choose another one.",
     "description": "Refusal shown on the connection-type control when a researcher saves a census prompt whose connection type has been deleted from the protocol’s codebook. The codebook is the protocol’s definition of the node types, edge types and attributes a study records."
@@ -1451,6 +1447,14 @@
     "defaultMessage": "That edge type has been deleted",
     "description": "Title of the message shown when a researcher confirms a change of a stage’s edge type and the type they chose has been deleted from the codebook in the meantime, so the change is refused. An edge type is a kind of relationship between two network members, such as a friendship."
   },
+  "protocolBuilder.entitySelect.edgeCreateLabel": {
+    "defaultMessage": "Create new edge type",
+    "description": "Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens. An edge type is a kind of relationship between two network members, such as a friendship."
+  },
+  "protocolBuilder.entitySelect.edgeEditLabel": {
+    "defaultMessage": "Edit this edge type",
+    "description": "Button that opens an editor for the kind of relationship a stage is already configured for, so its name or colour can be changed without leaving the stage. Also the title of the dialog it opens."
+  },
   "protocolBuilder.entitySelect.edgeEmptyState": {
     "defaultMessage": "No edge types currently defined",
     "description": "Shown in place of the chips when a researcher is asked to choose an edge type and the protocol’s codebook defines none. An edge type is a kind of relationship between two network members, such as a friendship."
@@ -1474,6 +1478,14 @@
   "protocolBuilder.entitySelect.nodeChangeTargetDeletedTitle": {
     "defaultMessage": "That node type has been deleted",
     "description": "Title of the message shown when a researcher confirms a change of a stage’s node type and the type they chose has been deleted from the codebook in the meantime, so the change is refused. A node type is a kind of network member the study records, such as a person or a place."
+  },
+  "protocolBuilder.entitySelect.nodeCreateLabel": {
+    "defaultMessage": "Create new node type",
+    "description": "Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens. A node type is a kind of network member the study records, such as a person or a place."
+  },
+  "protocolBuilder.entitySelect.nodeEditLabel": {
+    "defaultMessage": "Edit this node type",
+    "description": "Button that opens an editor for the kind of network member a stage is already configured for, so its name, colour, shape or icon can be changed without leaving the stage. Also the title of the dialog it opens."
   },
   "protocolBuilder.entitySelect.nodeEmptyState": {
     "defaultMessage": "No node types currently defined",
@@ -1637,7 +1649,7 @@
   },
   "protocolBuilder.formFields.createWithValuesFirst": {
     "defaultMessage": "Create this attribute and the values it offers before adding the field that collects it.",
-    "description": "Refusal shown under the kind-of-answer control when a researcher tries to invent an attribute whose answers come from a list, which cannot be made from a name and a kind alone."
+    "description": "Refusal shown under the control that decided the kind of answer when a researcher tries to invent an attribute whose answers come from a list, which cannot be made from a name and a kind alone."
   },
   "protocolBuilder.formFields.description": {
     "defaultMessage": "Map attributes to input controls and define the validation rules for this form.",
@@ -2619,10 +2631,6 @@
     "defaultMessage": "Canvas interaction",
     "description": "Heading of the section granting or withholding what the participant may do to the canvas. Also names the section in the editor outline and to assistive technology."
   },
-  "protocolBuilder.networkCanvas.composerCreateEdgeTypeLabel": {
-    "defaultMessage": "Create a new connection type",
-    "description": "Button opening the codebook editor to define a kind of connection the protocol does not have yet, from inside a network composer. The new kind becomes drawable on this canvas as soon as it is created."
-  },
   "protocolBuilder.networkCanvas.composerCreateLayoutLabel": {
     "defaultMessage": "Create a new position attribute",
     "description": "Button that creates an attribute holding a position in the codebook and uses it for this stage."
@@ -2763,6 +2771,10 @@
     "defaultMessage": "How the participant answers. Only controls that can render this attribute are listed, and the choice belongs to this field alone — the same attribute can be asked for differently on another stage.",
     "description": "Guidance under the input-control chooser of a network composer form field. A stage is one step of an interview. Says both which controls are offered and that the choice is not written back to the codebook, which is what makes this interface different from every other form in the protocol."
   },
+  "protocolBuilder.networkCanvas.formFieldControlInventsHint": {
+    "defaultMessage": "How the participant answers, and what kind of answer the new attribute will hold. Every control a form can offer is listed, because the attribute does not exist yet — the one chosen here decides what kind of answer it records.",
+    "description": "Guidance under the input-control chooser of a network composer form field while the field is inventing the attribute it records into. Replaces the ordinary guidance, which says the list is narrowed to the attribute’s kind: there is no attribute yet to narrow it by, and the choice made here is what decides the kind."
+  },
   "protocolBuilder.networkCanvas.formFieldControlLabel": {
     "defaultMessage": "Input control",
     "description": "Label of the control choosing how the participant answers one field of a network composer form — a text box, a slider, a set of buttons."
@@ -2818,10 +2830,6 @@
   "protocolBuilder.networkCanvas.formFieldValidationHintsLabel": {
     "defaultMessage": "Show validation hints",
     "description": "Label of the switch that tells the participant what a valid answer to one field of a network composer form looks like."
-  },
-  "protocolBuilder.networkCanvas.formFieldVariableCreateTitle": {
-    "defaultMessage": "Create a new attribute",
-    "description": "Titles the codebook editor that the attribute picker’s create row opens for a network composer form field. The researcher is asked for the kind of answer there, because this row does not decide it."
   },
   "protocolBuilder.networkCanvas.formFieldVariableHint": {
     "defaultMessage": "The attribute each answer is recorded in. Only attributes a form can collect are listed: a position or a location is written by the canvas rather than answered.",
@@ -5899,10 +5907,6 @@
     "defaultMessage": "Change edge type?",
     "description": "Title of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured for the one it has."
   },
-  "protocolBuilder.subjectSection.edgeCreateLabel": {
-    "defaultMessage": "Create new edge type",
-    "description": "Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens."
-  },
   "protocolBuilder.subjectSection.edgeDescription": {
     "defaultMessage": "Choose the edge type this stage uses.",
     "description": "Description of the edge-type section. A stage is one step of an interview."
@@ -5938,10 +5942,6 @@
   "protocolBuilder.subjectSection.nodeChangeTitle": {
     "defaultMessage": "Change node type?",
     "description": "Title of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured for the one it has."
-  },
-  "protocolBuilder.subjectSection.nodeCreateLabel": {
-    "defaultMessage": "Create new node type",
-    "description": "Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens."
   },
   "protocolBuilder.subjectSection.nodeDescription": {
     "defaultMessage": "Choose the node type this stage creates.",

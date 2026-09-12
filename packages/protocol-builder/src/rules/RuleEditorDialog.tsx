@@ -1306,6 +1306,13 @@ function RuleEditorFields({
             )}
             component={EntityTypePickerField}
             entityType={target}
+            // A rule is about what the protocol already collects, so there is
+            // nothing here to invent a type for — and this picker sits inside
+            // a dialog inside a dialog, where a third one would be a stack
+            // nobody can see out of. Architect refuses the same picker the
+            // same affordance, in the same editor
+            // (`Query/Rules/RuleEditor.tsx:788`, `allowCreation={false}`).
+            allowCodebookEditing={false}
             initialValue={seedString(seed, 'type')}
             required={intl.formatMessage(ruleEditorRequiredMessage)}
           />

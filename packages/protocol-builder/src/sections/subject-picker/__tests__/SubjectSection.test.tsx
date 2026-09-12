@@ -6,6 +6,7 @@ import type { ProtocolBuilderClient } from '@codaco/protocol-builder-core/contra
 import { NodeColorSequence } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { newEntityDraft } from '../../../fields/EntityTypePickerField.tsx';
 import type {
   InMemoryClient,
   InMemoryHost,
@@ -17,7 +18,7 @@ import {
 } from '../../__tests__/rowFixtures.tsx';
 import IntroductionSection from '../../introduction/IntroductionSection.tsx';
 import PromptsSection from '../../PromptsSection.tsx';
-import SubjectSection, { newEntityDraft } from '../SubjectSection.tsx';
+import SubjectSection from '../SubjectSection.tsx';
 import { changeSubjectTo } from './changeSubject.ts';
 
 type Harness = ReturnType<typeof renderStageEditor>;

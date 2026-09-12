@@ -86,12 +86,6 @@ export const censusMessages = defineMessages({
     description:
       'Label of the control that picks which kind of connection between two people this prompt records. A connection is what the protocol schema calls an edge; the researcher never sees that word.',
   },
-  edgeCreateLabel: {
-    id: 'protocolBuilder.censusPrompts.edgeCreateLabel',
-    defaultMessage: 'Create a new connection type',
-    description:
-      'Button that opens the codebook editor for inventing a kind of connection this prompt can record. Also the title of the dialog it opens.',
-  },
   edgeGoneRefusal: {
     id: 'protocolBuilder.censusPrompts.edgeGoneRefusal',
     defaultMessage:
