@@ -2640,7 +2640,7 @@
     "description": "Refusal shown when two fields of one network composer form would record their answers in the same attribute."
   },
   "protocolBuilder.networkCanvas.edgeFormAddLabel": {
-    "defaultMessage": "Create new attribute field for “{typeName}” connections",
+    "defaultMessage": "Create new attribute for {typeName}",
     "description": "Button that adds a question to the form shown for one kind of connection. typeName is the researcher-facing name of that connection type."
   },
   "protocolBuilder.networkCanvas.edgeFormEmptyState": {

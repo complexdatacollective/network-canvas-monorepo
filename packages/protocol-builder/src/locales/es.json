@@ -659,7 +659,7 @@
   "protocolBuilder.networkCanvas.createHullLabel": "Crear un nuevo atributo de agrupación",
   "protocolBuilder.networkCanvas.createQuickAddLabel": "Crear un nuevo atributo que rellenar",
   "protocolBuilder.networkCanvas.duplicateVariableRefusal": "Otro campo de este formulario ya recoge este atributo. Elige otro, o edita ese campo en su lugar.",
-  "protocolBuilder.networkCanvas.edgeFormAddLabel": "Crear nuevo campo de atributo para los vínculos «{typeName}»",
+  "protocolBuilder.networkCanvas.edgeFormAddLabel": "Crear nuevo atributo para {typeName}",
   "protocolBuilder.networkCanvas.edgeFormEmptyState": "Todavía no hay atributos para este tipo de vínculo. Crea uno para preguntar al participante algo sobre cada vínculo que dibuje.",
   "protocolBuilder.networkCanvas.edgeFormFieldsHint": "Los atributos que se muestran en el panel lateral al seleccionar un vínculo, para que puedan editarse durante la entrevista. Cada atributo se asocia al control de entrada usado para recogerlo.",
   "protocolBuilder.networkCanvas.edgeFormHeading": "Atributos de vínculo: {typeName}",

@@ -282,7 +282,7 @@ export const composerMessages = defineMessages({
   },
   connectionFormAddLabel: {
     id: 'protocolBuilder.networkCanvas.edgeFormAddLabel',
-    defaultMessage: 'Create new attribute field for “{typeName}” connections',
+    defaultMessage: 'Create new attribute for {typeName}',
     description:
       'Button that adds a question to the form shown for one kind of connection. typeName is the researcher-facing name of that connection type.',
   },

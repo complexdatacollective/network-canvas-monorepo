@@ -7,7 +7,7 @@
   "protocolBuilder.codebookEntity.colorLabel": "Protocol colour",
   "protocolBuilder.codebookEntity.colorOutsidePalette": "Current colour ({color})",
   "protocolBuilder.codebookEntity.colorRequired": "Choose a colour.",
-  "protocolBuilder.geospatial.appearanceDescription": "Customize the colours, style, and features of the map.",
+  "protocolBuilder.geospatial.appearanceDescription": "Customise the colours, style, and features of the map.",
   "protocolBuilder.geospatial.centerLabel": "Starting centre",
   "protocolBuilder.geospatial.colorHint": "Choose the colour used to outline selectable GeoJSON areas and highlight the area a participant selects. Use a colour that remains easy to distinguish from the chosen Mapbox style.",
   "protocolBuilder.geospatial.colorLabel": "Map outline and selection colour",

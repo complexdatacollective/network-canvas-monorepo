@@ -122,6 +122,9 @@ const AMERICAN_TO_BRITISH: ReadonlyMap<string, string> = new Map([
   ['color', 'colour'],
   ['colors', 'colours'],
   ['colored', 'coloured'],
+  ['customize', 'customise'],
+  ['customizes', 'customises'],
+  ['customized', 'customised'],
   ['visualize', 'visualise'],
   ['visualizes', 'visualises'],
   ['visualized', 'visualised'],
@@ -169,6 +172,27 @@ function respell(text: string, table: ReadonlyMap<string, string>): string {
 }
 
 /**
+ * An ICU argument name, and only an argument name: the identifier a `{` opens
+ * when the next thing after it closes or continues the argument. A message's
+ * own text is left alone, including the text inside a `select` branch.
+ */
+const ARGUMENT_NAME = /(\{\s*[A-Za-z0-9_]+\s*(?=[,}]))/;
+
+/**
+ * Respells everything a researcher reads and nothing a formatter does.
+ *
+ * `Current color ({color})` is the case: the sentence is respelled and the
+ * argument is not, because `{colour}` names a value no caller passes — the
+ * message would render the placeholder instead of the colour.
+ */
+function respellCopy(text: string, table: ReadonlyMap<string, string>): string {
+  return text
+    .split(ARGUMENT_NAME)
+    .map((part, index) => (index % 2 === 1 ? part : respell(part, table)))
+    .join('');
+}
+
+/**
  * Read from the committed file rather than through `protocolBuilderCatalogs`,
  * whose values are typed as pre-parsed ICU as well as source strings. An
  * override is compared against a `defaultMessage` here, so it has to be the
@@ -183,7 +207,7 @@ describe('the en-GB overrides and the American source they come from', () => {
     // The first half of the convention. A British default would be what a
     // researcher on en-US reads, and en-GB has no way to correct it back.
     const offenders = Object.entries(committedEn).flatMap(([id, message]) =>
-      respell(message.defaultMessage, BRITISH_TO_AMERICAN) ===
+      respellCopy(message.defaultMessage, BRITISH_TO_AMERICAN) ===
       message.defaultMessage
         ? []
         : [`${id} — ${message.defaultMessage}`],
@@ -201,9 +225,28 @@ describe('the en-GB overrides and the American source they come from', () => {
       const american = committedEn[id]?.defaultMessage;
       if (american === undefined) return [`${id} — overrides no known id`];
       if (british === american) return [`${id} — override says nothing new`];
-      return respell(british, BRITISH_TO_AMERICAN) === american
+      return respellCopy(british, BRITISH_TO_AMERICAN) === american
         ? []
         : [`${id} — override is not ${american}, respelled`];
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('respells every word of an override, not some of them', () => {
+    // The round trip above cannot see a half-respelled sentence: rewriting
+    // "Customize the colours" back to American lands on the American default,
+    // because only the word that WAS respelled has to travel. Read forwards,
+    // the override has to be what respelling the default produces — so a
+    // sentence carrying one American word a British researcher still reads is
+    // an offender rather than a passing round trip.
+    const offenders = Object.entries(enGb).flatMap(([id, british]) => {
+      const american = committedEn[id]?.defaultMessage;
+      if (american === undefined) return [];
+      const respelled = respellCopy(american, AMERICAN_TO_BRITISH);
+      return respelled === british
+        ? []
+        : [`${id}\n  is: ${british}\n  want: ${respelled}`];
     });
 
     expect(offenders).toEqual([]);
@@ -214,7 +257,7 @@ describe('the en-GB overrides and the American source they come from', () => {
     // mistake: Americanising a default and forgetting the en-GB half, which
     // silently ships American copy to British researchers.
     const offenders = Object.entries(committedEn).flatMap(([id, message]) =>
-      respell(message.defaultMessage, AMERICAN_TO_BRITISH) !==
+      respellCopy(message.defaultMessage, AMERICAN_TO_BRITISH) !==
         message.defaultMessage && !(id in enGb)
         ? [`${id} — ${message.defaultMessage}`]
         : [],

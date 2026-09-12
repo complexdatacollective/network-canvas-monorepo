@@ -31,27 +31,23 @@ export default function OptionalTickList({
 }: OptionalTickListProps) {
   const intl = useAppIntl();
 
-  // A fieldset with no boxes in it is a control that looks broken: the
-  // researcher reads a label, a hint and then nothing, with no way to tell
-  // whether the stage offers nothing or the editor failed to draw it.
-  // Architect disabled the whole section instead; this says why, which the
-  // three lists that can be empty — a sociogram prompt's edge types, a
-  // narrative preset's edge types and its highlight attributes — all need.
-  if (props.options.length === 0) {
-    return (
-      <p
-        id={props.id}
-        aria-describedby={props['aria-describedby']}
-        className="w-full py-6 text-center text-sm text-current/70 italic"
-      >
-        {intl.formatMessage(canvasMessages.tickListEmptyState)}
-      </p>
-    );
-  }
-
   return (
     <CheckboxGroupField
       {...props}
+      // A fieldset with no boxes in it is a control that looks broken: the
+      // researcher reads a label, a hint and then nothing, with no way to tell
+      // whether the stage offers nothing or the editor failed to draw it.
+      // Architect disabled the whole section instead; this says why, which the
+      // three lists that can be empty — a sociogram prompt's edge types, a
+      // narrative preset's edge types and its highlight attributes — all need.
+      // Said INSIDE the group, so the sentence keeps the name and the hint the
+      // field gave it rather than replacing the labelled element with a
+      // paragraph nothing can label.
+      emptyState={
+        <p className="w-full py-6 text-center text-sm text-current/70 italic">
+          {intl.formatMessage(canvasMessages.tickListEmptyState)}
+        </p>
+      }
       value={value ?? []}
       onChange={(next) =>
         onChange?.(next === undefined || next.length === 0 ? undefined : next)
