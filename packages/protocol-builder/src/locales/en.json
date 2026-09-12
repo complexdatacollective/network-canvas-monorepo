@@ -56,8 +56,8 @@
     "description": "Label of the box holding the smallest number of people this step of the interview may name."
   },
   "protocolBuilder.alterLimits.noEndAnswered": {
-    "defaultMessage": "Set the fewest people, the most people, or both. Switch these limits off if this stage has no limit.",
-    "description": "Refusal shown against the minimum box when the researcher switched the nomination limits on and left both ends empty. Names the switch, because an unlimited stage is said by switching the section off rather than by leaving the boxes blank."
+    "defaultMessage": "Set the minimum number of alters, the maximum number of alters, or both. Switch these limits off if this stage has no limit.",
+    "description": "Refusal shown against the minimum box when the researcher switched the nomination limits on and left both ends empty. It names the two boxes by their own labels, and it names the switch, because an unlimited stage is said by switching the section off rather than by leaving the boxes blank."
   },
   "protocolBuilder.alterLimits.title": {
     "defaultMessage": "Nomination limits",
@@ -304,16 +304,16 @@
     "description": "Heading of the column of the card-details list holding which attribute of the data file a row shows."
   },
   "protocolBuilder.cardDisplay.clearConfirm": {
-    "defaultMessage": "Clear card details",
-    "description": "Action that confirms switching the roster card details off and discarding them."
+    "defaultMessage": "Clear card display",
+    "description": "Action that confirms switching the roster card display off and discarding what it shows. It names the section by its own heading."
   },
   "protocolBuilder.cardDisplay.clearDescription": {
     "defaultMessage": "This will remove every extra attribute your roster cards show, along with the labels you gave them. Do you want to continue?",
     "description": "Body of the dialog confirming that switching off the card details discards the chosen attributes and their labels. A roster is a list of people imported from a data file; an attribute is one field the protocol records about a person."
   },
   "protocolBuilder.cardDisplay.clearTitle": {
-    "defaultMessage": "This will clear the card details",
-    "description": "Title of the dialog asking a researcher to confirm switching off the section that chooses what the cards in a roster show about each person."
+    "defaultMessage": "This will clear the card display",
+    "description": "Title of the dialog asking a researcher to confirm switching off the section that chooses what the cards in a roster show about each person. It names that section by its own heading."
   },
   "protocolBuilder.cardDisplay.description": {
     "defaultMessage": "Configure how roster cards are displayed to participants.",
@@ -523,45 +523,13 @@
     "defaultMessage": "Created edge type",
     "description": "Label of the control that picks which kind of connection between two people this prompt records."
   },
-  "protocolBuilder.censusPrompts.oneToManyAskedOrderAddLabel": {
-    "defaultMessage": "Add a rule for the order people are asked about",
-    "description": "Button that appends one sort rule to the list ordering the people the participant is asked about."
-  },
   "protocolBuilder.censusPrompts.oneToManyAskedOrderDescription": {
     "defaultMessage": "Order focal nodes before they are presented for evaluation.",
     "description": "Description of the group holding the rules that order the people the participant is asked about, one at a time."
   },
-  "protocolBuilder.censusPrompts.oneToManyAskedOrderEmptyState": {
-    "defaultMessage": "No rules yet, so people are asked about in the order they were added.",
-    "description": "Shown in place of the sort rules ordering the people the participant is asked about, when the researcher has written none."
-  },
-  "protocolBuilder.censusPrompts.oneToManyAskedOrderLabel": {
-    "defaultMessage": "Rules for the order people are asked about",
-    "description": "Label of the list of sort rules that order the people the participant is asked about, one at a time."
-  },
-  "protocolBuilder.censusPrompts.oneToManyAskedOrderTitle": {
-    "defaultMessage": "Order of the people asked about",
-    "description": "Heading of the optional group holding the rules that order the people the participant is asked about, one at a time."
-  },
-  "protocolBuilder.censusPrompts.oneToManyChoiceOrderAddLabel": {
-    "defaultMessage": "Add a rule for the order people are shown in",
-    "description": "Button that appends one sort rule to the list ordering the people the participant picks from."
-  },
   "protocolBuilder.censusPrompts.oneToManyChoiceOrderDescription": {
     "defaultMessage": "Order target nodes after they are placed in the bin.",
     "description": "Description of the group holding the rules that order the people the participant picks from for whoever they were asked about."
-  },
-  "protocolBuilder.censusPrompts.oneToManyChoiceOrderEmptyState": {
-    "defaultMessage": "No rules yet, so people are shown in the order they were added.",
-    "description": "Shown in place of the sort rules ordering the people the participant picks from, when the researcher has written none."
-  },
-  "protocolBuilder.censusPrompts.oneToManyChoiceOrderLabel": {
-    "defaultMessage": "Rules for the order people are shown in",
-    "description": "Label of the list of sort rules that order the people the participant picks from."
-  },
-  "protocolBuilder.censusPrompts.oneToManyChoiceOrderTitle": {
-    "defaultMessage": "Order of the people to choose from",
-    "description": "Heading of the optional group holding the rules that order the people the participant picks from for whoever they were asked about."
   },
   "protocolBuilder.censusPrompts.oneToManyGuidance": {
     "defaultMessage": "The participant sees one person alongside everyone else and selects whoever the question applies to, so write it as a question about that one person and the group — “which of these people does this person know?” rather than a question about a single pair.",
@@ -699,10 +667,6 @@
     "defaultMessage": "Edge creation",
     "description": "Heading of the group that says which kind of connection the participant’s answer on the scale describes."
   },
-  "protocolBuilder.censusPrompts.tieStrengthGuidance": {
-    "defaultMessage": "The participant sees two people side by side and answers on a scale, so write the question about the pair in front of them — “how close are these two people?” rather than a name — and phrase it so that every point on the scale is a sensible answer.",
-    "description": "Guidance shown above the box where a researcher writes a Tie-Strength Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question a scale can answer."
-  },
   "protocolBuilder.censusPrompts.tieStrengthPlaceholder": {
     "defaultMessage": "Enter text for the prompt here...",
     "description": "Placeholder shown in the empty box where a researcher writes a Tie-Strength Census prompt. The trailing dots are an ellipsis written as three full stops."
@@ -710,6 +674,10 @@
   "protocolBuilder.censusPrompts.tieStrengthPromptTextDescription": {
     "defaultMessage": "Explain the relationship participants should evaluate for each pair.",
     "description": "Description of the group holding the question one Tie-Strength Census prompt shows the participant."
+  },
+  "protocolBuilder.censusPrompts.tieStrengthPromptTextHint": {
+    "defaultMessage": "Refer clearly to the two people shown and phrase the prompt for a yes or no response.",
+    "description": "Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what shape of answer it asks for."
   },
   "protocolBuilder.censusPrompts.tieStrengthScaleCreateLabel": {
     "defaultMessage": "Create a new attribute",

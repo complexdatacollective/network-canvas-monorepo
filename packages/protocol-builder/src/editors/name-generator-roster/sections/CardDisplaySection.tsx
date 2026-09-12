@@ -84,9 +84,9 @@ const messages = defineMessages({
   },
   clearTitle: {
     id: 'protocolBuilder.cardDisplay.clearTitle',
-    defaultMessage: 'This will clear the card details',
+    defaultMessage: 'This will clear the card display',
     description:
-      'Title of the dialog asking a researcher to confirm switching off the section that chooses what the cards in a roster show about each person.',
+      'Title of the dialog asking a researcher to confirm switching off the section that chooses what the cards in a roster show about each person. It names that section by its own heading.',
   },
   clearDescription: {
     id: 'protocolBuilder.cardDisplay.clearDescription',
@@ -97,9 +97,9 @@ const messages = defineMessages({
   },
   clearConfirm: {
     id: 'protocolBuilder.cardDisplay.clearConfirm',
-    defaultMessage: 'Clear card details',
+    defaultMessage: 'Clear card display',
     description:
-      'Action that confirms switching the roster card details off and discarding them.',
+      'Action that confirms switching the roster card display off and discarding what it shows. It names the section by its own heading.',
   },
 });
 

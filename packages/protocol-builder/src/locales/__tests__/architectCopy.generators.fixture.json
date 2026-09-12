@@ -324,6 +324,11 @@
     "es": "Explica la relación que deben evaluar los participantes en cada par.",
     "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.explainTheRelationshipParticipantsShouldEvaluate"
   },
+  "protocolBuilder.censusPrompts.tieStrengthPromptTextHint": {
+    "en": "Refer clearly to the two people shown and phrase the prompt for a yes or no response.",
+    "es": "Haz referencia claramente a las dos personas que se muestran y redacta la pregunta para una respuesta de sí o no.",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.referClearlyToTheTwoPeople"
+  },
   "protocolBuilder.censusPrompts.tieStrengthPlaceholder": {
     "en": "Enter text for the prompt here...",
     "es": "Introduce aquí el texto de la pregunta...",

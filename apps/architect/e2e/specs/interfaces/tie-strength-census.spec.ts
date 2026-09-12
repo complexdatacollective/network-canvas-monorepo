@@ -82,7 +82,7 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   //
   // - "Participant prompt": the family's shared `PromptTextField`
   //   (`label: 'Prompt text'`).
-  // - "Connection rated": the same `CreateEdgeField` the two dyad censuses
+  // - "Edge creation": the same `CreateEdgeField` the two dyad censuses
   //   use, so the connection type is invented through the codebook entity
   //   editor ("Edge type name", committed by "Save entity").
   // - "Response attribute": an ordinal attribute OF that connection type. `ScaleField`
@@ -95,7 +95,7 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   //   new attribute", opening the codebook attribute editor with
   //   `allowedVariableTypes: ['ordinal']` — its "Attribute type" select is
   //   already on Ordinal and is never touched here.
-  // - "Answering that there is no connection": a RichText "Decline option".
+  // - "Decline response": a RichText "Decline option".
   //
   // Nothing mirrors the attribute's values onto the prompt any more, so there
   // is no draft-only key to strip; `toTieStrengthPrompt` below asserts the

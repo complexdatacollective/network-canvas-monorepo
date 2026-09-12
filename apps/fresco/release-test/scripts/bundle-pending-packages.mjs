@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Bundles the PENDING workspace `@codaco/*` packages into a mirror-staged
-// Fresco tree (produced by `MIRROR_STAGE_DIR=... scripts/mirror-app.mjs`), so
+// Fresco tree (produced by `MIRROR_STAGE_DIR=... scripts/release/mirror-app.mjs`), so
 // the release-test image approximates the FUTURE released artifact instead of
 // silently installing the currently published (stale) library versions from
 // npm. Pre-publish, the pending source carries the same version numbers as the
@@ -16,8 +16,8 @@
 // neither are left to registry resolution — the released image will install
 // their published versions, so vendoring them would test a dependency
 // combination that never ships. The mechanism — packing, overrides,
-// Dockerfile patches, the manifest — is scripts/vendor-workspace-packages.mjs,
-// shared with the hotfix lane (`scripts/mirror-app.mjs --vendor-changed-since`,
+// Dockerfile patches, the manifest — is scripts/release/vendor-workspace-packages.mjs,
+// shared with the hotfix lane (`scripts/release/mirror-app.mjs --vendor-changed-since`,
 // which build-image.sh runs directly when certifying a hotfix branch). Only
 // the staged tree is touched; the real Dockerfile and mirror pipeline are not.
 //
@@ -37,13 +37,13 @@ import { pathToFileURL } from 'node:url';
 import {
   DEFAULT_REGISTRY_URL,
   npmVersionUrl,
-} from '../../../../scripts/check-npm-version-collisions.mjs';
-import { readWorkspacePackages } from '../../../../scripts/resolve-manifest.mjs';
+} from '../../../../scripts/release/check-npm-version-collisions.mjs';
+import { readWorkspacePackages } from '../../../../scripts/release/resolve-manifest.mjs';
 import {
   collectClosure,
   vendorPackages,
   writeBundleManifest,
-} from '../../../../scripts/vendor-workspace-packages.mjs';
+} from '../../../../scripts/release/vendor-workspace-packages.mjs';
 
 // The repository root is the working directory (see resolve-manifest.mjs).
 const repoRoot = process.cwd();

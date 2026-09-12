@@ -190,7 +190,7 @@ jobs:
   # release-PR refreshes may reuse an equivalent earlier verdict. Merge groups
   # deliberately skip the policy and all E2E work. Every path and history guard
   # fails closed; see
-  # scripts/release-e2e-policy.mjs.
+  # scripts/ci/release-e2e-policy.mjs.
   e2e-policy:
     if: >-
       github.event_name != 'merge_group'
@@ -234,7 +234,7 @@ jobs:
           # Read-only, feeds release-PR equivalence lookups.
           GH_TOKEN: ${{ github.token }}
         run: |
-          policy=$(node scripts/release-e2e-policy.mjs)
+          policy=$(node scripts/ci/release-e2e-policy.mjs)
           if [[ "$BENCHMARK_INTERVIEW_E2E" == "true" ]]; then
             policy=$(jq \
               '.interview = true
@@ -626,7 +626,7 @@ jobs:
       # not cosmetic. It is the only signal that `main` is broken at all,
       # because `test`, `test-storybook` and `lint` are all gated
       # `github.event_name != 'push'` and never run on a push; and it is the
-      # exact field `computeSeedHealth()` in scripts/ci-metrics.mjs counts,
+      # exact field `computeSeedHealth()` in scripts/ci/ci-metrics.mjs counts,
       # so hiding it would have permanently zeroed the seed-failure
       # measurement this branch adds in order to catch the next regression.
       #
@@ -749,11 +749,13 @@ jobs:
             echo "::error::Pull request base SHA is unavailable"
             exit 1
           fi
-          node scripts/check-npm-version-collisions.mjs --base "$BASE_SHA"
+          node scripts/release/check-npm-version-collisions.mjs --base "$BASE_SHA"
       - name: Test repository scripts
         id: scripts
         continue-on-error: true
-        run: pnpm test:scripts
+        # Through turbo so the suite is cached like every other test task; it
+        # is a root task because scripts/ is not a workspace package.
+        run: pnpm exec turbo run //#test:scripts
       - name: Validate managed Studio infrastructure without provider credentials
         id: studio-managed
         continue-on-error: true
@@ -770,7 +772,7 @@ jobs:
             set +e
             git diff --quiet "$BASE_SHA" "$GITHUB_SHA" -- \
               apps/studio/deployment/managed \
-              scripts/studio-managed-estate.test.mjs \
+              scripts/studio/studio-managed-estate.test.mjs \
               .github/workflows/ci-and-release.yml
             infra_diff_exit=$?
             set -e
@@ -802,7 +804,7 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ci-release-build-preflight
           POSTHOG_PROJECT_ID: '1'
-          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/posthog-cli-upload-stub.mjs
+          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/build/posthog-cli-upload-stub.mjs
         run: |
           pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
           pnpm --filter=@codaco/architect build
@@ -989,7 +991,7 @@ jobs:
     # Each shard is a whole runner running its own bucket at
     # `--concurrency=1`, which is the same uncontended machine per suite that
     # the single job gave — the per-test wall-clock budgets still measure the
-    # test rather than the queue. scripts/test-shards.mjs owns which package
+    # test rather than the queue. scripts/ci/test-shards.mjs owns which package
     # is in which bucket, how the buckets were weighted, and the coverage
     # check that refuses a package belonging to no shard.
     name: test (shard ${{ matrix.shard }})
@@ -1102,7 +1104,7 @@ jobs:
           DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           SHARD: ${{ matrix.shard }}
         run: |
-          # Restrict this runner to its bucket. scripts/test-shards.mjs emits
+          # Restrict this runner to its bucket. scripts/ci/test-shards.mjs emits
           # one `--filter=!<pkg>` for every test-carrying workspace package
           # this shard does not own, and refuses to emit anything at all if a
           # package belongs to no bucket.
@@ -1127,7 +1129,7 @@ jobs:
           # all, and treating that empty-but-correct output as a failure would
           # abort a shard that had nothing wrong with it.
           set -euo pipefail
-          if ! node scripts/test-shards.mjs filters "$SHARD" > "$RUNNER_TEMP/shard-filters"; then
+          if ! node scripts/ci/test-shards.mjs filters "$SHARD" > "$RUNNER_TEMP/shard-filters"; then
             echo "::error::shard $SHARD could not resolve its package filters; refusing to run an unrestricted workspace"
             exit 1
           fi
@@ -1397,10 +1399,10 @@ jobs:
           node-version-file: '.nvmrc'
       - name: Refuse a release PR that leaves normal-lane changesets behind
         if: steps.head.outputs.release_pr == 'true'
-        run: node scripts/check-version-packages-freshness.mjs
+        run: node scripts/release/check-version-packages-freshness.mjs
       - name: Refuse a release PR whose publish needs a package npm does not know
         if: steps.head.outputs.release_pr == 'true'
-        run: node scripts/check-first-publications.mjs
+        run: node scripts/release/check-first-publications.mjs
 
   quality:
     needs:
@@ -1970,7 +1972,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs packages/interview/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs packages/interview/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       # Dormant until a shard matrix is added (spec: enable shards only if the
@@ -2105,7 +2107,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim workspace ownership
@@ -2213,7 +2215,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim workspace ownership
@@ -2871,13 +2873,13 @@ jobs:
         # package and assert no packed export/main/module/types path points into
         # `src` and every referenced file exists — guarding the swap before the
         # changesets/action publish below.
-        run: node scripts/verify-publish-exports.mjs
+        run: node scripts/release/verify-publish-exports.mjs
       - name: Hide separately gated product changesets from the normal release
         # Documentation, Website, and Studio changesets persist until their own
         # release PR consumes them. Normal-lane apps intentionally remain for
         # the Changesets CLI to version alongside library packages.
         # Working-tree-only deletion; see the script header.
-        run: node scripts/prune-ignored-changesets.mjs
+        run: node scripts/release/prune-ignored-changesets.mjs
       - name: Refuse to publish a package npm does not know
         # The lane publishes through npm trusted publishing, which can only
         # publish to a package npm already knows; every first publication is
@@ -2889,7 +2891,7 @@ jobs:
         # pending the action only regenerates the release PR, and the check
         # skips itself; version-packages-freshness refuses the merge that would
         # reach the publish path.
-        run: node scripts/check-first-publications.mjs --publish-path-only
+        run: node scripts/release/check-first-publications.mjs --publish-path-only
       - name: Confirm this run still describes main's tip
         # Push-to-main runs never cancel each other (see the top of the file)
         # and the build above takes minutes, so the run for an older main
@@ -2918,7 +2920,7 @@ jobs:
           # the Documentation and Website changesets. The Git CLI path still
           # begins with the `git reset --hard` that restores them, so the prune
           # stays working-tree-only — keep it until
-          # scripts/prune-ignored-changesets.mjs no longer relies on that reset.
+          # scripts/release/prune-ignored-changesets.mjs no longer relies on that reset.
           push-with-git-cli: true
           # A fine-grained PAT makes the generated PR's pull_request event run
           # normally. GITHUB_TOKEN-created PR events always require manual
@@ -3011,7 +3013,7 @@ jobs:
       - name: Compute ${{ matrix.product }} version bump
         if: steps.tip.outputs.current == 'true'
         run: >-
-          node scripts/version-gated-products.mjs ${{ matrix.package_args }}
+          node scripts/release/version-gated-products.mjs ${{ matrix.package_args }}
           --out "${RUNNER_TEMP}/product-release-body.md"
       - name: Open/update the ${{ matrix.product }} release PR
         if: steps.tip.outputs.current == 'true'
@@ -3183,7 +3185,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/architect
           --pkg @codaco/architect
           --version "$VERSION"
@@ -3271,7 +3273,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/interviewer
           --pkg @codaco/interviewer
           --version "$VERSION"
@@ -3346,7 +3348,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.background_creator_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/background-creator
           --pkg @codaco/background-creator
           --version "$VERSION"
@@ -3428,7 +3430,7 @@ jobs:
           MONOREPO_SHA: ${{ github.sha }}
           VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/fresco
           --repo complexdatacollective/Fresco
           --branch main
@@ -3443,7 +3445,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/fresco
           --pkg fresco
           --version "$VERSION"
@@ -3696,16 +3698,16 @@ jobs:
       # renderer process to appear (macOS/Linux; Windows runs the sweep
       # only). Either check would have blocked the broken 6.6.0 releases,
       # where `files` exclusions stripped runtime modules from the asar and
-      # the apps crashed at launch. See scripts/verify-packaged-app.mjs.
+      # the apps crashed at launch. See scripts/release/verify-packaged-app.mjs.
       - name: Verify packaged app
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq xvfb
-            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/interviewer-classic
+            xvfb-run --auto-servernum node scripts/release/verify-packaged-app.mjs --app apps/interviewer-classic
           else
-            node scripts/verify-packaged-app.mjs --app apps/interviewer-classic
+            node scripts/release/verify-packaged-app.mjs --app apps/interviewer-classic
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -3760,9 +3762,9 @@ jobs:
           if [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq xvfb
-            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/architect-classic
+            xvfb-run --auto-servernum node scripts/release/verify-packaged-app.mjs --app apps/architect-classic
           else
-            node scripts/verify-packaged-app.mjs --app apps/architect-classic
+            node scripts/release/verify-packaged-app.mjs --app apps/architect-classic
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -3792,13 +3794,13 @@ jobs:
           LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/interviewer-classic
           --repo complexdatacollective/interviewer
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
       - name: Extract release notes
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/interviewer-classic
           --pkg @codaco/interviewer-classic
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
@@ -3871,13 +3873,13 @@ jobs:
           LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/architect-classic
           --repo complexdatacollective/architect
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}
       - name: Extract release notes
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/architect-classic
           --pkg @codaco/architect-classic
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}

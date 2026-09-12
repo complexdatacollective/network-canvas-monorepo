@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import test from 'node:test';
+
+import { onTestFinished, test, vi } from 'vitest';
 
 import { createManagedStudioIngress } from './index.mjs';
 
@@ -945,8 +946,11 @@ test('gives the bounded 100 MiB upload path its upload-appropriate deadline', as
   assert.deepEqual(await response.json(), { size: 100 * 1024 * 1024 });
 });
 
-test('keeps stalled uploads bounded and does not broaden the upload deadline', async (context) => {
-  context.mock.timers.enable({ apis: ['setTimeout'] });
+test('keeps stalled uploads bounded and does not broaden the upload deadline', async () => {
+  // node:test exposed fake timers through the test context; vitest has them as
+  // free functions and needs the real ones put back explicitly afterwards.
+  vi.useFakeTimers({ toFake: ['setTimeout'] });
+  onTestFinished(() => vi.useRealTimers());
   const router = ingress(() => new Promise(() => {}), {
     originTimeoutMs: 20,
     uploadOriginTimeoutMs: 60,
@@ -964,10 +968,10 @@ test('keeps stalled uploads bounded and does not broaden the upload deadline', a
       return response;
     });
   await new Promise((resolve) => setImmediate(resolve));
-  context.mock.timers.tick(59);
+  vi.advanceTimersByTime(59);
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(uploadSettled, false);
-  context.mock.timers.tick(1);
+  vi.advanceTimersByTime(1);
   const upload = await pendingUpload;
   assert.equal(upload.status, 504);
 
@@ -984,10 +988,10 @@ test('keeps stalled uploads bounded and does not broaden the upload deadline', a
       return response;
     });
   await new Promise((resolve) => setImmediate(resolve));
-  context.mock.timers.tick(19);
+  vi.advanceTimersByTime(19);
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(nonUploadSettled, false);
-  context.mock.timers.tick(1);
+  vi.advanceTimersByTime(1);
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(nonUploadSettled, true);
   const nonUpload = await pendingNonUpload;
@@ -1013,7 +1017,7 @@ test('does not apply the header timeout to a response body stream', async () => 
   assert.equal(await response.text(), 'streamed');
 });
 
-test('streams real HTTP origin responses without converting backend failures to HTML', async (t) => {
+test('streams real HTTP origin responses without converting backend failures to HTML', async () => {
   const staticServer = createServer((_request, response) => {
     response.writeHead(200, { 'content-type': 'text/html' });
     response.end('<html>Netlify static</html>');
@@ -1029,7 +1033,7 @@ test('streams real HTTP origin responses without converting backend failures to 
     new Promise((resolve) => staticServer.listen(0, '127.0.0.1', resolve)),
     new Promise((resolve) => backendServer.listen(0, '127.0.0.1', resolve)),
   ]);
-  t.after(() => {
+  onTestFinished(() => {
     staticServer.close();
     backendServer.close();
   });
