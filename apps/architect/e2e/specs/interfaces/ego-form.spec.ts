@@ -90,7 +90,9 @@ test('previews a form field, and keeps the trial answer out of the protocol', as
     'Thanks for taking part in this study.',
   );
 
-  const dialog = await openFormFieldDialog(editor.section('Form fields'));
+  const dialog = await openFormFieldDialog(
+    editor.section('Form configuration'),
+  );
   await inventAttributeInFieldDialog(dialog, {
     variableName: 'nickname',
     inputControl: 'Text input',
