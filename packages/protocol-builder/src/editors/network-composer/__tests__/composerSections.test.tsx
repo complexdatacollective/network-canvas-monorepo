@@ -255,7 +255,7 @@ describe('what a network composer lets the participant build', () => {
 
     await harness.user.click(
       await screen.findByRole('button', {
-        name: 'Create new attribute field for “knows” connections',
+        name: 'Create new attribute for knows',
       }),
     );
     const dialog = within(await screen.findByRole('dialog'));

@@ -118,10 +118,12 @@ describe('the copy this package invented and Architect never showed', () => {
  * matched against, and the controls each one sends the researcher to.
  *
  * Nothing above pins these — they are this package's own words — so what has
- * to hold is that each still names a control by the name it is wearing. This
- * family re-pointed about thirty labels at Architect's wording, and a
- * sentence left behind tells a researcher to go and use a box that is not on
- * the screen under that name.
+ * to hold is that each still names a control by the name it is wearing. The
+ * parity families re-point labels at Architect's wording family by family, and
+ * a sentence left behind tells a researcher to go and use a box that is not on
+ * the screen under that name. The list is the package's, not this family's:
+ * every such sentence belongs here whichever editor it is shown in, so one
+ * sweep catches the next rename.
  */
 const SENTENCES_THAT_NAME_A_CONTROL = [
   {
@@ -138,6 +140,11 @@ const SENTENCES_THAT_NAME_A_CONTROL = [
   {
     sentence: 'protocolBuilder.cardDisplay.clearConfirm',
     names: ['protocolBuilder.cardDisplay.title'],
+  },
+  {
+    sentence:
+      'protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription',
+    names: ['protocolBuilder.networkCanvas.repositioningLabel'],
   },
 ] as const;
 

@@ -101,7 +101,7 @@ describe('the network composer sections, read in Spanish', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
-        name: 'Crear nuevo campo de atributo para los vínculos «knows»',
+        name: 'Crear nuevo atributo para knows',
       }),
     ).toBeInTheDocument();
   });

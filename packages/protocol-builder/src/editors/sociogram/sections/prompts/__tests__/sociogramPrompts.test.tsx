@@ -765,6 +765,18 @@ describe('a connections list with nothing in it', () => {
       ),
     ).toBeInTheDocument();
     expect(prompt.queryByRole('checkbox')).toBeNull();
+
+    // Inside the field's own group, which still answers to the label. A
+    // sentence rendered in place of the group instead leaves the field with
+    // no accessible name at all — the `<label for>` above it can name a
+    // fieldset through `aria-labelledby`, and names nothing at all when what
+    // is there is a paragraph.
+    const list = prompt.getByRole('group', { name: 'Edge types' });
+    expect(
+      within(list).getByText(
+        'Nothing to choose from yet. Create what this list offers in the codebook first.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 

@@ -43,7 +43,7 @@ const messages = defineMessages({
     id: 'protocolBuilder.networkCanvas.repositioningHint',
     defaultMessage: 'Allow nodes to be repositioned',
     description:
-      'Guidance under the moving-nodes switch on a narrative stage, restating in the researcher’s words what the switch grants the participant.',
+      'Guidance under the repositioning switch on a narrative stage, restating in the researcher’s words what the switch grants the participant.',
   },
 });
 

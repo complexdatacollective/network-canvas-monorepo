@@ -198,6 +198,16 @@ describe('a preset’s tick lists with nothing in them', () => {
       expect(preset.getAllByText(EMPTY_LIST)).toHaveLength(2),
     );
     expect(preset.queryByRole('checkbox')).toBeNull();
+
+    // Each sentence inside its own field's group, so both lists still answer
+    // to the labels that tell them apart. Said in place of the group instead,
+    // neither field has an accessible name — and these two are exactly the
+    // case where the name is the only thing separating "no edge types" from
+    // "no attributes to highlight by".
+    for (const name of ['Edge types', 'Highlight attributes']) {
+      const list = preset.getByRole('group', { name });
+      expect(within(list).getByText(EMPTY_LIST)).toBeInTheDocument();
+    }
   });
 });
 

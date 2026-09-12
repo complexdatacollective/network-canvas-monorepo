@@ -100,7 +100,7 @@ describe('the narrative sections, read in Spanish', () => {
 
     expect(
       await screen.findByText(
-        'Organiza los nodos mediante una simulación de fuerzas físicas, como atracción y repulsión. Solo se organizan los nodos para los que el atributo con el que la vista predefinida los coloca tenga posición; el resto se queda fuera del lienzo, igual que en el modo manual. El participante puede pausar y reanudar la simulación, y solo puede mover los nodos manualmente si «Permitir mover nodos» está activado.',
+        'Organiza los nodos mediante una simulación de fuerzas físicas, como atracción y repulsión. Solo se organizan los nodos para los que el atributo con el que la vista predefinida los coloca tenga posición; el resto se queda fuera del lienzo, igual que en el modo manual. El participante puede pausar y reanudar la simulación, y solo puede mover los nodos manualmente si «Permitir cambiar la posición» está activado.',
       ),
     ).toBeInTheDocument();
   });

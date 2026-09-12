@@ -2640,7 +2640,7 @@
     "description": "Refusal shown when two fields of one network composer form would record their answers in the same attribute."
   },
   "protocolBuilder.networkCanvas.edgeFormAddLabel": {
-    "defaultMessage": "Create new attribute field for “{typeName}” connections",
+    "defaultMessage": "Create new attribute for {typeName}",
     "description": "Button that adds a question to the form shown for one kind of connection. typeName is the researcher-facing name of that connection type."
   },
   "protocolBuilder.networkCanvas.edgeFormEmptyState": {
@@ -2788,8 +2788,8 @@
     "description": "Name of the choice where the stage arranges the nodes itself before the participant touches them. Offered as one of two cards; the sentence under it is layoutModeAutomaticDescription."
   },
   "protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription": {
-    "defaultMessage": "Arranges the nodes by simulating physical forces such as attraction and repulsion. Only the nodes the attribute the preset positions by holds a position for are arranged; the rest are left off the canvas, as in manual mode. The participant can pause and resume the simulation, and can move nodes by hand only if “Allow moving nodes” is switched on.",
-    "description": "Says what the participant sees in automatic layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the two wordings of one control together. “Allow moving nodes” is the switch named by repositioningLabel, and is quoted because it is being named as a control the researcher can go and find."
+    "defaultMessage": "Arranges the nodes by simulating physical forces such as attraction and repulsion. Only the nodes the attribute the preset positions by holds a position for are arranged; the rest are left off the canvas, as in manual mode. The participant can pause and resume the simulation, and can move nodes by hand only if “Allow repositioning” is switched on.",
+    "description": "Says what the participant sees in automatic layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the two wordings of one control together. “Allow repositioning” is the switch named by repositioningLabel, and is quoted because it is being named as a control the researcher can go and find."
   },
   "protocolBuilder.networkCanvas.layoutModeHint": {
     "defaultMessage": "How the stage arranges nodes before the participant moves any of them.",
@@ -3133,7 +3133,7 @@
   },
   "protocolBuilder.networkCanvas.repositioningHint": {
     "defaultMessage": "Allow nodes to be repositioned",
-    "description": "Guidance under the moving-nodes switch on a narrative stage, restating in the researcher’s words what the switch grants the participant."
+    "description": "Guidance under the repositioning switch on a narrative stage, restating in the researcher’s words what the switch grants the participant."
   },
   "protocolBuilder.networkCanvas.repositioningLabel": {
     "defaultMessage": "Allow repositioning",
