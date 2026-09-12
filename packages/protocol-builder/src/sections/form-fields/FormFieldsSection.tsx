@@ -86,6 +86,14 @@ import {
 } from '../collectableTypes.ts';
 import { type SubjectEntity, useStageSubject } from '../useStageSubject.ts';
 import AttributeControlBadge from './AttributeControlBadge.tsx';
+import {
+  CREATE_FIRST_REFUSALS,
+  INVENTED_TYPE_NOTICE,
+  NEW_VARIABLE,
+  NEW_VARIABLE_NAME,
+  NEW_VARIABLE_VALIDATION,
+  useInventingAttribute,
+} from './inventedAttribute.ts';
 
 /**
  * Where an interface that holds a whole form keeps it.
@@ -98,45 +106,12 @@ const DEFAULT_FIELDS_PATH = 'form.fields';
 const TITLE = 'form.title';
 
 /**
- * What the row holds while the attribute it collects is being invented.
- *
- * The picker's create row takes the name the researcher searched for and
- * writes this here, because the attribute cannot be created yet: what kind of
- * answer it holds is the next question, and which control collects it the one
- * after that, and the codebook refuses an attribute without them. So the row
- * says "an attribute I am still making" until its own save makes it — which is
- * what Architect does too (`Form/fieldCommit.ts` creates the attribute as the
- * row commits). It is never written to the protocol: `useCommitFormField`
- * replaces it with the created attribute's own id before the row is committed.
- *
- * Spelled with a `#`, which is the whole of why this value and not another
- * one. An attribute's record key is the researcher's — `VariableNameSchema` is
- * `/^[a-zA-Z0-9._:-]+$/`, and the uuids this section mints are only what IT
- * creates, so an imported or hand-written protocol may key an attribute
- * anything that regex allows. A sentinel inside that alphabet is a name the
- * codebook may legally hold: the picker would then offer the real attribute
- * and this option under one value, choosing the attribute would read as a
- * request to invent one, and saving would create a second attribute beside it.
- * `#` is outside the alphabet, so no attribute can ever be called this.
+ * The kind of answer an invented attribute holds, asked outright here — the
+ * one part of an invention this family decides that the composer's does not,
+ * where it follows from the input control instead. Its name and its rules are
+ * the shared keys, and mean the same thing on either row.
  */
-const NEW_VARIABLE = '#create-new-attribute';
-
-/**
- * Row keys that describe the CODEBOOK rather than the field.
- *
- * A form field holds only its attribute, its question and its hints; what that
- * attribute is called, what kind of answer it holds and which control collects
- * it all belong to the codebook. They are authored here because this is where
- * the researcher is looking, written through `useCommitFormField`, and stripped
- * from the row before it reaches the protocol.
- */
-const NEW_VARIABLE_NAME = '_newVariableName';
 const NEW_VARIABLE_TYPE = '_newVariableType';
-/**
- * The rules an invented attribute's answers have to satisfy, held here until
- * the create that writes them. See `AttributeCodebookControls`' `inventing`.
- */
-const NEW_VARIABLE_VALIDATION = '_newVariableValidation';
 const INPUT_CONTROL = '_component';
 
 /**
@@ -185,20 +160,6 @@ const messages = defineMessages({
       'Two fields collect the same attribute. Each attribute may be collected once per form.',
     description:
       'Refusal shown above a form’s list of fields when two of them record their answers under the same attribute, which would leave only one of the answers.',
-  },
-  createWithValuesFirst: {
-    id: 'protocolBuilder.formFields.createWithValuesFirst',
-    defaultMessage:
-      'Create this attribute and the values it offers before adding the field that collects it.',
-    description:
-      'Refusal shown under the kind-of-answer control when a researcher tries to invent an attribute whose answers come from a list, which cannot be made from a name and a kind alone.',
-  },
-  createWithSettingsFirst: {
-    id: 'protocolBuilder.formFields.createWithSettingsFirst',
-    defaultMessage:
-      'Create this attribute and what it accepts before adding the field that collects it.',
-    description:
-      'The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means.',
   },
   title: {
     id: 'protocolBuilder.formFields.title',
@@ -445,13 +406,6 @@ const messages = defineMessages({
     description:
       'Warning body explaining why the input-control list is narrow for an attribute that already exists. variableType is the attribute’s kind, already translated.',
   },
-  newTypeNotice: {
-    id: 'protocolBuilder.formFields.newTypeNotice',
-    defaultMessage:
-      'The selected input control will cause this attribute to be defined as type <strong>{variableType}</strong>. Once set, this cannot be changed (although you may change the input control within this type).',
-    description:
-      'Shown while the field is inventing an attribute, saying which kind the chosen input control will make it. variableType is that kind, already translated.',
-  },
 });
 
 const AT_LEAST_ONE_FIELD = createMessageError(messages.atLeastOne);
@@ -463,11 +417,11 @@ const MALFORMED_FIELD = createMessageError(messages.malformedField);
 const DUPLICATE_FIELD = createMessageError(messages.duplicateField);
 
 const CREATE_WITH_VALUES_FIRST = createMessageError(
-  messages.createWithValuesFirst,
+  CREATE_FIRST_REFUSALS.createWithValuesFirst,
 );
 
 const CREATE_WITH_SETTINGS_FIRST = createMessageError(
-  messages.createWithSettingsFirst,
+  CREATE_FIRST_REFUSALS.createWithSettingsFirst,
 );
 
 const NO_INPUT_CONTROL = createMessageError(messages.noInputControl);
@@ -1627,7 +1581,7 @@ function InputControlField({
         (inventing ? (
           <Alert variant="info" className="my-7">
             <AlertDescription>
-              {intl.formatMessage(messages.newTypeNotice, {
+              {intl.formatMessage(INVENTED_TYPE_NOTICE, {
                 variableType: intl.formatMessage(typeLabel),
                 strong: renderStrong,
               })}
@@ -1926,16 +1880,4 @@ function FormFieldPreview({ item }: RowPreviewProps) {
       </div>
     </div>
   );
-}
-
-/**
- * Whether this row is inventing an attribute right now.
- *
- * The live choice, falling back to the committed one for the render before the
- * picker has registered — otherwise a row saved mid-invention would open with
- * its name and type controls missing, and saving it again would drop them.
- */
-function useInventingAttribute(item: RowEditorProps['item']): boolean {
-  const chosen = useRowValue('variable');
-  return (chosen ?? item.variable) === NEW_VARIABLE;
 }

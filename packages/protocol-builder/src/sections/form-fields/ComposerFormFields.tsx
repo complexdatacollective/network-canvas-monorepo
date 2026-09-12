@@ -1,6 +1,7 @@
 import {
   createContext,
   type ReactNode,
+  type RefObject,
   useCallback,
   useContext,
   useEffect,
@@ -8,8 +9,12 @@ import {
   useRef,
 } from 'react';
 
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  type MessageDescriptor,
+} from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
@@ -21,6 +26,11 @@ import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
 import {
+  useCodebookSectionDocument,
+  useCreateCodebookVariable,
+  useWhereTheAnswerLands,
+} from '../../codebook/useCodebookVariableEdits.ts';
+import {
   type ParameterShape,
   parameterShapeFor,
   parametersForShape,
@@ -31,8 +41,15 @@ import {
   buildVariableRoleMap,
   hasUnvalidatedUse,
 } from '../../codebook/variableRoles.ts';
-import { unvalidatedElsewhereMessage } from '../../codebook/variableValidation.ts';
-import VariablePickerField from '../../fields/VariablePickerField.tsx';
+import { variableTypeLabel } from '../../codebook/variableTypeLabels.ts';
+import {
+  isValidationMap,
+  unvalidatedElsewhereMessage,
+} from '../../codebook/variableValidation.ts';
+import VariablePickerField, {
+  createdUnassigned,
+  type CreateOptionOutcome,
+} from '../../fields/VariablePickerField.tsx';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import { crossClassPickIssue } from '../../form/arrayFields/crossClassPick.ts';
 import {
@@ -65,12 +82,25 @@ import {
   useVariableChoices,
 } from '../canvas/codebookChoices.ts';
 import { asText } from '../canvas/rowValues.ts';
-import { controlsForType } from '../collectableTypes.ts';
-import { useCreateVariableEditor } from '../create-variable/useCreateVariableEditor.tsx';
+import {
+  ALL_CONTROLS,
+  controlsForType,
+  isOptionType,
+  needsCodebookEditorToCreate,
+  typeForControl,
+} from '../collectableTypes.ts';
 import { composerFormFieldMessages as messages } from './composerFormFieldMessages.ts';
 import ComposerParametersField, {
   type ComposerParameters,
 } from './ComposerParametersField.tsx';
+import {
+  CREATE_FIRST_REFUSALS,
+  INVENTED_TYPE_NOTICE,
+  NEW_VARIABLE,
+  NEW_VARIABLE_NAME,
+  NEW_VARIABLE_VALIDATION,
+  useInventingAttribute,
+} from './inventedAttribute.ts';
 
 const VARIABLE_FIELD = 'variable';
 const COMPONENT_FIELD = 'component';
@@ -83,6 +113,12 @@ const isRecord = (value: unknown): value is ComposerParameters =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
+ * Held at module scope so it keeps one identity across renders: an inline
+ * arrow returning JSX is a component defined during render.
+ */
+const renderStrong = (chunks: ReactNode) => <strong>{chunks}</strong>;
+
+/**
  * What a row's own controls need to know about the form they belong to.
  *
  * The rows are mounted by the shared list field, which threads no props of its
@@ -93,6 +129,16 @@ const isRecord = (value: unknown): value is ComposerParameters =>
  */
 type ComposerFormScope = Readonly<{
   subject: CodebookSubject | undefined;
+  /**
+   * What the open row's picker names right now, for a codebook write to be
+   * judged against when it answers.
+   *
+   * A ref written on every render rather than state: the save reads it in the
+   * middle of an await, from a closure made before it, and an effect that has
+   * not run yet would answer with the previous render's row. The same seam
+   * `FormFieldsSection` reads its own row through, and for the same reason.
+   */
+  rowUnderEdit: RefObject<string | undefined>;
   /** The list as it stands now, so a row can see its own siblings. */
   rows: readonly RowValues[];
   /**
@@ -281,6 +327,125 @@ function ComposerFormRows({
 
   const intl = useAppIntl();
 
+  // See `ComposerFormScope.rowUnderEdit`: the open row fills this in, and the
+  // create below reads it when the codebook answers.
+  const rowUnderEdit = useRef<string | undefined>(undefined);
+  const createVariable = useCreateCodebookVariable(subject);
+  const whereTheAnswerLands = useWhereTheAnswerLands(
+    subject,
+    () => rowUnderEdit.current,
+  );
+
+  /**
+   * Writes the attribute this row is inventing, before the row that names it
+   * is committed.
+   *
+   * The kind of answer comes from the input control the researcher chose,
+   * which is Architect's own rule for this editor
+   * (`EditableAttributesList/ComposerAttributeFields.tsx` through
+   * `Form/fieldCommit.ts`'s `useComposerFieldCommit`: `getTypeForComponent`),
+   * and is why this row has no kind-of-answer control of its own — the control
+   * IS the question, asked once.
+   *
+   * Ordered create-then-commit for the reason the shared form row is: the
+   * codebook write is the one that can be refused, and a row committed first
+   * would name an attribute that was never written.
+   */
+  const inventAttribute = useCallback(
+    async (row: RowValues): Promise<RowSaveOutcome> => {
+      const component = asText(row[COMPONENT_FIELD]);
+      const type = typeForControl(component);
+      // The control is a `required` field of this dialog, so this is the belt
+      // for a row that arrives already broken — and it is what narrows `type`
+      // for the create below.
+      if (component === undefined || type === undefined) {
+        return {
+          refused: {
+            fieldErrors: {
+              [COMPONENT_FIELD]: intl.formatMessage(messages.controlRequired),
+            },
+          },
+        };
+      }
+      // An attribute the codebook editor has to author is only ever made
+      // there, so nothing here can create one from a name and a control. Said
+      // in its own words rather than left to the schema, which would answer a
+      // list of answers with a count of a list the researcher never saw — and
+      // a scale not at all, because a scale with no end labels is a protocol
+      // the schema accepts and a participant cannot read. Filed on the
+      // control, which is where the kind of answer was decided.
+      if (needsCodebookEditorToCreate(type)) {
+        return {
+          refused: {
+            fieldErrors: {
+              [COMPONENT_FIELD]: isOptionType(type)
+                ? createMessageError(
+                    CREATE_FIRST_REFUSALS.createWithValuesFirst,
+                  )
+                : createMessageError(
+                    CREATE_FIRST_REFUSALS.createWithSettingsFirst,
+                  ),
+            },
+          },
+        };
+      }
+
+      // The rules go with the create, as Architect's own commit does: a
+      // researcher who has just said this answer is required said it about the
+      // attribute being made, and a second write afterwards is a save that can
+      // half succeed.
+      const validation = row[NEW_VARIABLE_VALIDATION];
+      // The control is written to the codebook only as the attribute is made
+      // — a composer field OWNS its control from then on, which is why no
+      // later save touches it. Architect writes it on the create for the same
+      // reason (`useComposerFieldCommit`).
+      const invented = asText(row[NEW_VARIABLE_NAME])?.trim() ?? '';
+      const outcome = await createVariable({
+        name: invented,
+        type,
+        component,
+        ...(isValidationMap(validation) && Object.keys(validation).length > 0
+          ? { validation }
+          : {}),
+      });
+      if (outcome.status === 'refused') {
+        // On the picker, which is where the name was typed and the only
+        // control on this surface that is about the attribute's existence.
+        return {
+          refused: { fieldErrors: { [VARIABLE_FIELD]: outcome.message } },
+        };
+      }
+      // Which codebook the attribute went into was decided when the researcher
+      // opened this row, and the stage can be repointed at another type while
+      // that write is with the host. A record key belongs to exactly one type,
+      // so committing the row now would add a field naming an attribute the
+      // type this form collects about does not have — a stage the schema
+      // refuses, built out of a save the researcher was told succeeded.
+      //
+      // What is refused is the ROW, and what they are told is not that the
+      // create failed: it landed, and asking again would ask the codebook for
+      // a name it already holds. So the sentence is the picker's own for this
+      // — the write is done, and here is where the attribute went — with the
+      // draft left standing.
+      if (
+        subject === undefined ||
+        whereTheAnswerLands({ subject, fillsIn: NEW_VARIABLE }) !== 'here'
+      ) {
+        return {
+          refused: {
+            formErrors: [
+              createMessageError(createdUnassigned, {
+                variableName: invented,
+              }),
+            ],
+          },
+        };
+      }
+      return { row: { ...row, [VARIABLE_FIELD]: outcome.variableId } };
+    },
+    [createVariable, intl, subject, whereTheAnswerLands],
+  );
+
   /**
    * The save-time half of the two rules the row's own picker already applies.
    *
@@ -297,8 +462,16 @@ function ComposerFormRows({
    * this row is what stops them changing it while the row is open.
    */
   const beforeSave = useCallback(
-    (row: RowValues, context: RowSaveContext): RowSaveOutcome => {
+    async (
+      row: RowValues,
+      context: RowSaveContext,
+    ): Promise<RowSaveOutcome> => {
       const variable = asText(row[VARIABLE_FIELD]) ?? '';
+      // An attribute this row is still inventing is the one case none of the
+      // rules below can be asked about: there is nothing in the codebook for
+      // them to read. It is created first, and what the row commits is the id
+      // that create minted.
+      if (variable === NEW_VARIABLE) return inventAttribute(row);
       if (variable === '') return { row };
 
       const siblings = rows.filter(
@@ -371,7 +544,7 @@ function ComposerFormRows({
           }
         : { row };
     },
-    [intl, roleMap, rows, subject, variables],
+    [inventAttribute, intl, roleMap, rows, subject, variables],
   );
 
   const rowList = useMemo<RowListConfig>(
@@ -389,7 +562,7 @@ function ComposerFormRows({
   );
 
   const scope = useMemo(
-    () => ({ subject, rows, draftUnvalidated }),
+    () => ({ subject, rows, draftUnvalidated, rowUnderEdit }),
     [draftUnvalidated, rows, subject],
   );
 
@@ -412,8 +585,16 @@ function ComposerFormRows({
 function normalizeComposerField(value: RowValues): RowValues {
   const cleaned = withoutAbsentValues(value);
   if (!isRecord(cleaned)) return value;
-  if (cleaned[VALIDATION_HINTS_FIELD] !== false) return cleaned;
-  const { [VALIDATION_HINTS_FIELD]: _off, ...field } = cleaned;
+  // The keys describing an attribute being invented are working state of the
+  // dialog rather than part of a form field, and `inventAttribute` has already
+  // turned them into a real attribute by the time this runs.
+  const {
+    [NEW_VARIABLE_NAME]: _name,
+    [NEW_VARIABLE_VALIDATION]: _validation,
+    ...row
+  } = cleaned;
+  if (row[VALIDATION_HINTS_FIELD] !== false) return row;
+  const { [VALIDATION_HINTS_FIELD]: _off, ...field } = row;
   return field;
 }
 
@@ -447,8 +628,12 @@ function shapeOf(
 function ComposerFormFieldEditor({ item }: RowEditorProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
-  const { subject, rows, draftUnvalidated } = useComposerFormScope();
+  const { subject, rows, draftUnvalidated, rowUnderEdit } =
+    useComposerFormScope();
   const setRowValue = useFormStore((state) => state.setFieldValue);
+  const inventing = useInventingAttribute(item);
+  const inventedName =
+    asText(useRowValue(NEW_VARIABLE_NAME) ?? item[NEW_VARIABLE_NAME]) ?? '';
   const variables = useMemo(
     () =>
       subject === undefined
@@ -496,16 +681,65 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
     [chosen, draftUnvalidated, offered, siblingVariables],
   );
 
-  const attributeType =
-    chosen === undefined ? undefined : variables[chosen]?.type;
+  /**
+   * The kind of answer this row records, which while it is inventing one is
+   * decided BY the control the researcher chose.
+   *
+   * The row's own question, in Architect's own order: this editor never asks
+   * for a kind of answer, because the control that collects it says which kind
+   * it is (`getTypeForComponent`). Every other invention in the package is
+   * given the kind first and narrows the controls to it; this one is the
+   * inverse, and it is the inverse in Architect too.
+   */
+  const attributeType = inventing
+    ? typeForControl(control)
+    : chosen === undefined
+      ? undefined
+      : variables[chosen]?.type;
+  const typeLabel = variableTypeLabel(attributeType ?? '');
   const controlOptions = useMemo(
     () =>
-      controlsForType(attributeType ?? '').map(({ value, label }) => ({
-        value,
-        label: intl.formatMessage(label),
-      })),
-    [attributeType, intl],
+      // Everything a form can collect while the attribute is being invented:
+      // there is no type yet to narrow the list by, and narrowing it to the
+      // kind the current control implies would take away every other kind the
+      // researcher might have meant.
+      (inventing ? ALL_CONTROLS : controlsForType(attributeType ?? '')).map(
+        ({ value, label }) => ({
+          value,
+          label: intl.formatMessage(label),
+        }),
+      ),
+    [attributeType, intl, inventing],
   );
+
+  /**
+   * The attribute being invented, as the one thing the picker can show for it.
+   *
+   * The control shows what the row holds, and while the row is inventing that
+   * is a name and nothing else — so the option standing for it is offered only
+   * while it is held, and carries the kind of answer as soon as a control has
+   * decided one, which is what colours the pill.
+   */
+  const offeredOptions = useMemo(
+    () =>
+      inventing
+        ? [
+            ...variableOptions,
+            {
+              value: NEW_VARIABLE,
+              label: inventedName,
+              ...(attributeType === undefined ? {} : { type: attributeType }),
+            },
+          ]
+        : variableOptions,
+    [attributeType, inventedName, inventing, variableOptions],
+  );
+
+  // What every codebook write this row makes is about. Written on every render
+  // rather than from an effect, the way the shared form row keeps its own view
+  // of the row it is editing: a save reads this in the middle of an await, and
+  // an effect that has not run yet would answer with the previous render's row.
+  rowUnderEdit.current = chosen;
 
   /**
    * The control follows the attribute.
@@ -540,6 +774,11 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
     ) {
       return;
     }
+    // An attribute being invented needs no branch of its own: the codebook
+    // holds nothing under the sentinel, so the rule below leaves the row with
+    // no control — which is the right answer, because an invention decides its
+    // kind BY the control the researcher is about to choose, and the one the
+    // row held for whatever it named before is not an answer about it.
     const attribute = chosen === undefined ? undefined : variables[chosen];
     const controls = controlsForType(attribute?.type ?? '');
     // The codebook's own control where the pairing allows it, because that is
@@ -553,7 +792,9 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
     setRowValue(COMPONENT_FIELD, preferred ?? controls[0]?.value);
   }, [chosen, control, setRowValue, variables]);
 
-  const shape = shapeOf(variables, chosen, control);
+  const shape = inventing
+    ? parameterShapeFor(attributeType, control)
+    : shapeOf(variables, chosen, control);
   /**
    * The settings go with the control they were authored for.
    *
@@ -619,21 +860,37 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
   );
 
   /**
-   * Inventing the attribute this field asks for, in the codebook's own editor.
+   * Taking the picker's create row, which here decides nothing and promises
+   * everything.
    *
-   * Every other slot that offers this names the kind of answer it needs, and
-   * most of them are finished by a name alone. This row names none: the kind is
-   * the codebook's, and all the row decides is which control renders it. So the
-   * researcher is asked for the kind here, among everything a form can collect,
-   * which is a question only the codebook's editor has a control for.
+   * The attribute is not written now. Which control collects it is the next
+   * question this dialog asks, and that control is what says what kind of
+   * answer the attribute holds — so the name is kept on the row and the row's
+   * own save creates the attribute, which is where a refusal from the codebook
+   * is reported. Architect defers the same create for the same reason
+   * (`Form/fieldCommit.ts`'s `useComposerFieldCommit`).
+   *
+   * `created` rather than an outcome of its own, because that is what the
+   * window is being told: the act the researcher asked for has happened as far
+   * as this dialog is concerned, and the window closes on the name they typed.
    */
   const namesInUse = useSubjectVariableNames(subject);
-  const createAttribute = useCreateVariableEditor({
-    subject: subject ?? null,
-    variableTypes: COLLECTABLE_TYPES,
-    title: intl.formatMessage(messages.variableCreateTitle),
-    onCreated: (variableId) => setRowValue(VARIABLE_FIELD, variableId),
-  });
+  /**
+   * Whether there is still a codebook section for the create to land in.
+   *
+   * A connection type a collaborator has deleted leaves the form on screen —
+   * it is still there to be taken out — with nowhere to add an attribute, and
+   * the picker's rule is that a create row exists exactly where a create does.
+   */
+  const sectionIsLive = useCodebookSectionDocument(subject) !== undefined;
+  const invent = useCallback(
+    (variableName: string): Promise<CreateOptionOutcome> => {
+      setRowValue(VARIABLE_FIELD, NEW_VARIABLE);
+      setRowValue(NEW_VARIABLE_NAME, variableName);
+      return Promise.resolve({ status: 'created' });
+    },
+    [setRowValue],
+  );
 
   return (
     <>
@@ -642,44 +899,67 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
         component={VariablePickerField}
         label={intl.formatMessage(messages.variableLabel)}
         hint={intl.formatMessage(messages.variableHint)}
-        options={variableOptions}
+        options={offeredOptions}
         initialValue={committed}
         required={intl.formatMessage(messages.variableRequired)}
-        // Nothing at all while no editor can be opened — no type to add the
-        // attribute to, a stage somebody else holds. The picker's own rule is
-        // that a create row exists exactly where `onCreateOption` does, and a
-        // row that opened onto a refusal would offer an act whose whole
-        // content is that it cannot be done.
-        {...(createAttribute.launchable
-          ? { onCreateOption: createAttribute.createOption, namesInUse }
-          : {})}
+        // Nothing at all where there is no type to add the attribute to. The
+        // picker's own rule is that a create row exists exactly where
+        // `onCreateOption` does, and a row that opened onto a refusal would
+        // offer an act whose whole content is that it cannot be done.
+        {...(subject === undefined || !sectionIsLive
+          ? {}
+          : { onCreateOption: invent, namesInUse })}
       />
-      {createAttribute.editor}
       <Field<typeof NativeSelectField>
         name={COMPONENT_FIELD}
         component={NativeSelectField}
         label={intl.formatMessage(messages.controlLabel)}
-        hint={intl.formatMessage(messages.controlHint)}
+        hint={intl.formatMessage(
+          inventing ? messages.controlInventsHint : messages.controlHint,
+        )}
         options={controlOptions}
         disabled={controlOptions.length === 0}
         initialValue={asText(item[COMPONENT_FIELD])}
         required={intl.formatMessage(messages.controlRequired)}
       />
+      {/* Which kind of answer the chosen control will make this attribute —
+          said while it can still be changed, because once the attribute
+          exists it cannot be. */}
+      {inventing && typeLabel !== undefined && (
+        <Alert variant="info" className="my-7">
+          <AlertDescription>
+            {intl.formatMessage(INVENTED_TYPE_NOTICE, {
+              variableType: intl.formatMessage(typeLabel),
+              strong: renderStrong,
+            })}
+          </AlertDescription>
+        </Alert>
+      )}
       {/*
         The settings half is withheld because this field keeps its own control
         and its own settings on the stage — written to the codebook they would
         be authored against a control the codebook does not have, and the
         variable schemas, split on `component`, refuse that outright.
 
-        No `inventingType`: the create this row offers is finished in the
-        codebook's own editor, which writes the attribute before the row is
-        told its id, so there is never one here waiting to be authored.
+        The rules half is not: an attribute this row is inventing is authored
+        here and written with the create, which is what Architect does
+        (`Form/fieldCommit.ts:168-172`) and what keeps making an invented
+        answer required from taking a save, a reopen and a second dialog.
       */}
       <AttributeCodebookControls
         subject={subject}
         committedVariable={item[VARIABLE_FIELD]}
         componentField={COMPONENT_FIELD}
         offerParameters={false}
+        {...(inventing
+          ? {
+              inventing: {
+                type: attributeType ?? '',
+                name: inventedName,
+                rulesField: NEW_VARIABLE_VALIDATION,
+              },
+            }
+          : {})}
       />
       {shape !== null && (
         <Field<typeof ComposerParametersField>
