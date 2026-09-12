@@ -25,8 +25,13 @@ import {
   PromptTextField,
   PromptTextPreview,
 } from '../../dyad-census/sections/PromptTextField.tsx';
+import { binMessages } from '../../ordinal-bin/sections/binMessages.ts';
 
-/** What only a One-to-Many Dyad Census says; the shared words are in `censusMessages`. */
+/**
+ * What only a One-to-Many Dyad Census says. The words it shares with the rest
+ * of the census family are in `censusMessages`, and the words of the two
+ * sort-order sections Architect mounts here unchanged are in `binMessages`.
+ */
 const messages = defineMessages({
   guidance: {
     id: 'protocolBuilder.censusPrompts.oneToManyGuidance',
@@ -37,101 +42,29 @@ const messages = defineMessages({
   },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.oneToManyPlaceholder',
-    defaultMessage: 'Which of these people does this person know?',
+    defaultMessage: 'Enter text for the prompt here...',
     description:
-      'Example question in the empty box where a researcher writes a One-to-Many Dyad Census prompt.',
+      'Placeholder shown in the empty box where a researcher writes a One-to-Many Dyad Census prompt. The trailing dots are an ellipsis written as three full stops.',
   },
-  description: {
-    id: 'protocolBuilder.censusPrompts.oneToManyDescription',
+  promptTextDescription: {
+    id: 'protocolBuilder.censusPrompts.oneToManyPromptTextDescription',
     defaultMessage:
-      'Write the questions this stage asks about one person and the group around them, and drag them into the order the participant answers them.',
+      'Write the participant prompt and select the edge type created for chosen nodes.',
     description:
-      'Description of the prompts section in a stage that shows the participant one network member alongside all the others and asks which of the others the question applies to. A stage is one step of an interview; a prompt is one question the participant is asked.',
-  },
-  fieldHint: {
-    id: 'protocolBuilder.censusPrompts.oneToManyFieldHint',
-    defaultMessage:
-      'The participant is shown one person at a time and chooses who among the others the question applies to.',
-    description:
-      'Guidance under the list of prompts in a One-to-Many Dyad Census stage, where the participant selects any number of the remaining network members for the person in front of them.',
-  },
-  edgeDescription: {
-    id: 'protocolBuilder.censusPrompts.oneToManyEdgeDescription',
-    defaultMessage:
-      'Choose the kind of connection an affirmative answer records between the two people.',
-    description:
-      'Description of the group that says what selecting someone records between them and the person the prompt asked about.',
-  },
-  edgeHint: {
-    id: 'protocolBuilder.censusPrompts.oneToManyEdgeHint',
-    defaultMessage:
-      'A connection of this type is created from the person being asked about to everyone the participant selects.',
-    description:
-      'Guidance under the control that picks what selecting someone records between them and the person the prompt asked about.',
-  },
-  askedOrderTitle: {
-    id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderTitle',
-    defaultMessage: 'Order of the people asked about',
-    description:
-      'Heading of the optional group holding the rules that order the people the participant is asked about, one at a time.',
+      'Description of the group holding a One-to-Many Dyad Census prompt’s question and the kind of connection selecting someone records.',
   },
   askedOrderDescription: {
     id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderDescription',
     defaultMessage:
-      'Choose the order the participant is asked about each person in.',
+      'Order focal nodes before they are presented for evaluation.',
     description:
       'Description of the group holding the rules that order the people the participant is asked about, one at a time.',
   },
-  askedOrderLabel: {
-    id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderLabel',
-    defaultMessage: 'Rules for the order people are asked about',
-    description:
-      'Label of the list of sort rules that order the people the participant is asked about, one at a time.',
-  },
-  askedOrderAddLabel: {
-    id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderAddLabel',
-    defaultMessage: 'Add a rule for the order people are asked about',
-    description:
-      'Button that appends one sort rule to the list ordering the people the participant is asked about.',
-  },
-  askedOrderEmptyState: {
-    id: 'protocolBuilder.censusPrompts.oneToManyAskedOrderEmptyState',
-    defaultMessage:
-      'No rules yet, so people are asked about in the order they were added.',
-    description:
-      'Shown in place of the sort rules ordering the people the participant is asked about, when the researcher has written none.',
-  },
-  choiceOrderTitle: {
-    id: 'protocolBuilder.censusPrompts.oneToManyChoiceOrderTitle',
-    defaultMessage: 'Order of the people to choose from',
-    description:
-      'Heading of the optional group holding the rules that order the people the participant picks from for whoever they were asked about.',
-  },
   choiceOrderDescription: {
     id: 'protocolBuilder.censusPrompts.oneToManyChoiceOrderDescription',
-    defaultMessage:
-      'Choose the order the people the participant selects from are shown in.',
+    defaultMessage: 'Order target nodes after they are placed in the bin.',
     description:
       'Description of the group holding the rules that order the people the participant picks from for whoever they were asked about.',
-  },
-  choiceOrderLabel: {
-    id: 'protocolBuilder.censusPrompts.oneToManyChoiceOrderLabel',
-    defaultMessage: 'Rules for the order people are shown in',
-    description:
-      'Label of the list of sort rules that order the people the participant picks from.',
-  },
-  choiceOrderAddLabel: {
-    id: 'protocolBuilder.censusPrompts.oneToManyChoiceOrderAddLabel',
-    defaultMessage: 'Add a rule for the order people are shown in',
-    description:
-      'Button that appends one sort rule to the list ordering the people the participant picks from.',
-  },
-  choiceOrderEmptyState: {
-    id: 'protocolBuilder.censusPrompts.oneToManyChoiceOrderEmptyState',
-    defaultMessage:
-      'No rules yet, so people are shown in the order they were added.',
-    description:
-      'Shown in place of the sort rules ordering the people the participant picks from, when the researcher has written none.',
   },
 });
 
@@ -196,41 +129,55 @@ function OneToManyDyadCensusPromptEditor({ item }: RowEditorProps) {
 
   return (
     <>
+      {/*
+        The connection type sits INSIDE the prompt group, as Architect's does:
+        the group's own description is what says a selection creates one.
+      */}
       <PromptTextField
         item={item}
         guidance={<OneToManyGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
-      />
-      <CreateEdgeField
-        title={intl.formatMessage(censusMessages.affirmativeTitle)}
-        description={intl.formatMessage(messages.edgeDescription)}
-        hint={intl.formatMessage(messages.edgeHint)}
-        requiredMessage={intl.formatMessage(censusMessages.affirmativeRequired)}
-      />
+        title={intl.formatMessage(censusMessages.promptConfigurationTitle)}
+        description={intl.formatMessage(messages.promptTextDescription)}
+      >
+        <CreateEdgeField
+          label={intl.formatMessage(censusMessages.edgeLabel)}
+          requiredMessage={intl.formatMessage(
+            censusMessages.affirmativeRequired,
+          )}
+        />
+      </PromptTextField>
       {/*
+        The same two sections the bins render, because Architect mounts the very
+        same `BucketSortOrderSection` and `BinSortOrderSection` here and
+        overrides only their descriptions — so only the descriptions are this
+        editor's own words.
+
         Both orders wait on the connection type, as Architect's do: until one is
         chosen the prompt does not yet describe a task to order anything within.
       */}
       <SortOrderRows
         name="bucketSortOrder"
-        title={intl.formatMessage(messages.askedOrderTitle)}
+        title={intl.formatMessage(binMessages.bucketOrderTitle)}
         description={intl.formatMessage(messages.askedOrderDescription)}
-        label={intl.formatMessage(messages.askedOrderLabel)}
+        label={intl.formatMessage(binMessages.bucketOrderLabel)}
         hint={intl.formatMessage(censusMessages.sortRulesAddedHint)}
-        addButtonLabel={intl.formatMessage(messages.askedOrderAddLabel)}
-        emptyStateMessage={intl.formatMessage(messages.askedOrderEmptyState)}
+        addButtonLabel={intl.formatMessage(binMessages.bucketOrderAddLabel)}
+        emptyStateMessage={intl.formatMessage(
+          binMessages.bucketOrderEmptyState,
+        )}
         properties={sortableProperties}
         disabled={!chosenEdge}
         committedRules={item.bucketSortOrder}
       />
       <SortOrderRows
         name="binSortOrder"
-        title={intl.formatMessage(messages.choiceOrderTitle)}
+        title={intl.formatMessage(binMessages.binOrderTitle)}
         description={intl.formatMessage(messages.choiceOrderDescription)}
-        label={intl.formatMessage(messages.choiceOrderLabel)}
-        hint={intl.formatMessage(censusMessages.sortRulesAddedHint)}
-        addButtonLabel={intl.formatMessage(messages.choiceOrderAddLabel)}
-        emptyStateMessage={intl.formatMessage(messages.choiceOrderEmptyState)}
+        label={intl.formatMessage(binMessages.binOrderLabel)}
+        hint={intl.formatMessage(binMessages.sortRulesDroppedHint)}
+        addButtonLabel={intl.formatMessage(binMessages.binOrderAddLabel)}
+        emptyStateMessage={intl.formatMessage(binMessages.binOrderEmptyState)}
         properties={sortableProperties}
         disabled={!chosenEdge}
         committedRules={item.binSortOrder}
@@ -269,8 +216,6 @@ export default function OneToManyDyadCensusPromptsSection() {
       PromptEditor={OneToManyDyadCensusPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
-      description={messages.description}
-      fieldHint={messages.fieldHint}
     />
   );
 }

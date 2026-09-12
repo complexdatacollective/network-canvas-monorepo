@@ -50,7 +50,7 @@ describe('creating a tie-strength census stage', () => {
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      screen.getByRole('textbox', { name: 'Title' }),
       'Pairs',
     );
     await writeInto(
@@ -69,12 +69,12 @@ describe('creating a tie-strength census stage', () => {
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
       'closeness',
     );
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Decline answer' }),
+      screen.getByRole('textbox', { name: 'Decline option' }),
       'They have never met',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));

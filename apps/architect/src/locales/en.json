@@ -675,22 +675,6 @@
     "defaultMessage": "Used In",
     "description": "The title text in components / Codebook / Variables."
   },
-  "architect.config.barbiePink": {
-    "defaultMessage": "Barbie Pink",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.config.ceruleanBlue": {
-    "defaultMessage": "Cerulean Blue",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.config.color": {
-    "defaultMessage": "Color {index, number}",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.config.kiwi": {
-    "defaultMessage": "Kiwi",
-    "description": "Researcher-facing Architect control or feedback."
-  },
   "architect.config.mapboxConstants.config.dark": {
     "defaultMessage": "Dark",
     "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
@@ -731,44 +715,8 @@
     "defaultMessage": "Streets",
     "description": "Presentation label or description in config/mapboxConstants.ts. Identifiers are not translated."
   },
-  "architect.config.mustard": {
-    "defaultMessage": "Mustard",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.config.neonCarrot": {
-    "defaultMessage": "Neon Carrot",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.config.neonCoral": {
-    "defaultMessage": "Neon Coral",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.config.paradisePink": {
-    "defaultMessage": "Paradise Pink",
-    "description": "Researcher-facing Architect control or feedback."
-  },
   "architect.config.protocolNameTooLong": {
     "defaultMessage": "Protocol names are limited to {max, number} characters.",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.config.purplePizazz": {
-    "defaultMessage": "Purple Pizazz",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.config.seaGreen": {
-    "defaultMessage": "Sea Green",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.config.seaSerpent": {
-    "defaultMessage": "Sea Serpent",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.config.slateBlue": {
-    "defaultMessage": "Slate Blue",
-    "description": "Researcher-facing Architect control or feedback."
-  },
-  "architect.config.tomato": {
-    "defaultMessage": "Tomato",
     "description": "Researcher-facing Architect control or feedback."
   },
   "architect.config.variables.config.boolean": {

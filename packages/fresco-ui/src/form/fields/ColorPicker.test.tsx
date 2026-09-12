@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useContext, useState, type ContextType, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -6,7 +10,10 @@ import Field from '../Field/Field';
 import UnconnectedField from '../Field/UnconnectedField';
 import Form from '../Form';
 import { FormStoreContext } from '../store/formStoreProvider';
-import ColorPickerField, { resolveSwatchColor } from './ColorPicker';
+import ColorPickerField, {
+  COLOR_SEQUENCE_HUE_NAMES,
+  resolveSwatchColor,
+} from './ColorPicker';
 
 type StoreApi = NonNullable<ContextType<typeof FormStoreContext>>;
 
@@ -181,5 +188,127 @@ describe('ColorPickerField', () => {
     expect(screen.getByTestId('stored-color')).toHaveTextContent(
       'node-color-seq-3',
     );
+  });
+});
+
+/**
+ * The theme decides which hue each position of a colour sequence resolves to,
+ * so the names the picker announces are only correct while it still does. This
+ * reads the stylesheet that decides it, ported from Architect's own
+ * `config/__tests__/colorSwatchNames.test.ts` at `74a07e626`: a reordered
+ * palette fails here rather than silently teaching a screen-reader user that
+ * swatch 3 is "Purple Pizazz" when it is now green.
+ *
+ * Read off disk rather than imported, because this project sets `css: false`
+ * and an `?raw` import of a stylesheet would arrive empty. Resolved against
+ * this file, so it cannot drift with a working directory.
+ */
+const THEME_PATH = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../../../tooling/tailwind/fresco/themes/default.css',
+);
+
+/** `--node-3: oklch(var(--purple-pizazz));` -> `{ 'node-3': 'purple-pizazz' }` */
+const readThemeHues = (): Map<string, string> => {
+  const css = readFileSync(THEME_PATH, 'utf8');
+  const hues = new Map<string, string>();
+  const declaration =
+    /--((?:node|edge|ord|cat)-\d+)\s*:\s*oklch\(var\(--([a-z-]+)\)\)/g;
+  let match = declaration.exec(css);
+  while (match) {
+    const [, token, hue] = match;
+    if (token && hue) hues.set(token, hue);
+    match = declaration.exec(css);
+  }
+  return hues;
+};
+
+/** `purple-pizazz` -> `Purple Pizazz`, the form the names are written in. */
+const titleCase = (hue: string) =>
+  hue
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+describe('the names the picker gives the theme’s own swatches', () => {
+  const themeHues = readThemeHues();
+
+  it('reads the theme it is pinned against', () => {
+    // Guards the regex and the path: an empty map would make every assertion
+    // below vacuous.
+    expect(themeHues.size).toBeGreaterThan(0);
+  });
+
+  it.each(Object.keys(COLOR_SEQUENCE_HUE_NAMES))(
+    'names every %s swatch after the hue the theme gives it',
+    (sequence) => {
+      const prefix = sequence.replace('-color-seq', '');
+      const names = COLOR_SEQUENCE_HUE_NAMES[sequence] ?? [];
+      const expected = names.map((_, index) => {
+        const hue = themeHues.get(`${prefix}-${index + 1}`);
+        expect(hue).toBeDefined();
+        return titleCase(hue ?? '');
+      });
+
+      expect(names.map((message) => message.defaultMessage)).toEqual(expected);
+    },
+  );
+
+  it.each(Object.keys(COLOR_SEQUENCE_HUE_NAMES))(
+    'names every position the theme defines for %s',
+    (sequence) => {
+      const prefix = sequence.replace('-color-seq', '');
+      const definedPositions = [...themeHues.keys()].filter((token) =>
+        token.startsWith(`${prefix}-`),
+      ).length;
+
+      expect(COLOR_SEQUENCE_HUE_NAMES[sequence]).toHaveLength(definedPositions);
+    },
+  );
+
+  it('announces a sequence swatch by its hue when the caller names none', () => {
+    // The whole point of moving the naming here: a caller offering the
+    // theme's palette says only which colours it offers, and every picker
+    // that offers `node-color-seq-2` announces the same hue.
+    renderInForm(
+      <Field
+        name="color"
+        label="Node color"
+        component={ColorPickerField}
+        initialValue="node-color-seq-1"
+        options={[
+          { value: 'node-color-seq-1' },
+          { value: 'edge-color-seq-6' },
+          { value: 'ord-color-seq-10' },
+          { value: 'cat-color-seq-8' },
+        ]}
+      />,
+    );
+
+    expect(
+      screen
+        .getAllByRole('radio')
+        .map((radio) => radio.getAttribute('aria-label')),
+    ).toEqual(['Neon Coral', 'Tomato', 'Slate Blue', 'Barbie Pink']);
+  });
+
+  it('lets a caller name a colour the theme has no name for, and falls back to the value', () => {
+    renderInForm(
+      <Field
+        name="color"
+        label="Highlight color"
+        component={ColorPickerField}
+        options={[
+          { value: 'transparent', label: 'Transparent' },
+          { value: 'rebeccapurple' },
+        ]}
+      />,
+    );
+
+    expect(
+      screen
+        .getAllByRole('radio')
+        .map((radio) => radio.getAttribute('aria-label')),
+    ).toEqual(['Transparent', 'rebeccapurple']);
   });
 });

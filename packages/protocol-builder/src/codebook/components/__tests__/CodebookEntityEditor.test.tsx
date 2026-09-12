@@ -106,8 +106,8 @@ describe('CodebookEntityEditor', () => {
     const onSubmit = vi.fn<SubmitEntity>(async () => applied());
     renderUpdateEditor(onSubmit);
 
-    expect(screen.getByRole('radio', { name: 'Node color 1' })).toBeChecked();
-    await user.click(screen.getByRole('radio', { name: 'Node color 4' }));
+    expect(screen.getByRole('radio', { name: 'Neon Coral' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Neon Carrot' }));
     await user.click(screen.getByRole('button', { name: 'Save entity' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());

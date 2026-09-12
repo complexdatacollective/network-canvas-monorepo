@@ -119,7 +119,7 @@ const messages = defineMessages({
   },
   importedFileOption: {
     id: 'protocolBuilder.resourcePicker.importedFileOption',
-    defaultMessage: 'Use an imported data file',
+    defaultMessage: 'Use a network data file',
     description:
       'Radio option choosing imported participant data (a roster) rather than the network the interview has built so far.',
   },

@@ -13,7 +13,7 @@ import QuickAddSection from '../QuickAddSection.tsx';
 const quickAdd = <QuickAddSection />;
 
 const picker = (): HTMLElement =>
-  screen.getByRole('combobox', { name: /Attribute filled in/ });
+  screen.getByRole('combobox', { name: 'Select an attribute' });
 
 const offered = () =>
   within(picker())
@@ -41,7 +41,7 @@ describe('what a quick-add name generator records', () => {
     });
 
     expect(
-      await screen.findByRole('combobox', { name: /Attribute filled in/ }),
+      await screen.findByRole('combobox', { name: 'Select an attribute' }),
     ).toHaveValue('name');
     // The stage's name, the type it nominates and what it asks belong to
     // sections this mount does not include.
@@ -59,7 +59,7 @@ describe('what a quick-add name generator records', () => {
       sections: quickAdd,
     });
 
-    await screen.findByRole('combobox', { name: /Attribute filled in/ });
+    await screen.findByRole('combobox', { name: 'Select an attribute' });
     expect(offered()).toContain('name');
     expect(offered()).not.toContain('age');
     expect(offered()).not.toContain('contactType');
@@ -92,7 +92,7 @@ describe('what a quick-add name generator records', () => {
       sections: quickAdd,
     });
 
-    await screen.findByRole('combobox', { name: /Attribute filled in/ });
+    await screen.findByRole('combobox', { name: 'Select an attribute' });
     // `fm_name` is collected by a form elsewhere in the protocol, which is a
     // validated use and therefore allowed; `fm_relationship_to_ego` is text as
     // well, and is stamped by the family pedigree — so the same list must not
@@ -133,7 +133,7 @@ describe('what a quick-add name generator records', () => {
     });
 
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: /Attribute filled in/ }),
+      await screen.findByRole('combobox', { name: 'Select an attribute' }),
       'relationship_to_ego',
     );
 
@@ -205,7 +205,7 @@ describe('what a quick-add name generator records', () => {
 
     expect(
       await screen.findByText(
-        'Choose the attribute the participant fills in when they add a “family member” with a single box.',
+        'Choose the attribute populated when a participant creates a node with Quick Add.',
       ),
     ).toBeInTheDocument();
     expect(
@@ -216,7 +216,7 @@ describe('what a quick-add name generator records', () => {
     // Shown before a type has been chosen as well, so this one names nothing.
     expect(
       screen.getByText(
-        'What the participant types goes here. Use the attribute holding the name unless you have a reason not to — the interview labels what it creates by it.',
+        "Select the attribute that is assigned a value when creating a new node using the Quick Add button. Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview.",
       ),
     ).toBeInTheDocument();
   });
@@ -228,7 +228,7 @@ describe('what a quick-add name generator records', () => {
       sections: quickAdd,
     });
 
-    await screen.findByRole('combobox', { name: /Attribute filled in/ });
+    await screen.findByRole('combobox', { name: 'Select an attribute' });
     harness.receiveCodebookUpdate({
       node: {
         person: {
@@ -369,7 +369,7 @@ describe('a quick-add attribute that need not be answered', () => {
       sections: quickAdd,
     });
 
-    await screen.findByRole('combobox', { name: /Attribute filled in/ });
+    await screen.findByRole('combobox', { name: 'Select an attribute' });
     harness.receiveCodebookUpdate({
       node: {
         person: {
