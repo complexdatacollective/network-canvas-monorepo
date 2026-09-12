@@ -21,6 +21,7 @@
   "protocolBuilder.censusPrompts.dyadEdgeHint": "A connection of this type is created between the two people whenever the participant answers yes.",
   "protocolBuilder.censusPrompts.oneToManyEdgeDescription": "Choose the kind of connection an affirmative answer records between the two people.",
   "protocolBuilder.censusPrompts.oneToManyEdgeHint": "A connection of this type is created from the person being asked about to everyone the participant selects.",
+  "protocolBuilder.censusPrompts.tieStrengthGuidance": "The participant sees two people side by side and answers on a scale, so write the question about the pair in front of them \u2014 \u201chow close are these two people?\u201d rather than a name \u2014 and phrase it so that every point on the scale is a sensible answer.",
   "protocolBuilder.censusPrompts.tieStrengthScaleHint": "The participant taps one of this attribute’s values, and it is recorded on the connection.",
   "protocolBuilder.removeAfterConsideration.fieldHint": "Removing them keeps the remaining choices short. Keeping them lets the participant revisit an answer.",
   "protocolBuilder.introduction.headingHint": "The heading shown at the top of the introduction screen.",

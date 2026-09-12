@@ -99,6 +99,41 @@ describe('the questions a tie-strength census asks about a pair', () => {
   });
 
   /**
+   * And says it only once. Architect raises no notice above the prompt box in
+   * this family — the two dyad censuses are the ones that do — so a second
+   * sentence here would be this package's own, sitting above a hint that
+   * already covers the same ground: the notice this package used to raise
+   * asked for a question every point of the scale could answer, while
+   * Architect's hint asks for one answered yes or no, and a researcher read
+   * both and could satisfy neither.
+   *
+   * Scoped to the prompt group and asked by ROLE rather than by the sentence
+   * the notice used to carry: an `Alert` is a live region wherever it is
+   * raised, so this fails for any notice put back here, not only for the one
+   * that was taken away. The scale's own over-five warning lives in a
+   * different group and is out of scope by construction.
+   */
+  it('raises no notice above the prompt box', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const promptGroup = within(
+      await screen.findByRole('region', { name: 'Participant prompt' }),
+    );
+
+    // The box itself has to be there, or an emptied group would pass this.
+    expect(
+      promptGroup.getByRole('textbox', { name: 'Prompt text' }),
+    ).toBeInTheDocument();
+    expect([
+      ...promptGroup.queryAllByRole('status'),
+      ...promptGroup.queryAllByRole('alert'),
+    ]).toEqual([]);
+  });
+
+  /**
    * The scale belongs to the connection, so there is nothing to choose from
    * until the connection type is known.
    */

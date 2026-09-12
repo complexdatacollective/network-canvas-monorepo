@@ -61,13 +61,6 @@ const SCALE_LIMIT = 5;
 
 /** What only a Tie-Strength Census says; the shared words are in `censusMessages`. */
 const messages = defineMessages({
-  guidance: {
-    id: 'protocolBuilder.censusPrompts.tieStrengthGuidance',
-    defaultMessage:
-      'The participant sees two people side by side and answers on a scale, so write the question about the pair in front of them — “how close are these two people?” rather than a name — and phrase it so that every point on the scale is a sensible answer.',
-    description:
-      'Guidance shown above the box where a researcher writes a Tie-Strength Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question a scale can answer.',
-  },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.tieStrengthPlaceholder',
     defaultMessage: 'Enter text for the prompt here...',
@@ -220,17 +213,6 @@ const SCALE_GONE = createMessageError(messages.scaleGoneRefusal);
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
-function TieStrengthGuidance() {
-  const intl = useAppIntl();
-  return (
-    <Alert variant="info" className="mb-6">
-      <AlertDescription>
-        {intl.formatMessage(messages.guidance)}
-      </AlertDescription>
-    </Alert>
-  );
-}
-
 /**
  * Throws the scale away when the connection it describes changes.
  *
@@ -377,7 +359,6 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
     <>
       <PromptTextField
         item={item}
-        guidance={<TieStrengthGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
         title={intl.formatMessage(censusMessages.promptTextTitle)}
         description={intl.formatMessage(messages.promptTextDescription)}

@@ -675,10 +675,6 @@
     "defaultMessage": "Edge creation",
     "description": "Heading of the group that says which kind of connection the participant’s answer on the scale describes."
   },
-  "protocolBuilder.censusPrompts.tieStrengthGuidance": {
-    "defaultMessage": "The participant sees two people side by side and answers on a scale, so write the question about the pair in front of them — “how close are these two people?” rather than a name — and phrase it so that every point on the scale is a sensible answer.",
-    "description": "Guidance shown above the box where a researcher writes a Tie-Strength Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question a scale can answer."
-  },
   "protocolBuilder.censusPrompts.tieStrengthPlaceholder": {
     "defaultMessage": "Enter text for the prompt here...",
     "description": "Placeholder shown in the empty box where a researcher writes a Tie-Strength Census prompt. The trailing dots are an ellipsis written as three full stops."

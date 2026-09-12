@@ -168,7 +168,6 @@
   "protocolBuilder.censusPrompts.tieStrengthEdgeLabel": "Tipo de vínculo",
   "protocolBuilder.censusPrompts.tieStrengthEdgeRequired": "Elige el tipo de vínculo que crea esta pregunta.",
   "protocolBuilder.censusPrompts.tieStrengthEdgeTitle": "Creación de vínculos",
-  "protocolBuilder.censusPrompts.tieStrengthGuidance": "El participante ve a dos personas una al lado de la otra y responde en una escala, así que escribe la pregunta sobre la pareja que tiene delante: «¿cómo de cercanas son estas dos personas?» en lugar de un nombre, y formúlala de modo que cada punto de la escala sea una respuesta sensata.",
   "protocolBuilder.censusPrompts.tieStrengthPlaceholder": "Introduce aquí el texto de la pregunta...",
   "protocolBuilder.censusPrompts.tieStrengthPromptTextDescription": "Explica la relación que deben evaluar los participantes en cada par.",
   "protocolBuilder.censusPrompts.tieStrengthPromptTextHint": "Haz referencia claramente a las dos personas que se muestran y redacta la pregunta para una respuesta de sí o no.",

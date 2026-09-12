@@ -12,3 +12,7 @@ Categorical bins is Architect 8.2.5's wording again, in English and in Spanish
 the ~30 hints and empty states the rewrite invented are gone. A side panel's
 data source is once more labelled by the panel's number, and the censuses name
 their prompt group and their connection control the way each of them used to.
+A Tie-Strength Census prompt no longer raises a notice above its prompt box
+telling the researcher to write a question every point of the scale can
+answer, which disagreed with the hint under the box asking for one answered
+yes or no; Architect's hint is the only guidance there, as it was.
