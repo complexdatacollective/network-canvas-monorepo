@@ -172,7 +172,7 @@ describe('what the participant sees behind the nodes', () => {
     const harness = renderStageEditor(openImage());
 
     await harness.user.click(
-      await screen.findByRole('option', { name: /Concentric circles/ }),
+      await screen.findByRole('option', { name: /Concentric Circles/ }),
     );
     await harness.user.type(
       await screen.findByRole('spinbutton', {
@@ -191,7 +191,7 @@ describe('what the participant sees behind the nodes', () => {
     const harness = renderStageEditor(openImage());
 
     await harness.user.click(
-      await screen.findByRole('option', { name: /Concentric circles/ }),
+      await screen.findByRole('option', { name: /Concentric Circles/ }),
     );
 
     expect(await harness.submit()).toBeNull();
@@ -218,7 +218,7 @@ describe('what the participant sees behind the nodes', () => {
     );
     await screen.findByRole('button', { name: 'Select an image' });
     await harness.user.click(
-      await screen.findByRole('option', { name: /Concentric circles/ }),
+      await screen.findByRole('option', { name: /Concentric Circles/ }),
     );
 
     expect(

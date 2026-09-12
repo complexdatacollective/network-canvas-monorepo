@@ -40,13 +40,13 @@ export type SubjectEntity = EntitySubject['entity'];
 const messages = defineMessages({
   nodeTitle: {
     id: 'protocolBuilder.subjectSection.nodeTitle',
-    defaultMessage: 'Node type',
+    defaultMessage: 'Node setup',
     description:
       'Heading of the section where a researcher says which kind of network member this step of the interview is about. A node is one member of the network a participant describes.',
   },
   nodeDescription: {
     id: 'protocolBuilder.subjectSection.nodeDescription',
-    defaultMessage: 'Choose the type of node this stage works with.',
+    defaultMessage: 'Choose the node type this stage creates.',
     description:
       'Description of the node-type section. A stage is one step of an interview.',
   },
@@ -58,19 +58,18 @@ const messages = defineMessages({
   },
   nodeFieldHint: {
     id: 'protocolBuilder.subjectSection.nodeFieldHint',
-    defaultMessage:
-      'Every node this stage creates or shows will be of the type you choose here.',
+    defaultMessage: 'Select the type of node that this stage will create.',
     description: 'Guidance under the node-type control.',
   },
   nodeCreateLabel: {
     id: 'protocolBuilder.subjectSection.nodeCreateLabel',
-    defaultMessage: 'Create a new node type',
+    defaultMessage: 'Create new node type',
     description:
       'Button that opens an editor for inventing a kind of network member without leaving the stage being configured. Also the title of the dialog it opens.',
   },
   nodeChangeTitle: {
     id: 'protocolBuilder.subjectSection.nodeChangeTitle',
-    defaultMessage: 'Change the node type?',
+    defaultMessage: 'Change node type?',
     description:
       'Title of the confirmation raised when a researcher picks a different kind of network member for a stage that is already configured for the one it has.',
   },
@@ -108,13 +107,13 @@ const messages = defineMessages({
   },
   edgeTitle: {
     id: 'protocolBuilder.subjectSection.edgeTitle',
-    defaultMessage: 'Edge type',
+    defaultMessage: 'Edge setup',
     description:
       'Heading of the section where a researcher says which kind of relationship this step of the interview is about. An edge is a connection between two members of the network.',
   },
   edgeDescription: {
     id: 'protocolBuilder.subjectSection.edgeDescription',
-    defaultMessage: 'Choose the type of edge this stage works with.',
+    defaultMessage: 'Choose the edge type this stage uses.',
     description:
       'Description of the edge-type section. A stage is one step of an interview.',
   },
@@ -124,21 +123,15 @@ const messages = defineMessages({
     description:
       'Label of the control choosing which kind of relationship this step of the interview is about. The same words as the section heading, and translated once for each.',
   },
-  edgeFieldHint: {
-    id: 'protocolBuilder.subjectSection.edgeFieldHint',
-    defaultMessage:
-      'Every edge this stage creates or shows will be of the type you choose here.',
-    description: 'Guidance under the edge-type control.',
-  },
   edgeCreateLabel: {
     id: 'protocolBuilder.subjectSection.edgeCreateLabel',
-    defaultMessage: 'Create a new edge type',
+    defaultMessage: 'Create new edge type',
     description:
       'Button that opens an editor for inventing a kind of relationship without leaving the stage being configured. Also the title of the dialog it opens.',
   },
   edgeChangeTitle: {
     id: 'protocolBuilder.subjectSection.edgeChangeTitle',
-    defaultMessage: 'Change the edge type?',
+    defaultMessage: 'Change edge type?',
     description:
       'Title of the confirmation raised when a researcher picks a different kind of relationship for a stage that is already configured for the one it has.',
   },
@@ -195,7 +188,8 @@ type SubjectWords = Readonly<{
   title: MessageDescriptor;
   description: MessageDescriptor;
   fieldLabel: MessageDescriptor;
-  fieldHint: MessageDescriptor;
+  /** Absent where Architect gives the control no hint — the edge type. */
+  fieldHint?: MessageDescriptor;
   createLabel: MessageDescriptor;
   /** What the researcher is asked before a change that costs them the stage. */
   changeTitle: MessageDescriptor;
@@ -231,7 +225,6 @@ const WORDS: Readonly<Record<SubjectEntity, SubjectWords>> = Object.freeze({
     title: messages.edgeTitle,
     description: messages.edgeDescription,
     fieldLabel: messages.edgeFieldLabel,
-    fieldHint: messages.edgeFieldHint,
     createLabel: messages.edgeCreateLabel,
     changeTitle: messages.edgeChangeTitle,
     changeDescription: messages.edgeChangeDescription,
@@ -376,7 +369,7 @@ export default function SubjectSection({
           entityType={entity}
           confirmChange={confirmChange}
           label={intl.formatMessage(words.fieldLabel)}
-          hint={intl.formatMessage(words.fieldHint)}
+          hint={words.fieldHint && intl.formatMessage(words.fieldHint)}
           required={REQUIRED}
         />
         <CreateSubjectType
@@ -386,7 +379,7 @@ export default function SubjectSection({
           confirmChange={confirmChange}
         />
       </BuilderSection>
-      {filter && <NetworkFilterSection subject={entity} />}
+      {filter && <NetworkFilterSection />}
     </>
   );
 }

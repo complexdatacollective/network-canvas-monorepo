@@ -31,7 +31,7 @@ const getServerSnapshot = () => false;
  *
  * Use it to defer a browser-only read, not to defer work that is merely slow.
  *
- * `scripts/check-hydration-flag.mjs` fails the build on a hand-rolled
+ * `scripts/build/check-hydration-flag.mjs` fails the build on a hand-rolled
  * `useSyncExternalStore` with constant true/false snapshots, so that shape
  * stays implemented here and nowhere else. It does not — and cannot usefully —
  * detect the mount-flag idiom, which is ordinary code written for many

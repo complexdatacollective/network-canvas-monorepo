@@ -1,6 +1,7 @@
 import {
   type ComponentType,
   createContext,
+  type ReactNode,
   type RefObject,
   useCallback,
   useContext,
@@ -12,7 +13,7 @@ import {
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import type { IntlShape, MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Badge } from '@codaco/fresco-ui/Badge';
+import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
@@ -21,6 +22,7 @@ import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import FormErrors from '@codaco/fresco-ui/form/FormErrors';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
 import Section from '@codaco/fresco-ui/Section';
 import { duplicateFormFieldIndices } from '@codaco/protocol-validation';
@@ -34,6 +36,7 @@ import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
 } from '../../codebook/variableRoles.ts';
+import { variableTypeLabel } from '../../codebook/variableTypeLabels.ts';
 import {
   draftUnvalidatedElsewhereMessage,
   makeFieldEditorValidate,
@@ -64,6 +67,7 @@ import {
 } from '../../form/rowDialog.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
+import { protocolAuthoringLinks } from '../../interfaces/documentation.ts';
 import type { CodebookSubject } from '../../protocol-context.ts';
 import { variablesForSubject } from '../../protocol-context.ts';
 import { useProtocolContext } from '../../state/protocolContext.ts';
@@ -79,6 +83,7 @@ import {
   TYPE_OPTIONS,
 } from '../collectableTypes.ts';
 import { type SubjectEntity, useStageSubject } from '../useStageSubject.ts';
+import AttributeControlBadge from './AttributeControlBadge.tsx';
 import FieldPreviewPane from './FieldPreviewPane.tsx';
 
 /**
@@ -126,6 +131,24 @@ const NEW_VARIABLE_NAME = '_newVariableName';
 const NEW_VARIABLE_TYPE = '_newVariableType';
 const INPUT_CONTROL = '_component';
 
+/**
+ * Rich-text tag renderers, held at module scope so they keep one identity
+ * across renders: an inline arrow returning JSX is a component defined during
+ * render.
+ */
+const renderStrong = (chunks: ReactNode) => <strong>{chunks}</strong>;
+
+const renderInputControlsLink = (chunks: ReactNode) => (
+  <NativeLink
+    key="inputControls"
+    href={protocolAuthoringLinks.inputControls}
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    {chunks}
+  </NativeLink>
+);
+
 const messages = defineMessages({
   atLeastOne: {
     id: 'protocolBuilder.formFields.atLeastOne',
@@ -171,14 +194,14 @@ const messages = defineMessages({
   },
   title: {
     id: 'protocolBuilder.formFields.title',
-    defaultMessage: 'Form fields',
+    defaultMessage: 'Form configuration',
     description:
       'Heading of the section holding the questions a form asks and the attributes each answer is recorded under.',
   },
   description: {
     id: 'protocolBuilder.formFields.description',
     defaultMessage:
-      'Choose the attributes this form collects, and write the question the participant answers for each.',
+      'Map attributes to input controls and define the validation rules for this form.',
     description: 'Description of the form-fields section.',
   },
   waitingDescription: {
@@ -197,15 +220,15 @@ const messages = defineMessages({
   formTitleHint: {
     id: 'protocolBuilder.formFields.formTitleHint',
     defaultMessage:
-      'Shown above the form. Use a short phrase describing what it collects, such as "Add a person".',
+      "Shown at the top of the form. Use a short descriptive title such as 'Add a contact'.",
     description:
       'Guidance under the form-title field. The quoted phrase is an example a researcher might write, and should be translated as such.',
   },
   formTitlePlaceholder: {
     id: 'protocolBuilder.formFields.formTitlePlaceholder',
-    defaultMessage: 'Add a person',
+    defaultMessage: 'Enter a title...',
     description:
-      'Example form title shown in the empty field. An example a researcher might write, not a value that is stored.',
+      'Placeholder shown in the empty form-title field. The trailing dots are an ellipsis written as three full stops.',
   },
   formTitleRequired: {
     id: 'protocolBuilder.formFields.formTitleRequired',
@@ -215,13 +238,13 @@ const messages = defineMessages({
   },
   fieldLabel: {
     id: 'protocolBuilder.formFields.fieldLabel',
-    defaultMessage: 'Fields',
+    defaultMessage: 'Form fields',
     description: 'Label of the ordered list of questions a form asks.',
   },
   fieldHint: {
     id: 'protocolBuilder.formFields.fieldHint',
     defaultMessage:
-      'The participant answers these one after another, in this order. Add at least one.',
+      'Add one or more fields to your form to collect attributes. Use the drag handle on the left of each prompt to adjust its order.',
     description: 'Guidance under the list of form fields.',
   },
   addLabel: {
@@ -250,32 +273,31 @@ const messages = defineMessages({
   },
   emptyState: {
     id: 'protocolBuilder.formFields.emptyState',
-    defaultMessage: 'No fields yet. Create one to say what this form collects.',
+    defaultMessage: 'No items have been created yet.',
     description:
       'Shown in place of the list of form fields while a form asks nothing yet.',
   },
   attributeSectionTitle: {
     id: 'protocolBuilder.formFields.attributeSectionTitle',
-    defaultMessage: 'Attribute',
+    defaultMessage: 'Attribute selection',
     description:
       'Heading of the half of the field dialog that says which attribute this question’s answer is recorded under.',
   },
   attributeSectionDescription: {
     id: 'protocolBuilder.formFields.attributeSectionDescription',
-    defaultMessage:
-      'Choose the attribute this field collects, or create one for it.',
+    defaultMessage: 'Choose the attribute this form field will collect.',
     description: 'Description under the Attribute heading.',
   },
   questionSectionTitle: {
     id: 'protocolBuilder.formFields.questionSectionTitle',
-    defaultMessage: 'Question',
+    defaultMessage: 'Field configuration',
     description:
       'Heading of the half of the field dialog that says what the participant is asked.',
   },
   questionSectionDescription: {
     id: 'protocolBuilder.formFields.questionSectionDescription',
     defaultMessage:
-      'Write what the participant is asked, and how much help they are given.',
+      'Write the participant-facing prompt and choose how the response is collected.',
     description: 'Description under the Question heading.',
   },
   newTypeLabel: {
@@ -330,13 +352,13 @@ const messages = defineMessages({
   promptHint: {
     id: 'protocolBuilder.formFields.promptHint',
     defaultMessage:
-      'Shown to the participant above the control. Supports markdown formatting.',
+      'The question to display to the participant. Supports markdown formatting.',
     description:
       'Guidance under the question-text field. Markdown is the name of the formatting syntax and is not translated.',
   },
   promptPlaceholder: {
     id: 'protocolBuilder.formFields.promptPlaceholder',
-    defaultMessage: 'What is this person\u2019s name?',
+    defaultMessage: "What is this person's name?",
     description:
       'Example question shown in the empty question-text field. An example a researcher might write, not a value that is stored.',
   },
@@ -355,14 +377,14 @@ const messages = defineMessages({
   hintHint: {
     id: 'protocolBuilder.formFields.hintHint',
     defaultMessage:
-      'Optional guidance shown below the question, for a field participants may find ambiguous.',
+      'Optionally display a markdown-formatted hint below the question, to help participants understand how to answer.',
     description: 'Guidance under the hint-text field.',
   },
   hintPlaceholder: {
     id: 'protocolBuilder.formFields.hintPlaceholder',
-    defaultMessage: 'Select all that apply',
+    defaultMessage: 'e.g. Select all that apply...',
     description:
-      'Example hint shown in the empty hint-text field. An example a researcher might write, not a value that is stored.',
+      'Example hint shown in the empty hint-text field. An example a researcher might write, not a value that is stored. The trailing dots are an ellipsis written as three full stops.',
   },
   validationHintsLabel: {
     id: 'protocolBuilder.formFields.validationHintsLabel',
@@ -373,7 +395,7 @@ const messages = defineMessages({
   validationHintsHint: {
     id: 'protocolBuilder.formFields.validationHintsHint',
     defaultMessage:
-      'Tells the participant what a valid answer looks like, derived from the attribute’s own rules.',
+      "Automatically display hints derived from this field's validation rules, helping participants understand input requirements.",
     description: 'Guidance under the validation-hints switch.',
   },
   componentLabel: {
@@ -385,9 +407,9 @@ const messages = defineMessages({
   componentHint: {
     id: 'protocolBuilder.formFields.componentHint',
     defaultMessage:
-      'What the participant uses to answer. Changing it changes how this attribute is collected everywhere.',
+      'How the answer is collected. For detailed information about these options, see our <link>documentation</link>.',
     description:
-      'Guidance under the input-control field, warning that the control belongs to the attribute rather than to this one question.',
+      'Guidance under the input-control field, ending in a link to the documentation page about input controls. The link is a tag inside the sentence rather than markup around a fragment of it, so a translator moves the whole clause and the link text together.',
   },
   noInputControl: {
     id: 'protocolBuilder.formFields.componentRequired',
@@ -410,9 +432,8 @@ const messages = defineMessages({
   },
   attributeHint: {
     id: 'protocolBuilder.formFields.attributeHint',
-    defaultMessage: 'The codebook attribute this field’s answer is stored in.',
-    description:
-      'Guidance under the attribute control. The codebook is the protocol’s definition of what an interview records.',
+    defaultMessage: 'Select an attribute',
+    description: 'Guidance under the attribute control.',
   },
   attributeRequired: {
     id: 'protocolBuilder.formFields.attributeRequired',
@@ -427,12 +448,6 @@ const messages = defineMessages({
     description:
       'Refusal shown under the attribute control when a sibling field of the same form already records its answer under the attribute just chosen.',
   },
-  previewMissing: {
-    id: 'protocolBuilder.formFields.previewMissing',
-    defaultMessage: 'This attribute is no longer in the codebook.',
-    description:
-      'Shown in the collapsed row of a form’s list of questions when the attribute it records into has been deleted from the codebook.',
-  },
   controlLandedElsewhere: {
     id: 'protocolBuilder.formFields.controlLandedElsewhere',
     defaultMessage:
@@ -440,11 +455,25 @@ const messages = defineMessages({
     description:
       'Refusal shown above the fields of a form field’s dialog when the researcher’s choice of input control was recorded in the codebook — the protocol’s definition of what an interview records — and, while that was happening, someone else pointed this field at a different attribute. variableName is the attribute’s researcher-facing name and is not translated.',
   },
-  previewCollects: {
-    id: 'protocolBuilder.formFields.previewCollects',
-    defaultMessage: 'Collects "{name}" as {type}.',
+  lockedTypeTitle: {
+    id: 'protocolBuilder.formFields.lockedTypeTitle',
+    defaultMessage: 'Attribute type is locked',
     description:
-      'Shown in the collapsed row of a form’s list of questions, saying which attribute it records into and what kind of value that holds. name is the attribute’s researcher-facing name; type is a schema token such as text, number or ordinal, which is not translated.',
+      'Warning heading shown when the field collects an attribute that already exists, so the list of input controls above is narrower than the whole list.',
+  },
+  lockedTypeDescription: {
+    id: 'protocolBuilder.formFields.lockedTypeDescription',
+    defaultMessage:
+      'A pre-existing attribute is currently selected. You cannot change an attribute type after it has been created, so only <strong>{variableType}</strong> compatible input controls can be selected above. If you would like to use a different input control type, you will need to create a new attribute.',
+    description:
+      'Warning body explaining why the input-control list is narrow for an attribute that already exists. variableType is the attribute’s kind, already translated.',
+  },
+  newTypeNotice: {
+    id: 'protocolBuilder.formFields.newTypeNotice',
+    defaultMessage:
+      'The selected input control will cause this attribute to be defined as type <strong>{variableType}</strong>. Once set, this cannot be changed (although you may change the input control within this type).',
+    description:
+      'Shown while the field is inventing an attribute, saying which kind the chosen input control will make it. variableType is that kind, already translated.',
   },
 });
 
@@ -1493,6 +1522,14 @@ function FormFieldPreviewPane({ item }: RowAsideProps) {
 type AttributeControl = Readonly<{
   /** The attribute the row currently collects, or the create sentinel. */
   chosen: string;
+  /**
+   * The kind of answer the control is being chosen for: the chosen
+   * attribute's, or, while one is being invented, the kind the researcher
+   * picked for it. Empty while neither is settled.
+   */
+  type: string;
+  /** Whether the row is inventing the attribute rather than binding one. */
+  inventing: boolean;
   /** The controls the chosen attribute's kind of answer allows. */
   options: readonly Readonly<{ value: string; label: string }>[];
   /**
@@ -1550,6 +1587,8 @@ function useAttributeControl(item: RowEditorProps['item']): AttributeControl {
 
   return {
     chosen,
+    type,
+    inventing: chosen === NEW_VARIABLE,
     options,
     binding: chosen === NEW_VARIABLE ? `${NEW_VARIABLE}:${type}` : chosen,
     seeded: committed ?? options[0]?.value ?? '',
@@ -1570,7 +1609,8 @@ function InputControlField({
   control,
 }: Readonly<{ control: AttributeControl }>) {
   const intl = useAppIntl();
-  const { chosen, options, seeded } = control;
+  const { chosen, inventing, options, seeded, type } = control;
+  const typeLabel = variableTypeLabel(type);
 
   // Nothing to choose from — and which of the two reasons it is decides
   // whether the researcher is mid-answer or stuck.
@@ -1585,18 +1625,49 @@ function InputControlField({
   }
 
   return (
-    <Field<typeof SelectControl>
-      name={INPUT_CONTROL}
-      component={SelectControl}
-      label={intl.formatMessage(messages.componentLabel)}
-      hint={intl.formatMessage(messages.componentHint)}
-      options={options}
-      // Always one of `options`, so the field cannot register an empty control
-      // and has no `required` of its own to state: a native select offers no
-      // way back to nothing. What "no control" means here is that this field
-      // is not on screen at all, which is `NoInputControlOffered`'s to say.
-      initialValue={seeded}
-    />
+    <>
+      <Field<typeof SelectControl>
+        name={INPUT_CONTROL}
+        component={SelectControl}
+        label={intl.formatMessage(messages.componentLabel)}
+        hint={intl.formatMessage(messages.componentHint, {
+          link: renderInputControlsLink,
+        })}
+        options={options}
+        // Always one of `options`, so the field cannot register an empty
+        // control and has no `required` of its own to state: a native select
+        // offers no way back to nothing. What "no control" means here is that
+        // this field is not on screen at all, which is
+        // `NoInputControlOffered`'s to say.
+        initialValue={seeded}
+      />
+      {/* Why the list above is as long as it is. Picking an attribute that
+          already exists narrows it to the controls that attribute's type
+          allows, and without this the list simply looks short. */}
+      {typeLabel !== undefined &&
+        (inventing ? (
+          <Alert variant="info" className="my-7">
+            <AlertDescription>
+              {intl.formatMessage(messages.newTypeNotice, {
+                variableType: intl.formatMessage(typeLabel),
+                strong: renderStrong,
+              })}
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <Alert variant="warning" className="my-7">
+            <AlertTitle>
+              {intl.formatMessage(messages.lockedTypeTitle)}
+            </AlertTitle>
+            <AlertDescription>
+              {intl.formatMessage(messages.lockedTypeDescription, {
+                variableType: intl.formatMessage(typeLabel),
+                strong: renderStrong,
+              })}
+            </AlertDescription>
+          </Alert>
+        ))}
+    </>
   );
 }
 
@@ -1799,7 +1870,6 @@ function AttributePicker({
 
 /** How one field reads in the list when its dialog is closed. */
 function FormFieldPreview({ item }: RowPreviewProps) {
-  const intl = useAppIntl();
   const protocolContext = useProtocolContext();
   const { subject } = useFormFieldsScope();
   const variableId = asString(item.variable) ?? '';
@@ -1814,14 +1884,19 @@ function FormFieldPreview({ item }: RowPreviewProps) {
         {asString(item.prompt) ?? ''}
       </RenderMarkdown>
       <div>
-        <Badge>
-          {variable === undefined
-            ? intl.formatMessage(messages.previewMissing)
-            : intl.formatMessage(messages.previewCollects, {
-                name: variable.name,
-                type: variable.type,
-              })}
-        </Badge>
+        <AttributeControlBadge
+          attribute={
+            variable === undefined
+              ? undefined
+              : {
+                  type: variable.type,
+                  component:
+                    'component' in variable
+                      ? asString(variable.component)
+                      : undefined,
+                }
+          }
+        />
       </div>
     </div>
   );

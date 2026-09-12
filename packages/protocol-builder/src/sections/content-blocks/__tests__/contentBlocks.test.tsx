@@ -103,7 +103,7 @@ describe('a page whose blocks are text and media', () => {
     const harness = renderStageEditor(mediaPage());
 
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit block' }))[1]!,
+      (await screen.findAllByRole('button', { name: 'Edit item' }))[1]!,
     );
 
     expect(await screen.findByRole('radio', { name: 'Image' })).toBeChecked();
@@ -119,7 +119,7 @@ describe('a page whose blocks are text and media', () => {
     const harness = renderStageEditor(mediaPage());
 
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit block' }))[1]!,
+      (await screen.findAllByRole('button', { name: 'Edit item' }))[1]!,
     );
     expect(
       await screen.findByRole('radio', { name: 'Medium' }),
@@ -170,7 +170,7 @@ describe('a page whose blocks are text and media', () => {
     const harness = renderStageEditor(mediaPage());
 
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit block' }))[0]!,
+      (await screen.findAllByRole('button', { name: 'Edit item' }))[0]!,
     );
     const content = await screen.findByRole('textbox', { name: 'Content' });
     await harness.user.clear(content);
@@ -202,7 +202,7 @@ describe('a page whose blocks are text and media', () => {
     });
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new content block' }),
+      await screen.findByRole('button', { name: 'Create new content item' }),
     );
     await harness.user.click(
       await screen.findByRole('radio', { name: 'Text' }),
@@ -268,7 +268,7 @@ describe('describing a media block for a participant who cannot see it', () => {
     user: { click: (element: Element) => Promise<void> };
   }) => {
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit block' }))[1]!,
+      (await screen.findAllByRole('button', { name: 'Edit item' }))[1]!,
     );
     await screen.findByRole('radio', { name: 'Image' });
   };
@@ -347,7 +347,7 @@ describe('describing a media block for a participant who cannot see it', () => {
     const harness = renderStageEditor(describedPage());
 
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit block' }))[0]!,
+      (await screen.findAllByRole('button', { name: 'Edit item' }))[0]!,
     );
     await screen.findByRole('radio', { name: 'Text' });
 
@@ -380,7 +380,7 @@ describe('what a screen reader is told when a block changes type', () => {
     const harness = renderStageEditor(mediaPage());
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Create new content block' }),
+      await screen.findByRole('button', { name: 'Create new content item' }),
     );
     await harness.user.click(
       await screen.findByRole('radio', { name: 'Text' }),
@@ -397,7 +397,7 @@ describe('what a screen reader is told when a block changes type', () => {
     const harness = renderStageEditor(mediaPage());
 
     await harness.user.click(
-      (await screen.findAllByRole('button', { name: 'Edit block' }))[1]!,
+      (await screen.findAllByRole('button', { name: 'Edit item' }))[1]!,
     );
     await screen.findByRole('radio', { name: 'Image' });
 
@@ -465,12 +465,12 @@ describe('a block naming a resource no page can present', () => {
     const harness = renderStageEditor(unpresentablePage());
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Edit block' }),
+      await screen.findByRole('button', { name: 'Edit item' }),
     );
 
     expect(
       await screen.findByText(
-        /is not an image, audio or video file, so this block cannot show it/u,
+        /is not an image, audio or video file, so this item cannot show it/u,
       ),
     ).toBeInTheDocument();
     expect(
@@ -489,7 +489,7 @@ describe('a block naming a resource no page can present', () => {
     const harness = renderStageEditor(unpresentablePage('MEDIUM'));
 
     await harness.user.click(
-      await screen.findByRole('button', { name: 'Edit block' }),
+      await screen.findByRole('button', { name: 'Edit item' }),
     );
     await screen.findByText(/is not an image, audio or video file/u);
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));

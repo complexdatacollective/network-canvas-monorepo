@@ -111,7 +111,7 @@ const chooseImportedNetwork = async (
   dialog: ReturnType<typeof within>,
 ) => {
   await harness.user.click(
-    dialog.getByRole('radio', { name: 'Use an imported data file' }),
+    dialog.getByRole('radio', { name: 'Use a network data file' }),
   );
   await harness.user.click(
     await screen.findByRole('button', { name: 'Roster' }),
@@ -130,7 +130,7 @@ const importNetworkFile = async (
   fileName: string,
 ) => {
   await harness.user.click(
-    dialog.getByRole('radio', { name: 'Use an imported data file' }),
+    dialog.getByRole('radio', { name: 'Use a network data file' }),
   );
   await harness.user.upload(
     await screen.findByLabelText('Choose a file from your computer'),
@@ -204,7 +204,7 @@ describe('the side panels a name generator shows', () => {
     await harness.user.click(
       screen.getByRole('switch', { name: 'Side panels' }),
     );
-    const dialog = await openPanel(harness, 'Create new panel');
+    const dialog = await openPanel(harness, 'Add new panel');
     await harness.user.type(
       dialog.getByRole('textbox', { name: 'Panel title' }),
       'People you named earlier',
@@ -221,6 +221,67 @@ describe('the side panels a name generator shows', () => {
         dataSource: 'existing',
       },
     ]);
+  });
+
+  /**
+   * A panel being added is the next one, and an existing panel is the one it
+   * is in the list, counting from one.
+   */
+  it('numbers the source control after the panel being added', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        { id: 'panel-1', title: 'First panel', dataSource: 'existing' },
+      ]),
+      sections: panels,
+    });
+
+    const dialog = await openPanel(harness, 'Add new panel');
+
+    expect(
+      dialog.getByRole('radiogroup', { name: 'Data source for panel 2' }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * A stage holds two panels at most and their controls are otherwise
+   * identical, so Architect numbers the source control by the panel it belongs
+   * to — "Data source for panel 1", "Data source for panel 2" — and that
+   * number is the only thing telling the two apart to anyone reading the label
+   * or hearing it. One shared sentence would name both the same.
+   */
+  it('numbers each panel’s source control by the panel it belongs to', async () => {
+    const harness = renderStageEditor({
+      stage: nameGeneratorWith([
+        {
+          id: 'panel-1',
+          title: 'People you named earlier',
+          dataSource: 'existing',
+        },
+        {
+          id: 'panel-2',
+          title: 'People from the roster',
+          dataSource: 'existing',
+        },
+      ]),
+      sections: panels,
+    });
+
+    const first = await openPanel(harness, 'Edit panel', 0);
+    expect(
+      first.getByRole('radiogroup', { name: 'Data source for panel 1' }),
+    ).toBeInTheDocument();
+    expect(
+      first.queryByText('Data source for panel 2'),
+    ).not.toBeInTheDocument();
+    await harness.user.click(first.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    const second = await openPanel(harness, 'Edit panel', 1);
+    expect(
+      second.getByRole('radiogroup', { name: 'Data source for panel 2' }),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -357,7 +418,7 @@ describe('the side panels a name generator shows', () => {
 
     expect(await screen.findByText('Second panel')).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Create new panel' }),
+      screen.queryByRole('button', { name: 'Add new panel' }),
     ).not.toBeInTheDocument();
 
     // And one panel is one short of the cap, so the control is there.
@@ -370,7 +431,7 @@ describe('the side panels a name generator shows', () => {
     });
 
     expect(
-      await screen.findByRole('button', { name: 'Create new panel' }),
+      await screen.findByRole('button', { name: 'Add new panel' }),
     ).toBeInTheDocument();
   });
 
@@ -447,9 +508,7 @@ describe('the side panels a name generator shows', () => {
     });
 
     expect(
-      await screen.findByText(
-        'Choose what this stage works with before adding side panels.',
-      ),
+      await screen.findByText('Select a node type to configure side panels.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Side panels' })).toBeDisabled();
   });
@@ -721,7 +780,7 @@ const pickTheStagedFile = async (
   fileName: string,
 ) => {
   await harness.user.click(
-    dialog.getByRole('radio', { name: 'Use an imported data file' }),
+    dialog.getByRole('radio', { name: 'Use a network data file' }),
   );
   await harness.user.click(
     await screen.findByRole('button', { name: fileName }),
@@ -901,7 +960,7 @@ describe('discarding an imported network from a panel dialog', () => {
       screen.getByRole('button', { name: 'Keep editing' }),
     );
     expect(
-      await dialog.findByRole('radio', { name: 'Use an imported data file' }),
+      await dialog.findByRole('radio', { name: 'Use a network data file' }),
     ).toBeChecked();
   });
 });
