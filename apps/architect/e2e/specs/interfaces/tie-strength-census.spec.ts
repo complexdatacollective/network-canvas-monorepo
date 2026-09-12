@@ -112,12 +112,12 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
     // request is in flight — so the DIALOG going is the signal, not the
     // button, and everything typed into one is scoped to it.
     const edgeTypeEditor = architectPage.getByRole('dialog', {
-      name: 'Create a new connection type',
+      name: 'Create new edge type',
       exact: true,
     });
     await architectPage
       .getByRole('button', {
-        name: 'Create a new connection type',
+        name: 'Create new edge type',
         exact: true,
       })
       .click();

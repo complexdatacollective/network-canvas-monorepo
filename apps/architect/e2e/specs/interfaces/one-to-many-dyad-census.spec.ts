@@ -40,12 +40,12 @@ test('creates a valid OneToManyDyadCensus stage from scratch', async ({
     // Scoped to the entity editor's own dialog: the prompt dialog behind it is
     // still mounted, and the stage behind that.
     const edgeTypeEditor = architectPage.getByRole('dialog', {
-      name: 'Create a new connection type',
+      name: 'Create new edge type',
       exact: true,
     });
     await architectPage
       .getByRole('button', {
-        name: 'Create a new connection type',
+        name: 'Create new edge type',
         exact: true,
       })
       .click();

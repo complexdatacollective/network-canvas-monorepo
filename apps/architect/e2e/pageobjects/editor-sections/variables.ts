@@ -47,7 +47,18 @@ const SPOTLIGHT = '[data-variable-spotlight]';
 
 const TRIGGER = /^(Select|Change) attribute$/u;
 
-const spotlight = (field: Locator): Locator => field.page().locator(SPOTLIGHT);
+/**
+ * The window that is OPEN, not every window this page has ever opened.
+ *
+ * Base UI keeps a dismissed popup mounted — `hidden`, `data-closed` — so a
+ * second picker opened after a first one resolved two elements and every
+ * reading of "the window" became a strict-mode violation. `data-open` is the
+ * attribute that says which of them the researcher is looking at, and an
+ * assertion that the window has GONE still holds against it: a window that has
+ * closed matches nothing, which is not visible.
+ */
+const spotlight = (field: Locator): Locator =>
+  field.page().locator(`${SPOTLIGHT}[data-open]`);
 
 /** What the window calls its offer to invent an attribute under this name. */
 const createRowName = (attributeName: string): string =>

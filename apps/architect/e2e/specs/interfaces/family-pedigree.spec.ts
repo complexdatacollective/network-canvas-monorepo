@@ -1,5 +1,3 @@
-import type { CurrentProtocol } from '@codaco/protocol-validation';
-
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
 import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
@@ -11,47 +9,14 @@ import {
 import { createAttribute } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
-// The two codebook types this pedigree binds are SEEDED rather than authored
-// here, which is the one thing this spec cannot do from the editor. The
-// "Family member data" and "Relationship data" sections mount the package's
-// `EntityTypePickerField` directly, and that control deliberately offers no
-// create-a-type affordance — creating a codebook entity is the Codebook
-// screen's job, and only the sections built on `SubjectSection` put a
-// "Create new node type" button beside the picker. So a Family Pedigree
-// cannot be given its types from inside the stage editor at all; seeding them
-// keeps this spec about the pedigree editor rather than about the codebook
-// screen, and every part of the STAGE is still authored below.
+// Nothing is seeded: this pedigree is built on an empty protocol, and the two
+// codebook types it binds are AUTHORED from inside the stage editor, through
+// the type picker's own "Create new {node|edge} type" button. That button is
+// part of `EntityTypePickerField` itself, so every stage that picks a type
+// offers it — which is what stops a Family Pedigree on a fresh protocol from
+// dead-ending at "No node types currently defined", with nothing on screen
+// saying where node types come from.
 //
-// Their ids are uuid-shaped on purpose. `normalizeStage` replaces every uuid
-// it meets with a placeholder numbered by where it first appears, so a seeded
-// uuid normalises exactly as a freshly minted one did and the committed
-// snapshot is unchanged; a readable key like `person` would reach the snapshot
-// verbatim. The types carry no attributes — all eight are created through the
-// editor below, as before.
-const PERSON_TYPE_ID = '3b1a5c7e-2d4f-4a86-9c1b-7e05d2f61a38';
-const FAMILY_EDGE_TYPE_ID = '9d2c4e61-7a03-4b58-8f2d-1c6b9a03e7f4';
-
-function protocolWithPedigreeTypes(): CurrentProtocol {
-  return {
-    ...emptyProtocol(),
-    codebook: {
-      node: {
-        [PERSON_TYPE_ID]: {
-          name: 'person',
-          color: 'node-color-seq-1',
-          shape: { default: 'circle' },
-        },
-      },
-      edge: {
-        [FAMILY_EDGE_TYPE_ID]: {
-          name: 'family_edge',
-          color: 'edge-color-seq-1',
-        },
-      },
-    },
-  };
-}
-
 // Each of the pedigree's attribute slots picks from the codebook and invents
 // what it needs from the picker's OWN create row — no create control sits
 // beside a picker any more. `SlotVariableField` hands the picker the props
@@ -73,7 +38,7 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   architectPage,
   seed,
 }) => {
-  await seed(protocolWithPedigreeTypes());
+  await seed(emptyProtocol());
   await gotoProtocol(architectPage);
 
   const editor = new StageEditor(architectPage);
@@ -114,10 +79,10 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   // (same reasoning as NetworkComposer's optional Group-hulls/Edge
   // Configuration sections).
   //
-  // The seeded types are PICKED here rather than created: the shared helper
-  // takes its existing-type branch, which clicks the chip named for the type
-  // and requires the control to report itself checked before anything bound to
-  // it is driven.
+  // The type is CREATED here: the codebook has none, so the shared helper
+  // takes its create branch, which presses the picker's own button, names the
+  // type in the codebook editor the button opens, and answers the stage's
+  // question about what choosing it costs.
   await selectOrCreateNodeType(architectPage, 'person');
 
   // "Family member data" renders the node type picker and, once a type is

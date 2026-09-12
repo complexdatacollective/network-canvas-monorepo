@@ -237,12 +237,12 @@ test.describe.serial('sample protocol built from scratch', () => {
    * Not from the stage that first names one, because no stage in this protocol
    * can. A sociogram's subject is a node, and its prompt's connection picker
    * (`EntityTypePickerField`) only chooses among the edge types the codebook
-   * already holds. The one stage editor that CAN invent one — a dyad census
-   * prompt's "Create a new connection type" — belongs to a stage that comes
-   * after the sociogram which first draws `know`, and nothing in this protocol
-   * ever asks for `conflict` in a stage that could create it. So the codebook
-   * screen, where Architect offers this independently of any stage, is the
-   * route a researcher building this protocol in order actually has.
+   * already holds. Every type picker now offers "Create new edge type" of its
+   * own, but the stage that would invent `conflict` comes after the sociogram
+   * which first draws `know`, and nothing in this protocol ever asks for
+   * `conflict` in a stage that could create it. So the codebook screen, where
+   * Architect offers this independently of any stage, is the route a
+   * researcher building this protocol in order actually has.
    *
    * The colour is deliberately left alone: `getNewTypeTemplate` seeds the next
    * unused swatch in sequence, which is exactly what
@@ -843,9 +843,9 @@ test.describe.serial('sample protocol built from scratch', () => {
       );
       // The connection an answer records is the PROMPT's, not the stage's
       // (`createEdge`; the stage's own subject is the node type it pairs up).
-      // `know` already exists, so this only chooses it — the section's
-      // "Create a new connection type" button beside the picker is what
-      // invents one, and is not needed here.
+      // `know` already exists, so this only chooses it — the picker's own
+      // "Create new edge type" button is what invents one, and is not needed
+      // here.
       await editor
         .field('createEdge')
         .getByRole('radio', { name: 'know', exact: true })
