@@ -83,7 +83,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
   // The shared `PromptTextField` the whole census/bin family renders
   // (`label: 'Prompt text'`, censusMessages.promptTextLabel).
   //
-  // "The bins" is a `BinAttributeField`: a picker over the node type's
+  // "Categorical response" is a `BinAttributeField`: a picker over the node type's
   // existing categorical attributes, plus a `CreateVariableButton` labelled
   // "Create a new attribute" that opens the codebook's own attribute editor
   // (VariableEditor). The editor is opened with `allowedVariableTypes:
@@ -136,7 +136,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
     // dialog behind this one must not be driven through a modal still on
     // screen.
     await attributeEditor.waitFor({ state: 'hidden' });
-    // Deliberately NOT switching on the "A bin for anything else" section
+    // Deliberately NOT switching on the "Follow-up other option" section
     // (`toggleable`, `defaultOpen={committedOther !== undefined}` — closed
     // here since `otherVariable` is unset): opening it would add three more
     // required fields (`otherVariable`, `otherOptionLabel`,
@@ -168,7 +168,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
     );
   }
   expect(prompt.variable).not.toBe('');
-  // The untouched "A bin for anything else" fields must not have leaked in.
+  // The untouched "Follow-up other option" fields must not have leaked in.
   expect(prompt).not.toHaveProperty('otherVariable');
 
   // Confirm the attribute editor actually persisted the categorical attribute

@@ -208,9 +208,8 @@ export type PromptsSectionProps = Readonly<{
   /**
    * Said instead of `description` while the section waits on a subject.
    *
-   * Defaults to `description`: Architect's prompts section is disabled without
-   * a subject but goes on saying what it is for, and an interface only
-   * overrides that where it has something more specific to say.
+   * No default: Architect keeps one sentence for both states and only
+   * disables the section, so a family wanting a second one says so.
    */
   waitingDescription?: MessageDescriptor;
   fieldHint?: MessageDescriptor;
@@ -238,7 +237,7 @@ export default function PromptsSection({
   itemTemplate,
   collapseRow,
   description = messages.description,
-  waitingDescription = description,
+  waitingDescription,
   fieldHint = messages.fieldHint,
   emptyState = messages.emptyState,
 }: PromptsSectionProps) {
@@ -274,7 +273,7 @@ export default function PromptsSection({
     <BuilderSection
       title={intl.formatMessage(messages.title)}
       description={intl.formatMessage(
-        waiting ? waitingDescription : description,
+        waiting ? (waitingDescription ?? description) : description,
       )}
       disabled={waiting}
     >

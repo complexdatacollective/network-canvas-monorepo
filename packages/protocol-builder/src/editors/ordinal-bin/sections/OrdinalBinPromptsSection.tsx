@@ -19,6 +19,7 @@ import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
+import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
 import {
   PromptTextField,
   PromptTextPreview,
@@ -52,34 +53,26 @@ const messages = defineMessages({
   },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.ordinalBinPlaceholder',
-    defaultMessage: 'How often do you have contact with this person?',
+    defaultMessage: 'Enter your prompt...',
     description:
-      'Example question in the empty box where a researcher writes an Ordinal Bin prompt.',
-  },
-  fieldHint: {
-    id: 'protocolBuilder.censusPrompts.ordinalBinFieldHint',
-    defaultMessage:
-      'The participant sorts everyone into ordered bins for one question at a time, in this order.',
-    description:
-      'Guidance under the list of prompts in an Ordinal Bin stage, where the bins are a scale running from least to most and their order is what the answer means.',
+      'Placeholder shown in the empty box where a researcher writes an Ordinal Bin prompt. The trailing dots are an ellipsis written as three full stops.',
   },
   scaleTitle: {
     id: 'protocolBuilder.censusPrompts.scaleTitle',
-    defaultMessage: 'The scale',
+    defaultMessage: 'Ordinal response',
     description:
       'Heading of the group that picks the attribute whose ordered values the participant answers on — the points running from least to most.',
   },
   scaleDescription: {
     id: 'protocolBuilder.censusPrompts.ordinalBinScaleDescription',
     defaultMessage:
-      'Choose the attribute whose ordered values the participant sorts people into.',
+      'Choose the ordinal attribute whose values are shown as bins.',
     description:
       'Description of the group that picks the attribute whose ordered values are the bins the participant drags people into. An attribute is one thing an interview records about a network member.',
   },
   scaleHint: {
     id: 'protocolBuilder.censusPrompts.ordinalBinScaleHint',
-    defaultMessage:
-      "Each of this attribute's values becomes a bin, in the order the attribute lists them.",
+    defaultMessage: 'Select an ordinal attribute.',
     description:
       'Guidance under the attribute picker in an Ordinal Bin prompt, saying that the attribute’s own order is the order of the bins.',
   },
@@ -99,27 +92,26 @@ const messages = defineMessages({
   },
   colorTitle: {
     id: 'protocolBuilder.censusPrompts.ordinalBinColorTitle',
-    defaultMessage: 'Color of the scale',
+    defaultMessage: 'Color gradient',
     description:
       'Heading of the group that picks the colour gradient the bins of an Ordinal Bin are shaded along.',
   },
   colorDescription: {
     id: 'protocolBuilder.censusPrompts.ordinalBinColorDescription',
-    defaultMessage:
-      'Choose the gradient the bins run through, from the first value to the last.',
+    defaultMessage: 'Choose the gradient used to distinguish ordinal options.',
     description:
       'Description of the group that picks the colour gradient the bins of an Ordinal Bin are shaded along.',
   },
   colorLabel: {
     id: 'protocolBuilder.censusPrompts.ordinalBinColorLabel',
-    defaultMessage: 'Color gradient',
+    defaultMessage: 'Color',
     description:
       'Label of the control that picks the colour gradient the bins of an Ordinal Bin are shaded along.',
   },
   colorHint: {
     id: 'protocolBuilder.censusPrompts.ordinalBinColorHint',
     defaultMessage:
-      'The bins are shaded along this gradient in the order the attribute lists its values.',
+      'Interviewer will render each option in your ordinal attribute using a color gradient.',
     description:
       'Guidance under the control that picks the colour gradient the bins of an Ordinal Bin are shaded along.',
   },
@@ -179,6 +171,8 @@ function OrdinalBinPromptEditor({ item }: RowEditorProps) {
         item={item}
         guidance={<OrdinalBinGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
+        title={intl.formatMessage(censusMessages.promptTextTitle)}
+        description={intl.formatMessage(censusMessages.promptTextDescription)}
       />
       <Section
         title={intl.formatMessage(messages.scaleTitle)}
@@ -267,8 +261,6 @@ export default function OrdinalBinPromptsSection() {
         would save a prompt with no colour while saying it had one.
       */
       itemTemplate={() => ({ [COLOR_FIELD]: FIRST_ORDINAL_COLOR })}
-      description={binMessages.binDescription}
-      fieldHint={messages.fieldHint}
     />
   );
 }

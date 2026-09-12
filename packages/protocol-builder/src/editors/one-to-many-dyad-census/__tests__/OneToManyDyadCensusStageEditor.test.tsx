@@ -56,7 +56,7 @@ describe('creating a one-to-many dyad census stage', () => {
     // And no introduction screen: this census shows the whole network from the
     // first question, so its schema has nowhere to put one.
     expect(
-      screen.queryByRole('textbox', { name: 'Introduction heading' }),
+      screen.queryByRole('textbox', { name: 'Title' }),
     ).not.toBeInTheDocument();
   });
 

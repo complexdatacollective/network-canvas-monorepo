@@ -1,0 +1,582 @@
+{
+  "protocolBuilder.promptsSection.title": {
+    "en": "Prompt collection",
+    "es": "Conjunto de preguntas",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.nameGeneratorPrompts.promptCollection"
+  },
+  "protocolBuilder.promptsSection.description": {
+    "en": "Create and reorder the prompts shown in this stage.",
+    "es": "Crea y ordena las preguntas que se muestran en esta etapa.",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.nameGeneratorPrompts.createAndReorderThePromptsShown"
+  },
+  "protocolBuilder.promptsSection.fieldLabel": {
+    "en": "Prompts",
+    "es": "Preguntas",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.nameGeneratorPrompts.prompts"
+  },
+  "protocolBuilder.promptsSection.fieldHint": {
+    "en": "Add at least one prompt and drag prompts to reorder them.",
+    "es": "Añade al menos una pregunta y arrastra las preguntas para cambiar su orden.",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.nameGeneratorPrompts.addAtLeastOnePromptAnd"
+  },
+  "protocolBuilder.promptsSection.addLabel": {
+    "en": "Create new prompt",
+    "es": "Crear nueva pregunta",
+    "from": "74a07e626 architect.additional.sections.nameGeneratorPrompts.nameGeneratorPrompts.createNewPrompt"
+  },
+  "protocolBuilder.promptsSection.emptyState": {
+    "en": "No items have been created yet.",
+    "es": "Todavía no se ha creado ningún elemento.",
+    "from": "74a07e626 architect.defaults.components.Form.arrayFields.DialogArrayField.emptyStateMessage"
+  },
+  "protocolBuilder.nameGeneratorPrompts.promptGroupTitle": {
+    "en": "Participant prompt",
+    "es": "Pregunta para el participante",
+    "from": "74a07e626 architect.sections.promptText.participantPrompt"
+  },
+  "protocolBuilder.nameGeneratorPrompts.promptGroupDescription": {
+    "en": "Write the instruction or question participants see for this task.",
+    "es": "Escribe la instrucción o pregunta que ven los participantes para esta tarea.",
+    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants"
+  },
+  "protocolBuilder.nameGeneratorPrompts.textLabel": {
+    "en": "Prompt text",
+    "es": "Texto de la pregunta",
+    "from": "74a07e626 architect.sections.promptText.promptText"
+  },
+  "protocolBuilder.nameGeneratorPrompts.textPlaceholder": {
+    "en": "Enter your prompt...",
+    "es": "Introduce la pregunta...",
+    "from": "74a07e626 architect.sections.promptText.enterYourPrompt"
+  },
+  "protocolBuilder.nameGeneratorPrompts.attributesGroupTitle": {
+    "en": "Additional attributes",
+    "es": "Atributos adicionales",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.promptFields.additionalAttributes"
+  },
+  "protocolBuilder.nameGeneratorPrompts.attributesGroupDescription": {
+    "en": "Assign fixed attribute values to nodes created from this prompt.",
+    "es": "Asigna valores fijos de atributos a los nodos creados desde esta pregunta.",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.promptFields.assignFixedAttributeValuesToNodes"
+  },
+  "protocolBuilder.nameGeneratorPrompts.assignmentsLabel": {
+    "en": "Attribute assignments",
+    "es": "Asignaciones de atributos",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.promptFields.attributeAssignments"
+  },
+  "protocolBuilder.nameGeneratorPrompts.assignmentsHint": {
+    "en": "Use assigned values in skip logic or stage filtering rules.",
+    "es": "Usa los valores asignados en las reglas de lógica de salto o de filtrado de etapas.",
+    "from": "74a07e626 architect.sections.nameGeneratorPrompts.promptFields.useAssignedValuesInSkipLogic"
+  },
+  "protocolBuilder.nodePanels.title": {
+    "en": "Side panels",
+    "es": "Paneles laterales",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanels.sidePanels"
+  },
+  "protocolBuilder.nodePanels.description": {
+    "en": "Configure up to two side panels for this name generator.",
+    "es": "Configura hasta dos paneles laterales para este generador de nombres.",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanels.configureUpToTwoSidePanels"
+  },
+  "protocolBuilder.nodePanels.waitingDescription": {
+    "en": "Select a node type to configure side panels.",
+    "es": "Selecciona un tipo de nodo para configurar paneles laterales.",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanels.selectANodeTypeToConfigure"
+  },
+  "protocolBuilder.nodePanels.fieldLabel": {
+    "en": "Panels",
+    "es": "Paneles",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanels.panels"
+  },
+  "protocolBuilder.nodePanels.addLabel": {
+    "en": "Add new panel",
+    "es": "Añadir nuevo panel",
+    "from": "74a07e626 architect.additional.sections.nodePanels.nodePanels.addNewPanel"
+  },
+  "protocolBuilder.nodePanels.emptyState": {
+    "en": "No side panels configured.",
+    "es": "No hay paneles laterales configurados.",
+    "from": "74a07e626 architect.additional.sections.nodePanels.nodePanels.noSidePanelsConfigured"
+  },
+  "protocolBuilder.nodePanels.panelTitleLabel": {
+    "en": "Panel title",
+    "es": "Título del panel",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanel.panelTitle"
+  },
+  "protocolBuilder.nodePanels.panelTitleHint": {
+    "en": "The panel title will be shown above the list of nodes within the panel.",
+    "es": "El título del panel se mostrará encima de la lista de nodos del panel.",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanel.thePanelTitleWillBeShown"
+  },
+  "protocolBuilder.nodePanels.sourceLabel": {
+    "en": "Data source for panel {position, number}",
+    "es": "Fuente de datos del panel {position, number}",
+    "from": "74a07e626 architect.nodePanel.dataSource"
+  },
+  "protocolBuilder.nodePanels.sourceHint": {
+    "en": "Choose where this panel’s data comes from: the in-progress interview session (“People you have already named”), or a network data file you have added to this protocol.",
+    "es": "Elige de dónde proceden los datos de este panel: de la sesión de entrevista en curso («Personas que ya has nombrado») o de un archivo de datos de red que hayas añadido a este protocolo.",
+    "from": "74a07e626 architect.sections.nodePanels.nodePanel.chooseWhereThisPanelRsquoSDataComes"
+  },
+  "protocolBuilder.nodePanels.filterGroupTitle": {
+    "en": "Panel filter",
+    "es": "Filtro del panel",
+    "from": "74a07e626 architect.sections.fields.networkFilter.panelFilter"
+  },
+  "protocolBuilder.nodePanels.filterGroupDescription": {
+    "en": "Filter the nodes and edges displayed to participants in this panel.",
+    "es": "Filtre los nodos y vínculos que se muestran a los participantes en este panel.",
+    "from": "74a07e626 architect.sections.fields.networkFilter.filterTheNodesAndEdgesDisplayed"
+  },
+  "protocolBuilder.nodePanels.filterRulesLabel": {
+    "en": "Filter rules",
+    "es": "Reglas de filtrado",
+    "from": "74a07e626 architect.sections.fields.networkFilter.filterRules"
+  },
+  "protocolBuilder.nodePanels.filterRulesHint": {
+    "en": "Create one or more rules that must match in order for a node or edge to be shown in this panel.",
+    "es": "Crea una o varias reglas que deban cumplirse para que se muestre un nodo o vínculo en este panel.",
+    "from": "74a07e626 architect.sections.fields.networkFilter.createOneOrMoreRulesThat"
+  },
+  "protocolBuilder.externalDataSource.title": {
+    "en": "Roster source",
+    "es": "Fuente de la lista",
+    "from": "74a07e626 architect.sections.externalDataSource.rosterSource"
+  },
+  "protocolBuilder.externalDataSource.description": {
+    "en": "Select the network data file that supplies nodes for this roster.",
+    "es": "Selecciona el archivo de datos de red que proporciona los nodos de esta lista.",
+    "from": "74a07e626 architect.sections.externalDataSource.selectTheNetworkDataFileThat"
+  },
+  "protocolBuilder.externalDataSource.fieldLabel": {
+    "en": "Roster data source",
+    "es": "Fuente de datos de la lista",
+    "from": "74a07e626 architect.sections.externalDataSource.rosterDataSource"
+  },
+  "protocolBuilder.externalDataSource.fieldHint": {
+    "en": "This stage needs a source of nodes to populate the roster. Select a network data file to use.",
+    "es": "Esta etapa necesita una fuente de nodos para completar la lista. Selecciona un archivo de datos de red.",
+    "from": "74a07e626 architect.sections.externalDataSource.thisStageNeedsASourceOf"
+  },
+  "protocolBuilder.cardDisplay.title": {
+    "en": "Card display",
+    "es": "Visualización de tarjetas",
+    "from": "74a07e626 architect.sections.cardDisplayOptions.cardDisplayOptions.cardDisplay"
+  },
+  "protocolBuilder.cardDisplay.description": {
+    "en": "Configure how roster cards are displayed to participants.",
+    "es": "Configura cómo se muestran las tarjetas de la lista a los participantes.",
+    "from": "74a07e626 architect.sections.cardDisplayOptions.cardDisplayOptions.configureHowRosterCardsAreDisplayed"
+  },
+  "protocolBuilder.cardDisplay.fieldLabel": {
+    "en": "Additional display properties",
+    "es": "Propiedades adicionales de visualización",
+    "from": "74a07e626 architect.sections.cardDisplayOptions.cardDisplayOptions.additionalDisplayProperties"
+  },
+  "protocolBuilder.cardDisplay.fieldHint": {
+    "en": "Choose any additional roster attributes that will help participants recognize an alter.",
+    "es": "Elige los atributos adicionales de la lista que ayuden a los participantes a reconocer a un álter.",
+    "from": "74a07e626 architect.sections.cardDisplayOptions.cardDisplayOptions.chooseAnyAdditionalRosterAttributesThat"
+  },
+  "protocolBuilder.cardDisplay.addLabel": {
+    "en": "Add new display property",
+    "es": "Añadir nueva propiedad de visualización",
+    "from": "74a07e626 architect.additional.sections.cardDisplayOptions.cardDisplayOptions.addNewDisplayProperty"
+  },
+  "protocolBuilder.sortOptions.title": {
+    "en": "Roster sorting",
+    "es": "Orden de la lista",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.rosterSorting"
+  },
+  "protocolBuilder.sortOptions.description": {
+    "en": "Configure the initial card order and the attributes participants can sort by.",
+    "es": "Configura el orden inicial de las tarjetas y los atributos por los que los participantes pueden ordenar.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.configureTheInitialCardOrderAnd"
+  },
+  "protocolBuilder.sortOptions.waitingDescription": {
+    "en": "Select a roster data source before configuring sorting.",
+    "es": "Selecciona una fuente de datos para la lista antes de configurar el orden.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.selectARosterDataSourceBefore"
+  },
+  "protocolBuilder.sortOptions.orderLabel": {
+    "en": "Sort rule",
+    "es": "Regla de orden",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.sortRule"
+  },
+  "protocolBuilder.sortOptions.orderHint": {
+    "en": "Set the roster's initial sort order. Without a rule, nodes keep their order from the data file.",
+    "es": "Establece el orden inicial de la lista. Sin una regla, los nodos conservan su orden en el archivo de datos.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.setTheRosterSInitialSortOrder"
+  },
+  "protocolBuilder.sortOptions.orderAddLabel": {
+    "en": "Add new sort rule",
+    "es": "Añadir nueva regla de orden",
+    "from": "74a07e626 architect.additional.sections.sortOptionsForExternalData.sortOptionsForExternalData.addNewSortRule"
+  },
+  "protocolBuilder.sortOptions.sortableLabel": {
+    "en": "Sortable properties",
+    "es": "Propiedades ordenables",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.sortableProperties"
+  },
+  "protocolBuilder.sortOptions.sortableHint": {
+    "en": "Select attributes that help participants locate a specific roster member.",
+    "es": "Selecciona atributos que ayuden a los participantes a encontrar a un miembro específico de la lista.",
+    "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.selectAttributesThatHelpParticipantsLocate"
+  },
+  "protocolBuilder.sortOptions.sortableAddLabel": {
+    "en": "Add new sortable property",
+    "es": "Añadir nueva propiedad ordenable",
+    "from": "74a07e626 architect.additional.sections.sortOptionsForExternalData.sortOptionsForExternalData.addNewSortableProperty"
+  },
+  "protocolBuilder.searchOptions.title": {
+    "en": "Roster search",
+    "es": "Búsqueda en la lista",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.rosterSearch"
+  },
+  "protocolBuilder.searchOptions.description": {
+    "en": "Configure how participants find and select nodes from the roster.",
+    "es": "Configura cómo encuentran y seleccionan los participantes los nodos de la lista.",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.configureHowParticipantsFindAndSelect"
+  },
+  "protocolBuilder.searchOptions.waitingDescription": {
+    "en": "Select a roster data source before configuring search.",
+    "es": "Selecciona una fuente de datos para la lista antes de configurar la búsqueda.",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.selectARosterDataSourceBefore"
+  },
+  "protocolBuilder.searchOptions.matchLabel": {
+    "en": "Searchable attributes",
+    "es": "Atributos de búsqueda",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.searchableAttributes"
+  },
+  "protocolBuilder.searchOptions.matchHint": {
+    "en": "You can configure which attributes are considered when matching roster nodes to the user's query.",
+    "es": "Puedes configurar qué atributos se consideran al comparar los nodos de la lista con la consulta del usuario.",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.youCanConfigureWhichAttributesAre"
+  },
+  "protocolBuilder.searchOptions.toleranceLabel": {
+    "en": "Search accuracy",
+    "es": "Precisión de búsqueda",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.searchAccuracy"
+  },
+  "protocolBuilder.searchOptions.toleranceHint": {
+    "en": "Search accuracy determines how closely the text the participant types must be to an attribute for it to be considered a match.",
+    "es": "La precisión de búsqueda determina cuánto debe coincidir el texto introducido por el participante con un atributo para considerarlo una coincidencia.",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.searchAccuracyDeterminesHowCloselyThe"
+  },
+  "protocolBuilder.censusPrompts.promptTextTitle": {
+    "en": "Participant prompt",
+    "es": "Pregunta para el participante",
+    "from": "74a07e626 architect.sections.promptText.participantPrompt"
+  },
+  "protocolBuilder.censusPrompts.promptConfigurationTitle": {
+    "en": "Prompt configuration",
+    "es": "Configuración de la pregunta",
+    "from": "74a07e626 architect.sections.dyadCensusPrompts.promptFields.promptConfiguration"
+  },
+  "protocolBuilder.censusPrompts.promptTextDescription": {
+    "en": "Write the instruction or question participants see for this task.",
+    "es": "Escribe la instrucción o pregunta que ven los participantes para esta tarea.",
+    "from": "74a07e626 architect.sections.promptText.writeTheInstructionOrQuestionParticipants"
+  },
+  "protocolBuilder.censusPrompts.promptTextLabel": {
+    "en": "Prompt text",
+    "es": "Texto de la pregunta",
+    "from": "74a07e626 architect.sections.promptText.promptText"
+  },
+  "protocolBuilder.censusPrompts.edgeLabel": {
+    "en": "Created edge type",
+    "es": "Tipo de vínculo creado",
+    "from": "74a07e626 architect.sections.dyadCensusPrompts.promptFields.createdEdgeType"
+  },
+  "protocolBuilder.censusPrompts.dyadPromptTextDescription": {
+    "en": "Write the participant prompt and select the edge type created by an affirmative response.",
+    "es": "Escribe la pregunta para el participante y selecciona el tipo de vínculo que se creará con una respuesta afirmativa.",
+    "from": "74a07e626 architect.sections.dyadCensusPrompts.promptFields.writeTheParticipantPromptAndSelect"
+  },
+  "protocolBuilder.censusPrompts.dyadPlaceholder": {
+    "en": "Enter text for the prompt here...",
+    "es": "Introduce aquí el texto de la pregunta...",
+    "from": "74a07e626 architect.sections.dyadCensusPrompts.promptFields.enterTextForThePromptHere"
+  },
+  "protocolBuilder.censusPrompts.oneToManyPromptTextDescription": {
+    "en": "Write the participant prompt and select the edge type created for chosen nodes.",
+    "es": "Escribe la pregunta para el participante y selecciona el tipo de vínculo que se creará para los nodos elegidos.",
+    "from": "74a07e626 architect.sections.oneToManyDyadCensus.promptFields.writeTheParticipantPromptAndSelect"
+  },
+  "protocolBuilder.censusPrompts.oneToManyPlaceholder": {
+    "en": "Enter text for the prompt here...",
+    "es": "Introduce aquí el texto de la pregunta...",
+    "from": "74a07e626 architect.sections.oneToManyDyadCensus.promptFields.enterTextForThePromptHere"
+  },
+  "protocolBuilder.censusPrompts.oneToManyAskedOrderDescription": {
+    "en": "Order focal nodes before they are presented for evaluation.",
+    "es": "Ordena los nodos focales antes de presentarlos para su evaluación.",
+    "from": "74a07e626 architect.sections.oneToManyDyadCensus.promptFields.orderFocalNodesBeforeTheyAre"
+  },
+  "protocolBuilder.censusPrompts.oneToManyChoiceOrderDescription": {
+    "en": "Order target nodes after they are placed in the bin.",
+    "es": "Ordena los nodos de destino después de colocarlos en el contenedor.",
+    "from": "74a07e626 architect.sections.oneToManyDyadCensus.promptFields.orderTargetNodesAfterTheyAre"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthPromptTextDescription": {
+    "en": "Explain the relationship participants should evaluate for each pair.",
+    "es": "Explica la relación que deben evaluar los participantes en cada par.",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.explainTheRelationshipParticipantsShouldEvaluate"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthPromptTextHint": {
+    "en": "Refer clearly to the two people shown and phrase the prompt for a yes or no response.",
+    "es": "Haz referencia claramente a las dos personas que se muestran y redacta la pregunta para una respuesta de sí o no.",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.referClearlyToTheTwoPeople"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthPlaceholder": {
+    "en": "Enter text for the prompt here...",
+    "es": "Introduce aquí el texto de la pregunta...",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.enterTextForThePromptHere"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthEdgeLabel": {
+    "en": "Edge type",
+    "es": "Tipo de vínculo",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.edgeType"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthEdgeTitle": {
+    "en": "Edge creation",
+    "es": "Creación de vínculos",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.edgeCreation"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthEdgeDescription": {
+    "en": "Choose the edge type created between the two nodes.",
+    "es": "Elige el tipo de vínculo que se crea entre los dos nodos.",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.chooseTheEdgeTypeCreatedBetween"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthEdgeHint": {
+    "en": "Select or create the edge type before configuring its ordinal attribute.",
+    "es": "Selecciona o crea el tipo de vínculo antes de configurar su atributo ordinal.",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.selectOrCreateTheEdgeType"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleTitle": {
+    "en": "Response attribute",
+    "es": "Atributo de respuesta",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.responseAttribute"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleDescription": {
+    "en": "Choose the ordinal attribute whose options participants use to rate the relationship.",
+    "es": "Elige el atributo ordinal cuyas opciones usan los participantes para valorar la relación.",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.chooseTheOrdinalAttributeWhoseOptions"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthScaleLabel": {
+    "en": "Ordinal attribute",
+    "es": "Atributo ordinal",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.ordinalAttribute"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineTitle": {
+    "en": "Decline response",
+    "es": "Respuesta de rechazo",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.declineResponse"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineDescription": {
+    "en": "Set the option participants use to decline edge creation.",
+    "es": "Establece la opción que usan los participantes para rechazar la creación del vínculo.",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.setTheOptionParticipantsUseTo"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineLabel": {
+    "en": "Decline option",
+    "es": "Opción de rechazo",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.declineOption"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclineHint": {
+    "en": "This option appears on the far right of the screen.",
+    "es": "Esta opción aparece en el extremo derecho de la pantalla.",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.thisOptionAppearsOnTheFar"
+  },
+  "protocolBuilder.censusPrompts.tieStrengthDeclinePlaceholder": {
+    "en": "Enter text for the negative label here...",
+    "es": "Introduce aquí el texto de la etiqueta negativa...",
+    "from": "74a07e626 architect.sections.tieStrengthCensusPrompts.promptFields.enterTextForTheNegativeLabel"
+  },
+  "protocolBuilder.censusPrompts.attributeLabel": {
+    "en": "Attribute",
+    "es": "Atributo",
+    "from": "74a07e626 architect.sections.ordinalBinPrompts.promptFields.attribute"
+  },
+  "protocolBuilder.censusPrompts.scaleTitle": {
+    "en": "Ordinal response",
+    "es": "Respuesta ordinal",
+    "from": "74a07e626 architect.sections.ordinalBinPrompts.promptFields.ordinalResponse"
+  },
+  "protocolBuilder.censusPrompts.ordinalBinScaleDescription": {
+    "en": "Choose the ordinal attribute whose values are shown as bins.",
+    "es": "Elige el atributo ordinal cuyos valores se muestran como contenedores.",
+    "from": "74a07e626 architect.sections.ordinalBinPrompts.promptFields.chooseTheOrdinalAttributeWhoseValues"
+  },
+  "protocolBuilder.censusPrompts.ordinalBinScaleHint": {
+    "en": "Select an ordinal attribute.",
+    "es": "Selecciona un atributo ordinal.",
+    "from": "74a07e626 architect.sections.ordinalBinPrompts.promptFields.selectAnOrdinalAttribute"
+  },
+  "protocolBuilder.censusPrompts.ordinalBinPlaceholder": {
+    "en": "Enter your prompt...",
+    "es": "Introduce la pregunta...",
+    "from": "74a07e626 architect.sections.promptText.enterYourPrompt"
+  },
+  "protocolBuilder.censusPrompts.ordinalBinColorTitle": {
+    "en": "Color gradient",
+    "es": "Degradado de color",
+    "from": "74a07e626 architect.sections.ordinalBinPrompts.promptFields.colorGradient"
+  },
+  "protocolBuilder.censusPrompts.ordinalBinColorDescription": {
+    "en": "Choose the gradient used to distinguish ordinal options.",
+    "es": "Elige el degradado utilizado para distinguir las opciones ordinales.",
+    "from": "74a07e626 architect.sections.ordinalBinPrompts.promptFields.chooseTheGradientUsedToDistinguish"
+  },
+  "protocolBuilder.censusPrompts.ordinalBinColorLabel": {
+    "en": "Color",
+    "es": "Color",
+    "from": "74a07e626 architect.sections.ordinalBinPrompts.promptFields.color"
+  },
+  "protocolBuilder.censusPrompts.ordinalBinColorHint": {
+    "en": "Interviewer will render each option in your ordinal attribute using a color gradient.",
+    "es": "Interviewer mostrará cada opción del atributo ordinal mediante un degradado de color.",
+    "from": "74a07e626 architect.sections.ordinalBinPrompts.promptFields.interviewerWillRenderEachOptionIn"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinPlaceholder": {
+    "en": "Enter your prompt...",
+    "es": "Introduce la pregunta...",
+    "from": "74a07e626 architect.sections.promptText.enterYourPrompt"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinBinsTitle": {
+    "en": "Categorical response",
+    "es": "Respuesta categórica",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.categoricalResponse"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinBinsDescription": {
+    "en": "Choose the categorical attribute and configure the option values shown as bins.",
+    "es": "Elige el atributo categórico y configura los valores de opción que se muestran como contenedores.",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.chooseTheCategoricalAttributeAndConfigure"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinBinsHint": {
+    "en": "Select a categorical attribute.",
+    "es": "Selecciona un atributo categórico.",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.selectACategoricalAttribute"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherTitle": {
+    "en": "Follow-up other option",
+    "es": "Pregunta de seguimiento para «Otro»",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.followUpOtherOption"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherDescription": {
+    "en": "Collect a participant-entered value when a node is placed in an other bin.",
+    "es": "Recoger un valor introducido por el participante cuando se coloca un nodo en el contenedor «Otro».",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.collectAParticipantEnteredValueWhenA"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherAttributeLabel": {
+    "en": "Other attribute",
+    "es": "Atributo para «Otro»",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.otherAttribute"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherAttributeHint": {
+    "en": "Select a text attribute to store the value entered by the participant when they drop a node in the 'other' option.",
+    "es": "Selecciona un atributo de texto para guardar el valor que introduce el participante al colocar un nodo en la opción «Otro».",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.selectATextAttributeToStore"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherBinLabel": {
+    "en": "Other bin label",
+    "es": "Etiqueta del contenedor «Otro»",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.otherBinLabel"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherBinHint": {
+    "en": "Enter a label for the 'other' bin that will be shown to participants. This label should indicate that the participant can drop a node in this bin to provide a value not listed above.",
+    "es": "Introduce una etiqueta para el contenedor «Otro» que se mostrará a los participantes. Debe indicar que pueden colocar un nodo en ese contenedor para proporcionar un valor que no aparezca arriba.",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.enterALabelForTheOther"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherBinPlaceholder": {
+    "en": "Enter a label (such as \"other\") for this bin...",
+    "es": "Introduce una etiqueta, como «Otro», para este contenedor...",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.enterALabelSuchAsOther"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherPromptLabel": {
+    "en": "Follow-up question",
+    "es": "Pregunta de seguimiento",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.followUpQuestion"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherPromptHint": {
+    "en": "Enter a question prompt to show when the other option is triggered.",
+    "es": "Introduce la pregunta que se mostrará al activar la opción «Otro».",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.enterAQuestionPromptToShow"
+  },
+  "protocolBuilder.censusPrompts.categoricalBinOtherPromptPlaceholder": {
+    "en": "Enter a question prompt to show when the other option is triggered...",
+    "es": "Introduce la pregunta que se mostrará al activar la opción «Otro»...",
+    "from": "74a07e626 architect.sections.categoricalBinPrompts.promptFields.enterAQuestionPromptToShow56295"
+  },
+  "protocolBuilder.removeAfterConsideration.title": {
+    "en": "Node availability",
+    "es": "Disponibilidad de nodos",
+    "from": "74a07e626 architect.sections.oneToManyDyadCensus.removeAfterConsideration.nodeAvailability"
+  },
+  "protocolBuilder.removeAfterConsideration.description": {
+    "en": "Choose whether a focal node remains available after it has been considered.",
+    "es": "Elige si un nodo focal sigue disponible después de evaluarlo.",
+    "from": "74a07e626 architect.sections.oneToManyDyadCensus.removeAfterConsideration.chooseWhetherAFocalNodeRemains"
+  },
+  "protocolBuilder.removeAfterConsideration.fieldLabel": {
+    "en": "Removal behavior",
+    "es": "Comportamiento de eliminación",
+    "from": "74a07e626 architect.sections.oneToManyDyadCensus.removeAfterConsideration.removalBehavior"
+  },
+  "protocolBuilder.alterLimits.title": {
+    "en": "Nomination limits",
+    "es": "Límites de nominación",
+    "from": "74a07e626 architect.sections.minMaxAlterLimits.nominationLimits"
+  },
+  "protocolBuilder.alterLimits.description": {
+    "en": "Set the minimum or maximum number of alters that can be named across the whole stage.",
+    "es": "Establece el número mínimo o máximo de álteres que pueden nombrarse en toda la etapa.",
+    "from": "74a07e626 architect.sections.minMaxAlterLimits.setTheMinimumOrMaximumNumber"
+  },
+  "protocolBuilder.alterLimits.minLabel": {
+    "en": "Minimum number of alters",
+    "es": "Número mínimo de álteres",
+    "from": "74a07e626 architect.sections.minMaxAlterLimits.minimumNumberOfAlters"
+  },
+  "protocolBuilder.alterLimits.minHint": {
+    "en": "0 = no minimum",
+    "es": "0 = sin mínimo",
+    "from": "74a07e626 architect.sections.minMaxAlterLimits.message"
+  },
+  "protocolBuilder.alterLimits.maxLabel": {
+    "en": "Maximum number of alters",
+    "es": "Número máximo de álteres",
+    "from": "74a07e626 architect.sections.minMaxAlterLimits.maximumNumberOfAlters"
+  },
+  "protocolBuilder.alterLimits.maxHint": {
+    "en": "Leave empty for no maximum",
+    "es": "Deja el campo vacío para no establecer un máximo",
+    "from": "74a07e626 architect.sections.minMaxAlterLimits.leaveEmptyForNoMaximum"
+  },
+  "protocolBuilder.alterLimits.maxPlaceholder": {
+    "en": "Infinity",
+    "es": "Infinito",
+    "from": "74a07e626 architect.sections.minMaxAlterLimits.infinity"
+  },
+  "protocolBuilder.introduction.title": {
+    "en": "Task introduction",
+    "es": "Introducción a la tarea",
+    "from": "74a07e626 architect.sections.introductionPanel.taskIntroduction"
+  },
+  "protocolBuilder.introduction.description": {
+    "en": "Introduce the task before participants complete its forms.",
+    "es": "Presenta la tarea antes de que los participantes completen sus formularios.",
+    "from": "74a07e626 architect.sections.introductionPanel.introduceTheTaskBeforeParticipantsComplete"
+  },
+  "protocolBuilder.introduction.headingLabel": {
+    "en": "Title",
+    "es": "Título",
+    "from": "74a07e626 architect.sections.introductionPanel.title"
+  },
+  "protocolBuilder.introduction.textLabel": {
+    "en": "Introduction text",
+    "es": "Texto de introducción",
+    "from": "74a07e626 architect.sections.introductionPanel.introductionText"
+  }
+}
