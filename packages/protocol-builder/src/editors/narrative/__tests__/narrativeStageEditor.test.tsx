@@ -168,7 +168,7 @@ describe('the narrative stage editor', () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/only if “Allow moving nodes” is switched on/, {
+      screen.getByText(/only if “Allow repositioning” is switched on/, {
         exact: false,
       }),
     ).toBeInTheDocument();
