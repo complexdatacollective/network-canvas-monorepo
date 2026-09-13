@@ -42,6 +42,7 @@ function useNodeLimits({
     constraints: [
       {
         direction: 'forwards',
+        kind: 'min_nodes',
         isMet: minNodesMet,
         toast: {
           description: minNodesMessage,
@@ -56,29 +57,30 @@ function useNodeLimits({
   const maxToastRef = useRef<string | null>(null);
 
   useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+
     if (!maxNodesReached) {
       if (maxToastRef.current) {
         closeToast(maxToastRef.current);
         maxToastRef.current = null;
       }
-      return;
+    } else {
+      // Defer toast creation so StrictMode's cleanup (clearTimeout) cancels
+      // the pending timer rather than closing an already-rendered toast.
+      timeout = setTimeout(() => {
+        maxToastRef.current = showToast({
+          description: createElement(AppMessage, {
+            message: messages.taskComplete,
+          }),
+          variant: 'success',
+          anchor: 'forward',
+          timeout: 0,
+        });
+      }, 0);
     }
 
-    // Defer toast creation so StrictMode's cleanup (clearTimeout) cancels
-    // the pending timer rather than closing an already-rendered toast.
-    const timeout = setTimeout(() => {
-      maxToastRef.current = showToast({
-        description: createElement(AppMessage, {
-          message: messages.taskComplete,
-        }),
-        variant: 'success',
-        anchor: 'forward',
-        timeout: 0,
-      });
-    }, 0);
-
     return () => {
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
       if (maxToastRef.current) {
         closeToast(maxToastRef.current);
         maxToastRef.current = null;

@@ -168,6 +168,34 @@ describe('interview sync route', () => {
     });
   });
 
+  it('accepts and persists the typed stage timing sibling', async () => {
+    const stageTiming = {
+      stageExits: [
+        {
+          stageIndex: 2,
+          stageType: 'Information',
+          promptIndex: 0,
+          promptCount: 1,
+          durationMs: 1250,
+          exitDirection: 'forward',
+        },
+      ],
+      promptExits: [],
+      totalDurationMs: 1250,
+    };
+
+    const response = await POST(makeRequest(legacyNetwork, { stageTiming }), {
+      params: Promise.resolve({ interviewId: 'interview-1' }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(updateManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ stageTiming }),
+      }),
+    );
+  });
+
   it('keeps the generic HTTP 400 response for invalid defined values', async () => {
     const response = await POST(
       makeRequest({

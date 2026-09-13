@@ -1,6 +1,7 @@
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 
+import type { StageTimingPayload } from '@codaco/interview/contract';
 import {
   NcNetworkSchema,
   ensureError,
@@ -25,6 +26,23 @@ import { getAppSetting } from '~/queries/appSettings';
  * that has drifted comes back inside on its own.
  */
 const MAX_REVISION_ADVANCE = 10_000;
+
+const StageTimingExitSchema = z.object({
+  stageIndex: z.number().int().nonnegative(),
+  stageType: z.string().min(1).max(64),
+  promptIndex: z.number().int().nonnegative(),
+  promptCount: z.number().int().nonnegative(),
+  durationMs: z.number().finite().nonnegative(),
+  exitDirection: z.enum(['forward', 'back', 'jumped', 'abandoned']),
+});
+
+const StageTimingSchema = z
+  .object({
+    stageExits: z.array(StageTimingExitSchema).max(10_000),
+    promptExits: z.array(StageTimingExitSchema).max(10_000).optional(),
+    totalDurationMs: z.number().finite().nonnegative().optional(),
+  })
+  .optional();
 
 /**
  * Report a malformed sync request and answer with a 400. The error report
@@ -62,6 +80,7 @@ const routeHandler = async (
     network: NcNetworkSchema,
     currentStep: z.number(),
     stageMetadata: StageMetadataSchema.optional(),
+    stageTiming: StageTimingSchema,
     lastUpdated: z.string(),
     /**
      * Position of this write in the browser's own sequence of syncs — see
@@ -94,7 +113,7 @@ const routeHandler = async (
     return invalidRequest(validatedRequest.error);
   }
 
-  const { network, currentStep, stageMetadata, syncRevision } =
+  const { network, currentStep, stageMetadata, stageTiming, syncRevision } =
     validatedRequest.data;
 
   const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
@@ -138,6 +157,9 @@ const routeHandler = async (
         network,
         currentStep,
         stageMetadata: stageMetadata ?? undefined,
+        ...(stageTiming === undefined
+          ? {}
+          : { stageTiming: stageTiming as StageTimingPayload }),
         syncRevision,
         // `lastUpdated` is intentionally NOT taken from the client. Prisma's
         // @updatedAt sets it server-side; trusting the client value let a

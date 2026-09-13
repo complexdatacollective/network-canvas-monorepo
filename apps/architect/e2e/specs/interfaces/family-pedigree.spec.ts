@@ -1,5 +1,3 @@
-import type { Page } from '@playwright/test';
-
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 
 import { expect, gotoProtocol, test } from '../../fixtures/architect-test.js';
@@ -10,6 +8,7 @@ import {
   selectOrCreateEdgeType,
   selectOrCreateNodeType,
 } from '../../pageobjects/editor-sections/entity-types.js';
+import { createAttribute } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 // The two codebook types this pedigree binds are SEEDED rather than authored
@@ -53,41 +52,22 @@ function protocolWithPedigreeTypes(): CurrentProtocol {
   };
 }
 
-// Each of the pedigree's attribute slots picks from the codebook, and creates
-// what it needs beside the picker rather than through a shared spotlight:
-// `SlotVariableField` renders a `VariablePickerField` (a native select of the
-// attributes of the chosen type) and a `CreateVariableButton` next to it,
-// named for the slot it fills ("Create a new display label attribute", …).
-// That button opens the codebook's own attribute editor with the type locked
-// to what the slot binds — so the type control offers nothing to choose, a
-// slot with a canonical value set shows those values read-only, and the only
-// control to fill is "Attribute name". The dialog carries the button's own
-// words as its title, "Create attribute" commits the codebook write, and the
-// slot binds the new attribute as soon as it lands.
+// Each of the pedigree's attribute slots picks from the codebook and invents
+// what it needs from the picker's OWN create row — no create control sits
+// beside a picker any more. `SlotVariableField` hands the picker the props
+// `useCreateAttributeForSlot` answers with, and what the row does next is
+// decided by the kind of answer the slot binds:
 //
-// The create button is a SIBLING of the field rather than inside it, so it is
-// resolved on the page by its own name — which names the slot, so each of the
-// eight is unambiguous without scoping.
-async function createSlotAttribute(
-  page: Page,
-  createLabel: string,
-  attributeName: string,
-): Promise<void> {
-  await page.getByRole('button', { name: createLabel, exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: createLabel });
-  await dialog
-    .getByRole('textbox', { name: 'Attribute name', exact: true })
-    .fill(attributeName);
-  const submit = dialog.getByRole('button', {
-    name: 'Create attribute',
-    exact: true,
-  });
-  await submit.click();
-  // The codebook write is a round trip to the host, and the next slot's dialog
-  // animates in over this one's exit — so wait for this dialog to leave the
-  // DOM rather than for it to be hidden.
-  await submit.waitFor({ state: 'detached' });
-}
+// - `text` and `boolean` slots (display label, participant identifier,
+//   relationship, active status, gestational carrier) are finished by a name,
+//   so the row writes the codebook and binds the result with no dialog at all.
+// - The three whose VALUES the interface owns (biological sex, relationship
+//   type, gamete role) are `categorical` with `lockedOptions`, which a name
+//   cannot finish — so the row escalates to the codebook's own editor, titled
+//   with the slot's own words and opened already holding the typed name. Those
+//   values arrive seeded and read-only, so the name is still the whole of the
+//   authoring; nothing is entered in the editor beyond pressing "Create
+//   attribute".
 
 test('creates a valid FamilyPedigree stage from scratch', async ({
   architectPage,
@@ -144,36 +124,29 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   // chosen, FOUR attribute slots at once (nodeLabelVariable / egoVariable /
   // relationshipVariable / biologicalSexVariable —
   // `PedigreeNodeConfigurationSection.tsx`). Each is a `SlotVariableField`,
-  // which is why every attribute below is created through the slot's own
-  // create button rather than through one shared picker.
+  // which is why every attribute below is created through that slot's own
+  // picker rather than through one shared control.
   //
   // The slots' types are fixed by the interface, not chosen here: text
   // (`nodeLabelVariable`, `relationshipVariable`), boolean (`egoVariable`,
   // `isActiveVariable`, `isGestationalCarrierVariable`) and categorical
   // (`biologicalSexVariable`, `relationshipTypeVariable`, `gameteRoleVariable`,
-  // whose canonical values the interface owns and locks). The editor is opened
-  // with `allowedVariableTypes` holding that one type and `lockedOptions`
-  // holding those values, so no type is picked and no option is authored for
-  // any of the eight — the name is the whole of the authoring.
-  await createSlotAttribute(
-    architectPage,
-    'Create a new display label attribute',
-    'name',
-  );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new participant identifier attribute',
-    'is_ego',
-  );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new relationship attribute',
+  // whose canonical values the interface owns and locks). So no type is picked
+  // and no option is authored for any of the eight — the name is the whole of
+  // the authoring, whether the row writes it directly or hands it to the
+  // editor.
+  await createAttribute(editor.field('nodeConfig.nodeLabelVariable'), 'name');
+  await createAttribute(editor.field('nodeConfig.egoVariable'), 'is_ego');
+  await createAttribute(
+    editor.field('nodeConfig.relationshipVariable'),
     'relationship_to_ego',
   );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new biological sex attribute',
+  await createAttribute(
+    editor.field('nodeConfig.biologicalSexVariable'),
     'biologicalSex',
+    {
+      title: 'Create a new biological sex attribute',
+    },
   );
 
   await expectFullWidthAttributePicker('nodeConfig.egoVariable');
@@ -187,25 +160,27 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
 
   await selectOrCreateEdgeType(architectPage, 'family_edge');
 
-  await createSlotAttribute(
-    architectPage,
-    'Create a new relationship type attribute',
+  await createAttribute(
+    editor.field('edgeConfig.relationshipTypeVariable'),
     'relationshipType',
+    {
+      title: 'Create a new relationship type attribute',
+    },
   );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new active status attribute',
+  await createAttribute(
+    editor.field('edgeConfig.isActiveVariable'),
     'isActive',
   );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new gestational carrier attribute',
+  await createAttribute(
+    editor.field('edgeConfig.isGestationalCarrierVariable'),
     'isGestationalCarrier',
   );
-  await createSlotAttribute(
-    architectPage,
-    'Create a new gamete role attribute',
+  await createAttribute(
+    editor.field('edgeConfig.gameteRoleVariable'),
     'gameteRole',
+    {
+      title: 'Create a new gamete role attribute',
+    },
   );
 
   await expectFullWidthAttributePicker('edgeConfig.relationshipTypeVariable');

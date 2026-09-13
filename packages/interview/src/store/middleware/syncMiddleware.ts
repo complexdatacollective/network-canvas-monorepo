@@ -10,8 +10,15 @@ import type {
   SyncHandler,
   SyncOptions,
 } from '../../contract/types';
+import { recordStageTiming } from '../modules/session';
 
 type SyncMiddlewareState = { session: SessionPayload };
+
+export type FlushOptions = {
+  unloading?: boolean;
+  /** Allow React cleanup microtasks to add final timing before teardown write. */
+  waitForCleanup?: boolean;
+};
 
 const sessionChanged = (a: SessionPayload, b: SessionPayload) =>
   !isEqual(omit(a, ['promptIndex']), omit(b, ['promptIndex']));
@@ -50,7 +57,7 @@ export const createSyncMiddleware = ({
   onSync: SyncHandler;
 }): {
   middleware: Middleware<Record<string, never>, SyncMiddlewareState>;
-  flush: (options?: { unloading?: boolean }) => Promise<void>;
+  flush: (options?: FlushOptions) => Promise<void>;
 } => {
   let lastSyncedState = {} as SessionPayload;
   let storeRef: { getState: () => SyncMiddlewareState } | null = null;
@@ -121,8 +128,18 @@ export const createSyncMiddleware = ({
    * exiting, the document being hidden — must await this before handing control
    * on, because a write attempted afterwards may be refused or never run at all.
    */
-  const flush = async ({ unloading = false } = {}): Promise<void> => {
+  const flush = async ({
+    unloading = false,
+    waitForCleanup = false,
+  }: FlushOptions = {}): Promise<void> => {
     const options: SyncOptions = { immediate: true, unloading };
+    if (waitForCleanup) {
+      // React cleanup telemetry may finish its StrictMode-safe microtask after
+      // this cleanup starts. Let that final state enter the first flush pass so
+      // exit timing is written atomically with the rest of the session snapshot.
+      await Promise.resolve();
+      await Promise.resolve();
+    }
     for (let pass = 0; pass < FLUSH_MAX_PASSES; pass += 1) {
       const before = storeRef?.getState().session;
 
@@ -152,6 +169,18 @@ export const createSyncMiddleware = ({
 
     return (next) => (action: unknown) => {
       const result = next(action);
+      // Timing is auxiliary session telemetry. It is included in the next
+      // ordinary snapshot (or the mandatory exit/finish flush), so recording
+      // a terminal interval during React cleanup cannot race that flush with
+      // a second ordinary write.
+      if (
+        typeof action === 'object' &&
+        action !== null &&
+        'type' in action &&
+        action.type === recordStageTiming.type
+      ) {
+        return result;
+      }
       if (!needsWrite(store.getState().session)) return result;
       void write(ORDINARY);
       return result;

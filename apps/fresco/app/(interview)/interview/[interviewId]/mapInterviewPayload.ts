@@ -2,6 +2,7 @@ import {
   isValidAssetType,
   type InterviewPayload,
   type ResolvedAsset,
+  type StageTimingPayload,
 } from '@codaco/interview/contract';
 import { COMPATIBLE_PROTOCOL_SCHEMA_VERSION } from '@codaco/interview/protocol-schema-version';
 import type { GetInterviewByIdQuery } from '~/queries/interviews';
@@ -58,6 +59,8 @@ export function mapInterviewPayload(
       lastUpdated: session.lastUpdated.toISOString(),
       network: session.network,
       stageMetadata: session.stageMetadata ?? undefined,
+      stageTiming:
+        (session.stageTiming as StageTimingPayload | null) ?? undefined,
     },
     protocol: {
       ...protocol,

@@ -257,10 +257,10 @@ describe('the fields in this directory, read in Spanish', () => {
     const dialog = await screen.findByRole('dialog', {
       name: 'Selecciona un atributo',
     });
+    // Named for what this window can do and no more: nothing was handed to it
+    // to create with, so it only finds.
     expect(
-      within(dialog).getByRole('searchbox', {
-        name: 'Busca o crea un atributo',
-      }),
+      within(dialog).getByRole('searchbox', { name: 'Busca un atributo' }),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByRole('option', { name: 'Age' }),

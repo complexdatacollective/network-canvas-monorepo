@@ -120,6 +120,47 @@ describe('syncMiddleware', () => {
     expect(onSyncMock).not.toHaveBeenCalled();
   });
 
+  it('syncs the typed stage timing sibling with the session payload', async () => {
+    const store = createTestStore(middleware);
+
+    store.dispatch(
+      mutateSession({
+        stageTiming: {
+          stageExits: [
+            {
+              stageIndex: 2,
+              stageType: 'Information',
+              promptIndex: 0,
+              promptCount: 1,
+              durationMs: 1250,
+              exitDirection: 'forward',
+            },
+          ],
+          promptExits: [],
+          totalDurationMs: 1250,
+        },
+      }),
+    );
+    await settle();
+
+    expect(onSyncMock).toHaveBeenCalledWith(
+      'interview-1',
+      expect.objectContaining({
+        stageTiming: {
+          stageExits: [
+            expect.objectContaining({
+              stageIndex: 2,
+              durationMs: 1250,
+            }),
+          ],
+          promptExits: [],
+          totalDurationMs: 1250,
+        },
+      }),
+      { immediate: false, unloading: false },
+    );
+  });
+
   it('offers a change even while an earlier write is unresolved', async () => {
     let resolveFirst!: () => void;
     onSyncMock.mockImplementationOnce(
