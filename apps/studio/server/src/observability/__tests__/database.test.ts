@@ -351,6 +351,7 @@ describe.skipIf(!db)(
           leased: number;
           failed: number;
           uncertain: number;
+          suppressed?: number;
         }
       >();
       for (const queue of [
@@ -380,12 +381,21 @@ describe.skipIf(!db)(
           `UPDATE ${queue} SET uncertain_at = now() WHERE id = $1`,
           [ids[3]],
         );
+        const suppressed = queue === 'webhook_deliveries' ? 1 : 0;
+        if (suppressed)
+          await scratch.pool.query(
+            `UPDATE webhook_deliveries
+             SET failed_at = now(), last_error = 'delivery_suppressed'
+             WHERE id = $1`,
+            [ids[4]],
+          );
         expected.set(queue, {
-          pending: ids.length - 1 - uncertain,
-          ready: ids.length - 3 - uncertain,
+          pending: ids.length - 1 - uncertain - suppressed,
+          ready: ids.length - 3 - uncertain - suppressed,
           leased: 1,
           failed: 1,
           uncertain,
+          suppressed,
         });
       }
       for (const queue of [

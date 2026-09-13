@@ -8,6 +8,7 @@ export type WebhookEventType = z.infer<typeof WebhookEventTypeSchema>;
 
 /** Historical seed values remain readable but cannot be newly configured. */
 export const LegacyWebhookEventTypeSchema = z.enum([
+  'interview.completed',
   'session.completed',
   'session.abandoned',
   'participant.enrolled',

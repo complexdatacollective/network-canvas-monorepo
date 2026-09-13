@@ -43,6 +43,14 @@ export class WebhookSecretChangedError extends Error {
   }
 }
 
+/** The delivery authority remains valid, but this worker no longer owns it. */
+export class WebhookDeliveryLeaseLostError extends Error {
+  constructor() {
+    super('webhook delivery lease lost');
+    this.name = 'WebhookDeliveryLeaseLostError';
+  }
+}
+
 export async function selectWebhookCiphertext(
   client: pg.PoolClient,
   teamId: string,
@@ -195,8 +203,9 @@ async function readWebhookSecretWithSnapshot(
                   authority.leaseOwner,
                 ],
               );
-              if (current.state !== 'active' || lease.rowCount !== 1)
-                throw new ProtectedDataError();
+              if (current.state !== 'active') throw new ProtectedDataError();
+              if (lease.rowCount !== 1)
+                throw new WebhookDeliveryLeaseLostError();
             }
             read();
             return {

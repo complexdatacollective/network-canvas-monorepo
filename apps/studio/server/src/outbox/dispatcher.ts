@@ -46,7 +46,14 @@ export type OutboxAdapter<Claim extends OutboxClaim> = {
     /** Aborts when this process can no longer prove lease ownership. */
     signal?: AbortSignal,
   ): Promise<void | 'suppressed'>;
-  failureDisposition(error: unknown): 'retryable' | 'permanent' | 'uncertain';
+  failureDisposition(
+    error: unknown,
+  ):
+    | 'retryable'
+    | 'retryable-without-attempt'
+    | 'permanent'
+    | 'uncertain'
+    | 'lease-lost';
   /**
    * Override only when a successful deliver() made no external or otherwise
    * non-idempotent handoff. The conservative default is durable uncertainty.
@@ -234,12 +241,16 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
     } catch (error) {
       const ownsLease = await heartbeat.stop();
       const disposition = this.adapter.failureDisposition(error);
+      if (disposition === 'lease-lost') {
+        result.leaseLost = 1;
+        return result;
+      }
       if (disposition === 'uncertain') {
         // A failed renewal does not prove another worker owns the row. This
         // compare-and-set cannot overwrite a replacement owner and can retain
         // ambiguity after a transient database error has recovered.
         if (await this.adapter.recordUncertain(claim, this.lease, error))
-          result.uncertain = 1;
+          result.uncertain += 1;
         else result.leaseLost = 1;
         return result;
       }
@@ -248,9 +259,12 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
         return result;
       }
       const retryDelay =
-        disposition === 'permanent' || claim.attemptCount >= this.maxAttempts
-          ? null
-          : this.retryDelayMs(claim.attemptCount);
+        disposition === 'retryable-without-attempt'
+          ? 0
+          : disposition === 'permanent' ||
+              claim.attemptCount >= this.maxAttempts
+            ? null
+            : this.retryDelayMs(claim.attemptCount);
       if (
         await this.adapter.recordFailure(claim, this.lease, error, retryDelay)
       ) {
@@ -304,7 +318,7 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
     if (
       await this.adapter.recordUncertain(claim, this.lease, completionError)
     ) {
-      result.uncertain = 1;
+      result.uncertain += 1;
     } else {
       result.leaseLost = 1;
     }

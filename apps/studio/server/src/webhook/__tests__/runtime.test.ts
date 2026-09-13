@@ -199,10 +199,10 @@ describe('webhook runtime', () => {
   });
 
   it('matches the Node lookup callback shape and normalizes IPv6 URL literals', async () => {
-    const pinnedLookup = createPinnedLookup({
-      address: '2606:4700:4700::1111',
-      family: 6,
-    });
+    const pinnedLookup = createPinnedLookup([
+      { address: '2606:4700:4700::1111', family: 6 },
+      { address: '8.8.8.8', family: 4 },
+    ]);
     await expect(
       new Promise((resolve, reject) => {
         pinnedLookup('ignored.example', { all: true }, (error, addresses) => {
@@ -210,7 +210,10 @@ describe('webhook runtime', () => {
           else resolve(addresses);
         });
       }),
-    ).resolves.toEqual([{ address: '2606:4700:4700::1111', family: 6 }]);
+    ).resolves.toEqual([
+      { address: '2606:4700:4700::1111', family: 6 },
+      { address: '8.8.8.8', family: 4 },
+    ]);
     expect(normalizeDnsHostname('[2606:4700:4700::1111]')).toBe(
       '2606:4700:4700::1111',
     );
@@ -403,15 +406,30 @@ describe('webhook runtime', () => {
       const subscriptionId = await addSubscription(fixture);
       await fixture.scratch.pool.query(
         `UPDATE webhook_subscriptions
-         SET event_types = ARRAY['session.completed', 'study.created']
+         SET event_types = ARRAY['interview.completed', 'session.completed', 'study.created']
          WHERE id = $1`,
         [subscriptionId],
       );
       await expect(
         listWebhookSubscriptions(fixture.context),
       ).resolves.toMatchObject([
-        { eventTypes: ['session.completed', 'study.created'] },
+        {
+          eventTypes: [
+            'interview.completed',
+            'session.completed',
+            'study.created',
+          ],
+        },
       ]);
+      expect(
+        CreateWebhookSubscriptionInputSchema.safeParse({
+          teamId: fixture.context.tenantDb.teamId,
+          subscriptionId: randomUUID(),
+          url: 'https://hooks.example.org/new',
+          eventTypes: ['interview.completed'],
+          secret,
+        }).success,
+      ).toBe(false);
     });
   });
 
@@ -813,6 +831,7 @@ describe('webhook runtime', () => {
         encryptionKeys: fixture.keys,
         retryBaseMs: 0,
         retryMaxMs: 0,
+        maxAttempts: 1,
         leaseMs: 5_000,
         handoff: async (pool, claim, snapshot) => {
           if (rotateBeforeFirstHandoff) {
@@ -844,6 +863,69 @@ describe('webhook runtime', () => {
           .update(`${request.id}.${request.timestamp}.${request.body}`)
           .digest('base64')}`,
       );
+      expect(
+        (
+          await fixture.scratch.pool.query<{ attempt_count: number }>(
+            'SELECT attempt_count FROM webhook_deliveries',
+          )
+        ).rows,
+      ).toEqual([{ attempt_count: 1 }]);
+    });
+  });
+
+  it('keeps a delivery recoverable when its lease expires during the audited secret read', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await enqueue(fixture);
+      const adapter = new WebhookDeliveryAdapter({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+      });
+      const lease = { owner: randomUUID(), durationMs: 40 };
+      const claim = await adapter.claim(lease, 3);
+      if (!claim) throw new Error('expected delivery claim');
+      const blocker = await fixture.scratch.pool.connect();
+      try {
+        await blocker.query('BEGIN');
+        await blocker.query(
+          'SELECT id FROM webhook_subscriptions WHERE id = $1 FOR UPDATE',
+          [subscriptionId],
+        );
+        const delivery = adapter.deliver(claim);
+        await expect
+          .poll(async () => {
+            const result = await fixture.scratch.pool.query<{
+              waiting: boolean;
+            }>(
+              `SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND query LIKE '%secret_ciphertext%FOR UPDATE%') AS waiting`,
+            );
+            return result.rows[0]?.waiting;
+          })
+          .toBe(true);
+        await delay(60);
+        await blocker.query('COMMIT');
+        await expect(delivery).rejects.toThrow('webhook delivery lease lost');
+        await expect(adapter.suppressClaim(claim, lease)).resolves.toBe(false);
+      } finally {
+        await blocker.query('ROLLBACK').catch(() => undefined);
+        blocker.release();
+      }
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT delivered_at, failed_at, uncertain_at, last_error
+             FROM webhook_deliveries WHERE id = $1`,
+            [claim.id],
+          )
+        ).rows,
+      ).toEqual([
+        {
+          delivered_at: null,
+          failed_at: null,
+          uncertain_at: null,
+          last_error: null,
+        },
+      ]);
     });
   });
 

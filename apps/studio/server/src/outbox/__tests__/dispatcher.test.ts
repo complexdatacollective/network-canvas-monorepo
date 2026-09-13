@@ -128,6 +128,31 @@ describe('shared outbox execution', () => {
     },
   );
 
+  it('accumulates a live uncertain result after reconciling expired uncertainty', async () => {
+    const work = adapter();
+    work.reconcileExpiredUncertainLeases.mockResolvedValue(2);
+    work.deliver.mockRejectedValue(new Error('ambiguous provider handoff'));
+    work.failureDisposition.mockReturnValue('uncertain');
+
+    await expect(
+      new OutboxDispatcher({ pool, adapter: work }).runOnce(),
+    ).resolves.toMatchObject({ uncertain: 3 });
+  });
+
+  it('reports an adapter-classified lease loss without mutating the claim', async () => {
+    const work = adapter();
+    const error = new Error('lease expired during protected read');
+    work.deliver.mockRejectedValue(error);
+    work.failureDisposition.mockReturnValue('lease-lost');
+
+    await expect(
+      new OutboxDispatcher({ pool, adapter: work }).runOnce(),
+    ).resolves.toMatchObject({ leaseLost: 1, failed: 0, retried: 0 });
+    expect(work.recordFailure).not.toHaveBeenCalled();
+    expect(work.recordUncertain).not.toHaveBeenCalled();
+    expect(work.suppressClaim).not.toHaveBeenCalled();
+  });
+
   it('refuses a non-maintenance role before touching work', async () => {
     vi.mocked(pool.query).mockImplementation(async () => ({
       rows: [{ role: TENANT_ROLES.app }],

@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
-import { request } from 'node:https';
+import { request, type RequestOptions } from 'node:https';
 import type { LookupFunction } from 'node:net';
 
 import ipaddr from 'ipaddr.js';
@@ -29,6 +29,7 @@ import type { EncryptionKeys } from '../pii/keys.ts';
 import { ProtectedDataError } from '../pii/protection.ts';
 import {
   readWebhookSecretForDelivery,
+  WebhookDeliveryLeaseLostError,
   WebhookSecretChangedError,
   type WebhookSecretRead,
 } from '../pii/webhooks.ts';
@@ -116,7 +117,7 @@ type AddressLookup = (
   options: { all: true; verbatim: true },
 ) => Promise<{ address: string; family: number }[]>;
 
-async function resolvePublicAddress(
+async function resolvePublicAddresses(
   hostname: string,
   lookupAddress: AddressLookup,
 ) {
@@ -129,7 +130,7 @@ async function resolvePublicAddress(
     addresses.some(({ address }) => !isPublicAddress(address))
   )
     throw new WebhookDeliveryError('permanent');
-  return addresses[0]!;
+  return addresses;
 }
 
 export function normalizeDnsHostname(hostname: string): string {
@@ -138,17 +139,24 @@ export function normalizeDnsHostname(hostname: string): string {
     : hostname;
 }
 
-export function createPinnedLookup(pinned: {
-  address: string;
-  family: number;
-}): LookupFunction {
-  const family = pinned.family === 6 ? 6 : 4;
+export function createPinnedLookup(
+  pinned: readonly { address: string; family: number }[],
+): LookupFunction {
+  const addresses = pinned.map(({ address, family }) => ({
+    address,
+    family: family === 6 ? (6 as const) : (4 as const),
+  }));
   return (_hostname, options, callback) => {
     if (typeof options === 'object' && options.all) {
-      callback(null, [{ address: pinned.address, family }]);
+      callback(null, addresses);
       return;
     }
-    callback(null, pinned.address, family);
+    const first = addresses[0];
+    if (!first) {
+      callback(new Error('pinned DNS answer is empty'), '', 4);
+      return;
+    }
+    callback(null, first.address, first.family);
   };
 }
 
@@ -175,7 +183,7 @@ export function createStandardWebhookSender(
         url.hash !== ''
       )
         throw new WebhookDeliveryError('permanent');
-      let pinned: Awaited<ReturnType<typeof resolvePublicAddress>>;
+      let pinned: Awaited<ReturnType<typeof resolvePublicAddresses>>;
       try {
         pinned = await new Promise((resolve, reject) => {
           const timer = setTimeout(
@@ -183,7 +191,7 @@ export function createStandardWebhookSender(
             timeoutMs,
           );
           timer.unref();
-          void resolvePublicAddress(url.hostname, lookupAddress).then(
+          void resolvePublicAddresses(url.hostname, lookupAddress).then(
             (address) => {
               clearTimeout(timer);
               resolve(address);
@@ -211,28 +219,30 @@ export function createStandardWebhookSender(
           clearTimeout(timer);
           work();
         };
-        const outgoing = request(
-          url,
-          {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-              'content-length': Buffer.byteLength(input.body),
-              'webhook-id': input.id,
-              'webhook-timestamp': input.timestamp,
-              'webhook-signature': input.signature,
-            },
-            lookup: createPinnedLookup(pinned),
+        // Node forwards this net.connect option even though older @types/node
+        // RequestOptions declarations omit it.
+        const requestOptions: RequestOptions & { autoSelectFamily: boolean } = {
+          method: 'POST',
+          // Never reuse a socket that predates this request's validated answer.
+          agent: false,
+          headers: {
+            'content-type': 'application/json',
+            'content-length': Buffer.byteLength(input.body),
+            'webhook-id': input.id,
+            'webhook-timestamp': input.timestamp,
+            'webhook-signature': input.signature,
           },
-          (response) => {
-            try {
-              const status = consumeWebhookResponse(response);
-              settle(() => resolve(status));
-            } catch (error) {
-              settle(() => reject(error));
-            }
-          },
-        );
+          lookup: createPinnedLookup(pinned),
+          autoSelectFamily: true,
+        };
+        const outgoing = request(url, requestOptions, (response) => {
+          try {
+            const status = consumeWebhookResponse(response);
+            settle(() => resolve(status));
+          } catch (error) {
+            settle(() => reject(error));
+          }
+        });
         timer = setTimeout(
           () => outgoing.destroy(new WebhookDeliveryError('retryable')),
           remainingMs,
@@ -256,6 +266,12 @@ type Options = OutboxRetryOptions & {
 };
 
 class LeaseLostError extends Error {}
+class WebhookSecretSnapshotRetryError extends WebhookDeliveryError {
+  constructor() {
+    super('retryable');
+    this.name = 'WebhookSecretSnapshotRetryError';
+  }
+}
 
 export type WebhookHandoffResult =
   | 'handed-off'
@@ -388,6 +404,9 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
   }
 
   failureDisposition(error: unknown) {
+    if (error instanceof LeaseLostError) return 'lease-lost';
+    if (error instanceof WebhookSecretSnapshotRetryError)
+      return 'retryable-without-attempt';
     if (!(error instanceof WebhookDeliveryError)) return 'retryable';
     return error.disposition === 'uncertain' ? 'retryable' : error.disposition;
   }
@@ -558,7 +577,7 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
         secretRead.snapshot,
       );
       if (handoff === 'suppressed') return 'suppressed';
-      if (handoff === 'retry') throw new WebhookDeliveryError('retryable');
+      if (handoff === 'retry') throw new WebhookSecretSnapshotRetryError();
       if (handoff === 'lease-lost') throw new LeaseLostError();
       const body = JSON.stringify(payload, Object.keys(payload).toSorted());
       const timestamp = String(Math.floor(Date.now() / 1000));
@@ -584,7 +603,9 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
       );
     } catch (error) {
       if (error instanceof WebhookSecretChangedError)
-        throw new WebhookDeliveryError('retryable');
+        throw new WebhookSecretSnapshotRetryError();
+      if (error instanceof WebhookDeliveryLeaseLostError)
+        throw new LeaseLostError('webhook delivery lease lost');
       if (error instanceof ProtectedDataError) return 'suppressed';
       if (error instanceof LeaseLostError) throw error;
       if (error instanceof WebhookDeliveryError) throw error;
@@ -604,13 +625,15 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
       error instanceof WebhookDeliveryError ? error.statusCode : null;
     if (retryDelayMs === null)
       return this.finishTerminal(claim, 'failed', status, 'owned');
+    const withoutAttempt = error instanceof WebhookSecretSnapshotRetryError;
     const retried = await this.options.pool.query(
       `UPDATE webhook_deliveries
        SET send_started_at = NULL, lease_owner = NULL, lease_expires_at = NULL,
            available_at = clock_timestamp() + make_interval(secs => $3::float / 1000),
+           attempt_count = attempt_count - $5,
            last_status_code = $4, last_error = 'delivery_retryable'
        WHERE ${OWNED}`,
-      [claim.id, lease.owner, retryDelayMs, status],
+      [claim.id, lease.owner, retryDelayMs, status, withoutAttempt ? 1 : 0],
     );
     return retried.rowCount === 1;
   }
@@ -743,7 +766,8 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
            lease_owner = NULL, lease_expires_at = NULL,
            last_status_code = $4,
            last_error = CASE WHEN $3 = 'delivered' THEN NULL ELSE 'delivery_' || $3 END
-       WHERE id = $1 AND lease_owner = $2 AND ${PENDING}`,
+       WHERE id = $1 AND lease_owner = $2 AND ${PENDING}
+         AND ($3 <> 'suppressed' OR lease_expires_at > statement_timestamp())`,
       [deliveryId, leaseOwner, outcome, statusCode],
     );
   }
