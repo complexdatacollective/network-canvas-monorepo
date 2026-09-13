@@ -1,0 +1,95 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/timing-runtime-review/packages/interview
+
+ ❯ |units| src/store/modules/__tests__/sessionTiming.test.ts (1 test | 1 failed) 27ms
+     × retains at most 10,000 recent exits and keeps the total consistent 21ms
+ ❯ |units| src/analytics/__tests__/useStageNavigationAnalytics.test.tsx (10 tests | 1 failed) 42ms
+     × refreshes the stored total whenever FinishSession is revisited 4ms
+ ❯ |units| src/__tests__/Shell.sync-flush.test.tsx (4 tests | 1 failed) 49ms
+     × records each hidden interval as abandoned before flushing it 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |units| src/__tests__/Shell.sync-flush.test.tsx > Shell sync flushes > records each hidden interval as abandoned before flushing it
+AssertionError: expected last "vi.fn()" call to have been called with [ 'session-1', …(2) ]
+
+- Expected:
+[
+  "session-1",
+  ObjectContaining {
+    "stageTiming": ObjectContaining {
+      "stageExits": [
+        ObjectContaining {
+          "durationMs": 100,
+          "exitDirection": "abandoned",
+          "stageIndex": 0,
+        },
+      ],
+    },
+  },
+  {
+    "immediate": true,
+    "unloading": true,
+  },
+]
+
++ Received:
+undefined
+
+ ❯ src/__tests__/Shell.sync-flush.test.tsx:193:19
+    191|     });
+    192|
+    193|     expect(write).toHaveBeenLastCalledWith(
+       |                   ^
+    194|       'session-1',
+    195|       expect.objectContaining({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |units| src/analytics/__tests__/useStageNavigationAnalytics.test.tsx > useStageNavigationAnalytics > refreshes the stored total whenever FinishSession is revisited
+AssertionError: expected 100 to be 150 // Object.is equality
+
+- Expected
++ Received
+
+- 150
++ 100
+
+ ❯ src/analytics/__tests__/useStageNavigationAnalytics.test.tsx:396:75
+    394|     rerender({ stage_index: 1, stage_type: 'FinishSession' });
+    395|
+    396|     expect(wrapper.store.getState().session.stageTiming?.totalDuration…
+       |                                                                           ^
+    397|       150,
+    398|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  |units| src/store/modules/__tests__/sessionTiming.test.ts > stage timing history > retains at most 10,000 recent exits and keeps the total consistent
+AssertionError: expected [ { stageIndex: +0, …(5) }, …(10000) ] to have a length of 10000 but got 10001
+
+- Expected
++ Received
+
+- 10000
++ 10001
+
+ ❯ src/store/modules/__tests__/sessionTiming.test.ts:40:42
+     38|     );
+     39|
+     40|     expect(next.stageTiming?.stageExits).toHaveLength(10_000);
+       |                                          ^
+     41|     expect(next.stageTiming?.promptExits).toHaveLength(10_000);
+     42|     expect(next.stageTiming?.stageExits[0]?.stageIndex).toBe(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  3 failed | 12 passed (15)
+   Start at  19:13:05
+   Duration  2.78s (transform 738ms, setup 1.22s, import 2.17s, tests 118ms, environment 1.99s)
+
+undefined
+/Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/timing-runtime-review/packages/interview:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run '--project=units' src/analytics/__tests__/useStageNavigationAnalytics.test.tsx src/__tests__/Shell.sync-flush.test.tsx src/store/modules/__tests__/sessionTiming.test.ts

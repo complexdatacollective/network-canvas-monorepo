@@ -41,4 +41,5 @@ export type {
   SyncHandler,
   SyncOptions,
 } from './types';
+export { MAX_TIMING_HISTORY_LENGTH } from './types';
 export type { ResolvedRosterAsset, ResolveRosterAsset } from './rosterData';

@@ -59,6 +59,9 @@ export type StageTimingExit = {
 /** A privacy-safe interval for one prompt within a stage. */
 export type PromptTimingExit = StageTimingExit;
 
+/** Maximum retained stage or prompt intervals in a synced session snapshot. */
+export const MAX_TIMING_HISTORY_LENGTH = 10_000;
+
 /**
  * Runtime timing accumulated in the session payload. `stageExits` is ordered
  * by observation, including abandoned final stages. Hosts must resolve the

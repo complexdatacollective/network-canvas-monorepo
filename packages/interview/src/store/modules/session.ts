@@ -22,6 +22,7 @@ import type {
   StageTimingExit,
   StageTimingPayload,
 } from '../../contract/types';
+import { MAX_TIMING_HISTORY_LENGTH } from '../../contract/types';
 import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
 import {
   makeGetCodebookVariablesForEdgeType,
@@ -933,18 +934,27 @@ const sessionReducer = createReducer(initialState, (builder) => {
   builder.addCase(recordStageTiming, (state, action) => {
     const { promptExit, stageExit, totalDurationMs } = action.payload;
     const previous = state.stageTiming ?? { stageExits: [], promptExits: [] };
+    const stageExits = stageExit
+      ? [...previous.stageExits, stageExit].slice(-MAX_TIMING_HISTORY_LENGTH)
+      : previous.stageExits;
+    const promptExits = promptExit
+      ? [...(previous.promptExits ?? []), promptExit].slice(
+          -MAX_TIMING_HISTORY_LENGTH,
+        )
+      : (previous.promptExits ?? []);
+    const preserveTotal =
+      totalDurationMs !== undefined || previous.totalDurationMs !== undefined;
     const stageTiming: StageTimingPayload = {
-      stageExits: stageExit
-        ? [...previous.stageExits, stageExit]
-        : previous.stageExits,
-      promptExits: promptExit
-        ? [...(previous.promptExits ?? []), promptExit]
-        : (previous.promptExits ?? []),
-      ...(totalDurationMs === undefined
-        ? previous.totalDurationMs === undefined
-          ? {}
-          : { totalDurationMs: previous.totalDurationMs }
-        : { totalDurationMs }),
+      stageExits,
+      promptExits,
+      ...(preserveTotal
+        ? {
+            totalDurationMs: stageExits.reduce(
+              (sum, exit) => sum + exit.durationMs,
+              0,
+            ),
+          }
+        : {}),
     };
 
     return withLastUpdated({ ...state, stageTiming });

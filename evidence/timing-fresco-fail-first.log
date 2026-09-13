@@ -1,0 +1,36 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/timing-runtime-review/apps/fresco
+
+ ❯ |units| app/(interview)/interview/[interviewId]/sync/__tests__/route.test.ts (11 tests | 1 failed) 19ms
+     × rejects timing whose stage type disagrees with the pinned protocol 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |units| app/(interview)/interview/[interviewId]/sync/__tests__/route.test.ts > interview sync route > rejects timing whose stage type disagrees with the pinned protocol
+AssertionError: expected 200 to be 400 // Object.is equality
+
+- Expected
++ Received
+
+- 400
++ 200
+
+ ❯ app/(interview)/interview/[interviewId]/sync/__tests__/route.test.ts:231:29
+    229|     );
+    230|
+    231|     expect(response.status).toBe(400);
+       |                             ^
+    232|     expect(updateManyMock).not.toHaveBeenCalled();
+    233|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  19:13:24
+   Duration  714ms (transform 46ms, setup 158ms, import 79ms, tests 19ms, environment 315ms)
+
+undefined
+/Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/timing-runtime-review/apps/fresco:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run '--project=units' 'app/(interview)/interview/[interviewId]/sync/__tests__/route.test.ts'

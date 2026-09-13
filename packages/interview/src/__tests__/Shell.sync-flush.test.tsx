@@ -178,6 +178,70 @@ describe('Shell sync flushes', () => {
     expect(write.mock.calls.length).toBe(callsBefore);
   });
 
+  it('records each hidden interval as abandoned before flushing it', async () => {
+    const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
+    const { write, onSync } = makeBatchingHost();
+    renderShell(onSync);
+
+    now.mockReturnValue(1100);
+    setVisibility('hidden');
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(write).toHaveBeenLastCalledWith(
+      'session-1',
+      expect.objectContaining({
+        stageTiming: expect.objectContaining({
+          stageExits: [
+            expect.objectContaining({
+              stageIndex: 0,
+              durationMs: 100,
+              exitDirection: 'abandoned',
+            }),
+          ],
+        }),
+      }),
+      { immediate: true, unloading: true },
+    );
+
+    now.mockReturnValue(1200);
+    setVisibility('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    now.mockReturnValue(1250);
+    setVisibility('hidden');
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    const lastSession = write.mock.calls.at(-1)?.[1];
+    expect(lastSession?.stageTiming?.stageExits).toEqual([
+      expect.objectContaining({ durationMs: 100, exitDirection: 'abandoned' }),
+      expect.objectContaining({ durationMs: 50, exitDirection: 'abandoned' }),
+    ]);
+  });
+
+  it('records abandonment before the pagehide flush', async () => {
+    const now = vi.spyOn(performance, 'now').mockReturnValue(2000);
+    const { write, onSync } = makeBatchingHost();
+    renderShell(onSync);
+
+    now.mockReturnValue(2075);
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'));
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(write.mock.calls.at(-1)?.[1].stageTiming?.stageExits).toEqual([
+      expect.objectContaining({
+        durationMs: 75,
+        exitDirection: 'abandoned',
+      }),
+    ]);
+  });
+
   it('hands an unwritten answer to onSync when the Shell unmounts', async () => {
     const { write, onSync } = makeBatchingHost();
     const view = renderShell(onSync);

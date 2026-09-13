@@ -23,6 +23,10 @@ import { ThemedRegion } from '@codaco/fresco-ui/ThemedRegion';
 import { cx } from '@codaco/fresco-ui/utils/cva';
 
 import { AnalyticsProvider } from './analytics/AnalyticsProvider';
+import {
+  abandonStageTimingBeforeFlush,
+  resumeStageTimingAfterVisibility,
+} from './analytics/stageTimingLifecycle';
 import { NULL_TRACKER, type Tracker } from './analytics/tracker';
 import { useStageNavigationAnalytics } from './analytics/useStageNavigationAnalytics';
 import { GeospatialOfflineIndicator } from './components/GeospatialOfflineIndicator';
@@ -467,15 +471,28 @@ const Shell = ({
     if (typeof document === 'undefined') return undefined;
     const flushIfHidden = () => {
       if (document.visibilityState === 'hidden') {
+        // This dispatch must finish before flushSync reads the store. React
+        // cleanup is not guaranteed to run when a tab is suspended or closed.
+        abandonStageTimingBeforeFlush(reduxStore);
         void reduxStore.flushSync({ unloading: true });
+      } else {
+        resumeStageTimingAfterVisibility(reduxStore);
       }
     };
-    const flushNow = () => void reduxStore.flushSync({ unloading: true });
+    const flushNow = () => {
+      // pagehide dispatch is synchronous for the same reason: the flush must
+      // contain the terminal interval in the snapshot it hands to the host.
+      abandonStageTimingBeforeFlush(reduxStore);
+      void reduxStore.flushSync({ unloading: true });
+    };
+    const resume = () => resumeStageTimingAfterVisibility(reduxStore);
     document.addEventListener('visibilitychange', flushIfHidden);
     window.addEventListener('pagehide', flushNow);
+    window.addEventListener('pageshow', resume);
     return () => {
       document.removeEventListener('visibilitychange', flushIfHidden);
       window.removeEventListener('pagehide', flushNow);
+      window.removeEventListener('pageshow', resume);
     };
   }, [reduxStore]);
 
