@@ -144,10 +144,10 @@ describe('Studio Registry forms', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps a successful link successful when the account refresh fails', async () => {
+  it('shows a linked publisher without waiting for a hung account refresh', async () => {
     const invalidateQueries = vi
       .spyOn(QueryClient.prototype, 'invalidateQueries')
-      .mockRejectedValueOnce(new Error('account-refresh-failed'));
+      .mockImplementationOnce(() => new Promise(() => undefined));
     calls.registry.mockImplementation(async () => {
       return { origin, link: null };
     });
@@ -161,6 +161,9 @@ describe('Studio Registry forms', () => {
     );
     expect(
       await screen.findByText('The Registry publisher identity was linked.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Linked as Publisher Researcher/),
     ).toBeInTheDocument();
     expect(screen.queryByDisplayValue(credential)).toBeNull();
     expect(invalidateQueries).toHaveBeenCalledTimes(1);
@@ -186,6 +189,10 @@ describe('Studio Registry forms', () => {
     expect(
       await screen.findByText('The template version was published.'),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Published by Publisher Researcher/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Published' })).toBeDisabled();
     expect(calls.publish.mock.calls[0]?.[0]).toEqual({
       teamId: 'team-a',
       versionId,

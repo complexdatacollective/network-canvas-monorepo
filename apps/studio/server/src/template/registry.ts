@@ -76,6 +76,14 @@ function translateRegistryError(error: unknown): never {
   throw error;
 }
 
+function cancelWithoutWaiting(cancel: () => Promise<unknown>): void {
+  try {
+    void cancel().catch(() => undefined);
+  } catch {
+    // A broken object-store stream cannot delay the fixed command failure.
+  }
+}
+
 async function requireLockedAdministrator(
   client: pg.PoolClient,
   context: AuditedCommandContext,
@@ -111,7 +119,7 @@ async function streamBytes(
     complete = true;
     return bytes;
   } finally {
-    if (!complete) await reader.cancel().catch(() => undefined);
+    if (!complete) cancelWithoutWaiting(async () => await reader.cancel());
     try {
       reader.releaseLock();
     } catch {
@@ -178,6 +186,8 @@ async function loadArtifactInput(
       ORDER BY a.original_filename`,
     [teamId, versionId],
   );
+  if (assetRows.rows.length > TEMPLATE_ARTIFACT_LIMITS.assets)
+    throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
   let assetBytes = 0;
   const boundedAssets: Array<
     Omit<(typeof assetRows.rows)[number], 'byte_size'> & { byte_size: number }
@@ -202,7 +212,7 @@ async function loadArtifactInput(
       (stored.size !== undefined && stored.size !== asset.byte_size) ||
       stored.mediaType !== asset.media_type
     ) {
-      await stored.body.cancel().catch(() => undefined);
+      cancelWithoutWaiting(async () => await stored.body.cancel());
       throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
     }
     const bytes = await streamBytes(stored.body, asset.byte_size);

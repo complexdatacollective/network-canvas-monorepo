@@ -68,6 +68,17 @@ const shapes = {
     pending: 'stale_at IS NOT NULL',
     available: 'stale_at',
   },
+  template_registry_intents: {
+    table: `(SELECT available_at, lease_expires_at, completed_at, quarantined_at
+      FROM template_registry_publication_intents
+      UNION ALL
+      SELECT available_at, lease_expires_at, completed_at, quarantined_at
+      FROM template_registry_import_intents) template_registry_intents`,
+    pending: 'completed_at IS NULL AND quarantined_at IS NULL',
+    available: 'available_at',
+    lease: 'lease_expires_at',
+    suppressed: 'quarantined_at',
+  },
 } satisfies Record<OutboxQueue, QueueShape>;
 
 const count = (condition: string | undefined) =>

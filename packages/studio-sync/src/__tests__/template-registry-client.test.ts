@@ -81,6 +81,16 @@ function entry(root: string, overrides: Record<string, unknown> = {}) {
   };
 }
 
+function entrySummary(root: string, overrides: Record<string, unknown> = {}) {
+  const {
+    metadata: _metadata,
+    artifact_url: _artifactUrl,
+    report_url: _reportUrl,
+    ...summary
+  } = entry(root, overrides);
+  return summary;
+}
+
 function jsonResponse(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), {
     status,
@@ -149,6 +159,63 @@ describe('TemplateRegistryClient', () => {
       true,
     );
     expect(seen.every((request) => request.redirect === 'manual')).toBe(true);
+  });
+
+  it('finds an accepted publication by its exact public root and publisher identity', async () => {
+    const built = await createTemplateArtifact(fixture());
+    const root = built.artifact.manifest.merkle_root;
+    const seen: Request[] = [];
+    const client = new TemplateRegistryClient({
+      origin: ORIGIN,
+      fetch: async (input, init) => {
+        const request = new Request(input, init);
+        seen.push(request);
+        return jsonResponse({
+          data: [entrySummary(root)],
+          next_cursor: null,
+          has_more: false,
+        });
+      },
+    });
+    await expect(client.findEntry(root, PUBLISHER_ID)).resolves.toMatchObject({
+      id: ENTRY_ID,
+      root,
+      publisher: { id: PUBLISHER_ID },
+    });
+    expect(seen).toHaveLength(1);
+    const url = new URL(seen[0]!.url);
+    expect(url.pathname).toBe('/api/v1/entries');
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      root,
+      publisher_id: PUBLISHER_ID,
+      limit: '2',
+    });
+    expect(seen[0]!.headers.has('authorization')).toBe(false);
+  });
+
+  it('rejects a mismatched or ambiguous exact publication lookup', async () => {
+    const built = await createTemplateArtifact(fixture());
+    const root = built.artifact.manifest.merkle_root;
+    for (const page of [
+      {
+        data: [entrySummary('b'.repeat(64))],
+        next_cursor: null,
+        has_more: false,
+      },
+      {
+        data: [entrySummary(root), entrySummary(root)],
+        next_cursor: 'more',
+        has_more: true,
+      },
+    ]) {
+      const client = new TemplateRegistryClient({
+        origin: ORIGIN,
+        fetch: async () => jsonResponse(page),
+      });
+      await expect(client.findEntry(root, PUBLISHER_ID)).rejects.toMatchObject({
+        code: 'TEMPLATE_REGISTRY_RESPONSE_INVALID',
+      });
+    }
   });
 
   it('publishes a locally verified artifact with one explicit Registry credential', async () => {

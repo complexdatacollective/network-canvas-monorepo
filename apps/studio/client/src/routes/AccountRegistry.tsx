@@ -66,7 +66,8 @@ const messages = defineMessages({
 export default function AccountRegistry() {
   const intl = useAppIntl();
   const queryClient = useQueryClient();
-  const status = useQuery(orpc.account.registry.queryOptions());
+  const registryQuery = orpc.account.registry.queryOptions();
+  const status = useQuery(registryQuery);
   const [linkedNotice, setLinkedNotice] = useState(false);
   return (
     <div className="tablet-portrait:p-8 mx-auto flex w-full max-w-3xl flex-col gap-6 p-4">
@@ -111,11 +112,11 @@ export default function AccountRegistry() {
                 const linked = await rpcClient.account.linkRegistry({
                   credential,
                 });
-                queryClient.setQueryData(orpc.account.registry.key(), linked);
+                queryClient.setQueryData(registryQuery.queryKey, linked);
                 setLinkedNotice(true);
                 void queryClient
                   .invalidateQueries({
-                    queryKey: orpc.account.registry.key(),
+                    queryKey: registryQuery.queryKey,
                   })
                   .catch(() => undefined);
                 return { success: true };

@@ -176,12 +176,13 @@ function TeamTemplates({
   const intl = useAppIntl();
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState<string | null>(null);
-  const templates = useQuery(
-    orpc.templates.list.queryOptions({ input: { teamId } }),
-  );
+  const templatesQuery = orpc.templates.list.queryOptions({
+    input: { teamId },
+  });
+  const templates = useQuery(templatesQuery);
   const refresh = () =>
     queryClient.invalidateQueries({
-      queryKey: orpc.templates.list.key({ input: { teamId } }),
+      queryKey: templatesQuery.queryKey,
     });
   return (
     <>
@@ -302,27 +303,25 @@ function TeamTemplates({
                         });
                         queryClient.setQueryData<
                           Awaited<ReturnType<typeof rpcClient.templates.list>>
-                        >(
-                          orpc.templates.list.key({ input: { teamId } }),
-                          (current) =>
-                            current?.map((candidate) =>
-                              candidate.versionId === template.versionId &&
-                              !candidate.publications.some(
-                                (publication) =>
-                                  publication.registryUrl ===
-                                    result.publication.registryUrl &&
-                                  publication.entryId ===
-                                    result.publication.entryId,
-                              )
-                                ? {
-                                    ...candidate,
-                                    publications: [
-                                      ...candidate.publications,
-                                      result.publication,
-                                    ],
-                                  }
-                                : candidate,
-                            ),
+                        >(templatesQuery.queryKey, (current) =>
+                          current?.map((candidate) =>
+                            candidate.versionId === template.versionId &&
+                            !candidate.publications.some(
+                              (publication) =>
+                                publication.registryUrl ===
+                                  result.publication.registryUrl &&
+                                publication.entryId ===
+                                  result.publication.entryId,
+                            )
+                              ? {
+                                  ...candidate,
+                                  publications: [
+                                    ...candidate.publications,
+                                    result.publication,
+                                  ],
+                                }
+                              : candidate,
+                          ),
                         );
                         setNotice(
                           intl.formatMessage(

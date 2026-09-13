@@ -9,6 +9,7 @@ import {
   createTemplateArtifact,
   readTemplateArtifact,
   templateBytesHash,
+  TEMPLATE_ARTIFACT_LIMITS,
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
   type TemplateArtifactInput,
 } from '@codaco/studio-sync/template-exchange';
@@ -247,6 +248,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
   async function seedPublication(
     teamId: string,
     input: TemplateArtifactInput = fixture(),
+    extraAssetCount = 0,
   ) {
     const userId = `${teamId}-admin`;
     const templateId = randomUUID();
@@ -325,6 +327,24 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
             (team_id, asset_hash, referrer_kind, referrer_id)
            VALUES ($1, $2, 'template_version', $3)`,
           [teamId, asset.hash, versionId],
+        );
+      }
+      for (let index = 0; index < extraAssetCount; index += 1) {
+        const hash = createHash('sha256')
+          .update(`extra-asset-${index}`)
+          .digest('hex');
+        await client.query(
+          `INSERT INTO assets
+            (team_id, hash, media_type, media_class, byte_size, original_filename,
+             origin, uploaded_by_user_id)
+           VALUES ($1, $2, 'image/png', 'image', 1, $3, 'upload', $4)`,
+          [teamId, hash, `extra-${index}.png`, userId],
+        );
+        await client.query(
+          `INSERT INTO asset_references
+            (team_id, asset_hash, referrer_kind, referrer_id)
+           VALUES ($1, $2, 'template_version', $3)`,
+          [teamId, hash, versionId],
         );
       }
       await client.query('COMMIT');
@@ -498,6 +518,73 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     ).rejects.toMatchObject({ code: 'STORAGE_UNAVAILABLE' });
     expect(canceled).toBe(true);
     expect(requests).toBe(0);
+  });
+
+  it('rejects too many referenced assets before opening object streams', async () => {
+    const seeded = await seedPublication(
+      'registry-asset-count',
+      fixture(),
+      TEMPLATE_ARTIFACT_LIMITS.assets + 1,
+    );
+    let reads = 0;
+    const unopenedStore: AssetStore = {
+      checkHealth: async () => undefined,
+      put: async () => {
+        throw new Error('unexpected asset write');
+      },
+      get: async () => {
+        reads += 1;
+        throw new Error('object streams must not be opened');
+      },
+    };
+    await expect(
+      publishTemplateVersion(
+        seeded.context,
+        {
+          origin: ORIGIN,
+          assetStore: unopenedStore,
+          client: registryClient({}),
+        },
+        { versionId: seeded.versionId, credential: CREDENTIAL },
+      ),
+    ).rejects.toMatchObject({ code: 'STORAGE_UNAVAILABLE' });
+    expect(reads).toBe(0);
+  });
+
+  it('does not await a broken object-stream cancellation', async () => {
+    const seeded = await seedPublication(
+      'registry-asset-cancel',
+      importFixture(),
+    );
+    const brokenStore: AssetStore = {
+      checkHealth: async () => undefined,
+      put: async () => {
+        throw new Error('unexpected asset write');
+      },
+      get: async () => ({
+        body: new ReadableStream({
+          cancel: () => new Promise<void>(() => undefined),
+        }),
+        mediaType: 'application/octet-stream',
+        size: png.byteLength,
+      }),
+    };
+    await expect(
+      Promise.race([
+        publishTemplateVersion(
+          seeded.context,
+          {
+            origin: ORIGIN,
+            assetStore: brokenStore,
+            client: registryClient({}),
+          },
+          { versionId: seeded.versionId, credential: CREDENTIAL },
+        ),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('TEST_DEADLINE_MISSED')), 250),
+        ),
+      ]),
+    ).rejects.toMatchObject({ code: 'STORAGE_UNAVAILABLE' });
   });
 
   it('finishes each bounded asset read before opening the next object', async () => {
