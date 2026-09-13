@@ -538,6 +538,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     const authoredWaveId = randomUUID();
     const syntheticWaveId = randomUUID();
     const leasedSyntheticWaveId = randomUUID();
+    const authoredSessionId = randomUUID();
     await insert('protocols', {
       id: finishProtocolId,
       team_id: TEAM,
@@ -624,13 +625,12 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
         wave_number: waveNumber,
         protocol_version_id: finishVersionId,
       });
-    for (const [targetWaveId, currentStageIndex] of [
-      [authoredWaveId, 0],
-      [authoredWaveId, 1],
-      [syntheticWaveId, 1],
-      [leasedSyntheticWaveId, 1],
+    for (const [targetWaveId, currentStageIndex, targetSessionId] of [
+      [authoredWaveId, 0, authoredSessionId],
+      [authoredWaveId, 1, randomUUID()],
+      [syntheticWaveId, 1, randomUUID()],
+      [leasedSyntheticWaveId, 1, randomUUID()],
     ] as const) {
-      const targetSessionId = randomUUID();
       await insert('interview_sessions', {
         id: targetSessionId,
         study_id: finishStudyId,
@@ -694,6 +694,20 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     expect(leased.rows).toEqual([
       { entered_count: 0, lease_owner: 'active-stage-reader' },
     ]);
+
+    await pool.query(
+      `update interview_sessions set current_stage_index = 1 where id = $1`,
+      [authoredSessionId],
+    );
+    await expect(runMonitoringRollupOnce(maintenance)).resolves.toEqual({
+      claimed: 1,
+    });
+    const afterSyntheticTransition = await pool.query(
+      `select 1 from study_stage_rollups
+        where wave_id = $1 and stage_id = 'FinishSession'`,
+      [authoredWaveId],
+    );
+    expect(afterSyntheticTransition.rows).toEqual([]);
   });
 
   it('rejects implausible timing at the server boundary before writing', async () => {

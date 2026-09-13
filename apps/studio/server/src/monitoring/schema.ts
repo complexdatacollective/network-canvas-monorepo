@@ -209,7 +209,7 @@ BEFORE DELETE ON interview_sessions
 FOR EACH ROW EXECUTE FUNCTION enqueue_session_rollup_invalidation();
 
 CREATE OR REPLACE TRIGGER interview_sessions_rollup_invalidation_mutation
-AFTER INSERT OR UPDATE OF participant_id, status, current_stage_id, stage_timing ON interview_sessions
+AFTER INSERT OR UPDATE OF participant_id, status, current_stage_index, current_stage_id, stage_timing ON interview_sessions
 FOR EACH ROW EXECUTE FUNCTION enqueue_session_rollup_invalidation();
 
 CREATE OR REPLACE FUNCTION enqueue_node_rollup_invalidation() RETURNS trigger
