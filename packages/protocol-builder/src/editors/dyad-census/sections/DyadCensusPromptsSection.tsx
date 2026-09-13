@@ -4,10 +4,6 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 
-import CreateEdgeField, {
-  CREATE_EDGE_FIELD,
-  missingEdgeTypeIssue,
-} from '../../../fields/CreateEdgeField.tsx';
 import {
   PromptTextField,
   PromptTextPreview,
@@ -20,6 +16,10 @@ import type {
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from './censusMessages.ts';
+import EdgeTypeSection, {
+  CREATE_EDGE_FIELD,
+  missingEdgeTypeIssue,
+} from './EdgeTypeSection.tsx';
 
 /** What only a Dyad Census says; the words it shares are in `censusMessages`. */
 const messages = defineMessages({
@@ -82,7 +82,7 @@ function DyadCensusPromptEditor({ item }: RowEditorProps) {
         title={intl.formatMessage(censusMessages.promptConfigurationTitle)}
         description={intl.formatMessage(messages.promptTextDescription)}
       >
-        <CreateEdgeField
+        <EdgeTypeSection
           label={intl.formatMessage(censusMessages.edgeLabel)}
           requiredMessage={intl.formatMessage(
             censusMessages.affirmativeRequired,

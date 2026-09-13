@@ -980,6 +980,36 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
  * accepted by "Finish and Close", and then immediately marked broken by the
  * row the dialog had just closed onto.
  */
+describe('the codebook controls the rule builder does not offer', () => {
+  /**
+   * A rule is about what the protocol already collects, so there is nothing
+   * here to invent a type for — and this picker sits inside a dialog inside a
+   * dialog, where a third one would be a stack nobody can see out of. Every
+   * other mount of `EntityTypePickerField` offers to make a type and to change
+   * the one it holds; this is the one that withdraws both, exactly as
+   * Architect's does (`Query/Rules/RuleEditor.tsx:788`,
+   * `allowCreation={false}`).
+   */
+  it('offers neither making a node type nor changing the one a rule names', async () => {
+    const user = userEvent.setup();
+    renderRuleList([nodeRule('rule-a')]);
+
+    await openExistingRule(user);
+
+    // The picker itself is there, so the two readings below are about the
+    // affordances rather than about a control that never rendered.
+    expect(
+      await screen.findByRole('radiogroup', { name: 'Node type' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Create new node type' }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Edit this node type' }),
+    ).toBeNull();
+  });
+});
+
 describe('a rule the codebook has moved out from under', () => {
   it('refuses to finish a rule pointed at a type the codebook has lost', async () => {
     const user = userEvent.setup();
