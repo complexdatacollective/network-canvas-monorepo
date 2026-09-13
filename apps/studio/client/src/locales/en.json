@@ -2095,6 +2095,10 @@
     "defaultMessage": "Registry publishing credential",
     "description": "Publish credential label."
   },
+  "studio.templates.alreadyPublished": {
+    "defaultMessage": "This template version was already published.",
+    "description": "Registry publication replay announcement."
+  },
   "studio.templates.empty": {
     "defaultMessage": "This team has no local template versions.",
     "description": "Empty template list."

@@ -144,6 +144,31 @@ describe('Studio Registry forms', () => {
     ).toBeInTheDocument();
   });
 
+  it('keeps a successful link successful when the account refresh fails', async () => {
+    let registryReads = 0;
+    calls.registry.mockImplementation(async () => {
+      registryReads += 1;
+      if (registryReads > 1) throw new Error('account-refresh-failed');
+      return { origin, link: null };
+    });
+    renderPage(<AccountRegistry />);
+    const input = await screen.findByLabelText(
+      /Registry publishing credential/,
+    );
+    fireEvent.change(input, { target: { value: credential } });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Verify and link account' }),
+    );
+    expect(
+      await screen.findByText('The Registry publisher identity was linked.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(credential)).toBeNull();
+    expect(
+      await screen.findByText('Registry account details could not be loaded.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('account-refresh-failed')).toBeNull();
+  });
+
   it('uses team names, publishes once, clears the credential and renders the receipt', async () => {
     calls.publish.mockImplementation(async () => {
       calls.list.mockResolvedValue([
@@ -204,6 +229,30 @@ describe('Studio Registry forms', () => {
     expect(
       await screen.findByText('The template version was published.'),
     ).toBeInTheDocument();
+  });
+
+  it('keeps a successful replay successful when the receipt refresh fails', async () => {
+    let listCalls = 0;
+    calls.list.mockImplementation(async () => {
+      listCalls += 1;
+      if (listCalls === 1) return [version()];
+      throw new Error('receipt-refresh-failed');
+    });
+    calls.publish.mockResolvedValue({ publication, replayed: true });
+    renderPage(<Templates />);
+    const input = await screen.findByLabelText(
+      /Registry publishing credential/,
+    );
+    fireEvent.change(input, { target: { value: credential } });
+    fireEvent.click(screen.getByRole('button', { name: 'Publish version' }));
+    expect(
+      await screen.findByText('This template version was already published.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(credential)).toBeNull();
+    expect(
+      await screen.findByText('Templates could not be loaded. Try again.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('receipt-refresh-failed')).toBeNull();
   });
 
   it('imports in the selected team and distinctly reports a newer schema', async () => {

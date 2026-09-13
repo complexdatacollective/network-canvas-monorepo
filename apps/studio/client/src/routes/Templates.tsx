@@ -139,6 +139,11 @@ const messages = defineMessages({
     defaultMessage: 'The template version was published.',
     description: 'Registry publication success announcement.',
   },
+  alreadyPublished: {
+    id: 'studio.templates.alreadyPublished',
+    defaultMessage: 'This template version was already published.',
+    description: 'Registry publication replay announcement.',
+  },
   version: {
     id: 'studio.templates.version',
     defaultMessage: '{name}, version {version}',
@@ -195,7 +200,12 @@ function TeamTemplates({
               setNotice(null);
               try {
                 await rpcClient.templates.import({ teamId, entryId });
-                await refresh();
+                try {
+                  await refresh();
+                } catch {
+                  // The import already succeeded. The template query renders
+                  // its own bounded read error if the refresh cannot complete.
+                }
                 setNotice(intl.formatMessage(messages.imported));
                 return { success: true };
               } catch (error) {
@@ -290,13 +300,25 @@ function TeamTemplates({
                     onSubmit={async (credential) => {
                       setNotice(null);
                       try {
-                        await rpcClient.templates.publish({
+                        const result = await rpcClient.templates.publish({
                           teamId,
                           versionId: template.versionId,
                           credential,
                         });
-                        await refresh();
-                        setNotice(intl.formatMessage(messages.published));
+                        try {
+                          await refresh();
+                        } catch {
+                          // The publication already succeeded. The template
+                          // query renders its own bounded read error if the
+                          // refresh cannot complete.
+                        }
+                        setNotice(
+                          intl.formatMessage(
+                            result.replayed
+                              ? messages.alreadyPublished
+                              : messages.published,
+                          ),
+                        );
                         return { success: true };
                       } catch {
                         return {

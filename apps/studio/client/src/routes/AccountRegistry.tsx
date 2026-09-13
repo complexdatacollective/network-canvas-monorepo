@@ -109,9 +109,14 @@ export default function AccountRegistry() {
               setLinkedNotice(false);
               try {
                 await rpcClient.account.linkRegistry({ credential });
-                await queryClient.invalidateQueries({
-                  queryKey: orpc.account.registry.key(),
-                });
+                try {
+                  await queryClient.invalidateQueries({
+                    queryKey: orpc.account.registry.key(),
+                  });
+                } catch {
+                  // The link already succeeded. The account query renders its
+                  // own bounded read error if the refresh cannot complete.
+                }
                 setLinkedNotice(true);
                 return { success: true };
               } catch {
