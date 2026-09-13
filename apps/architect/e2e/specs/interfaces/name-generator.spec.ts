@@ -31,7 +31,7 @@ test('creates a valid NameGenerator stage from scratch', async ({
   // `data-field-name` seam reaches it directly.
   await editor.field('form.title').getByRole('textbox').fill('Add a person');
 
-  await addFormField(editor.section('Form fields'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'What is your name?',
     inputControl: 'Text input',

@@ -51,7 +51,7 @@ const optionValuesOf = (picker: HTMLElement): string[] =>
     .map((option) => (option as HTMLOptionElement).value);
 
 const quickAddPicker = async (): Promise<HTMLElement> =>
-  screen.findByRole('combobox', { name: /Attribute filled in/ });
+  screen.findByRole('combobox', { name: /Select an attribute/ });
 
 /**
  * The stage seeded over the fixture's own quick-add generator, so the role map

@@ -176,7 +176,9 @@ describe('a codebook editor saved from inside another form', () => {
       if (save === 'Save validation') {
         // The validation editor refuses an unchanged draft, so there has to be
         // a change before its save is live at all.
-        await user.click(screen.getByRole('checkbox', { name: 'Required' }));
+        await user.click(
+          screen.getByRole('checkbox', { name: 'Required answer' }),
+        );
       }
       await user.click(screen.getByRole('button', { name: save }));
 

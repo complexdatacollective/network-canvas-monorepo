@@ -1,5 +1,4 @@
 {
-  "architect.config.color": "Colour {index, number}",
   "architect.newProtocolDialog.useAShortRecognizableNameOf": "Use a short, recognisable name of up to {PROTOCOL_NAME_MAX_LENGTH, number} characters. Include a version number or date when it helps distinguish drafts, but avoid long project notes.",
   "architect.summary.label.initialCenterLatLng": "Initial Centre (lat, lng)",
   "architect.summary.label.selectionColor": "Selection Colour",

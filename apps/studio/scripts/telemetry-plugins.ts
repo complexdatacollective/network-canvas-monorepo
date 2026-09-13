@@ -1,7 +1,7 @@
 import { loadEnv, type Plugin } from 'vite';
 
 import { POSTHOG_HOST } from '../../../packages/shared-consts/src/posthog.ts';
-import { createPostHogSourceMapsPlugin } from '../../../scripts/posthog-source-maps-plugin.ts';
+import { createPostHogSourceMapsPlugin } from '../../../scripts/build/posthog-source-maps-plugin.ts';
 
 /** Same credential-gated, hidden-map upload/delete lane as the other apps. */
 export function studioSourceMaps(

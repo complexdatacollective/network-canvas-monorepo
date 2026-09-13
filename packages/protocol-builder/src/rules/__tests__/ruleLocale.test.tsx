@@ -7,6 +7,7 @@ import { formatMessageError } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
+import { QueryRuleSetField } from '../../fields/RuleSetField.tsx';
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import { enIntl, esIntl } from '../../testing/i18n.ts';
@@ -14,7 +15,6 @@ import { describeRule } from '../ruleDescription.ts';
 import { ruleDraftRefusal } from '../RuleEditorDialog.tsx';
 import { ruleSubjectMessages } from '../ruleMessages.ts';
 import RulePreview from '../RulePreview.tsx';
-import { QueryRuleSetField } from '../RuleSetField.tsx';
 import { ruleSections, testCodebook } from './fixtures.ts';
 import { RuleEditorHost } from './ruleEditorHost.tsx';
 

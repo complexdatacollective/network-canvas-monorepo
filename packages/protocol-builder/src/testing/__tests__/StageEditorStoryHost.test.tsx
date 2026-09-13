@@ -152,7 +152,7 @@ describe('what a family’s story tells the host', () => {
     renderPageHost();
 
     await user.click(
-      await screen.findByRole('button', { name: 'Create new content block' }),
+      await screen.findByRole('button', { name: 'Create new content item' }),
     );
     await user.click(await screen.findByRole('radio', { name: 'Image' }));
 

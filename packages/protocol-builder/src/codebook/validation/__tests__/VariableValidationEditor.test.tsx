@@ -68,7 +68,9 @@ describe('VariableValidationEditor', () => {
       />,
     );
 
-    const target = screen.getByRole('combobox', { name: 'Less than' });
+    const target = screen.getByRole('combobox', {
+      name: 'Less than another attribute',
+    });
     expect(target).toHaveValue('deleted-height');
     expect(
       screen.getByRole('option', {
@@ -109,7 +111,7 @@ describe('VariableValidationEditor', () => {
       />,
     );
     expect(
-      screen.queryByRole('checkbox', { name: 'Must be unique' }),
+      screen.queryByRole('checkbox', { name: 'Unique value' }),
     ).not.toBeInTheDocument();
   });
 
@@ -186,7 +188,7 @@ describe('VariableValidationEditor', () => {
       />,
     );
 
-    const required = screen.getByRole('checkbox', { name: 'Required' });
+    const required = screen.getByRole('checkbox', { name: 'Required answer' });
     expect(required).toBeDisabled();
     await user.click(required);
     expect(onChange).not.toHaveBeenCalled();

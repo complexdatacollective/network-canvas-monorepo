@@ -83,9 +83,10 @@ describe('the dyad census editor', () => {
     });
 
     expect(await harness.submit()).toBeNull();
-    expect(
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
-    ).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
     await waitFor(() =>
       expect(
         harness
@@ -110,7 +111,7 @@ describe('the dyad census editor', () => {
       registry: dyadCensusStageEditor,
       readOnly: true,
     });
-    await screen.findByRole('textbox', { name: 'Introduction heading' });
+    await screen.findByRole('textbox', { name: 'Title' });
 
     expect(await harness.submit()).toBeNull();
     expect(
@@ -223,7 +224,7 @@ describe('creating a dyad census stage', () => {
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Introduction heading' }),
+      screen.getByRole('textbox', { name: 'Title' }),
       'Pairs',
     );
     await writeInto(

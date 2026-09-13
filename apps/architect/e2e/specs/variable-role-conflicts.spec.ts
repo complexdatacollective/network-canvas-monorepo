@@ -193,7 +193,7 @@ test("excludes each writer's picker from offering the other class's variable, wh
   // conflict) and the unrelated cleanVar.
   await timeline.openStage('Person Details');
   await editor
-    .section('Form fields')
+    .section('Form configuration')
     .getByRole('button', { name: 'Edit field' })
     .click();
   const fieldDialog = architectPage.getByRole('dialog', {

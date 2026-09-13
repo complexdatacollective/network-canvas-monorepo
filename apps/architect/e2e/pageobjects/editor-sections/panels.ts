@@ -7,9 +7,9 @@ import { type StageEditor } from '../stage-editor.js';
 // that source:
 // - It is a capability section: switched off on a fresh stage and disabled
 //   until the stage has a subject, with the switch named by its own heading.
-// - Panels are rows of the shared `RowList`, so "Create new panel" opens a row
+// - Panels are rows of the shared `RowList`, so "Add new panel" opens a row
 //   dialog rather than inserting a row inline. Inside it, "Panel title" is the
-//   title and "People in this panel" is the source; "Add" commits the row.
+//   title and "Data source for panel 1" is the source; "Add" commits the row.
 // - A new row starts as `{ dataSource: 'existing' }` (`newPanel()`) with an id
 //   the list itself supplies (`rowTemplate`), and the source picker shows that
 //   as the checked "Use the network from the in-progress interview" radio
@@ -25,7 +25,7 @@ export async function addExistingNetworkPanel(
     .getByRole('switch', { name: 'Side panels', exact: true })
     .click();
   await section
-    .getByRole('button', { name: 'Create new panel', exact: true })
+    .getByRole('button', { name: 'Add new panel', exact: true })
     .click();
   const page = section.page();
   const dialog = page.getByRole('dialog');

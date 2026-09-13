@@ -64,7 +64,7 @@ is not ready to go out, release from the previous tag instead:
    hotfix branch is a delivery vehicle, not the source of truth.
 
 2. Bump `apps/architect/package.json` to the hotfix version and add the
-   matching `## <version>` section to `CHANGELOG.md`; `scripts/release-notes.mjs`
+   matching `## <version>` section to `CHANGELOG.md`; `scripts/release/release-notes.mjs`
    reads that section for the GitHub release. Do **not** run
    `changeset version` on the branch — it would consume changesets that belong
    to main's next release.
@@ -186,7 +186,7 @@ what the origin serves.)
 Cloudflare honours those rules but differs in two other ways, both handled by
 `scripts/write-cloudflare-archive-config.mjs` at deploy time — **never by
 editing `public/_headers`**, whose shape is asserted for Netlify in
-`scripts/assert-pwa-cache-headers.mjs`:
+`scripts/build/assert-pwa-cache-headers.mjs`:
 
 - **`_headers` rules append rather than replace.** Netlify lets `/assets/*`
   override the blanket `/*` no-store; Cloudflare joins them into one header

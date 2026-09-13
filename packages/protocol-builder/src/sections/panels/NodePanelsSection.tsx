@@ -21,6 +21,7 @@ import Section from '@codaco/fresco-ui/Section';
 import type { Asset } from '@codaco/protocol-validation';
 
 import AssetPickerField from '../../fields/AssetPickerField.tsx';
+import { FilterRuleSetField } from '../../fields/RuleSetField.tsx';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import {
   RowDialog,
@@ -34,6 +35,7 @@ import {
   type RowEditorProps,
   type RowPreviewProps,
 } from '../../form/rowDialog.tsx';
+import { useStageValue } from '../../form/stageFormHooks.ts';
 import { useStagedResources } from '../../resources/client.tsx';
 import { acceptsResourceKind } from '../../resources/components/resourceKinds.ts';
 import type {
@@ -47,7 +49,6 @@ import {
   type RuleSetValue,
   type RuleSetVariant,
 } from '../../rules/ruleSet.ts';
-import { FilterRuleSetField } from '../../rules/RuleSetField.tsx';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import { useRowValue } from '../AttributeCodebookControls.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
@@ -79,15 +80,13 @@ const messages = defineMessages({
   },
   description: {
     id: 'protocolBuilder.nodePanels.description',
-    defaultMessage:
-      'Show a list of people beside this stage, so the participant can nominate someone without typing their name again.',
+    defaultMessage: 'Configure up to two side panels for this name generator.',
     description:
       'Description of the side-panels section. A stage is one step of an interview.',
   },
   waitingDescription: {
     id: 'protocolBuilder.nodePanels.waitingDescription',
-    defaultMessage:
-      'Choose what this stage works with before adding side panels.',
+    defaultMessage: 'Select a node type to configure side panels.',
     description:
       'Shown in place of the side-panels section’s description while the researcher has not yet chosen which node type the stage is about, so a panel would have nothing to be about.',
   },
@@ -96,15 +95,9 @@ const messages = defineMessages({
     defaultMessage: 'Panels',
     description: 'Label of the list of side panels inside the section.',
   },
-  fieldHint: {
-    id: 'protocolBuilder.nodePanels.fieldHint',
-    defaultMessage:
-      'Up to two panels, shown in this order. Each draws from the interview so far or from a network you have imported.',
-    description: 'Guidance under the list of side panels.',
-  },
   addLabel: {
     id: 'protocolBuilder.nodePanels.addLabel',
-    defaultMessage: 'Create new panel',
+    defaultMessage: 'Add new panel',
     description:
       'Button that opens the dialog for adding one more side panel. Whole rather than a generic "Add", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons.',
   },
@@ -128,8 +121,7 @@ const messages = defineMessages({
   },
   emptyState: {
     id: 'protocolBuilder.nodePanels.emptyState',
-    defaultMessage:
-      'No panels yet. Create one to offer people the participant has already named.',
+    defaultMessage: 'No side panels configured.',
     description:
       'Shown in place of the side-panel list while the stage has none.',
   },
@@ -147,18 +139,6 @@ const messages = defineMessages({
     description:
       'Refusal shown above the side-panel list when the stage arrived holding more panels than fit beside an interview. Refused rather than trimmed, because deleting a panel a researcher wrote is their decision. A stage is one step of an interview.',
   },
-  panelGroupTitle: {
-    id: 'protocolBuilder.nodePanels.panelGroupTitle',
-    defaultMessage: 'Panel',
-    description:
-      'Heading of the first half of the dialog for one side panel, holding what the panel is called and who it lists.',
-  },
-  panelGroupDescription: {
-    id: 'protocolBuilder.nodePanels.panelGroupDescription',
-    defaultMessage: 'Name the panel, and say where the people in it come from.',
-    description:
-      'Description of the first half of the dialog for one side panel.',
-  },
   panelTitleLabel: {
     id: 'protocolBuilder.nodePanels.panelTitleLabel',
     defaultMessage: 'Panel title',
@@ -168,15 +148,8 @@ const messages = defineMessages({
   panelTitleHint: {
     id: 'protocolBuilder.nodePanels.panelTitleHint',
     defaultMessage:
-      'Shown above the panel. Say what is in it, such as “People you named earlier”.',
-    description:
-      'Guidance under the panel-title box. The quoted phrase is an example title a researcher might write, and should read naturally rather than literally.',
-  },
-  panelTitlePlaceholder: {
-    id: 'protocolBuilder.nodePanels.panelTitlePlaceholder',
-    defaultMessage: 'People you named earlier',
-    description:
-      'Example shown in the empty panel-title box. Written as a participant would read it, because that is who reads the title.',
+      'The panel title will be shown above the list of nodes within the panel.',
+    description: 'Guidance under the panel-title box.',
   },
   panelTitleRequired: {
     id: 'protocolBuilder.nodePanels.panelTitleRequired',
@@ -186,16 +159,16 @@ const messages = defineMessages({
   },
   sourceLabel: {
     id: 'protocolBuilder.nodePanels.sourceLabel',
-    defaultMessage: 'People in this panel',
+    defaultMessage: 'Data source for panel {position, number}',
     description:
-      'Label of the control choosing where the people one side panel lists come from.',
+      'Label of the control choosing where the people one side panel lists come from. position is the panel’s own place in the list, counting from one; a stage may hold two panels and the label is what tells their controls apart.',
   },
   sourceHint: {
     id: 'protocolBuilder.nodePanels.sourceHint',
     defaultMessage:
-      "The interview's own network so far, or a network file you have imported.",
+      'Choose where this panel’s data comes from: the in-progress interview session (“People you have already named”), or a network data file you have added to this protocol.',
     description:
-      'Guidance under the control choosing where one side panel’s people come from, naming the two kinds of source.',
+      'Guidance under the control choosing where one side panel’s people come from, naming the two kinds of source. The quoted phrase is the name the interview gives its own network.',
   },
   sourceNotNetwork: {
     id: 'protocolBuilder.nodePanels.sourceNotNetwork',
@@ -218,9 +191,10 @@ const messages = defineMessages({
   },
   filterGroupDescription: {
     id: 'protocolBuilder.nodePanels.filterGroupDescription',
-    defaultMessage: 'Narrow the panel to the people this stage is about.',
+    defaultMessage:
+      'Filter the nodes and edges displayed to participants in this panel.',
     description:
-      'Description of the panel-filter half of the side-panel dialog. A stage is one step of an interview.',
+      'Description of the panel-filter half of the side-panel dialog.',
   },
   filterRulesLabel: {
     id: 'protocolBuilder.nodePanels.filterRulesLabel',
@@ -231,7 +205,7 @@ const messages = defineMessages({
   filterRulesHint: {
     id: 'protocolBuilder.nodePanels.filterRulesHint',
     defaultMessage:
-      'Only people matching these rules appear in the panel. With no rules, everyone does.',
+      'Create one or more rules that must match in order for a node or edge to be shown in this panel.',
     description: 'Guidance under one side panel’s filter rules.',
   },
   filterClearTitle: {
@@ -274,14 +248,14 @@ const messages = defineMessages({
   },
   clearTitle: {
     id: 'protocolBuilder.nodePanels.clearTitle',
-    defaultMessage: 'This will delete your side panels',
+    defaultMessage: 'This will delete your panel configuration',
     description:
       'Title of the dialog asking a researcher to confirm switching off the section that adds panels of people beside a name generator for the participant to nominate from.',
   },
   clearDescription: {
     id: 'protocolBuilder.nodePanels.clearDescription',
     defaultMessage:
-      'This will remove every side panel on this stage, and delete any filter rules you have created for them. Do you want to continue?',
+      'This will clear your panel configuration, and delete any filter rules you have created. Do you want to continue?',
     description:
       'Body of the dialog confirming that switching off the side panels discards the panels and the filter rules written for them. A stage is one step of an interview.',
   },
@@ -520,7 +494,6 @@ export default function NodePanelsSection() {
         <Field<typeof ArrayField<RowValues>>
           name={PANELS}
           label={intl.formatMessage(messages.fieldLabel)}
-          hint={intl.formatMessage(messages.fieldHint)}
           component={ArrayField}
           getId={rowId}
           addButtonLabel={intl.formatMessage(messages.addLabel)}
@@ -570,8 +543,20 @@ const PANEL_ROWS: RowListConfig = {
  * connected fields of THAT form — the panel is committed whole when the dialog
  * saves, and no part of it is ever registered on the stage.
  */
-function PanelEditor({ item }: RowEditorProps) {
+function PanelEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
+  /**
+   * Which panel this is, counting from one, for the source control's label.
+   *
+   * A stage holds two panels at most and their controls are otherwise
+   * identical, so the number is what tells them apart — to anyone reading the
+   * label and to anyone hearing it. A row being ADDED has no committed index
+   * yet, and takes the position it is about to occupy.
+   */
+  const committedPanels = useStageValue(PANELS);
+  const position =
+    (editIndex ??
+      (Array.isArray(committedPanels) ? committedPanels.length : 0)) + 1;
   const dataSource =
     asString(useRowValue('dataSource') ?? item.dataSource) ?? INTERVIEW_NETWORK;
   /**
@@ -602,30 +587,29 @@ function PanelEditor({ item }: RowEditorProps) {
 
   return (
     <>
-      <Section
-        title={intl.formatMessage(messages.panelGroupTitle)}
-        description={intl.formatMessage(messages.panelGroupDescription)}
-      >
-        <Field<typeof InputField>
-          name="title"
-          component={InputField}
-          label={intl.formatMessage(messages.panelTitleLabel)}
-          hint={intl.formatMessage(messages.panelTitleHint)}
-          placeholder={intl.formatMessage(messages.panelTitlePlaceholder)}
-          initialValue={asString(item.title) ?? ''}
-          required={PANEL_TITLE_REQUIRED}
-        />
-        <Field<typeof ResourcePicker>
-          name="dataSource"
-          component={ResourcePicker}
-          label={intl.formatMessage(messages.sourceLabel)}
-          hint={intl.formatMessage(messages.sourceHint)}
-          kind={PANEL_SOURCE_KIND}
-          canUseExisting
-          initialValue={openedDataSource}
-          required={PANEL_SOURCE_REQUIRED}
-        />
-      </Section>
+      {/*
+        Bare fields rather than a titled group: Architect's panel row carries
+        no heading of its own above the title and source, and the dialog the
+        row opens in is already named for the panel.
+      */}
+      <Field<typeof InputField>
+        name="title"
+        component={InputField}
+        label={intl.formatMessage(messages.panelTitleLabel)}
+        hint={intl.formatMessage(messages.panelTitleHint)}
+        initialValue={asString(item.title) ?? ''}
+        required={PANEL_TITLE_REQUIRED}
+      />
+      <Field<typeof ResourcePicker>
+        name="dataSource"
+        component={ResourcePicker}
+        label={intl.formatMessage(messages.sourceLabel, { position })}
+        hint={intl.formatMessage(messages.sourceHint)}
+        kind={PANEL_SOURCE_KIND}
+        canUseExisting
+        initialValue={openedDataSource}
+        required={PANEL_SOURCE_REQUIRED}
+      />
       <Section
         title={intl.formatMessage(messages.filterGroupTitle)}
         description={intl.formatMessage(messages.filterGroupDescription)}

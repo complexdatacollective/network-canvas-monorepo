@@ -30,7 +30,7 @@ const switchOnNodeForm = async (
   harness: ReturnType<typeof renderStageEditor>,
 ) => {
   await harness.user.click(
-    await screen.findByRole('switch', { name: 'Node attributes' }),
+    await screen.findByRole('switch', { name: 'Editable attributes' }),
   );
 };
 
@@ -105,9 +105,7 @@ describe('what a network composer lets the participant build', () => {
     expect(screen.getByText('Anything else?')).toBeInTheDocument();
     // Each list is named by the connection type it belongs to, so a researcher
     // reading two forms at once can tell which is which.
-    expect(
-      screen.getByText('Attributes for “knows” connections'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Edge Attributes — knows')).toBeInTheDocument();
   });
 
   /**
@@ -337,7 +335,7 @@ describe('what a network composer lets the participant build', () => {
 
     await harness.user.click(
       await screen.findByRole('button', {
-        name: 'Create new attribute field for “knows” connections',
+        name: 'Create new attribute for knows',
       }),
     );
     const dialog = within(await screen.findByRole('dialog'));
@@ -407,7 +405,7 @@ describe('what a network composer lets the participant build', () => {
     const harness = renderStageEditor(composerHolding({}));
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
+    const dialog = await addRow(harness, 'Create new node attribute');
     await harness.user.selectOptions(
       dialog.getByRole('combobox', { name: 'Attribute' }),
       'composerName',
@@ -464,7 +462,7 @@ describe('what a network composer lets the participant build', () => {
     );
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
+    const dialog = await addRow(harness, 'Create new node attribute');
     expect(
       dialog.queryByRole('option', { name: 'contactType' }),
     ).not.toBeInTheDocument();
@@ -498,7 +496,7 @@ describe('what a network composer lets the participant build', () => {
     });
 
     const grouping = await screen.findByRole('combobox', {
-      name: 'Grouping attribute',
+      name: 'Create or select a categorical attribute for grouping',
     });
     await waitFor(() =>
       expect(
@@ -508,7 +506,7 @@ describe('what a network composer lets the participant build', () => {
     await harness.user.selectOptions(grouping, 'circle');
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
+    const dialog = await addRow(harness, 'Create new node attribute');
     expect(
       dialog.queryByRole('option', { name: 'circle' }),
     ).not.toBeInTheDocument();
@@ -544,7 +542,7 @@ describe('what a network composer lets the participant build', () => {
     });
 
     const grouping = await screen.findByRole('combobox', {
-      name: 'Grouping attribute',
+      name: 'Create or select a categorical attribute for grouping',
     });
     await waitFor(() =>
       expect(
@@ -615,7 +613,7 @@ describe('what a network composer lets the participant build', () => {
     // Bound here, not merely created: the researcher asked for it from this
     // control, so finding it in a list that has just grown is not the answer.
     const picker = await screen.findByRole('combobox', {
-      name: 'Position attribute',
+      name: 'Create or select an attribute to store node coordinates',
     });
     await waitFor(() =>
       expect(
@@ -714,7 +712,7 @@ describe('an attribute another stage starts writing mid-edit', () => {
     const harness = renderStageEditor(composerHolding({}));
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
+    const dialog = await addRow(harness, 'Create new node attribute');
     const attribute = dialog.getByRole('combobox', { name: 'Attribute' });
     // The fixture's marking prompt already claims `highlighted`, so the picker
     // is not offering it — which is what makes the same picker offering it a
@@ -799,7 +797,7 @@ describe('an attribute a collaborator retypes mid-edit', () => {
     const harness = renderStageEditor(composerHolding({}));
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
+    const dialog = await addRow(harness, 'Create new node attribute');
     await harness.user.selectOptions(
       dialog.getByRole('combobox', { name: 'Attribute' }),
       'age',
@@ -1085,7 +1083,7 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
       ],
     });
     const grouping = await screen.findByRole('combobox', {
-      name: 'Grouping attribute',
+      name: 'Create or select a categorical attribute for grouping',
     });
     await waitFor(() =>
       expect(
@@ -1115,7 +1113,7 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
   it('refuses the save for an attribute another stage stamps', async () => {
     const harness = renderStageEditor(composerHolding({}));
     const quickAdd = await screen.findByRole('combobox', {
-      name: 'Attribute filled in when a node is added',
+      name: 'Create or select an attribute for the quick-add form',
     });
     expect(quickAdd).toHaveValue('composerName');
 
@@ -1186,10 +1184,12 @@ describe('the rules a composer field authors', () => {
       await dialog.findByRole('button', { name: 'Set rules for this answer' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Same as' }),
+      await screen.findByRole('checkbox', {
+        name: 'Same as another attribute',
+      }),
     );
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Same as' }),
+      screen.getByRole('combobox', { name: 'Same as another attribute' }),
       'bornOn',
     );
 

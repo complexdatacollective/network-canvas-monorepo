@@ -314,7 +314,12 @@ export default function ComposerNodesSection() {
           name={NODE_FORM_FIELD}
           subject={subject}
           draftUnvalidatedVariables={draftUnvalidated}
-          label={intl.formatMessage(messages.nodeFormLabel)}
+          // The section around this list is titled with the same words, so
+          // showing the label too would announce them twice. It still has to
+          // exist: it is what the outline and a host's problem panel call
+          // this field.
+          label={intl.formatMessage(messages.nodeFormTitle)}
+          labelHidden
           hint={intl.formatMessage(messages.nodeFormHint)}
           addButtonLabel={intl.formatMessage(messages.nodeFormAddLabel)}
           emptyStateMessage={intl.formatMessage(messages.nodeFormEmptyState)}

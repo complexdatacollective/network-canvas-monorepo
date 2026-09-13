@@ -1,0 +1,180 @@
+{
+  "note": "External links that answer 401/403 to CI because they refuse automation, not because they are broken. Verified 2026-09-11: every DOI here resolves (doi.org 302) and none returned 404. A refusal from a URL NOT listed here fails the run, so adding an entry is a deliberate, reviewed act. Remove an entry when the publisher stops refusing us.",
+  "refusable": [
+    {
+      "host": "onlinelibrary.wiley.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1002/ejsp.3140"
+    },
+    {
+      "host": "shmpublications.onlinelibrary.wiley.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1002/jhm.13231"
+    },
+    {
+      "host": "onlinelibrary.wiley.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1007/s10897-006-9042-7"
+    },
+    {
+      "host": "onlinelibrary.wiley.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1007/s10897-011-9370-0"
+    },
+    {
+      "host": "onlinelibrary.wiley.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1007/s10897-015-9905-x"
+    },
+    {
+      "host": "www.sciencedirect.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
+      "url": "https://doi.org/10.1016/j.chiabu.2023.106198"
+    },
+    {
+      "host": "www.sciencedirect.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
+      "url": "https://doi.org/10.1016/j.dib.2021.106898"
+    },
+    {
+      "host": "www.sciencedirect.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
+      "url": "https://doi.org/10.1016/j.jclepro.2025.146254"
+    },
+    {
+      "host": "www.sciencedirect.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
+      "url": "https://doi.org/10.1016/j.jdmm.2026.101109"
+    },
+    {
+      "host": "jsatjournal.com",
+      "reason": "Refuses datacenter automation; answers 200 to an ordinary request from a residential IP",
+      "url": "https://doi.org/10.1016/j.josat.2024.209457"
+    },
+    {
+      "host": "www.sciencedirect.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
+      "url": "https://doi.org/10.1016/j.socnet.2021.02.003"
+    },
+    {
+      "host": "www.sciencedirect.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
+      "url": "https://doi.org/10.1016/j.socnet.2026.02.005"
+    },
+    {
+      "host": "www.sciencedirect.com",
+      "reason": "Elsevier resolver answers 200; its JavaScript hop to sciencedirect.com refuses automation",
+      "url": "https://doi.org/10.1016/j.vaccine.2026.128998"
+    },
+    {
+      "host": "onlinelibrary.wiley.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1023/A:1016627426430"
+    },
+    {
+      "host": "www.tandfonline.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1080/01425692.2026.2724527"
+    },
+    {
+      "host": "www.tandfonline.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1080/07908318.2020.1857393"
+    },
+    {
+      "host": "www.tandfonline.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1080/09540121.2019.1587370"
+    },
+    {
+      "host": "academic.oup.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1093/emph/eoae023"
+    },
+    {
+      "host": "academic.oup.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1093/geroni/igz038.279"
+    },
+    {
+      "host": "academic.oup.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1093/ije/dyad036"
+    },
+    {
+      "host": "academic.oup.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1093/schizbullopen/sgag020"
+    },
+    {
+      "host": "journals.lww.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1097/QAI.0000000000003294"
+    },
+    {
+      "host": "medrxiv.org",
+      "reason": "Cloudflare challenge with no cf-mitigated header",
+      "url": "https://doi.org/10.1101/2024.01.25.24301787"
+    },
+    {
+      "host": "medrxiv.org",
+      "reason": "Cloudflare challenge with no cf-mitigated header",
+      "url": "https://doi.org/10.1101/2024.03.07.24303919"
+    },
+    {
+      "host": "onlinelibrary.wiley.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1111/1477-9552.12557"
+    },
+    {
+      "host": "onlinelibrary.wiley.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1111/ejed.70822"
+    },
+    {
+      "host": "dl.acm.org",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1145/2858036.2858368"
+    },
+    {
+      "host": "onlinelibrary.wiley.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1155/2024/5513833"
+    },
+    {
+      "host": "journals.sagepub.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1177/0092055X261422479"
+    },
+    {
+      "host": "journals.sagepub.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1177/13670069221133305"
+    },
+    {
+      "host": "journals.sagepub.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1177/1525822X261446429"
+    },
+    {
+      "host": "journals.sagepub.com",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.1177/21676968221111316"
+    },
+    {
+      "host": "ajph.aphapublications.org",
+      "reason": "Cloudflare challenge, announced with cf-mitigated: challenge",
+      "url": "https://doi.org/10.2105/AJPH.2008.154096"
+    },
+    {
+      "host": "ora.ox.ac.uk",
+      "reason": "Refuses datacenter automation; answers 200 to an ordinary request from a residential IP",
+      "url": "https://doi.org/10.5287/ora-wxkvadvbg"
+    },
+    {
+      "host": "x.com",
+      "reason": "Refuses datacenter automation; answers 200 to an ordinary request from a residential IP",
+      "url": "https://twitter.com/networkcanvas?lang=en"
+    }
+  ]
+}

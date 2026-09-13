@@ -32,6 +32,9 @@ import {
   hasUnvalidatedUse,
 } from '../../codebook/variableRoles.ts';
 import { unvalidatedElsewhereMessage } from '../../codebook/variableValidation.ts';
+import ComposerParametersField, {
+  type ComposerParameters,
+} from '../../fields/ComposerParametersField.tsx';
 import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import { crossClassPickIssue } from '../../form/arrayFields/crossClassPick.ts';
@@ -66,9 +69,6 @@ import {
 import { asText } from '../canvas/rowValues.ts';
 import { controlsForType } from '../collectableTypes.ts';
 import { composerFormFieldMessages as messages } from './composerFormFieldMessages.ts';
-import ComposerParametersField, {
-  type ComposerParameters,
-} from './ComposerParametersField.tsx';
 
 const VARIABLE_FIELD = 'variable';
 const COMPONENT_FIELD = 'component';
@@ -127,6 +127,15 @@ export type ComposerFormFieldsProps = Readonly<{
   /** See `ComposerFormScope.draftUnvalidated`. Give a stable array. */
   draftUnvalidatedVariables?: readonly string[];
   label: string;
+  /**
+   * Visually hide the label, leaving it as the list's accessible name.
+   *
+   * For a list whose own section already says the words: showing both
+   * announces the same phrase twice and puts a second heading-shaped line
+   * under the first. The name still has to exist — it is what the outline and
+   * a host's problem panel call this field.
+   */
+  labelHidden?: boolean;
   hint: string;
   addButtonLabel: string;
   emptyStateMessage: string;
@@ -160,6 +169,7 @@ export function ComposerFormFieldsField({
         name={name}
         component={ArrayField}
         label={props.label}
+        labelHidden={props.labelHidden}
         hint={props.hint}
         getId={rowId}
         addButtonLabel={props.addButtonLabel}

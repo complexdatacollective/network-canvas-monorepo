@@ -90,10 +90,10 @@ test('authors an Information stage in Spanish and changes built-in preview langu
     .getByRole('textbox', { name: 'Encabezado de página' })
     .fill('Participant_Heading_EN');
   await page
-    .getByRole('button', { name: 'Crear nuevo bloque de contenido' })
+    .getByRole('button', { name: 'Crear nuevo elemento de contenido' })
     .click();
   const dialog = page.getByRole('dialog', {
-    name: 'Crear bloque de contenido',
+    name: 'Crear elemento',
   });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('radio', { name: 'Texto', exact: true }).click();
@@ -441,7 +441,7 @@ test('renders British spelling in the actual type dialog and in the stage editor
   ).toBeVisible();
   await page.goto('/protocol/stage/geospatial-1');
   await expect(
-    page.getByRole('radiogroup', { name: 'Highlight colour' }),
+    page.getByRole('radiogroup', { name: 'Map outline and selection colour' }),
   ).toBeVisible();
   expect(await readProtocolJson(page)).toEqual(before);
 });

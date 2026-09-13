@@ -117,7 +117,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The one form every stage editor is built inside. It owns the form store, the section outline, and the submit that hands the whole section back; the host supplies only the action chrome and reads the form id from the slot. The outline lists the sections actually mounted, states each one as finished, unfinished, having a problem or switched off, and moves focus to a section when it is chosen.',
+          'The one form every stage editor is built inside. It owns the form store, the register of which sections are mounted and how each one stands, and the submit that hands the whole section back; the host supplies only the action chrome and reads the form id from the slot. It draws one column and no list of the sections: the slot is handed a store of them — each with its title, its state, and anything the protocol refused that no field is already showing — for a host to draw wherever its own page has room.',
       },
     },
   },
@@ -131,6 +131,19 @@ export const Editing: Story = {
   args: {
     readOnly: false,
     fields: { label: 'Welcome', title: '', items: [] },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    // The sections are there to be read…
+    await expect(
+      canvas.getByRole('textbox', { name: 'Page heading' }),
+    ).toBeInTheDocument();
+    // …and the editor lists none of them. Where a list of the sections belongs
+    // on the page is the host's, so the shell is one column with no navigation
+    // of its own; the sections are published on the action slot instead.
+    await expect(canvas.queryByRole('navigation')).not.toBeInTheDocument();
   },
 };
 

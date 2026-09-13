@@ -12,20 +12,21 @@ import { addPrompt } from './prompts.js';
 // `NarrativePresetFields` fills that dialog with five always-open groups —
 // there are no capability switches inside it any more, so nothing has to be
 // turned on before it can be filled in:
-// - "Preset identity" holds "Preset name" (`label`).
-// - "Node positions" holds the picker "Position attribute" (`layoutVariable`)
+// - "Preset identity" holds "Preset label" (`label`).
+// - "Node layout" holds the picker "Layout attribute" (`layoutVariable`)
 //   and the button "Create a new position attribute" beside it.
-// - "Node grouping" holds the picker "Grouping attribute" (`groupVariable`)
-//   and NO create button: a preset groups by a categorical attribute the
-//   protocol already collects, so there is nothing here to invent.
-// - "Connections" holds the tick list "Connection types shown"
-//   (`edges.display`), and "Highlighted nodes" the tick list "Highlight
-//   attributes" (`highlight`). Both name codebook entries, and both drop the
-//   key entirely when nothing is ticked.
+// - "Node grouping" holds the picker "Create or select a categorical attribute
+//   for grouping" (`groupVariable`) and NO create button: a preset groups by a
+//   categorical attribute the protocol already collects, so there is nothing
+//   here to invent.
+// - "Displayed edges" holds the tick list "Edge types" (`edges.display`), and
+//   "Node highlighting" the tick list "Highlight attributes" (`highlight`).
+//   Both name codebook entries, and both drop the key entirely when nothing is
+//   ticked.
 //
 // The behaviours are no longer one section: what the participant may DO is
-// `CanvasPermissionsSection` ("Canvas interaction" — "Allow drawing on the
-// canvas" at `behaviours.freeDraw`, "Allow moving nodes" at
+// `CanvasPermissionsSection` ("Narrative behaviors" — "Free-draw" at
+// `behaviours.freeDraw`, "Allow repositioning" at
 // `behaviours.allowRepositioning`), while how the stage arranges nodes when it
 // opens is the shared `NodeLayoutSection` ("Node layout"), which is not a
 // switch at all but a choice of "Layout mode" between "Manual mode" and
@@ -98,12 +99,12 @@ export async function addNarrativePreset(
     editor.field('presets'),
     async () => {
       await page
-        .getByRole('textbox', { name: 'Preset name', exact: true })
+        .getByRole('textbox', { name: 'Preset label', exact: true })
         .fill(spec.label);
       await chooseAttribute(page, editor.field('layoutVariable'), {
         name: spec.layoutVariable,
         createLabel: 'Create a new position attribute',
-        scope: editor.section('Node positions'),
+        scope: editor.section('Node layout'),
       });
       if (spec.groupVariable) {
         await chooseAttribute(page, editor.field('groupVariable'), {
@@ -135,7 +136,7 @@ export async function setNarrativeBehaviours(
   if (opts.freeDraw) {
     await editor
       .field('behaviours.freeDraw')
-      .getByRole('switch', { name: 'Allow drawing on the canvas', exact: true })
+      .getByRole('switch', { name: 'Free-draw', exact: true })
       .click();
   }
   if (opts.automaticLayout === false) {
