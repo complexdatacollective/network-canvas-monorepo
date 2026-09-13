@@ -28,6 +28,7 @@ const evidence = {
     publishers: createRegistryRecoveryInventory('publishers', []),
     operators: createRegistryRecoveryInventory('operators', []),
     entries: createRegistryRecoveryInventory('entries', []),
+    artifacts: createRegistryRecoveryInventory('artifacts', []),
   },
 };
 const bytes = Buffer.from(JSON.stringify(evidence) + '\n');
@@ -38,6 +39,7 @@ it('builds canonical, ordered inventories that bind every authority field', () =
       id: '00000000-0000-4000-8000-00000000000A',
       publisherId: '00000000-0000-4000-8000-00000000000B',
       artifactRoot: 'c'.repeat(64),
+      yanked: false,
     },
   ]);
   expect(entry.count).toBe('1');
@@ -48,6 +50,7 @@ it('builds canonical, ordered inventories that bind every authority field', () =
         id: '00000000-0000-4000-8000-00000000000a',
         publisherId: '00000000-0000-4000-8000-00000000000b',
         artifactRoot: 'd'.repeat(64),
+        yanked: false,
       },
     ]).sha256,
   ).not.toBe(entry.sha256);
@@ -107,6 +110,7 @@ it('rejects trailing bytes in canonical counts, hashes, and artifact roots', () 
         id: '00000000-0000-4000-8000-000000000001',
         publisherId: '00000000-0000-4000-8000-000000000002',
         artifactRoot: `${'a'.repeat(64)}\n`,
+        yanked: false,
       },
     ]),
   ).toThrow();
@@ -119,6 +123,7 @@ it('keeps independently prepared evidence bounded for large populations', () => 
         id: `00000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`,
         publisherId: '00000000-0000-4000-8000-000000000001',
         artifactRoot: index.toString(16).padStart(64, '0'),
+        yanked: false,
       };
   }
   const large = {

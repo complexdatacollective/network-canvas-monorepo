@@ -35,7 +35,17 @@ const link = z
   .url()
   .max(2048)
   .regex(/^[Hh][Tt][Tt][Pp][Ss]:\/\//)
-  .refine((value) => new URL(value).protocol === 'https:')
+  .refine((value) => {
+    const parsed = new URL(value);
+    return (
+      parsed.protocol === 'https:' &&
+      /^https:\/\/[^/?#]+(?:[/?#]|$)/i.test(value) &&
+      parsed.hostname.length > 0 &&
+      parsed.username.length === 0 &&
+      parsed.password.length === 0 &&
+      !value.includes('\\')
+    );
+  })
   .meta({ format: 'uri' });
 
 // ORCID is a format-validated identifier, not a claim that the registry has
