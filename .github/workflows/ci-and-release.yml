@@ -845,8 +845,10 @@ jobs:
         # The server subprocess suite runs in the existing Studio test step.
         env:
           STUDIO_TELEMETRY_KERNEL_IMAGE: studio-telemetry-qualification:${{ github.sha }}
+          STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE: studio-telemetry-observer:${{ github.sha }}
         run: |
           docker build -f apps/studio/Dockerfile -t "$STUDIO_TELEMETRY_KERNEL_IMAGE" .
+          docker build -f apps/studio/telemetry-observer.Dockerfile --build-arg "STUDIO_CANDIDATE_IMAGE=$STUDIO_TELEMETRY_KERNEL_IMAGE" -t "$STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE" .
           pnpm --filter @codaco/studio-client exec playwright install --with-deps chromium
           pnpm --filter @codaco/studio-client test:telemetry
       - name: Typecheck workspaces

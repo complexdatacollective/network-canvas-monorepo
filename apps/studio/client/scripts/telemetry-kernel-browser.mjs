@@ -61,6 +61,7 @@ async function waitForObserver(name) {
 
 export async function launchKernelObservedChromium({
   image,
+  observerImage,
   serverPorts,
   scratch,
 }) {
@@ -70,6 +71,7 @@ export async function launchKernelObservedChromium({
     'Kernel browser qualification requires Linux.',
   );
   assert.match(image, /^[a-zA-Z0-9][a-zA-Z0-9._/@:+-]{0,511}$/u);
+  assert.match(observerImage, /^[a-zA-Z0-9][a-zA-Z0-9._/@:+-]{0,511}$/u);
   assert(serverPorts.length > 0 && serverPorts.every(Number.isInteger));
   const identity = randomBytes(6).toString('hex');
   const network = `studio-browser-kernel-${identity}`;
@@ -158,11 +160,13 @@ export async function launchKernelObservedChromium({
       '/tmp:size=1m,mode=1777',
       '--cap-drop',
       'ALL',
+      '--cap-add',
+      'NET_ADMIN',
       '--env',
       `STUDIO_QUALIFICATION_KERNEL_ENDPOINTS=${endpoints}`,
       '--entrypoint',
       'node',
-      image,
+      observerImage,
       '-e',
       TELEMETRY_KERNEL_OBSERVER_SOURCE,
     ]);

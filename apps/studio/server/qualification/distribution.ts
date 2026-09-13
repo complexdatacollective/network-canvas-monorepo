@@ -297,7 +297,7 @@ async function waitForReady(origin: string) {
   throw new Error('Distribution qualification service did not become ready.');
 }
 
-async function scenario(label: string, cosign: string) {
+async function scenario(label: string, cosign: string, observerImage: string) {
   const root = mkdtempSync(join(tmpdir(), `studio-distribution-${label}-`));
   chmodSync(root, 0o700);
   const installation = privateDirectory(join(root, 'installation'));
@@ -379,6 +379,7 @@ async function scenario(label: string, cosign: string) {
         aliases: [telemetry-control-registry]
 ${telemetryKernelComposeServices(
   '${STUDIO_IMAGE:?Select the signed Studio image digest}',
+  '${STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE:?Select the qualification observer image}',
 )}  postgres:
     ports: !override ["127.0.0.1:${databasePort}:5432"]
   registry-postgres:
@@ -397,6 +398,7 @@ networks:
   );
   const environment = {
     ...dockerEnvironment(root, overlay),
+    STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE: observerImage,
     STUDIO_PROXY_SUBNET: edgeSubnet,
     STUDIO_PROXY_IP: proxyIp,
   };
@@ -794,8 +796,13 @@ async function exerciseInstall(
   candidate: { bundleDirectory: string; current: { digest: string } },
   cosign: string,
   populateCandidate: boolean,
+  observerImage: string,
 ) {
-  const fixture = await scenario(randomBytes(4).toString('hex'), cosign);
+  const fixture = await scenario(
+    randomBytes(4).toString('hex'),
+    cosign,
+    observerImage,
+  );
   try {
     const first = executeOperation(
       fixture.operationOptions(
@@ -1343,12 +1350,14 @@ export async function runLocalStudioDistributionQualification({
   candidate,
   sources,
   cosign,
+  observerImage,
 }: {
   candidate: { bundleDirectory: string; current: { digest: string } };
   sources: { bundleDirectory: string; current: { digest: string } }[];
   cosign: string;
+  observerImage: string;
 }) {
-  await exerciseInstall(candidate, candidate, cosign, true);
+  await exerciseInstall(candidate, candidate, cosign, true, observerImage);
   for (const source of sources)
-    await exerciseInstall(source, candidate, cosign, false);
+    await exerciseInstall(source, candidate, cosign, false, observerImage);
 }
