@@ -302,7 +302,11 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     if (matched) {
       const headers = new Headers(response.headers);
       headers.set('Cache-Control', 'no-store');
-      return c.newResponse(response.body, { ...response, headers });
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
     }
     await next();
   });
