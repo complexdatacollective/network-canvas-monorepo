@@ -50,6 +50,11 @@ const studyWaveRollups = pgTable(
     // Set by participant erasure and by any operation this rollup cannot be
     // incrementally corrected for; cleared by the recompute job.
     staleAt: timestamp('stale_at', { withTimezone: true }),
+    // Source writers advance this while holding the row lock. A worker may
+    // clear freshness only for the exact generation it claimed.
+    dirtyGeneration: bigint('dirty_generation', { mode: 'bigint' })
+      .notNull()
+      .default(0n),
     leaseOwner: text('lease_owner'),
     leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     attemptCount: integer('attempt_count').notNull().default(0),
@@ -75,7 +80,8 @@ const studyWaveRollups = pgTable(
       sql`${table.invitedCount} >= 0 AND ${table.onboardingStartedCount} >= 0
           AND ${table.consentedCount} >= 0 AND ${table.sessionStartedCount} >= 0
           AND ${table.sessionCompletedCount} >= 0 AND ${table.sessionAbandonedCount} >= 0
-          AND ${table.deliveryFailedCount} >= 0 AND ${table.attemptCount} >= 0`,
+          AND ${table.deliveryFailedCount} >= 0 AND ${table.attemptCount} >= 0
+          AND ${table.dirtyGeneration} >= 0`,
     ),
     ...teamIsolationPolicies(),
   ],

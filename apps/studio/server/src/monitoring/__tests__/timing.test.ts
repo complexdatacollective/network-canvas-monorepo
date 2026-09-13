@@ -14,6 +14,7 @@ import {
 import {
   MAX_TIMING_INTERVAL_MS,
   openInterviewSession,
+  releaseInterviewSession,
   SessionTimingError,
   writeInterviewTiming,
 } from '../../study/session-timing.ts';
@@ -24,7 +25,7 @@ import {
 
 const db = await reachableDb();
 
-const TEAM = 'timing-team-a';
+const TEAM = 'timing.team-a';
 const OTHER_TEAM = 'timing-team-b';
 const PROTOCOL_STAGES = [
   ['info-1', 'Information'],
@@ -45,6 +46,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
   let studyId: string;
   let waveId: string;
   let sessionId: string;
+  let linkId: string;
   let token: string;
   let writerId: string;
   let holderEpoch: number;
@@ -62,6 +64,20 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     );
   };
 
+  const waitForBlockedApplication = async (name: string): Promise<void> => {
+    for (let attempt = 0; attempt < 1_000; attempt += 1) {
+      const result = await pool.query<{ blocked: number }>(
+        `select count(*)::int as blocked from pg_stat_activity
+          where pid <> pg_backend_pid() and wait_event_type = 'Lock'
+            and application_name = $1`,
+        [name],
+      );
+      if ((result.rows[0]?.blocked ?? 0) > 0) return;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+    }
+    throw new Error(`application did not reach the expected lock: ${name}`);
+  };
+
   beforeAll(async () => {
     if (!db) throw new Error('unreachable: probe guaranteed a database');
     ({ pool, app, maintenance, dispose } = await createScratchSchema(db));
@@ -74,8 +90,8 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     studyId = randomUUID();
     waveId = randomUUID();
     sessionId = randomUUID();
-    const linkId = randomUUID();
-    const secret = `secret-${randomBytes(12).toString('base64url')}`;
+    linkId = randomUUID();
+    const secret = randomBytes(32).toString('base64url');
     token = `${TEAM}.${secret}`;
     writerId = randomUUID();
 
@@ -179,6 +195,13 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
       link_id: linkId,
       ego_uid: `ego-${sessionId.slice(0, 8)}`,
     });
+    holderEpoch = (
+      await openInterviewSession(app, {
+        sessionId,
+        accessToken: token,
+        writerId,
+      })
+    ).holderEpoch;
 
     const missingTimingSession = randomUUID();
     await insert('interview_sessions', {
@@ -218,7 +241,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
           stageType: 'Information',
           promptIndex: 0,
           promptCount: 1,
-          durationMs: 125,
+          durationMs: 125.5,
           exitDirection: 'forward' as const,
         },
         {
@@ -247,7 +270,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
         },
       ],
       promptExits: [],
-      totalDurationMs: 1385,
+      totalDurationMs: 1385.5,
     };
     await expect(
       writeInterviewTiming(app, {
@@ -275,8 +298,10 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
       sync_revision: 1,
       stage_timing: {
         ...stageTiming,
+        totalDurationMs: 1386,
         stageExits: stageTiming.stageExits.map((exit) => ({
           ...exit,
+          durationMs: Math.round(exit.durationMs),
           stageId: PROTOCOL_STAGES[exit.stageIndex]![0],
         })),
       },
@@ -302,7 +327,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     await expect(
       writeInterviewTiming(app, {
         sessionId,
-        accessToken: `${OTHER_TEAM}.wrong-secret`,
+        accessToken: `${OTHER_TEAM}.${'a'.repeat(43)}`,
         writerId,
         holderEpoch,
         syncRevision: 2,
@@ -328,10 +353,14 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     const rows = await pool.query<{
       stage_id: string;
       entered_count: number;
+      completed_count: number;
+      abandoned_count: number;
       duration_ms_sum: string;
       duration_ms_count: number;
+      missing_item_count: number;
     }>(
-      `select stage_id, entered_count, duration_ms_sum, duration_ms_count
+      `select stage_id, entered_count, completed_count, abandoned_count,
+              duration_ms_sum, duration_ms_count, missing_item_count
          from study_stage_rollups where wave_id = $1 order by stage_id`,
       [waveId],
     );
@@ -339,37 +368,65 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
       {
         stage_id: 'edge-1',
         entered_count: 1,
+        completed_count: 0,
+        abandoned_count: 1,
         duration_ms_sum: '35',
         duration_ms_count: 1,
+        missing_item_count: 0,
       },
       {
         stage_id: 'ego-1',
         entered_count: 1,
+        completed_count: 1,
+        abandoned_count: 0,
         duration_ms_sum: '950',
         duration_ms_count: 1,
+        missing_item_count: 0,
       },
       {
         // The second session produced a node but no timing payload. It counts
         // as observed for drop-off, without inventing any elapsed duration.
         stage_id: 'info-1',
         entered_count: 2,
-        duration_ms_sum: '125',
+        completed_count: 1,
+        abandoned_count: 0,
+        duration_ms_sum: '126',
         duration_ms_count: 1,
+        missing_item_count: 0,
       },
       {
         stage_id: 'info-2',
         entered_count: 1,
+        completed_count: 1,
+        abandoned_count: 0,
         duration_ms_sum: '275',
         duration_ms_count: 1,
+        missing_item_count: 0,
       },
     ]);
     await pool.query(
-      `update study_stage_rollups set stale_at = clock_timestamp() where wave_id = $1 and stage_id = $2`,
+      `update study_stage_rollups
+          set lease_owner = 'older-stage-worker',
+              lease_expires_at = clock_timestamp() + interval '1 hour'
+        where wave_id = $1 and stage_id = $2`,
       [waveId, 'info-1'],
+    );
+    await pool.query(
+      `update study_wave_rollups
+          set dirty_generation = dirty_generation + 1,
+              stale_at = clock_timestamp()
+        where wave_id = $1`,
+      [waveId],
     );
     await expect(runMonitoringStageRollupOnce(maintenance)).resolves.toEqual({
       claimed: 1,
     });
+    const siblingLease = await pool.query<{ lease_owner: string | null }>(
+      `select lease_owner from study_stage_rollups
+        where wave_id = $1 and stage_id = $2`,
+      [waveId, 'info-1'],
+    );
+    expect(siblingLease.rows[0]?.lease_owner).toBe('older-stage-worker');
     await expect(runMonitoringStageRollupOnce(maintenance)).resolves.toEqual({
       claimed: 0,
     });
@@ -463,5 +520,289 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
         syncRevision: 2,
       }),
     ).rejects.toBeInstanceOf(SessionTimingError);
+  });
+
+  it('resets retry state across at least ten successful dirty generations', async () => {
+    for (let revision = 2; revision <= 11; revision += 1) {
+      await writeInterviewTiming(app, {
+        sessionId,
+        accessToken: token,
+        writerId,
+        holderEpoch,
+        syncRevision: revision,
+        stageTiming: {
+          stageExits: [
+            {
+              stageIndex: 0,
+              stageType: 'Information',
+              promptIndex: 0,
+              promptCount: 1,
+              durationMs: revision + 0.25,
+              exitDirection: 'forward',
+            },
+          ],
+          totalDurationMs: revision + 0.25,
+        },
+      });
+      await expect(runMonitoringRollupOnce(maintenance)).resolves.toEqual({
+        claimed: 1,
+      });
+      const state = await pool.query<{
+        attempt_count: number;
+        stale_at: Date | null;
+        failed_at: Date | null;
+      }>(
+        `select attempt_count, stale_at, failed_at
+           from study_wave_rollups where wave_id = $1`,
+        [waveId],
+      );
+      expect(state.rows[0]).toEqual({
+        attempt_count: 0,
+        stale_at: null,
+        failed_at: null,
+      });
+    }
+  });
+
+  it('preserves a source write queued while recomputation is finalizing', async () => {
+    await writeInterviewTiming(app, {
+      sessionId,
+      accessToken: token,
+      writerId,
+      holderEpoch,
+      syncRevision: 12,
+    });
+    let signalRecomputed: (() => void) | undefined;
+    const recomputed = new Promise<void>((resolve) => {
+      signalRecomputed = resolve;
+    });
+    let releaseRecompute: (() => void) | undefined;
+    const mayCommit = new Promise<void>((resolve) => {
+      releaseRecompute = resolve;
+    });
+    const worker = runMonitoringRollupOnce(maintenance, {
+      afterRecompute: async () => {
+        signalRecomputed?.();
+        await mayCommit;
+      },
+    });
+    await recomputed;
+    await app.query(`set application_name = 'timing-source-write'`);
+    const newerWrite = writeInterviewTiming(app, {
+      sessionId,
+      accessToken: token,
+      writerId,
+      holderEpoch,
+      syncRevision: 13,
+      stageTiming: {
+        stageExits: [
+          {
+            stageIndex: 0,
+            stageType: 'Information',
+            promptIndex: 0,
+            promptCount: 1,
+            durationMs: 13.5,
+            exitDirection: 'forward',
+          },
+        ],
+        totalDurationMs: 13.5,
+      },
+    });
+    try {
+      await waitForBlockedApplication('timing-source-write');
+    } finally {
+      releaseRecompute?.();
+    }
+    await Promise.all([worker, newerWrite]);
+    const state = await pool.query<{ stale_at: Date | null }>(
+      `select stale_at from study_wave_rollups where wave_id = $1`,
+      [waveId],
+    );
+    expect(state.rows[0]?.stale_at).not.toBeNull();
+
+    const claims = await Promise.all([
+      runMonitoringRollupOnce(maintenance),
+      runMonitoringStageRollupOnce(maintenance),
+    ]);
+    expect(claims.reduce((sum, result) => sum + result.claimed, 0)).toBe(1);
+  });
+
+  it('does not claim future backoff and lets a new generation recover a terminal failure', async () => {
+    const brokenTiming = JSON.stringify({
+      stageExits: [
+        {
+          stageId: 'info-1',
+          durationMs: 'not-a-number',
+          exitDirection: 'forward',
+        },
+      ],
+    });
+    await pool.query(
+      `update interview_sessions set stage_timing = $2::jsonb where id = $1`,
+      [sessionId, brokenTiming],
+    );
+    await pool.query(
+      `update study_wave_rollups
+          set dirty_generation = dirty_generation + 1,
+              stale_at = clock_timestamp(), attempt_count = 0,
+              failed_at = null, last_error = null
+        where wave_id = $1`,
+      [waveId],
+    );
+    await expect(
+      runMonitoringRollupOnce(maintenance, {
+        maxAttempts: 2,
+        retryBaseMs: 60_000,
+      }),
+    ).resolves.toEqual({ claimed: 1 });
+    await expect(
+      runMonitoringRollupOnce(maintenance, {
+        maxAttempts: 2,
+        retryBaseMs: 60_000,
+      }),
+    ).resolves.toEqual({ claimed: 0 });
+
+    await pool.query(
+      `update study_wave_rollups
+          set stale_at = clock_timestamp(), attempt_count = 1,
+              lease_owner = null, lease_expires_at = null
+        where wave_id = $1`,
+      [waveId],
+    );
+    await expect(
+      runMonitoringRollupOnce(maintenance, { maxAttempts: 1 }),
+    ).resolves.toEqual({ claimed: 0 });
+    const failed = await pool.query<{ failed_at: Date | null }>(
+      `select failed_at from study_wave_rollups where wave_id = $1`,
+      [waveId],
+    );
+    expect(failed.rows[0]?.failed_at).not.toBeNull();
+
+    await writeInterviewTiming(app, {
+      sessionId,
+      accessToken: token,
+      writerId,
+      holderEpoch,
+      syncRevision: 14,
+      stageTiming: {
+        stageExits: [
+          {
+            stageIndex: 0,
+            stageType: 'Information',
+            promptIndex: 0,
+            promptCount: 1,
+            durationMs: 14,
+            exitDirection: 'forward',
+          },
+        ],
+        totalDurationMs: 14,
+      },
+    });
+    await expect(runMonitoringRollupOnce(maintenance)).resolves.toEqual({
+      claimed: 1,
+    });
+  });
+
+  it('refuses completion after lease expiry and leaves the generation reclaimable', async () => {
+    await writeInterviewTiming(app, {
+      sessionId,
+      accessToken: token,
+      writerId,
+      holderEpoch,
+      syncRevision: 15,
+    });
+    await expect(
+      runMonitoringRollupOnce(maintenance, {
+        leaseMs: 1,
+        afterRecompute: async () => {
+          await pool.query(`select pg_sleep(0.02)`);
+        },
+      }),
+    ).resolves.toEqual({ claimed: 1 });
+    const expired = await pool.query<{ stale_at: Date | null }>(
+      `select stale_at from study_wave_rollups where wave_id = $1`,
+      [waveId],
+    );
+    expect(expired.rows[0]?.stale_at).not.toBeNull();
+    await expect(runMonitoringRollupOnce(maintenance)).resolves.toEqual({
+      claimed: 1,
+    });
+  });
+
+  it('supports explicit takeover and bounded holder release', async () => {
+    const replacementWriter = randomUUID();
+    const taken = await openInterviewSession(app, {
+      sessionId,
+      accessToken: token,
+      writerId: replacementWriter,
+      takeover: true,
+    });
+    expect(taken.holderEpoch).toBeGreaterThan(holderEpoch);
+    await expect(
+      writeInterviewTiming(app, {
+        sessionId,
+        accessToken: token,
+        writerId,
+        holderEpoch,
+        syncRevision: 16,
+      }),
+    ).rejects.toMatchObject({ code: 'HOLDER_CONFLICT' });
+    await expect(
+      releaseInterviewSession(app, {
+        sessionId,
+        accessToken: token,
+        writerId: replacementWriter,
+        holderEpoch: taken.holderEpoch,
+      }),
+    ).resolves.toBe(true);
+    const reopened = await openInterviewSession(app, {
+      sessionId,
+      accessToken: token,
+      writerId,
+    });
+    holderEpoch = reopened.holderEpoch;
+  });
+
+  it('serializes link revocation with an in-flight authenticated write', async () => {
+    const waveBlocker = await pool.connect();
+    const revoker = await pool.connect();
+    try {
+      await app.query(`set application_name = 'timing-source-write'`);
+      await revoker.query(`set application_name = 'timing-link-revoker'`);
+      await waveBlocker.query('begin');
+      await waveBlocker.query(
+        `select 1 from study_wave_rollups where wave_id = $1 for update`,
+        [waveId],
+      );
+      const writing = writeInterviewTiming(app, {
+        sessionId,
+        accessToken: token,
+        writerId,
+        holderEpoch,
+        syncRevision: 16,
+      });
+      await waitForBlockedApplication('timing-source-write');
+      const revoking = revoker.query(
+        `update interview_links set revoked_at = clock_timestamp() where id = $1`,
+        [linkId],
+      );
+      await waitForBlockedApplication('timing-link-revoker');
+      await waveBlocker.query('commit');
+      await expect(writing).resolves.toMatchObject({ applied: true });
+      await revoking;
+      await expect(
+        writeInterviewTiming(app, {
+          sessionId,
+          accessToken: token,
+          writerId,
+          holderEpoch,
+          syncRevision: 17,
+        }),
+      ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    } finally {
+      await waveBlocker.query('rollback').catch(() => undefined);
+      waveBlocker.release();
+      revoker.release();
+    }
   });
 });

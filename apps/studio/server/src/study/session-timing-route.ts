@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import {
   openInterviewSession,
+  releaseInterviewSession,
   SessionTimingError,
   StageTimingSchema,
   StageTimingValidationError,
@@ -28,6 +29,12 @@ const BodySchema = z.object({
 
 const OpenBodySchema = z.object({
   writerId: z.string().trim().min(1).max(128),
+  takeover: z.boolean().optional(),
+});
+
+const ReleaseBodySchema = z.object({
+  writerId: z.string().trim().min(1).max(128),
+  holderEpoch: z.number().int().nonnegative().safe(),
 });
 
 function bearerToken(header: string | undefined): string | undefined {
@@ -116,6 +123,7 @@ export function createSessionTimingOpenRoute(pool: pg.Pool): Handler {
         sessionId,
         accessToken,
         writerId: parsed.data.writerId,
+        takeover: parsed.data.takeover,
       });
       return context.json({
         success: true,
@@ -134,6 +142,39 @@ export function createSessionTimingOpenRoute(pool: pg.Pool): Handler {
           },
           error.code === 'HOLDER_CONFLICT' ? 409 : 404,
         );
+      }
+      throw error;
+    }
+  };
+}
+
+/** Voluntarily releases the authenticated writer fence. */
+export function createSessionTimingReleaseRoute(pool: pg.Pool): Handler {
+  return async (context) => {
+    const accessToken = bearerToken(context.req.header('Authorization'));
+    const sessionId = context.req.param('sessionId');
+    if (!accessToken || !sessionId) {
+      return context.json({ error: 'Not found' }, 404);
+    }
+    const parsed = ReleaseBodySchema.safeParse(
+      await context.req.json().catch(() => null),
+    );
+    if (!parsed.success) {
+      return context.json({ error: 'Invalid timing payload' }, 400);
+    }
+    try {
+      const released = await releaseInterviewSession(pool, {
+        sessionId,
+        accessToken,
+        ...parsed.data,
+      });
+      return context.json({ success: true, released });
+    } catch (error) {
+      if (error instanceof SessionTimingError) {
+        return context.json({ error: 'Not found' }, 404);
+      }
+      if (error instanceof z.ZodError) {
+        return context.json({ error: 'Invalid timing payload' }, 400);
       }
       throw error;
     }

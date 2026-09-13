@@ -11,11 +11,15 @@ import { startOutboxWorker, type OutboxWorker } from '../outbox/worker.ts';
 
 type RollupClaim = {
   waveId: string;
-  stageId?: string;
+  dirtyGeneration: string;
   attemptCount: number;
   leaseOwner: string;
 };
 type RollupQueue = 'study_wave_rollups' | 'study_stage_rollups';
+type MonitoringRollupOptions = OutboxRetryOptions & {
+  observer?: OutboxObserver;
+  afterRecompute?: () => Promise<void>;
+};
 
 /**
  * Rebuilds one wave and all of its stage rows from source tables. Stage
@@ -28,43 +32,39 @@ async function recomputeWave(
   waveId: string,
   recomputedAt: Date,
 ): Promise<void> {
-  await client.query(`delete from study_stage_rollups where wave_id = $1`, [
-    waveId,
-  ]);
   await client.query(
     `insert into study_stage_rollups (
        team_id, study_id, wave_id, stage_id, entered_count, completed_count,
        abandoned_count, duration_ms_sum, duration_ms_count, missing_item_count,
        stale_at, recomputed_at)
      with timing as (
-       select s.team_id, s.study_id, s.wave_id, s.id as session_id, s.status,
+       select s.team_id, s.study_id, s.wave_id, s.id as session_id,
               exit_item->>'stageId' as stage_id,
-              (exit_item->>'durationMs')::bigint as duration_ms
+              round((exit_item->>'durationMs')::numeric)::bigint as duration_ms,
+              exit_item->>'exitDirection' as exit_direction,
+              ordinal
        from interview_sessions s
        cross join lateral jsonb_array_elements(
          coalesce(s.stage_timing->'stageExits', '[]'::jsonb)
-       ) as exit_item
+       ) with ordinality as exits(exit_item, ordinal)
        where s.wave_id = $1
+     ),
+     latest_exit as (
+       select distinct on (session_id, stage_id)
+              team_id, study_id, wave_id, session_id, stage_id, exit_direction
+       from timing
+       order by session_id, stage_id, ordinal desc
      ),
      observed as (
        select s.team_id, s.study_id, s.wave_id, s.id as session_id,
-              s.status, n.stage_id
+              n.stage_id
        from interview_sessions s
        join nodes n on n.session_id = s.id and n.team_id = s.team_id
        where s.wave_id = $1 and n.stage_id is not null
-       group by s.team_id, s.study_id, s.wave_id, s.id, s.status, n.stage_id
+       group by s.team_id, s.study_id, s.wave_id, s.id, n.stage_id
        union
-       select team_id, study_id, wave_id, session_id, status, stage_id
+       select team_id, study_id, wave_id, session_id, stage_id
        from timing
-     ),
-     node_missing as (
-       select n.stage_id,
-              count(*) filter (where n.attributes = '{}'::jsonb)::int as missing
-       from nodes n
-       join interview_sessions s
-         on s.id = n.session_id and s.team_id = n.team_id
-       where s.wave_id = $1 and n.stage_id is not null
-       group by n.stage_id
      ),
      timing_totals as (
        select team_id, study_id, wave_id, stage_id,
@@ -75,20 +75,75 @@ async function recomputeWave(
      )
      select o.team_id, o.study_id, o.wave_id, o.stage_id,
             count(*)::int,
-            count(*) filter (where o.status = 'completed')::int,
-            count(*) filter (where o.status = 'abandoned')::int,
+            count(*) filter (where x.exit_direction in ('forward', 'jumped'))::int,
+            count(*) filter (where x.exit_direction = 'abandoned')::int,
             coalesce(max(t.duration_ms_sum), 0)::bigint,
             coalesce(max(t.duration_ms_count), 0)::int,
-            coalesce(max(n.missing), 0)::int,
+            -- Schema 8 removes nullish attributes and has no persisted
+            -- missing-reason value. Empty attribute bags are valid answers.
+            0,
             null,
             $2
      from observed o
      left join timing_totals t
        on t.team_id = o.team_id and t.wave_id = o.wave_id
       and t.stage_id = o.stage_id
-     left join node_missing n on n.stage_id = o.stage_id
-     group by o.team_id, o.study_id, o.wave_id, o.stage_id`,
+     left join latest_exit x
+       on x.session_id = o.session_id and x.stage_id = o.stage_id
+     group by o.team_id, o.study_id, o.wave_id, o.stage_id
+     on conflict (wave_id, stage_id) do update
+       set entered_count = excluded.entered_count,
+           completed_count = excluded.completed_count,
+           abandoned_count = excluded.abandoned_count,
+           duration_ms_sum = excluded.duration_ms_sum,
+           duration_ms_count = excluded.duration_ms_count,
+           missing_item_count = excluded.missing_item_count,
+           recomputed_at = excluded.recomputed_at`,
     [waveId, recomputedAt],
+  );
+
+  await client.query(
+    `update study_stage_rollups r
+        set entered_count = 0, completed_count = 0, abandoned_count = 0,
+            duration_ms_sum = 0, duration_ms_count = 0,
+            missing_item_count = 0, recomputed_at = $2
+      where r.wave_id = $1
+        and r.lease_owner is not null
+        and r.lease_expires_at > clock_timestamp()
+        and not exists (
+          select 1 from interview_sessions s
+          join nodes n on n.session_id = s.id and n.team_id = s.team_id
+          where s.wave_id = r.wave_id and n.stage_id = r.stage_id
+        )
+        and not exists (
+          select 1 from interview_sessions s
+          cross join lateral jsonb_array_elements(
+            coalesce(s.stage_timing->'stageExits', '[]'::jsonb)
+          ) exit_item
+          where s.wave_id = r.wave_id
+            and exit_item->>'stageId' = r.stage_id
+        )`,
+    [waveId, recomputedAt],
+  );
+
+  await client.query(
+    `delete from study_stage_rollups r
+      where r.wave_id = $1
+        and (r.lease_owner is null or r.lease_expires_at <= clock_timestamp())
+        and not exists (
+          select 1 from interview_sessions s
+          join nodes n on n.session_id = s.id and n.team_id = s.team_id
+          where s.wave_id = r.wave_id and n.stage_id = r.stage_id
+        )
+        and not exists (
+          select 1 from interview_sessions s
+          cross join lateral jsonb_array_elements(
+            coalesce(s.stage_timing->'stageExits', '[]'::jsonb)
+          ) exit_item
+          where s.wave_id = r.wave_id
+            and exit_item->>'stageId' = r.stage_id
+        )`,
+    [waveId],
   );
 
   await client.query(
@@ -127,28 +182,25 @@ async function recomputeWave(
                 on sc.id = o.schedule_id and sc.team_id = o.team_id
                where sc.wave_id = r.wave_id and d.team_id = r.team_id
                  and d.failed_at is not null),
-            stale_at = null,
             recomputed_at = $2
       where r.wave_id = $1`,
     [waveId, recomputedAt],
   );
 }
 
-function tableFor(
-  queue: RollupQueue,
-): 'study_wave_rollups' | 'study_stage_rollups' {
-  return queue;
-}
-
 class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
   readonly queue: OutboxQueue;
   private readonly pool: pg.Pool;
-  private readonly table: 'study_wave_rollups' | 'study_stage_rollups';
+  private readonly afterRecompute: (() => Promise<void>) | undefined;
 
-  constructor(pool: pg.Pool, queue: RollupQueue) {
+  constructor(
+    pool: pg.Pool,
+    queue: RollupQueue,
+    afterRecompute?: () => Promise<void>,
+  ) {
     this.pool = pool;
     this.queue = queue;
-    this.table = tableFor(queue);
+    this.afterRecompute = afterRecompute;
   }
 
   async suppressUndeliverable(): Promise<number> {
@@ -157,13 +209,14 @@ class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
 
   async failExhaustedLeases(maxAttempts: number): Promise<number> {
     const result = await this.pool.query(
-      `update ${this.table}
+      `update study_wave_rollups
           set failed_at = clock_timestamp(),
               lease_owner = null,
               lease_expires_at = null,
               stale_at = null,
               last_error = coalesce(last_error, 'rollup worker stopped during the final attempt')
         where stale_at is not null
+          and stale_at <= clock_timestamp()
           and failed_at is null
           and attempt_count >= $1
           and (lease_expires_at is null or lease_expires_at <= clock_timestamp())`,
@@ -176,42 +229,38 @@ class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
     lease: OutboxLease,
     maxAttempts: number,
   ): Promise<RollupClaim | null> {
-    const stageColumns =
-      this.table === 'study_stage_rollups' ? ', stage_id' : '';
-    const stageReturn =
-      this.table === 'study_stage_rollups' ? ', r.stage_id' : '';
     const result = await this.pool.query<{
       wave_id: string;
-      stage_id?: string;
+      dirty_generation: string;
       attempt_count: number;
     }>(
       `with candidate as (
-         select r.wave_id${stageColumns}
-           from ${this.table} r
+         select r.wave_id
+           from study_wave_rollups r
           where r.stale_at is not null
+            and r.stale_at <= clock_timestamp()
             and r.failed_at is null
             and r.attempt_count < $3
             and (r.lease_expires_at is null or r.lease_expires_at <= clock_timestamp())
             and pg_try_advisory_xact_lock(hashtext('monitoring-rollup'), hashtext(r.wave_id::text))
-          order by r.stale_at, r.wave_id${this.table === 'study_stage_rollups' ? ', r.stage_id' : ''}
+          order by r.stale_at, r.wave_id
           for update skip locked
           limit 1
        )
-       update ${this.table} r
+       update study_wave_rollups r
           set lease_owner = $1,
               lease_expires_at = clock_timestamp() + make_interval(secs => $2::float / 1000),
               attempt_count = r.attempt_count + 1
          from candidate c
         where r.wave_id = c.wave_id
-          ${this.table === 'study_stage_rollups' ? 'and r.stage_id = c.stage_id' : ''}
-        returning r.wave_id${stageReturn}, r.attempt_count`,
+        returning r.wave_id, r.dirty_generation, r.attempt_count`,
       [lease.owner, lease.durationMs, maxAttempts],
     );
     const row = result.rows[0];
     return row
       ? {
           waveId: row.wave_id,
-          ...(row.stage_id ? { stageId: row.stage_id } : {}),
+          dirtyGeneration: row.dirty_generation,
           attemptCount: row.attempt_count,
           leaseOwner: lease.owner,
         }
@@ -223,14 +272,13 @@ class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
     lease: OutboxLease,
   ): Promise<boolean> {
     const result = await this.pool.query(
-      `select 1 from ${this.table}
+      `select 1 from study_wave_rollups
         where wave_id = $1
-          ${claim.stageId ? 'and stage_id = $2' : ''}
-          and lease_owner = $${claim.stageId ? 3 : 2}
+          and dirty_generation = $2
+          and lease_owner = $3
+          and lease_expires_at > clock_timestamp()
           and stale_at is not null and failed_at is null`,
-      claim.stageId
-        ? [claim.waveId, claim.stageId, lease.owner]
-        : [claim.waveId, lease.owner],
+      [claim.waveId, claim.dirtyGeneration, lease.owner],
     );
     return result.rowCount === 1;
   }
@@ -240,17 +288,15 @@ class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
   }
 
   async renewLease(claim: RollupClaim, lease: OutboxLease): Promise<boolean> {
-    const stage = claim.stageId !== undefined;
     const result = await this.pool.query(
-      `update ${this.table}
-          set lease_expires_at = clock_timestamp() + make_interval(secs => $${stage ? 4 : 3}::float / 1000)
+      `update study_wave_rollups
+          set lease_expires_at = clock_timestamp() + make_interval(secs => $4::float / 1000)
         where wave_id = $1
-          ${stage ? 'and stage_id = $2' : ''}
-          and lease_owner = $${stage ? 3 : 2}
+          and dirty_generation = $2
+          and lease_owner = $3
+          and lease_expires_at > clock_timestamp()
           and stale_at is not null and failed_at is null`,
-      stage
-        ? [claim.waveId, claim.stageId, lease.owner, lease.durationMs]
-        : [claim.waveId, lease.owner, lease.durationMs],
+      [claim.waveId, claim.dirtyGeneration, lease.owner, lease.durationMs],
     );
     return result.rowCount === 1;
   }
@@ -264,23 +310,20 @@ class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
         [claim.waveId],
       );
       const owned = await client.query(
-        `select 1 from ${this.table}
+        `select 1 from study_wave_rollups
           where wave_id = $1
-            ${claim.stageId ? 'and stage_id = $2' : ''}
-            and lease_owner = $${claim.stageId ? 3 : 2}
-            and stale_at is not null and failed_at is null`,
-        claim.stageId
-          ? [claim.waveId, claim.stageId, claim.leaseOwner]
-          : [claim.waveId, claim.leaseOwner],
+            and dirty_generation = $2
+            and lease_owner = $3
+            and lease_expires_at > clock_timestamp()
+            and stale_at is not null and failed_at is null
+          for update`,
+        [claim.waveId, claim.dirtyGeneration, claim.leaseOwner],
       );
       if (owned.rowCount === 0) {
-        if (claim.stageId) {
-          await client.query('commit');
-          return;
-        }
         throw new Error('rollup lease was lost before recompute');
       }
       await recomputeWave(client, claim.waveId, new Date());
+      await this.afterRecompute?.();
       await client.query('commit');
     } catch (error) {
       await client.query('rollback').catch(() => undefined);
@@ -305,34 +348,26 @@ class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
     retryDelayMs: number | null,
   ): Promise<boolean> {
     const terminal = retryDelayMs === null;
-    const stage = claim.stageId !== undefined;
     const result = await this.pool.query(
-      `update ${this.table}
+      `update study_wave_rollups
           set lease_owner = null,
               lease_expires_at = null,
-              stale_at = case when $${stage ? 5 : 4}::boolean then null
-                              else clock_timestamp() + make_interval(secs => $${stage ? 6 : 5}::float / 1000) end,
-              failed_at = case when $${stage ? 5 : 4}::boolean then clock_timestamp() else null end,
-              last_error = $${stage ? 4 : 3}
+              stale_at = case when $5::boolean then null
+                              else clock_timestamp() + make_interval(secs => $6::float / 1000) end,
+              failed_at = case when $5::boolean then clock_timestamp() else null end,
+              last_error = $4
         where wave_id = $1
-          ${stage ? 'and stage_id = $2' : ''}
-          and lease_owner = $${stage ? 3 : 2}`,
-      stage
-        ? [
-            claim.waveId,
-            claim.stageId,
-            lease.owner,
-            String(error).slice(0, 1000),
-            terminal,
-            retryDelayMs ?? 0,
-          ]
-        : [
-            claim.waveId,
-            lease.owner,
-            String(error).slice(0, 1000),
-            terminal,
-            retryDelayMs ?? 0,
-          ],
+          and dirty_generation = $2
+          and lease_owner = $3
+          and lease_expires_at > clock_timestamp()`,
+      [
+        claim.waveId,
+        claim.dirtyGeneration,
+        lease.owner,
+        String(error).slice(0, 1000),
+        terminal,
+        retryDelayMs ?? 0,
+      ],
     );
     return result.rowCount === 1;
   }
@@ -342,22 +377,16 @@ class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
     lease: OutboxLease,
   ): Promise<boolean> {
     const result = await this.pool.query(
-      `update ${this.table}
-          set lease_owner = null, lease_expires_at = null, last_error = null
+      `update study_wave_rollups
+          set lease_owner = null, lease_expires_at = null, last_error = null,
+              stale_at = null, attempt_count = 0, failed_at = null
         where wave_id = $1
-          ${claim.stageId ? 'and stage_id = $2' : ''}
-          and lease_owner = $${claim.stageId ? 3 : 2}`,
-      claim.stageId
-        ? [claim.waveId, claim.stageId, lease.owner]
-        : [claim.waveId, lease.owner],
+          and dirty_generation = $2
+          and lease_owner = $3
+          and lease_expires_at > clock_timestamp()`,
+      [claim.waveId, claim.dirtyGeneration, lease.owner],
     );
-    if (result.rowCount === 1) return true;
-    if (!claim.stageId) return false;
-    const pending = await this.pool.query(
-      `select 1 from study_stage_rollups where wave_id = $1 and stage_id = $2 and stale_at is not null and failed_at is null`,
-      [claim.waveId, claim.stageId],
-    );
-    return pending.rowCount === 0;
+    return result.rowCount === 1;
   }
 
   async recordUncertain(
@@ -372,34 +401,36 @@ class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
 function rollupDispatcher(
   pool: pg.Pool,
   queue: RollupQueue,
-  options: OutboxRetryOptions & { observer?: OutboxObserver },
+  options: MonitoringRollupOptions,
 ) {
   return new OutboxDispatcher({
     ...options,
     pool,
-    adapter: new MonitoringRollupAdapter(pool, queue),
+    adapter: new MonitoringRollupAdapter(pool, queue, options.afterRecompute),
   });
 }
 
 /** Claims and recomputes at most one stale wave through shared dispatch semantics. */
 export async function runMonitoringRollupOnce(
   pool: pg.Pool,
+  options: MonitoringRollupOptions = {},
 ): Promise<{ claimed: number }> {
   const result = await rollupDispatcher(
     pool,
     'study_wave_rollups',
-    {},
+    options,
   ).runOnce();
   return { claimed: result.claimed };
 }
 
 export async function runMonitoringStageRollupOnce(
   pool: pg.Pool,
+  options: MonitoringRollupOptions = {},
 ): Promise<{ claimed: number }> {
   const result = await rollupDispatcher(
     pool,
     'study_stage_rollups',
-    {},
+    options,
   ).runOnce();
   return { claimed: result.claimed };
 }

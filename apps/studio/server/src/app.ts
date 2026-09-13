@@ -44,6 +44,7 @@ import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
 import {
   createSessionTimingOpenRoute,
+  createSessionTimingReleaseRoute,
   createSessionTimingRoute,
 } from './study/session-timing-route.ts';
 import type { ServerTelemetry } from './telemetry.ts';
@@ -189,6 +190,11 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // researcher cookie sessions never authorize this participant surface.
   if (pool)
     app.post('/interview/:sessionId/open', createSessionTimingOpenRoute(pool));
+  if (pool)
+    app.post(
+      '/interview/:sessionId/release',
+      createSessionTimingReleaseRoute(pool),
+    );
   if (pool)
     app.post('/interview/:sessionId/sync', createSessionTimingRoute(pool));
 

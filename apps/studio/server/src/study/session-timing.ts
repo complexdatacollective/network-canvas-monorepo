@@ -137,13 +137,16 @@ type StoredStageTiming = Omit<
 };
 
 function tokenParts(accessToken: string): TokenParts {
-  const separator = accessToken.indexOf('.');
-  if (separator < 1 || separator === accessToken.length - 1) {
+  const separator = accessToken.length - 44;
+  if (separator < 1 || accessToken[separator] !== '.') {
     throw new SessionTimingError('INVALID_TOKEN');
   }
   const teamId = accessToken.slice(0, separator);
   const secret = accessToken.slice(separator + 1);
-  if (!/^[A-Za-z0-9_-]{1,128}$/.test(teamId)) {
+  if (!/^[A-Za-z0-9_.-]{1,128}$/.test(teamId)) {
+    throw new SessionTimingError('INVALID_TOKEN');
+  }
+  if (!/^[A-Za-z0-9_-]{43}$/.test(secret)) {
     throw new SessionTimingError('INVALID_TOKEN');
   }
   return {
@@ -244,31 +247,40 @@ function normalizeTiming(
   stages: readonly AuthoritativeStage[],
 ): StoredStageTiming {
   const parsed = StageTimingSchema.parse(timing);
-  const stageExits = parsed.stageExits.map((exit) => {
-    const resolved = resolveExit(exit, stages, false);
-    if (!('stageId' in resolved) || resolved.stageId === undefined) {
-      throw new StageTimingValidationError('authored stage has no id');
-    }
-    return { ...resolved, stageId: resolved.stageId };
-  });
-  const promptExits = parsed.promptExits?.map((exit) =>
-    resolveExit(exit, stages, true),
+  const rawStageTotal = parsed.stageExits.reduce(
+    (sum, exit) => sum + exit.durationMs,
+    0,
   );
-  const stageTotal = stageExits.reduce((sum, exit) => sum + exit.durationMs, 0);
   if (
     parsed.totalDurationMs !== undefined &&
-    parsed.totalDurationMs !== stageTotal
+    Math.abs(parsed.totalDurationMs - rawStageTotal) > Number.EPSILON * 16
   ) {
     throw new StageTimingValidationError(
       'totalDurationMs must equal retained authored stage intervals',
     );
   }
+  const stageExits = parsed.stageExits.map((exit) => {
+    const resolved = resolveExit(exit, stages, false);
+    if (!('stageId' in resolved) || resolved.stageId === undefined) {
+      throw new StageTimingValidationError('authored stage has no id');
+    }
+    return {
+      ...resolved,
+      stageId: resolved.stageId,
+      durationMs: Math.round(resolved.durationMs),
+    };
+  });
+  const promptExits = parsed.promptExits?.map((exit) => ({
+    ...resolveExit(exit, stages, true),
+    durationMs: Math.round(exit.durationMs),
+  }));
+  const stageTotal = stageExits.reduce((sum, exit) => sum + exit.durationMs, 0);
   return {
     stageExits,
     ...(promptExits === undefined ? {} : { promptExits }),
     ...(parsed.totalDurationMs === undefined
       ? {}
-      : { totalDurationMs: parsed.totalDurationMs }),
+      : { totalDurationMs: stageTotal }),
   };
 }
 
@@ -287,6 +299,35 @@ async function lockedLinkedSession(
   syncRevision: number;
   stageTiming: StageTimingPayload | null;
 }> {
+  const link = await client.query<{
+    link_id: string;
+    team_id: string;
+    study_id: string;
+    wave_id: string;
+  }>(
+    `select l.id as link_id, s.team_id, s.study_id, s.wave_id
+       from interview_links l
+       join interview_sessions s
+         on s.link_id = l.id and s.team_id = l.team_id
+      where s.id = $1
+        and l.token_hash = $2
+        and l.revoked_at is null
+        and (l.expires_at is null or l.expires_at > clock_timestamp())
+      for update of l`,
+    [sessionId, tokenHash],
+  );
+  const authorization = link.rows[0];
+  if (!authorization) throw new SessionTimingError('NOT_FOUND');
+  await client.query(
+    `insert into study_wave_rollups (team_id, study_id, wave_id)
+     values ($1, $2, $3)
+     on conflict (wave_id) do nothing`,
+    [authorization.team_id, authorization.study_id, authorization.wave_id],
+  );
+  await client.query(
+    `select 1 from study_wave_rollups where wave_id = $1 for update`,
+    [authorization.wave_id],
+  );
   const result = await client.query<{
     team_id: string;
     study_id: string;
@@ -301,14 +342,11 @@ async function lockedLinkedSession(
     `select s.team_id, s.study_id, s.wave_id, s.protocol_version_id, s.status, s.holder_id,
             s.holder_epoch, s.sync_revision, s.stage_timing
        from interview_sessions s
-       join interview_links l
-         on l.id = s.link_id and l.team_id = s.team_id
       where s.id = $1
-        and l.token_hash = $2
-        and l.revoked_at is null
-        and (l.expires_at is null or l.expires_at > clock_timestamp())
-      for update of s`,
-    [sessionId, tokenHash],
+        and s.link_id = $2
+        and s.wave_id = $3
+      for update`,
+    [sessionId, authorization.link_id, authorization.wave_id],
   );
   const row = result.rows[0];
   if (!row) throw new SessionTimingError('NOT_FOUND');
@@ -328,7 +366,12 @@ async function lockedLinkedSession(
 /** Claims the existing session's writer epoch after authenticating its link. */
 export async function openInterviewSession(
   pool: pg.Pool,
-  input: { sessionId: string; accessToken: string; writerId: string },
+  input: {
+    sessionId: string;
+    accessToken: string;
+    writerId: string;
+    takeover?: boolean;
+  },
 ): Promise<OpenSessionOutcome> {
   const sessionId = SessionIdSchema.parse(input.sessionId);
   const writerId = WriterIdSchema.parse(input.writerId);
@@ -344,7 +387,11 @@ export async function openInterviewSession(
         stageTiming: row.stageTiming,
       };
     }
-    if (row.holderId !== null && row.holderId !== writerId) {
+    if (
+      row.holderId !== null &&
+      row.holderId !== writerId &&
+      input.takeover !== true
+    ) {
       throw new SessionTimingError('HOLDER_CONFLICT');
     }
     const claimed = await client.query<{ holder_epoch: string }>(
@@ -367,6 +414,34 @@ export async function openInterviewSession(
       syncRevision: row.syncRevision,
       stageTiming: row.stageTiming,
     };
+  });
+}
+
+/** Releases a writer fence only when the caller still owns its exact epoch. */
+export async function releaseInterviewSession(
+  pool: pg.Pool,
+  input: {
+    sessionId: string;
+    accessToken: string;
+    writerId: string;
+    holderEpoch: number;
+  },
+): Promise<boolean> {
+  const sessionId = SessionIdSchema.parse(input.sessionId);
+  const writerId = WriterIdSchema.parse(input.writerId);
+  const holderEpoch = RevisionSchema.parse(input.holderEpoch);
+  const { teamId, tokenHash } = tokenParts(input.accessToken);
+  return createTenantDb(pool, teamId).transaction(async (client) => {
+    const row = await lockedLinkedSession(client, sessionId, tokenHash);
+    if (row.status !== 'in_progress') return false;
+    const released = await client.query(
+      `update interview_sessions
+          set holder_id = null, holder_epoch = holder_epoch + 1,
+              last_activity_at = clock_timestamp()
+        where id = $1 and holder_id = $2 and holder_epoch = $3`,
+      [sessionId, writerId, holderEpoch],
+    );
+    return released.rowCount === 1;
   });
 }
 
@@ -453,12 +528,16 @@ export async function writeInterviewTiming(
       values,
     );
     await client.query(
-      `insert into study_wave_rollups
-         (team_id, study_id, wave_id, stale_at)
-       values ($1, $2, $3, clock_timestamp())
-       on conflict (wave_id) do update
-         set stale_at = coalesce(study_wave_rollups.stale_at, excluded.stale_at)`,
-      [row.teamId, row.studyId, row.waveId],
+      `update study_wave_rollups
+          set dirty_generation = dirty_generation + 1,
+              stale_at = clock_timestamp(),
+              attempt_count = 0,
+              failed_at = null,
+              last_error = null,
+              lease_owner = null,
+              lease_expires_at = null
+        where wave_id = $1`,
+      [row.waveId],
     );
     return {
       kind: 'applied',

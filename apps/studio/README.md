@@ -173,6 +173,14 @@ with their owners:
 - monitoring rollups — `server/src/monitoring/schema.ts`
 - immutable audit history, its staged exports and its alert outbox —
   `server/src/audit/schema.ts`
+
+The participant HTTP surface currently covers authenticated timing open, sync,
+explicit holder takeover, and holder release. It does not yet persist network
+answers or provide participant UI; those remain part of the later Studio
+interview-host implementation. Schema 8 also has no persisted missing-reason
+value, so stage `missing_item_count` remains zero until that protocol and
+network-storage contract lands.
+
 - durable invitation delivery — `server/src/team/invitation-delivery-schema.ts`
 
 The PL/pgSQL immutability functions and triggers, which Drizzle cannot express,
@@ -202,7 +210,7 @@ is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `1c679367f881504e1d893e5ef72c52a967da51d11010d138aef44446c997ccf6`.
+Schema fingerprint: `99701396f8632cf4cf03af75e2c04f2e423de0985402e78454141f695661fb24`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
