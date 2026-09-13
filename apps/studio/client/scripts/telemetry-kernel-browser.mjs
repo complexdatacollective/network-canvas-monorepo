@@ -72,6 +72,7 @@ export async function launchKernelObservedChromium({
   const observer = `${network}-observer`;
   const servers = new Set();
   const cleanup = async () => {
+    const failures = [];
     await docker([
       'rm',
       '--force',
@@ -79,8 +80,15 @@ export async function launchKernelObservedChromium({
       observer,
       detector,
       namespace,
-    ]).catch(() => {});
-    await docker(['network', 'rm', network]).catch(() => {});
+    ]).catch((error) => failures.push(error));
+    await docker(['network', 'rm', network]).catch((error) =>
+      failures.push(error),
+    );
+    if (failures.length)
+      throw new AggregateError(
+        failures,
+        'Browser kernel qualification cleanup failed.',
+      );
   };
   try {
     await docker(['network', 'create', '--internal', network]);
@@ -165,9 +173,14 @@ export async function launchKernelObservedChromium({
       'Browser observer did not share the browser network namespace.',
     );
     const wrapper = join(scratch, 'kernel-chromium');
+    const browserUid =
+      process.env.STUDIO_TELEMETRY_BROWSER_UID ?? String(process.getuid());
+    const browserGid =
+      process.env.STUDIO_TELEMETRY_BROWSER_GID ?? String(process.getgid());
+    const sudo = process.getuid() === 0 ? '' : 'sudo ';
     await writeFile(
       wrapper,
-      `#!/bin/sh\nexec sudo nsenter --target ${namespacePid} --net -- setpriv --reuid=$(id -u) --regid=$(id -g) --clear-groups ${JSON.stringify(chromium.executablePath())} "$@"\n`,
+      `#!/bin/sh\nexec ${sudo}nsenter --target ${namespacePid} --net -- setpriv --reuid=${browserUid} --regid=${browserGid} --clear-groups ${JSON.stringify(chromium.executablePath())} "$@"\n`,
       { mode: 0o700 },
     );
     await chmod(wrapper, 0o700);
@@ -254,7 +267,7 @@ export async function launchKernelObservedChromium({
             return docker(['logs', name]);
           },
           async stop() {
-            await docker(['rm', '--force', name]).catch(() => {});
+            await docker(['rm', '--force', name]);
             servers.delete(name);
           },
         };

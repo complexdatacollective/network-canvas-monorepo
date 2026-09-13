@@ -791,8 +791,12 @@ it('installs an immutable built image, drains a populated backup and restores al
       '--no-deps',
       'encryption-verify',
     ]);
-    await source.compose(['up', '-d', 'studio', 'worker', 'probe']);
-    await source.startKernelObservers();
+    await source.prepareKernelObserversBeforeStartup([
+      'studio',
+      'worker',
+      'probe',
+    ]);
+    await source.compose(['start', 'studio', 'worker', 'probe']);
     await source.ready();
     await source.assertTelemetryQuiet();
     await source.proveTelemetryProcessInstrumentation();
@@ -919,8 +923,8 @@ it('installs an immutable built image, drains a populated backup and restores al
       '-c',
       'ALTER ROLE registry_migrator LOGIN; ALTER ROLE registry_runtime LOGIN; ALTER ROLE registry_operations LOGIN; GRANT registry_app TO registry_runtime WITH SET TRUE, INHERIT FALSE; GRANT registry_operator TO registry_operations WITH SET TRUE, INHERIT FALSE',
     ]);
-    await source.compose(['up', '-d', 'studio']);
-    await source.startKernelObservers();
+    await source.prepareKernelObserversBeforeStartup(['studio']);
+    await source.compose(['start', 'studio']);
     await source.ready();
     const resumedPools = await source.pools();
     try {

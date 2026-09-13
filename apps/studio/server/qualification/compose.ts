@@ -547,16 +547,58 @@ ${telemetryKernelComposeServices(
     }
     throw new Error('Kernel egress observers did not become live.');
   }
+  async function assertKernelObserversLive() {
+    for (const service of TELEMETRY_KERNEL_SERVICES) {
+      const running = (
+        await compose([
+          'ps',
+          '--status',
+          'running',
+          '-q',
+          `telemetry-kernel-${service}`,
+        ])
+      ).stdout
+        .toString()
+        .trim();
+      if (!running)
+        throw new Error(`Kernel egress observer ${service} is not running.`);
+      assertKernelTelemetryReady(await kernelTelemetryLogs(service));
+    }
+  }
+  async function prepareKernelObserversBeforeStartup(services: string[]) {
+    const observers = TELEMETRY_KERNEL_SERVICES.map(
+      (service) => `telemetry-kernel-${service}`,
+    );
+    await compose([
+      'create',
+      '--no-start',
+      ...new Set([...services, 'telemetry-detector', ...observers]),
+    ]);
+    await compose(['start', 'telemetry-detector', ...observers]);
+    for (const service of TELEMETRY_KERNEL_SERVICES) {
+      for (let attempt = 0; attempt < 100; attempt++) {
+        try {
+          assertKernelTelemetryReady(await kernelTelemetryLogs(service));
+          break;
+        } catch (error) {
+          if (attempt === 99) throw error;
+          await delay(100);
+        }
+      }
+    }
+  }
   async function assertTelemetryQuiet() {
-    await startKernelObservers();
-    const kernelLogs = await kernelTelemetryLogs();
-    assertKernelTelemetryReady(kernelLogs);
-    assertNoKernelTelemetryEgress(kernelLogs);
+    await assertKernelObserversLive();
+    for (const service of TELEMETRY_KERNEL_SERVICES) {
+      const kernelLogs = await kernelTelemetryLogs(service);
+      assertKernelTelemetryReady(kernelLogs);
+      assertNoKernelTelemetryEgress(kernelLogs);
+    }
     assertNoTelemetryEgress(await telemetryLogs());
     assertNoProcessTelemetryEgress(await processTelemetryLogs());
   }
   async function proveKernelTelemetryControls() {
-    await startKernelObservers();
+    await assertKernelObserversLive();
     for (const service of TELEMETRY_KERNEL_SERVICES) {
       for (let attempt = 0; attempt < 50; attempt++) {
         const logs = await kernelTelemetryLogs(service);
@@ -702,6 +744,8 @@ ${telemetryKernelComposeServices(
     pools,
     ready,
     startKernelObservers,
+    assertKernelObserversLive,
+    prepareKernelObserversBeforeStartup,
     assertTelemetryQuiet,
     proveTelemetryProcessInstrumentation,
     proveKernelTelemetryControls,

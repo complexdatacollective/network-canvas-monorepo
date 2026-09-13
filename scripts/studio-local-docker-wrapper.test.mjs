@@ -5,7 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { qualificationDockerArguments } from './studio-local-docker-wrapper.mjs';
+import {
+  qualificationDockerArguments,
+  qualificationKernelPreflightArguments,
+} from './studio-local-docker-wrapper.mjs';
 
 test('appends qualification overlay after explicit Compose files', () => {
   assert.deepEqual(
@@ -77,5 +80,52 @@ test('refuses an implicit default file because adding an overlay would hide it',
         overlay: '/qualification.yml',
       }),
     /explicit files or COMPOSE_FILE/,
+  );
+});
+
+test('creates every target namespace before starting kernel observers', () => {
+  assert.deepEqual(
+    qualificationKernelPreflightArguments([
+      'compose',
+      '-f',
+      '/base.yml',
+      '-f',
+      '/qualification.yml',
+      'up',
+      '-d',
+      '--wait',
+      'studio',
+      'registry',
+    ]),
+    {
+      create: [
+        'compose',
+        '-f',
+        '/base.yml',
+        '-f',
+        '/qualification.yml',
+        'create',
+        '--no-start',
+        'studio',
+        'worker',
+        'registry',
+        'telemetry-detector',
+        'telemetry-kernel-studio',
+        'telemetry-kernel-worker',
+        'telemetry-kernel-registry',
+      ],
+      start: [
+        'compose',
+        '-f',
+        '/base.yml',
+        '-f',
+        '/qualification.yml',
+        'start',
+        'telemetry-detector',
+        'telemetry-kernel-studio',
+        'telemetry-kernel-worker',
+        'telemetry-kernel-registry',
+      ],
+    },
   );
 });
