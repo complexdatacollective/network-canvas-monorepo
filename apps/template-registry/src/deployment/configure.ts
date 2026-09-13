@@ -22,6 +22,8 @@ import {
   runtimeRolesSql,
 } from '@codaco/studio-sync/role-bootstrap';
 
+import { registryMailConfiguration } from '../env.ts';
+
 const image = z
   .string()
   .regex(
@@ -58,6 +60,23 @@ const optionsSchema = z
         code: 'custom',
         message: 'Select one mail transport.',
       });
+    const mailer = value.postmarkServerToken
+      ? {
+          kind: 'postmark',
+          from: value.mailFrom,
+          serverToken: value.postmarkServerToken,
+          messageStream: value.postmarkMessageStream,
+        }
+      : { kind: 'smtp', from: value.mailFrom, url: value.smtpUrl };
+    try {
+      if (!registryMailConfiguration.safeParse(mailer).success)
+        context.addIssue({
+          code: 'custom',
+          message: 'Invalid mail transport.',
+        });
+    } catch {
+      context.addIssue({ code: 'custom', message: 'Invalid mail transport.' });
+    }
     if (value.postmarkMessageStream && !value.postmarkServerToken)
       context.addIssue({
         code: 'custom',
@@ -275,7 +294,8 @@ async function readRegistryConfiguration(
     if (
       !info.isFile() ||
       info.isSymbolicLink() ||
-      (info.mode & 0o777) !== 0o644
+      (info.mode & 0o600) !== 0o600 ||
+      (info.mode & 0o7133) !== 0
     )
       throw new Error('Registry configuration directory is incomplete.');
   }
