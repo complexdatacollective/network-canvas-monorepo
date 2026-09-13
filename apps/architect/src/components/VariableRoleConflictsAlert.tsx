@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useSelector } from 'react-redux';
 
 import { type IntlShape, defineMessages } from '@codaco/app-i18n/messages';
@@ -6,6 +7,11 @@ import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import type { VariableRoleHit } from '@codaco/protocol-validation';
 import { getVariableRoleConflicts } from '~/selectors/issues';
 import { getProtocol } from '~/selectors/protocol';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 const messages = defineMessages({
   unknownStage: {
     id: 'architect.variableRoleConflictsAlert.unknownStage',
@@ -99,7 +105,7 @@ const VariableRoleConflictsAlert = () => {
             >
               {intl.formatMessage(messages.collectedByAForm, {
                 value1: conflict.variableName,
-                strong: (chunks) => <strong>{chunks}</strong>,
+                strong: renderStrong,
                 value3: describeHits(stages, conflict.validated, intl),
                 value4: describeHits(stages, conflict.unvalidated, intl),
               })}

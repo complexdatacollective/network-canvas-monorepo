@@ -374,12 +374,11 @@ describe.skipIf(!db)(
           `UPDATE ${queue} SET available_at = now() + interval '1 day' WHERE id = $1`,
           [ids[2]],
         );
-        const uncertain = queue === 'message_deliveries' ? 1 : 0;
-        if (uncertain)
-          await scratch.pool.query(
-            'UPDATE message_deliveries SET uncertain_at = now() WHERE id = $1',
-            [ids[3]],
-          );
+        const uncertain = 1;
+        await scratch.pool.query(
+          `UPDATE ${queue} SET uncertain_at = now() WHERE id = $1`,
+          [ids[3]],
+        );
         expected.set(queue, {
           pending: ids.length - 1 - uncertain,
           ready: ids.length - 3 - uncertain,

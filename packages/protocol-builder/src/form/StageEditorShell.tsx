@@ -12,6 +12,9 @@ import {
 } from 'react';
 
 import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { useAppIntl } from '@codaco/app-i18n/react';
+import { Alert } from '@codaco/fresco-ui/Alert';
+import { FieldsDisabled } from '@codaco/fresco-ui/form/FieldsDisabled';
 import FormErrorsList from '@codaco/fresco-ui/form/FormErrors';
 import { useForm } from '@codaco/fresco-ui/form/hooks/useForm';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
@@ -23,30 +26,42 @@ import type {
   FormSubmitHandler,
 } from '@codaco/fresco-ui/form/store/types';
 import { focusFirstError } from '@codaco/fresco-ui/form/utils/focusFirstError';
-import { cx } from '@codaco/fresco-ui/utils/cva';
-import { canonicalize, type Command } from '@codaco/studio-sync/apply';
-
-import type { StageEditorController } from '../controller.ts';
-import { ResourceGatewayProvider } from '../resources/context.tsx';
+import { getValue } from '@codaco/fresco-ui/form/utils/objectPath';
+import isUnanswered from '@codaco/fresco-ui/form/validation/utils/isUnanswered';
 import {
-  InvalidProtocolDraftError,
-  type ProtocolBuilderSnapshot,
-  SessionReadOnlyError,
+  EnclosingHeadingLevel,
+  headingTagBelow,
+  useEnclosingHeadingLevel,
+} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
+import { cx } from '@codaco/fresco-ui/utils/cva';
+import { stageSchema } from '@codaco/protocol-validation';
+import { applyCommands, type Command } from '@codaco/studio-sync/apply';
+
+import type {
+  StageEditorActions,
+  StageSection,
+} from '../stage-editor-contract.ts';
+import {
+  stageDocument,
   type StageFormDraft,
-} from '../session.ts';
-import type { StageEditorActions } from '../stage-editor-contract.ts';
-import { SectionOutlineStore } from './outlineStore.ts';
-import { reseedStageForm } from './reseedStageForm.ts';
-import SectionOutline from './SectionOutline.tsx';
+  type StageIdentity,
+} from '../stageDocument.ts';
+import { NOT_READY_MESSAGE, useStageEdit } from '../stageEdit.tsx';
 import {
   dormantFieldsOf,
   mountedPathsOf,
-  stageDraftFromSubmission,
-} from './stageDraftFromSubmission.ts';
+  documentFromSubmission,
+} from './documentFromSubmission.ts';
+import {
+  SectionOutlineStore,
+  type SectionValidationIssue,
+} from './outlineStore.ts';
+import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
 import {
   type OwnCommandsResult,
   StageEditorFormContext,
 } from './stageEditorContext.ts';
+import { createStageSectionsStore } from './stageSections.ts';
 
 /**
  * Where the slot's own types live is `stage-editor-contract.ts`: they are part
@@ -60,8 +75,7 @@ export type {
 } from '../stage-editor-contract.ts';
 
 export type StageEditorShellProps = Readonly<{
-  controller: StageEditorController;
-  /** The host's action chrome. Receives the controller and the form id. */
+  /** The host's action chrome. Receives the form id and whether it may write. */
   actions?: StageEditorActions;
   children: ReactNode;
   className?: string;
@@ -71,72 +85,150 @@ export type StageEditorShellProps = Readonly<{
  * The one form every stage editor is built inside.
  *
  * Every named editor composes sections into this shell, and the shell owns
- * everything a stage editor does regardless of which stage it is editing:
- * one form store, the section outline, the submit that flushes the form into
- * the session, and a slot where the host puts its own buttons.
+ * everything a stage editor does regardless of which stage it is editing: one
+ * form store holding the whole document, the register of which sections are
+ * mounted and how each one stands, the submit that hands the document back,
+ * and a slot where the host puts its own buttons.
  *
- * The store provider is keyed by the stage being edited because Fresco forms
- * have no reinitialise: opening a different stage is a different form. It is
- * keyed by NOTHING else — see `reseedStageForm` for what happens instead when
- * the draft for THIS stage is replaced beneath the controls.
+ * The store is keyed by the stage and by how many drafts have been discarded,
+ * because Fresco forms have no reinitialise: opening a different stage is a
+ * different form, and so is starting again from the protocol's own version
+ * after a save the host refused.
  */
 export default function StageEditorShell(props: StageEditorShellProps) {
-  const { identity } = props.controller.snapshot.editedSection;
-  // The content this form itself last wrote into the session. Everything else
-  // that moves the draft — undo, redo, an acknowledgement, an authoritative
-  // replacement — moved it out from under the controls on screen.
-  const flushed = useRef<string | null>(null);
-  const committed = useCommittedFields(props.controller.snapshot, flushed);
+  const { identity, committedFields, access } = useStageEdit();
+  const intl = useAppIntl();
+  const [discarded, setDiscarded] = useState(0);
+  const [lostMessage, setLostMessage] = useState<string | undefined>(undefined);
+
+  const discardDraft = useCallback((message: string) => {
+    setLostMessage(message);
+    setDiscarded((count) => count + 1);
+  }, []);
+
+  // A stage the protocol will not open is the one case that has to be said
+  // rather than waited out: the document is never arriving, so a form waiting
+  // for it is a page that never finishes opening.
+  if (access === 'unavailable') {
+    return (
+      <Alert variant="destructive">
+        {intl.formatMessage(messages.stageUnavailable)}
+      </Alert>
+    );
+  }
+
+  // Nothing is drawn until the host has handed the stage over. A form built
+  // from a document that has not arrived would seed every field from nothing
+  // and then have to be written over.
+  if (identity === undefined || committedFields === undefined) return null;
 
   return (
-    <FormStoreProvider key={`${identity.type}:${identity.id}`}>
-      <StageEditorFormBody {...props} committed={committed} flushed={flushed} />
+    <StageDocument
+      key={`${identity.type}:${identity.id}:${discarded}`}
+      committedFields={committedFields}
+    >
+      {(document, working, setDocument) => (
+        <StageEditorFormBody
+          {...props}
+          identity={identity}
+          document={document}
+          working={working}
+          setDocument={setDocument}
+          lostMessage={lostMessage}
+          discardDraft={discardDraft}
+        />
+      )}
+    </StageDocument>
+  );
+}
+
+/**
+ * The document the form is editing, held above the form store so the store can
+ * be handed it.
+ *
+ * A structural write — a row inserted, a capability switched off — reaches
+ * paths no control is registered at, and the form has nowhere to keep those.
+ * Seeded from what the lock handed over and advanced by every such write; a
+ * submit replays the form's own values over it. Every field with no starting
+ * value of its own is seeded from this, which is why the form store is given
+ * it rather than each field being handed its own.
+ *
+ * Held twice on purpose. The ref is what a write reads and writes, because a
+ * second write in the same turn has to see the first. The state is what
+ * everything under the form reads, because a control that mounts AFTER a write
+ * seeds itself from this document — a list revealed by a group being opened, a
+ * field inside a capability switched back on — and a value that had not moved
+ * would put back what the write threw away.
+ *
+ * Keyed by the caller, so opening a different stage — or starting again from
+ * the protocol's own version after a save the host refused — is a different
+ * document and a different form store, which Fresco has no reinitialise for.
+ */
+function StageDocument({
+  committedFields,
+  children,
+}: Readonly<{
+  committedFields: StageFormDraft;
+  children: (
+    document: StageFormDraft,
+    working: RefObject<StageFormDraft>,
+    setDocument: (fields: StageFormDraft) => void,
+  ) => ReactNode;
+}>) {
+  const working = useRef<StageFormDraft>(committedFields);
+  const [document, setDocument] = useState<StageFormDraft>(committedFields);
+
+  return (
+    <FormStoreProvider initialValues={document}>
+      {children(document, working, setDocument)}
     </FormStoreProvider>
   );
 }
 
 function StageEditorFormBody({
-  controller,
   actions,
   children,
   className,
-  committed,
-  flushed,
+  identity,
+  document,
+  working,
+  setDocument,
+  lostMessage,
+  discardDraft,
 }: StageEditorShellProps &
   Readonly<{
-    committed: CommittedDraft;
-    flushed: RefObject<string | null>;
+    identity: StageIdentity;
+    document: StageFormDraft;
+    working: RefObject<StageFormDraft>;
+    setDocument: (fields: StageFormDraft) => void;
+    lostMessage: string | undefined;
+    discardDraft: (message: string) => void;
   }>) {
+  const { formId, access, holder, creation, save } = useStageEdit();
+  // Everything below the shell asks one question — may this write? — and a
+  // stage the host has not granted yet answers it exactly as one somebody else
+  // holds does. What differs is what is SAID about it, and that is decided
+  // here: only a held stage has a holder to name, and only a stage still
+  // opening is worth trying again in a moment.
+  const readOnly = access !== 'editing';
+  const writeRefusal =
+    access === 'readOnly' ? READ_ONLY_MESSAGE : NOT_READY_MESSAGE;
+  const intl = useAppIntl();
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
   const outline = useMemo(() => new SectionOutlineStore(), []);
-  const { snapshot, formId } = controller;
-  const readOnly = snapshot.access.mode !== 'editable';
-  const committedFields = committed.fields;
+  // Beside the registry rather than derived from it on every render: a host
+  // reads this with `useSyncExternalStore`, which re-subscribes whenever the
+  // store's identity moves, and a new store per render would tear its list
+  // down and build it again on every keystroke.
+  const sections = useMemo(
+    () =>
+      storeApi === undefined
+        ? undefined
+        : createStageSectionsStore(outline, storeApi),
+    [outline, storeApi],
+  );
 
-  /**
-   * A structural write the session refused, in the form's own error region.
-   *
-   * A submit reports its own refusals through the value it answers with, but a
-   * list editor's write is not a submit: it happens in a click handler that
-   * has nowhere to return an answer to. Without this the refusal is silent —
-   * the row simply does not appear — which reads as the editor being broken
-   * rather than as the lease having gone.
-   *
-   * The message describes ONE write that reached nothing, so it stands only
-   * until something makes it untrue:
-   *
-   *   a write of this form's own that DID land — a list operation the session
-   *   took, or a submit that finished — or the stage becoming editable again.
-   *
-   * All three are stated here rather than at the write paths, because a
-   * refusal that outlives the state it described is worse than none: the
-   * researcher is told nothing was saved while looking at an edit that
-   * plainly was. Editing being handed back is included because that is
-   * exactly what the read-only message asks for, and it should not have to be
-   * read twice. Neither a read of the draft (`applyOwnCommands([])`) nor a
-   * write the session refuses may clear it: neither is news.
-   */
   const [refusedWrite, setRefusedWrite] = useState<string | undefined>(
     undefined,
   );
@@ -151,191 +243,143 @@ function StageEditorFormBody({
    * The one way a refused structural write is said out loud, wherever the
    * refusal was decided.
    *
-   * `applyOwnCommands` below names the refusals it can see for itself — both
-   * of the read-only routes — and a list editor names the ones it cannot: a
-   * batch the list decided not to dispatch, because the row it named is gone
-   * or cannot be told from the rows beside it, reaches the session as nothing
-   * at all. Held apart from the state setter so a caller cannot pass an updater
-   * and read the message it is replacing.
+   * `applyOwnCommands` names the refusal it can see for itself — the editor
+   * being read-only — and a list editor names the ones it cannot: a batch the
+   * list decided not to issue, because the row it named is gone or cannot be
+   * told from the rows beside it, reaches this form as nothing at all.
    */
   const reportRefusedWrite = useCallback((message: string) => {
     setRefusedWrite(message);
   }, []);
 
   /**
-   * The draft moved for a reason that is not this form's own submit, so the
-   * controls on screen are showing something that is no longer agreed. They
-   * are written to rather than rebuilt: rebuilding would discard everything
-   * typed but not yet saved and destroy any row dialog open over the editor —
-   * along with the draft inside it, and the message a save in flight was about
-   * to report. See `reseedStageForm`.
-   */
-  const reseededGeneration = useRef(committed.generation);
-  /**
-   * The agreed draft the controls are already level with, which is what the
-   * arrival is compared AGAINST rather than the values on screen.
+   * The document right now: what the controls hold, over what has been written.
    *
-   * Kept here rather than derived, because it is true of both ways a draft
-   * stops being a surprise: a re-seed writes an arrival into the controls, and
-   * this form's own flush IS the content that arrived. Only the difference
-   * between two agreed drafts says what an arrival decided; the difference
-   * between an agreed draft and what is on screen is mostly the researcher
-   * typing.
+   * The values come from the form's own `getFormValues`, which is what a
+   * submit is handed — and it has to be, because `documentFromSubmission`
+   * reads them by field PATH. Assembled here by field NAME instead, every
+   * control registered beneath a top-level key (`form.title`, `form.fields`)
+   * looked to that read like a field the submission never carried, and was
+   * skipped: this answered with the committed document wherever a section
+   * writes into a nested part of the stage, so a host reading it saw a
+   * researcher's unsaved form as no change at all.
    */
-  const levelWith = useRef(committed.fields);
-  useEffect(() => {
-    if (storeApi === undefined) return;
-    const previous = levelWith.current;
-    levelWith.current = committed.fields;
-    if (reseededGeneration.current === committed.generation) return;
-    reseededGeneration.current = committed.generation;
-    reseedStageForm(storeApi, committed.fields, previous);
-  }, [committed, storeApi]);
-
-  const handleSubmit = useCallback<FormSubmitHandler>(
-    async (values) => {
-      if (storeApi === undefined) {
-        return { success: false, formErrors: [UNAVAILABLE_MESSAGE] };
-      }
-      if (readOnly) {
-        return { success: false, formErrors: [READ_ONLY_MESSAGE] };
-      }
-
-      let written: string | null = null;
-      try {
-        // Inside the guarded block with the finish it precedes: access can be
-        // revoked between the render that read it and this submit, and the
-        // session refuses a write from a lease it no longer holds. That is an
-        // ordinary lease transition, and it belongs in the form's own errors
-        // rather than in a rejected submit promise.
-        controller.changeFields((current) => {
-          const next = stageDraftFromSubmission({
-            currentFields: current,
-            submittedValues: values as Record<string, FieldValue>,
-            mountedPaths: mountedPathsOf(storeApi),
-            dormantFields: dormantFieldsOf(storeApi),
-          });
-          // A submit that changes nothing moves nothing, so it has no
-          // transition to explain and leaves no marker: one left standing
-          // would spend itself on some later arrival at the same content — a
-          // redo, most likely — and leave the controls showing what was undone.
-          const content = canonicalize(next);
-          written = content === canonicalize(current) ? null : content;
-          return next;
-        });
-        // Recorded only once the session has accepted the write, so that the
-        // draft arriving at exactly this content does not read as something
-        // moving under the form: it IS the form. A refused write moves
-        // nothing, and its marker would be spent later on an unrelated
-        // arrival, leaving the controls showing a draft that had moved on.
-        flushed.current = written;
-        await controller.finish();
-        // The save landed, so whatever a list write was refused before it is
-        // no longer what happened to this stage.
-        clearRefusedWrite();
-        return { success: true };
-      } catch (error) {
-        flushed.current = null;
-        return {
-          success: false,
-          formErrors:
-            error instanceof InvalidProtocolDraftError
-              ? error.issues.map((issue) => issue.message)
-              : error instanceof SessionReadOnlyError
-                ? [READ_ONLY_MESSAGE]
-                : [failureMessage(error)],
-        };
-      }
-    },
-    [clearRefusedWrite, controller, flushed, readOnly, storeApi],
-  );
+  const liveDraft = useCallback((): StageFormDraft => {
+    if (storeApi === undefined) return working.current;
+    return documentFromSubmission({
+      currentFields: working.current,
+      submittedValues: storeApi.getState().getFormValues(),
+      mountedPaths: mountedPathsOf(storeApi),
+      dormantFields: dormantFieldsOf(storeApi),
+    });
+  }, [storeApi]);
 
   /**
-   * The other way this form writes to the session: structurally, as a list
-   * editor commits one row operation, rather than as a whole-draft flush.
+   * How this form writes structurally, as a list editor commits one row
+   * operation rather than as a researcher types into a control.
    *
-   * It leaves the same marker a submit does, and for the same reason — an
-   * arrival from ELSEWHERE re-seeds the controls, and a write the form made
-   * itself is not that. Left unmarked, adding a row would write the draft back
-   * over every control on screen, discarding everything typed since and
-   * resetting the row dialog that issued the write.
+   * There is no host in it: the editor owns the section while it holds the
+   * lock, so the batch is applied to the document the form is holding and the
+   * result handed straight back. An empty batch is how a caller READS that
+   * document, so it writes nothing and can never be refused.
    */
   const applyOwnCommands = useCallback(
     (commands: readonly Command[]): OwnCommandsResult => {
-      // An empty batch is how a list editor READS the draft the session holds
-      // right now — which is the point of asking rather than reading the
-      // snapshot it rendered against — so it must leave no marker at all. One
-      // left here would suppress the re-seed for a change that arrived from
-      // somewhere else entirely. It is also how the draft is read back when
-      // there is nothing to write: it dispatches nothing, so it cannot be
-      // refused.
-      const before = controller.applyCommands([]);
+      const before = liveDraft();
       if (commands.length === 0) return { draft: before, refused: false };
-      // A stage already known to be read-only when this handler was built. The
-      // write never reaches the session, so it is a refusal like the caught one
-      // below — said the same way, and SAID, so a caller cannot have to know
-      // which of the two it met. Reachable only while every control the write
-      // could come from is disabled, which is a reason to keep the two branches
-      // identical rather than a reason to let one of them stay quiet: the
-      // difference between them is where the lease went, and that is not
-      // something the researcher is being asked about.
       if (readOnly) {
-        reportRefusedWrite(READ_ONLY_MESSAGE);
+        reportRefusedWrite(writeRefusal);
         return { draft: before, refused: true };
       }
-
-      let next: StageFormDraft;
-      try {
-        next = controller.applyCommands(commands);
-      } catch (error) {
-        // Access can be revoked between the render this handler was built in
-        // and the click that runs it, and the session refuses a write from a
-        // lease it no longer holds by throwing — out of an event handler,
-        // where an uncaught throw is a crash rather than a declined edit. It
-        // is the same ordinary lease transition the submit reports, so it is
-        // reported the same way and in the same words.
-        //
-        // Everything else is re-thrown deliberately. A caller reads the draft
-        // through this very function and dispatches in the same turn, so an
-        // `ApplyError` — a key that is not the list the command addresses, an
-        // index out of range — says the form asked for something its own
-        // snapshot ruled out. Reporting that as a declined edit would leave
-        // the researcher clicking a button that quietly does nothing; see
-        // `readArray` in `useArrayFieldCommands` for the rule that keeps a
-        // list command applicable.
-        if (!(error instanceof SessionReadOnlyError)) throw error;
-        reportRefusedWrite(READ_ONLY_MESSAGE);
-        return { draft: before, refused: true };
-      }
-
-      // The session took these commands, which is the only thing that can say
-      // a refusal reported before them is no longer this form's news.
+      const next = applyCommands(before, [...commands]);
+      working.current = next;
+      setDocument(next);
       clearRefusedWrite();
-
-      const content = canonicalize(next);
-      const started = canonicalize(before);
-      // What the form believes the agreed draft is: what it last saw agreed,
-      // or what it itself last wrote and is still waiting to see arrive.
-      const expected = flushed.current ?? canonicalize(committedFields);
-      // Marked only when this write is the ONLY thing that has moved the draft
-      // since. The marker says "an arrival at this content is the form's own
-      // doing"; when something else moved the draft first and the controls
-      // have not seen it yet, the arrival is that change AND this one, and
-      // claiming it would strand the other half on screen — to be written back
-      // over the top by the next save. A write that changes nothing has no
-      // transition to explain either, and a marker for one that never happens
-      // stays standing to be spent on some later arrival at the same content.
-      if (content !== started && started === expected)
-        flushed.current = content;
       return { draft: next, refused: false };
+    },
+    [clearRefusedWrite, liveDraft, readOnly, reportRefusedWrite, writeRefusal],
+  );
+
+  const handleSubmit = useCallback<FormSubmitHandler>(
+    async (values) => {
+      // The store and the sections resolved against it stand or fall together
+      // — the second is made from the first — and neither outliving the form
+      // it belongs to is the same news: there are no values left to save.
+      if (storeApi === undefined || sections === undefined) {
+        return { success: false, formErrors: [UNAVAILABLE_MESSAGE] };
+      }
+      if (readOnly) {
+        return { success: false, formErrors: [writeRefusal] };
+      }
+
+      const fields = documentFromSubmission({
+        currentFields: working.current,
+        submittedValues: values as Record<string, FieldValue>,
+        mountedPaths: mountedPathsOf(storeApi),
+        dormantFields: dormantFieldsOf(storeApi),
+      });
+      working.current = fields;
+
+      // The schema's own reading of the stage, for the researcher's benefit.
+      // Every sentence it can produce is read out above the form, because
+      // that list is the one thing every host renders: an anchored problem
+      // published only to the sections seam reaches a researcher in Architect,
+      // which draws a section list, and nowhere at all in a host that draws
+      // none — a save refused with nothing on screen saying why.
+      //
+      // The anchored ones are still published to the seam as well. There they
+      // are what marks a section and what a row of the list is read out with;
+      // here they are the account of the refusal, named by the section that
+      // answers for each, in the order the sections sit on the page. The rest
+      // are about the stage as a whole and have no section to name, so they
+      // are said in the schema's own words after them.
+      const { sections: anchored, whole } = stageProblems(identity, fields);
+      outline.setValidationIssues(anchored);
+      if (anchored.length > 0 || whole.length > 0) {
+        const said = [...sectionProblems(sections.getSnapshot()), ...whole];
+        // The generic refusal only where the editor has nothing more precise
+        // to say — every anchored problem claimed by a field that is already
+        // stating it beside itself, which is two accounts of one fault.
+        return {
+          success: false,
+          formErrors: said.length > 0 ? said : [INVALID_STAGE_MESSAGE],
+        };
+      }
+
+      const outcome = await save(fields);
+      if (outcome.status === 'saved') {
+        // A save is the only thing that may move the baselines the form's
+        // dirty flag is measured against, and Studio's discard prompt reads
+        // that flag. A structural write and a refused save both advance the
+        // working document out of values nobody has stored, so a baseline
+        // taking those would let a researcher leave without being asked,
+        // losing work the editor was still showing them. (A field remounting
+        // after one seeds itself from the working document, as ever.)
+        setDocument(fields);
+        storeApi.getState().rebaseToDocument(fields);
+        clearRefusedWrite();
+        return { success: true };
+      }
+      if (outcome.status === 'lost') {
+        // Nothing is retried and nothing is re-acquired: the section belongs to
+        // somebody else now, so what is on screen is a draft of a document this
+        // editor may no longer write. It goes, and the form starts again from
+        // what the protocol holds.
+        discardDraft(outcome.message);
+        return { success: false, formErrors: [outcome.message] };
+      }
+      return { success: false, formErrors: [outcome.message] };
     },
     [
       clearRefusedWrite,
-      committedFields,
-      controller,
-      flushed,
+      discardDraft,
+      identity,
+      outline,
       readOnly,
-      reportRefusedWrite,
+      save,
+      sections,
+      storeApi,
+      writeRefusal,
     ],
   );
 
@@ -346,10 +390,7 @@ function StageEditorFormBody({
    * host need not use it: `formId` is the whole contract for a submit control
    * rendered outside the form, and a plain `<button form={formId}>` is a
    * conforming host. So the fact that the form is busy has to be readable from
-   * the form — by assistive technology, which is being told that this region
-   * is updating rather than merely that one button is; and by anything else
-   * that has to know a submit has settled without knowing what the host put in
-   * the action slot.
+   * the form itself.
    */
   const isSubmitting = useFormStore((state) => state.isSubmitting);
 
@@ -363,26 +404,54 @@ function StageEditorFormBody({
     },
   });
 
-  // A refused structural write is reported beside whatever the last submit had
-  // to say, in one region, because they are the same kind of news about the
-  // same form. `undefined` rather than an empty list: the region is not
-  // rendered at all when there is nothing to report.
+  // A refused structural write, and the draft a refused save discarded, are
+  // reported beside whatever the last submit had to say: they are the same
+  // kind of news about the same form. `undefined` rather than an empty list —
+  // the region is not rendered at all when there is nothing to report.
   const reportedErrors = useMemo(() => {
-    if (refusedWrite === undefined) return formErrors;
-    return [...(formErrors ?? []), refusedWrite];
-  }, [formErrors, refusedWrite]);
+    const extra = [refusedWrite, lostMessage].filter(
+      (message): message is string => message !== undefined,
+    );
+    if (extra.length === 0) return formErrors;
+    return [...(formErrors ?? []), ...extra];
+  }, [formErrors, lostMessage, refusedWrite]);
 
-  // The outline lists the sections in the order they appear on the page, and
-  // nothing tells it when that order changes: a component reordering sections
-  // from its own state re-renders itself, not the outline beside it. Watching
-  // the form's own subtree is what closes that gap.
+  // The outline reads the sections and their fields off the page, and nothing
+  // tells it when either changes: a component reordering its sections, or
+  // revealing a field, re-renders itself and not the outline beside it.
+  // Watching the form's own subtree is what closes that gap — text included,
+  // because a field's label is what the outline calls it in a problem, and
+  // `aria-invalid`, because a control that decides its own validity against
+  // the rest of the protocol can flip it without anything else on the page
+  // moving.
   useEffect(() => {
     const form = formRef.current;
     if (form === null) return;
-    const observer = new MutationObserver(() => outline.revalidateOrder());
-    observer.observe(form, { childList: true, subtree: true });
+    const observer = new MutationObserver(() => outline.revalidate());
+    observer.observe(form, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['aria-invalid'],
+    });
     return () => observer.disconnect();
   }, [outline]);
+
+  /**
+   * The level of the stage's own name, which every editor wears as the page's
+   * heading and which everything else in the form is a subsection of.
+   *
+   * Stated rather than left to Surface depth, which is a fact about how deep
+   * the card sits rather than about the outline. A host that says what it
+   * encloses pushes the whole ladder down: the title one below the host's
+   * heading, each section one below the title.
+   */
+  const enclosingHeadingLevel = useEnclosingHeadingLevel();
+  const stageTitleLevel =
+    enclosingHeadingLevel === null
+      ? 'h2'
+      : headingTagBelow(enclosingHeadingLevel);
 
   const layoutGroupId = useId();
   const context = useMemo(
@@ -391,143 +460,177 @@ function StageEditorFormBody({
         ? null
         : {
             formId,
-            controller,
             storeApi,
-            committedFields,
+            committedFields: document,
+            liveDraft,
             applyOwnCommands,
             reportRefusedWrite,
-            identity: snapshot.editedSection.identity,
-            protocolContext: snapshot.protocolContext,
+            identity,
+            creation,
             readOnly,
             outline,
           },
     [
       applyOwnCommands,
-      committedFields,
-      controller,
+      creation,
+      document,
       formId,
+      identity,
+      liveDraft,
       outline,
       readOnly,
       reportRefusedWrite,
-      snapshot.editedSection.identity,
-      snapshot.protocolContext,
       storeApi,
     ],
   );
 
-  if (context === null) return null;
+  if (context === null || sections === undefined) return null;
 
   return (
     <StageEditorFormContext value={context}>
-      <ResourceGatewayProvider gateway={controller.resourceGateway}>
-        <div className={cx('@container flex w-full flex-col gap-6', className)}>
-          <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
-            <SectionOutline />
-            <form
-              id={formId}
-              ref={formRef}
-              noValidate // The form reports its own problems; the browser's differ.
-              aria-busy={isSubmitting}
-              onSubmit={formProps.onSubmit}
-              className="flex min-w-0 flex-col"
-            >
-              <LayoutGroup id={layoutGroupId}>
+      <div className={cx('@container flex w-full flex-col', className)}>
+        {/*
+          One column, at the width and with the gutters Architect's stage
+          editor has always had. A host that wants a list of the sections
+          beside the form renders it in its own chrome, out of `sections` on
+          the action slot; this package draws no list of its own.
+
+          `@container` stays on the element above rather than here, so a
+          section asking about the space it has is answered about the room the
+          host gave the editor and not about this column's own cap.
+        */}
+        <div className="phone-landscape:px-6 mx-auto flex w-full max-w-4xl flex-col gap-6 px-4">
+          <form
+            id={formId}
+            ref={formRef}
+            noValidate // The form reports its own problems; the browser's differ.
+            aria-busy={isSubmitting}
+            onSubmit={formProps.onSubmit}
+            className="flex min-w-0 flex-col"
+          >
+            <LayoutGroup id={layoutGroupId}>
+              <EnclosingHeadingLevel level={stageTitleLevel}>
+                {access === 'readOnly' && (
+                  <Alert variant="info" density="compact">
+                    {holder === undefined
+                      ? intl.formatMessage(messages.heldByNobodyNamed)
+                      : intl.formatMessage(messages.heldBy, {
+                          holder: holder.displayName,
+                        })}
+                  </Alert>
+                )}
                 {reportedErrors && (
                   <FormErrorsList key="form-errors" errors={reportedErrors} />
                 )}
-                {children}
-              </LayoutGroup>
-            </form>
-          </div>
-          {actions?.({ controller, formId, readOnly })}
+                {/*
+                  Said once by the form rather than by every control: being
+                  unable to write is a property of the edit, not of any one
+                  field, so no section has to remember to pass it down.
+                */}
+                <FieldsDisabled disabled={readOnly}>{children}</FieldsDisabled>
+              </EnclosingHeadingLevel>
+            </LayoutGroup>
+          </form>
+          {actions?.({ formId, readOnly, sections })}
         </div>
-      </ResourceGatewayProvider>
+      </div>
     </StageEditorFormContext>
   );
 }
 
-type CommittedDraft = Readonly<{
-  fields: StageFormDraft;
-  /** Bumped each time the agreed draft is replaced by a different one. */
-  generation: number;
-}>;
-
 /**
- * The draft the controls were built from, and a count of how often it has been
- * replaced beneath them.
+ * The anchored refusals as sentences for the form's own error list, each named
+ * by the section that answers for it.
  *
- * Typing never reaches the session, so the draft moves for exactly two kinds
- * of reason: this form flushing its own values on submit, and everything else
- * — undo, redo, an acknowledgement, an authoritative replacement, a rollback
- * after a lost lease. Only the second kind is a surprise to the controls on
- * screen, and only it advances the generation that asks for a re-seed.
+ * Read from the published sections rather than from the issues themselves, so
+ * there is one resolution of what is wrong and who answers for it: what this
+ * says and what a host's section list says cannot come apart, and a problem a
+ * control is already stating beside itself is left to that control in both.
  *
- * The distinction has to be made here rather than from `pendingCommands`,
- * which cannot tell an undo from a submit: both leave a batch outstanding. A
- * form left mounted through an undo goes on showing the value that was just
- * undone, and writes it back over the undo when saved.
- *
- * Compared by content, not identity: the session freezes a fresh object into
- * every snapshot, and one lands whenever validation settles.
+ * Encoded rather than formatted, like every other refusal the form carries:
+ * these are handed to `useForm` as `formErrors` and rendered by `FormErrors`,
+ * which decodes them where they are read, so a refusal already on screen
+ * follows a change of language. The sentence inside is encoded too — or is a
+ * plain one the protocol schema wrote about a named thing, which the same
+ * route passes through untouched.
  */
-function useCommittedFields(
-  snapshot: ProtocolBuilderSnapshot,
-  flushed: RefObject<string | null>,
-): CommittedDraft {
-  const { fields } = snapshot.editedSection;
-  const committed = useRef<CommittedDraft>({ fields, generation: 0 });
-  const seen = useRef(canonicalize(fields));
-  const content = canonicalize(fields);
-
-  if (content !== seen.current) {
-    seen.current = content;
-    // The marker describes ONE write, and is spent by the FIRST transition
-    // this hook observes after it was left — whatever content that transition
-    // arrived at, and whether or not it is the one the marker names.
-    //
-    // Matching it says the arrival is the write, and the controls already show
-    // it. Not matching it says something else moved the draft too, and this
-    // render is showing that as well as the write: the controls have to be
-    // re-seeded for it, and the marker has nothing left to explain, because
-    // the transition it was about has now happened — inside this one. It is
-    // therefore cleared on BOTH answers rather than only on a match.
-    //
-    // Left standing on a mismatch it is not a marker any more, only a content
-    // that will one day come round again: `useSyncExternalStore` hands a render
-    // whatever the store holds at render time rather than every value it passed
-    // through, so a write and an acknowledgement landing in the same commit are
-    // one render showing the two together, and the write's own content is never
-    // seen. The next arrival AT that content — a collaborator withdrawing the
-    // change that had combined with it, an undo, a redo — would then read as
-    // this form's own doing, the re-seed it needed would be skipped, and the
-    // controls would keep values nobody agrees to for the next save to write
-    // back over the top.
-    const ownFlush = content === flushed.current;
-    flushed.current = null;
-    committed.current = {
-      fields,
-      generation: committed.current.generation + (ownFlush ? 0 : 1),
-    };
-  }
-  return committed.current;
+function sectionProblems(sections: readonly StageSection[]): string[] {
+  return sections.flatMap((section) =>
+    section.problems.map((problem) =>
+      createMessageError(messages.sectionProblem, {
+        sectionTitle: section.title,
+        problem: { messageError: problem },
+      }),
+    ),
+  );
 }
 
 /**
- * What a save or a structural write that reached nothing is called on screen.
+ * What the schema says is wrong with the stage, split by whether a section can
+ * answer for it.
  *
- * Encoded rather than formatted, because none of the three is rendered where
- * it is decided: they are handed to the form as `formErrors`, held there until
- * something replaces them, and rendered by `FormErrors`, which decodes them —
- * so a refusal already on screen follows a change of language.
+ * A problem anchored at a path belongs to whichever section owns that path, so
+ * it can be named by that section — above the form, and in a host's own list
+ * of the sections. A problem anchored at NOTHING is about the stage as a whole
+ * — a rule relating two of its keys — and no section can be pointed at for it,
+ * so it is read out in the schema's own words. Dropping either was the same as
+ * accepting it: the save would have gone ahead with nothing on screen to say
+ * why it should not have.
+ *
+ * Each anchored issue is also asked the question the validator's own answer
+ * cannot settle: is this a value that is wrong, or a value that is not there?
+ * Zod finalises an issue without keeping what it was given, and the code is the
+ * same either way — a missing key and a number where a string belongs are both
+ * `invalid_type` — so the document it judged is what says which. Read with the
+ * same predicate a required field is judged by, so "empty" means one thing in
+ * this editor.
+ */
+function stageProblems(
+  identity: StageIdentity,
+  fields: StageFormDraft,
+): Readonly<{ sections: SectionValidationIssue[]; whole: string[] }> {
+  const result = stageSchema.safeParse(stageDocument(identity, fields));
+  if (result.success) return { sections: [], whole: [] };
+  const sections: SectionValidationIssue[] = [];
+  const whole: string[] = [];
+  for (const issue of result.error.issues) {
+    const path = issue.path.map((part) =>
+      typeof part === 'symbol' ? String(part) : part,
+    );
+    if (path.length === 0) {
+      // A key the schema does not name is the HOST's to refuse — it answers
+      // `INVALID_SHAPE` for a document that is not shaped like its section, and
+      // an editor with a second, stricter opinion would refuse a save the
+      // protocol would have taken. Everything else anchored at nothing is a
+      // rule about the stage's own keys, which the researcher can act on.
+      if (issue.code !== 'unrecognized_keys') whole.push(issue.message);
+      continue;
+    }
+    sections.push({
+      path,
+      code: issue.code,
+      message: issue.message,
+      absent: isUnanswered(getValue(fields, path)),
+    });
+  }
+  return { sections, whole };
+}
+
+/**
+ * What a save that reached nothing is called on screen, and what a read-only
+ * editor says about who has the stage.
+ *
+ * The refusals are encoded rather than formatted, because neither is rendered
+ * where it is decided: they are handed to the form as `formErrors`, held there
+ * until something replaces them, and rendered by `FormErrors`, which decodes
+ * them — so a refusal already on screen follows a change of language.
+ *
+ * The read-only sentence a WRITE is refused with is not among them: a control
+ * can decide for itself that a write may no longer happen, so it lives in
+ * `readOnlyRefusal.ts`, where both this shell and those controls read the one
+ * declaration of it.
  */
 const messages = defineMessages({
-  readOnly: {
-    id: 'protocolBuilder.shell.readOnlyRefusal',
-    defaultMessage:
-      'This stage is read-only, so your changes were not saved. Take over editing and try again.',
-    description:
-      'Shown above a stage editor’s fields when the researcher no longer holds the right to edit this stage (a stage is one step of an interview) and something they did would have written to it. Taking over editing is an action offered elsewhere in the host application.',
-  },
   formUnavailable: {
     id: 'protocolBuilder.shell.formUnavailableRefusal',
     defaultMessage:
@@ -535,30 +638,40 @@ const messages = defineMessages({
     description:
       'Shown above a stage editor’s fields when a save arrives after the editor’s own form has been taken down, so there are no values left to save.',
   },
-  saveFailed: {
-    id: 'protocolBuilder.shell.saveFailedRefusal',
-    defaultMessage:
-      'This stage could not be saved. Wait a moment and try again.',
+  invalidStage: {
+    id: 'protocolBuilder.shell.invalidStageRefusal',
+    defaultMessage: 'This stage is not finished, so it was not saved.',
     description:
-      'Shown above a stage editor’s fields when saving failed for a reason that carried no explanation of its own. The last resort, used only when the failure said nothing readable.',
+      'Shown above a stage editor’s fields when the stage does not yet satisfy the protocol’s own rules for this interface, so the save was not attempted, and every fault is already stated beside the control that holds it. A stage is one step of an interview.',
+  },
+  sectionProblem: {
+    id: 'protocolBuilder.shell.sectionProblem',
+    defaultMessage: '{sectionTitle}: {problem}',
+    description:
+      'Shown above a stage editor’s fields, once for each thing the protocol refused about the stage, when the save was not attempted. sectionTitle is the name of the section of the editor that holds the value; problem is a whole sentence saying what is wrong with it, already in the reader’s language. Both are given, so this is only the punctuation that joins them.',
+  },
+  heldBy: {
+    id: 'protocolBuilder.shell.heldBy',
+    defaultMessage:
+      '{holder} is editing this stage, so you can read it but not change it.',
+    description:
+      'Shown at the top of a stage editor opened while a collaborator holds it. holder is that person’s display name, which the host supplies. A stage is one step of an interview.',
+  },
+  stageUnavailable: {
+    id: 'protocolBuilder.shell.stageUnavailable',
+    defaultMessage:
+      'This stage could not be opened. It may have been deleted while you were away. Go back to the interview and choose another one.',
+    description:
+      'Shown in place of a stage editor when the protocol would not open the stage at all — it has been deleted, or the application could not be reached. A stage is one step of an interview.',
+  },
+  heldByNobodyNamed: {
+    id: 'protocolBuilder.shell.heldByNobodyNamed',
+    defaultMessage:
+      'Somebody else is editing this stage, so you can read it but not change it.',
+    description:
+      'Shown at the top of a stage editor opened while somebody the host would not name holds it. A stage is one step of an interview.',
   },
 });
 
-const READ_ONLY_MESSAGE = createMessageError(messages.readOnly);
-
 const UNAVAILABLE_MESSAGE = createMessageError(messages.formUnavailable);
-
-/**
- * The failure's own account of itself where it has one, and this package's
- * sentence where it does not.
- *
- * A host's message is passed through as it stands: it is already written for
- * the researcher, and `FormErrors` renders either an encoded descriptor or a
- * plain sentence — `formatMessageError(text, intl) ?? text` — so a host that
- * localizes its own failures is carried too.
- */
-function failureMessage(error: unknown): string {
-  return error instanceof Error && error.message !== ''
-    ? error.message
-    : createMessageError(messages.saveFailed);
-}
+const INVALID_STAGE_MESSAGE = createMessageError(messages.invalidStage);

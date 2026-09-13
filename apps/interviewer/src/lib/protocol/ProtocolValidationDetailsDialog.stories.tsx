@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import Button from '@codaco/fresco-ui/Button';
 
@@ -51,10 +51,6 @@ function ValidationDetailsDialogStory({
   const [open, setOpen] = useState(initialOpen);
   const issues = useMemo(() => getIssues(issueSet), [issueSet]);
 
-  useEffect(() => {
-    setOpen(initialOpen);
-  }, [initialOpen, issueSet]);
-
   return (
     <div className="flex min-h-96 items-center justify-center">
       <Button color="primary" onClick={() => setOpen(true)}>
@@ -97,7 +93,15 @@ const meta: Meta<StoryArgs> = {
       description: 'Whether the dialog starts open.',
     },
   },
-  render: (args) => <ValidationDetailsDialogStory {...args} />,
+  // Remount on any control change so the local open state goes back to the
+  // `open` arg — the reset belongs to the identity of the story, not to an
+  // effect inside it.
+  render: (args) => (
+    <ValidationDetailsDialogStory
+      key={`${args.issueSet}:${String(args.open)}`}
+      {...args}
+    />
+  ),
 };
 
 export default meta;

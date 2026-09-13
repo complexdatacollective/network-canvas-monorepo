@@ -14,6 +14,7 @@ import {
   generateRegistryOpenApi,
   registryContract,
 } from './contract.ts';
+import { toOpenApi30 } from './openapi-compatibility.ts';
 import {
   REGISTRY_PROBLEMS,
   registryErrorStatuses,
@@ -578,6 +579,36 @@ describe('generated registry OpenAPI', () => {
       await readFile(new URL('../spec/openapi.json', import.meta.url), 'utf8'),
     );
     expect(published).toEqual(document);
+  });
+
+  it('keeps the compatible 3.0 specification derived from the normative contract', async () => {
+    const compatible = record(
+      JSON.parse(
+        await readFile(
+          new URL('../spec/openapi-3.0.json', import.meta.url),
+          'utf8',
+        ),
+      ),
+    );
+    expect(compatible).toEqual(toOpenApi30(document));
+    expect(compatible.openapi).toBe('3.0.3');
+    expect(JSON.stringify(compatible)).not.toContain('"const"');
+    expect(JSON.stringify(compatible)).not.toContain('"type":"null"');
+    expect(JSON.stringify(compatible)).not.toContain('"contentEncoding"');
+    expect(JSON.stringify(compatible)).not.toContain('"contentMediaType"');
+    expect(record(record(compatible.info).license)).toEqual({
+      name: 'CC0-1.0',
+      url: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    });
+    const artifact = record(
+      record(record(record(compatible.paths)['/artifacts/{root}']).get)
+        .responses,
+    );
+    const artifactContent = record(record(artifact['200']).content);
+    expect(Object.keys(artifactContent)).toEqual([
+      TEMPLATE_ARTIFACT_MEDIA_TYPE,
+    ]);
+    expect(artifactContent[TEMPLATE_ARTIFACT_MEDIA_TYPE]).toBeDefined();
   });
 
   it('covers every operation, path target and public problem code', () => {

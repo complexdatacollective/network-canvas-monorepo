@@ -6,8 +6,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { serve } from '@hono/node-server';
+import { createORPCClient } from '@orpc/client';
+import { RPCLink } from '@orpc/client/websocket';
+import type { RouterContractClient } from '@orpc/contract';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WebSocket, WebSocketServer } from 'ws';
+
+import { type contract } from '@codaco/studio-rpc';
 
 import { stubAuthService } from '../../__tests__/support/auth.ts';
 import { createApp } from '../../app.ts';
@@ -222,9 +227,19 @@ describe('request correlation and transport privacy', () => {
     await once(ws, 'open');
     const [response] = await upgrade;
     expect(response.headers['x-request-id']).toBe(id);
-    const message = once(ws, 'message');
+    // /ws speaks the RPC protocol, so this frame is unreadable and draws no
+    // reply of its own. A real call behind it is the sync point: one socket
+    // delivers in order, so an answered call proves the canary frame was
+    // read first — which a bare send could not.
+    ws.binaryType = 'arraybuffer';
+    const client: RouterContractClient<typeof contract> = createORPCClient(
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+      new RPCLink({ connect: () => ws as unknown as globalThis.WebSocket }),
+    );
     ws.send(CANARY);
-    expect(String((await message)[0])).toBe(CANARY);
+    await expect(client.status()).resolves.toMatchObject({
+      deployment: expect.anything(),
+    });
     expect((await observability.metrics.scrape()).body).toContain(
       'studio_websocket_connections 1',
     );
@@ -235,8 +250,9 @@ describe('request correlation and transport privacy', () => {
         'studio_websocket_connections 0',
       ),
     );
-    expect(lines).toHaveLength(1);
-    expect(lines[0]).toMatchObject({
+    const requests = lines.filter((line) => line.event === 'http_request');
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
       request_id: id,
       status: 101,
       route: '/ws',

@@ -1,5 +1,6 @@
 'use client';
 import { parseAsInteger, useQueryState } from 'nuqs';
+import type { ReactNode } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -33,6 +34,8 @@ const messages = defineMessages({
   },
 });
 
+const renderCodeChunks = (chunks: ReactNode[]) => <code>{chunks}</code>;
+
 function ConfigureStudy() {
   const intl = useAppIntl();
 
@@ -54,7 +57,7 @@ function ConfigureStudy() {
       </Heading>
       <Paragraph>
         {intl.formatMessage(messages.ifYouHaveAlreadyCreatedANetwork, {
-          tag1: (chunks) => <code>{chunks}</code>,
+          tag1: renderCodeChunks,
         })}
       </Paragraph>
       <Paragraph>{intl.formatMessage(messages.ifYouDonAposTHaveA)}</Paragraph>

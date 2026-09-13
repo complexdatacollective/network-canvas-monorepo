@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createBaseProtocol } from '../../../utils/test-utils.ts';
 import ProtocolSchemaV8 from '../schema.ts';
+import { stageSchema } from '../stages/index.ts';
 
 /**
  * Tests for the schema-conformance logic-validation refinements:
@@ -593,49 +594,128 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
   });
 
   describe('external-data panel filter edge rules', () => {
-    it('rejects an external-data panel filter with an edge rule', () => {
+    /**
+     * The rule reads nothing but the stage, so it is declared on the stage
+     * schema and not in the whole-protocol refinement. These two tests pin
+     * both paths it can be reported at: the stage-relative one a host
+     * validating a single stage sees, and the protocol-relative one that the
+     * same issue keeps when the stage is parsed inside a protocol.
+     */
+    const panelReadingAFileWithAnEdgeRule = {
+      id: 'panel1',
+      title: 'From CSV',
+      dataSource: 'someAssetId',
+      filter: {
+        rules: [
+          {
+            type: 'edge',
+            id: 'r1',
+            options: { type: 'knows', operator: 'EXISTS' },
+          },
+        ],
+      },
+    };
+
+    const nameGeneratorWithPanels = (panels: readonly unknown[]) => ({
+      id: 'nameGen1',
+      type: 'NameGenerator',
+      label: 'Generate',
+      subject: { entity: 'node', type: 'person' },
+      form: {
+        title: 'Add person',
+        fields: [{ variable: 'name', prompt: 'Name' }],
+      },
+      prompts: [{ id: 'p1', text: 'Who?' }],
+      panels,
+    });
+
+    it('rejects an external-data panel filter with an edge rule, on the stage alone', () => {
+      const result = stageSchema.safeParse(
+        nameGeneratorWithPanels([panelReadingAFileWithAnEdgeRule]),
+      );
+
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      expect(
+        result.error.issues.map((issue) => ({
+          path: issue.path,
+          message: issue.message,
+        })),
+      ).toEqual([
+        {
+          path: ['panels', 0, 'filter', 'rules', 0, 'type'],
+          message:
+            'External-data panel filters cannot use edge rules; rules must target node attributes.',
+        },
+      ]);
+    });
+
+    it('rejects it for a quick-add name generator too', () => {
+      const result = stageSchema.safeParse({
+        id: 'quickAdd1',
+        type: 'NameGeneratorQuickAdd',
+        label: 'Generate',
+        subject: { entity: 'node', type: 'person' },
+        quickAdd: 'name',
+        prompts: [{ id: 'p1', text: 'Who?' }],
+        panels: [panelReadingAFileWithAnEdgeRule],
+      });
+
+      expect(result.success).toBe(false);
+      if (result.success) return;
+      expect(
+        result.error.issues.map((issue) => ({
+          path: issue.path,
+          message: issue.message,
+        })),
+      ).toEqual([
+        {
+          path: ['panels', 0, 'filter', 'rules', 0, 'type'],
+          message:
+            'External-data panel filters cannot use edge rules; rules must target node attributes.',
+        },
+      ]);
+    });
+
+    it('rejects an external-data panel filter with an edge rule, inside a protocol', () => {
       const base = createBaseProtocol();
       const protocol = {
         ...base,
-        stages: [
-          {
-            id: 'nameGen1',
-            type: 'NameGenerator',
-            label: 'Generate',
-            subject: { entity: 'node', type: 'person' },
-            form: {
-              title: 'Add person',
-              fields: [{ variable: 'name', prompt: 'Name' }],
-            },
-            prompts: [{ id: 'p1', text: 'Who?' }],
-            panels: [
-              {
-                id: 'panel1',
-                title: 'From CSV',
-                dataSource: 'someAssetId',
-                filter: {
-                  rules: [
-                    {
-                      type: 'edge',
-                      id: 'r1',
-                      options: { type: 'knows', operator: 'EXISTS' },
-                    },
-                  ],
-                },
-              },
-            ],
-          },
-        ],
+        stages: [nameGeneratorWithPanels([panelReadingAFileWithAnEdgeRule])],
       };
 
       const result = ProtocolSchemaV8.safeParse(protocol);
+
       expect(result.success).toBe(false);
-      if (!result.success) {
-        const issue = result.error.issues.find((i) =>
-          i.message.includes('edge'),
-        );
-        expect(issue).toBeDefined();
-      }
+      if (result.success) return;
+      expect(
+        result.error.issues.map((issue) => ({
+          path: issue.path,
+          message: issue.message,
+        })),
+      ).toEqual([
+        {
+          path: ['stages', 0, 'panels', 0, 'filter', 'rules', 0, 'type'],
+          message:
+            'External-data panel filters cannot use edge rules; rules must target node attributes.',
+        },
+      ]);
+    });
+
+    /**
+     * A panel reading the interview network itself is a query over the network
+     * being built, where a rule about connections is meaningful. Only a panel
+     * reading a flat list of node rows is refused.
+     */
+    it('accepts an edge rule on a panel reading the interview network', () => {
+      const result = stageSchema.safeParse(
+        nameGeneratorWithPanels([
+          { ...panelReadingAFileWithAnEdgeRule, dataSource: 'existing' },
+        ]),
+      );
+
+      expect(result.error?.issues ?? []).toEqual([]);
+      expect(result.success).toBe(true);
     });
 
     it('accepts an external-data panel filter with a node rule', () => {
@@ -643,37 +723,26 @@ describe('Protocol Schema V8 - logic-validation refinements', () => {
       const protocol = {
         ...base,
         stages: [
-          {
-            id: 'nameGen1',
-            type: 'NameGenerator',
-            label: 'Generate',
-            subject: { entity: 'node', type: 'person' },
-            form: {
-              title: 'Add person',
-              fields: [{ variable: 'name', prompt: 'Name' }],
-            },
-            prompts: [{ id: 'p1', text: 'Who?' }],
-            panels: [
-              {
-                id: 'panel1',
-                title: 'From CSV',
-                dataSource: 'someAssetId',
-                filter: {
-                  rules: [
-                    {
-                      type: 'node',
-                      id: 'r1',
-                      options: { type: 'person', operator: 'EXISTS' },
-                    },
-                  ],
-                },
+          nameGeneratorWithPanels([
+            {
+              ...panelReadingAFileWithAnEdgeRule,
+              filter: {
+                rules: [
+                  {
+                    type: 'node',
+                    id: 'r1',
+                    options: { type: 'person', operator: 'EXISTS' },
+                  },
+                ],
               },
-            ],
-          },
+            },
+          ]),
         ],
       };
 
       const result = ProtocolSchemaV8.safeParse(protocol);
+
+      expect(result.error?.issues ?? []).toEqual([]);
       expect(result.success).toBe(true);
     });
   });

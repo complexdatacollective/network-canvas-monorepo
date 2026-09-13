@@ -20,13 +20,13 @@ export async function assertPostgresRecoveryQuarantine(
     allowedLogins: readonly string[];
     administrativeLogins: readonly string[];
     allowedClientPids?: readonly number[];
-    transaction: PostgresRecoveryTransaction;
+    expectedTransaction: PostgresRecoveryTransaction;
   },
 ): Promise<void> {
   const allowedLogins = [...options.allowedLogins];
   const administrativeLogins = [...options.administrativeLogins];
   const runtimeRoles = [...options.runtimeRoles];
-  const transaction = { ...options.transaction };
+  const transaction = { ...options.expectedTransaction };
   if (
     runtimeRoles.length === 0 ||
     new Set(runtimeRoles).size !== runtimeRoles.length

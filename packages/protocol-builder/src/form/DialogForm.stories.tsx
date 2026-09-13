@@ -4,12 +4,13 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import { Button } from '@codaco/fresco-ui/Button';
 import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import type { FieldValue } from '@codaco/fresco-ui/form/store/types';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import DialogForm, { DialogFormField } from './DialogForm.tsx';
+import DialogForm from './DialogForm.tsx';
 
 /** The story's fields are all text, so anything else has nothing to show. */
 const asText = (value: FieldValue): string =>
@@ -58,7 +59,7 @@ function RuleEditorHost({
           title="Edit rule"
           description="Rules decide which participants reach this stage."
           formId="rule-editor"
-          initialValues={saved}
+          document={saved}
           onSubmit={(values) => setSaved(values)}
           validate={(values) =>
             requireVariable && values.variable === ''
@@ -67,18 +68,14 @@ function RuleEditorHost({
           }
           submitLabel="Save rule"
         >
-          <DialogFormField
+          <Field
             name="label"
             label="Rule name"
             hint="How this rule is listed in the skip logic summary."
             component={InputField}
             required
           />
-          <DialogFormField
-            name="variable"
-            label="Attribute"
-            component={InputField}
-          />
+          <Field name="variable" label="Attribute" component={InputField} />
         </DialogForm>
       </main>
     </DialogProvider>

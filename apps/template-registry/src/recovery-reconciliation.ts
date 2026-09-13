@@ -3,6 +3,7 @@ import { lstat, open } from 'node:fs/promises';
 
 import { z } from 'zod';
 
+import { normalizeMailbox } from '@codaco/studio-sync/email-sender';
 import { templateBytesHash } from '@codaco/studio-sync/template-exchange';
 
 const userId = z
@@ -18,6 +19,8 @@ const reconciliationSchema = z
     users: z.array(
       z.strictObject({
         id: userId,
+        email: z.email().max(254).transform(normalizeMailbox),
+        emailVerified: z.boolean(),
         publisher: z.enum(['none', 'active', 'suspended']),
         operator: z.boolean(),
       }),
@@ -28,6 +31,12 @@ const reconciliationSchema = z
     if (new Set(ids).size !== ids.length)
       context.addIssue({ code: 'custom', message: 'Repeated recovery user.' });
     for (const [index, user] of value.users.entries()) {
+      if (user.publisher !== 'none' && !user.emailVerified)
+        context.addIssue({
+          code: 'custom',
+          path: ['users', index, 'emailVerified'],
+          message: 'Publishers must have a verified email.',
+        });
       if (user.operator && user.publisher !== 'active')
         context.addIssue({
           code: 'custom',

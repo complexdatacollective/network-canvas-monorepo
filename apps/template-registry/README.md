@@ -98,6 +98,21 @@ selects a Postmark stream and otherwise defaults to `outbound`. Both transports
 validate the sender at startup, preserve uncertain delivery outcomes and close
 on shutdown. External object stores require HTTPS. The explicit
 `REGISTRY_S3_INSECURE_PRIVATE_NETWORK` option is for an isolated private network.
+`REGISTRY_S3_PROVIDER` defaults to `s3`; set it to `r2` only with a Cloudflare
+HTTPS account endpoint (`<account-id>.r2.cloudflarestorage.com` or its `eu`,
+`us`, or `fedramp` jurisdiction form) and region `auto`. The endpoint must use
+the 32-hex account ID and default HTTPS port; userinfo, paths, and query data
+are rejected.
+Offline recovery inherits that provider unless `REGISTRY_RECOVERY_S3_PROVIDER`
+is set explicitly, and applies the same endpoint admission.
+Hard deletion enumerates the exact artifact key with S3 `ListObjectVersions`,
+removes every returned version and delete marker, and restarts enumeration
+until the key is empty before the database job is completed. A provider that
+does not implement that operation (including the current Cloudflare R2 S3
+compatibility surface) fails deletion closed. The explicit R2 provider is
+admitted because R2 does not expose object versioning; it uses ordinary
+`DeleteObject` for its no-versioning contract. Never select R2 for an endpoint
+that does not match the verified account form.
 
 Every runtime and offline command requires `REGISTRY_DATABASE_ALLOWED_LOGINS`,
 an explicit JSON array of the complete database login inventory, including the
@@ -133,8 +148,14 @@ settings and the complete login inventory. `REGISTRY_RECOVERY_RECONCILIATION_PAT
 names a private regular JSON file of at most 16 MiB; its exact-byte SHA-256 is
 supplied separately as `REGISTRY_RECOVERY_RECONCILIATION_SHA256`. This is an
 operator-approved inventory, not a signature or evidence of who approved it.
-Its users must exactly match the restored users, with current publisher and
-operator permissions independently reconciled before running the command.
+Its users must exactly match the restored users by ID, normalized email and
+verified-email state, with current publisher and operator permissions
+independently reconciled before running the command. Recovery object storage
+uses the runtime HTTPS policy; a non-loopback HTTP endpoint requires the same
+explicit `REGISTRY_S3_INSECURE_PRIVATE_NETWORK=true` operator opt-in.
+`REGISTRY_S3_PROVIDER` selects the runtime `s3` or `r2` capability contract;
+recovery selects its independently restored store with
+`REGISTRY_RECOVERY_S3_PROVIDER` (both default to `s3`).
 
 All serving logins and other enrolled administrators remain NOLOGIN, except
 the connecting recovery operator; surviving target sessions and prepared

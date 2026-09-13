@@ -2,26 +2,32 @@ import { expect, type Page } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
 
-// NameGeneratorRoster card/sort/search options (sections/CardDisplayOptions,
-// SortOptionsForExternalData, SearchOptionsForExternalData). Facts verified
-// against source:
-// - All three sections are toggleable, gated on `dataSource`, and collapsed
-//   on a fresh stage; toggling ON writes nothing. ALWAYS pick the data
-//   source first — changing it resets all three areas.
-// - Rows are immediateAdd MultiSelects: one click on the list's add button
-//   inserts `{}` inline. Each of this stage's three lists names that button
-//   for its own contents, so no scoping is needed to tell them apart. Within
-//   a row, set the SELECT (Variable/Property) before the text/direction
-//   field: changing an earlier row field nulls every later one (MultiSelect
-//   handleChange).
-// - Variable/Property options are the raw CSV header strings; row selects
-//   are native (selectOption works). Saved rows carry exactly the two keys.
-// - searchOptions.matchProperties is a checkbox group ('Which attributes
-//   should be searchable?') whose value fills in click order; names need
-//   exact: true ('name' substring-matches 'first_name').
-// - searchOptions.fuzziness is the 'Search accuracy' Likert slider; the
-//   pristine thumb rests on index 1 without committing, so one ArrowRight
-//   commits index 2 = 0.25 ('High accuracy').
+// NameGeneratorRoster's three list-shaped sections
+// (`@codaco/protocol-builder`'s `editors/name-generator-roster/sections/`:
+// `CardDisplaySection` "Card display", `SortOptionsSection` "Roster sorting",
+// `SearchOptionsSection` "Roster search"). Facts read from that source:
+// - All three are capability sections gated on `dataSource`: switched off and
+//   disabled on a fresh stage, and `resetOn={DATA_SOURCE}` clears them without
+//   asking when the data file changes. ALWAYS pick the data file first.
+// - Each switch is named by its own section heading; switching one on writes
+//   nothing.
+// - Rows are `OptionalList` (a `MultiSelect`) with `immediateAdd`: one click
+//   on the list's add button inserts `{}` inline. Each list names its own add
+//   button, so no scoping is needed to tell them apart. Within a row, set the
+//   SELECT before the text/direction cell: changing an earlier cell nulls
+//   every later one (`MultiSelect`'s handleChange).
+// - Every cell keeps the `name[i].property` `data-field-name` seam, and the
+//   column headings are the cells' own labels: "Attribute" for the column
+//   naming a data-file column, plus "Label" or "Direction".
+// - Option values are the raw column-header strings and the row selects are
+//   native, so `selectOption` works. Saved rows carry exactly the two keys.
+// - `searchOptions.matchProperties` is a checkbox group ("Searchable
+//   attributes") whose value fills in click order; names need `exact: true`
+//   ('name' substring-matches 'first_name').
+// - `searchOptions.fuzziness` is the "Search accuracy" Likert scale. Its four
+//   settings are tolerances, ascending: 'Exact' (0), 'Close matches only'
+//   (0.25), 'Allow small differences' (0.5), 'Allow typos and misspellings'
+//   (0.75) — the scale reads the chosen one back through `aria-valuetext`.
 export async function addCardDisplayProperties(
   editor: StageEditor,
   rows: { variable: string; label: string }[],
@@ -59,7 +65,7 @@ export async function configureSortOptions(
   await section.getByRole('button', { name: 'Add new sort rule' }).click();
   await editor
     .field('sortOptions.sortOrder[0].property')
-    .getByRole('combobox', { name: 'Property' })
+    .getByRole('combobox', { name: 'Attribute' })
     .selectOption(opts.sortOrder.property);
   await editor
     .field('sortOptions.sortOrder[0].direction')
@@ -86,7 +92,11 @@ export async function configureSearchOptions(
   opts: {
     // Click order becomes the saved array order.
     matchProperties: string[];
-    accuracy: 'Low accuracy' | 'Medium accuracy' | 'High accuracy' | 'Exact';
+    tolerance:
+      | 'Exact'
+      | 'Close matches only'
+      | 'Allow small differences'
+      | 'Allow typos and misspellings';
   },
 ): Promise<void> {
   await editor
@@ -100,13 +110,18 @@ export async function configureSearchOptions(
       .check();
   }
   const slider = page.getByRole('slider', { name: 'Search accuracy' });
-  // Deterministic keyboard path: End commits the last stop ('Exact'), then
-  // ArrowLeft steps back one committed stop at a time.
-  const stops = ['Low accuracy', 'Medium accuracy', 'High accuracy', 'Exact'];
-  const target = stops.indexOf(opts.accuracy);
+  // Deterministic keyboard path: End commits the last stop ('Allow typos and
+  // misspellings'), then ArrowLeft steps back one committed stop at a time.
+  const stops = [
+    'Exact',
+    'Close matches only',
+    'Allow small differences',
+    'Allow typos and misspellings',
+  ];
+  const target = stops.indexOf(opts.tolerance);
   await slider.press('End');
   for (let step = stops.length - 1; step > target; step -= 1) {
     await slider.press('ArrowLeft');
   }
-  await expect(slider).toHaveAttribute('aria-valuetext', opts.accuracy);
+  await expect(slider).toHaveAttribute('aria-valuetext', opts.tolerance);
 }

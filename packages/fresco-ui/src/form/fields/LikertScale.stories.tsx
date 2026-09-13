@@ -89,9 +89,13 @@ function ControlledLikert({
 }) {
   const [value, setValue] = useState<string | number | undefined>(initialValue);
 
-  useEffect(() => {
+  // Adopt a new control value during render rather than after a commit, so the
+  // field never paints one frame of the previous story arg.
+  const [appliedInitialValue, setAppliedInitialValue] = useState(initialValue);
+  if (appliedInitialValue !== initialValue) {
+    setAppliedInitialValue(initialValue);
     setValue(initialValue);
-  }, [initialValue]);
+  }
 
   return (
     <LikertScaleField
@@ -196,6 +200,9 @@ const labelSets: Record<string, { label: string; value: string | number }[]> = {
   'Markdown (5)': markdownLabelOptions,
 };
 
+const midpointValue = (options: { label: string; value: string | number }[]) =>
+  options[Math.floor(options.length / 2)]?.value;
+
 // Single interactive demo of the responsive label ladder. Resize the container
 // to step full -> rotated -> anchors as it narrows; switch the label set to try
 // different content.
@@ -205,12 +212,16 @@ function ResizableLikertDemo() {
   const boxRef = useRef<HTMLDivElement>(null);
 
   const options = labelSets[setName] ?? agreementOptions;
-  const [value, setValue] = useState<string | number | undefined>();
+  const [value, setValue] = useState<string | number | undefined>(() =>
+    midpointValue(options),
+  );
 
   // Reset the selection to the midpoint whenever the label set changes.
-  useEffect(() => {
-    setValue(options[Math.floor(options.length / 2)]?.value);
-  }, [options]);
+  const [appliedOptions, setAppliedOptions] = useState(options);
+  if (appliedOptions !== options) {
+    setAppliedOptions(options);
+    setValue(midpointValue(options));
+  }
 
   useEffect(() => {
     const box = boxRef.current;

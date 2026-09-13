@@ -113,18 +113,28 @@ const messages = defineMessages({
     description:
       'Researcher-facing settings / TwoFactorSettings: Your previous recovery codes have been invalidated. Save these new codes.',
   },
+  requiredOnThisInstallation: {
+    id: 'fresco.settings.TwoFactorSettings.requiredOnThisInstallation',
+    defaultMessage:
+      'Two-factor authentication is required on this installation for every account that signs in with a password, so it cannot be turned off here.',
+    description:
+      'Shown beside the per-account two-factor switch when the REQUIRE_TWO_FACTOR environment variable is set.',
+  },
 });
 
 type TwoFactorSettingsProps = {
   hasTwoFactor: boolean;
   userCount: number;
   sandboxMode?: boolean;
+  /** Whether the installation requires two-factor authentication (`REQUIRE_TWO_FACTOR`). */
+  twoFactorRequired?: boolean;
 };
 
 export default function TwoFactorSettings({
   hasTwoFactor: initialHasTwoFactor,
   userCount,
   sandboxMode = false,
+  twoFactorRequired = false,
 }: TwoFactorSettingsProps) {
   const intl = useAppIntl();
 
@@ -159,13 +169,22 @@ export default function TwoFactorSettings({
           <ToggleField
             value={hasTwoFactor}
             onChange={(checked) => void handleToggle(checked ?? false)}
-            disabled={sandboxMode}
+            // The server refuses to disable it while the policy is on; the
+            // switch says so rather than offering a change that cannot happen.
+            disabled={sandboxMode || (hasTwoFactor && twoFactorRequired)}
             aria-label={intl.formatMessage(
               messages.toggleTwoFactorAuthentication,
             )}
           />
         }
       >
+        {hasTwoFactor && twoFactorRequired && (
+          <Alert variant="info" className="mb-3">
+            <AlertDescription>
+              {intl.formatMessage(messages.requiredOnThisInstallation)}
+            </AlertDescription>
+          </Alert>
+        )}
         {hasTwoFactor && (
           <Button
             size="sm"

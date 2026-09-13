@@ -23,8 +23,11 @@ import type { S3Env } from './env.ts';
 const KEY_PREFIX = 'assets/';
 const SHA256_HEX = /^[0-9a-f]{64}$/;
 // Walking-skeleton bound; revisit with real stimuli sizes and the presigned
-// direct-upload question on #1278.
-const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
+// direct-upload question on #1278. Exported because it is what Studio will
+// store for one file however the bytes arrive: the protocol-builder host
+// stages through the RPC surface rather than this route, and a second bound
+// there would be a second answer to the same question.
+export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 export type StoredAsset = {
   hash: string;

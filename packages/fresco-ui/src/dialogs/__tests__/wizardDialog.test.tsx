@@ -613,6 +613,15 @@ describe('Wizard Dialog setBeforeNext', () => {
     return <div>Before next step</div>;
   }
 
+  // Binds the handler outside any component body. The steps below are only
+  // ever built from a click handler, but a step component written inline
+  // still reads to the linter as a component defined during render.
+  function beforeNextContent(handler: () => Promise<boolean> | boolean) {
+    return function BeforeNextContent() {
+      return <BeforeNextStep handler={handler} />;
+    };
+  }
+
   function TestBeforeNext({
     onResult,
     handler,
@@ -631,7 +640,7 @@ describe('Wizard Dialog setBeforeNext', () => {
         steps: steps ?? [
           {
             title: 'Step 1',
-            content: () => <BeforeNextStep handler={handler} />,
+            content: beforeNextContent(handler),
           },
           { title: 'Step 2', content: SecondStep },
         ],
@@ -802,7 +811,7 @@ describe('Wizard Dialog setBeforeNext', () => {
           steps: [
             {
               title: 'Only Step',
-              content: () => <BeforeNextStep handler={handler} />,
+              content: beforeNextContent(handler),
             },
           ],
           onFinish,

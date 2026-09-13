@@ -1,5 +1,5 @@
 import { Trash2 } from 'lucide-react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -238,11 +238,17 @@ const ThresholdItem = ({
   const shape = item.shape;
   const [draft, setDraft] = useState(() => String(value));
 
-  useEffect(() => {
+  // A committed value arriving from the parent (a re-sort, an undo) replaces
+  // the draft unless the draft already means that number — '0.' must survive
+  // the round trip. Compared during render: this is a change in a prop we
+  // already have, not something outside React to synchronise with.
+  const [committedValue, setCommittedValue] = useState(value);
+  if (committedValue !== value) {
+    setCommittedValue(value);
     setDraft((current) =>
       parseThresholdValue(current) === value ? current : String(value),
     );
-  }, [value]);
+  }
 
   return (
     <>

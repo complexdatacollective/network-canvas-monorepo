@@ -4,10 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test src/index.test.mjs",
+    "test": "vitest run",
     "check:bundle": "wrangler deploy --dry-run --config wrangler.example.jsonc --env production && wrangler deploy --dry-run --config wrangler.example.jsonc --env staging"
   },
   "devDependencies": {
+    "vitest": "catalog:",
     "wrangler": "catalog:"
   }
 }
