@@ -52,7 +52,7 @@ export type ClaimedWebhookDelivery = {
   responseStatus?: number;
 };
 
-export class WebhookDeliveryError extends Error {
+class WebhookDeliveryError extends Error {
   readonly disposition: 'retryable' | 'permanent' | 'uncertain';
   readonly statusCode: number | null;
 
