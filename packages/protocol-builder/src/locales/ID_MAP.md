@@ -95,7 +95,7 @@ after the fact is marked in place.
 | `protocolContext`           | `protocol-context.ts`                                                                                                                                                                                                                                                 | i18n-1b   |
 | `codebookEntity`            | `codebook/components/CodebookSurface.tsx`, `codebook/components/CodebookEntityEditor.tsx`                                                                                                                                                                             | i18n-2a   |
 | `codebookVariable`          | `codebook/variableTypeLabels.ts`, `codebook/components/VariableEditor.tsx`, `codebook/variableRoles.ts`, `codebook/variableOptions.ts`, `codebook/components/VariableBooleanAnswerFields.tsx`                                                                         | i18n-2a   |
-| `variableValidation`        | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/codebookMessages.ts`                                                                                      | i18n-2a   |
+| `variableValidation`        | `codebook/variableValidation.ts`, `codebook/validation/VariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationEditor.tsx`, `codebook/validation/CodebookVariableValidationSection.tsx`, `codebook/codebookMessages.ts`                         | i18n-2a   |
 | `codebookEditing`           | `codebook/editing.ts`, `codebook/codebookMessages.ts`, `codebook/useCodebookVariableEdits.ts` (added by `sections`)                                                                                                                                                   | i18n-2a   |
 | `shell`                     | `form/StageEditorShell.tsx`, `form/readOnlyRefusal.ts`, `editors/saveStageAction.tsx`                                                                                                                                                                                 | i18n-2b   |
 | `field`                     | `form/requiredField.ts`                                                                                                                                                                                                                                               | i18n-2b   |
@@ -193,7 +193,7 @@ has to have exactly one:
   is declared beside that family's own markup, under the same `censusPrompts` area. It
   sits under the Dyad Census because that editor lands first and the family rule is
   that the first editor owns what its siblings also need; it moves up to `sections/`
-  with `PromptTextField` and `CreateEdgeField` once the last census or bin editor has
+  with `PromptTextField` and `EdgeTypeSection` once the last census or bin editor has
   landed.
 - `editors/ordinal-bin/sections/binMessages.ts` — the same arrangement for the two
   bins: the attribute picker, the warning about how many bins fit on a screen, and

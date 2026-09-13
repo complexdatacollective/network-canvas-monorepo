@@ -8,7 +8,10 @@ import { publishReviewedStudioDistribution } from './studio-distribution-caller.
 import { installStudioReleaseTools } from './studio-release-tools.mjs';
 
 const REPOSITORY = 'complexdatacollective/network-canvas-monorepo';
-const WORKFLOW = `${REPOSITORY}/.github/workflows/studio-release.yml@refs/heads/main`;
+const WORKFLOWS = Object.freeze({
+  push: `${REPOSITORY}/.github/workflows/ci-and-release.yml@refs/heads/main`,
+  workflow_dispatch: `${REPOSITORY}/.github/workflows/studio-release.yml@refs/heads/main`,
+});
 const SOURCE = /^[a-f0-9]{40}$/;
 const TAGGER = Object.freeze({
   name: 'github-actions[bot]',
@@ -19,10 +22,10 @@ function workflowInput(env) {
   const oldestSupportedSource = env.STUDIO_OLDEST_SUPPORTED_SOURCE || undefined;
   if (
     env.GITHUB_ACTIONS !== 'true' ||
-    !['push', 'workflow_dispatch'].includes(env.GITHUB_EVENT_NAME) ||
+    !Object.hasOwn(WORKFLOWS, env.GITHUB_EVENT_NAME ?? '') ||
     env.GITHUB_REPOSITORY !== REPOSITORY ||
     env.GITHUB_REF !== 'refs/heads/main' ||
-    env.GITHUB_WORKFLOW_REF !== WORKFLOW ||
+    env.GITHUB_WORKFLOW_REF !== WORKFLOWS[env.GITHUB_EVENT_NAME] ||
     env.RUNNER_OS !== 'Linux' ||
     env.RUNNER_ARCH !== 'X64' ||
     !SOURCE.test(env.GITHUB_SHA ?? '') ||

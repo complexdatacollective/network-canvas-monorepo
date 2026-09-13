@@ -13,7 +13,10 @@ import { pathToFileURL } from 'node:url';
 
 import { POSTHOG_APP_PROPS } from '@codaco/shared-consts';
 
-import { launchKernelObservedChromium } from './telemetry-kernel-browser.mjs';
+import {
+  launchKernelObservedChromium,
+  runKernelQualificationCli,
+} from './telemetry-kernel-browser.mjs';
 
 const CANARY = 'BrowserPerson@example.test-PrivateProtocol-SecretBrowserToken';
 const relay = 'ph-relay.networkcanvas.com';
@@ -31,6 +34,7 @@ async function port() {
 
 export async function runTelemetryBrowserQualification({
   image,
+  observerImage,
   clientDist,
   clientVersion,
 } = {}) {
@@ -38,9 +42,15 @@ export async function runTelemetryBrowserQualification({
   const results = [];
   const resolvedClientDist = clientDist ?? join(root, 'dist');
   const resolvedImage = image ?? process.env.STUDIO_TELEMETRY_KERNEL_IMAGE;
+  const resolvedObserverImage =
+    observerImage ?? process.env.STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE;
   assert(
     resolvedImage,
     'Kernel browser qualification requires the built Studio image.',
+  );
+  assert(
+    resolvedObserverImage,
+    'Kernel browser qualification requires the observer image.',
   );
   const resolvedClientVersion =
     clientVersion ??
@@ -54,6 +64,7 @@ export async function runTelemetryBrowserQualification({
   );
   const kernel = await launchKernelObservedChromium({
     image: resolvedImage,
+    observerImage: resolvedObserverImage,
     serverPorts,
     scratch,
   });
@@ -416,4 +427,6 @@ export async function runTelemetryBrowserQualification({
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-  await runTelemetryBrowserQualification();
+  await runKernelQualificationCli(resolve(process.argv[1]), () =>
+    runTelemetryBrowserQualification(),
+  );

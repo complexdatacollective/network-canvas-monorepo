@@ -136,6 +136,7 @@ export async function createRegistryFixture(
       limits: { ...DEFAULT_LIMITS, ...limits, ...overrides },
     });
     const app = createRegistryApp({
+      secureSessionCookie: true,
       store,
       auth,
       accepting: () => true,

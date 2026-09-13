@@ -240,7 +240,7 @@ export function verifyInstalledDeployment(directory, graph) {
       }
       if (!existsSync(path) || !visited.has(realpathSync(path)))
         throw new Error(
-          'An installed package is outside the verified dependency graph.',
+          `An installed package is outside the verified dependency graph: ${name}`,
         );
     }
   }

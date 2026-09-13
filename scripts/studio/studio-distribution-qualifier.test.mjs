@@ -14,6 +14,7 @@ import {
 } from '../test-support/studio-release.mjs';
 import {
   prepareStudioDistributionQualification,
+  prepareStudioTelemetryObserver,
   qualifyStudioDistribution,
   qualifyStudioTelemetryRelease,
 } from './studio-distribution-qualifier.mjs';
@@ -135,8 +136,9 @@ test('stages exact authenticated candidate and historical installers only after 
 
 test('gates a passed distribution receipt on the exact immutable browser telemetry image', async () => {
   const image = `ghcr.io/networkcanvas/studio@sha256:${'a'.repeat(64)}`;
+  const observerImage = `studio-telemetry-observer:${'b'.repeat(16)}`;
   const calls = [];
-  await qualifyStudioTelemetryRelease(image, {
+  await qualifyStudioTelemetryRelease(image, observerImage, {
     cwd: '/reviewed/source',
     run: (program, args, options) => calls.push({ program, args, options }),
   });
@@ -152,7 +154,11 @@ test('gates a passed distribution receipt on the exact immutable browser telemet
       ],
       options: {
         cwd: '/reviewed/source',
-        env: { ...process.env, STUDIO_TELEMETRY_RELEASE_IMAGE: image },
+        env: {
+          ...process.env,
+          STUDIO_TELEMETRY_RELEASE_IMAGE: image,
+          STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE: observerImage,
+        },
         timeout: 1_200_000,
         killSignal: 'SIGKILL',
       },
@@ -161,6 +167,7 @@ test('gates a passed distribution receipt on the exact immutable browser telemet
 
   const order = [];
   let cleaned = false;
+  let observerCleaned = false;
   const prepared = {
     candidate: {
       release: { images: { studio: { reference: image } } },
@@ -176,17 +183,103 @@ test('gates a passed distribution receipt on the exact immutable browser telemet
       { executables: { cosign: '/pinned/cosign' } },
       {
         prepare: async () => prepared,
+        prepareObserver: async (reference) => {
+          order.push(`observer:${reference}`);
+          return {
+            image: observerImage,
+            cleanup: () => {
+              observerCleaned = true;
+            },
+          };
+        },
         qualifyLocal: async () => order.push('local'),
-        qualifyTelemetry: async (reference) => {
-          order.push(reference);
+        qualifyTelemetry: async (reference, selectedObserver) => {
+          order.push(`${reference}:${selectedObserver}`);
           throw new Error('browser telemetry escaped');
         },
       },
     ),
     /browser telemetry escaped/,
   );
-  assert.deepEqual(order, ['local', image]);
+  assert.deepEqual(order, [
+    `observer:${image}`,
+    'local',
+    `${image}:${observerImage}`,
+  ]);
   assert.equal(cleaned, true);
+  assert.equal(observerCleaned, true);
+});
+
+test('builds and removes a bounded qualification-only observer image', () => {
+  const candidate = `ghcr.io/networkcanvas/studio@sha256:${'a'.repeat(64)}`;
+  const calls = [];
+  const observer = prepareStudioTelemetryObserver(candidate, {
+    cwd: '/reviewed/source',
+    run: (program, args, options) => calls.push({ program, args, options }),
+  });
+  assert.match(observer.image, /^studio-telemetry-observer:[a-f0-9]{16}$/);
+  observer.cleanup();
+  assert.deepEqual(calls, [
+    {
+      program: 'docker',
+      args: [
+        'build',
+        '--file',
+        'apps/studio/telemetry-observer.Dockerfile',
+        '--build-arg',
+        `STUDIO_CANDIDATE_IMAGE=${candidate}`,
+        '--tag',
+        observer.image,
+        '.',
+      ],
+      options: {
+        cwd: '/reviewed/source',
+        timeout: 300_000,
+        killSignal: 'SIGKILL',
+      },
+    },
+    {
+      program: 'docker',
+      args: ['image', 'rm', '--force', observer.image],
+      options: {
+        cwd: '/reviewed/source',
+        timeout: 30_000,
+        killSignal: 'SIGKILL',
+      },
+    },
+  ]);
+});
+
+test('cleans staged distribution bytes when observer cleanup fails', async () => {
+  const image = `ghcr.io/networkcanvas/studio@sha256:${'a'.repeat(64)}`;
+  let preparedCleaned = false;
+  await assert.rejects(
+    qualifyStudioDistribution(
+      { executables: { cosign: '/pinned/cosign' } },
+      {
+        prepare: async () => ({
+          candidate: {
+            release: { images: { studio: { reference: image } } },
+            current: { source: 'b'.repeat(40), digest: 'c'.repeat(64) },
+          },
+          sources: [],
+          cleanup: () => {
+            preparedCleaned = true;
+          },
+        }),
+        prepareObserver: async () => ({
+          image: `studio-telemetry-observer:${'d'.repeat(16)}`,
+          cleanup: () => {
+            throw new Error('synthetic observer cleanup failure');
+          },
+        }),
+        qualifyLocal: async () => {},
+        qualifyTelemetry: async () => {},
+      },
+    ),
+    /synthetic observer cleanup failure/,
+  );
+  assert.equal(preparedCleaned, true);
 });
 
 for (const defect of [

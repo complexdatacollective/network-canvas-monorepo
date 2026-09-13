@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   attributeField,
   chooseAttributeById,
+  inventAttribute,
 } from '../../../testing/attributePicker.ts';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
@@ -112,17 +113,17 @@ describe('creating an ordinal bin stage', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create a new attribute' }),
-    );
-    await writeInto(
-      harness,
-      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    // An ordinal attribute IS its ordered values, and the schema refuses one
+    // with fewer than two — which is why the picker's create row opens the
+    // codebook's own editor on the typed name rather than writing it.
+    await inventAttribute(
+      harness.user,
+      await waitFor(() => attributeField('Attribute')),
       'closenessBand',
     );
-    // An ordinal attribute IS its ordered values, and the schema refuses one
-    // with fewer than two — which is why creating one opens the codebook's own
-    // editor rather than asking for a name here.
+    expect(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    ).toHaveValue('closenessBand');
     for (const [index, [label, value]] of [
       ['Near', '1'],
       ['Far', '2'],

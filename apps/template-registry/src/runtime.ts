@@ -92,6 +92,7 @@ export async function initializeRegistry({
       store,
       accountAssets,
       accepting: () => accepting,
+      secureSessionCookie: configuration.publicUrl.startsWith('https:'),
       ready: async () => {
         if (!accepting) return false;
         const [currentIdentity] = await Promise.all([

@@ -105,11 +105,12 @@ async function port() {
 
 export async function localDeployment(label: string) {
   const image = process.env.STUDIO_QUALIFICATION_IMAGE;
+  const observerImage = process.env.STUDIO_QUALIFICATION_OBSERVER_IMAGE;
   const minioImage = process.env.STUDIO_QUALIFICATION_MINIO_IMAGE;
   const registryImage = process.env.STUDIO_QUALIFICATION_REGISTRY_IMAGE;
-  if (!image || !minioImage || !registryImage)
+  if (!image || !observerImage || !minioImage || !registryImage)
     throw new Error(
-      'Qualification requires explicitly built Studio, Registry and MinIO images.',
+      'Qualification requires explicitly built Studio, observer, Registry and MinIO images.',
     );
   const project = `studio-qualification-${label}-${randomBytes(5).toString('hex')}`;
   const root = await mkdtemp(join(tmpdir(), `${project}-`));
@@ -120,6 +121,7 @@ export async function localDeployment(label: string) {
   const environment = {
     ...(await localDockerEnvironment(root)),
     STUDIO_IMAGE: image,
+    STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE: observerImage,
     MINIO_IMAGE: minioImage,
     REGISTRY_IMAGE: registryImage,
     STUDIO_PROXY_SUBNET: '172.30.240.0/24',
@@ -472,6 +474,7 @@ export async function localDeployment(label: string) {
         aliases: [telemetry-control-registry]
 ${telemetryKernelComposeServices(
   '${STUDIO_IMAGE:?Select the signed Studio image digest}',
+  '${STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE:?Select the qualification observer image}',
 )}  traefik:
     ports: !reset []
   networks:

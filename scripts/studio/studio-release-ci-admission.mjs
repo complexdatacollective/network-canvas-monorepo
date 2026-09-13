@@ -3,6 +3,8 @@ import { createGhRequest } from './studio-github-distribution-store.mjs';
 const REPOSITORY = 'complexdatacollective/network-canvas-monorepo';
 const WORKFLOW = '.github/workflows/ci-and-release.yml';
 const API = `repos/${REPOSITORY}/actions`;
+const MERGE_QUEUE_BRANCH =
+  /^gh-readonly-queue\/main\/pr-[1-9][0-9]*-[a-f0-9]{40}$/;
 
 function json(response) {
   if (!Buffer.isBuffer(response?.bytes))
@@ -18,8 +20,8 @@ function validateRun(run, source) {
   if (
     !run ||
     run.head_sha !== source ||
-    run.head_branch !== 'main' ||
-    run.event !== 'push' ||
+    !MERGE_QUEUE_BRANCH.test(run.head_branch ?? '') ||
+    run.event !== 'merge_group' ||
     run.path !== WORKFLOW ||
     run.repository?.full_name !== REPOSITORY ||
     run.head_repository?.full_name !== REPOSITORY ||
@@ -30,8 +32,8 @@ function validateRun(run, source) {
     throw new Error('CI evidence does not belong to the reviewed main source.');
 }
 
-/** Query fresh evidence on every publication admission, including retries.
- * An old successful attempt cannot authorize a newer pending/failed attempt.
+/** Query fresh merge-queue evidence on every publication admission, including
+ * retries. An old successful attempt cannot authorize a newer failed rerun.
  * The concrete GitHub transport bounds time, response size and API failures. */
 export async function assertSuccessfulStudioSourceCI(
   source,
@@ -45,8 +47,7 @@ export async function assertSuccessfulStudioSourceCI(
         path: `${API}/workflows/ci-and-release.yml/runs`,
         query: {
           head_sha: source,
-          event: 'push',
-          branch: 'main',
+          event: 'merge_group',
           per_page: 100,
           page: 1,
         },

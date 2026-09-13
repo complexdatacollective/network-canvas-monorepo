@@ -56,6 +56,27 @@ export const ReportSchema = z.strictObject({
 });
 export type RegistryReport = z.infer<typeof ReportSchema>;
 
+const maximumSequence = '9223372036854775807';
+// Enumerate the first digit that is smaller than PostgreSQL's positive bigint
+// maximum. Unlike a refinement, this bound also survives OpenAPI generation.
+const sequenceBranches = maximumSequence.split('').flatMap((digit, index) => {
+  const minimum = index === 0 ? 1 : 0;
+  const maximum = Number(digit) - 1;
+  return maximum < minimum
+    ? []
+    : `${maximumSequence.slice(0, index)}[${minimum}-${maximum}][0-9]{${maximumSequence.length - index - 1}}`;
+});
+export const RegistrySequenceSchema = z
+  .string()
+  .regex(
+    new RegExp(
+      `^(?:[1-9][0-9]{0,17}|${sequenceBranches.join('|')}|${maximumSequence})$(?![\\s\\S])`,
+    ),
+  );
+export const ReportCursorSchema = RegistrySequenceSchema.describe(
+  'Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive.',
+);
+
 export const AccountSchema = z.strictObject({
   id: z.string().min(1).max(255),
   email: z.string().min(1).max(320),
@@ -74,6 +95,6 @@ export const ReportsPageSchema = z.strictObject({
       created_at: stamp,
     }),
   ),
-  next_cursor: z.string().nullable(),
+  next_cursor: ReportCursorSchema.nullable(),
   has_more: z.boolean(),
 });

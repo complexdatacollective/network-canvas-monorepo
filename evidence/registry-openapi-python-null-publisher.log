@@ -1,0 +1,2 @@
+$ node scripts/verify-openapi-client.ts
+openapi-python-client 0.29.0: generated without warnings; localhost round trip passed

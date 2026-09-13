@@ -14,8 +14,13 @@ ENV HUSKY=0
 COPY --from=pruner /repo/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /repo/out/full/ .
+COPY --from=pruner /repo/scripts/verify-deployed-lock.mjs ./scripts/verify-deployed-lock.mjs
 RUN pnpm --filter @codaco/template-registry build
 RUN pnpm --filter @codaco/template-registry deploy --prod --legacy /deploy
+# The final image copies only /deploy. Hide source-workspace link targets so
+# verification observes the same intentionally broken bundled-workspace links.
+RUN --mount=type=tmpfs,target=/repo/apps --mount=type=tmpfs,target=/repo/packages \
+  node scripts/verify-deployed-lock.mjs pnpm-lock.yaml /deploy apps/template-registry /deploy/deployed-lock.json
 
 FROM node:24.18.0-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runner
 ARG SOURCE_REVISION

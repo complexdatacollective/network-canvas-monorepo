@@ -38,8 +38,16 @@ COPY --from=pruner /repo/out/full/ .
 # stage so the client and server Vite configurations resolve the same plugins.
 COPY --from=pruner /repo/apps/studio/scripts/telemetry-plugins.ts ./apps/studio/scripts/telemetry-plugins.ts
 COPY --from=pruner /repo/scripts/build/posthog-source-maps-plugin.ts ./scripts/build/posthog-source-maps-plugin.ts
+# The configure entrypoint embeds this installer contract, also outside the
+# package roots selected by prune.
+COPY --from=pruner /repo/apps/studio/deployment/installer/configuration-files.json ./apps/studio/deployment/installer/configuration-files.json
+COPY --from=pruner /repo/scripts/verify-deployed-lock.mjs ./scripts/verify-deployed-lock.mjs
 RUN pnpm --filter @codaco/studio-client build && pnpm --filter @codaco/studio-server build
 RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy
+# The final image copies only /deploy. Hide source-workspace link targets so
+# verification observes the same intentionally broken bundled-workspace links.
+RUN --mount=type=tmpfs,target=/repo/apps --mount=type=tmpfs,target=/repo/packages \
+  node scripts/verify-deployed-lock.mjs pnpm-lock.yaml /deploy apps/studio/server /deploy/deployed-lock.json
 
 FROM node:24.18.0-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runner
 ENV NODE_ENV=production

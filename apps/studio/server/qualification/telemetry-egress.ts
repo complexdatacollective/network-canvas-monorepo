@@ -107,10 +107,14 @@ export function parseConntrackFlow(line: string): KernelFlow | undefined {
 // child process that removes NODE_OPTIONS remains visible.
 export const TELEMETRY_KERNEL_OBSERVER_SOURCE = `
 const fs = require('node:fs');
+const { execFile } = require('node:child_process');
 const dns = require('node:dns').promises;
 const dgram = require('node:dgram');
 const net = require('node:net');
 const os = require('node:os');
+const { promisify } = require('node:util');
+const execute = promisify(execFile);
+const maximumSnapshotBytes = 4 * 1024 * 1024;
 const ready = ${JSON.stringify(TELEMETRY_KERNEL_READY_MARKER)};
 const liveness = ${JSON.stringify(TELEMETRY_KERNEL_LIVENESS_MARKER)};
 const controlMarker = ${JSON.stringify(TELEMETRY_KERNEL_CONTROL_MARKER)};
@@ -158,8 +162,39 @@ const main = async () => {
   const local = new Set(Object.values(os.networkInterfaces()).flat().filter(Boolean).map(({ address }) => address));
   const seen = new Set();
   let sequence = 0;
-  const scan = () => {
-    const bytes = fs.readFileSync('/proc/net/nf_conntrack', 'utf8');
+  const readConntrack = async () => {
+    const proc = process.env.STUDIO_QUALIFICATION_CONNTRACK_PROC || '/proc/net/nf_conntrack';
+    let descriptor;
+    try {
+      descriptor = fs.openSync(proc, 'r');
+      const chunks = [];
+      let size = 0;
+      while (true) {
+        const chunk = Buffer.allocUnsafe(Math.min(64 * 1024, maximumSnapshotBytes + 1 - size));
+        const bytesRead = fs.readSync(descriptor, chunk, 0, chunk.length);
+        if (bytesRead === 0) return Buffer.concat(chunks, size).toString('utf8');
+        chunks.push(chunk.subarray(0, bytesRead));
+        size += bytesRead;
+        if (size > maximumSnapshotBytes) {
+          const error = new Error('Kernel conntrack snapshot exceeded the observer limit.');
+          error.code = 'OUTPUT_LIMIT';
+          throw error;
+        }
+      }
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    } finally {
+      if (descriptor !== undefined) fs.closeSync(descriptor);
+    }
+    const { stdout } = await execute('conntrack', ['-L', '-o', 'extended'], {
+      encoding: 'utf8',
+      maxBuffer: maximumSnapshotBytes,
+      timeout: 1_000,
+    });
+    return stdout;
+  };
+  const scan = async () => {
+    const bytes = await readConntrack();
     for (const line of bytes.split('\\n')) {
       const flow = parseConntrackFlow(line);
       if (!flow || !local.has(flow.source)) continue;
@@ -176,27 +211,40 @@ const main = async () => {
       process.stdout.write((controls.has(key) ? controlMarker : egressMarker) + ' ' + evidence + '\\n');
     }
   };
-  scan();
-  fs.writeFileSync('/tmp/kernel-ready', '', { mode: 0o600 });
-  process.stdout.write(ready + ' ' + JSON.stringify({ networkNamespace: fs.readlinkSync('/proc/self/ns/net') }) + '\\n');
-  setInterval(() => { scan(); }, 25);
+  await scan();
+  fs.writeFileSync(process.env.STUDIO_QUALIFICATION_KERNEL_READY_FILE || '/tmp/kernel-ready', '', { mode: 0o600 });
+  const networkNamespace = process.env.STUDIO_QUALIFICATION_NETWORK_NAMESPACE || fs.readlinkSync('/proc/self/ns/net');
+  process.stdout.write(ready + ' ' + JSON.stringify({ networkNamespace }) + '\\n');
+  const scheduleScan = () => setTimeout(() => {
+    scan().then(scheduleScan).catch(fail);
+  }, 100);
+  scheduleScan();
   setInterval(() => { process.stdout.write(liveness + ' ' + Date.now() + ' ' + (++sequence) + '\\n'); }, 500);
   for (const endpoint of input.controls) {
     if (endpoint.protocol === 'tcp') {
       const socket = net.connect(endpoint.port, endpoint.host);
-      socket.once('error', () => {});
+      socket.on('error', () => {});
       setTimeout(() => socket.destroy(), 750);
     } else {
       const socket = dgram.createSocket('udp4');
+      socket.on('error', () => {});
       const interval = setInterval(() => socket.send(Buffer.from('kernel qualification'), endpoint.port, endpoint.host, () => {}), 50);
       setTimeout(() => { clearInterval(interval); socket.close(); }, 750);
     }
   }
 };
-main().catch(() => { process.stderr.write('Kernel qualification observer failed.\\n'); process.exit(1); });
+const fail = (error) => {
+  const code = typeof error?.code === 'string' && /^[A-Z_]{1,40}$/.test(error.code) ? error.code : 'UNKNOWN';
+  process.stderr.write('Kernel qualification observer failed: ' + code + '\\n');
+  process.exit(1);
+};
+main().catch(fail);
 `;
 
-export function telemetryKernelComposeServices(image: string) {
+export function telemetryKernelComposeServices(
+  image: string,
+  observerImage: string,
+) {
   const namespaceServices = `  telemetry-namespace-studio:
     image: ${image}
     entrypoint: [node, -e]
@@ -238,7 +286,7 @@ export function telemetryKernelComposeServices(image: string) {
     namespaceServices +
     TELEMETRY_KERNEL_SERVICES.map(
       (service) => `  telemetry-kernel-${service}:
-    image: ${image}
+    image: ${observerImage}
     user: '0:0'
     entrypoint: [node, -e]
     command: [${JSON.stringify(TELEMETRY_KERNEL_OBSERVER_SOURCE)}]
@@ -250,7 +298,7 @@ export function telemetryKernelComposeServices(image: string) {
     tmpfs: ["/tmp:size=1m,mode=1777"]
     security_opt: [no-new-privileges:true]
     cap_drop: [ALL]
-    cap_add: [SETUID, SETGID]
+    cap_add: [NET_ADMIN]
     healthcheck:
       test: [CMD, node, -e, "require('node:fs').accessSync('/tmp/kernel-ready')"]
       interval: 100ms

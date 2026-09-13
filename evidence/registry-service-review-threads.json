@@ -1,0 +1,737 @@
+{
+  "data": {
+    "repository": {
+      "pullRequest": {
+        "headRefOid": "5a9b15f76135addea3f9f15006dac8eba083f4c1",
+        "reviewThreads": {
+          "nodes": [
+            {
+              "id": "PRRT_kwDOKqiw4s6gOTQD",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "apps/template-registry/src/env.ts",
+              "line": null,
+              "originalLine": 70,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7r41zv",
+                    "databaseId": 3957546223,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Require TLS for recovery object-store endpoints**\n\nWhen offline recovery targets a non-local object store, this schema accepts an `http://` endpoint without the runtime schema's explicit insecure-private-network opt-in. `createRegistryBlobStore` will consequently send the recovery access key, signed requests, and restored artifact bytes over plaintext HTTP. Apply the same HTTPS-or-local/explicit-private-network restriction used by the runtime S3 configuration so a mistyped managed recovery endpoint cannot expose credentials and artifacts.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3957546223",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-08T11:46:29Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYCwN",
+                    "databaseId": 3999280141,
+                    "body": "Fixed in fe7dbb3dfc4797b12f7d32d8f19180c42a8c7196: recovery endpoints now enforce the runtime HTTPS/local/explicit-private-network policy, with endpoint policy regressions.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999280141",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T09:25:08Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6gOTQI",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "packages/studio-sync/src/template-registry-client.ts",
+              "line": null,
+              "originalLine": 394,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7r41z3",
+                    "databaseId": 3957546231,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Compare the publish response with the verified artifact**\n\nWhen a nonconforming registry returns the correct root but altered `template`, `metadata`, or `license` fields, `publish()` accepts the response because it compares only `entry.root`. Those fields are committed by the already-verified source artifact available here, so failing to compare them lets callers trust publication metadata that disagrees with the content-addressed artifact. Validate the returned committed fields against `artifact` before returning the entry.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3957546231",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-08T11:46:29Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYC4s",
+                    "databaseId": 3999280684,
+                    "body": "Fixed in current head fe7dbb3dfc4797b12f7d32d8f19180c42a8c7196. Publication responses now compare committed template, metadata and license against the verified artifact; altered-response regressions pass.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999280684",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T09:25:53Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6gOTQN",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "apps/template-registry/src/app.ts",
+              "line": null,
+              "originalLine": 40,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7r41z8",
+                    "databaseId": 3957546236,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Accept case-insensitive Bearer authentication schemes**\n\nWhen a standards-compliant client sends `Authorization: bearer <credential>` (or another capitalization), every authenticated endpoint rejects it because the scheme comparison requires the exact string `Bearer `. HTTP authentication scheme names are case-insensitive, and the generated OpenAPI contract advertises a standard HTTP bearer scheme, so parse the scheme without case sensitivity before validating the credential.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3957546236",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-08T11:46:29Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYC6c",
+                    "databaseId": 3999280796,
+                    "body": "Fixed in current head fe7dbb3dfc4797b12f7d32d8f19180c42a8c7196. Bearer scheme parsing is case-insensitive with strict credential validation and mixed-case request coverage.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999280796",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T09:25:56Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6gOTQS",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "apps/template-registry/src/recovery.ts",
+              "line": null,
+              "originalLine": 152,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7r410I",
+                    "databaseId": 3957546248,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Probe object storage before accepting empty recoveries**\n\nWhen the restored database contains no non-deleted artifacts, `verifyArtifacts()` performs zero `blobs.get()` calls, so recovery can report success without ever authenticating to or checking the configured bucket. A wrong bucket, invalid credential, or unavailable object store therefore passes the offline recovery gate and is discovered only when the runtime later refuses admission. Call `blobs.ready()` during recovery independently of the artifact loop.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3957546248",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-08T11:46:29Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYEj9",
+                    "databaseId": 3999287549,
+                    "body": "Fixed in fe7dbb3df: recovery probes blobs.ready() even for an empty Registry; unavailable storage now fails the recovery gate.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999287549",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T09:32:47Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6gOTQV",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/recovery.ts",
+              "line": 139,
+              "originalLine": 113,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7r410M",
+                    "databaseId": 3957546252,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Keep recovery transactions alive during artifact verification**\n\nWhen validating enough artifacts takes more than five minutes, both pinned PostgreSQL transactions are terminated by `idle_in_transaction_session_timeout` because `verifyArtifacts()` performs one database query and then does every bounded S3 download and archive validation sequentially without further database traffic. This can reject a valid recovery within the default 1 GiB registry allowance—for example, 31 objects taking just under the per-object 10-second timeout exceed the transaction idle limit. Verify in bounded batches or issue safe transaction keepalives while retaining the recovery snapshot and quarantine.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3957546252",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-08T11:46:29Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYFB3",
+                    "databaseId": 3999289463,
+                    "body": "Fixed in fe7dbb3df: both pinned recovery transactions remain alive during artifact verification, retaining the snapshot and quarantine. Keepalive tests pass.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999289463",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T09:34:06Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6gOTQX",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/store.ts",
+              "line": 809,
+              "originalLine": 780,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7r410O",
+                    "databaseId": 3957546254,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Make moderation transitions idempotent**\n\nWhen an operator retries after an ambiguous response, `visibility`, `suspend`, and `curate` update the state and append another immutable audit event even if the requested state is already current; takedown and suspension also overwrite their original timestamps. This makes ordinary network retries produce false duplicate moderation history, unlike the existing idempotent handling in `yank`, `revokeToken`, and `hardDelete`. Read or conditionally update the current state and append an audit event only for an actual transition.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3957546254",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-08T11:46:29Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYFCq",
+                    "databaseId": 3999289514,
+                    "body": "Fixed in fe7dbb3df: moderation retries preserve original timestamps and append events only for real transitions. Regression checks pass.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999289514",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T09:34:07Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6gOTQb",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/contract.ts",
+              "line": 248,
+              "originalLine": 223,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7r410V",
+                    "databaseId": 3957546261,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Route HEAD artifact requests through the GET handler**\n\nWhen a client sends `HEAD /api/v1/artifacts/{root}`, the app reserves download capacity and contains explicit HEAD response handling, but the oRPC contract registers only an exact `GET` route. With the pinned `@orpc/openapi` matcher, method lookup is exact and does not fall back from HEAD to GET, so the request is unmatched and returns 404 instead of the artifact headers. Register a HEAD route or dispatch HEAD through the GET contract before invoking the handler.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3957546261",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-08T11:46:29Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYFgw",
+                    "databaseId": 3999291440,
+                    "body": "Fixed in fe7dbb3dfc4797b12f7d32d8f19180c42a8c7196: HEAD requests dispatch through the GET contract, then suppress the response body. Real app-router tests verify status and headers.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999291440",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T09:35:52Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6gOTQg",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/recovery-reconciliation.ts",
+              "line": 29,
+              "originalLine": 22,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7r410c",
+                    "databaseId": 3957546268,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reconcile account emails before restoring operator authority**\n\nWhen a restored database has the expected user IDs but an altered or stale email bound to one of those IDs, this evidence format cannot detect it because it records only the ID and authorization flags. Recovery therefore passes, re-enables the publisher/operator state for that ID, and after admission the holder of the restored email can obtain a magic link and act as that publisher or operator. Bind each reconciliation record to independently obtained normalized email and verification state, and compare or repair those fields before restoring authority.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3957546268",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-08T11:46:29Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYF2H",
+                    "databaseId": 3999292807,
+                    "body": "Fixed in fe7dbb3dfc4797b12f7d32d8f19180c42a8c7196. Recovery evidence binds normalized email and verification state to restored accounts and rejects identity drift before restoring authority.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999292807",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T09:36:43Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6gOTQp",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/deployment/configure.ts",
+              "line": 447,
+              "originalLine": 343,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7r410m",
+                    "databaseId": 3957546278,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject writable existing configuration roots**\n\nWhen `output` already exists, `mkdir(..., { mode: 0o700 })` leaves its current permissions unchanged, while neither this path nor `readRegistryConfiguration()` verifies directory ownership or rejects group/world-writable roots. On a multi-user installer host, another user who can write that directory can replace `registry.env` or the generated Compose/provisioning files despite the environment file itself being mode 0600, allowing known credentials or modified deployment instructions to be consumed on first startup. Require an owned, non-group/world-writable root and scoped ancestors, or create and retain an exclusively opened private directory.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3957546278",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-08T11:46:29Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYF7o",
+                    "databaseId": 3999293160,
+                    "body": "Fixed in fe7dbb3dfc4797b12f7d32d8f19180c42a8c7196. Configuration validates trusted root/ancestor ownership and safe permissions, then uses that canonical root for every write and cleanup. The real-filesystem symlink-retarget regression is mutation-proven.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999293160",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T09:36:55Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6gOTQv",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "apps/template-registry/src/blob-store.ts",
+              "line": null,
+              "originalLine": 118,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7r410u",
+                    "databaseId": 3957546286,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Delete all object versions before completing hard deletion**\n\nWhen the configured S3-compatible bucket has versioning enabled, this unversioned `DeleteObject` request creates a delete marker but retains every prior version containing the artifact bytes. The cleanup worker nevertheless marks the deletion job complete and appends `artifact.hard_delete_completed`, and the ordinary object scan cannot discover those noncurrent versions, so the advertised permanent deletion is false. Either reject versioned buckets during admission or enumerate and delete every version with a separately reviewed scoped permission before recording completion.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3957546286",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-08T11:46:29Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYGAs",
+                    "databaseId": 3999293484,
+                    "body": "Fixed in fe7dbb3dfc4797b12f7d32d8f19180c42a8c7196. Hard deletion enumerates versions and delete markers, checks per-object errors, and re-lists until empty before completion. Pagination and concurrent-version regressions pass.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999293484",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T09:37:06Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h36qo",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "apps/template-registry/deployment/compose.yml",
+              "line": null,
+              "originalLine": 67,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYI0P",
+                    "databaseId": 3999304975,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Remove the duplicate Compose environment key**\n\nIn the self-hosted overlay, `REGISTRY_DATABASE_ALLOWED_LOGINS` appears twice in the `registry-backup-verify.environment` mapping. YAML mappings require unique keys—a strict parser rejects this file with “Map keys must be unique”—so Compose cannot load the overlay at all, even when this service's profile is inactive.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999304975",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T09:44:21Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYZn1",
+                    "databaseId": 3999373813,
+                    "body": "Fixed in cc659dca7: removed the duplicate Compose environment key. The deployment regression parses the actual overlay with strict YAML mapping uniqueness and fails against the prior file; it passes with the corrected overlay.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999373813",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T10:26:53Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h36qu",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "apps/template-registry/deployment/minio-policy.json",
+              "line": null,
+              "originalLine": 6,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYI0W",
+                    "databaseId": 3999304982,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Grant the object-version permissions used by cleanup**\n\nWhen a hard-delete job runs against the supplied MinIO deployment, `deleteObjectVersions()` first calls `ListObjectVersions` and then deletes returned version IDs, but this policy grants neither `s3:ListBucketVersions` nor `s3:DeleteObjectVersion`. MinIO therefore denies the first version operation and the cleanup worker retries forever without recording deletion completion. Fresh evidence beyond the earlier hard-deletion finding is that the corrected implementation is now incompatible with the checked deployment policy.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999304982",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T09:44:21Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYZ2v",
+                    "databaseId": 3999374767,
+                    "body": "Fixed in cc659dca7: the MinIO policy grants ListBucketVersions on the Registry bucket and DeleteObjectVersion only on its template-artifacts prefix. The cleanup-permission regression fails on the old policy and passes on the corrected, narrowly scoped policy.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999374767",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T10:27:24Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h36qz",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/openapi-compatibility.ts",
+              "line": 53,
+              "originalLine": 53,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYI0b",
+                    "databaseId": 3999304987,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Convert nullable type arrays for OpenAPI 3.0**\n\nWhen a consumer validates or generates code from `spec/openapi-3.0.json`, nullable fields such as `next_cursor` and report `details` still use `\"type\": [\"string\", \"null\"]`, which is JSON Schema/OpenAPI 3.1 syntax and is invalid in an OpenAPI 3.0 Schema Object. `convert()` only rewrites `anyOf`-based nullability, so these schemas pass through unchanged despite the document declaring 3.0.3; rewrite type arrays to `type: \"string\", nullable: true` as well.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999304987",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T09:44:22Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYZ7G",
+                    "databaseId": 3999375046,
+                    "body": "Fixed in 87f17d3c4: nullable primitive type arrays are converted to OpenAPI 3.0 type plus nullable. Both documents were regenerated and their semantic diff reviewed. The converter regression fails without the fix; 89 contract tests and the pinned Python localhost client round trip pass.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999375046",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T10:27:33Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h36q3",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "packages/studio-sync/src/template-registry-client.ts",
+              "line": null,
+              "originalLine": 301,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYI0f",
+                    "databaseId": 3999304991,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Normalize UUIDs before comparing entry identities**\n\nWhen a caller supplies an uppercase UUID, `RegistryEntryIdSchema` accepts it and PostgreSQL resolves it normally, but the registry serializes the UUID in lowercase; this case-sensitive comparison then rejects the valid response as `TEMPLATE_REGISTRY_RESPONSE_INVALID`. Normalize the parsed request ID or compare UUIDs case-insensitively while retaining the wrong-identity check.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999304991",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T09:44:22Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYZ_I",
+                    "databaseId": 3999375304,
+                    "body": "Fixed in cc659dca7: compare validated UUID identities case-insensitively while retaining rejection of a different entry. The uppercase-request regression fails before this fix; all 25 shared Registry client tests pass.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999375304",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T10:27:42Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h36q6",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/deployment/configure.ts",
+              "line": 49,
+              "originalLine": 47,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYI0i",
+                    "databaseId": 3999304994,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reuse runtime validation for installer mail settings**\n\nWhen the installer is given values such as an `https://` SMTP URL, a 257–1024-character Postmark token, or an invalid long message-stream name, this schema accepts and writes the configuration, but `readRegistryEnv()` later rejects the same values because its SMTP and shared `postmarkConfiguration` schemas are stricter. The configuration command therefore reports success while producing a deployment that cannot start; validate these fields with the runtime mail schemas rather than the looser dotenv-only constraints.\n\nAGENTS.md reference: [AGENTS.md:L260-L260](https://github.com/complexdatacollective/network-canvas-monorepo/blob/fe7dbb3dfc4797b12f7d32d8f19180c42a8c7196/AGENTS.md#L260-L260)\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999304994",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T09:44:22Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYaDd",
+                    "databaseId": 3999375581,
+                    "body": "Fixed in cc659dca7: configuration and runtime now consume the same Registry mail schema. Invalid SMTP paths/protocols and oversized or malformed Postmark inputs are rejected before files are written. Five new invalid-input regressions fail before the fix; 75 configuration/environment tests pass.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999375581",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T10:27:51Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h36q8",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "apps/template-registry/src/deployment/configure.ts",
+              "line": null,
+              "originalLine": 242,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYI0k",
+                    "databaseId": 3999304996,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Accept configuration files made stricter by the process umask**\n\nWhen the installer runs under a common restrictive umask such as `0077`, `open(..., 0o644)` creates each public deployment template with mode `0600`. The initial configuration succeeds, but the next idempotent run—or a transition using it as `previousConfigurationRoot`—rejects the generated root because this check requires exactly `0644`. Either set the intended mode explicitly after creation or accept owner-readable modes that remove, rather than add, group/world permissions.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999304996",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T09:44:22Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYaZY",
+                    "databaseId": 3999376984,
+                    "body": "Fixed in cc659dca7: generated public files may have more restrictive read permissions, while requiring owner read/write and rejecting group/world write, execute, and special mode bits. The umask-0077 idempotence regression fails before the fix and passes afterward; private credentials still require mode 0600.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999376984",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T10:28:35Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h4NQj",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/db/operators.ts",
+              "line": 49,
+              "originalLine": 44,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYjzX",
+                    "databaseId": 3999415511,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Skip no-op operator authority transitions**\n\nWhen an administrator retries `dist/operator.js grant` or `revoke`, the unconditional upsert is followed by another immutable `operator.granted`/`operator.revoked` event even when the requested state already holds; revoking an account that was never an operator also creates a disabled row and a false revocation event. Fresh evidence beyond the earlier moderation-retry fix is that this separate offline operator path remains unconditional. Check the current `enabled` state and append an audit event only for an actual transition.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999415511",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T10:50:58Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYq5a",
+                    "databaseId": 3999444570,
+                    "body": "Fixed in 1bd14db8c: serialize on the verified account row and only update operator state/append audit on actual transitions. Real PostgreSQL grant/revoke retry and never-granted revoke regressions pass and fail against the prior implementation.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999444570",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T11:07:37Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h4NQk",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "apps/template-registry/src/recovery.ts",
+              "line": null,
+              "originalLine": 186,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYjzY",
+                    "databaseId": 3999415512,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Compare recovered publisher IDs as a set**\n\nWhen the restored database uses a locale-aware collation and contains multiple publishers with valid mixed-case IDs, PostgreSQL's `ORDER BY user_id` can produce a different order from JavaScript's UTF-16 `toSorted()` order. The element-wise comparison then rejects a reconciliation even though both sides contain exactly the same publisher IDs, blocking recovery of a valid registry. Compare set membership independently of ordering, or apply an explicitly matching collation and comparator on both sides.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999415512",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T10:50:58Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYq9m",
+                    "databaseId": 3999444838,
+                    "body": "Fixed in 1bd14db8c: compare publisher membership as a set. A real PostgreSQL ICU collation fixture with mixed-case publisher IDs passes; the previous positional comparison fails with RECONCILIATION_MISMATCH.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999444838",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T11:07:47Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h4NQl",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/env.ts",
+              "line": 94,
+              "originalLine": 94,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYjzZ",
+                    "databaseId": 3999415513,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Require TLS for external PostgreSQL connections**\n\nWhen any runtime, operator, migration, backup, or recovery URL points to an external PostgreSQL server without SSL parameters—or explicitly uses `sslmode=disable`—this schema accepts it. `createPostgresPool` preserves the parsed TLS settings, while the pinned `pg` driver defaults `ssl` to `false`, so a managed server that permits non-TLS connections receives Registry queries and results, including account, session, audit, and recovery data, over an unencrypted channel. Require certificate-verified TLS for nonlocal database hosts, with a separate explicit private-network exception for the supplied internal Compose deployment.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999415513",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T10:50:58Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYrBZ",
+                    "databaseId": 3999445081,
+                    "body": "Fixed in 1bd14db8c: all six runtime/operator/migration/backup/recovery URL boundaries require sslmode=verify-full outside loopback or an explicit private-network exception. Host/nested URL overrides and duplicate parameters are rejected. 48 new fail-first environment cases pass; internal Compose sets the explicit exception. Complete Registry verification passes 456 backend/database and 12 account tests.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999445081",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T11:07:55Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h4WA8",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "apps/template-registry/src/recovery.ts",
+              "line": null,
+              "originalLine": 179,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYw1y",
+                    "databaseId": 3999468914,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind recovered users to their publisher UUIDs**\n\nWhen a restored database has two publishers whose `user_id` associations were swapped, this set-only comparison still passes because the same user IDs remain publishers. After recovery revokes old credentials, each user can sign in and issue a new credential for the other publisher UUID, gaining control of that publisher's existing entries. Fresh evidence beyond the earlier account-email fix is that reconciliation still records only an active/suspended enum rather than the stable publisher ID; include the expected publisher UUID per user and compare the full user-to-publisher mapping before restoring authority.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999468914",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T11:21:26Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uY--D",
+                    "databaseId": 3999526787,
+                    "body": "Fixed in 14e8dee1e8e1c2cf77fc4922523026b2c270ca6b, included at current head e5ab900e7904b90adcc3ac76f6151f982e27ee85. Independently approved evidence now requires each user's stable publisherId (or null for no publisher), rejects duplicate UUIDs, and compares the exact user-to-publisher mapping before changing authority. A real PostgreSQL regression swaps two associations without changing either ID set: it succeeded incorrectly before the fix and now refuses recovery while preserving both active credentials. All 458 backend/database and 13 account tests pass.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999526787",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T11:47:10Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h4WA9",
+              "isResolved": true,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/account/Moderation.tsx",
+              "line": 112,
+              "originalLine": 96,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uYw10",
+                    "databaseId": 3999468916,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Show each report's category to operators**\n\nWhen reports use different categories such as privacy, copyright, spam, or harmful content, the administration page renders only the entry ID, date, and free-form details and never displays `report.category`. Operators therefore lose the report's required structured reason while triaging and deciding which moderation action to take; render a localized category label alongside the report details.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999468916",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T11:21:26Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uY_MT",
+                    "databaseId": 3999527699,
+                    "body": "Fixed in e5ab900e7904b90adcc3ac76f6151f982e27ee85. Moderation displays a localized category label beside each report using an exhaustive mapping of the contract's five categories. The account test verifies all five displayed labels; all 13 account tests and account types pass.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999527699",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T11:47:20Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h43eM",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "apps/template-registry/src/store.ts",
+              "line": null,
+              "originalLine": 836,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uZg7W",
+                    "databaseId": 3999665878,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Normalize UUIDs before blocking self-suspension**\n\nWhen an operator submits an uppercase spelling of their own publisher UUID to the suspension endpoint, the UUID schema accepts it and PostgreSQL resolves it to the same publisher, but `actor.id === id` is false because the database returns the canonical lowercase form. The subsequent update therefore suspends the operator despite this guard, potentially locking the sole operator out of moderation. Compare normalized UUIDs or compare against the ID returned by the target query.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999665878",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T12:53:30Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uZuxt",
+                    "databaseId": 3999722605,
+                    "body": "Fixed in a517dee083045dc690b11d5732e9840bf6039816. The guard compares the publisher ID returned by PostgreSQL to the authenticated publisher ID. Canonical and uppercase HTTP tests both preserve operator access; uppercase reproduced HTTP 200 before the fix and now returns 409. All 31 HTTP PostgreSQL cases pass. The adjacent ownership comparison already compares two database-returned IDs.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999722605",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T13:18:18Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h43eT",
+              "isResolved": true,
+              "isOutdated": true,
+              "path": "apps/template-registry/src/recovery.ts",
+              "line": null,
+              "originalLine": 66,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uZg7b",
+                    "databaseId": 3999665883,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Page artifact rows during recovery verification**\n\nWhen a valid registry accumulates many small artifacts, this query buffers every artifact row—including its manifest and metadata JSON—in memory before verification begins. The 1 GiB storage allowance constrains object bytes but not artifact count or database metadata, so a sufficiently populated registry can exhaust the recovery container's memory and fail precisely when restoration is needed. Read and verify the rows in bounded keyset pages instead of materializing the complete result.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999665883",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T12:53:30Z"
+                  },
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uZu3T",
+                    "databaseId": 3999722963,
+                    "body": "Fixed in 5a9b15f76135addea3f9f15006dac8eba083f4c1. Artifact, user and publisher inventory scans now use bounded 64-row keyset pages within the existing isolated recovery transaction. The artifact oracle fails against the unbounded query and verifies corruption on the final page. PostgreSQL recovery crosses both authority page boundaries under locale-aware user-ID ordering. All 14 recovery/artifact tests, types, lint and Knip pass.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999722963",
+                    "author": { "login": "jthrilly" },
+                    "createdAt": "2026-09-13T13:18:29Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h5FVD",
+              "isResolved": false,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/store.ts",
+              "line": 514,
+              "originalLine": 514,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uZ13n",
+                    "databaseId": 3999751655,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Avoid loading full metadata for list summaries**\n\nWhen the registry contains 100 entries whose metadata approaches the allowed 128 KiB document limit, an unauthenticated `GET /entries` uses `ENTRY_QUERY` to fetch and parse metadata for 101 rows—roughly 13 MiB before JSONB/object overhead—only to discard it while constructing summaries. List requests have no admission counter, so concurrent callers can exceed the service's documented 512 MiB memory budget; use a summary-specific query and schema that do not select or parse `c.metadata`.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999751655",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T13:32:44Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h5FVE",
+              "isResolved": false,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/store.ts",
+              "line": 942,
+              "originalLine": 942,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uZ13p",
+                    "databaseId": 3999751657,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Exclude handled reports from the pending queue**\n\nWhen an operator curates, takes down, or deletes content in response to a report, no moderation mutation marks that report resolved, and this query continues returning every historical report even though the contract describes the endpoint as the pending-report queue. Refreshing the moderation page therefore immediately shows handled items again, with no way to dismiss them or distinguish them from actionable reports; add a durable resolution transition and filter the queue accordingly.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999751657",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T13:32:44Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h5FVF",
+              "isResolved": false,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/contract.ts",
+              "line": 418,
+              "originalLine": 418,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uZ13r",
+                    "databaseId": 3999751659,
+                    "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Match the documented session cookie to HTTP localhost mode**\n\nWhen `REGISTRY_PUBLIC_URL` uses the explicitly supported `http://localhost` mode, `createRegistryAuth` sets `useSecureCookies` to false and the pinned Better Auth implementation issues `registry.session_token`, but this contract always advertises `__Secure-registry.session_token`. Generated or manually implemented clients following the served OpenAPI document therefore use the wrong cookie name for every account endpoint in local deployments; advertise the actual mode-dependent cookie or align runtime cookie naming with the contract.\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999751659",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T13:32:45Z"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "PRRT_kwDOKqiw4s6h5FVG",
+              "isResolved": false,
+              "isOutdated": false,
+              "path": "apps/template-registry/src/recovery-reconciliation.ts",
+              "line": 120,
+              "originalLine": 120,
+              "comments": {
+                "nodes": [
+                  {
+                    "id": "PRRC_kwDOKqiw4s7uZ13s",
+                    "databaseId": 3999751660,
+                    "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject ambiguous JSON in recovery evidence**\n\nWhen a reconciliation file contains duplicate fields such as `\"operator\": false` followed by `\"operator\": true`, the exact-byte hash still passes and `JSON.parse` silently keeps the last value, while a reviewer or independent evidence tool may interpret the first value or reject the document. Recovery can therefore restore authority different from what was approved; decode UTF-8 strictly and reuse or extend the existing duplicate-key/bounded JSON parser before applying `reconciliationSchema`.\n\nAGENTS.md reference: [AGENTS.md:L260-L260](https://github.com/complexdatacollective/network-canvas-monorepo/blob/5a9b15f76135addea3f9f15006dac8eba083f4c1/AGENTS.md#L260-L260)\n\nUseful? React with 👍 / 👎.",
+                    "url": "https://github.com/complexdatacollective/network-canvas-monorepo/pull/1745#discussion_r3999751660",
+                    "author": { "login": "chatgpt-codex-connector" },
+                    "createdAt": "2026-09-13T13:32:45Z"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

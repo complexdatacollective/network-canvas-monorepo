@@ -307,6 +307,7 @@ it('accepts a supplied request UUID only from an explicitly trusted transport pe
   const fixture = await createRegistryFixture();
   const app = createRegistryApp({
     ...fixture,
+    secureSessionCookie: true,
     trustedProxies: ['127.0.0.1'],
     accepting: () => true,
     ready: async () => true,
@@ -351,6 +352,7 @@ it('keeps metrics outside Better Auth and requires its optional dedicated token'
     expect((await fixture.app.request(`${ORIGIN}/metrics`)).status).toBe(404);
     const app = createRegistryApp({
       ...fixture,
+      secureSessionCookie: true,
       metricsToken: token,
       accepting: () => true,
       ready: async () => true,

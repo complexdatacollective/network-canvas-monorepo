@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/registry-integration/apps/template-registry
+
+
+ Test Files  1 passed (1)
+      Tests  32 passed (32)
+   Start at  15:58:59
+   Duration  5.81s (transform 263ms, setup 0ms, import 1.59s, tests 4.13s, environment 0ms)
+
