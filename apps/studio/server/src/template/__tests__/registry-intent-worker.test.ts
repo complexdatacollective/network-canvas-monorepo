@@ -1,7 +1,15 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import {
   createScratchSchema,
@@ -113,9 +121,11 @@ describe.skipIf(!db)('Template Registry intent worker', () => {
 
   it('releases a failed attempt for bounded retry without losing its intent', async () => {
     const id = await intent();
+    const observer = vi.fn();
     await expect(
       reconcileNextTemplateRegistryIntent({
         pool: maintenance,
+        observer,
         process: async () => {
           throw new Error('simulated reconciliation failure');
         },
@@ -134,6 +144,10 @@ describe.skipIf(!db)('Template Registry intent worker', () => {
     expect(row.rows).toEqual([
       { attempt_count: 1, lease_owner: null, delayed: true },
     ]);
+    expect(observer).toHaveBeenCalledWith({
+      queue: 'template_registry_intents',
+      kind: 'dispatch_error',
+    });
   });
 
   it('refuses to claim through the application database role', async () => {
@@ -191,9 +205,11 @@ describe.skipIf(!db)('Template Registry intent worker', () => {
     const id = await intent();
     const started = deferred();
     const release = deferred();
+    const observer = vi.fn();
     const running = reconcileNextTemplateRegistryIntent({
       pool: maintenance,
       leaseMs: 60,
+      observer,
       process: async (claim) => {
         started.resolve();
         await release.promise;
@@ -221,6 +237,19 @@ describe.skipIf(!db)('Template Registry intent worker', () => {
     ).resolves.toEqual({ claimed: 0 });
     release.resolve();
     await expect(running).resolves.toEqual({ claimed: 1 });
+    expect(observer).toHaveBeenCalledWith({
+      queue: 'template_registry_intents',
+      kind: 'heartbeat',
+      outcome: 'renewed',
+    });
+    expect(observer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queue: 'template_registry_intents',
+        kind: 'dispatch',
+        claimed: 1,
+        completed: 1,
+      }),
+    );
   });
 
   it('defers an unresolved public lookup instead of spinning on an expired lease', async () => {
@@ -242,6 +271,33 @@ describe.skipIf(!db)('Template Registry intent worker', () => {
     );
     expect(row.rows).toEqual([{ lease_owner: null, delayed: true }]);
   });
+
+  it.each([
+    ['completed', 'completed'],
+    ['deferred', 'retried'],
+    ['quarantined', 'failed'],
+  ] as const)(
+    'reports the %s intent lifecycle outcome',
+    async (disposition, counter) => {
+      await intent();
+      const observer = vi.fn();
+      await expect(
+        reconcileNextTemplateRegistryIntent({
+          pool: maintenance,
+          observer,
+          process: async () => disposition,
+        }),
+      ).resolves.toEqual({ claimed: 1 });
+      expect(observer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queue: 'template_registry_intents',
+          kind: 'dispatch',
+          claimed: 1,
+          [counter]: 1,
+        }),
+      );
+    },
+  );
 
   it('starts a polling worker that resumes a persisted intent', async () => {
     const id = await intent();

@@ -414,7 +414,8 @@ export class TemplateRegistryClient {
         if (
           entry &&
           (entry.root !== parsedRoot.data ||
-            entry.publisher.id !== parsedPublisher.data)
+            entry.publisher.id.toLowerCase() !==
+              parsedPublisher.data.toLowerCase())
         )
           failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
         complete = true;

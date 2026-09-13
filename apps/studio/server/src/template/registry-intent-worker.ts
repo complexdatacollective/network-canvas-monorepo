@@ -4,7 +4,11 @@ import type pg from 'pg';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
-import type { OutboxObserver } from '../outbox/instrumentation.ts';
+import {
+  observeOutbox,
+  type OutboxDispatchResult,
+  type OutboxObserver,
+} from '../outbox/instrumentation.ts';
 import { startOutboxWorker, type OutboxWorker } from '../outbox/worker.ts';
 
 const DEFAULT_LEASE_MS = 5 * 60_000;
@@ -180,19 +184,65 @@ export async function deferTemplateRegistryIntent(
 }
 
 export async function reconcileNextTemplateRegistryIntent(
-  options: Pick<Options, 'pool' | 'process' | 'leaseMs' | 'retryMs'>,
+  options: Pick<
+    Options,
+    'pool' | 'process' | 'leaseMs' | 'retryMs' | 'observer'
+  >,
 ): Promise<{ claimed: number }> {
+  const started = performance.now();
+  const result: OutboxDispatchResult = {
+    claimed: 0,
+    completed: 0,
+    retried: 0,
+    failed: 0,
+    suppressed: 0,
+    uncertain: 0,
+    leaseLost: 0,
+  };
   const leaseMs = options.leaseMs ?? DEFAULT_LEASE_MS;
   const retryMs = options.retryMs ?? DEFAULT_RETRY_MS;
-  const intent = await claimTemplateRegistryIntent(options.pool, leaseMs);
-  if (!intent) return { claimed: 0 };
+  let intent: ClaimedTemplateRegistryIntent | null;
+  try {
+    intent = await claimTemplateRegistryIntent(options.pool, leaseMs);
+  } catch (error) {
+    observeOutbox(options.observer, {
+      queue: 'template_registry_intents',
+      kind: 'dispatch_error',
+    });
+    throw error;
+  }
+  if (!intent) {
+    observeOutbox(options.observer, {
+      queue: 'template_registry_intents',
+      kind: 'dispatch',
+      durationMs: performance.now() - started,
+      ...result,
+    });
+    return { claimed: 0 };
+  }
+  result.claimed = 1;
 
   let lostLease = false;
   const renewal = setInterval(
     () => {
       void renewTemplateRegistryIntentLease(options.pool, intent, leaseMs)
-        .then((renewed) => (lostLease ||= !renewed))
-        .catch(() => (lostLease = true));
+        .then((renewed) => {
+          lostLease ||= !renewed;
+          observeOutbox(options.observer, {
+            queue: 'template_registry_intents',
+            kind: 'heartbeat',
+            outcome: renewed ? 'renewed' : 'lost',
+          });
+          return undefined;
+        })
+        .catch(() => {
+          lostLease = true;
+          observeOutbox(options.observer, {
+            queue: 'template_registry_intents',
+            kind: 'heartbeat',
+            outcome: 'error',
+          });
+        });
     },
     Math.max(10, Math.floor(leaseMs / 3)),
   );
@@ -209,12 +259,30 @@ export async function reconcileNextTemplateRegistryIntent(
       );
       if (!owned)
         throw new Error('Registry intent lease was lost before deferral');
+      result.retried = 1;
+    } else if (disposition === 'quarantined') {
+      result.failed = 1;
+    } else {
+      result.completed = 1;
     }
+    observeOutbox(options.observer, {
+      queue: 'template_registry_intents',
+      kind: 'dispatch',
+      durationMs: performance.now() - started,
+      ...result,
+    });
     return { claimed: 1 };
   } catch (error) {
-    await deferTemplateRegistryIntent(options.pool, intent, retryMs).catch(
-      () => undefined,
-    );
+    const owned = await deferTemplateRegistryIntent(
+      options.pool,
+      intent,
+      retryMs,
+    ).catch(() => false);
+    result.leaseLost = owned ? 0 : 1;
+    observeOutbox(options.observer, {
+      queue: 'template_registry_intents',
+      kind: 'dispatch_error',
+    });
     throw error;
   } finally {
     clearInterval(renewal);
