@@ -45,7 +45,7 @@ const registryRequest = (changes = {}) => ({
 test('publishes a pinned exact output schema over the emitter-owned catalogs', () => {
   assert.equal(
     MANAGED_OPERATIONAL_LOG_SCHEMA_IDENTITY,
-    'sha256:a62a6b61d288c57874bb7fef3a8c1991010ec70b66b15d7f48a42d12f339b0db',
+    'sha256:51cb161d21486a9887043d754477ac5c1d06ec134601930972a7835cbde0189e',
   );
   assert.deepEqual(
     MANAGED_OPERATIONAL_LOG_SCHEMA.services.map(({ service }) => service),
@@ -258,6 +258,28 @@ test('accepts every current emitter route and diagnostic catalog entry', () => {
       })?.diagnostic,
       code,
     );
+});
+
+test('forwards worker and recovery diagnostics emitted by the Studio runtime', () => {
+  const diagnostics = [
+    ['STUDIO_AUDIT_ALERT_WORKER_ERROR', 50],
+    ['STUDIO_RECOVERY_AUTHORIZATION_RECONCILED', 30],
+    ['STUDIO_RECOVERY_AUTHORIZATION_FAILED', 50],
+    ['STUDIO_RECOVERY_CURRENT_AUTHORIZATION_COMPLETED', 30],
+    ['STUDIO_RECOVERY_CURRENT_AUTHORIZATION_FAILED', 50],
+  ];
+  for (const [code, level] of diagnostics) {
+    const output = sanitizeManagedLogRecord(
+      line({
+        level,
+        time: observedAt,
+        event: 'operational',
+        code,
+      }),
+      binding('studio-production', 'production'),
+    );
+    assert.equal(output?.diagnostic, code);
+  }
 });
 
 test('drops tainted and unknown source fields without echoing their values', () => {
