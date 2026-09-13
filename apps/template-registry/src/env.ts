@@ -6,6 +6,7 @@ import {
   postmarkConfiguration,
   validatePostmarkFrom,
 } from '@codaco/studio-sync/postmark-email-sender';
+import { isProxyAddress } from '@codaco/studio-sync/proxy-trust';
 
 import { DEFAULT_REGISTRY_LIMITS, RegistryLimitsSchema } from './limits.ts';
 
@@ -92,7 +93,42 @@ const smtpUrl = networkUrl(['smtp:', 'smtps:']).refine((value) => {
 const integer = (value: string | undefined, fallback: number) =>
   value === undefined ? fallback : Number(value);
 const databaseUrl = networkUrl(['postgres:', 'postgresql:']);
+// Validate the exact URL before handing it to pg. Query host/nested URL
+// overrides must not turn a loopback exception into an external connection.
+function readDatabaseUrl(value: string | undefined, raw: RawEnv) {
+  const result = databaseUrl.parse(value);
+  const url = new URL(result);
+  const privateNetwork =
+    z
+      .enum(['true', 'false'])
+      .parse(raw.REGISTRY_DATABASE_INSECURE_PRIVATE_NETWORK ?? 'false') ===
+    'true';
+  const keys = [...url.searchParams.keys()];
+  if (
+    !url.hostname ||
+    url.hash ||
+    keys.length !== new Set(keys).size ||
+    ['host', 'hostaddr', 'connectionString', 'ssl'].some((key) =>
+      url.searchParams.has(key),
+    ) ||
+    (!localHost(url.hostname) &&
+      !privateNetwork &&
+      url.searchParams.get('sslmode') !== 'verify-full')
+  )
+    throw new Error('REGISTRY_DATABASE_TRANSPORT_INVALID');
+  return result;
+}
+
 const loginName = z.string().regex(/^[a-z_][a-z0-9_]{0,62}$/);
+const proxyList = z
+  .string()
+  .transform((value) =>
+    value
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean),
+  )
+  .refine((entries) => entries.every(isProxyAddress));
 const enrollmentSchema = z.strictObject({
   allowedLogins: z
     .array(loginName)
@@ -131,6 +167,17 @@ const readDatabaseAdmission = (raw: RawEnv) => {
 const fromAddress = z
   .string()
   .transform((value) => validateEmailAddress(value));
+export const registryMailConfiguration = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('smtp'),
+    url: smtpUrl,
+    from: fromAddress,
+  }),
+  postmarkConfiguration.extend({
+    kind: z.literal('postmark'),
+    from: z.string().transform((value) => validatePostmarkFrom(value)),
+  }),
+]);
 const schema = z.strictObject({
   port: z.number().int().min(1).max(65535),
   publicUrl: originUrl,
@@ -138,17 +185,9 @@ const schema = z.strictObject({
   operatorDatabaseUrl: databaseUrl,
   ...enrollmentSchema.shape,
   authSecret: nonblank.min(32).max(1024),
-  mailer: z.discriminatedUnion('kind', [
-    z.strictObject({
-      kind: z.literal('smtp'),
-      url: smtpUrl,
-      from: fromAddress,
-    }),
-    postmarkConfiguration.extend({
-      kind: z.literal('postmark'),
-      from: z.string().transform((value) => validatePostmarkFrom(value)),
-    }),
-  ]),
+  metricsToken: nonblank.min(32).max(1024).optional(),
+  trustedProxies: proxyList.optional(),
+  mailer: registryMailConfiguration,
   magicLinksPerDay: z.number().int().min(1).max(10_000),
   s3: objectStorageSchema,
   limits: RegistryLimitsSchema,
@@ -170,9 +209,14 @@ export function readRegistryEnv(raw: RawEnv = process.env): RegistryEnv {
       ...readDatabaseAdmission(raw),
       port: integer(raw.PORT, 3000),
       publicUrl: raw.REGISTRY_PUBLIC_URL,
-      databaseUrl: raw.REGISTRY_DATABASE_URL,
-      operatorDatabaseUrl: raw.REGISTRY_OPERATOR_DATABASE_URL,
+      databaseUrl: readDatabaseUrl(raw.REGISTRY_DATABASE_URL, raw),
+      operatorDatabaseUrl: readDatabaseUrl(
+        raw.REGISTRY_OPERATOR_DATABASE_URL,
+        raw,
+      ),
       authSecret: raw.REGISTRY_AUTH_SECRET,
+      metricsToken: raw.REGISTRY_METRICS_TOKEN || undefined,
+      trustedProxies: raw.REGISTRY_TRUSTED_PROXIES || undefined,
       mailer: postmark
         ? {
             kind: 'postmark',
@@ -240,7 +284,7 @@ export function readRegistryEnv(raw: RawEnv = process.env): RegistryEnv {
 export function readRegistryMigrationEnv(raw: RawEnv = process.env) {
   try {
     return migrationSchema.parse({
-      databaseUrl: raw.REGISTRY_MIGRATION_DATABASE_URL,
+      databaseUrl: readDatabaseUrl(raw.REGISTRY_MIGRATION_DATABASE_URL, raw),
       ...readDatabaseAdmission(raw),
     });
   } catch {
@@ -253,7 +297,7 @@ export function readRegistryMigrationEnv(raw: RawEnv = process.env) {
 export function readRegistryBackupEnv(raw: RawEnv = process.env) {
   try {
     return {
-      databaseUrl: databaseUrl.parse(raw.REGISTRY_BACKUP_DATABASE_URL),
+      databaseUrl: readDatabaseUrl(raw.REGISTRY_BACKUP_DATABASE_URL, raw),
       ...readDatabaseAdmission(raw),
     };
   } catch {
@@ -266,8 +310,8 @@ export function readRegistryBackupEnv(raw: RawEnv = process.env) {
 export function readRegistryRecoveryEnv(raw: RawEnv = process.env) {
   try {
     return recoverySchema.parse({
-      databaseUrl: raw.REGISTRY_RECOVERY_DATABASE_URL,
-      backupDatabaseUrl: raw.REGISTRY_BACKUP_DATABASE_URL,
+      databaseUrl: readDatabaseUrl(raw.REGISTRY_RECOVERY_DATABASE_URL, raw),
+      backupDatabaseUrl: readDatabaseUrl(raw.REGISTRY_BACKUP_DATABASE_URL, raw),
       reconciliationPath: raw.REGISTRY_RECOVERY_RECONCILIATION_PATH,
       reconciliationSha256: raw.REGISTRY_RECOVERY_RECONCILIATION_SHA256,
       ...readDatabaseAdmission(raw),

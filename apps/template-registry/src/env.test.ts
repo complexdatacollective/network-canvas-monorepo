@@ -43,6 +43,25 @@ it('resolves explicit runtime inputs and bounded defaults without migration cred
   expect(JSON.stringify(result)).not.toContain('never-runtime');
 });
 
+it('accepts an optional bounded private metrics token', () => {
+  expect(readRegistryEnv(valid).metricsToken).toBeUndefined();
+  const metricsToken = 'm'.repeat(32);
+  expect(
+    readRegistryEnv({ ...valid, REGISTRY_METRICS_TOKEN: metricsToken })
+      .metricsToken,
+  ).toBe(metricsToken);
+});
+
+it('accepts only explicit IP and CIDR trusted transport peers', () => {
+  expect(readRegistryEnv(valid).trustedProxies).toBeUndefined();
+  expect(
+    readRegistryEnv({
+      ...valid,
+      REGISTRY_TRUSTED_PROXIES: ' 10.0.0.0/8, ,127.0.0.1,::1 ',
+    }).trustedProxies,
+  ).toEqual(['10.0.0.0/8', '127.0.0.1', '::1']);
+});
+
 describe('refuses unsafe runtime configuration with a bounded private error', () => {
   const cases = [
     { REGISTRY_DATABASE_URL: undefined },
@@ -59,6 +78,11 @@ describe('refuses unsafe runtime configuration with a bounded private error', ()
     { REGISTRY_PUBLIC_URL: 'https://registry.example.test/untrusted' },
     { REGISTRY_PUBLIC_URL: 'https://secret@registry.example.test/' },
     { REGISTRY_AUTH_SECRET: 'short' },
+    { REGISTRY_METRICS_TOKEN: 'short' },
+    { REGISTRY_METRICS_TOKEN: 'm'.repeat(1_025) },
+    { REGISTRY_METRICS_TOKEN: 'bad\0token'.padEnd(32, 'm') },
+    { REGISTRY_TRUSTED_PROXIES: 'proxy.internal' },
+    { REGISTRY_TRUSTED_PROXIES: '10.0.0.0/999' },
     { REGISTRY_SMTP_URL: undefined },
     { REGISTRY_POSTMARK_SERVER_TOKEN: 'synthetic-token' },
     { REGISTRY_POSTMARK_MESSAGE_STREAM: 'outbound' },
@@ -381,3 +405,72 @@ it.each(['A'.repeat(240), '\\'.repeat(120)])(
     ).toThrow('REGISTRY_CONFIGURATION_INVALID');
   },
 );
+
+describe('database transport policy', () => {
+  const recovery = {
+    ...valid,
+    REGISTRY_MIGRATION_DATABASE_URL: valid.REGISTRY_DATABASE_URL,
+    REGISTRY_BACKUP_DATABASE_URL: valid.REGISTRY_DATABASE_URL,
+    REGISTRY_RECOVERY_DATABASE_URL: valid.REGISTRY_DATABASE_URL,
+    REGISTRY_RECOVERY_RECONCILIATION_PATH: '/private/evidence.json',
+    REGISTRY_RECOVERY_RECONCILIATION_SHA256: 'a'.repeat(64),
+  };
+  const boundaries = [
+    [readRegistryEnv, 'REGISTRY_DATABASE_URL'],
+    [readRegistryEnv, 'REGISTRY_OPERATOR_DATABASE_URL'],
+    [readRegistryMigrationEnv, 'REGISTRY_MIGRATION_DATABASE_URL'],
+    [readRegistryBackupEnv, 'REGISTRY_BACKUP_DATABASE_URL'],
+    [readRegistryRecoveryEnv, 'REGISTRY_RECOVERY_DATABASE_URL'],
+    [readRegistryRecoveryEnv, 'REGISTRY_BACKUP_DATABASE_URL'],
+  ] as const;
+  for (const [read, key] of boundaries) {
+    it.each([
+      '',
+      '?sslmode=disable',
+      '?sslmode=no-verify',
+      '?sslmode=require&uselibpqcompat=true',
+      '?sslmode=verify-ca',
+      '?sslmode=verify-full&sslmode=disable',
+      '?sslmode=verify-full&connectionString=postgres://other/db',
+    ])('rejects unverified external transport for ' + key + ' %s', (query) => {
+      expect(() =>
+        read({
+          ...recovery,
+          [key]: 'postgres://user:secret@db.example.test/registry' + query,
+        }),
+      ).toThrow(/CONFIGURATION_INVALID/);
+    });
+    it(
+      'accepts verified TLS and explicit private networking for ' + key,
+      () => {
+        expect(() =>
+          read({
+            ...recovery,
+            [key]:
+              'postgres://user:secret@db.example.test/registry?sslmode=verify-full',
+          }),
+        ).not.toThrow();
+        expect(() =>
+          read({
+            ...recovery,
+            [key]: 'postgres://user:secret@registry-postgres/registry',
+            REGISTRY_DATABASE_INSECURE_PRIVATE_NETWORK: 'true',
+          }),
+        ).not.toThrow();
+        expect(() =>
+          read({
+            ...recovery,
+            REGISTRY_DATABASE_INSECURE_PRIVATE_NETWORK: '1',
+          }),
+        ).toThrow(/CONFIGURATION_INVALID/);
+        expect(() =>
+          read({
+            ...recovery,
+            [key]:
+              'postgres://user:secret@localhost/registry?host=db.example.test',
+          }),
+        ).toThrow(/CONFIGURATION_INVALID/);
+      },
+    );
+  }
+});

@@ -596,10 +596,41 @@ describe('generated registry OpenAPI', () => {
     expect(JSON.stringify(compatible)).not.toContain('"type":"null"');
     expect(JSON.stringify(compatible)).not.toContain('"contentEncoding"');
     expect(JSON.stringify(compatible)).not.toContain('"contentMediaType"');
+    const nullableTypeArrays: string[] = [];
+    const inspect = (value: unknown, path: string) => {
+      if (Array.isArray(value)) {
+        if (path.endsWith('.type') && value.includes('null')) {
+          nullableTypeArrays.push(path);
+        }
+        value.forEach((child, index) => inspect(child, `${path}[${index}]`));
+        return;
+      }
+      if (value === null || typeof value !== 'object') return;
+      for (const [key, child] of Object.entries(value))
+        inspect(child, `${path}.${key}`);
+    };
+    inspect(compatible, '$');
+    expect(nullableTypeArrays).toEqual([]);
     expect(record(record(compatible.info).license)).toEqual({
       name: 'CC0-1.0',
       url: 'https://creativecommons.org/publicdomain/zero/1.0/',
     });
+    const entrySummary = record(
+      record(record(document.components).schemas).EntrySummary,
+    );
+    expect(record(record(entrySummary.properties).id).description).toBe(
+      'Publication UUID for this registry entry.',
+    );
+    expect(record(record(entrySummary.properties).root).description).toBe(
+      'Artifact identity: the merkle_root from the template manifest.',
+    );
+    const publish = record(record(record(document.paths)['/entries']).post);
+    const multipart = record(
+      record(record(publish.requestBody).content)['multipart/form-data'],
+    );
+    expect(record(record(multipart.encoding).artifact).contentType).toBe(
+      TEMPLATE_ARTIFACT_MEDIA_TYPE,
+    );
     const artifact = record(
       record(record(record(compatible.paths)['/artifacts/{root}']).get)
         .responses,
@@ -609,6 +640,82 @@ describe('generated registry OpenAPI', () => {
       TEMPLATE_ARTIFACT_MEDIA_TYPE,
     ]);
     expect(artifactContent[TEMPLATE_ARTIFACT_MEDIA_TYPE]).toBeDefined();
+
+    for (const candidate of [document, compatible]) {
+      const listEntries = record(
+        record(record(candidate.paths)['/entries']).get,
+      );
+      const parameters = Array.isArray(listEntries.parameters)
+        ? listEntries.parameters
+        : [];
+      expect(parameters.length).toBeGreaterThan(0);
+      const freeTextNames = ['query', 'keyword', 'author'];
+      const freeTextParameters = parameters
+        .map(record)
+        .filter(
+          (parameter) =>
+            parameter.in === 'query' &&
+            typeof parameter.name === 'string' &&
+            freeTextNames.includes(parameter.name),
+        );
+      expect(
+        freeTextParameters
+          .map((parameter) => parameter.name)
+          .filter((name): name is string => typeof name === 'string')
+          .toSorted((left, right) => left.localeCompare(right)),
+      ).toEqual(['author', 'keyword', 'query']);
+      for (const parameter of freeTextParameters) {
+        expect(parameter.allowReserved).toBe(false);
+      }
+      for (const path of Object.values(candidate.paths ?? {})) {
+        if (!path) continue;
+        for (const method of ['get', 'post', 'put', 'delete'] as const) {
+          const operation = path[method];
+          for (const parameter of operation?.parameters ?? []) {
+            if (record(parameter).in === 'query')
+              expect(record(parameter).allowEmptyValue).toBe(false);
+          }
+        }
+      }
+
+      const accountWriteOperations = [
+        ['post', '/account/publisher'],
+        ['post', '/account/tokens'],
+        ['delete', '/account/tokens/{id}'],
+        ['post', '/account/moderation/entries/{id}/takedown'],
+        ['post', '/account/moderation/entries/{id}/restore'],
+        ['delete', '/account/moderation/artifacts/{root}'],
+        ['put', '/account/moderation/publishers/{id}/suspension'],
+        ['put', '/account/moderation/entries/{id}/curation'],
+        ['post', '/account/moderation/reports'],
+      ] as const;
+      for (const [method, path] of accountWriteOperations) {
+        const operation = record(record(record(candidate.paths)[path])[method]);
+        const operationParameters = Array.isArray(operation.parameters)
+          ? operation.parameters
+          : [];
+        const originParameters = operationParameters
+          .map(record)
+          .filter(
+            (parameter) =>
+              parameter.in === 'header' && parameter.name === 'Origin',
+          );
+        expect(originParameters).toEqual([
+          expect.objectContaining({
+            name: 'Origin',
+            in: 'header',
+            required: true,
+            schema: { type: 'string' },
+          }),
+        ]);
+      }
+      const metadata = record(
+        record(record(record(candidate.components).schemas).Entry).properties,
+      );
+      expect(
+        record(record(metadata.metadata).properties).schema_version,
+      ).toMatchObject({ type: 'integer', enum: [1] });
+    }
   });
 
   it('covers every operation, path target and public problem code', () => {

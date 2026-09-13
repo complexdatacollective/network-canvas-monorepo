@@ -284,6 +284,39 @@ describe('shared outbox execution', () => {
     },
   );
 
+  it.each([
+    { attemptCount: 1, expectedDelay: 5_000, outcome: 'retried' },
+    { attemptCount: 8, expectedDelay: null, outcome: 'failed' },
+  ] as const)(
+    'uses the retry policy for an explicitly retry-safe completion failure at attempt $attemptCount',
+    async ({ attemptCount, expectedDelay, outcome }) => {
+      const work = {
+        ...adapter(),
+        completionFailureDisposition: vi.fn(() => 'retryable' as const),
+      };
+      const attempt = { ...claim, attemptCount };
+      const completionError = new Error('completion commit failed');
+      work.claim.mockResolvedValue(attempt);
+      work.recordComplete.mockRejectedValue(completionError);
+      await expect(
+        new OutboxDispatcher({ pool, adapter: work }).runOnce(),
+      ).resolves.toMatchObject({
+        completed: 0,
+        retried: outcome === 'retried' ? 1 : 0,
+        failed: outcome === 'failed' ? 1 : 0,
+        uncertain: 0,
+      });
+
+      expect(work.recordFailure).toHaveBeenCalledExactlyOnceWith(
+        attempt,
+        expect.any(Object),
+        completionError,
+        expectedDelay,
+      );
+      expect(work.recordUncertain).not.toHaveBeenCalled();
+    },
+  );
+
   it('does not claim that uncertainty committed after ownership moved', async () => {
     const work = adapter();
     work.recordComplete.mockResolvedValue(false);

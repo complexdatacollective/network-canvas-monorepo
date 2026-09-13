@@ -23,6 +23,7 @@ import type { RegistryBlobStore } from '../blob-store.ts';
 import { EntrySchema } from '../contract.ts';
 import { REGISTRY_TABLES, registrySidecarSql } from '../db/schema.ts';
 import type { RegistryLimits } from '../limits.ts';
+import { createRegistryObservability } from '../observability/runtime.ts';
 import { RegistryStore } from '../store.ts';
 import { createRegistryTestDatabase } from './database.ts';
 
@@ -82,6 +83,14 @@ export async function createRegistryFixture(
   const objects = new Map<string, Uint8Array>();
   const objectTimes = new Map<string, Date>();
   const diagnostics: string[] = [];
+  const requestLogs: Record<string, unknown>[] = [];
+  const observability = createRegistryObservability({
+    pool: database.pool,
+    operatorPool: database.operatorPool,
+    write: (line) => {
+      requestLogs.push(JSON.parse(line) as Record<string, unknown>);
+    },
+  });
   const blobs: RegistryBlobStore = {
     put: vi.fn(async (rawHash: string, bytes: Uint8Array) => {
       expect(templateBytesHash(bytes)).toBe(rawHash);
@@ -131,6 +140,7 @@ export async function createRegistryFixture(
       auth,
       accepting: () => true,
       ready: async () => true,
+      observability,
       onDiagnostic: (code) => diagnostics.push(code),
     });
     return { auth, store, app };
@@ -251,9 +261,11 @@ export async function createRegistryFixture(
     ...replica,
     sent,
     diagnostics,
+    requestLogs,
     objects,
     objectTimes,
     blobs,
+    observability,
     request,
     login,
     account,

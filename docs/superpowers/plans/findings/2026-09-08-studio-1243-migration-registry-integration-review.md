@@ -78,16 +78,16 @@ pnpm --filter @codaco/studio-server exec vitest run \
 Registry evidence is stored under the persistent ignored directory
 `/Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/registry-integration/.claude/evidence/studio-1243-registry-integration/`:
 
-| Log                 | Command and result                                                                                                                     |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `registry-pg18.log` | `PGPORT=55540 PGPASSWORD=spike pnpm --filter @codaco/template-registry exec vitest run` — 370/370                                      |
-| `studio-sync.log`   | `PGPORT=55540 PGPASSWORD=spike pnpm --filter @codaco/studio-sync test` — 523/523                                                       |
-| `account.log`       | `pnpm --filter @codaco/template-registry test:account` — 12/12                                                                         |
-| `release-lane.log`  | `node --test scripts/changeset-app-utils.test.mjs scripts/version-gated-products.test.mjs scripts/release-e2e-policy.test.mjs` — 53/53 |
-| `ci-workflow.log`   | `node --test scripts/ci-workflow.test.mjs` — pass                                                                                      |
-| `build.log`         | `pnpm --filter @codaco/template-registry build` — service and account bundles built                                                    |
-| `typecheck.log`     | `pnpm typecheck` — 26/26 tasks                                                                                                         |
-| `knip.log`          | `SKIP_ENV_VALIDATION=true ./node_modules/.bin/knip` — pass                                                                             |
+| Log                 | Command and result                                                                                                                                        |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `registry-pg18.log` | `PGPORT=55540 PGPASSWORD=spike pnpm --filter @codaco/template-registry exec vitest run` — 370/370                                                         |
+| `studio-sync.log`   | `PGPORT=55540 PGPASSWORD=spike pnpm --filter @codaco/studio-sync test` — 523/523                                                                          |
+| `account.log`       | `pnpm --filter @codaco/template-registry test:account` — 12/12                                                                                            |
+| `release-lane.log`  | `node --test scripts/release/changeset-app-utils.test.mjs scripts/release/version-gated-products.test.mjs scripts/ci/release-e2e-policy.test.mjs` — 53/53 |
+| `ci-workflow.log`   | `node --test scripts/ci/ci-workflow.test.mjs` — pass                                                                                                      |
+| `build.log`         | `pnpm --filter @codaco/template-registry build` — service and account bundles built                                                                       |
+| `typecheck.log`     | `pnpm typecheck` — 26/26 tasks                                                                                                                            |
+| `knip.log`          | `SKIP_ENV_VALIDATION=true ./node_modules/.bin/knip` — pass                                                                                                |
 
 The repository lint gate was run as
 `./node_modules/.bin/oxlint && ./node_modules/.bin/oxfmt --check .`; it passed

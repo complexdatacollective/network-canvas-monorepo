@@ -174,6 +174,11 @@ async function currentEvidence(): Promise<StudioRecoveryAuthorizationReconciliat
           id_token_algorithm AS id_algorithm, scope FROM account WHERE id = 'current-account'`,
       )
     ).rows[0]!;
+    const activeScheduleIds = (
+      await pool.query<{ id: string }>(
+        "SELECT id FROM study_schedules WHERE state = 'active' ORDER BY id",
+      )
+    ).rows.map(({ id }) => id);
     return {
       format: 'studio-recovery-authorization-reconciliation',
       version: 1,
@@ -214,7 +219,7 @@ async function currentEvidence(): Promise<StudioRecoveryAuthorizationReconciliat
       ],
       studyGrants: [],
       activeWebhookSubscriptions: [],
-      activeScheduleIds: [],
+      activeScheduleIds,
       publishedMessageTemplateIds: [],
     };
   });
@@ -322,6 +327,12 @@ async function seedRestoredState() {
             WHERE team_id = 'current-team'), 'security.fixture', 1,
           'security', 'succeeded', 'system', 'Studio', gen_random_uuid(),
           '{}'::jsonb);
+      INSERT INTO audit_alert_settings (team_id, revision)
+        VALUES ('current-team', gen_random_uuid());
+      INSERT INTO audit_alert_recipients
+        (id, team_id, member_id, user_id, in_app, email)
+        VALUES (gen_random_uuid(), 'current-team', 'current-membership',
+          'current-user', false, true);
       INSERT INTO audit_alert_outbox
         (id, team_id, audit_event_id, audit_event_sequence, event_type,
           event_version, alert_policy_key)
@@ -335,6 +346,73 @@ async function seedRestoredState() {
           'current-membership', 'current-user', 'email');
     `);
   });
+}
+
+async function seedActiveScheduleWithPendingOccurrence() {
+  return await withTargetAdministrator(async (pool) => {
+    const studyId = randomUUID();
+    const waveId = randomUUID();
+    const participantId = randomUUID();
+    const scheduleId = randomUUID();
+    const occurrenceId = randomUUID();
+    await pool.query(
+      `INSERT INTO studies
+        (id, team_id, name, state, participation_mode, wave_progression)
+       VALUES ($1, 'current-team', 'Recovery schedule study', 'draft', 'managed', 'window')`,
+      [studyId],
+    );
+    await pool.query(
+      `INSERT INTO study_waves (id, study_id, team_id, wave_number)
+       VALUES ($1, $2, 'current-team', 1)`,
+      [waveId, studyId],
+    );
+    await pool.query(
+      `INSERT INTO participants (id, study_id, team_id, participant_code, timezone)
+       VALUES ($1, $2, 'current-team', $3, 'UTC')`,
+      [participantId, studyId, 'recovery-person'],
+    );
+    await pool.query(
+      `INSERT INTO study_schedules (
+         id, team_id, study_id, wave_id, name, state, anchor_kind,
+         anchor_date, anchor_offset_minutes, recurrence_kind, window_start_minute,
+         window_end_minute, days_of_week_mask, max_prompts_per_day,
+         prompt_expiry_hours, catch_up_policy, fallback_time_zone, channels, settings)
+       VALUES ($1, 'current-team', $2, $3, 'Recovery schedule', 'active',
+         'fixed_date', '2026-09-10T00:00:00Z', 0, 'one_off', 0, 1439, 127, 1,
+         24, 'skip', 'UTC', ARRAY['email'], '{}'::jsonb)`,
+      [scheduleId, studyId, waveId],
+    );
+    await pool.query(
+      `INSERT INTO schedule_occurrences (
+         id, team_id, study_id, schedule_id, participant_id, occurrence_index,
+         scheduled_for, scheduled_local_date, scheduled_local_minute,
+         resolved_time_zone, expires_at, state)
+       VALUES ($1, 'current-team', $2, $3, $4, 1,
+         now(), CURRENT_DATE, 600, 'UTC', now() + interval '1 hour', 'scheduled')`,
+      [occurrenceId, studyId, scheduleId, participantId],
+    );
+    return { studyId, participantId, scheduleId, occurrenceId };
+  });
+}
+
+async function seedPendingOccurrenceForPausedSchedule(input: {
+  studyId: string;
+  participantId: string;
+  scheduleId: string;
+}) {
+  const occurrenceId = randomUUID();
+  await withTargetAdministrator(async (pool) => {
+    await pool.query(
+      `INSERT INTO schedule_occurrences (
+         id, team_id, study_id, schedule_id, participant_id, occurrence_index,
+         scheduled_for, scheduled_local_date, scheduled_local_minute,
+         resolved_time_zone, expires_at, state)
+       VALUES ($1, 'current-team', $2, $3, $4, 2,
+         now(), CURRENT_DATE, 600, 'UTC', now() + interval '1 hour', 'scheduled')`,
+      [occurrenceId, input.studyId, input.scheduleId, input.participantId],
+    );
+  });
+  return occurrenceId;
 }
 
 beforeAll(async () => {
@@ -416,9 +494,31 @@ beforeAll(async () => {
 beforeEach(async () => {
   if (!fixture) return;
   await withTargetAdministrator(async (pool) => {
+    // Each case owns this disposable database. Published versions deliberately
+    // reject DELETE, so reset their fixture rows without weakening that trigger.
+    await pool.query(`TRUNCATE template_registry_publication_intents,
+      template_registry_import_intents, template_registry_publications,
+      template_version_sections, template_versions, templates CASCADE`);
+    await pool.query('BEGIN');
+    try {
+      await pool.query(
+        `SET LOCAL ROLE ${pg.escapeIdentifier(TENANT_ROLES.maintenance)}`,
+      );
+      await pool.query('DELETE FROM schedule_occurrences');
+      await pool.query('DELETE FROM study_schedules');
+      await pool.query('DELETE FROM participants');
+      await pool.query('DELETE FROM study_waves');
+      await pool.query('DELETE FROM studies');
+      await pool.query('COMMIT');
+    } catch (error) {
+      await pool.query('ROLLBACK');
+      throw error;
+    }
     await pool.query(`
       DELETE FROM team_invitation_deliveries;
       DELETE FROM team_invitations;
+      DELETE FROM audit_alert_recipients;
+      DELETE FROM audit_alert_settings;
       DELETE FROM audit_alert_deliveries;
       DELETE FROM audit_alert_outbox;
       DELETE FROM webhook_deliveries;
@@ -651,6 +751,56 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
     });
   });
 
+  it('reconciles an evidence-listed schedule before replaying authorization', async () => {
+    const seeded = await seedActiveScheduleWithPendingOccurrence();
+    const evidence = await currentEvidence();
+    expect(evidence.activeScheduleIds).toEqual([seeded.scheduleId]);
+
+    await expect(run(evidence)).resolves.toMatchObject({
+      format: 'studio-recovery-authorization-receipt',
+    });
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          `SELECT state FROM study_schedules
+           WHERE id = $1`,
+          [seeded.scheduleId],
+        ),
+      ).resolves.toHaveProperty('rows', [{ state: 'paused' }]);
+      await expect(
+        pool.query(
+          `SELECT state FROM schedule_occurrences
+           WHERE id = $1`,
+          [seeded.occurrenceId],
+        ),
+      ).resolves.toHaveProperty('rows', [{ state: 'cancelled' }]);
+    });
+
+    const reviewed = await currentEvidence();
+    expect(reviewed.activeScheduleIds).toEqual([]);
+    await expect(run(evidence)).resolves.toMatchObject({
+      format: 'studio-recovery-authorization-receipt',
+    });
+
+    const lateOccurrenceId =
+      await seedPendingOccurrenceForPausedSchedule(seeded);
+    await expect(authorize(reviewed)).resolves.toMatchObject({
+      format: 'studio-recovery-current-authorization-receipt',
+    });
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          `SELECT state FROM schedule_occurrences
+           WHERE id = $1`,
+          [lateOccurrenceId],
+        ),
+      ).resolves.toHaveProperty('rows', [{ state: 'cancelled' }]);
+    });
+    await expect(authorize(reviewed)).resolves.toMatchObject({
+      format: 'studio-recovery-current-authorization-receipt',
+    });
+  });
+
   it('refuses changed authority after revocation without enabling a user', async () => {
     const evidence = await currentEvidence();
     await run(evidence);
@@ -819,6 +969,8 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_audit_outbox: number;
         uncertain_audit_deliveries: number;
         quarantined_registry_intents: number;
+        alert_recipients: number;
+        alert_settings: number;
         deletion_audit: boolean;
       }>(`SELECT
         (SELECT count(*)::int FROM "user" WHERE NOT recovery_disabled) enabled_users,
@@ -834,6 +986,8 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         (SELECT count(*)::int FROM audit_alert_deliveries WHERE uncertain_at IS NOT NULL) uncertain_audit_deliveries,
         ((SELECT count(*) FROM template_registry_publication_intents WHERE quarantined_at IS NOT NULL)
           + (SELECT count(*) FROM template_registry_import_intents WHERE quarantined_at IS NOT NULL))::int quarantined_registry_intents,
+        (SELECT count(*)::int FROM audit_alert_recipients) alert_recipients,
+        (SELECT count(*)::int FROM audit_alert_settings) alert_settings,
         EXISTS (SELECT 1 FROM credential_audit_events WHERE account_id = 'stale-account') deletion_audit`);
       expect(state.rows[0]).toEqual({
         enabled_users: 0,
@@ -848,11 +1002,34 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_audit_outbox: 1,
         uncertain_audit_deliveries: 1,
         quarantined_registry_intents: 2,
+        alert_recipients: 0,
+        alert_settings: 0,
         deletion_audit: true,
       });
     });
     await expect(run(evidence)).resolves.toMatchObject({
       reconciliationSha256: 'a'.repeat(64),
+    });
+  });
+
+  it('refuses reopening if restored alert recipients are reintroduced after reconciliation', async () => {
+    const evidence = await currentEvidence();
+    await run(evidence);
+    await withTargetAdministrator(async (pool) => {
+      await pool.query(`INSERT INTO audit_alert_recipients
+        (id, team_id, member_id, user_id, in_app, email)
+        VALUES (gen_random_uuid(), 'current-team', 'current-membership',
+          'current-user', false, true)`);
+    });
+    await expect(authorize(evidence)).rejects.toThrow();
+    await withTargetAdministrator(async (pool) => {
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
+          )
+        ).rows[0]?.count,
+      ).toBe(0);
     });
   });
 

@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { IncomingMessage, ServerResponse } from 'node:http';
 
 import { getConnInfo } from '@hono/node-server/conninfo';
@@ -6,13 +5,18 @@ import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import type { WebSocketServer } from 'ws';
 
+import {
+  createRequestCompletion,
+  observeNodeResponse,
+  selectRequestId,
+} from '@codaco/studio-sync/operational-http';
+
 import type { PrincipalVariables } from '../auth/principal.ts';
 import {
   operationalLogger,
   requestContext,
   type OperationalLogger,
   type RequestObservation,
-  UUID,
 } from './logger.ts';
 import { trustedPeer } from './proxy.ts';
 import { requestMethod, requestRoute } from './routes.ts';
@@ -70,42 +74,32 @@ export function observeRequests(options: {
 }) {
   return createMiddleware<PrincipalVariables>(async (c, next) => {
     const supplied = c.req.header('x-request-id');
-    const requestId =
-      supplied &&
-      UUID.test(supplied) &&
-      requestHasTrustedPeer(c, options.trustedProxies)
-        ? supplied.toLowerCase()
-        : randomUUID();
+    const requestId = selectRequestId(
+      supplied,
+      requestHasTrustedPeer(c, options.trustedProxies),
+    );
     const context = {
       requestId,
       logger: options.logger ?? operationalLogger,
       teamId: undefined as string | undefined,
     };
     c.set('requestId', requestId);
-    const started = performance.now();
     const { incoming, outgoing } = transport(c);
-    let completed = false;
+    const completeRequest = createRequestCompletion({
+      requestId,
+      route: requestRoute(c.req.path),
+      method: requestMethod(c.req.method),
+      record: (observation) => {
+        const correlated = { ...observation, teamId: context.teamId };
+        context.logger.request(correlated);
+        options.record(correlated);
+      },
+    });
     const complete = (status: number) => {
-      if (completed) return;
-      completed = true;
       if (incoming) upgrades.delete(incoming);
-      const observation = {
-        requestId,
-        teamId: context.teamId,
-        route: requestRoute(c.req.path),
-        method: requestMethod(c.req.method),
-        status,
-        durationMs: Math.max(0, performance.now() - started),
-      };
-      context.logger.request(observation);
-      options.record(observation);
+      completeRequest(status);
     };
-    if (outgoing) {
-      outgoing.once('finish', () => complete(outgoing.statusCode));
-      outgoing.once('close', () =>
-        complete(outgoing.writableFinished ? outgoing.statusCode : 499),
-      );
-    }
+    if (outgoing) observeNodeResponse(outgoing, complete);
     return requestContext.run(context, async () => {
       c.header('X-Request-Id', requestId);
       await next();

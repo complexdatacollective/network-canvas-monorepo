@@ -25,14 +25,76 @@ STUDIO_RECOVERY_RECONCILIATION_PATH=/recovery-evidence/reconciliation.json
 STUDIO_RECOVERY_RECONCILIATION_SHA256=<independently-recorded-lowercase-sha256>
 ```
 
+Keep both recovery commands inside this fail-closing operator wrapper. It
+closes every Studio writer login, drains its sessions, and stops the private
+web and worker processes before the command and again on success, failure, or
+a signal. A closure failure makes the whole invocation fail.
+
+```sh
+# BEGIN RECOVERY_AUTHORIZATION_GUARD
+close_recovery_admission() {
+  close_failed=0
+  if ! docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c 'BEGIN; ALTER ROLE studio_runtime NOLOGIN; ALTER ROLE studio_maintenance_runtime NOLOGIN; ALTER ROLE studio_migrator NOLOGIN; COMMIT;' >/dev/null
+  then close_failed=1
+  fi
+  if ! docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c "SELECT pg_catalog.pg_terminate_backend(activity.pid, 5000) FROM pg_catalog.pg_stat_activity activity JOIN pg_catalog.pg_roles login ON login.oid = activity.usesysid WHERE login.rolname = ANY(ARRAY['studio_runtime','studio_maintenance_runtime','studio_migrator']) AND activity.pid <> pg_catalog.pg_backend_pid();" >/dev/null
+  then close_failed=1
+  fi
+  if ! docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c "DO \$\$ BEGIN IF EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity activity JOIN pg_catalog.pg_roles login ON login.oid = activity.usesysid WHERE login.rolname = ANY(ARRAY['studio_runtime','studio_maintenance_runtime','studio_migrator'])) THEN RAISE EXCEPTION 'Studio writer session survived recovery quarantine'; END IF; END \$\$;" >/dev/null
+  then close_failed=1
+  fi
+  docker compose stop studio worker >/dev/null 2>&1 || close_failed=1
+  return "$close_failed"
+}
+run_closed_recovery_command() (
+  set -eu
+  cleanup_recovery_command() {
+    command_exit=$?
+    trap - EXIT HUP INT TERM
+    if ! close_recovery_admission; then command_exit=1; fi
+    exit "$command_exit"
+  }
+  trap cleanup_recovery_command EXIT
+  trap 'exit 1' HUP INT TERM
+  close_recovery_admission
+  # The recovery command uses the owner connection. Open only that operator;
+  # runtime and maintenance remain NOLOGIN and the backup identity stays
+  # read-only. The cleanup trap closes the operator again.
+  docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c 'ALTER ROLE studio_migrator LOGIN;' >/dev/null
+  "$@"
+  close_recovery_admission
+  trap - EXIT HUP INT TERM
+)
+# END RECOVERY_AUTHORIZATION_GUARD
+```
+
 Mount the private evidence directory read-only. From `apps/studio`, with the
 quarantined PostgreSQL service already running, invoke the exact image digest
-recorded by `STUDIO_IMAGE`:
+recorded by `STUDIO_IMAGE`. The directory and artifact may remain operator
+owned and mode `0700`/`0600`: map the one-shot container process to the host
+operator UID and GID rather than weakening those permissions.
+
+The restore script writes the verified image overlay to
+`deployment/recovery-images.yml`. Keep any caller-supplied `COMPOSE_FILE` while
+adding that overlay and the quarantine layer; an explicit `-f` list would
+replace `COMPOSE_FILE` and could silently select mutable image tags.
 
 ```sh
 RECOVERY_ENV=/absolute/private/recovery-command.env
 RECOVERY_EVIDENCE_DIR=/absolute/private/recovery-evidence
-docker compose -f docker-compose.yml -f deployment/quarantine.yml run \
+RECOVERY_COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
+case ":$RECOVERY_COMPOSE_FILE:" in
+  *":deployment/recovery-images.yml:"*) ;;
+  *) RECOVERY_COMPOSE_FILE="$RECOVERY_COMPOSE_FILE:deployment/recovery-images.yml" ;;
+esac
+RECOVERY_COMPOSE_FILE="$RECOVERY_COMPOSE_FILE:deployment/quarantine.yml"
+export COMPOSE_FILE="$RECOVERY_COMPOSE_FILE"
+run_closed_recovery_command docker compose \
+  run --user "$(id -u):$(id -g)" \
   --rm --no-deps --env-from-file "$RECOVERY_ENV" \
   -v "$RECOVERY_EVIDENCE_DIR:/recovery-evidence:ro" \
   studio recovery:reconcile-authorization \
@@ -47,17 +109,22 @@ binds the immutable initial Studio instance tuple and exhaustively inventories
 current users, login accounts, teams, memberships, study grants, active
 webhooks, active schedules, and published message templates. Credentials and
 webhook secrets appear only as exact SHA-256 fingerprints. The command refuses
-an absent required identity or authority. Select a sufficiently current
+an absent required identity or authority. `activeScheduleIds` records the
+active schedule inventory only; it does not authorize recurrence, channels,
+participant time zones, settings, or pending occurrences to resume. Recovery
+pauses every restored schedule and cancels every still-`scheduled` occurrence,
+including schedules present in the artifact. Select a sufficiently current
 authenticated backup or complete a separately reviewed repair while quarantine
 remains in force, then generate and pin fresh evidence before retrying.
 
 One transaction recovery-disables every restored user, deletes sessions and
 one-time verifications, cancels pending invitations, revokes personal access
 tokens and interview links, expires edit leases, removes stale account links
-and grants, disables stale webhooks, pauses stale schedules, retires stale
-published message templates, and marks every nonterminal restored delivery
-uncertain. Its receipt records the evidence hash and actual destination database
-and schema fingerprint. This step cannot admit a user or reopen a service.
+and grants, disables stale webhooks, pauses every restored schedule, cancels
+pending schedule occurrences, retires stale published message templates, and
+marks every nonterminal restored delivery uncertain. Its receipt records the
+evidence hash and actual destination database and schema fingerprint. This step
+cannot admit a user or reopen a service.
 
 After retaining that receipt, create a new canonical version 1 artifact from the
 independently controlled current authority source. `eligibleUserIds` is the
@@ -79,7 +146,8 @@ Add those three values to the same private command environment file, replace
 its independently recorded digest, and run the second bundled entrypoint:
 
 ```sh
-docker compose -f docker-compose.yml -f deployment/quarantine.yml run \
+run_closed_recovery_command docker compose \
+  run --user "$(id -u):$(id -g)" \
   --rm --no-deps --env-from-file "$RECOVERY_ENV" \
   -v "$RECOVERY_EVIDENCE_DIR:/recovery-evidence:ro" \
   studio recovery:authorize-current \
@@ -100,3 +168,13 @@ tuple, eligible users, and destination database/schema identity. The configured
 public key is independent only while its operator custody remains trustworthy;
 the signature does not protect against replacement of both the artifact and the
 trust anchor, and neither receipt is a production-readiness or reopening proof.
+
+Once the separate reopening decision and authenticated team-administrator smoke
+have succeeded, explicitly review recurrence, channels, participant time
+zones, settings, and the cancelled occurrence plan, then create fresh current
+schedule evidence and re-enable schedules through the normal operator path.
+Also explicitly configure new restored-activity alert recipients and delivery
+channels. Recovery removes the restored recipient and channel settings because
+they are absent from signed authorization evidence. Historical delivery
+receipts remain retained but uncertain; do not treat them as proof that an old
+destination is currently authorized or reachable.

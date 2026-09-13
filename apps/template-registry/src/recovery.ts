@@ -29,13 +29,6 @@ type Artifact = {
   license: unknown;
 };
 
-function sameUserIds(actual: readonly string[], expected: readonly string[]) {
-  return (
-    actual.length === expected.length &&
-    actual.every((id, index) => id === expected[index])
-  );
-}
-
 type RecoveredUser = { id: string; email: string; email_verified: boolean };
 
 function assertReconciliationUsers(
@@ -173,16 +166,21 @@ export async function reconcileRegistryRecovery({
     );
     assertReconciliationUsers(users.rows, evidence);
     await verifyRegistryRecoveryArtifacts(client, backup, blobs);
-    const publisherIds = evidence.users
-      .filter((user) => user.publisher !== 'none')
-      .map((user) => user.id);
-    const actualPublishers = await client.query<{ user_id: string }>(
-      'SELECT user_id FROM registry_publishers ORDER BY user_id',
+    const expectedPublishers = new Map(
+      evidence.users
+        .filter((user) => user.publisher !== 'none')
+        .map((user) => [user.id, user.publisherId]),
     );
+    const publisherIds = [...expectedPublishers.keys()];
+    const actualPublishers = await client.query<{
+      id: string;
+      user_id: string;
+    }>('SELECT id, user_id FROM registry_publishers');
     if (
-      !sameUserIds(
-        actualPublishers.rows.map((publisher) => publisher.user_id),
-        publisherIds.toSorted(),
+      actualPublishers.rows.length !== expectedPublishers.size ||
+      actualPublishers.rows.some(
+        (publisher) =>
+          expectedPublishers.get(publisher.user_id) !== publisher.id,
       )
     )
       throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');

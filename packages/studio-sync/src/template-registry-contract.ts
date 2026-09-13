@@ -23,7 +23,9 @@ export const REGISTRY_CREDENTIAL_PREFIX = 'ncr1_';
 export const RegistryCredentialSchema = z
   .string()
   .regex(/^ncr1_[A-Za-z0-9_-]{43}$/);
-export const RegistryEntryIdSchema = z.uuid();
+export const RegistryEntryIdSchema = z
+  .uuid()
+  .describe('Publication UUID for this registry entry.');
 
 export const RegistryPublisherSchema = z
   .strictObject({ id: z.uuid(), name: nonblank, orcid: OrcidSchema.nullable() })
@@ -33,7 +35,9 @@ export const RegistryEntrySummarySchema = z
   .strictObject({
     id: RegistryEntryIdSchema,
     publisher: RegistryPublisherSchema,
-    root: TemplateContentHashSchema,
+    root: TemplateContentHashSchema.describe(
+      'Artifact identity: the merkle_root from the template manifest.',
+    ),
     template: TemplateArtifactManifestSchema.shape.template,
     license: TemplateLicenseSchema,
     curated: z.boolean(),

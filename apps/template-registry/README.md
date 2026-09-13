@@ -98,6 +98,14 @@ selects a Postmark stream and otherwise defaults to `outbound`. Both transports
 validate the sender at startup, preserve uncertain delivery outcomes and close
 on shutdown. External object stores require HTTPS. The explicit
 `REGISTRY_S3_INSECURE_PRIVATE_NETWORK` option is for an isolated private network.
+`REGISTRY_METRICS_TOKEN` optionally exposes `/metrics` to an exact bearer token
+of 32 to 1024 characters. Without it the endpoint returns 404. Request metrics
+and JSON request logs use fixed route classes and never retain raw URLs,
+headers, bodies, account identifiers, template identifiers or credentials.
+`REGISTRY_TRUSTED_PROXIES` optionally lists comma-separated transport peer IPs
+or CIDRs. A valid supplied `X-Request-ID` is accepted only from one of those
+actual peers; forwarded headers cannot establish trust.
+
 `REGISTRY_S3_PROVIDER` defaults to `s3`; set it to `r2` only with a Cloudflare
 HTTPS account endpoint (`<account-id>.r2.cloudflarestorage.com` or its `eu`,
 `us`, or `fedramp` jurisdiction form) and region `auto`. The endpoint must use
@@ -149,8 +157,12 @@ names a private regular JSON file of at most 16 MiB; its exact-byte SHA-256 is
 supplied separately as `REGISTRY_RECOVERY_RECONCILIATION_SHA256`. This is an
 operator-approved inventory, not a signature or evidence of who approved it.
 Its users must exactly match the restored users by ID, normalized email and
-verified-email state, with current publisher and operator permissions
-independently reconciled before running the command. Recovery object storage
+verified-email state. Every user includes `publisherId`: the independently
+verified stable publisher UUID when `publisher` is `active` or `suspended`,
+or null when `publisher` is `none`. The command rejects missing or repeated
+publisher UUIDs and any changed user-to-publisher association. Current publisher
+and operator permissions must be independently reconciled before running the
+command. Recovery object storage
 uses the runtime HTTPS policy; a non-loopback HTTP endpoint requires the same
 explicit `REGISTRY_S3_INSECURE_PRIVATE_NETWORK=true` operator opt-in.
 `REGISTRY_S3_PROVIDER` selects the runtime `s3` or `r2` capability contract;

@@ -159,6 +159,7 @@ async function reconcileInventories(
   client: pg.PoolClient,
   evidence: StudioRecoveryAuthorizationReconciliation,
   mode: 'revoke-stale' | 'require-exact',
+  scheduling: 'initial' | 'post-reconciliation' = 'initial',
 ) {
   await assertEvidenceFreshness(client, evidence);
   const instance = await client.query<{
@@ -212,8 +213,9 @@ async function reconcileInventories(
   const expectedAccounts = new Map(
     evidence.accounts.map((row) => [row.id, row]),
   );
+  const actualAccounts = new Map(accounts.rows.map((row) => [row.id, row]));
   for (const expected of evidence.accounts) {
-    const actual = accounts.rows.find((row) => row.id === expected.id);
+    const actual = actualAccounts.get(expected.id);
     if (!actual) throw new Error(MISMATCH);
     assertRows(
       {
@@ -247,8 +249,11 @@ async function reconcileInventories(
     const expectedMemberships = new Map(
       evidence.memberships.map((row) => [row.id, row]),
     );
+    const actualMemberships = new Map(
+      memberships.rows.map((row) => [row.id, row]),
+    );
     for (const expected of evidence.memberships) {
-      const actual = memberships.rows.find(({ id }) => id === expected.id);
+      const actual = actualMemberships.get(expected.id);
       const roles = actual ? tryParseRoles(actual.role) : null;
       if (!actual || !roles) throw new Error(MISMATCH);
       assertRows(
@@ -284,8 +289,9 @@ async function reconcileInventories(
     const expectedGrants = new Map(
       evidence.studyGrants.map((row) => [row.id, row]),
     );
+    const actualGrants = new Map(grants.rows.map((row) => [row.id, row]));
     for (const expected of evidence.studyGrants) {
-      const actual = grants.rows.find(({ id }) => id === expected.id);
+      const actual = actualGrants.get(expected.id);
       assertRows(
         actual && {
           id: actual.id,
@@ -316,8 +322,9 @@ async function reconcileInventories(
     const expectedWebhooks = new Map(
       evidence.activeWebhookSubscriptions.map((row) => [row.id, row]),
     );
+    const actualWebhooks = new Map(webhooks.rows.map((row) => [row.id, row]));
     for (const expected of evidence.activeWebhookSubscriptions) {
-      const actual = webhooks.rows.find(({ id }) => id === expected.id);
+      const actual = actualWebhooks.get(expected.id);
       if (!actual) throw new Error(MISMATCH);
       assertRows(
         {
@@ -347,26 +354,65 @@ async function reconcileInventories(
         "SELECT id FROM study_schedules WHERE state = 'active' ORDER BY id",
       )
     ).rows.map(({ id }) => id);
-    for (const id of evidence.activeScheduleIds)
-      if (!activeSchedules.includes(id)) throw new Error(MISMATCH);
-    if (
-      mode === 'require-exact' &&
-      activeSchedules.length !== evidence.activeScheduleIds.length
-    )
-      throw new Error(MISMATCH);
-    await client.query(
-      `UPDATE study_schedules SET state = 'paused', updated_at = statement_timestamp()
-       WHERE state = 'active' AND NOT (id = ANY($1::uuid[]))`,
-      [evidence.activeScheduleIds],
-    );
+    if (scheduling === 'post-reconciliation') {
+      const expectedScheduleIds = await client.query<{ id: string }>(
+        `SELECT id FROM study_schedules
+         WHERE id = ANY($1::uuid[]) ORDER BY id`,
+        [evidence.activeScheduleIds],
+      );
+      if (
+        expectedScheduleIds.rows.length !== evidence.activeScheduleIds.length ||
+        activeSchedules.length !== 0
+      )
+        throw new Error(MISMATCH);
+      const pendingOccurrences = await client.query<{ count: number }>(
+        "SELECT count(*)::int AS count FROM schedule_occurrences WHERE state = 'scheduled'",
+      );
+      if (pendingOccurrences.rows[0]?.count !== 0) throw new Error(MISMATCH);
+    } else {
+      const expectedSchedules = await client.query<{
+        id: string;
+        state: string;
+      }>(
+        `SELECT id, state FROM study_schedules
+         WHERE id = ANY($1::uuid[]) ORDER BY id`,
+        [evidence.activeScheduleIds],
+      );
+      if (
+        expectedSchedules.rows.length !== evidence.activeScheduleIds.length ||
+        expectedSchedules.rows.some(
+          ({ state }) => state !== 'active' && state !== 'paused',
+        )
+      )
+        throw new Error(MISMATCH);
+      const activeScheduleIds = new Set(activeSchedules);
+      if (
+        mode === 'require-exact' &&
+        evidence.activeScheduleIds.some((id) => !activeScheduleIds.has(id))
+      )
+        throw new Error(MISMATCH);
+      if (
+        mode === 'require-exact' &&
+        activeSchedules.length !== evidence.activeScheduleIds.length
+      )
+        throw new Error(MISMATCH);
+      // The schedule IDs in signed evidence prove the inventory that the
+      // operator reviewed; they do not prove that recurrence, channels,
+      // participant time zones, settings, or pending occurrences are safe to
+      // resume after a restore. Keep every restored schedule paused until a
+      // separate operator review produces fresh current evidence, and cancel
+      // every occurrence that could otherwise be picked up by the dispatcher.
+      await pauseRestoredScheduleActivity(client);
+    }
 
     const publishedTemplates = (
       await client.query<{ id: string }>(
         "SELECT id FROM message_templates WHERE state = 'published' ORDER BY id",
       )
     ).rows.map(({ id }) => id);
+    const publishedTemplateIds = new Set(publishedTemplates);
     for (const id of evidence.publishedMessageTemplateIds)
-      if (!publishedTemplates.includes(id)) throw new Error(MISMATCH);
+      if (!publishedTemplateIds.has(id)) throw new Error(MISMATCH);
     if (
       mode === 'require-exact' &&
       publishedTemplates.length !== evidence.publishedMessageTemplateIds.length
@@ -388,6 +434,10 @@ async function invalidateRestoredAdmission(client: pg.PoolClient) {
     "UPDATE team_invitations SET status = 'canceled' WHERE status = 'pending'",
   );
   await asMaintenance(client, async () => {
+    // Restored alert preferences are not in the signed authority inventory.
+    // Clear them before reopening; retain the historical delivery evidence.
+    await client.query('DELETE FROM audit_alert_recipients');
+    await client.query('DELETE FROM audit_alert_settings');
     await client.query(
       `UPDATE api_tokens SET revoked_at = statement_timestamp(),
          revoked_by_user_id = $1 WHERE revoked_at IS NULL`,
@@ -440,13 +490,33 @@ async function holdRestoredDeliveries(client: pg.PoolClient) {
   });
 }
 
+/** Keep restored scheduling inert until its complete operational state has
+ * been reviewed. Pausing a schedule alone is insufficient: the due index is
+ * keyed by occurrence state, so a restored `scheduled` row could still be
+ * dispatched while its parent schedule is paused. */
+export async function pauseRestoredScheduleActivity(
+  client: Pick<pg.PoolClient, 'query'>,
+): Promise<void> {
+  await client.query(
+    `UPDATE study_schedules SET state = 'paused', updated_at = statement_timestamp()
+     WHERE state = 'active'`,
+  );
+  await client.query(
+    `UPDATE schedule_occurrences
+     SET state = 'cancelled'
+     WHERE state = 'scheduled'`,
+  );
+}
+
 async function lockRecoveryAuthorizationState(client: pg.PoolClient) {
   await client.query(`LOCK TABLE "schemaFingerprint", "studio_migrations".history,
     studio_instance, "user", session, account, verification, teams,
     team_members, team_invitations, team_invitation_deliveries,
     study_role_grants, api_tokens, interview_links, webhook_subscriptions,
-    webhook_deliveries, study_schedules, message_templates, message_deliveries,
-    audit_events, credential_audit_events, audit_alert_outbox,
+    webhook_deliveries, study_schedules, schedule_occurrences,
+    message_templates, message_deliveries,
+    audit_events, credential_audit_events, audit_alert_settings,
+    audit_alert_recipients, audit_alert_outbox,
     audit_alert_deliveries, template_registry_publication_intents,
     template_registry_import_intents, leases IN SHARE ROW EXCLUSIVE MODE`);
 }
@@ -473,7 +543,12 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
       live_leases: number;
       deliveries: number;
       registry_intents: number;
+      pending_schedule_occurrences: number;
+      alert_recipients: number;
+      alert_settings: number;
     }>(`SELECT
+    (SELECT count(*)::int FROM audit_alert_recipients) alert_recipients,
+    (SELECT count(*)::int FROM audit_alert_settings) alert_settings,
     (SELECT count(*)::int FROM api_tokens WHERE revoked_at IS NULL) tokens,
     (SELECT count(*)::int FROM interview_links WHERE revoked_at IS NULL) links,
     (SELECT count(*)::int FROM leases WHERE expires_at > statement_timestamp()) live_leases,
@@ -483,14 +558,18 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
      + (SELECT count(*) FROM audit_alert_outbox WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
      + (SELECT count(*) FROM audit_alert_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL))::int deliveries,
     ((SELECT count(*) FROM template_registry_publication_intents WHERE completed_at IS NULL AND quarantined_at IS NULL)
-     + (SELECT count(*) FROM template_registry_import_intents WHERE completed_at IS NULL AND quarantined_at IS NULL))::int registry_intents`),
+     + (SELECT count(*) FROM template_registry_import_intents WHERE completed_at IS NULL AND quarantined_at IS NULL))::int registry_intents,
+    (SELECT count(*)::int FROM schedule_occurrences WHERE state = 'scheduled') pending_schedule_occurrences`),
   );
   assertRows(remainingTenantState.rows[0], {
+    alert_recipients: 0,
+    alert_settings: 0,
     tokens: 0,
     links: 0,
     live_leases: 0,
     deliveries: 0,
     registry_intents: 0,
+    pending_schedule_occurrences: 0,
   });
 }
 
@@ -558,7 +637,12 @@ export async function reconcileStudioRecoveryAuthorization(options: {
       'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
     );
     assertRows(enabled.rows, [{ count: 0 }]);
-    await reconcileInventories(client, evidence, 'revoke-stale');
+    await reconcileInventories(
+      client,
+      evidence,
+      'revoke-stale',
+      'post-reconciliation',
+    );
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
       expectedTransaction: { isolation: 'serializable', readOnly: false },
@@ -682,7 +766,12 @@ export async function authorizeCurrentStudioRecovery(options: {
       )
     ).rows.map(({ id }) => id);
     assertRows(finalEnabled, eligibleUserIds);
-    await reconcileInventories(client, evidence, 'require-exact');
+    await reconcileInventories(
+      client,
+      evidence,
+      'require-exact',
+      'post-reconciliation',
+    );
     await assertRestoredAdmissionInvalidated(client);
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,

@@ -16,10 +16,13 @@ import { parseEnv } from 'node:util';
 
 import { z } from 'zod';
 
+import { isProxyAddress } from '@codaco/studio-sync/proxy-trust';
 import {
   revokeLargeObjectPrivilegesSql,
   runtimeRolesSql,
 } from '@codaco/studio-sync/role-bootstrap';
+
+import { registryMailConfiguration } from '../env.ts';
 
 const image = z
   .string()
@@ -45,6 +48,11 @@ const optionsSchema = z
     smtpUrl: dotenvValue.url().max(2048).optional(),
     postmarkServerToken: dotenvValue.min(1).max(1024).optional(),
     postmarkMessageStream: dotenvValue.min(1).max(256).optional(),
+    trustedProxies: z
+      .array(z.string().refine(isProxyAddress))
+      .max(32)
+      .refine((values) => new Set(values).size === values.length)
+      .optional(),
   })
   .superRefine((value, context) => {
     if (Boolean(value.smtpUrl) === Boolean(value.postmarkServerToken))
@@ -52,6 +60,23 @@ const optionsSchema = z
         code: 'custom',
         message: 'Select one mail transport.',
       });
+    const mailer = value.postmarkServerToken
+      ? {
+          kind: 'postmark',
+          from: value.mailFrom,
+          serverToken: value.postmarkServerToken,
+          messageStream: value.postmarkMessageStream,
+        }
+      : { kind: 'smtp', from: value.mailFrom, url: value.smtpUrl };
+    try {
+      if (!registryMailConfiguration.safeParse(mailer).success)
+        context.addIssue({
+          code: 'custom',
+          message: 'Invalid mail transport.',
+        });
+    } catch {
+      context.addIssue({ code: 'custom', message: 'Invalid mail transport.' });
+    }
     if (value.postmarkMessageStream && !value.postmarkServerToken)
       context.addIssue({
         code: 'custom',
@@ -80,6 +105,7 @@ const generatedNames = [
   'REGISTRY_OPERATOR_PASSWORD',
   'REGISTRY_BACKUP_PASSWORD',
   'REGISTRY_AUTH_SECRET',
+  'REGISTRY_METRICS_TOKEN',
   'REGISTRY_MINIO_ROOT_USER',
   'REGISTRY_MINIO_ROOT_PASSWORD',
   'REGISTRY_S3_ACCESS_KEY_ID',
@@ -94,6 +120,7 @@ const publicEnvironmentNames = [
   'REGISTRY_POSTMARK_SERVER_TOKEN',
   'REGISTRY_POSTMARK_MESSAGE_STREAM',
   'REGISTRY_S3_REGION',
+  'REGISTRY_TRUSTED_PROXIES',
 ] as const;
 
 export function renderRegistryDeploymentTemplate(
@@ -142,6 +169,7 @@ function generatedEnvironment() {
     REGISTRY_OPERATOR_PASSWORD: secret(),
     REGISTRY_BACKUP_PASSWORD: secret(),
     REGISTRY_AUTH_SECRET: secret(),
+    REGISTRY_METRICS_TOKEN: secret(),
     REGISTRY_MINIO_ROOT_USER: `registry_admin_${randomBytes(8).toString('hex')}`,
     REGISTRY_MINIO_ROOT_PASSWORD: secret(),
     REGISTRY_S3_ACCESS_KEY_ID: `registry_${randomBytes(8).toString('hex')}`,
@@ -167,6 +195,7 @@ function retainedGenerated(values: Record<string, string | undefined>) {
     !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_OPERATOR_PASSWORD ?? '') ||
     !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_BACKUP_PASSWORD ?? '') ||
     !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_AUTH_SECRET ?? '') ||
+    !/^[a-f0-9]{64}$/.test(valuesByName.REGISTRY_METRICS_TOKEN ?? '') ||
     !/^registry_admin_[a-f0-9]{16}$/.test(
       valuesByName.REGISTRY_MINIO_ROOT_USER ?? '',
     ) ||
@@ -190,7 +219,13 @@ function exactNames(values: Record<string, string | undefined>) {
 
 async function readRegistryConfiguration(
   root: string,
-  lockName?: string,
+  {
+    lockName,
+    allowLegacyObservabilityUpgrade = false,
+  }: {
+    lockName?: string;
+    allowLegacyObservabilityUpgrade?: boolean;
+  } = {},
 ): Promise<Record<string, string | undefined>> {
   await assertSecureConfigurationRoot(root);
   const rootInfo = await lstat(root);
@@ -213,7 +248,24 @@ async function readRegistryConfiguration(
     (environmentInfo.mode & 0o777) !== 0o600
   )
     throw new Error('Registry private configuration must be mode0600.');
-  const values = parseEnv(await readFile(environmentPath, 'utf8'));
+  let values = parseEnv(await readFile(environmentPath, 'utf8'));
+  // Only the complete previous format may gain these new fields. A missing
+  // field in the current format is corruption, not a credential-rotation request.
+  const legacyNames = [...publicEnvironmentNames, ...generatedNames].filter(
+    (name) =>
+      name !== 'REGISTRY_METRICS_TOKEN' && name !== 'REGISTRY_TRUSTED_PROXIES',
+  );
+  if (
+    allowLegacyObservabilityUpgrade &&
+    Object.keys(values).toSorted().join(',') ===
+      legacyNames.toSorted().join(',')
+  ) {
+    values = {
+      ...values,
+      REGISTRY_METRICS_TOKEN: secret(),
+      REGISTRY_TRUSTED_PROXIES: '',
+    };
+  }
   if (!exactNames(values))
     throw new Error('Registry private configuration is incomplete.');
   retainedGenerated(values);
@@ -239,7 +291,8 @@ async function readRegistryConfiguration(
     if (
       !info.isFile() ||
       info.isSymbolicLink() ||
-      (info.mode & 0o777) !== 0o644
+      (info.mode & 0o600) !== 0o600 ||
+      (info.mode & 0o7133) !== 0
     )
       throw new Error('Registry configuration directory is incomplete.');
   }
@@ -402,6 +455,7 @@ export async function configureRegistryDeployment(
     REGISTRY_POSTMARK_SERVER_TOKEN: options.postmarkServerToken ?? '',
     REGISTRY_POSTMARK_MESSAGE_STREAM: options.postmarkMessageStream ?? '',
     REGISTRY_S3_REGION: 'us-east-1',
+    REGISTRY_TRUSTED_PROXIES: options.trustedProxies?.join(',') ?? '',
   };
   const retained = options.previousConfigurationRoot
     ? await (async () => {
@@ -416,7 +470,11 @@ export async function configureRegistryDeployment(
           throw new Error(
             'Registry transition requires separate configuration roots.',
           );
-        return retainedGenerated(await readRegistryConfiguration(previous));
+        return retainedGenerated(
+          await readRegistryConfiguration(previous, {
+            allowLegacyObservabilityUpgrade: true,
+          }),
+        );
       })()
     : null;
   if (outputExists) await assertSecureConfigurationRoot(output);
@@ -441,10 +499,9 @@ export async function configureRegistryDeployment(
     if (hasEnvironment) {
       // This is a dedicated Registry configuration root. A generation rerun is
       // idempotent only; a changed public deployment belongs in a new root.
-      const current = await readRegistryConfiguration(
-        output,
-        '.registry-configure.lock',
-      );
+      const current = await readRegistryConfiguration(output, {
+        lockName: '.registry-configure.lock',
+      });
       if (
         Object.entries(publicEnvironment).some(
           ([name, value]) => current[name] !== value,

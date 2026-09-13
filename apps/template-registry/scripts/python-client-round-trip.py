@@ -15,7 +15,9 @@ from registry_client.models.list_entries_response_200 import (  # noqa: E402
 
 
 with Client(base_url=f"{base_url}/api/v1", raise_on_unexpected_status=True) as client:
-    response = list_entries.sync_detailed(client=client, limit=7)
+    response = list_entries.sync_detailed(
+        client=client, limit=7, query='a/b?c#d&x=y+z'
+    )
 
     assert response.status_code == 200
     assert isinstance(response.parsed, ListEntriesResponse200)

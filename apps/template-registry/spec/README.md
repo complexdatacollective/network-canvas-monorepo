@@ -2,13 +2,17 @@
 
 `openapi.json` is the normative OpenAPI 3.1 contract for the independent Network
 Canvas Template Registry. `openapi-3.0.json` is a generated compatibility export
-for tooling that has not adopted OpenAPI 3.1. Regenerate both with
-`pnpm --filter @codaco/template-registry generate:openapi`. The running service
-serves the same generated contract at `/api/v1/openapi.json`.
+for tooling that has not adopted OpenAPI 3.1. In the source monorepo, regenerate
+both with `pnpm --filter @codaco/template-registry generate:openapi`. The
+running service serves the same generated contract at
+`/api/v1/openapi.json`.
 
-CI generates a client from `openapi-3.0.json` with the hashed
-`openapi-python-client==0.29.0` environment in
-`scripts/openapi-python-client-requirements.txt` and its checked-in media-type
+[`template-exchange-v1.md`](template-exchange-v1.md) is the normative,
+standalone specification for the content-addressed artifact carried by publish
+and fetch operations.
+
+Source-repository CI generates a client from `openapi-3.0.json` with a hashed,
+pinned `openapi-python-client==0.29.0` environment and its checked-in media-type
 override, then uses that generated client against an actual Registry HTTP
 listener bound to localhost. Generation warnings fail the gate.
 
@@ -23,6 +27,6 @@ Registry entries locate an artifact. The artifact's Merkle root identifies its
 immutable content independently of any registry. A registry-issued publisher
 credential authenticates writes; a Studio instance API token does not.
 
-These files are the publication source. Release qualification must separately
-record their publication to the public specification repository; a local build
-or this directory alone does not satisfy that requirement.
+These files are the publication source. Each published revision records the
+exact monorepo source commit. Runtime deployment and operational qualification
+remain separate from specification publication.

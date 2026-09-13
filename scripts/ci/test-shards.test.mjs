@@ -67,28 +67,28 @@ test('the shards partition the workspace suites with no overlap or gap', () => {
   );
   const all = workspaceTestPackages(REPO_ROOT);
   assert.deepEqual(
-    [...assigned].sort(),
-    all.filter((name) => name !== '@codaco/studio-server').sort(),
+    assigned.toSorted(),
+    all.filter((name) => name !== '@codaco/studio-server').toSorted(),
     'the buckets cover every workspace test suite but the Studio server one',
   );
 });
 
-test('exactly one shard carries the only suite that needs Postgres', () => {
-  // packages/studio-sync's conformance suite connects to 54318 and refuses to
-  // skip under CI; it is the only workspace suite outside @codaco/studio-server
-  // that needs a database, which is why only its shard starts one.
+test('every database suite is assigned to the Postgres shard', () => {
+  const databasePackages = ['@codaco/studio-sync', '@codaco/template-registry'];
   const withPostgres = TEST_SHARDS.filter((s) => s.postgres === true);
   assert.equal(withPostgres.length, 1, 'one shard declares Postgres');
-  assert.ok(
-    withPostgres[0].packages.some((p) => p.name === '@codaco/studio-sync'),
-    'the Postgres shard is the one holding @codaco/studio-sync',
-  );
-  for (const shard of TEST_SHARDS) {
-    if (shard.postgres === true) continue;
+  for (const name of databasePackages) {
     assert.ok(
-      !shard.packages.some((p) => p.name === '@codaco/studio-sync'),
-      `shard ${shard.shard} does not hold the Postgres-dependent suite`,
+      withPostgres[0].packages.some((p) => p.name === name),
+      `${name} must run on the Postgres shard`,
     );
+    for (const shard of TEST_SHARDS) {
+      if (shard.postgres === true) continue;
+      assert.ok(
+        !shard.packages.some((p) => p.name === name),
+        `shard ${shard.shard} cannot run ${name} without Postgres`,
+      );
+    }
   }
 });
 
