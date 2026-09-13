@@ -182,31 +182,24 @@ export const geospatialMessages = defineMessages({
     description:
       'Description of the starting-map-view section. A stage is one step of an interview.',
   },
-  centerLabel: {
-    id: 'protocolBuilder.geospatial.centerLabel',
-    defaultMessage: 'Starting center',
+  initialMapViewLabel: {
+    id: 'protocolBuilder.geospatial.initialMapViewLabel',
+    defaultMessage: 'Initial map view',
     description:
-      'Label of the pair of controls holding the longitude and latitude the map is centred on when the stage opens.',
+      'Label of the group of controls deciding where a geospatial stage’s map is centred and how far it is zoomed in when the stage opens.',
   },
-  centerHint: {
-    id: 'protocolBuilder.geospatial.centerHint',
+  initialMapViewHint: {
+    id: 'protocolBuilder.geospatial.initialMapViewHint',
     defaultMessage:
-      'Enter the coordinates, or set them by panning a map. Longitude runs from -180 to 180, latitude from -90 to 90.',
+      'Configure the initial map view to adjust where it will be centered and zoomed to.',
     description:
-      'Guidance under the starting-centre controls. The ranges are degrees and are the same in every language.',
+      'Guidance under the initial-map-view group. Centred and zoomed describe where the map sits and how close it is when the participant first sees it.',
   },
   zoomLabel: {
     id: 'protocolBuilder.geospatial.zoomLabel',
     defaultMessage: 'Starting zoom',
     description:
       'Label of the control holding how far in the map is zoomed when the stage opens.',
-  },
-  zoomHint: {
-    id: 'protocolBuilder.geospatial.zoomHint',
-    defaultMessage:
-      '{min, number} shows the whole world; {max, number} is street level.',
-    description:
-      'Guidance under the starting-zoom control. min and max are the two ends of Mapbox’s own zoom scale, 0 and 22, which the protocol schema also enforces.',
   },
 
   styleStandard: {

@@ -114,6 +114,16 @@
     "es": "Color del contorno y la selección del mapa",
     "from": "74a07e626 architect.sections.mapOptions.mapOutlineAndSelectionColor"
   },
+  "protocolBuilder.geospatial.initialMapViewHint": {
+    "en": "Configure the initial map view to adjust where it will be centered and zoomed to.",
+    "es": "Configura la vista inicial del mapa para ajustar su centro y nivel de zoom.",
+    "from": "74a07e626 architect.sections.mapOptions.configureTheInitialMapViewTo"
+  },
+  "protocolBuilder.geospatial.initialMapViewLabel": {
+    "en": "Initial map view",
+    "es": "Vista inicial del mapa",
+    "from": "74a07e626 architect.sections.mapOptions.initialMapView"
+  },
   "protocolBuilder.geospatial.layerDescription": {
     "en": "Select the GeoJSON source that provides selectable areas for prompts.",
     "es": "Selecciona la fuente GeoJSON que proporciona las áreas seleccionables para las preguntas.",

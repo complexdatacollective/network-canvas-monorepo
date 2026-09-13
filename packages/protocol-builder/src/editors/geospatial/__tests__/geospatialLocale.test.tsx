@@ -83,17 +83,22 @@ describe('the geospatial sections, read in Spanish', () => {
   });
 
   /**
-   * The zoom hint carries values this package supplies — the ends of Mapbox's
-   * zoom scale — so a placeholder dropped from the Spanish fails here rather
-   * than rendering as `{min}`. The swatch beside it carries no placeholder at
-   * all: each is named after its hue, and the name is translated, so a swatch
-   * left in English fails here too.
+   * The starting-view group names three numbers and a map at once, so a
+   * translation dropped from the group leaves a Spanish stage with an English
+   * heading over Spanish controls. The swatch beside it is named after its hue
+   * rather than counted, and the name is translated, so a swatch left in
+   * English fails here too.
+   *
+   * The numbers this package splices into its own sentences are covered by the
+   * refusal below, which carries two of them.
    */
-  it('splices the package’s own numbers into the Spanish, and names its swatches', () => {
+  it('names the starting view and its swatches in Spanish', () => {
     openEditor();
 
     expect(
-      screen.getByText('0 muestra todo el mundo; 22 es el nivel de calle.'),
+      screen.getByText(
+        'Configura la vista inicial del mapa para ajustar su centro y nivel de zoom.',
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('radio', { name: 'Verde mar' }),

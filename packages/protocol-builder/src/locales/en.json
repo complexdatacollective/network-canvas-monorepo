@@ -1807,17 +1807,9 @@
     "defaultMessage": "Map appearance",
     "description": "Heading of the section holding how the map looks: which basemap is drawn, what colour selectable areas are, and what else is shown on it."
   },
-  "protocolBuilder.geospatial.centerHint": {
-    "defaultMessage": "Enter the coordinates, or set them by panning a map. Longitude runs from -180 to 180, latitude from -90 to 90.",
-    "description": "Guidance under the starting-centre controls. The ranges are degrees and are the same in every language."
-  },
   "protocolBuilder.geospatial.centerIncomplete": {
     "defaultMessage": "Enter both a longitude and a latitude for the starting view.",
     "description": "Refusal shown under the starting-centre controls when only one of the two coordinates reads as a number. A centre is one value, so half of it is not a centre."
-  },
-  "protocolBuilder.geospatial.centerLabel": {
-    "defaultMessage": "Starting center",
-    "description": "Label of the pair of controls holding the longitude and latitude the map is centred on when the stage opens."
   },
   "protocolBuilder.geospatial.colorHint": {
     "defaultMessage": "Choose the color used to outline selectable GeoJSON areas and highlight the area a participant selects. Use a color that remains easy to distinguish from the chosen Mapbox style.",
@@ -1830,6 +1822,14 @@
   "protocolBuilder.geospatial.createAttributeLabel": {
     "defaultMessage": "Create a new location attribute",
     "description": "Button inside the geospatial prompt dialog that adds an attribute holding a place to the codebook without leaving the stage, and the title of the dialog it opens. Whole rather than a generic \"Create\", because the dialog around it already has several buttons."
+  },
+  "protocolBuilder.geospatial.initialMapViewHint": {
+    "defaultMessage": "Configure the initial map view to adjust where it will be centered and zoomed to.",
+    "description": "Guidance under the initial-map-view group. Centred and zoomed describe where the map sits and how close it is when the participant first sees it."
+  },
+  "protocolBuilder.geospatial.initialMapViewLabel": {
+    "defaultMessage": "Initial map view",
+    "description": "Label of the group of controls deciding where a geospatial stage’s map is centred and how far it is zoomed in when the stage opens."
   },
   "protocolBuilder.geospatial.latitudeDecrease": {
     "defaultMessage": "Decrease latitude",
@@ -2098,10 +2098,6 @@
   "protocolBuilder.geospatial.zoomDecrease": {
     "defaultMessage": "Decrease zoom",
     "description": "Accessible name of the button that steps the starting zoom down by one."
-  },
-  "protocolBuilder.geospatial.zoomHint": {
-    "defaultMessage": "{min, number} shows the whole world; {max, number} is street level.",
-    "description": "Guidance under the starting-zoom control. min and max are the two ends of Mapbox’s own zoom scale, 0 and 22, which the protocol schema also enforces."
   },
   "protocolBuilder.geospatial.zoomIncrease": {
     "defaultMessage": "Increase zoom",

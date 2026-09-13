@@ -342,10 +342,63 @@ describe('the map a geospatial stage shows', () => {
     ).toBeInTheDocument();
   });
 
+  /**
+   * One decision with one name, as released Architect asked it
+   * (`sections/MapOptions.tsx:361-393`): a starting view is where the map is
+   * centred AND how far in, and the rebuild asked it as two separately named
+   * fields. Architect offered the map alone; the three typed numbers stay,
+   * because they are the only way to set an exact view and they keep working
+   * where no map can be drawn.
+   */
+  it('asks the starting view as Architect’s single named group', async () => {
+    const harness = openEditor();
+    await harness.opened();
+
+    const view = screen.getByRole('group', { name: 'Initial map view' });
+    // Anchored on both sides, so a sentence with anything else in it fails.
+    // "Required" is the field's own marker and the gap after it the empty
+    // error slot, which every required control in the package carries.
+    expect(view).toHaveAccessibleDescription(
+      /^Required Configure the initial map view to adjust where it will be centered and zoomed to\.\s*$/,
+    );
+    expect(
+      within(view).getByRole('spinbutton', { name: 'Longitude' }),
+    ).toBeInTheDocument();
+    expect(
+      within(view).getByRole('spinbutton', { name: 'Latitude' }),
+    ).toBeInTheDocument();
+    expect(
+      within(view).getByRole('spinbutton', { name: 'Starting zoom' }),
+    ).toBeInTheDocument();
+    expect(
+      within(view).getByRole('button', {
+        name: 'Set the starting view on a map',
+      }),
+    ).toBeInTheDocument();
+
+    // And no second field beside it: the rebuild's pair is gone.
+    expect(screen.queryByRole('group', { name: 'Starting center' })).toBeNull();
+    // The whole list of named groups in the section, so a second field beside
+    // this one fails here rather than passing on a lookup by name. The
+    // section's own fieldset is unnamed and is not one of them.
+    const named = within(
+      screen.getByRole('region', { name: 'Map starting position' }),
+    ).getAllByRole('group', { name: /.+/ });
+    expect(named).toEqual([view]);
+  });
+
+  /**
+   * The zoom keeps a registered field of its own inside that group: the
+   * protocol stores it beside the centre rather than within it, and only a
+   * registered path is read back, written and refused where the researcher set
+   * it.
+   */
   it('refuses a zoom the map cannot show, in the control’s own words', async () => {
     const harness = openEditor();
 
-    const zoom = screen.getByRole('spinbutton', { name: 'Starting zoom' });
+    const zoom = within(
+      screen.getByRole('group', { name: 'Initial map view' }),
+    ).getByRole('spinbutton', { name: 'Starting zoom' });
     await harness.user.clear(zoom);
     await harness.user.type(zoom, '30');
 

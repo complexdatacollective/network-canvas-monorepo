@@ -1,7 +1,10 @@
 [
   "protocolBuilder.anonymisation.explanationBodyHint",
   "protocolBuilder.anonymisation.explanationHeadingHint",
+  "protocolBuilder.geospatial.centerHint",
+  "protocolBuilder.geospatial.centerLabel",
   "protocolBuilder.geospatial.colorOptionLabel",
+  "protocolBuilder.geospatial.zoomHint",
   "protocolBuilder.narrativePedigree.atRiskDescription",
   "protocolBuilder.narrativePedigree.diseaseColorOption",
   "protocolBuilder.narrativePedigree.diseasesDescription",
