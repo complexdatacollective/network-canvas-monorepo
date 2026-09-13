@@ -419,6 +419,18 @@ export async function generateRegistryOpenApi() {
       }
     }
   }
+  const publish = doc.paths?.['/entries']?.post;
+  const requestBody = publish?.requestBody;
+  const multipart =
+    isRecord(requestBody) && isRecord(requestBody.content)
+      ? requestBody.content['multipart/form-data']
+      : undefined;
+  if (isRecord(multipart)) {
+    multipart.encoding = {
+      ...(isRecord(multipart.encoding) ? multipart.encoding : {}),
+      artifact: { contentType: TEMPLATE_ARTIFACT_MEDIA_TYPE },
+    };
+  }
   return doc;
 }
 
