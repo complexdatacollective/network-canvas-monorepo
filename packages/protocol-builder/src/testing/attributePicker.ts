@@ -37,6 +37,18 @@ export function attributeField(
 }
 
 /**
+ * The two names the window's search box goes by.
+ *
+ * It says whether this window can invent an attribute, the way the trigger
+ * says whether one has been chosen — so a helper that knew only one of the two
+ * would find the box at the sites that create and lose it at the sites that
+ * only choose. Which name is drawn where is asserted by the tests that are
+ * about it.
+ */
+const isSearchBox = (name: string) =>
+  name === 'Find or create an attribute' || name === 'Find an attribute';
+
+/**
  * The attribute window itself, found by its own marker rather than by role.
  *
  * A picker is often inside a dialog already — a row editor, the rule builder —
@@ -142,9 +154,7 @@ export async function offeredAttributes(
   const dialog = await openAttributePicker(user, field);
   if (term !== undefined) {
     await user.type(
-      within(dialog).getByRole('searchbox', {
-        name: 'Find or create an attribute',
-      }),
+      within(dialog).getByRole('searchbox', { name: isSearchBox }),
       term,
     );
   }
@@ -229,10 +239,10 @@ export async function offersCreation(
   term = 'aNameNothingInThisCodebookHas',
 ): Promise<boolean> {
   const dialog = await openAttributePicker(user, field);
+  // Either name: this is asked at the sites that cannot create as well, and
+  // the box says which of the two it is.
   await user.type(
-    within(dialog).getByRole('searchbox', {
-      name: 'Find or create an attribute',
-    }),
+    within(dialog).getByRole('searchbox', { name: isSearchBox }),
     term,
   );
   const offered =

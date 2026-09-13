@@ -5997,7 +5997,11 @@
   },
   "protocolBuilder.variablePicker.searchLabel": {
     "defaultMessage": "Find or create an attribute",
-    "description": "Accessible name of the search box at the top of the attribute window. Typing in it narrows the list below, and — where this control allows it — offers to create an attribute under whatever was typed."
+    "description": "Accessible name of the search box at the top of the attribute window, where this control allows a new attribute to be created. Typing in it narrows the list below and offers to create an attribute under whatever was typed."
+  },
+  "protocolBuilder.variablePicker.searchOnlyLabel": {
+    "defaultMessage": "Find an attribute",
+    "description": "Accessible name of the search box at the top of the attribute window where this control only chooses from attributes that already exist. Typing in it narrows the list below."
   },
   "protocolBuilder.variablePicker.searchOnlyPlaceholder": {
     "defaultMessage": "Find an attribute…",

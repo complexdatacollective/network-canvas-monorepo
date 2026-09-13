@@ -443,6 +443,12 @@ describe('no create control sits beside an attribute picker', () => {
  */
 const SEARCH_ONLY_PLACEHOLDER = 'Find an attribute…';
 
+/**
+ * And what it is CALLED, which is the same fact said to a researcher who
+ * cannot see the placeholder.
+ */
+const SEARCH_ONLY_LABEL = 'Find an attribute';
+
 const expectCreationFree = async (
   user: ReturnType<typeof userEvent.setup>,
   field: HTMLElement,
@@ -454,10 +460,15 @@ const expectCreationFree = async (
   ).toBe(false);
 
   const dialog = await openAttributePicker(user, field);
+  const box = within(dialog).queryByRole('searchbox', {
+    name: SEARCH_ONLY_LABEL,
+  });
   expect(
-    within(dialog).getByRole('searchbox', {
-      name: 'Find or create an attribute',
-    }),
+    box,
+    `${site} calls its search box “Find or create an attribute”, inviting a researcher who cannot see the placeholder to create one here.`,
+  ).not.toBeNull();
+  expect(
+    box,
     `${site} invites the researcher to create an attribute in its search box.`,
   ).toHaveAttribute('placeholder', SEARCH_ONLY_PLACEHOLDER);
   await user.keyboard('{Escape}');
