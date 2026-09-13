@@ -40,29 +40,18 @@ export const EntrySummarySchema = RegistryEntrySummarySchema;
 export const EntrySchema = RegistryEntrySchema;
 export type RegistryEntry = z.infer<typeof EntrySchema>;
 
+const codePointLimitedText = (maxLength: number) =>
+  z.string().min(1).max(maxLength);
+
 export const ListEntriesSchema = z
   .strictObject({
     cursor: PaginationCursorSchema.optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
-    query: z
-      .string()
-      .min(1)
-      .max(200)
-      .describe(
-        'Search text, limited to 200 ECMAScript UTF-16 code units. Clients must count UTF-16 code units rather than Unicode code points.',
-      )
-      .optional(),
+    query: codePointLimitedText(200).optional(),
     kind: TemplateKindSchema.optional(),
     license: TemplateLicenseSchema.optional(),
-    keyword: z.string().min(1).max(100).optional(),
-    author: z
-      .string()
-      .min(1)
-      .max(200)
-      .describe(
-        'Author text, limited to 200 ECMAScript UTF-16 code units. Clients must count UTF-16 code units rather than Unicode code points.',
-      )
-      .optional(),
+    keyword: codePointLimitedText(100).optional(),
+    author: codePointLimitedText(200).optional(),
     curated: z.enum(['true', 'false']).optional(),
     root: TemplateContentHashSchema.describe(
       'Exact artifact root. Combined with publisher_id, includes yanked publications while still excluding removed content.',
@@ -513,6 +502,11 @@ export async function generateRegistryOpenApi(options: {
   // by clients so that `/`, `?`, `#`, `&`, and `=` remain part of the value
   // instead of changing the request's query structure.
   const freeTextQueryNames = new Set(['query', 'keyword', 'author']);
+  const freeTextQueryMaxLengths = new Map([
+    ['query', 200],
+    ['keyword', 100],
+    ['author', 200],
+  ]);
   for (const path of Object.values(doc.paths ?? {})) {
     if (!path) continue;
     for (const method of ['get', 'post', 'put', 'delete'] as const) {
@@ -525,6 +519,10 @@ export async function generateRegistryOpenApi(options: {
           freeTextQueryNames.has(parameter.name)
         ) {
           parameter.allowReserved = false;
+          const schema = parameter.schema;
+          const maxLength = freeTextQueryMaxLengths.get(parameter.name);
+          if (isRecord(schema) && maxLength !== undefined)
+            schema.maxLength = maxLength;
         }
       }
     }

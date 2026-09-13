@@ -47,8 +47,7 @@
           "query": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200,
-            "description": "Search text, limited to 200 ECMAScript UTF-16 code units. Clients must count UTF-16 code units rather than Unicode code points."
+            "maxLength": 200
           },
           "kind": {
             "type": "string",
@@ -72,8 +71,7 @@
           "author": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200,
-            "description": "Author text, limited to 200 ECMAScript UTF-16 code units. Clients must count UTF-16 code units rather than Unicode code points."
+            "maxLength": 200
           },
           "curated": {
             "type": "string",
@@ -515,8 +513,7 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200,
-              "description": "Search text, limited to 200 ECMAScript UTF-16 code units. Clients must count UTF-16 code units rather than Unicode code points."
+              "maxLength": 200
             },
             "allowEmptyValue": false,
             "allowReserved": false
@@ -564,8 +561,7 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200,
-              "description": "Author text, limited to 200 ECMAScript UTF-16 code units. Clients must count UTF-16 code units rather than Unicode code points."
+              "maxLength": 200
             },
             "allowEmptyValue": false,
             "allowReserved": false
