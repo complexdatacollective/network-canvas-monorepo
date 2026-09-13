@@ -160,6 +160,64 @@ test('the stage editor lists its sections beside the form at desktop width', asy
   expect(outline.right).toBeLessThanOrEqual(form.left + 1);
   expect(outline.top).toBeLessThan(form.bottom);
   expect(form.top).toBeLessThan(outline.bottom);
+
+  // The whole of its column, with nothing inset inside it. The track is
+  // `16rem`, and the list's titles are `truncate`d — so every pixel a gutter
+  // takes inside this column is a pixel of section title the researcher
+  // stops being able to read, silently. A route gutter applied inside the
+  // query container instead of outside it measured 208 here.
+  const remInPx = await architectPage.evaluate(() =>
+    parseFloat(getComputedStyle(document.documentElement).fontSize),
+  );
+  expect(remInPx).toBeGreaterThan(0);
+  expect(outline.width).toBeGreaterThanOrEqual(16 * remInPx - 1);
+});
+
+/**
+ * The band no other case in this file covers.
+ *
+ * The grid asks its container for 60rem before it splits, and the container
+ * is the element INSIDE the route's gutter — so the answer is about the width
+ * the researcher can actually see, 48px narrower than the window, and the
+ * split lands at 1008px of viewport rather than 960. Putting the gutter
+ * inside the container instead moves it without changing a number anyone
+ * wrote down: measured in Chromium, 985px of viewport then showed two columns
+ * where the same page had shown one, the form dropping from 937px wide to
+ * 641.
+ *
+ * The rest of this file reads 390, 768 and 1280, which is exactly the span
+ * the threshold can move across unnoticed. Both sides of it are asserted
+ * here: one column while the room is only apparently there, two as soon as
+ * it is.
+ */
+test('the stage editor splits into two columns on the room the researcher can see, not the window', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.setViewportSize({ width: 985, height: 900 });
+  await gotoProtocol(architectPage);
+  const [stage] = protocol.stages;
+  if (!stage) throw new Error('fixture has no stages');
+  await architectPage.goto(`/protocol/stage/${stage.id}`);
+
+  // Polled rather than read once: a viewport change re-runs the container
+  // query on the next frame, and this reads the frame after the resize is
+  // settled rather than racing it.
+  const arrangement = async () => {
+    const { outline, form } = await stageEditorColumns(architectPage);
+    return outline.bottom <= form.top + 1 ? 'stacked' : 'beside';
+  };
+
+  await expect.poll(arrangement).toBe('stacked');
+
+  await architectPage.setViewportSize({ width: 1008, height: 900 });
+  await expect.poll(arrangement).toBe('beside');
+
+  const { outline, form } = await stageEditorColumns(architectPage);
+  expect(outline.right).toBeLessThanOrEqual(form.left + 1);
+  expect(outline.top).toBeLessThan(form.bottom);
 });
 
 for (const page of [

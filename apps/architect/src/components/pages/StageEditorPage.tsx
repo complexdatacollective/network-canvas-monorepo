@@ -288,27 +288,37 @@ const StageEditorPage = () => {
         stageId={stageId}
         insertAtIndex={insertAtIndex}
       />
+      {/*
+       * The editor's visible hero heading is the stage-name INPUT, which is
+       * a control rather than a heading — so this is the route's real
+       * heading and RouteFocus's landing point, and it is `sr-only`
+       * because the input already shows the same text at hero size.
+       *
+       * Focus lands HERE, never on the name input: opening an edit the
+       * researcher did not ask for is worse than a silent arrival. The
+       * new-stage flow is the deliberate exception — the editor autofocuses
+       * the name because naming the stage IS the next step, and RouteFocus
+       * leaves any destination that has already claimed focus alone.
+       *
+       * Above the two columns rather than inside them, so it is neither a
+       * grid item of its own nor behind the section list: the first Tab
+       * after arriving here has to reach that list, which means the list
+       * must come after this heading in the document.
+       */}
+      <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
+        {stageName}
+      </Heading>
+      {/*
+        The route's gutter, OUTSIDE the query container. What the container
+        measures is what the grid decides on, so a gutter inside it makes the
+        editor answer about 32px (48px above phone width) of padding the
+        researcher never sees: the two columns would arrive on a screen too
+        narrow for them, and the 16rem list would keep only what its own
+        padding left of the track. Measured in Chromium: with the gutter
+        inside, the columns split from 960px of viewport instead of 1008 and
+        the list rendered 208px wide instead of 256.
+      */}
       <div className="phone-landscape:px-6 px-4">
-        {/*
-         * The editor's visible hero heading is the stage-name INPUT, which is
-         * a control rather than a heading — so this is the route's real
-         * heading and RouteFocus's landing point, and it is `sr-only`
-         * because the input already shows the same text at hero size.
-         *
-         * Focus lands HERE, never on the name input: opening an edit the
-         * researcher did not ask for is worse than a silent arrival. The
-         * new-stage flow is the deliberate exception — the editor autofocuses
-         * the name because naming the stage IS the next step, and RouteFocus
-         * leaves any destination that has already claimed focus alone.
-         *
-         * Above the two columns rather than inside them, so it is neither a
-         * grid item of its own nor behind the section list: the first Tab
-         * after arriving here has to reach that list, which means the list
-         * must come after this heading in the document.
-         */}
-        <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
-          {stageName}
-        </Heading>
         {/*
           The container is the column, and the grid inside it is what the
           column's own width is asked about: an element declaring `@container`
@@ -323,22 +333,33 @@ const StageEditorPage = () => {
               the action slot, which is called inside the form — so the chrome
               rendered there portals the list up into this column, and the list
               reads a form it is not rendered inside.
+
+              No gutter of its own: the route's is already outside both
+              columns, and this column is the one that takes it as given.
             */}
             <div ref={setOutlineHost} />
             {/*
-              No `EnclosingHeadingLevel` around the editor: the heading above it
-              is this page's `h1`, which is the top of the ladder and what the
-              editor already assumes when nothing states otherwise — its own
-              stage title lands on `h2` and every section one below that.
+              The editor column gives the route's gutter back, because the
+              package pads this column itself — the editor is a whole page in
+              a host that draws no list, so its own gutter is not Architect's
+              to leave off. Applying both indents the form twice: 32px at
+              phone width, 48px above it.
+
+              No `EnclosingHeadingLevel` around the editor: the heading above
+              it is this page's `h1`, which is the top of the ladder and what
+              the editor already assumes when nothing states otherwise — its
+              own stage title lands on `h2` and every section one below that.
             */}
-            <ProtocolBuilder client={client} protocolId={activeProtocolId}>
-              <StageEditor
-                target={target}
-                formId={STAGE_FORM_ID}
-                actions={renderChrome}
-                onSaved={handleSaved}
-              />
-            </ProtocolBuilder>
+            <div className="phone-landscape:-mx-6 -mx-4">
+              <ProtocolBuilder client={client} protocolId={activeProtocolId}>
+                <StageEditor
+                  target={target}
+                  formId={STAGE_FORM_ID}
+                  actions={renderChrome}
+                  onSaved={handleSaved}
+                />
+              </ProtocolBuilder>
+            </div>
           </div>
         </div>
       </div>
