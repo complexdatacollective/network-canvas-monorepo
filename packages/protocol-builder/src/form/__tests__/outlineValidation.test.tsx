@@ -131,6 +131,37 @@ describe('a value the schema refuses', () => {
     );
   });
 
+  /**
+   * The list a host draws beside the form is a host's to draw — Architect
+   * does, Studio does not — so the sentence cannot live only there. This
+   * harness draws none, which is the case that matters: the refusal has to be
+   * readable from the form itself.
+   */
+  it('is said above the form too, where no host draws a list of sections', async () => {
+    const harness = renderStageEditor({
+      stageId: 'geospatial-1',
+      sections: zoomSections,
+    });
+    await waitFor(() => expect(stateOf(harness, 'Map')).toBe('Finished'));
+    expect(screen.queryByRole('navigation')).toBeNull();
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Set the zoom past the maximum' }),
+    );
+    expect(await harness.submit()).toBeNull();
+
+    // Named by the section that answers for it, so a researcher with no list
+    // to click still knows where to go.
+    expect(
+      screen.getByText('Map: Starting zoom holds more than this stage allows.'),
+    ).toBeInTheDocument();
+    // And the sentence that pointed at a list of sections is not said instead
+    // of it.
+    expect(
+      screen.queryByText(/This stage is not finished, so it was not saved/),
+    ).toBeNull();
+  });
+
   it('is reported by the section that holds it and by no other', async () => {
     const harness = renderStageEditor({
       stageId: 'geospatial-1',

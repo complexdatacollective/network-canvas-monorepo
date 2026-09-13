@@ -6,6 +6,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 
 import EntityTypePickerField from '../../../fields/EntityTypePickerField.tsx';
+import SlotVariableField from '../../../fields/SlotVariableField.tsx';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
@@ -18,7 +19,6 @@ import {
   useResetOnEntityTypeChange,
 } from './entityTypeReset.ts';
 import { pedigreeMessages } from './pedigreeMessages.ts';
-import SlotVariableField from './SlotVariableField.tsx';
 import {
   draftRowVariables,
   PEDIGREE_EXCLUSIVE_SLOTS,
@@ -289,7 +289,6 @@ export default function PedigreeNodeConfigurationSection() {
         confirmChange={confirmTypeChange}
         {...(blockChangeReason === undefined ? {} : { blockChangeReason })}
         label={intl.formatMessage(pedigreeMessages.nodeTypeLabel)}
-        hint={intl.formatMessage(pedigreeMessages.nodeTypeHint)}
         required={REQUIRED}
       />
 
@@ -390,7 +389,6 @@ export default function PedigreeNodeConfigurationSection() {
             title={pedigreeMessages.memberFormTitle}
             description={pedigreeMessages.memberFormDescription}
             fieldLabel={pedigreeMessages.memberFormFieldLabel}
-            fieldHint={pedigreeMessages.memberFormFieldHint}
             addLabel={pedigreeMessages.memberFormAddLabel}
             emptyState={pedigreeMessages.memberFormEmptyState}
           />

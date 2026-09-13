@@ -37,7 +37,7 @@ describe('the canvas sections, read in Spanish', () => {
     // halfway.
     await waitFor(() => expect(harness.outline()).toHaveLength(3));
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Preguntas',
+      'Conjunto de preguntas',
       'Disposición de nodos',
       'Fondo',
     ]);
@@ -51,7 +51,7 @@ describe('the canvas sections, read in Spanish', () => {
     expect(screen.getByText('Modo manual')).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Elige lo que el participante ve detrás de los nodos en este lienzo: círculos concéntricos o una imagen tuya.',
+        'Elige círculos concéntricos o una imagen personalizada como fondo gráfico de esta pregunta.',
       ),
     ).toBeInTheDocument();
   });
@@ -71,7 +71,7 @@ describe('the canvas sections, read in Spanish', () => {
 
     expect(
       screen.getByText(
-        'Escribe las tareas que el participante realiza en el lienzo y arrástralas al orden en que las hace.',
+        'Crea y ordena las preguntas que se muestran en esta etapa.',
       ),
     ).toBeInTheDocument();
   });
@@ -85,14 +85,14 @@ describe('the canvas sections, read in Spanish', () => {
 
     const prompt = await openPrompt(harness, 0, 'Editar pregunta');
     expect(
-      prompt.getByRole('combobox', { name: 'Atributo de posición' }),
+      prompt.getByRole('combobox', { name: 'Atributo de disposición' }),
     ).toBeInTheDocument();
     expect(
       prompt.getByRole('button', {
         name: 'Crear un nuevo atributo de posición',
       }),
     ).toBeInTheDocument();
-    expect(prompt.getByText('Marcar el nodo')).toBeInTheDocument();
+    expect(prompt.getByText('Alternar atributo')).toBeInTheDocument();
   });
 
   /**

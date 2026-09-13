@@ -61,13 +61,13 @@ test('creates a valid NetworkComposer stage from scratch', async ({
   // this stage rather than drawn from one built earlier.
   await selectOrCreateNodeType(architectPage, 'person');
 
-  // "Adding and arranging nodes" holds three pickers at once — the attribute
+  // "Node configuration" holds three pickers at once — the attribute
   // the quick-add box fills in (`quickAdd`), the one that stores each node's
   // position (`layoutVariable`) and the one nodes are grouped by
   // (`convexHullVariable`) — plus a create button for each, named for the
   // attribute it adds. The section is disabled until the node type is chosen,
   // because every one of them names that type's attributes.
-  const nodes = editor.section('Adding and arranging nodes');
+  const nodes = editor.section('Node configuration');
   await createAttribute(architectPage, nodes, editor.field('quickAdd'), {
     buttonLabel: 'Create a new attribute to fill in',
     name: 'name',
@@ -87,8 +87,9 @@ test('creates a valid NetworkComposer stage from scratch', async ({
     .fill('4');
 
   // Deliberately untouched: the grouping attribute is optional per the stage
-  // schema, the "Node attributes" form is a capability that stays switched
-  // off, and so is everything in the Connections section — an empty one is
+  // schema, the "Editable attributes" form is a capability that stays switched
+  // off, and so is everything in the "Edge configuration" section — an empty
+  // one is
   // dropped on save rather than written as an empty list.
   await editor.expectNoIssues();
   await editor.save();

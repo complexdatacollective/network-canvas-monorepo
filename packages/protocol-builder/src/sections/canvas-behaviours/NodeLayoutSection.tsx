@@ -2,9 +2,9 @@ import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
+import LayoutModeField from '../../fields/LayoutModeField.tsx';
 import BuilderSection from '../BuilderSection.tsx';
 import { canvasBehavioursMessages } from './canvasBehavioursMessages.ts';
-import LayoutModeField from './LayoutModeField.tsx';
 
 const AUTOMATIC_LAYOUT_FIELD = 'behaviours.automaticLayout';
 

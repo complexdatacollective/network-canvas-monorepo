@@ -52,13 +52,13 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
     );
 
     expect(
-      await screen.findByRole('checkbox', { name: 'Required' }),
+      await screen.findByRole('checkbox', { name: 'Required answer' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('checkbox', { name: 'Minimum length' }),
+      screen.getByRole('checkbox', { name: 'Minimum text length' }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('checkbox', { name: 'Must be unique' }),
+      screen.queryByRole('checkbox', { name: 'Unique value' }),
     ).not.toBeInTheDocument();
   });
 
@@ -69,7 +69,7 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
       await screen.findByRole('switch', { name: 'Validation' }),
     );
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required' }),
+      await screen.findByRole('checkbox', { name: 'Required answer' }),
     );
 
     await waitFor(() =>

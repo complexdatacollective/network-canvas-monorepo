@@ -27,10 +27,16 @@ export const censusMessages = defineMessages({
     description:
       'Heading of the group holding the question one prompt shows the participant. A prompt is one question the participant is asked during a stage, which is one step of an interview.',
   },
+  promptConfigurationTitle: {
+    id: 'protocolBuilder.censusPrompts.promptConfigurationTitle',
+    defaultMessage: 'Prompt configuration',
+    description:
+      'Heading of the group holding the question one prompt shows the participant AND the kind of connection an answer records. Used by the two censuses whose prompt group holds both; the three that hold only the question use promptTextTitle.',
+  },
   promptTextDescription: {
     id: 'protocolBuilder.censusPrompts.promptTextDescription',
     defaultMessage:
-      'Write the question or instruction the participant sees for this prompt.',
+      'Write the instruction or question participants see for this task.',
     description:
       'Description of the group holding the question one prompt shows the participant.',
   },
@@ -53,26 +59,6 @@ export const censusMessages = defineMessages({
     description:
       'Shown in place of a prompt’s own words in the list of prompts, when the researcher has written none.',
   },
-  pairDescription: {
-    id: 'protocolBuilder.censusPrompts.pairDescription',
-    defaultMessage:
-      'Write the questions this stage asks about each pair, and drag them into the order the participant answers them.',
-    description:
-      'Description of the prompts section in a stage that shows the participant two network members side by side and asks about the two of them together. A stage is one step of an interview; a prompt is one question the participant is asked.',
-  },
-  pairFieldHint: {
-    id: 'protocolBuilder.censusPrompts.pairFieldHint',
-    defaultMessage:
-      'The participant is shown one pair of people at a time and answers these questions about them, in this order.',
-    description:
-      'Guidance under the list of prompts in a stage that shows the participant two network members side by side and asks about the two of them together.',
-  },
-  affirmativeTitle: {
-    id: 'protocolBuilder.censusPrompts.affirmativeTitle',
-    defaultMessage: 'Affirmative answer',
-    description:
-      'Heading of the group that says what a yes from the participant records between the people the prompt asked about.',
-  },
   affirmativeRequired: {
     id: 'protocolBuilder.censusPrompts.affirmativeRequired',
     defaultMessage:
@@ -82,9 +68,9 @@ export const censusMessages = defineMessages({
   },
   edgeLabel: {
     id: 'protocolBuilder.censusPrompts.edgeLabel',
-    defaultMessage: 'Connection created',
+    defaultMessage: 'Created edge type',
     description:
-      'Label of the control that picks which kind of connection between two people this prompt records. A connection is what the protocol schema calls an edge; the researcher never sees that word.',
+      'Label of the control that picks which kind of connection between two people this prompt records.',
   },
   edgeCreateLabel: {
     id: 'protocolBuilder.censusPrompts.edgeCreateLabel',
@@ -102,7 +88,7 @@ export const censusMessages = defineMessages({
   sortRulesAddedHint: {
     id: 'protocolBuilder.censusPrompts.sortRulesAddedHint',
     defaultMessage:
-      'Rules are applied in order. Use the asterisk to keep the order the people were added in.',
+      'Add one or more rules to determine the order in which nodes are displayed in the bucket before they are placed. Use the asterisk property to sort by the order that nodes were created.',
     description:
       'Guidance under a list of sort rules whose fallback is the order the people were added to the network. The asterisk is the wildcard option offered in the rule’s own property picker.',
   },

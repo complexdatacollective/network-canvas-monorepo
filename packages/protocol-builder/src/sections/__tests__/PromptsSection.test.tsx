@@ -45,7 +45,7 @@ describe('the prompt list a stage owns', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline()).toEqual([
       { title: 'Stage name', state: 'Finished' },
-      { title: 'Prompts', state: 'Finished' },
+      { title: 'Prompt collection', state: 'Finished' },
     ]);
     expect(
       screen.getByText('Who are the people you know?'),
@@ -280,7 +280,7 @@ describe('the prompt list a stage owns', () => {
 
     await waitFor(() => expect(harness.outline()).toHaveLength(1));
     expect(harness.outline()[0]).toEqual({
-      title: 'Prompts',
+      title: 'Prompt collection',
       state: 'Not available yet',
     });
     expect(
@@ -316,16 +316,14 @@ describe('the prompt list a stage owns', () => {
 
     await waitFor(() => expect(harness.outline()).toHaveLength(1));
     expect(harness.outline()[0]).toEqual({
-      title: 'Prompts',
+      title: 'Prompt collection',
       state: 'Finished',
     });
     expect(
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeEnabled();
     expect(
-      screen.getByText(
-        'Write the questions this stage asks, and drag them into the order the participant answers them.',
-      ),
+      screen.getByText('Create and reorder the prompts shown in this stage.'),
     ).toBeInTheDocument();
   });
 });
@@ -382,7 +380,7 @@ describe('a row editor with a defect in it', () => {
       ).toBeInTheDocument();
       expect(harness.outline().map((section) => section.title)).toEqual([
         'Stage name',
-        'Prompts',
+        'Prompt collection',
       ]);
       await harness.roundTrip({ unowned: ['subject', 'form'] });
     } finally {
@@ -413,7 +411,7 @@ describe('a stage whose subject names no type yet', () => {
 
     await waitFor(() => expect(harness.outline()).toHaveLength(1));
     expect(harness.outline()[0]).toEqual({
-      title: 'Prompts',
+      title: 'Prompt collection',
       state: 'Not available yet',
     });
     expect(
@@ -449,16 +447,14 @@ describe('a stage whose subject names no type yet', () => {
 
     await waitFor(() => expect(harness.outline()).toHaveLength(1));
     expect(harness.outline()[0]).toEqual({
-      title: 'Prompts',
+      title: 'Prompt collection',
       state: 'Finished',
     });
     expect(
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeEnabled();
     expect(
-      screen.getByText(
-        'Write the questions this stage asks, and drag them into the order the participant answers them.',
-      ),
+      screen.getByText('Create and reorder the prompts shown in this stage.'),
     ).toBeInTheDocument();
   });
 });

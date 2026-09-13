@@ -29,34 +29,33 @@ const SORTABLE_PROPERTIES = 'sortOptions.sortableProperties';
 const messages = defineMessages({
   title: {
     id: 'protocolBuilder.sortOptions.title',
-    defaultMessage: 'Roster order',
+    defaultMessage: 'Roster sorting',
     description:
       'Heading of the section deciding the order a roster’s people appear in and what a participant may reorder them by. A roster is a list of people imported from a data file.',
   },
   description: {
     id: 'protocolBuilder.sortOptions.description',
     defaultMessage:
-      'Decide the order people appear in, and which attributes the participant may reorder them by.',
+      'Configure the initial card order and the attributes participants can sort by.',
     description:
       'Description of the roster-order section. An attribute is one field the data file records about a person.',
   },
   waitingDescription: {
     id: 'protocolBuilder.sortOptions.waitingDescription',
-    defaultMessage:
-      'Choose a roster data file before deciding how its people are ordered.',
+    defaultMessage: 'Select a roster data source before configuring sorting.',
     description:
       'Shown in place of the roster-order section’s description while no data file has been chosen, so there are no columns to order by.',
   },
   orderLabel: {
     id: 'protocolBuilder.sortOptions.orderLabel',
-    defaultMessage: 'Starting order',
+    defaultMessage: 'Sort rule',
     description:
       'Label of the rule deciding how the roster is sorted before the participant changes anything.',
   },
   orderHint: {
     id: 'protocolBuilder.sortOptions.orderHint',
     defaultMessage:
-      'How the roster is sorted before the participant changes anything. Without a rule, people keep the order the data file lists them in.',
+      "Set the roster's initial sort order. Without a rule, nodes keep their order from the data file.",
     description: 'Guidance under the roster’s starting-order rule.',
   },
   orderAddLabel: {
@@ -65,36 +64,24 @@ const messages = defineMessages({
     description:
       'Button that adds the roster’s starting-order rule. Whole rather than a generic "Add", because this section shows two lists and they would otherwise be indistinguishable to anyone navigating by a list of buttons.',
   },
-  orderEmptyState: {
-    id: 'protocolBuilder.sortOptions.orderEmptyState',
-    defaultMessage: 'People appear in the order the data file lists them.',
-    description:
-      'Shown in place of the starting-order rule while the roster has none, saying what that means rather than that nothing is there.',
-  },
   sortableLabel: {
     id: 'protocolBuilder.sortOptions.sortableLabel',
-    defaultMessage: 'Attributes the participant may sort by',
+    defaultMessage: 'Sortable properties',
     description:
       'Label of the list of attributes offered to the participant as ways to reorder the roster.',
   },
   sortableHint: {
     id: 'protocolBuilder.sortOptions.sortableHint',
     defaultMessage:
-      'Each becomes a control above the roster, under the label you give it here.',
+      'Select attributes that help participants locate a specific roster member.',
     description:
       'Guidance under the list of attributes the participant may reorder the roster by.',
   },
   sortableAddLabel: {
     id: 'protocolBuilder.sortOptions.sortableAddLabel',
-    defaultMessage: 'Add new sortable attribute',
+    defaultMessage: 'Add new sortable property',
     description:
       'Button that offers the participant one more attribute to reorder the roster by. Whole rather than a generic "Add", because this section shows two lists and they would otherwise be indistinguishable to anyone navigating by a list of buttons.',
-  },
-  sortableEmptyState: {
-    id: 'protocolBuilder.sortOptions.sortableEmptyState',
-    defaultMessage: 'The participant cannot reorder the roster.',
-    description:
-      'Shown in place of the sortable-attribute list while none is offered, saying what that means rather than that nothing is there.',
   },
   attributeColumn: {
     id: 'protocolBuilder.sortOptions.attributeColumn',
@@ -116,9 +103,9 @@ const messages = defineMessages({
   },
   labelPlaceholder: {
     id: 'protocolBuilder.sortOptions.labelPlaceholder',
-    defaultMessage: 'Age',
+    defaultMessage: 'Label',
     description:
-      'Example label shown in an empty label cell of the sortable-attribute list. An example rather than an instruction, so a translation should be an equally ordinary thing a study records about a person.',
+      'Placeholder shown in an empty label cell of the sortable-attribute list, naming what the cell holds.',
   },
   clearTitle: {
     id: 'protocolBuilder.sortOptions.clearTitle',
@@ -277,7 +264,6 @@ export default function SortOptionsSection() {
         properties={orderProperties}
         options={orderOptions}
         maxItems={1}
-        emptyStateMessage={intl.formatMessage(messages.orderEmptyState)}
         {...orderValidation}
       />
       <Field<typeof OptionalList>
@@ -291,7 +277,6 @@ export default function SortOptionsSection() {
         // An orphan counts: the row holding it is one of the rows this limit
         // is counting, and it has to stay removable.
         maxItems={(columns.names?.length ?? 0) + sortableOrphans.options.length}
-        emptyStateMessage={intl.formatMessage(messages.sortableEmptyState)}
         {...sortableValidation}
       />
     </BuilderSection>

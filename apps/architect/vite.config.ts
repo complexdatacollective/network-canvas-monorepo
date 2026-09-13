@@ -9,12 +9,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 import { appI18n } from '@codaco/app-i18n/vite';
 
-import { createPostHogSourceMapsPlugin } from '../../scripts/posthog-source-maps-plugin.ts';
+import { createPostHogSourceMapsPlugin } from '../../scripts/build/posthog-source-maps-plugin.ts';
 import {
   createPwaCacheReclamationPlugin,
   getPwaCacheReclamationScriptFileName,
   matchRetainedPwaAsset,
-} from '../../scripts/pwa-cache-reclamation-plugin.ts';
+} from '../../scripts/build/pwa-cache-reclamation-plugin.ts';
 import { version } from './package.json';
 import { createProtocolSourceAuthoringPlugin } from './scripts/protocol-source-authoring';
 

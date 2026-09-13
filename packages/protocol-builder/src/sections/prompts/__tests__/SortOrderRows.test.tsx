@@ -63,7 +63,7 @@ const PERSON_PROPERTIES: readonly SortableProperty[] = [
 ];
 
 const SORT_SWITCH = 'Sort unplaced nodes';
-const ADD_RULE = 'Add a rule for the order unplaced nodes are handed over in';
+const ADD_RULE = 'Add new sort rule';
 
 const sortRows = (
   properties: readonly SortableProperty[] | undefined,
@@ -72,7 +72,7 @@ const sortRows = (
   <SortOrderRows
     name="sortOrder"
     title={SORT_SWITCH}
-    description="Choose the order the nodes the participant has not placed yet are handed to them in."
+    description="Control the order of the stack participants use to position nodes."
     label="Sort rules"
     hint="Rules are applied in order. Use the asterisk to keep the order the nodes were added in."
     addButtonLabel={ADD_RULE}

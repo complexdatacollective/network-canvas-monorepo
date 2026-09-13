@@ -50,13 +50,13 @@ describe('the name-generator sections, read in Spanish', () => {
     });
 
     expect(
-      screen.getByRole('spinbutton', { name: /Número mínimo de personas/ }),
+      screen.getByRole('spinbutton', { name: /Número mínimo de álteres/ }),
     ).toHaveValue(1);
     expect(
-      screen.getByRole('spinbutton', { name: /Número máximo de personas/ }),
+      screen.getByRole('spinbutton', { name: /Número máximo de álteres/ }),
     ).toHaveValue(8);
     expect(
-      screen.getByText('Deja el campo vacío para no establecer un máximo.'),
+      screen.getByText('Deja el campo vacío para no establecer un máximo'),
     ).toBeInTheDocument();
   });
 
@@ -121,7 +121,7 @@ describe('the name-generator sections, read in Spanish', () => {
     });
 
     expect(
-      await screen.findByRole('button', { name: 'Crear nuevo panel' }),
+      await screen.findByRole('button', { name: 'Añadir nuevo panel' }),
     ).toBeInTheDocument();
     // The panel's source is a clause of the same sentence rather than a
     // fragment concatenated onto it, so an English source phrase inside the

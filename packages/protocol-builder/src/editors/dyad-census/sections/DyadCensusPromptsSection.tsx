@@ -4,6 +4,14 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 
+import CreateEdgeField, {
+  CREATE_EDGE_FIELD,
+  missingEdgeTypeIssue,
+} from '../../../fields/CreateEdgeField.tsx';
+import {
+  PromptTextField,
+  PromptTextPreview,
+} from '../../../fields/PromptTextField.tsx';
 import type {
   RowEditorProps,
   RowSaveOutcome,
@@ -12,11 +20,6 @@ import type {
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from './censusMessages.ts';
-import CreateEdgeField, {
-  CREATE_EDGE_FIELD,
-  missingEdgeTypeIssue,
-} from './CreateEdgeField.tsx';
-import { PromptTextField, PromptTextPreview } from './PromptTextField.tsx';
 
 /** What only a Dyad Census says; the words it shares are in `censusMessages`. */
 const messages = defineMessages({
@@ -29,23 +32,16 @@ const messages = defineMessages({
   },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.dyadPlaceholder',
-    defaultMessage: 'Do these two people know each other?',
+    defaultMessage: 'Enter text for the prompt here...',
     description:
-      'Example question in the empty box where a researcher writes a Dyad Census prompt.',
+      'Placeholder shown in the empty box where a researcher writes a Dyad Census prompt. The trailing dots are an ellipsis written as three full stops.',
   },
-  edgeDescription: {
-    id: 'protocolBuilder.censusPrompts.dyadEdgeDescription',
+  promptTextDescription: {
+    id: 'protocolBuilder.censusPrompts.dyadPromptTextDescription',
     defaultMessage:
-      'Choose the kind of connection an affirmative answer records between the pair.',
+      'Write the participant prompt and select the edge type created by an affirmative response.',
     description:
-      'Description of the group that says what a yes from the participant records between the two people a Dyad Census prompt asked about.',
-  },
-  edgeHint: {
-    id: 'protocolBuilder.censusPrompts.dyadEdgeHint',
-    defaultMessage:
-      'A connection of this type is created between the two people whenever the participant answers yes.',
-    description:
-      'Guidance under the control that picks what a yes from the participant records between the two people a Dyad Census prompt asked about.',
+      'Description of the group holding a Dyad Census prompt’s question and the kind of connection an affirmative answer records.',
   },
 });
 
@@ -74,17 +70,25 @@ function DyadCensusPromptEditor({ item }: RowEditorProps) {
 
   return (
     <>
+      {/*
+        The connection type sits INSIDE the prompt group, as Architect's does:
+        the group's own description is what says an affirmative answer creates
+        one, so a second heading over the control would say it twice.
+      */}
       <PromptTextField
         item={item}
         guidance={<DyadCensusGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
-      />
-      <CreateEdgeField
-        title={intl.formatMessage(censusMessages.affirmativeTitle)}
-        description={intl.formatMessage(messages.edgeDescription)}
-        hint={intl.formatMessage(messages.edgeHint)}
-        requiredMessage={intl.formatMessage(censusMessages.affirmativeRequired)}
-      />
+        title={intl.formatMessage(censusMessages.promptConfigurationTitle)}
+        description={intl.formatMessage(messages.promptTextDescription)}
+      >
+        <CreateEdgeField
+          label={intl.formatMessage(censusMessages.edgeLabel)}
+          requiredMessage={intl.formatMessage(
+            censusMessages.affirmativeRequired,
+          )}
+        />
+      </PromptTextField>
     </>
   );
 }
@@ -122,8 +126,6 @@ export default function DyadCensusPromptsSection() {
       PromptEditor={DyadCensusPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
-      description={censusMessages.pairDescription}
-      fieldHint={censusMessages.pairFieldHint}
     />
   );
 }

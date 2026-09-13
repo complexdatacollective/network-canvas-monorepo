@@ -25,7 +25,7 @@ Releases flow one way:
 1. A changeset targeting `fresco` bumps the version in the normal Changesets
    lane (see the root `CLAUDE.md` and the `creating-a-changeset` skill).
 2. When the Version Packages PR merges, the `apps-release-fresco` job in
-   `.github/workflows/ci-and-release.yml` runs `scripts/mirror-app.mjs`, which
+   `.github/workflows/ci-and-release.yml` runs `scripts/release/mirror-app.mjs`, which
    replaces the Fresco repo's `main` with this app's source. Every
    `workspace:`/`catalog:` specifier is resolved to a registry version, and the
    single-package `pnpm-workspace.yaml` and lockfile the Dockerfile needs are
@@ -77,7 +77,7 @@ Consequences worth remembering:
   without adding, changing, or deleting workflow files.
 - The `Dockerfile` builds the _mirrored_ tree, so it assumes a standalone,
   single-package pnpm project. If you change what it copies, check
-  `scripts/mirror-app.mjs` still produces those files.
+  `scripts/release/mirror-app.mjs` still produces those files.
 - Workspace packages are consumed from source here but from **npm dist** in the
   mirror. Code that only works under one bundler will pass locally and fail in
   the released image — see "Workers and bundler portability" below.
@@ -98,8 +98,8 @@ such as a tsconfig changed, or anything its resolution reaches in the root
 lockfile moved, a compiler's own dependency included — and every closure
 package that depends on one,
 packed into `vendor/` as tarballs, with pnpm overrides that
-resolve every range onto them (`scripts/mirror-app.mjs --vendor-changed-since`,
-built on `scripts/vendor-workspace-packages.mjs`, the same mechanism the
+resolve every range onto them (`scripts/release/mirror-app.mjs --vendor-changed-since`,
+built on `scripts/release/vendor-workspace-packages.mjs`, the same mechanism the
 release test uses). Nothing is published to npm. The packages the hotfix did
 not touch install at the exact registry versions the released image used: the
 lane seeds the mirror's lockfile and its generated workspace policy from the
@@ -129,7 +129,7 @@ dependency change cannot mask another that only the branch's lockfile carried.
    hotfix branch is a delivery vehicle, not the source of truth.
 
 2. Bump `apps/fresco/package.json` to the hotfix version and add the matching
-   `## <version>` section to `apps/fresco/CHANGELOG.md`; `scripts/release-notes.mjs`
+   `## <version>` section to `apps/fresco/CHANGELOG.md`; `scripts/release/release-notes.mjs`
    reads that section for both GitHub releases. Do **not** run
    `changeset version` on the branch.
 3. Push the branch and open its merge-back pull request into `main` now. Then
@@ -205,7 +205,7 @@ Before a Fresco release is approved (the Version Packages PR merged), the
 pending state of `main` can be release-tested locally with the
 `/fresco-release-test` Claude workflow (`.claude/workflows/fresco-release-test.js`;
 Codex: run the harness scripts below manually). It builds the pending image the
-way a release would — `scripts/mirror-app.mjs` stages the mirrored tree,
+way a release would — `scripts/release/mirror-app.mjs` stages the mirrored tree,
 `release-test/scripts/bundle-pending-packages.mjs` swaps the registry
 resolutions of exactly the `@codaco/*` packages the pending release will
 publish — those the changesets bump, plus any whose current version npm does
@@ -367,7 +367,7 @@ found differing — so no agent's claim about any of them is taken on its word,
 and the export judge must classify every one of those files by name; and the
 `release-critic` agent is a narrator and cross-checker whose judgment can only
 make the verdict stricter. Regression tests for all of that
-live in `scripts/fresco-release-test-workflow.test.mjs` and run offline under
+live in `scripts/release-test/fresco-release-test-workflow.test.mjs` and run offline under
 `pnpm test:scripts` — they drive the workflow body with stub agents, so a
 change that reopens a fail-open fails CI.
 

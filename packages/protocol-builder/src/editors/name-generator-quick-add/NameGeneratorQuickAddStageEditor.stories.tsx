@@ -51,7 +51,7 @@ export const ChoosingTheAttribute: Story = {
     await awaitPassiveEffects();
 
     await userEvent.selectOptions(
-      await canvas.findByRole('combobox', { name: /Attribute filled in/ }),
+      await canvas.findByRole('combobox', { name: /Select an attribute/ }),
       'relationship_to_ego',
     );
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
@@ -88,13 +88,15 @@ export const RulesForTheAttribute: Story = {
       canvas.getByRole('switch', { name: 'Validation' }),
     ).toHaveAttribute('aria-checked', 'true');
     await userEvent.click(
-      await canvas.findByRole('checkbox', { name: 'Minimum length' }),
+      await canvas.findByRole('checkbox', { name: 'Minimum text length' }),
     );
     // Each rule's number carries steppers named for that rule, so a screen
     // holding several of them does not offer three buttons all called
     // "Increase value".
     await expect(
-      await canvas.findByRole('button', { name: 'Increase Minimum length' }),
+      await canvas.findByRole('button', {
+        name: 'Increase Minimum text length',
+      }),
     ).toBeInTheDocument();
 
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));

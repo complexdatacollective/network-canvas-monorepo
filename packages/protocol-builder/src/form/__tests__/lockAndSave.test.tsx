@@ -437,7 +437,9 @@ describe('a save the protocol did not take', () => {
     // meets while still typing.
     expect(await harness.submit()).toBeNull();
     expect(
-      screen.getByText(/This stage is not finished, so it was not saved/),
+      screen.getByText(
+        'Stage name: Stage name has no value, and this stage needs one.',
+      ),
     ).toBeInTheDocument();
     expect(screen.getByTestId('form-dirty')).toHaveTextContent('dirty');
   });

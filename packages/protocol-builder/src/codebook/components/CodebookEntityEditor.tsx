@@ -83,18 +83,6 @@ const NODE_SHAPE_LABELS = defineMessages({
 }) satisfies Record<NodeShape, MessageDescriptor>;
 
 const messages = defineMessages({
-  nodeColorOption: {
-    id: 'protocolBuilder.codebookEntity.nodeColorOption',
-    defaultMessage: 'Node color {index, number}',
-    description:
-      'Choice offered for a node type’s colour, naming its position in the protocol’s node palette rather than the colour itself, because a protocol’s theme decides what each position looks like. index is that position, counting from one.',
-  },
-  edgeColorOption: {
-    id: 'protocolBuilder.codebookEntity.edgeColorOption',
-    defaultMessage: 'Edge color {index, number}',
-    description:
-      'Choice offered for an edge type’s colour, naming its position in the protocol’s edge palette rather than the colour itself, because a protocol’s theme decides what each position looks like. index is that position, counting from one.',
-  },
   nameRequired: {
     id: 'protocolBuilder.codebookEntity.nameRequired',
     defaultMessage: 'Enter a type name.',
@@ -256,16 +244,20 @@ const EDGE_COLOR_OPTIONS = EdgeColorSequence.map((value, index) => ({
  * has a colour, and the first swatch the researcher touched would silently
  * replace a value they never saw.
  */
+/**
+ * The palette this type may be marked in, plus whatever colour it is marked in
+ * now if that is not one of them.
+ *
+ * The swatches carry no `label`: they are the theme's own colour sequences, so
+ * the picker names each one after its hue. Only the outside-the-palette
+ * swatch needs a name written here, because only its value is arbitrary.
+ */
 const colorOptions = (
   sequence: readonly Readonly<{ value: string; index: number }>[],
-  label: MessageDescriptor,
   current: string,
   intl: IntlShape,
 ): ColorSwatchOption[] => {
-  const palette = sequence.map(({ value, index }) => ({
-    value,
-    label: intl.formatMessage(label, { index }),
-  }));
+  const palette = sequence.map(({ value }) => ({ value }));
   if (current === '' || palette.some(({ value }) => value === current)) {
     return palette;
   }
@@ -400,18 +392,8 @@ export function CodebookEntityFields({
   const currentColor = stringValue(draft.color);
   const colors =
     subject.entity === 'node'
-      ? colorOptions(
-          NODE_COLOR_OPTIONS,
-          messages.nodeColorOption,
-          currentColor,
-          intl,
-        )
-      : colorOptions(
-          EDGE_COLOR_OPTIONS,
-          messages.edgeColorOption,
-          currentColor,
-          intl,
-        );
+      ? colorOptions(NODE_COLOR_OPTIONS, currentColor, intl)
+      : colorOptions(EDGE_COLOR_OPTIONS, currentColor, intl);
 
   return (
     <div>

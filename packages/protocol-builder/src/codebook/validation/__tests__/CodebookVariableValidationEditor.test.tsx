@@ -134,9 +134,9 @@ describe('CodebookVariableValidationEditor', () => {
         name: 'Deleted attribute (deleted-height)',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Less than' })).toHaveValue(
-      'deleted-height',
-    );
+    expect(
+      screen.getByRole('combobox', { name: 'Less than another attribute' }),
+    ).toHaveValue('deleted-height');
     expect(screen.getByRole('alert')).toHaveTextContent(
       'The selected comparison attribute no longer exists.',
     );

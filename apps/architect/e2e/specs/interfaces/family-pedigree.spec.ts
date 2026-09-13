@@ -18,7 +18,7 @@ import { StageEditor } from '../../pageobjects/stage-editor.js';
 // `EntityTypePickerField` directly, and that control deliberately offers no
 // create-a-type affordance — creating a codebook entity is the Codebook
 // screen's job, and only the sections built on `SubjectSection` put a
-// "Create a new node type" button beside the picker. So a Family Pedigree
+// "Create new node type" button beside the picker. So a Family Pedigree
 // cannot be given its types from inside the stage editor at all; seeding them
 // keeps this spec about the pedigree editor rather than about the codebook
 // screen, and every part of the STAGE is still authored below.
@@ -182,7 +182,7 @@ test('creates a valid FamilyPedigree stage from scratch', async ({
   // member form switched off, so it registers nothing and the saved stage
   // carries no `form` key.
   await expect(
-    architectPage.getByRole('switch', { name: 'Family member form' }),
+    architectPage.getByRole('switch', { name: 'Form configuration' }),
   ).not.toBeChecked();
 
   await selectOrCreateEdgeType(architectPage, 'family_edge');

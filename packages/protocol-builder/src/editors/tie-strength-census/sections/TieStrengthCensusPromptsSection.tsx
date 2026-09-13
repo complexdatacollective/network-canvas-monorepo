@@ -17,6 +17,15 @@ import {
   hasValidatedUse,
   interfaceOwnedPickIssue,
 } from '../../../codebook/variableRoles.ts';
+import CreateEdgeField, {
+  CREATE_EDGE_FIELD,
+  edgeSubjectOf,
+  missingEdgeTypeIssue,
+} from '../../../fields/CreateEdgeField.tsx';
+import {
+  PromptTextField,
+  PromptTextPreview,
+} from '../../../fields/PromptTextField.tsx';
 import RichTextField from '../../../fields/RichTextField.tsx';
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
 import {
@@ -35,15 +44,6 @@ import CreateVariableButton from '../../../sections/create-variable/CreateVariab
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
-import CreateEdgeField, {
-  CREATE_EDGE_FIELD,
-  edgeSubjectOf,
-  missingEdgeTypeIssue,
-} from '../../dyad-census/sections/CreateEdgeField.tsx';
-import {
-  PromptTextField,
-  PromptTextPreview,
-} from '../../dyad-census/sections/PromptTextField.tsx';
 
 const SCALE_FIELD = 'edgeVariable';
 const DECLINE_FIELD = 'negativeLabel';
@@ -61,36 +61,48 @@ const SCALE_LIMIT = 5;
 
 /** What only a Tie-Strength Census says; the shared words are in `censusMessages`. */
 const messages = defineMessages({
-  guidance: {
-    id: 'protocolBuilder.censusPrompts.tieStrengthGuidance',
-    defaultMessage:
-      'The participant sees two people side by side and answers on a scale, so write the question about the pair in front of them — “how close are these two people?” rather than a name — and phrase it so that every point on the scale is a sensible answer.',
-    description:
-      'Guidance shown above the box where a researcher writes a Tie-Strength Census prompt, saying what the participant is looking at while they answer it. The quoted sentence is an example of a question a scale can answer.',
-  },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.tieStrengthPlaceholder',
-    defaultMessage: 'How close are these two people?',
+    defaultMessage: 'Enter text for the prompt here...',
     description:
-      'Example question in the empty box where a researcher writes a Tie-Strength Census prompt.',
+      'Placeholder shown in the empty box where a researcher writes a Tie-Strength Census prompt. The trailing dots are an ellipsis written as three full stops.',
+  },
+  promptTextDescription: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthPromptTextDescription',
+    defaultMessage:
+      'Explain the relationship participants should evaluate for each pair.',
+    description:
+      'Description of the group holding the question one Tie-Strength Census prompt shows the participant.',
+  },
+  promptTextHint: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthPromptTextHint',
+    defaultMessage:
+      'Refer clearly to the two people shown and phrase the prompt for a yes or no response.',
+    description:
+      'Guidance under the box where a researcher writes a Tie-Strength Census prompt, saying what the question has to name and what shape of answer it asks for.',
+  },
+  edgeLabel: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthEdgeLabel',
+    defaultMessage: 'Edge type',
+    description:
+      'Label of the control that picks which kind of connection a Tie-Strength Census prompt rates. Architect names this control differently here than in the two censuses whose answer is a yes or a no.',
   },
   edgeTitle: {
     id: 'protocolBuilder.censusPrompts.tieStrengthEdgeTitle',
-    defaultMessage: 'Connection rated',
+    defaultMessage: 'Edge creation',
     description:
       'Heading of the group that says which kind of connection the participant’s answer on the scale describes.',
   },
   edgeDescription: {
     id: 'protocolBuilder.censusPrompts.tieStrengthEdgeDescription',
-    defaultMessage:
-      'Choose the kind of connection an answer on the scale records between the pair.',
+    defaultMessage: 'Choose the edge type created between the two nodes.',
     description:
       'Description of the group that says what answering on the scale records between the two people a Tie-Strength Census prompt asked about.',
   },
   edgeHint: {
     id: 'protocolBuilder.censusPrompts.tieStrengthEdgeHint',
     defaultMessage:
-      'A connection of this type is created between the two people whenever the participant answers on the scale.',
+      'Select or create the edge type before configuring its ordinal attribute.',
     description:
       'Guidance under the control that picks what answering on the scale records between the two people a Tie-Strength Census prompt asked about.',
   },
@@ -102,29 +114,22 @@ const messages = defineMessages({
   },
   scaleTitle: {
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleTitle',
-    defaultMessage: 'The scale',
+    defaultMessage: 'Response attribute',
     description:
       'Heading of the group that picks the attribute whose ordered values the participant answers on — the points running from least to most.',
   },
   scaleDescription: {
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleDescription',
     defaultMessage:
-      'Choose the attribute whose ordered values the participant answers on.',
+      'Choose the ordinal attribute whose options participants use to rate the relationship.',
     description:
       'Description of the group that picks the attribute whose ordered values are the points of the scale. The attribute belongs to the connection this prompt creates, not to either person.',
   },
   scaleLabel: {
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleLabel',
-    defaultMessage: 'Attribute',
+    defaultMessage: 'Ordinal attribute',
     description:
       'Label of the control that picks which attribute of the connection holds the participant’s answer. An attribute is one thing an interview records.',
-  },
-  scaleHint: {
-    id: 'protocolBuilder.censusPrompts.tieStrengthScaleHint',
-    defaultMessage:
-      'The participant taps one of this attribute’s values, and it is recorded on the connection.',
-    description:
-      'Guidance under the attribute picker in a Tie-Strength Census prompt, saying where the participant’s answer is stored.',
   },
   scaleRequired: {
     id: 'protocolBuilder.censusPrompts.tieStrengthScaleRequired',
@@ -167,35 +172,33 @@ const messages = defineMessages({
   },
   declineTitle: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclineTitle',
-    defaultMessage: 'Answering that there is no connection',
+    defaultMessage: 'Decline response',
     description:
       'Heading of the group holding the words the participant chooses to say the two people in front of them are not connected.',
   },
   declineDescription: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclineDescription',
-    defaultMessage:
-      'Give the participant a way to say these two people are not connected at all.',
+    defaultMessage: 'Set the option participants use to decline edge creation.',
     description:
       'Description of the group holding the words the participant chooses to say the two people in front of them are not connected.',
   },
   declineLabel: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclineLabel',
-    defaultMessage: 'Decline answer',
+    defaultMessage: 'Decline option',
     description:
       'Label of the box a researcher writes the words the participant chooses to say the two people are not connected into.',
   },
   declineHint: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclineHint',
-    defaultMessage:
-      'Shown at the end of the scale. Choosing it records no connection between the pair.',
+    defaultMessage: 'This option appears on the far right of the screen.',
     description:
       'Guidance under the box a researcher writes the decline answer into, saying where the participant sees it and what choosing it does.',
   },
   declinePlaceholder: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclinePlaceholder',
-    defaultMessage: 'They don’t know each other',
+    defaultMessage: 'Enter text for the negative label here...',
     description:
-      'Example wording in the empty box where a researcher writes the decline answer.',
+      'Placeholder shown in the empty box where a researcher writes the decline answer. The trailing dots are an ellipsis written as three full stops.',
   },
   declineRequired: {
     id: 'protocolBuilder.censusPrompts.tieStrengthDeclineRequired',
@@ -209,17 +212,6 @@ const SCALE_GONE = createMessageError(messages.scaleGoneRefusal);
 
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
-
-function TieStrengthGuidance() {
-  const intl = useAppIntl();
-  return (
-    <Alert variant="info" className="mb-6">
-      <AlertDescription>
-        {intl.formatMessage(messages.guidance)}
-      </AlertDescription>
-    </Alert>
-  );
-}
 
 /**
  * Throws the scale away when the connection it describes changes.
@@ -322,7 +314,6 @@ function ScaleField({
         name={SCALE_FIELD}
         component={VariablePickerField}
         label={intl.formatMessage(messages.scaleLabel)}
-        hint={intl.formatMessage(messages.scaleHint)}
         options={options}
         emptyMessage={intl.formatMessage(messages.scaleEmpty)}
         initialValue={committed}
@@ -368,12 +359,15 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
     <>
       <PromptTextField
         item={item}
-        guidance={<TieStrengthGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
+        title={intl.formatMessage(censusMessages.promptTextTitle)}
+        description={intl.formatMessage(messages.promptTextDescription)}
+        hint={intl.formatMessage(messages.promptTextHint)}
       />
       <CreateEdgeField
         title={intl.formatMessage(messages.edgeTitle)}
         description={intl.formatMessage(messages.edgeDescription)}
+        label={intl.formatMessage(messages.edgeLabel)}
         hint={intl.formatMessage(messages.edgeHint)}
         requiredMessage={intl.formatMessage(messages.edgeRequired)}
       />
@@ -473,8 +467,6 @@ export default function TieStrengthCensusPromptsSection() {
       PromptEditor={TieStrengthCensusPromptEditor}
       PromptPreview={PromptTextPreview}
       beforeSave={beforeSave}
-      description={censusMessages.pairDescription}
-      fieldHint={censusMessages.pairFieldHint}
     />
   );
 }

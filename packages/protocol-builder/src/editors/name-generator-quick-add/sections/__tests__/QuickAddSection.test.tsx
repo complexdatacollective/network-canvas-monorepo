@@ -13,7 +13,7 @@ import QuickAddSection from '../QuickAddSection.tsx';
 const quickAdd = <QuickAddSection />;
 
 const picker = (): HTMLElement =>
-  screen.getByRole('combobox', { name: /Attribute filled in/ });
+  screen.getByRole('combobox', { name: 'Select an attribute' });
 
 const offered = () =>
   within(picker())
@@ -41,7 +41,7 @@ describe('what a quick-add name generator records', () => {
     });
 
     expect(
-      await screen.findByRole('combobox', { name: /Attribute filled in/ }),
+      await screen.findByRole('combobox', { name: 'Select an attribute' }),
     ).toHaveValue('name');
     // The stage's name, the type it nominates and what it asks belong to
     // sections this mount does not include.
@@ -59,7 +59,7 @@ describe('what a quick-add name generator records', () => {
       sections: quickAdd,
     });
 
-    await screen.findByRole('combobox', { name: /Attribute filled in/ });
+    await screen.findByRole('combobox', { name: 'Select an attribute' });
     expect(offered()).toContain('name');
     expect(offered()).not.toContain('age');
     expect(offered()).not.toContain('contactType');
@@ -92,7 +92,7 @@ describe('what a quick-add name generator records', () => {
       sections: quickAdd,
     });
 
-    await screen.findByRole('combobox', { name: /Attribute filled in/ });
+    await screen.findByRole('combobox', { name: 'Select an attribute' });
     // `fm_name` is collected by a form elsewhere in the protocol, which is a
     // validated use and therefore allowed; `fm_relationship_to_ego` is text as
     // well, and is stamped by the family pedigree — so the same list must not
@@ -133,7 +133,7 @@ describe('what a quick-add name generator records', () => {
     });
 
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: /Attribute filled in/ }),
+      await screen.findByRole('combobox', { name: 'Select an attribute' }),
       'relationship_to_ego',
     );
 
@@ -210,13 +210,13 @@ describe('what a quick-add name generator records', () => {
 
     expect(
       await screen.findByText(
-        'Choose the attribute the participant fills in when they add a “family member” with a single box.',
+        'Choose the attribute populated when a participant creates a node with Quick Add.',
       ),
     ).toBeInTheDocument();
     // Shown before a type has been chosen as well, so this one names nothing.
     expect(
       screen.getByText(
-        'What the participant types goes here. Use the attribute holding the name unless you have a reason not to — the interview labels what it creates by it.',
+        "Select the attribute that is assigned a value when creating a new node using the Quick Add button. Use an attribute called 'name' here, unless you have a good reason not to. Interviewer will then automatically use this attribute as the label for the node in the interview.",
       ),
     ).toBeInTheDocument();
   });
@@ -228,7 +228,7 @@ describe('what a quick-add name generator records', () => {
       sections: quickAdd,
     });
 
-    await screen.findByRole('combobox', { name: /Attribute filled in/ });
+    await screen.findByRole('combobox', { name: 'Select an attribute' });
     harness.receiveCodebookUpdate({
       node: {
         person: {
@@ -290,12 +290,12 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     // `name` already carries `unique`, so the section mounts open.
     await screen.findByRole('switch', { name: 'Validation' });
     for (const rule of [
-      'Required',
-      'Minimum length',
-      'Maximum length',
-      'Must be unique',
-      'Different from',
-      'Same as',
+      'Required answer',
+      'Minimum text length',
+      'Maximum text length',
+      'Unique value',
+      'Different from another attribute',
+      'Same as another attribute',
     ]) {
       expect(screen.getByRole('checkbox', { name: rule })).toBeInTheDocument();
     }
@@ -315,7 +315,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     });
 
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required' }),
+      await screen.findByRole('checkbox', { name: 'Required answer' }),
     );
     // Merged over the rules the attribute already had rather than replacing
     // them: the researcher added one rule, not a rule map.
@@ -327,7 +327,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     );
 
     await harness.user.click(
-      screen.getByRole('checkbox', { name: 'Required' }),
+      screen.getByRole('checkbox', { name: 'Required answer' }),
     );
     await waitFor(() =>
       expect(personValidation(harness, 'name')).toEqual({ unique: true }),
@@ -347,7 +347,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     // Switching the rule on writes a length the attribute can satisfy, so the
     // map is never half-set by the act of switching it on.
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Minimum length' }),
+      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
     );
     await waitFor(() =>
       expect(personValidation(harness, 'name')).toEqual({
@@ -356,13 +356,15 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
       }),
     );
 
-    const value = screen.getByRole('spinbutton', { name: 'Minimum length' });
+    const value = screen.getByRole('spinbutton', {
+      name: 'Minimum text length',
+    });
     await harness.user.clear(value);
     await harness.user.tab();
 
     expect(
       await screen.findByText(
-        'Enter a value for "Minimum length", or switch the rule off.',
+        'Enter a value for "Minimum text length", or switch the rule off.',
       ),
     ).toBeInTheDocument();
     // Nothing was written for the empty box: a rule with no value is kept on
@@ -424,7 +426,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
       await screen.findByRole('switch', { name: 'Validation' }),
     ).toHaveAttribute('aria-checked', 'false');
     expect(
-      screen.queryByRole('checkbox', { name: 'Required' }),
+      screen.queryByRole('checkbox', { name: 'Required answer' }),
     ).not.toBeInTheDocument();
   });
 
@@ -439,7 +441,7 @@ describe('the rules the quick-add attribute’s answers have to satisfy', () => 
     });
 
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Required' }),
+      await screen.findByRole('checkbox', { name: 'Required answer' }),
     );
     await waitFor(() =>
       expect(personValidation(harness, 'name')).toEqual({

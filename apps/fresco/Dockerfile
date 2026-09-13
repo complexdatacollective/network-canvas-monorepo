@@ -83,7 +83,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/env.js ./
 COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./
 # The mirrored tsconfig.json extends ./tsconfig/web.json (vendored by
-# scripts/mirror-app.mjs), so the startup scripts need that directory present.
+# scripts/release/mirror-app.mjs), so the startup scripts need that directory present.
 COPY --from=builder --chown=nextjs:nodejs /app/tsconfig ./tsconfig
 
 # Install ONLY the deps the startup scripts need (prisma CLI, tsx, and the

@@ -31,7 +31,9 @@ async function addOption(
   label: string,
   value: number,
 ) {
-  await harness.user.click(screen.getByRole('button', { name: 'Add option' }));
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Create new option' }),
+  );
   await harness.user.type(
     await screen.findByRole('textbox', { name: `Option ${position} label` }),
     label,
@@ -62,7 +64,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
 
     expect(await screen.findByRole('radio', { name: 'knows' })).toBeChecked();
     // The scale is the CONNECTION's attribute, not the person's.
-    const picker = screen.getByRole('combobox', { name: 'Attribute' });
+    const picker = screen.getByRole('combobox', { name: 'Ordinal attribute' });
     expect(
       [...picker.querySelectorAll('option')]
         .map((option) => option.value)
@@ -70,8 +72,65 @@ describe('the questions a tie-strength census asks about a pair', () => {
     ).toEqual(['closeness']);
     expect(picker).toHaveValue('closeness');
     expect(
-      screen.getByRole('textbox', { name: 'Decline answer' }),
+      screen.getByRole('textbox', { name: 'Decline option' }),
     ).toHaveTextContent("Don't know each other");
+  });
+
+  /**
+   * Architect puts this sentence under the prompt box itself (a `hint` on the
+   * "Prompt text" field), not in the notice above it: it is about how to
+   * phrase the question, which is what a researcher is doing while the box
+   * has focus.
+   */
+  it('says under the prompt box what the question has to name', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    expect(
+      await screen.findByRole('textbox', { name: 'Prompt text' }),
+    ).toHaveAccessibleDescription(
+      // The field's required marker is read out first, so the hint is matched
+      // as the end of the description rather than the whole of it.
+      /Refer clearly to the two people shown and phrase the prompt for a yes or no response\.\s*$/,
+    );
+  });
+
+  /**
+   * And says it only once. Architect raises no notice above the prompt box in
+   * this family — the two dyad censuses are the ones that do — so a second
+   * sentence here would be this package's own, sitting above a hint that
+   * already covers the same ground: the notice this package used to raise
+   * asked for a question every point of the scale could answer, while
+   * Architect's hint asks for one answered yes or no, and a researcher read
+   * both and could satisfy neither.
+   *
+   * Scoped to the prompt group and asked by ROLE rather than by the sentence
+   * the notice used to carry: an `Alert` is a live region wherever it is
+   * raised, so this fails for any notice put back here, not only for the one
+   * that was taken away. The scale's own over-five warning lives in a
+   * different group and is out of scope by construction.
+   */
+  it('raises no notice above the prompt box', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+    const promptGroup = within(
+      await screen.findByRole('region', { name: 'Participant prompt' }),
+    );
+
+    // The box itself has to be there, or an emptied group would pass this.
+    expect(
+      promptGroup.getByRole('textbox', { name: 'Prompt text' }),
+    ).toBeInTheDocument();
+    expect([
+      ...promptGroup.queryAllByRole('status'),
+      ...promptGroup.queryAllByRole('alert'),
+    ]).toEqual([]);
   });
 
   /**
@@ -86,7 +145,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await screen.findByRole('radio', { name: 'knows' });
     expect(
-      screen.queryByRole('combobox', { name: 'Attribute' }),
+      screen.queryByRole('combobox', { name: 'Ordinal attribute' }),
     ).not.toBeInTheDocument();
 
     await harness.user.click(
@@ -121,7 +180,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
     expect(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
     ).toHaveValue('closeness');
 
     await harness.user.click(
@@ -157,7 +216,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await screen.findByRole('combobox', { name: 'Ordinal attribute' });
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -183,7 +242,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
       'closeness',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -209,12 +268,12 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
       'closeness',
     );
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Decline answer' }),
+      screen.getByRole('textbox', { name: 'Decline option' }),
       'Not at all',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -243,7 +302,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await writeInto(
       harness,
-      await screen.findByRole('textbox', { name: 'Decline answer' }),
+      await screen.findByRole('textbox', { name: 'Decline option' }),
       'Never met',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -280,7 +339,7 @@ describe('creating a scale from inside a tie-strength prompt', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await screen.findByRole('combobox', { name: 'Ordinal attribute' });
     expect(screen.queryAllByRole('dialog')).toHaveLength(1);
 
     await harness.user.click(
@@ -296,7 +355,9 @@ describe('creating a scale from inside a tie-strength prompt', () => {
       screen.getByRole('button', { name: 'Create attribute' }),
     );
 
-    const picker = await screen.findByRole('combobox', { name: 'Attribute' });
+    const picker = await screen.findByRole('combobox', {
+      name: 'Ordinal attribute',
+    });
     await waitFor(() =>
       expect(
         within(picker).getByRole('option', { name: 'trust' }),
@@ -337,7 +398,7 @@ describe('a tie-strength prompt whose scale has gone', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await screen.findByRole('combobox', { name: 'Ordinal attribute' });
 
     harness.receiveCodebookUpdate({
       edge: {
@@ -466,7 +527,7 @@ describe('a tie-strength prompt whose scale a pedigree sets', () => {
     // Still the prompt's own pick, and still on offer: blanking it would hide
     // the reference the researcher has to repair.
     expect(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
     ).toHaveValue(SCALE_VARIABLE);
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));

@@ -16,6 +16,7 @@ import { StageEditSession } from '../stageEdit.tsx';
 import StageEditor from '../StageEditor.tsx';
 import { fixtureStageIds } from './protocolFixture.ts';
 import { StageEditorStoryHost } from './StageEditorStoryHost.tsx';
+import { exactlyText } from './text.ts';
 
 const meta = {
   title: 'Protocol Builder/Stage editors/Story host',
@@ -126,21 +127,19 @@ export const Spectating: Story = {
     // keyboard cannot reach either.
     await expect(name).toBeDisabled();
 
-    // Every one of them, not that one. The shell disables its fields through a
-    // React context rather than a `<fieldset disabled>`, so each control has to
-    // read it — and one that forgets stays live beside a page that says it
-    // cannot be changed. Read off the DOM rather than by role because the
-    // question is which controls EXIST: a role query answers for the roles it
-    // is asked about, which is the wrong shape for "and nothing else".
-    //
-    // The outline is the exception, and is meant to be: a spectator still
-    // moves around the stage they are reading.
-    const outline = canvas.getByRole('navigation', { name: 'Stage sections' });
+    // Every one of them, not that one, and with no exceptions: the editor
+    // renders nothing a spectator may operate. The shell disables its fields
+    // through a React context rather than a `<fieldset disabled>`, so each
+    // control has to read it — and one that forgets stays live beside a page
+    // that says it cannot be changed. Read off the DOM rather than by role
+    // because the question is which controls EXIST: a role query answers for
+    // the roles it is asked about, which is the wrong shape for "and nothing
+    // else".
     const controls = [
       ...canvasElement.querySelectorAll<HTMLElement>(
         'input, textarea, select, button',
       ),
-    ].filter((control) => !outline.contains(control));
+    ];
 
     // A page that rendered no controls would satisfy the loop by vacuity.
     await expect(controls.length).toBeGreaterThan(1);
@@ -159,11 +158,16 @@ export const Spectating: Story = {
  * an edit.
  *
  * Two things have to be true at once, and only one of them is obvious. The
- * editor has to SHOW the change — a form that goes on claiming to collect
- * "ego_name" after somebody renamed that attribute is describing a codebook
+ * editor has to SHOW the change — a form that goes on offering a one-line box
+ * after somebody moved that attribute to a text area is describing a codebook
  * nobody has — and it must not take the researcher's draft away to do it. An
  * editor that reloaded the stage from the protocol on every revision would
  * pass the first half and silently discard an afternoon's work.
+ *
+ * The revision renames the attribute as well, and nothing on screen says so:
+ * the row names the KIND of attribute and the control it is collected with,
+ * never its identifier. What proves the rename was not echoed back into this
+ * researcher's edit is the save at the end.
  *
  * The revision is a codebook one rather than a change to this stage, because a
  * collaborator cannot revise a stage this editor holds the lock on: that is
@@ -182,7 +186,11 @@ export const ACollaboratorRevisesTheCodebook: Story = {
       section: sectionId({ kind: 'codebookEgo' }),
       document: {
         variables: {
-          ego_name: { name: 'given_name', type: 'text', component: 'Text' },
+          ego_name: {
+            name: 'given_name',
+            type: 'text',
+            component: 'TextArea',
+          },
         },
       },
     },
@@ -199,7 +207,9 @@ export const ACollaboratorRevisesTheCodebook: Story = {
       name: 'Stage name',
     });
     await expect(
-      await canvas.findByText('Collects "ego_name" as text.'),
+      await canvas.findByText(
+        exactlyText('Text attribute using Text input input control'),
+      ),
     ).toBeInTheDocument();
 
     // The researcher's draft: typed, not saved. Nothing has been committed, so
@@ -215,7 +225,9 @@ export const ACollaboratorRevisesTheCodebook: Story = {
 
     // Their change, on screen, without this editor having asked for it.
     await expect(
-      await canvas.findByText('Collects "given_name" as text.'),
+      await canvas.findByText(
+        exactlyText('Text attribute using Text area input control'),
+      ),
     ).toBeInTheDocument();
 
     // And the draft is still the researcher's. Read after the revision landed

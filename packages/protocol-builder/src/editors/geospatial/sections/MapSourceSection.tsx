@@ -1,9 +1,10 @@
-import { useMemo, useRef, type ComponentType } from 'react';
+import { useMemo, useRef, type ComponentType, type ReactNode } from 'react';
 
 import { createMessageError } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 
 import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import FeaturePropertyField from '../../../fields/geospatial/FeaturePropertyField.tsx';
@@ -14,6 +15,7 @@ import {
 } from '../../../fields/geospatial/useGeoJsonFeatureProperties.ts';
 import { REQUIRED } from '../../../form/requiredField.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
+import { interfaceDocumentationUrl } from '../../../interfaces/documentation.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import {
   LAYER_FIELD,
@@ -33,6 +35,26 @@ const PROPERTY_MISSING = createMessageError(
 const LAYER_STILL_READING = createMessageError(
   geospatialMessages.propertyLayerReading,
 );
+
+/**
+ * The documentation the API-key hint sends a researcher to.
+ *
+ * A tag inside the sentence rather than markup around a fragment of it, so a
+ * translator moves the whole clause and the link text with it — the same shape
+ * the rule editor's own documentation links use.
+ */
+const DOCUMENTATION_LINK = Object.freeze({
+  ExternalLink: (chunks: ReactNode) => (
+    <NativeLink
+      key="documentation"
+      href={interfaceDocumentationUrl('geospatial')}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {chunks}
+    </NativeLink>
+  ),
+});
 
 /**
  * The rule that refuses a property the chosen layer does not have.
@@ -126,7 +148,10 @@ export default function MapSourceSection() {
           component={ResourcePicker}
           kind="apikey"
           label={intl.formatMessage(geospatialMessages.tokenLabel)}
-          hint={intl.formatMessage(geospatialMessages.tokenHint)}
+          hint={intl.formatMessage(
+            geospatialMessages.tokenHint,
+            DOCUMENTATION_LINK,
+          )}
           required={REQUIRED}
         />
       </BuilderSection>

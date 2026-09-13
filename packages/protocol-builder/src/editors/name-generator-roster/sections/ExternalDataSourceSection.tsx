@@ -27,22 +27,22 @@ const messages = defineMessages({
   description: {
     id: 'protocolBuilder.externalDataSource.description',
     defaultMessage:
-      'Choose the data file listing the people this stage offers the participant.',
+      'Select the network data file that supplies nodes for this roster.',
     description:
       'Description of the roster-source section. A stage is one step of an interview.',
   },
   fieldLabel: {
     id: 'protocolBuilder.externalDataSource.fieldLabel',
-    defaultMessage: 'Roster data file',
+    defaultMessage: 'Roster data source',
     description:
       'Label of the control choosing which imported data file the roster lists people from.',
   },
   fieldHint: {
     id: 'protocolBuilder.externalDataSource.fieldHint',
     defaultMessage:
-      'A CSV or JSON file of people. Everything else on this stage is chosen from its columns.',
+      'This stage needs a source of nodes to populate the roster. Select a network data file to use.',
     description:
-      'Guidance under the roster data-file control. CSV and JSON are file formats and are not translated. A stage is one step of an interview.',
+      'Guidance under the roster data-file control. A stage is one step of an interview.',
   },
   fieldRequired: {
     id: 'protocolBuilder.externalDataSource.fieldRequired',

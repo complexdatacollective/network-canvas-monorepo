@@ -28,8 +28,8 @@ describe('the sections of an anonymisation stage', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(6));
     expect(harness.outline().slice(0, 4)).toEqual([
       { title: 'Stage name', state: 'Finished' },
-      { title: 'Passphrase explanation', state: 'Finished' },
-      { title: 'Passphrase rules', state: 'Finished' },
+      { title: 'Task explanation', state: 'Finished' },
+      { title: 'Passphrase validation', state: 'Finished' },
       { title: 'Encrypted attributes', state: 'Finished' },
     ]);
   });
@@ -38,7 +38,7 @@ describe('the sections of an anonymisation stage', () => {
     const harness = openEditor();
 
     const heading = await screen.findByRole('textbox', {
-      name: 'Explanation heading',
+      name: 'Title',
     });
     await harness.user.clear(heading);
     await harness.user.type(heading, 'Your answers are protected');
@@ -59,25 +59,26 @@ describe('the sections of an anonymisation stage', () => {
     const harness = openEditor();
 
     await harness.user.clear(
-      await screen.findByRole('textbox', { name: 'Explanation heading' }),
+      await screen.findByRole('textbox', { name: 'Title' }),
     );
 
     expect(await harness.submit()).toBeNull();
-    expect(
-      screen.getByRole('textbox', { name: 'Explanation heading' }),
-    ).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
   });
 
   it('refuses passphrase rules whose shortest allowed length exceeds its longest', async () => {
     const harness = openEditor();
 
     const minimum = await screen.findByRole('spinbutton', {
-      name: /minimum length/i,
+      name: /minimum text length/i,
     });
     await harness.user.clear(minimum);
     await harness.user.type(minimum, '40');
     const maximum = await screen.findByRole('spinbutton', {
-      name: /maximum length/i,
+      name: /maximum text length/i,
     });
     await harness.user.clear(maximum);
     await harness.user.type(maximum, '5');
@@ -116,10 +117,10 @@ describe('the sections of an anonymisation stage', () => {
     // The minimum rule off, so this is about the maximum alone rather than
     // about a minimum that now exceeds it.
     await harness.user.click(
-      await screen.findByRole('checkbox', { name: 'Minimum length' }),
+      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
     );
     const maximum = await screen.findByRole('spinbutton', {
-      name: /maximum length/i,
+      name: /maximum text length/i,
     });
     await harness.user.clear(maximum);
     await harness.user.type(maximum, '0');
@@ -132,8 +133,10 @@ describe('the sections of an anonymisation stage', () => {
     ).toBeInTheDocument();
     // And reported where a researcher goes looking for what to correct.
     expect(
-      harness.outline().find((section) => section.title === 'Passphrase rules'),
-    ).toEqual({ title: 'Passphrase rules', state: 'Has a problem' });
+      harness
+        .outline()
+        .find((section) => section.title === 'Passphrase validation'),
+    ).toEqual({ title: 'Passphrase validation', state: 'Has a problem' });
   });
 
   /**
@@ -150,24 +153,26 @@ describe('the sections of an anonymisation stage', () => {
     const harness = openEditor();
 
     await harness.user.clear(
-      await screen.findByRole('spinbutton', { name: 'Minimum length' }),
+      await screen.findByRole('spinbutton', { name: 'Minimum text length' }),
     );
 
     expect(await harness.submit()).toBeNull();
     expect(
-      harness.outline().find((section) => section.title === 'Passphrase rules'),
-    ).toEqual({ title: 'Passphrase rules', state: 'Has a problem' });
+      harness
+        .outline()
+        .find((section) => section.title === 'Passphrase validation'),
+    ).toEqual({ title: 'Passphrase validation', state: 'Has a problem' });
     // Once on screen. The rule editor states a verdict for itself where it has
     // no host to state it, but here the field's error region — an `aria-live`
     // region, beside the control the editor marks invalid — is already saying
     // this one, so the editor's own alert stands down rather than repeating it.
     expect(
       await screen.findAllByText(
-        'Enter a value for "Minimum length", or switch the rule off.',
+        'Enter a value for "Minimum text length", or switch the rule off.',
       ),
     ).toHaveLength(1);
     expect(
-      screen.getByRole('spinbutton', { name: 'Minimum length' }),
+      screen.getByRole('spinbutton', { name: 'Minimum text length' }),
     ).toHaveAttribute('aria-invalid', 'true');
   });
 
@@ -179,7 +184,7 @@ describe('the sections of an anonymisation stage', () => {
     const harness = openEditor();
 
     await harness.user.click(
-      await screen.findByRole('switch', { name: 'Passphrase rules' }),
+      await screen.findByRole('switch', { name: 'Passphrase validation' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Remove the rules' }),
@@ -200,7 +205,7 @@ describe('how the passphrase rules are put on screen', () => {
   it('renders the rule list under the section’s own heading, unlabelled twice', async () => {
     openEditor();
 
-    await screen.findByRole('checkbox', { name: 'Minimum length' });
+    await screen.findByRole('checkbox', { name: 'Minimum text length' });
     // The rule list is still NAMED — a control a screen reader reaches has to
     // be — but the name is not a second heading a sighted researcher reads
     // immediately under the one above it. `sr-only` is fresco-ui's own answer
@@ -322,7 +327,7 @@ describe('the attributes a passphrase protects', () => {
   it('keeps an unsaved stage edit made before the toggle', async () => {
     const harness = openEditor();
     const heading = await screen.findByRole('textbox', {
-      name: 'Explanation heading',
+      name: 'Title',
     });
     await harness.user.clear(heading);
     await harness.user.type(heading, 'Rewritten heading');
@@ -332,9 +337,9 @@ describe('the attributes a passphrase protects', () => {
       expect(attributeCheckbox('person', 'name')).toBeChecked(),
     );
 
-    expect(
-      screen.getByRole('textbox', { name: 'Explanation heading' }),
-    ).toHaveValue('Rewritten heading');
+    expect(screen.getByRole('textbox', { name: 'Title' })).toHaveValue(
+      'Rewritten heading',
+    );
     const saved = await harness.submit();
     expect(saved?.stageDocument.explanationText).toMatchObject({
       title: 'Rewritten heading',
