@@ -370,6 +370,39 @@ describe('useStageNavigationAnalytics', () => {
     );
   });
 
+  it('refreshes the stored total whenever FinishSession is revisited', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const wrapper = makeWrapper(tracker, [
+      { type: 'Information' },
+      { type: 'FinishSession' },
+    ]);
+    const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
+    const { rerender } = renderHook(
+      (props: { stage_index: number; stage_type?: string }) =>
+        useStageNavigationAnalytics(props),
+      {
+        wrapper,
+        initialProps: { stage_index: 0, stage_type: 'Information' },
+      },
+    );
+
+    now.mockReturnValue(1100);
+    rerender({ stage_index: 1, stage_type: 'FinishSession' });
+    now.mockReturnValue(1200);
+    rerender({ stage_index: 0, stage_type: 'Information' });
+    now.mockReturnValue(1250);
+    rerender({ stage_index: 1, stage_type: 'FinishSession' });
+
+    expect(wrapper.store.getState().session.stageTiming?.totalDurationMs).toBe(
+      150,
+    );
+    expect(
+      tracker.track.mock.calls.filter(
+        ([name]) => name === 'interview_finished',
+      ),
+    ).toHaveLength(1);
+  });
+
   it('does not record an unavailable render-gated step before recovery', () => {
     const tracker = { track: vi.fn(), captureException: vi.fn() };
     const wrapper = makeWrapper(tracker, [

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useStore } from 'react-redux';
 
 import type {
   PromptTimingExit,
@@ -11,6 +11,7 @@ import type {
 import { recordStageTiming } from '../store/modules/session';
 import { type RootState, useAppDispatch } from '../store/store';
 import { SUPER_PROPS } from './PROPERTY_KEYS';
+import { registerStageTimingLifecycle } from './stageTimingLifecycle';
 import { useTrack } from './useTrack';
 
 type StageDescriptor = {
@@ -42,6 +43,7 @@ export function useStageNavigationAnalytics({
 }: StageDescriptor): void {
   const track = useTrack();
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
   const stages = useSelector((s: RootState) => s.protocol?.stages) as
     | StageShape[]
     | undefined;
@@ -186,12 +188,14 @@ export function useStageNavigationAnalytics({
       direction,
     });
 
-    if (stage_type === 'FinishSession' && !completionTrackedRef.current) {
-      completionTrackedRef.current = true;
-      track('interview_finished', {
-        stage_count: stages?.length ?? 0,
-        total_duration_ms: totalStageDurationRef.current,
-      });
+    if (stage_type === 'FinishSession') {
+      if (!completionTrackedRef.current) {
+        completionTrackedRef.current = true;
+        track('interview_finished', {
+          stage_count: stages?.length ?? 0,
+          total_duration_ms: totalStageDurationRef.current,
+        });
+      }
       dispatch(
         recordStageTiming({
           totalDurationMs: totalStageDurationRef.current,
@@ -250,6 +254,29 @@ export function useStageNavigationAnalytics({
       prompt_count: promptCount,
     });
   }, [promptCount, promptIndex, stage_index, stage_type, track]);
+
+  useEffect(
+    () =>
+      registerStageTimingLifecycle(store, {
+        abandon: () => {
+          emitStageExitRef.current(performance.now(), 'abandoned');
+          lastEnteredAtRef.current = null;
+          lastPromptEnteredAtRef.current = null;
+        },
+        resume: () => {
+          if (
+            lastIndexRef.current === null ||
+            lastEnteredAtRef.current !== null
+          ) {
+            return;
+          }
+          const now = performance.now();
+          lastEnteredAtRef.current = now;
+          lastPromptEnteredAtRef.current = now;
+        },
+      }),
+    [store],
+  );
 
   useEffect(() => {
     // React StrictMode runs an effect cleanup immediately before re-running its

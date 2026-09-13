@@ -1,7 +1,10 @@
 import { after, NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 
-import type { StageTimingPayload } from '@codaco/interview/contract';
+import {
+  MAX_TIMING_HISTORY_LENGTH,
+  type StageTimingPayload,
+} from '@codaco/interview/contract';
 import {
   NcNetworkSchema,
   ensureError,
@@ -38,8 +41,11 @@ const StageTimingExitSchema = z.object({
 
 const StageTimingSchema = z
   .object({
-    stageExits: z.array(StageTimingExitSchema).max(10_000),
-    promptExits: z.array(StageTimingExitSchema).max(10_000).optional(),
+    stageExits: z.array(StageTimingExitSchema).max(MAX_TIMING_HISTORY_LENGTH),
+    promptExits: z
+      .array(StageTimingExitSchema)
+      .max(MAX_TIMING_HISTORY_LENGTH)
+      .optional(),
     totalDurationMs: z.number().finite().nonnegative().optional(),
   })
   .optional();
@@ -58,6 +64,40 @@ const invalidRequest = (error: unknown) => {
 
   return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
 };
+
+function validateTimingAgainstPinnedProtocol(
+  timing: StageTimingPayload,
+  stages: readonly { type: string }[],
+): StageTimingPayload {
+  const matchesStage = (
+    exit: StageTimingPayload['stageExits'][number],
+    allowFinish: boolean,
+  ) => {
+    const stage = stages[exit.stageIndex];
+    return stage
+      ? stage.type === exit.stageType
+      : allowFinish &&
+          exit.stageIndex === stages.length &&
+          exit.stageType === 'FinishSession';
+  };
+  if (
+    timing.stageExits.some((exit) => !matchesStage(exit, false)) ||
+    timing.promptExits?.some((exit) => !matchesStage(exit, true))
+  ) {
+    throw new Error('Timing exit does not match the pinned protocol');
+  }
+  const retainedTotal = timing.stageExits.reduce(
+    (sum, exit) => sum + exit.durationMs,
+    0,
+  );
+  if (
+    timing.totalDurationMs !== undefined &&
+    Math.abs(timing.totalDurationMs - retainedTotal) > Number.EPSILON * 16
+  ) {
+    throw new Error('Timing total does not match retained stage exits');
+  }
+  return timing;
+}
 
 /**
  * Handle post requests from the client to store the current interview state.
@@ -117,25 +157,45 @@ const routeHandler = async (
     validatedRequest.data;
 
   const freezeEnabled = await getAppSetting('freezeInterviewsAfterCompletion');
+  let persistedStageTiming = stageTiming;
 
-  if (freezeEnabled) {
-    const interview = await prisma.interview.findUnique({
-      where: { id: interviewId },
-      select: { finishTime: true, syncRevision: true },
+  const interviewPolicy =
+    freezeEnabled || stageTiming !== undefined
+      ? await prisma.interview.findUnique({
+          where: { id: interviewId },
+          select: {
+            finishTime: true,
+            syncRevision: true,
+            protocol: { select: { stages: true } },
+          },
+        })
+      : null;
+
+  if (freezeEnabled && interviewPolicy?.finishTime) {
+    // Flagged, not just reported as unapplied: freezing declines every write
+    // permanently, so a client must not retry it as a stale write.
+    return NextResponse.json({
+      success: true,
+      applied: false,
+      frozen: true,
+      syncRevision: interviewPolicy.syncRevision,
     });
+  }
 
-    if (interview?.finishTime) {
-      // Flagged, not just reported as unapplied: freezing declines every write
-      // permanently, so this is nothing like losing a race to a newer one. A
-      // client that read it as one would rewrite, be declined again, and report
-      // a failure on every change — for an interview that is over and already
-      // holds its final state.
-      return NextResponse.json({
-        success: true,
-        applied: false,
-        frozen: true,
-        syncRevision: interview.syncRevision,
-      });
+  if (stageTiming !== undefined) {
+    if (!interviewPolicy) {
+      return NextResponse.json(
+        { error: 'Interview not found' },
+        { status: 404 },
+      );
+    }
+    try {
+      persistedStageTiming = validateTimingAgainstPinnedProtocol(
+        stageTiming,
+        interviewPolicy.protocol.stages,
+      );
+    } catch (error) {
+      return invalidRequest(error);
     }
   }
 
@@ -157,9 +217,9 @@ const routeHandler = async (
         network,
         currentStep,
         stageMetadata: stageMetadata ?? undefined,
-        ...(stageTiming === undefined
+        ...(persistedStageTiming === undefined
           ? {}
-          : { stageTiming: stageTiming as StageTimingPayload }),
+          : { stageTiming: persistedStageTiming }),
         syncRevision,
         // `lastUpdated` is intentionally NOT taken from the client. Prisma's
         // @updatedAt sets it server-side; trusting the client value let a

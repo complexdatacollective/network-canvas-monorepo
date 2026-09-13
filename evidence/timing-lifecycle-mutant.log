@@ -1,0 +1,53 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/timing-runtime-review/packages/interview
+
+ ❯ |units| src/__tests__/Shell.sync-flush.test.tsx (5 tests | 1 failed) 53ms
+     × records each hidden interval as abandoned before flushing it 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |units| src/__tests__/Shell.sync-flush.test.tsx > Shell sync flushes > records each hidden interval as abandoned before flushing it
+AssertionError: expected last "vi.fn()" call to have been called with [ 'session-1', …(2) ]
+
+- Expected:
+[
+  "session-1",
+  ObjectContaining {
+    "stageTiming": ObjectContaining {
+      "stageExits": [
+        ObjectContaining {
+          "durationMs": 100,
+          "exitDirection": "abandoned",
+          "stageIndex": 0,
+        },
+      ],
+    },
+  },
+  {
+    "immediate": true,
+    "unloading": true,
+  },
+]
+
++ Received:
+undefined
+
+ ❯ src/__tests__/Shell.sync-flush.test.tsx:193:19
+    191|     });
+    192|
+    193|     expect(write).toHaveBeenLastCalledWith(
+       |                   ^
+    194|       'session-1',
+    195|       expect.objectContaining({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 4 passed (5)
+   Start at  19:16:00
+   Duration  1.75s (transform 475ms, setup 163ms, import 1.13s, tests 53ms, environment 328ms)
+
+undefined
+/Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/timing-runtime-review/packages/interview:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run '--project=units' src/__tests__/Shell.sync-flush.test.tsx

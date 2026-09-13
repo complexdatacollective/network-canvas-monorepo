@@ -183,6 +183,15 @@ describe('interview sync route', () => {
       promptExits: [],
       totalDurationMs: 1250,
     };
+    findUniqueMock.mockResolvedValue({
+      protocol: {
+        stages: [
+          { type: 'NameGenerator' },
+          { type: 'NameGenerator' },
+          { type: 'Information' },
+        ],
+      },
+    });
 
     const response = await POST(makeRequest(legacyNetwork, { stageTiming }), {
       params: Promise.resolve({ interviewId: 'interview-1' }),
@@ -194,6 +203,33 @@ describe('interview sync route', () => {
         data: expect.objectContaining({ stageTiming }),
       }),
     );
+  });
+
+  it('rejects timing whose stage type disagrees with the pinned protocol', async () => {
+    findUniqueMock.mockResolvedValue({
+      protocol: { stages: [{ type: 'Information' }] },
+    });
+    const response = await post(
+      makeRequest(legacyNetwork, {
+        stageTiming: {
+          stageExits: [
+            {
+              stageIndex: 0,
+              stageType: 'FinishSession',
+              promptIndex: 0,
+              promptCount: 1,
+              durationMs: 25,
+              exitDirection: 'forward',
+            },
+          ],
+          promptExits: [],
+          totalDurationMs: 25,
+        },
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(updateManyMock).not.toHaveBeenCalled();
   });
 
   it('keeps the generic HTTP 400 response for invalid defined values', async () => {
