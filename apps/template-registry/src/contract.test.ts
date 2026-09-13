@@ -14,6 +14,7 @@ import { RegistrySequenceSchema } from './account-contract.ts';
 import {
   EntrySchema,
   generateRegistryOpenApi,
+  ListEntriesSchema,
   registryContract,
 } from './contract.ts';
 import { toOpenApi30 } from './openapi-compatibility.ts';
@@ -27,6 +28,17 @@ const ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_ID = '22222222-2222-4222-8222-222222222222';
 const ROOT = 'a'.repeat(64);
 const OTHER_ROOT = 'b'.repeat(64);
+const EMOJI_150 = '😀'.repeat(150);
+
+it('counts search limits in Unicode code points', () => {
+  expect(
+    ListEntriesSchema.parse({ query: EMOJI_150, author: EMOJI_150 }),
+  ).toMatchObject({ query: EMOJI_150, author: EMOJI_150 });
+  expect(() =>
+    ListEntriesSchema.parse({ query: `${EMOJI_150}${'😀'.repeat(51)}` }),
+  ).toThrow();
+});
+
 function expectSequenceRange(schema: Record<string, unknown>) {
   expect(schema.type).toBe('string');
   if (typeof schema.pattern !== 'string')
