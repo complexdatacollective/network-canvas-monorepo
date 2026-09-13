@@ -36,6 +36,7 @@ describe('studio server', () => {
       servers: { url: string }[];
       paths: Record<string, unknown>;
       components: { schemas: Record<string, unknown> };
+      webhooks: Record<string, unknown>;
     };
     expect(doc.openapi).toMatch(/^3\.1\./);
     // Paths are relative to the mount prefix; the document must say so, or
@@ -43,6 +44,22 @@ describe('studio server', () => {
     expect(doc.servers).toEqual([{ url: '/api/v1' }]);
     expect(Object.keys(doc.paths)).toContain('/status');
     expect(Object.keys(doc.components.schemas)).toContain('Status');
+    expect(doc.components.schemas.StudyCreatedWebhookEvent).toMatchObject({
+      required: ['type', 'teamId', 'studyId', 'resourceId'],
+    });
+    expect(doc.webhooks.studyCreated).toMatchObject({
+      post: {
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/StudyCreatedWebhookEvent',
+              },
+            },
+          },
+        },
+      },
+    });
   });
 
   it('does not serve unknown API paths, refusing as problem JSON', async () => {

@@ -8,8 +8,14 @@ import { createHttpTestApp } from '../../__tests__/support/http-app.ts';
 import { createRpcClient } from '../../__tests__/support/rpc.ts';
 import { readEnv } from '../../env.ts';
 import { participantFixture } from '../../pii/__tests__/integration-fixture.ts';
+import {
+  readWebhookSecretForDelivery,
+  setWebhookSecret,
+} from '../../pii/webhooks.ts';
 import { createAuditedStudy } from '../../study/commands.ts';
 import {
+  beginWebhookHandoff,
+  consumeWebhookResponse,
   createStandardWebhookSender,
   createWebhookDeliveryDispatcher,
   startWebhookDeliveryWorker,
@@ -67,6 +73,36 @@ describe('webhook runtime', () => {
         body: '{}',
       }),
     ).rejects.toMatchObject({ disposition: 'permanent' });
+  });
+
+  it('bounds DNS inside the absolute deadline and destroys a response after its headers', async () => {
+    const started = Date.now();
+    await expect(
+      createStandardWebhookSender({
+        timeoutMs: 20,
+        lookupAddress: () =>
+          new Promise<{ address: string; family: 4 | 6 }[]>(() => undefined),
+      }).send({
+        id: randomUUID(),
+        url: 'https://hooks.example.org/studio',
+        timestamp: '1',
+        signature: 'v1,synthetic',
+        body: '{}',
+      }),
+    ).rejects.toMatchObject({ disposition: 'retryable' });
+    expect(Date.now() - started).toBeLessThan(500);
+
+    let destroyed = false;
+    expect(
+      consumeWebhookResponse({
+        statusCode: 204,
+        destroy(_error?: Error) {
+          destroyed = true;
+          return this;
+        },
+      }),
+    ).toBe(204);
+    expect(destroyed).toBe(true);
   });
 
   it('rechecks administration and never exposes stored secret material', async () => {
@@ -218,30 +254,37 @@ describe('webhook runtime', () => {
     });
   });
 
-  it('never retries an uncertain post-handoff result and suppresses a disabled subscription before handoff', async () => {
+  it('retries an ambiguous post-handoff result with the stable id and suppresses a disabled subscription before handoff', async () => {
     await participantFixture(async (fixture) => {
       const subscriptionId = await addSubscription(fixture);
       await enqueue(fixture);
       let sends = 0;
+      const webhookIds: string[] = [];
       const dispatcher = createWebhookDeliveryDispatcher({
         pool: fixture.scratch.maintenance,
         encryptionKeys: fixture.keys,
         retryBaseMs: 0,
+        retryMaxMs: 0,
+        maxAttempts: 2,
+        leaseMs: 5_000,
         sender: {
-          async send() {
+          async send(request) {
             sends += 1;
+            webhookIds.push(request.id);
             throw new Error('synthetic connection loss after request handoff');
           },
         },
       });
-      expect(await dispatcher.runOnce()).toMatchObject({ uncertain: 1 });
+      expect(await dispatcher.runOnce()).toMatchObject({ retried: 1 });
+      expect(await dispatcher.runOnce()).toMatchObject({ failed: 1 });
       expect(await dispatcher.runOnce()).toMatchObject({ claimed: 0 });
-      expect(sends).toBe(1);
+      expect(sends).toBe(2);
+      expect(new Set(webhookIds).size).toBe(1);
 
       await enqueue(fixture);
       await disableWebhookSubscription(fixture.context, subscriptionId);
       expect(await dispatcher.runOnce()).toMatchObject({ suppressed: 1 });
-      expect(sends).toBe(1);
+      expect(sends).toBe(2);
       expect(
         (
           await fixture.scratch.pool.query<{
@@ -253,7 +296,7 @@ describe('webhook runtime', () => {
              FROM webhook_deliveries`,
           )
         ).rows[0],
-      ).toEqual({ uncertain: 1, failed: 1 });
+      ).toEqual({ uncertain: 0, failed: 2 });
     });
   });
 
@@ -277,18 +320,17 @@ describe('webhook runtime', () => {
          WHERE id = $1`,
         [first.id],
       );
-      expect(await adapter.reconcileExpiredUncertainLeases()).toBe(1);
-
-      await enqueue(fixture);
+      expect(await adapter.reconcileExpiredUncertainLeases()).toBe(0);
       const secondOwner = randomUUID();
       const second = await adapter.claim(
         { owner: secondOwner, durationMs: 5_000 },
         3,
       );
       if (!second) throw new Error('expected second delivery claim');
+      expect(second.id).toBe(first.id);
       await fixture.scratch.pool.query(
         `UPDATE webhook_deliveries
-         SET attempt_count = 3, lease_expires_at = now() - interval '1 second'
+         SET attempt_count = 3, send_started_at=now(), lease_expires_at = now() - interval '1 second'
          WHERE id = $1`,
         [second.id],
       );
@@ -301,7 +343,75 @@ describe('webhook runtime', () => {
              FROM webhook_deliveries`,
           )
         ).rows[0],
-      ).toEqual({ uncertain: 1, failed: 1 });
+      ).toEqual({ uncertain: 0, failed: 1 });
+    });
+  });
+
+  it('refuses handoff after the audited secret snapshot is rotated', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await enqueue(fixture);
+      const adapter = new WebhookDeliveryAdapter({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+      });
+      const owner = randomUUID();
+      const claim = await adapter.claim({ owner, durationMs: 5_000 }, 3);
+      if (!claim) throw new Error('expected delivery claim');
+      const read = await readWebhookSecretForDelivery(
+        fixture.keys,
+        subscriptionId,
+        {
+          kind: 'delivery',
+          maintenancePool: fixture.scratch.maintenance,
+          teamId: fixture.context.tenantDb.teamId,
+          deliveryId: claim.id,
+          leaseOwner: owner,
+        },
+      );
+      try {
+        await setWebhookSecret(
+          fixture.keys,
+          fixture.context,
+          subscriptionId,
+          Buffer.alloc(32, 72),
+        );
+        await expect(
+          beginWebhookHandoff(
+            fixture.scratch.maintenance,
+            claim,
+            read.snapshot,
+          ),
+        ).resolves.toBe(false);
+        const current = await readWebhookSecretForDelivery(
+          fixture.keys,
+          subscriptionId,
+          {
+            kind: 'delivery',
+            maintenancePool: fixture.scratch.maintenance,
+            teamId: fixture.context.tenantDb.teamId,
+            deliveryId: claim.id,
+            leaseOwner: owner,
+          },
+        );
+        try {
+          await fixture.scratch.pool.query(
+            "UPDATE webhook_deliveries SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+            [claim.id],
+          );
+          await expect(
+            beginWebhookHandoff(
+              fixture.scratch.maintenance,
+              claim,
+              current.snapshot,
+            ),
+          ).resolves.toBe(false);
+        } finally {
+          current.secret.fill(0);
+        }
+      } finally {
+        read.secret.fill(0);
+      }
     });
   });
 

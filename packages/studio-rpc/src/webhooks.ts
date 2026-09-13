@@ -6,6 +6,15 @@ import { TeamScopedSchema } from './schemas.ts';
 export const WebhookEventTypeSchema = z.enum(['study.created']);
 export type WebhookEventType = z.infer<typeof WebhookEventTypeSchema>;
 
+export const StudyCreatedWebhookEventSchema = z
+  .strictObject({
+    type: z.literal('study.created'),
+    teamId: z.string().min(1).max(255),
+    studyId: z.uuid(),
+    resourceId: z.uuid(),
+  })
+  .meta({ id: 'StudyCreatedWebhookEvent' });
+
 const WebhookEventTypesSchema = z
   .array(WebhookEventTypeSchema)
   .min(1)

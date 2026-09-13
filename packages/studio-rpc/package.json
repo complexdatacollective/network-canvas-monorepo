@@ -15,7 +15,8 @@
     "./client-session": "./src/clientSession.ts",
     "./protocol-builder": "./src/protocolBuilder.ts",
     "./surfaces": "./src/surfaces.ts",
-    "./telemetry": "./src/telemetry.ts"
+    "./telemetry": "./src/telemetry.ts",
+    "./webhooks": "./src/webhooks.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
