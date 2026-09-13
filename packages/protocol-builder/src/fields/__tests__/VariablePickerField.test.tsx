@@ -8,7 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
@@ -251,6 +251,18 @@ const trigger = (name: 'Select attribute' | 'Change attribute') =>
   within(picker()).getByRole('button', { name });
 
 /**
+ * The two names the window's search box goes by.
+ *
+ * It says whether this window can invent an attribute, the way the trigger
+ * says whether one has been chosen — so a helper that knew only one of the two
+ * would find the box at the sites that create and lose it at the sites that
+ * only choose. Which name is drawn where is asserted by the tests that are
+ * about it.
+ */
+const isSearchBox = (name: string) =>
+  name === 'Find or create an attribute' || name === 'Find an attribute';
+
+/**
  * Types a name into the open window's search box.
  *
  * `paste` rather than `type`: what is asserted below is the list the term
@@ -262,9 +274,7 @@ const search = async (
   dialog: HTMLElement,
   term: string,
 ) => {
-  const box = within(dialog).getByRole('searchbox', {
-    name: 'Find or create an attribute',
-  });
+  const box = within(dialog).getByRole('searchbox', { name: isSearchBox });
   await harness.user.clear(box);
   await harness.user.type(box, term);
   return box;
@@ -325,10 +335,10 @@ describe('the attribute picker', () => {
     const dialog = await openAttributePicker(harness.user, picker());
 
     expect(dialog).toHaveAccessibleName(ROW_PICKER);
+    // Named for what this window can do, which is only to find one: this row
+    // chooses from what the codebook holds and was handed no way to create.
     expect(
-      within(dialog).getByRole('searchbox', {
-        name: 'Find or create an attribute',
-      }),
+      within(dialog).getByRole('searchbox', { name: 'Find an attribute' }),
     ).toHaveFocus();
   });
 
@@ -397,9 +407,7 @@ describe('the attribute picker', () => {
 
     const reopened = await openAttributePicker(harness.user, picker());
     expect(
-      within(reopened).getByRole('searchbox', {
-        name: 'Find or create an attribute',
-      }),
+      within(reopened).getByRole('searchbox', { name: 'Find an attribute' }),
     ).toHaveValue('');
   });
 
@@ -1115,6 +1123,64 @@ describe('the window when the field turns read-only under it', () => {
     );
     await user.click(document.body);
 
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  /**
+   * And what the window still offers follows the field, rather than standing
+   * over it.
+   *
+   * The create row is the one thing in here that writes to the codebook, and a
+   * field that has stopped taking a chosen attribute has stopped taking an
+   * invented one too — the host refuses the write, and what the researcher is
+   * offered should say so before they press it rather than after. The window
+   * keeps its way out either way: the row goes, the search box stays, and
+   * Escape still closes it.
+   */
+  it('stops offering to create once the field turns read-only under it', async () => {
+    const user = userEvent.setup();
+    const onCreateOption = vi.fn();
+    const view = render(
+      <VariablePickerField
+        name="variable"
+        options={OPTIONS}
+        onCreateOption={onCreateOption}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Select attribute' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(
+      within(dialog).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
+      'nominated_early',
+    );
+    expect(
+      within(dialog).getByRole('option', {
+        name: 'Create new attribute called “nominated_early”.',
+      }),
+    ).toBeInTheDocument();
+
+    view.rerender(
+      <VariablePickerField
+        name="variable"
+        options={OPTIONS}
+        onCreateOption={onCreateOption}
+        readOnly
+      />,
+    );
+
+    expect(
+      within(dialog).queryByRole('option', {
+        name: 'Create new attribute called “nominated_early”.',
+      }),
+    ).toBeNull();
+    expect(
+      within(dialog).getByRole('searchbox', { name: 'Find an attribute' }),
+    ).toHaveValue('nominated_early');
+    expect(onCreateOption).not.toHaveBeenCalled();
+
+    await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });

@@ -306,20 +306,15 @@ describe('the row dialogs under es', () => {
       'the attribute window matching nothing',
       researcherWords(harness),
     );
-    await harness.user.clear(search);
 
-    // The picker's last option is the attribute that does not exist yet, and
-    // taking it is what draws the half-a-codebook-variable surface below.
-    const sentinel = await waitFor(() => {
-      const found = picker.querySelector<HTMLElement>(
-        '[role="option"][data-attribute-id="#create-new-attribute"]',
-      );
-      if (found === null) {
-        throw new Error('the window is not offering an attribute to invent');
-      }
-      return found;
-    });
-    await harness.user.click(sentinel);
+    // Nothing matches what was typed, so the first row offers to make it —
+    // and taking that row is what draws the half-a-codebook-variable surface
+    // below.
+    await harness.user.click(
+      within(picker).getByRole('option', {
+        name: 'Crear un atributo nuevo llamado “apodo”.',
+      }),
+    );
     await screen.findByRole('combobox', { name: 'Tipo de respuesta' });
 
     expectNoLocaleLeaks(

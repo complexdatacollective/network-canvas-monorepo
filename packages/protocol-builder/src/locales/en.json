@@ -295,6 +295,10 @@
     "defaultMessage": "Change this attribute’s values",
     "description": "Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens."
   },
+  "protocolBuilder.attributeCodebookControls.rulesDroppedForNewKind": {
+    "defaultMessage": "{ruleCount, plural, one {Changing the kind of answer removed a rule that does not carry over: {ruleNames}.} other {Changing the kind of answer removed rules that do not carry over: {ruleNames}.}}",
+    "description": "Shown after the researcher changes the kind of answer an attribute they are inventing holds, when rules they had already written for it cannot be kept — either the new kind does not accept them, or they compare this answer with another attribute that is no longer comparable. ruleNames is the list of rule names, already translated."
+  },
   "protocolBuilder.cardDisplay.addLabel": {
     "defaultMessage": "Add new display property",
     "description": "Button that adds one more attribute to what a roster card shows. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
@@ -353,7 +357,7 @@
   },
   "protocolBuilder.censusPrompts.attributeCreateLabel": {
     "defaultMessage": "Create a new attribute",
-    "description": "Button that opens the codebook editor for inventing an attribute this prompt can write to. Also the title of the dialog it opens."
+    "description": "Names the act of inventing an attribute this prompt can write to, and titles the codebook editor the attribute picker’s create row opens for it. Reached from inside that picker, on the name the researcher typed."
   },
   "protocolBuilder.censusPrompts.attributeLabel": {
     "defaultMessage": "Attribute",
@@ -685,7 +689,7 @@
   },
   "protocolBuilder.censusPrompts.tieStrengthScaleCreateLabel": {
     "defaultMessage": "Create a new attribute",
-    "description": "Button that opens the codebook editor for inventing the attribute whose ordered values become the points of the scale. Also the title of the dialog it opens."
+    "description": "Names the act of inventing the attribute whose ordered values become the points of the scale, and titles the codebook editor the attribute picker’s create row opens for it."
   },
   "protocolBuilder.censusPrompts.tieStrengthScaleDescription": {
     "defaultMessage": "Choose the ordinal attribute whose options participants use to rate the relationship.",
@@ -1587,10 +1591,6 @@
     "defaultMessage": "Visual analogue scale",
     "description": "Choice offered for the control a participant answers with: a slider they move along a continuous line."
   },
-  "protocolBuilder.formFields.createNewOption": {
-    "defaultMessage": "Create a new attribute…",
-    "description": "The last choice in the attribute list, which stands for an attribute that does not exist yet and asks the researcher to name one. The trailing character is an ellipsis."
-  },
   "protocolBuilder.formFields.createWithSettingsFirst": {
     "defaultMessage": "Create this attribute and what it accepts before adding the field that collects it.",
     "description": "The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means."
@@ -1670,22 +1670,6 @@
   "protocolBuilder.formFields.malformedField": {
     "defaultMessage": "This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.",
     "description": "Refusal shown above a form’s list of fields when the list holds an entry that is not a field at all — which an import, a migration or another session can leave behind. The list cannot render such an entry, so there is no row for the researcher to open and finish, which is why this says the protocol itself has to be repaired."
-  },
-  "protocolBuilder.formFields.newNameHint": {
-    "defaultMessage": "How this attribute is named in the codebook and in exported data.",
-    "description": "Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyzes afterwards."
-  },
-  "protocolBuilder.formFields.newNameLabel": {
-    "defaultMessage": "Attribute name",
-    "description": "Label of the field naming an attribute the researcher is inventing."
-  },
-  "protocolBuilder.formFields.newNamePlaceholder": {
-    "defaultMessage": "Nickname",
-    "description": "Example attribute name shown in the empty field. An example a researcher might write, not a value that is stored."
-  },
-  "protocolBuilder.formFields.newNameRequired": {
-    "defaultMessage": "Name the attribute this field collects.",
-    "description": "Refusal shown under the new-attribute name field when it has been left empty."
   },
   "protocolBuilder.formFields.newTypeHint": {
     "defaultMessage": "What this attribute holds. It cannot be changed once answers have been collected.",
@@ -2775,9 +2759,9 @@
     "defaultMessage": "Show validation hints",
     "description": "Label of the switch that tells the participant what a valid answer to one field of a network composer form looks like."
   },
-  "protocolBuilder.networkCanvas.formFieldVariableEmpty": {
-    "defaultMessage": "This type has no attributes a form can collect yet. Create one in the codebook to continue.",
-    "description": "Shown in place of the attribute list when the type this form is about has nothing a form could ask for. The codebook is where a protocol defines the kinds of member its network holds and the attributes recorded about each."
+  "protocolBuilder.networkCanvas.formFieldVariableCreateTitle": {
+    "defaultMessage": "Create a new attribute",
+    "description": "Titles the codebook editor that the attribute picker’s create row opens for a network composer form field. The researcher is asked for the kind of answer there, because this row does not decide it."
   },
   "protocolBuilder.networkCanvas.formFieldVariableHint": {
     "defaultMessage": "The attribute each answer is recorded in. Only attributes a form can collect are listed: a position or a location is written by the canvas rather than answered.",
@@ -6001,7 +5985,11 @@
   },
   "protocolBuilder.variablePicker.searchLabel": {
     "defaultMessage": "Find or create an attribute",
-    "description": "Accessible name of the search box at the top of the attribute window. Typing in it narrows the list below, and — where this control allows it — offers to create an attribute under whatever was typed."
+    "description": "Accessible name of the search box at the top of the attribute window, where this control allows a new attribute to be created. Typing in it narrows the list below and offers to create an attribute under whatever was typed."
+  },
+  "protocolBuilder.variablePicker.searchOnlyLabel": {
+    "defaultMessage": "Find an attribute",
+    "description": "Accessible name of the search box at the top of the attribute window where this control only chooses from attributes that already exist. Typing in it narrows the list below."
   },
   "protocolBuilder.variablePicker.searchOnlyPlaceholder": {
     "defaultMessage": "Find an attribute…",
