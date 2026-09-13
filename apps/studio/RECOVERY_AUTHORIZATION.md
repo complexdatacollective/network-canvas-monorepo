@@ -183,3 +183,190 @@ channels. Recovery removes the restored recipient and channel settings because
 they are absent from signed authorization evidence. Historical delivery
 receipts remain retained but uncertain; do not treat them as proof that an old
 destination is currently authorized or reachable.
+
+## Offline evidence format and tooling (version 1)
+
+The release image includes `recovery:evidence`. It neither loads Studio's
+configuration nor connects to a database or network. Run it on the independent
+authority workstation, using the retained image digest and `--network none`.
+Keep that workstation's inventories and signing key under custody separate
+from the database backups. Never reconstruct current authority by exporting
+only the restored database: that would authenticate the stale state itself.
+
+The command accepts these exact argument lists:
+
+```text
+recovery:evidence schema
+recovery:evidence prepare INPUT_JSON CANONICAL_OUTPUT
+recovery:evidence sign CANONICAL_INPUT EXPECTED_SHA256 PRIVATE_KEY_PEM KEY_ID SIGNATURE_OUTPUT
+recovery:evidence verify CANONICAL_INPUT SIGNATURE_INPUT TRUSTED_KEY_ID TRUSTED_PUBLIC_KEY
+```
+
+`schema` prints the complete version 1 JSON Schema derived from the same strict
+runtime validator. `prepare` also enforces the cross-record rules below,
+canonicalizes an independently assembled JSON inventory, writes mode-0600
+bytes without a trailing newline, and prints its lowercase SHA-256. Ordinary
+input whitespace and member order are accepted; duplicate members, invalid
+UTF-8, NULs, lone surrogates, unknown fields, and excessive nesting are refused.
+`sign` accepts an unencrypted PKCS#8 PEM Ed25519 private key, checks the pinned
+digest and canonical form, then writes a versioned JSON signature receipt.
+`verify` requires the independently retained public key and key identifier;
+it does not trust those fields merely because they appear in the receipt.
+All three commands reject future-issued and expired evidence. Recovery checks
+freshness again in its authorization transaction.
+
+Every input must be a nonempty private regular file (no group/other permission
+bits), at most 64 MiB; symlinks are refused. Outputs must not exist and are
+created with mode 0600. Keep the parent directory mode 0700. A failed write can
+leave an incomplete private output; remove it after inspection before retrying.
+Only receipts/digests or the schema appear on stdout. Failure reports a bounded
+code on stderr, never inventory content, credentials, paths, or key bytes.
+
+For example, with independently prepared `current-authority.json` and an
+already enrolled authority key in the private directory:
+
+```sh
+# Run on the independent authority workstation, not the restored server.
+RECOVERY_EVIDENCE_DIR=/absolute/private/recovery-evidence
+recovery_evidence() {
+  docker run --rm --network none --user "$(id -u):$(id -g)" \
+    -v "$RECOVERY_EVIDENCE_DIR:/evidence" \
+    "$STUDIO_IMAGE" recovery:evidence "$@"
+}
+recovery_evidence schema > "$RECOVERY_EVIDENCE_DIR/authorization-v1.schema.json"
+recovery_evidence prepare /evidence/current-authority.json /evidence/reconciliation.json
+# Independently record and transfer the printed digest. Use its exact value here.
+recovery_evidence sign /evidence/reconciliation.json "$EXPECTED_SHA256" \
+  /evidence/recovery-authority.pem "$TRUSTED_KEY_ID" /evidence/signature.json
+recovery_evidence verify /evidence/reconciliation.json /evidence/signature.json \
+  "$TRUSTED_KEY_ID" "$TRUSTED_PUBLIC_KEY"
+```
+
+The independently enrolled public key is the raw 32-byte Ed25519 public key,
+encoded as unpadded canonical base64url (43 characters), not PEM or the whole
+SPKI envelope. The key identifier is 1–64 characters matching
+`[A-Za-z0-9][A-Za-z0-9._:-]*`. The signature is Ed25519 over the exact canonical
+artifact bytes, with no prehash or domain prefix; encode its 64 bytes as
+unpadded canonical base64url (86 characters). The signature receipt contains
+exactly `format: "studio-recovery-authorization-signature"`, `version: 1`,
+`sha256`, `authorityKeyId`, `authorityPublicKey`, and `signature`. Map its digest
+and signature to `STUDIO_RECOVERY_RECONCILIATION_SHA256` and
+`STUDIO_RECOVERY_RECONCILIATION_SIGNATURE`. Configure the two authority values
+from independent custody, matching the receipt; do not enroll a replacement
+trust anchor from a recovery receipt. Transfer only the artifact, receipt, and
+public trust anchor to the restored host. Retain the private key independently.
+
+### Complete inventory shape
+
+All properties shown below are required, including empty arrays and explicit
+nulls. This illustrative inventory is structurally complete; replace its
+identities and dates using the independent current authority inventory. Empty
+inventories authorize nothing in those categories. To represent accounts,
+grants, webhooks, or templates, use the field definitions immediately below.
+
+```json
+{
+  "format": "studio-recovery-authorization-reconciliation",
+  "version": 1,
+  "issuedAt": "2026-09-13T11:00:00Z",
+  "expiresAt": "2026-09-13T13:00:00Z",
+  "instance": {
+    "name": "Studio",
+    "initialOwnerUserId": "owner",
+    "initialTeamId": "team",
+    "completedAt": "2026-09-01T00:00:00Z"
+  },
+  "users": [{ "id": "owner", "email": "owner@example.com", "emailVerified": true }],
+  "eligibleUserIds": ["owner"],
+  "accounts": [],
+  "teams": [{ "id": "team", "slug": "team" }],
+  "memberships": [{ "id": "membership", "teamId": "team", "userId": "owner", "roles": ["owner"] }],
+  "studyGrants": [],
+  "activeWebhookSubscriptions": [],
+  "activeScheduleIds": [],
+  "publishedMessageTemplateIds": []
+}
+```
+
+- `accounts` entries contain `id`, `userId`, `issuer`, `accountId`, `providerId`,
+  and `credentialSha256` (64 lowercase hexadecimal characters).
+- `studyGrants` entries contain UUID `id`, `teamId`, UUID `studyId`, `userId`,
+  `role` (`manager`, `protocol_designer`, `coordinator`, or `data_viewer`), and
+  boolean `piiAccess`.
+- `activeWebhookSubscriptions` entries contain UUID `id`, `teamId`, and
+  `configurationSha256` (64 lowercase hexadecimal characters).
+- `activeScheduleIds` and `publishedMessageTemplateIds` contain UUID strings.
+- Other identifiers are nonempty strings of at most 255 UTF-16 code units;
+  `instance.name` is 1–120, email is a valid address at most 320. The initial
+  owner/team identifiers may be null or refer to retained historical identities.
+- Every array has at most 250,000 items; `eligibleUserIds` is nonempty.
+  Membership roles are a unique subset of `owner`, `admin`, `member`, length 1–3.
+- All record IDs are unique within their inventory. Emails are unique after
+  trimming and lowercasing; team slugs, eligible IDs, schedule/template IDs,
+  `(issuer, accountId)`, `(teamId, userId)` memberships, and `(studyId, userId)`
+  grants must also be unique.
+- Accounts and eligible IDs refer to inventoried users. Memberships and grants
+  refer to inventoried teams/users, and webhooks to inventoried teams.
+  The artifact's dates use ISO 8601 with an explicit offset; expiry must follow
+  issue time by no more than 24 hours. Nested containers are limited to 64.
+
+Canonical serialization recursively sorts object keys by ECMAScript UTF-16
+lexicographic order, preserves array order, and uses ECMAScript `JSON.stringify`
+for strings, booleans, numbers and null. There are no spaces, BOM, or trailing
+newline. Encode as UTF-8 and SHA-256 those exact bytes. Preparation uses the
+shared Studio canonicalizer; do not substitute a serializer that sorts arrays,
+normalizes Unicode or dates, escapes non-ASCII differently, or adds a newline.
+
+### Credential and webhook fingerprint preimages
+
+These fingerprints bind existing durable credential/configuration bytes; they
+do not decrypt or rotate them. Assemble their inputs from the independent
+current-authority source, including its encrypted token/secret bytes and key
+metadata. Plaintext passwords and decrypted tokens are never fingerprint inputs.
+`password` below is the stored password hash. Do not publish these preimages.
+
+For `credentialSha256`, SHA-256 the UTF-8 bytes of `JSON.stringify` of the
+following object, **in this insertion order**, without a newline. This preimage
+uses insertion order rather than the inventory's recursive key sorting:
+
+```javascript
+{
+  password: row.password,
+  access: row.access_token?.toString('base64') ?? null,
+  accessKeyId: row.access_key_id,
+  accessAlgorithm: row.access_algorithm,
+  accessExpiresAt: row.access_expires_at?.toISOString() ?? null,
+  refresh: row.refresh_token?.toString('base64') ?? null,
+  refreshKeyId: row.refresh_key_id,
+  refreshAlgorithm: row.refresh_algorithm,
+  refreshExpiresAt: row.refresh_expires_at?.toISOString() ?? null,
+  id: row.id_token?.toString('base64') ?? null,
+  idKeyId: row.id_key_id,
+  idAlgorithm: row.id_algorithm,
+  scope: row.scope
+}
+```
+
+For `configurationSha256`, use the same digest/encoding procedure on this
+object, **in this insertion order**:
+
+```javascript
+{
+  studyId: row.study_id,
+  url: row.url,
+  description: row.description,
+  eventTypes: row.event_types,
+  secret: row.secret_ciphertext.toString('base64'),
+  secretKeyId: row.secret_key_id,
+  secretAlgorithm: row.secret_algorithm
+}
+```
+
+Use standard padded base64 for the binary fields in these preimages, not
+base64url. Missing nullable database values are JSON null, never omitted or
+undefined. Convert expiry timestamps to UTC `Date.toISOString()` including
+milliseconds; preserve URL, description, scope, ciphertext and event-type
+array order exactly. Return the digest in lowercase hex. Account IDs,
+user/provider/issuer bindings and webhook IDs/team bindings live in the outer
+inventory and are compared separately. Fingerprints do not replace those
+identity comparisons.

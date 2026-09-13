@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-usage='Usage: serve | migrate | encryption <verify|rotate|migrate-legacy> | configure <options> | diagnostics | recovery:reconcile-authorization | recovery:authorize-current'
+usage='Usage: serve | migrate | encryption <verify|rotate|migrate-legacy> | configure <options> | diagnostics | recovery:reconcile-authorization | recovery:authorize-current | recovery:evidence <schema|prepare|sign|verify> <arguments>'
 
 case "${1:-serve}" in
   serve)
@@ -30,6 +30,10 @@ case "${1:-serve}" in
     shift
     [ "$#" -eq 0 ] || { echo "$usage" >&2; exit 2; }
     exec node dist/recovery-authorization.js
+    ;;
+  recovery:evidence)
+    shift
+    exec node dist/recovery-evidence.js "$@"
     ;;
   recovery:authorize-current)
     shift
