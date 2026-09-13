@@ -949,7 +949,6 @@ function VariableEditorInstance(props: VariableEditorInstanceProps) {
                   ))}
                   <Button
                     type="button"
-                    variant="dashed"
                     color="primary"
                     icon={<Plus aria-hidden="true" />}
                     disabled={interactionDisabled}

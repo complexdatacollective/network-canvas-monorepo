@@ -48,6 +48,12 @@ const dialogMessages = defineMessages({
     description:
       'Accessible name of the divider a researcher drags to give more room either to the fields of an editing dialog or to the live preview beside them.',
   },
+  configurationPane: {
+    id: 'protocolBuilder.dialogForm.configurationPane',
+    defaultMessage: 'Configuration',
+    description:
+      'Accessible name of the half of a two-pane editing dialog that holds the controls, as opposed to the live preview of what they are describing.',
+  },
 });
 
 /**
@@ -515,16 +521,29 @@ function DialogFormBody({
               aria-label={intl.formatMessage(dialogMessages.resizeHandle)}
               className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
             >
+              {/* Named only here. A dialog with an aside has two regions a
+                  researcher moves between, and one of them is the preview's
+                  named section — so the fields need a name of their own for
+                  either to be worth announcing. A dialog with no aside has
+                  one region, which the dialog's own title already names. */}
               <FormWithoutProvider
                 id={domFormId}
                 onSubmit={handleSubmit}
+                aria-label={intl.formatMessage(
+                  dialogMessages.configurationPane,
+                )}
                 className="min-w-0 @min-[60rem]:pr-4"
               >
                 {fields}
               </FormWithoutProvider>
-              <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+              {/* A plain box rather than an `<aside>`: a complementary
+                  landmark may not be nested inside another, and this one is
+                  inside the dialog's. What the aside contains names itself —
+                  the preview is its own labelled region — so the wrapper has
+                  nothing left to announce. */}
+              <div className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
                 {aside}
-              </aside>
+              </div>
             </ResizableFlexPanel>
           ) : (
             <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>

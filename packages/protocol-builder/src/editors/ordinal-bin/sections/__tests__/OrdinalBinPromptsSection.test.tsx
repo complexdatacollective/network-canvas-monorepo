@@ -1,9 +1,28 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  attributeField,
+  chooseAttributeById,
+  offeredAttributes,
+} from '../../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import OrdinalBinPromptsSection from '../OrdinalBinPromptsSection.tsx';
+
+/** The label of the field a prompt's scale is chosen in. */
+const SCALE_LABEL = 'Attribute';
+
+/**
+ * The field the scale is chosen in, once the prompt has drawn it.
+ *
+ * A scope rather than a control: the scale is picked in a window the field's
+ * trigger opens, so everything a test does to it, it does through here.
+ */
+const findScaleField = async (): Promise<HTMLElement> => {
+  await screen.findByText(SCALE_LABEL, { selector: 'label' });
+  return attributeField(SCALE_LABEL);
+};
 
 const openSection = () => ({
   stageId: 'ordinal-bin-1' as const,
@@ -26,16 +45,16 @@ describe('the questions an ordinal bin asks', () => {
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
 
-    const picker = await screen.findByRole('combobox', { name: 'Attribute' });
+    const picker = await findScaleField();
     // Only the ordinal attributes of the type this stage sorts: the fixture
     // gives `person` one, and the rest are text, boolean, number, layout and
     // categorical.
-    expect(
-      [...picker.querySelectorAll('option')]
-        .map((option) => option.value)
-        .filter((value) => value !== ''),
-    ).toEqual(['contactFreq']);
-    expect(picker).toHaveValue('contactFreq');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([
+      'contactFreq',
+    ]);
+    await waitFor(() =>
+      expect(within(picker).getByText('contactFreq')).toBeVisible(),
+    );
     // `ord-color-seq-1` is the first swatch of the schema's own sequence.
     expect(screen.getByRole('radio', { name: 'Sea Green' })).toBeChecked();
   });
@@ -84,8 +103,9 @@ describe('the questions an ordinal bin asks', () => {
       await screen.findByRole('textbox', { name: 'Prompt text' }),
       'How often?',
     );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await findScaleField(),
       'contactFreq',
     );
 
@@ -141,7 +161,7 @@ describe('the questions an ordinal bin asks', () => {
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
     // No swatch is checked, so there is a refusal to reach at all.
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findScaleField();
     expect(screen.getByRole('radio', { name: 'Sea Green' })).not.toBeChecked();
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
@@ -159,7 +179,7 @@ describe('the questions an ordinal bin asks', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Create new prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findScaleField();
     expect(
       screen.getByRole('switch', {
         name: 'Bucket order',
@@ -167,8 +187,9 @@ describe('the questions an ordinal bin asks', () => {
     ).toBeDisabled();
     expect(screen.getByRole('switch', { name: 'Bin order' })).toBeDisabled();
 
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributeField(SCALE_LABEL),
       'contactFreq',
     );
 
@@ -310,7 +331,7 @@ describe('an ordinal bin prompt whose scale is not an ordinal attribute', () => 
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Attribute' });
+    await findScaleField();
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(

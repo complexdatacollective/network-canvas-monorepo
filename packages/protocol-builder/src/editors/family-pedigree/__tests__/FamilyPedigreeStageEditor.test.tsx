@@ -5,6 +5,11 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+  offeredAttributes,
+} from '../../../testing/attributePicker.ts';
 import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import {
   renderStageEditor,
@@ -84,11 +89,32 @@ function variableIdByName(
   )?.[0];
 }
 
-/** The attributes a picker is currently offering, by their ids. */
-const optionsOf = (name: string): string[] =>
-  [...screen.getByRole('combobox', { name }).querySelectorAll('option')]
-    .map((option) => option.value)
-    .filter((value) => value !== '');
+/**
+ * The attributes a picker is currently offering, by their ids.
+ *
+ * The picker is a trigger and a window, so this opens the window, reads the
+ * rows and closes it again — leaving the field exactly as it found it.
+ */
+const optionsOf = (
+  harness: StageEditorHarness,
+  name: string,
+): Promise<string[]> => offeredAttributes(harness.user, attributeField(name));
+
+/**
+ * Binds one attribute slot, through the window a researcher opens.
+ *
+ * Awaits the slot's own label first: the slots are mounted by the node type,
+ * so a test that has just chosen one is asking for a control that is not on
+ * screen yet.
+ */
+const bindSlot = async (
+  harness: StageEditorHarness,
+  label: string,
+  variableId: string,
+): Promise<void> => {
+  await screen.findByText(label, { selector: 'label' });
+  await chooseAttributeById(harness.user, attributeField(label), variableId);
+};
 
 const outlineStateOf = (harness: StageEditorHarness, title: string) =>
   harness.outline().find((section) => section.title === title)?.state;
@@ -219,42 +245,22 @@ describe('the family pedigree stage editor', () => {
     await harness.user.click(
       screen.getByRole('radio', { name: 'family member' }),
     );
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Display label' }),
-      'fm_name',
-    );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Participant identifier' }),
-      'is_ego',
-    );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Relationship to participant' }),
+    await bindSlot(harness, 'Display label', 'fm_name');
+    await bindSlot(harness, 'Participant identifier', 'is_ego');
+    await bindSlot(
+      harness,
+      'Relationship to participant',
       'fm_relationship_to_ego',
     );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Biological sex' }),
-      'biologicalSex',
-    );
+    await bindSlot(harness, 'Biological sex', 'biologicalSex');
 
     await harness.user.click(
       screen.getByRole('radio', { name: 'family_edge' }),
     );
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Relationship type' }),
-      'relationshipType',
-    );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Active status' }),
-      'isActive',
-    );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Gestational carrier' }),
-      'isGestationalCarrier',
-    );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Gamete role' }),
-      'gameteRole',
-    );
+    await bindSlot(harness, 'Relationship type', 'relationshipType');
+    await bindSlot(harness, 'Active status', 'isActive');
+    await bindSlot(harness, 'Gestational carrier', 'isGestationalCarrier');
+    await bindSlot(harness, 'Gamete role', 'gameteRole');
 
     await harness.user.type(
       screen.getByRole('textbox', { name: 'Census prompt' }),
@@ -410,6 +416,13 @@ describe('a codebook that changes while the pedigree is open', () => {
     }
     const variables = { ...(definition.variables as Record<string, unknown>) };
     delete variables.fm_name;
+    // A text attribute the display label could take instead, arriving with the
+    // deletion. Without one the slot has nothing to choose and nothing to
+    // create, and the picker stands the whole control down behind its
+    // empty-state sentence — which would take the dangling pick's own name
+    // with it. Never chosen here: what is read below is the reference the
+    // deletion left behind.
+    variables.fm_nickname = { name: 'fm_nickname', type: 'text' };
 
     harness.receiveCodebookUpdate({
       node: { family_member: { ...definition, variables } },
@@ -422,9 +435,9 @@ describe('a codebook that changes while the pedigree is open', () => {
     // (`VariablePicker.missingOptionLabel`); the slot's own gate is what names
     // the deletion.
     expect(
-      await screen.findByRole('option', {
-        name: 'fm_name — this attribute is not available here',
-      }),
+      await within(attributeField('Display label')).findByText(
+        'fm_name — this attribute is not available here',
+      ),
     ).toBeInTheDocument();
     // Their deletion is theirs: the slot still points where the researcher
     // pointed it, and nothing about this stage has been rewritten.
@@ -450,8 +463,10 @@ describe('a codebook that changes while the pedigree is open', () => {
       },
     });
 
-    await waitFor(() =>
-      expect(optionsOf('Display label')).toContain('fm_nickname'),
+    await waitFor(async () =>
+      expect(await optionsOf(harness, 'Display label')).toContain(
+        'fm_nickname',
+      ),
     );
     expectStageUntouched(harness);
   });
@@ -483,8 +498,8 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('combobox', { name: 'Display label' }),
-      ).not.toHaveValue('fm_name'),
+        within(attributeField('Display label')).queryByText('fm_name'),
+      ).not.toBeInTheDocument(),
     );
     // In the codebook already, before the stage was saved: cancelling the
     // stage edit would not take the attribute back.

@@ -1,3 +1,4 @@
+import { ArrowRight } from 'lucide-react';
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
 import * as mapboxgl from 'mapbox-gl/esm';
 import { useEffect, useState } from 'react';
@@ -181,6 +182,8 @@ export default function MapPreviewDialog({
           {status === 'ready' && moved && (
             <Button
               color="primary"
+              icon={<ArrowRight aria-hidden="true" />}
+              iconPosition="right"
               onClick={() => {
                 onSave(viewCenter, viewZoom);
                 onClose();

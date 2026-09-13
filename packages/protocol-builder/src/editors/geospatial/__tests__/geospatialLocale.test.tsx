@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { attributeField } from '../../../testing/attributePicker.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -126,8 +127,14 @@ describe('the geospatial sections, read in Spanish', () => {
     // both controls on screen to be named.
     const dialog = await openPrompt(harness, 'Editar pregunta');
 
+    // The picker is a labelled field holding a trigger, so the label and the
+    // words on the button are two separate translations and both are asserted.
+    // This prompt already records a location attribute, which is the state the
+    // trigger says "change" rather than "select" in.
     expect(
-      dialog.getByRole('combobox', { name: 'Atributo de ubicación' }),
+      within(
+        attributeField('Atributo de ubicación', screen.getByRole('dialog')),
+      ).getByRole('button', { name: 'Cambiar atributo' }),
     ).toBeInTheDocument();
     expect(
       dialog.getByRole('button', {

@@ -1,5 +1,7 @@
 import { type Locator } from '@playwright/test';
 
+import { chooseAttribute } from './variables.js';
+
 // AlterForm/AlterEdgeForm/EgoForm's `form.fields` array is authored by
 // `@codaco/protocol-builder`'s `FormFieldsSection`
 // (`sections/form-fields/FormFieldsSection.tsx`). The section is titled "Form
@@ -12,6 +14,44 @@ import { type Locator } from '@playwright/test';
 // honest about which list it is driving. The dialog it opens is a page-level
 // portal, so everything after that is reached through `section.page()` and
 // scoped by the dialog's own accessible name instead.
+export async function openFormFieldDialog(section: Locator): Promise<Locator> {
+  const page = section.page();
+  await section
+    .getByRole('button', { name: 'Create new form field', exact: true })
+    .click();
+  // A brand-new row's dialog is titled "Create form field"; the same dialog
+  // reads "Edit form field" for a row that already exists (`rowDialog.tsx`'s
+  // `addTitle`/`editTitle`). Naming it here is what makes the fields below
+  // unambiguous without a second scope.
+  return page.getByRole('dialog', { name: 'Create form field' });
+}
+
+/**
+ * The half of the field dialog that shows the question as the participant will
+ * meet it.
+ *
+ * A named region (`FieldPreviewPane`), beside the named form the settings are
+ * in — so a test reading the preview and a test filling in the settings cannot
+ * reach each other's controls, which matters because the two render the same
+ * roles: a question box on the left and the box that answers it on the right.
+ */
+export function fieldPreview(dialog: Locator): Locator {
+  return dialog.getByRole('region', { name: 'Interactive preview' });
+}
+
+/**
+ * The other half: the field's own settings.
+ *
+ * Scope every settings control to this rather than to the dialog, wherever the
+ * control the participant answers with is of the same kind as a control the
+ * researcher fills in — a slider, a date box, a set of options. Both halves
+ * are on screen at once, and an unscoped query would resolve to two elements.
+ */
+export function fieldSettings(dialog: Locator): Locator {
+  return dialog.getByRole('form', { name: 'Configuration' });
+}
+
+/** Authors one whole form field, from an attribute that does not exist yet. */
 export async function addFormField(
   section: Locator,
   opts: {
@@ -23,15 +63,7 @@ export async function addFormField(
     inputControl?: string;
   },
 ): Promise<void> {
-  const page = section.page();
-  await section
-    .getByRole('button', { name: 'Create new form field', exact: true })
-    .click();
-  // A brand-new row's dialog is titled "Create form field"; the same dialog
-  // reads "Edit form field" for a row that already exists (`rowDialog.tsx`'s
-  // `addTitle`/`editTitle`). Naming it here is what makes the fields below
-  // unambiguous without a second scope.
-  const dialog = page.getByRole('dialog', { name: 'Create form field' });
+  const dialog = await openFormFieldDialog(section);
   await inventAttributeInFieldDialog(dialog, opts);
   const prompt = dialog.getByRole('textbox', { name: 'Question text' });
   await prompt.click();
@@ -108,13 +140,12 @@ export type InventAttributeOptions = {
  * Fill in the codebook half of an open form-field dialog: an attribute that
  * does not exist yet, and the control the participant answers it with.
  *
- * There is no attribute search here. `FormFieldEditor`
- * (`sections/form-fields/FormFieldsSection.tsx`) asks which attribute the
- * answer is recorded under through a native `<select>`
- * (`fields/VariablePickerField.tsx` -> fresco-ui's `NativeSelectField`, so
- * `selectOption` drives it directly) listing the subject's collectable
- * codebook attributes plus one sentinel option, "Create a new attribute…".
- * Choosing that option IS the request to invent one, and it reveals:
+ * `FormFieldEditor` (`sections/form-fields/FormFieldsSection.tsx`) asks which
+ * attribute the answer is recorded under through the attribute picker
+ * (`fields/VariablePickerField.tsx`), whose window lists the subject's
+ * collectable codebook attributes plus one sentinel row, "Create a new
+ * attribute…". This section passes no `onCreateOption`, so that sentinel is
+ * the whole of what inventing one is here: choosing it reveals:
  *
  * - "Kind of answer" — the codebook type, asked first because it decides what
  *   else the attribute needs; and then either
@@ -145,12 +176,13 @@ export async function inventAttributeInFieldDialog(
     );
   }
 
-  // `exact: true` on every name: "Attribute" is also the heading of the
-  // dialog's first Section and the prefix of "Attribute name", and a
-  // substring match would resolve to more than one control.
-  await dialog
-    .getByRole('combobox', { name: 'Attribute', exact: true })
-    .selectOption({ label: 'Create a new attribute…' });
+  // Addressed by the field's own name rather than by its label: "Attribute" is
+  // also the heading of the dialog's first Section and the prefix of
+  // "Attribute name".
+  await chooseAttribute(
+    dialog.locator('[data-field-name="variable"]'),
+    'Create a new attribute…',
+  );
   await dialog
     .getByRole('combobox', { name: 'Kind of answer', exact: true })
     .selectOption({ label: variableType });
