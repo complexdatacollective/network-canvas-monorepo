@@ -27,6 +27,13 @@ type StageShape = {
 
 type ExitDirection = StageTimingExitDirection;
 
+function isSyntheticFinishStage(
+  stages: StageShape[] | undefined,
+  stageIndex: number,
+): boolean {
+  return stages !== undefined && stageIndex === stages.length;
+}
+
 /**
  * Emits stage-level navigation events. Called from the Interview component
  * whenever the displayed step changes.
@@ -86,6 +93,7 @@ export function useStageNavigationAnalytics({
       const previousEnteredAt = lastPromptEnteredAtRef.current;
       if (previousIndex === null || previousEnteredAt === null)
         return undefined;
+      if (isSyntheticFinishStage(stages, previousIndex)) return undefined;
 
       const promptExit = {
         stageIndex: previousIndex,
@@ -111,35 +119,33 @@ export function useStageNavigationAnalytics({
       const previousEnteredAt = lastEnteredAtRef.current;
       if (previousIndex === null || previousEnteredAt === null) return;
 
+      // Redux stores only authored protocol stages. The runtime appends its
+      // FinishSession presentation step at the index immediately after them.
+      // It has no corresponding stage or prompt timing record.
+      if (isSyntheticFinishStage(stages, previousIndex)) return;
+
       const duration_ms = Math.max(0, now - previousEnteredAt);
       const previousType = stages?.[previousIndex]?.type;
       const promptExit = emitPromptExitRef.current(now, exit_direction);
 
-      // FinishSession is a synthetic presentation step. Completion is
-      // recorded on entry, after the authored stage before it has exited, so
-      // its time must not be appended to the completed interview total.
-      if (previousType !== 'FinishSession') {
-        totalStageDurationRef.current += duration_ms;
-        const stageExit: StageTimingExit = {
-          stageIndex: previousIndex,
-          stageType: previousType ?? 'unknown',
-          promptIndex: lastPromptIndexRef.current,
-          promptCount: lastPromptCountRef.current,
-          durationMs: duration_ms,
-          exitDirection: exit_direction,
-        };
-        dispatch(recordStageTiming({ promptExit, stageExit }));
-        track('stage_exited', {
-          [SUPER_PROPS.STAGE_TYPE]: previousType,
-          [SUPER_PROPS.STAGE_INDEX]: previousIndex,
-          [SUPER_PROPS.PROMPT_INDEX]: lastPromptIndexRef.current,
-          duration_ms,
-          prompt_count: lastPromptCountRef.current,
-          exit_direction,
-        });
-      } else if (promptExit) {
-        dispatch(recordStageTiming({ promptExit }));
-      }
+      totalStageDurationRef.current += duration_ms;
+      const stageExit: StageTimingExit = {
+        stageIndex: previousIndex,
+        stageType: previousType ?? 'unknown',
+        promptIndex: lastPromptIndexRef.current,
+        promptCount: lastPromptCountRef.current,
+        durationMs: duration_ms,
+        exitDirection: exit_direction,
+      };
+      dispatch(recordStageTiming({ promptExit, stageExit }));
+      track('stage_exited', {
+        [SUPER_PROPS.STAGE_TYPE]: previousType,
+        [SUPER_PROPS.STAGE_INDEX]: previousIndex,
+        [SUPER_PROPS.PROMPT_INDEX]: lastPromptIndexRef.current,
+        duration_ms,
+        prompt_count: lastPromptCountRef.current,
+        exit_direction,
+      });
     };
   }, [dispatch, stages, track]);
 
