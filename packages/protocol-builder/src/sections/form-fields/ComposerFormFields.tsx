@@ -46,6 +46,9 @@ import {
   isValidationMap,
   unvalidatedElsewhereMessage,
 } from '../../codebook/variableValidation.ts';
+import ComposerParametersField, {
+  type ComposerParameters,
+} from '../../fields/ComposerParametersField.tsx';
 import VariablePickerField, {
   createdUnassigned,
   type CreateOptionOutcome,
@@ -90,9 +93,6 @@ import {
   typeForControl,
 } from '../collectableTypes.ts';
 import { composerFormFieldMessages as messages } from './composerFormFieldMessages.ts';
-import ComposerParametersField, {
-  type ComposerParameters,
-} from './ComposerParametersField.tsx';
 import {
   CREATE_FIRST_REFUSALS,
   INVENTED_TYPE_NOTICE,

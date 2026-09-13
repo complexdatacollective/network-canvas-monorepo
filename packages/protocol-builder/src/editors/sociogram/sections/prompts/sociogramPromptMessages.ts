@@ -13,10 +13,9 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 export const sociogramPromptMessages = defineMessages({
   sociogramPromptsDescription: {
     id: 'protocolBuilder.networkCanvas.sociogramPromptsDescription',
-    defaultMessage:
-      'Write the tasks the participant works through on the canvas, and drag them into the order they do them.',
+    defaultMessage: 'Create and reorder the prompts shown in this stage.',
     description:
-      'Description of the prompts section on a sociogram stage, which sets tasks performed on a canvas rather than asking questions to be answered in words. Replaces the generic prompts description.',
+      'Description of the prompts section on a sociogram stage. A stage is one step of an interview; a prompt is one task the participant is set inside it.',
   },
   sociogramPromptsWaitingDescription: {
     id: 'protocolBuilder.networkCanvas.sociogramPromptsWaitingDescription',
@@ -27,17 +26,9 @@ export const sociogramPromptMessages = defineMessages({
   },
   sociogramPromptsFieldHint: {
     id: 'protocolBuilder.networkCanvas.sociogramPromptsFieldHint',
-    defaultMessage:
-      'The participant works through these one at a time, in this order. Each one decides what the canvas shows and what tapping a node does.',
+    defaultMessage: 'Add at least one prompt and drag prompts to reorder them.',
     description:
-      'Guidance under the sociogram prompt list. The canvas is the drawing surface the participant arranges nodes on.',
-  },
-  sociogramPromptsEmptyState: {
-    id: 'protocolBuilder.networkCanvas.sociogramPromptsEmptyState',
-    defaultMessage:
-      'No prompts yet. Create one to say what the participant does on the canvas.',
-    description:
-      'Shown in place of the sociogram prompt list while the stage sets no tasks yet.',
+      'Guidance under the sociogram prompt list, addressed to the researcher building the stage.',
   },
   promptTextTitle: {
     id: 'protocolBuilder.networkCanvas.promptTextTitle',
@@ -48,7 +39,7 @@ export const sociogramPromptMessages = defineMessages({
   promptTextSectionDescription: {
     id: 'protocolBuilder.networkCanvas.promptTextSectionDescription',
     defaultMessage:
-      'Write the question or instruction the participant sees for this task.',
+      'Write the instruction or question participants see for this task.',
     description: 'Description of the participant-prompt group.',
   },
   promptTextLabel: {
@@ -71,25 +62,26 @@ export const sociogramPromptMessages = defineMessages({
   },
   promptPositionsTitle: {
     id: 'protocolBuilder.networkCanvas.promptPositionsTitle',
-    defaultMessage: 'Node positions',
+    defaultMessage: 'Node layout',
     description:
       'Heading of the group inside the sociogram prompt dialog deciding where the participant’s placements are kept.',
   },
   promptPositionsDescription: {
     id: 'protocolBuilder.networkCanvas.promptPositionsDescription',
-    defaultMessage: "Where the participant's placements are remembered.",
+    defaultMessage:
+      'Store node positions and configure the initial order of unplaced nodes.',
     description: 'Description of the prompt node-positions group.',
   },
   promptLayoutLabel: {
     id: 'protocolBuilder.networkCanvas.promptLayoutLabel',
-    defaultMessage: 'Position attribute',
+    defaultMessage: 'Layout attribute',
     description:
       'Label of the picker naming the codebook attribute one sociogram prompt stores each node’s position in. A layout attribute holds a pair of coordinates.',
   },
   promptLayoutHint: {
     id: 'protocolBuilder.networkCanvas.promptLayoutHint',
     defaultMessage:
-      "The attribute that stores each node's position. Prompts sharing an attribute carry the participant's placements between them.",
+      'Create or select an attribute that stores node coordinates.',
     description: 'Guidance under the prompt position-attribute picker.',
   },
   promptLayoutEmpty: {
@@ -120,7 +112,7 @@ export const sociogramPromptMessages = defineMessages({
   promptSortDescription: {
     id: 'protocolBuilder.networkCanvas.promptSortDescription',
     defaultMessage:
-      'Choose the order the nodes the participant has not placed yet are handed to them in.',
+      'Control the order of the stack participants use to position nodes.',
     description: 'Description of the sort-unplaced-nodes group.',
   },
   promptSortLabel: {
@@ -129,17 +121,9 @@ export const sociogramPromptMessages = defineMessages({
     description:
       'Label of the ordered list of rules deciding which unplaced node the participant is handed next. Each rule is one attribute and a direction.',
   },
-  promptSortHint: {
-    id: 'protocolBuilder.networkCanvas.promptSortHint',
-    defaultMessage:
-      'Rules are applied in order. Use the asterisk to keep the order the nodes were added in.',
-    description:
-      'Guidance under the sort-rules list. The asterisk is the option offered in each rule’s attribute picker standing for the order the nodes were created in rather than for any attribute; keep it as the character *.',
-  },
   promptSortAddLabel: {
     id: 'protocolBuilder.networkCanvas.promptSortAddLabel',
-    defaultMessage:
-      'Add a rule for the order unplaced nodes are handed over in',
+    defaultMessage: 'Add new sort rule',
     description:
       'Button that adds one more sort rule. Whole rather than a generic "Add", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons.',
   },
@@ -152,19 +136,19 @@ export const sociogramPromptMessages = defineMessages({
   },
   tapTitle: {
     id: 'protocolBuilder.networkCanvas.tapTitle',
-    defaultMessage: 'Tapping a node',
+    defaultMessage: 'Node interaction',
     description:
       'Heading of the group inside the sociogram prompt dialog deciding what the participant tapping a node does.',
   },
   tapDescription: {
     id: 'protocolBuilder.networkCanvas.tapDescription',
     defaultMessage:
-      'What happens when the participant taps a node on this prompt.',
+      'Choose whether tapping a node toggles an attribute or creates an edge.',
     description: 'Description of the tapping-a-node group.',
   },
   tapBehaviourLabel: {
     id: 'protocolBuilder.networkCanvas.tapBehaviourLabel',
-    defaultMessage: 'Tap behavior',
+    defaultMessage: 'Interaction type',
     description:
       'Label of the control choosing between the three things tapping a node can do.',
   },
@@ -182,40 +166,34 @@ export const sociogramPromptMessages = defineMessages({
   },
   tapCreateEdgeLabel: {
     id: 'protocolBuilder.networkCanvas.tapCreateEdgeLabel',
-    defaultMessage: 'Create a connection',
+    defaultMessage: 'Edge creation',
     description:
       'Name of the choice where tapping two nodes draws a relationship between them. Offered as one of three cards; the sentence under it is tapCreateEdgeDescription.',
   },
   tapCreateEdgeDescription: {
     id: 'protocolBuilder.networkCanvas.tapCreateEdgeDescription',
     defaultMessage:
-      'Tapping one node and then another draws a connection between them.',
+      'Clicking or tapping a node allows the participant to create an edge.',
     description:
       'Says what the participant does to draw a connection. A connection is an edge.',
   },
   tapHighlightLabel: {
     id: 'protocolBuilder.networkCanvas.tapHighlightLabel',
-    defaultMessage: 'Mark the node',
+    defaultMessage: 'Attribute toggling',
     description:
       'Name of the choice where tapping a node turns a true-or-false attribute on and off. Offered as one of three cards; the sentence under it is tapHighlightDescription.',
   },
   tapHighlightDescription: {
     id: 'protocolBuilder.networkCanvas.tapHighlightDescription',
     defaultMessage:
-      'Tapping a node turns an attribute on, and tapping it again turns it off.',
+      'Clicking or tapping a node toggles a boolean attribute between true and false.',
     description: 'Says what marking a node does to the attribute behind it.',
   },
   promptCreateEdgeLabel: {
     id: 'protocolBuilder.networkCanvas.promptCreateEdgeLabel',
-    defaultMessage: 'Connection type created',
+    defaultMessage: 'Created edge type',
     description:
       'Label of the picker naming which kind of relationship tapping two nodes draws.',
-  },
-  promptCreateEdgeHint: {
-    id: 'protocolBuilder.networkCanvas.promptCreateEdgeHint',
-    defaultMessage:
-      'The kind of connection tapping two nodes draws between them.',
-    description: 'Guidance under the connection-type-created picker.',
   },
   promptCreateEdgeRequired: {
     id: 'protocolBuilder.networkCanvas.promptCreateEdgeRequired',
@@ -225,14 +203,14 @@ export const sociogramPromptMessages = defineMessages({
   },
   promptHighlightLabel: {
     id: 'protocolBuilder.networkCanvas.promptHighlightLabel',
-    defaultMessage: 'Attribute marked',
+    defaultMessage: 'Boolean attribute',
     description:
       'Label of the picker naming which true-or-false codebook attribute tapping a node turns on and off.',
   },
   promptHighlightHint: {
     id: 'protocolBuilder.networkCanvas.promptHighlightHint',
     defaultMessage:
-      'Tapping a node turns this attribute on, and tapping it again turns it off.',
+      'Select the attribute toggled when a participant taps a node.',
     description: 'Guidance under the attribute-marked picker.',
   },
   promptHighlightEmpty: {
@@ -256,14 +234,13 @@ export const sociogramPromptMessages = defineMessages({
   },
   promptEdgesTitle: {
     id: 'protocolBuilder.networkCanvas.promptEdgesTitle',
-    defaultMessage: 'Connections shown',
+    defaultMessage: 'Displayed edges',
     description:
       'Heading of the group inside the sociogram prompt dialog deciding which kinds of relationship are drawn while this prompt is on screen.',
   },
   promptEdgesDescription: {
     id: 'protocolBuilder.networkCanvas.promptEdgesDescription',
-    defaultMessage:
-      'The kinds of connection drawn between nodes on this prompt.',
+    defaultMessage: 'Choose the edge types shown on this prompt.',
     description: 'Description of the connections-shown group.',
   },
   promptCreatedEdgeAlwaysShown: {
@@ -275,15 +252,9 @@ export const sociogramPromptMessages = defineMessages({
   },
   promptDisplayEdgesLabel: {
     id: 'protocolBuilder.networkCanvas.promptDisplayEdgesLabel',
-    defaultMessage: 'Connection types shown',
+    defaultMessage: 'Edge types',
     description:
       'Label of the tick list choosing which edge types are drawn while one sociogram prompt is on screen.',
-  },
-  promptDisplayEdgesHint: {
-    id: 'protocolBuilder.networkCanvas.promptDisplayEdgesHint',
-    defaultMessage: 'Leave every type unticked to draw no connections at all.',
-    description:
-      'Guidance under the prompt connection-types tick list, saying that ticking nothing is a real answer rather than an unfinished one.',
   },
   promptEmptyPreview: {
     id: 'protocolBuilder.networkCanvas.promptEmptyPreview',

@@ -72,15 +72,15 @@ describe('creating a tie-strength census stage', () => {
       'How close are they?',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await screen.findByText('Attribute', { selector: 'label' });
+    await screen.findByText('Ordinal attribute', { selector: 'label' });
     await chooseAttributeById(
       harness.user,
-      attributeField('Attribute'),
+      attributeField('Ordinal attribute'),
       'closeness',
     );
     await writeInto(
       harness,
-      screen.getByRole('textbox', { name: 'Decline answer' }),
+      screen.getByRole('textbox', { name: 'Decline option' }),
       'They have never met',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));

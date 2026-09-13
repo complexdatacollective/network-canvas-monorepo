@@ -197,7 +197,7 @@ describe('the family pedigree stage editor', () => {
       'Pedigree framing',
       'Pedigree boundaries',
       'Family member data',
-      'Family member form',
+      'Form configuration',
       'Relationship data',
       'Introduction screen',
       'Family-building prompt',

@@ -62,7 +62,7 @@ export const AddingTheBinForEverythingElse: Story = {
     // Offered only once the bins themselves are chosen, and off until the
     // researcher asks for it.
     const followUp = dialog.getByRole('switch', {
-      name: 'A bin for anything else',
+      name: 'Follow-up other option',
     });
     await expect(followUp).not.toBeChecked();
     await userEvent.click(followUp);

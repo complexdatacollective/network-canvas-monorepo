@@ -75,7 +75,7 @@ describe('the canvas sections, read in Spanish', () => {
 
     expect(
       screen.getByText(
-        'Escribe las tareas que el participante realiza en el lienzo y arrástralas al orden en que las hace.',
+        'Crea y ordena las preguntas que se muestran en esta etapa.',
       ),
     ).toBeInTheDocument();
   });
@@ -94,7 +94,7 @@ describe('the canvas sections, read in Spanish', () => {
     // trigger says "change" rather than "select" in.
     expect(
       within(
-        attributeField('Atributo de posición', screen.getByRole('dialog')),
+        attributeField('Atributo de disposición', screen.getByRole('dialog')),
       ).getByRole('button', { name: 'Cambiar atributo' }),
     ).toBeInTheDocument();
     // Inventing one is offered from inside that window, on the term the
@@ -103,12 +103,12 @@ describe('the canvas sections, read in Spanish', () => {
     expect(
       await createRowIn(
         harness.user,
-        attributeField('Atributo de posición', screen.getByRole('dialog')),
+        attributeField('Atributo de disposición', screen.getByRole('dialog')),
         'Busca o crea un atributo',
         (term) => `Crear un atributo nuevo llamado “${term}”.`,
       ),
     ).not.toBeNull();
-    expect(prompt.getByText('Marcar el nodo')).toBeInTheDocument();
+    expect(prompt.getByText('Alternar atributo')).toBeInTheDocument();
   });
 
   /**

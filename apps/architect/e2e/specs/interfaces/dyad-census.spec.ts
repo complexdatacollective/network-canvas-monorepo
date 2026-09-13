@@ -38,11 +38,12 @@ test('creates a valid DyadCensus stage from scratch', async ({
   // The shared prompts section's row dialog, filled with what a Dyad Census
   // prompt is made of (DyadCensusPromptsSection.tsx): the family's
   // `PromptTextField` (`label: 'Prompt text'`), and an `EdgeTypeSection` —
-  // "Affirmative answer", holding a "Connection created" picker over the
-  // codebook's edge types. The picker itself offers "Create new edge type",
-  // which opens the codebook entity editor: its only field a researcher must
-  // supply is "Edge type name" (its colour is seeded from the shared new-type
-  // draft), and it commits with "Save entity".
+  // rendered bare inside the "Prompt configuration" group, as Architect's is,
+  // holding a "Created edge type" picker over the codebook's edge types. The
+  // picker itself offers "Create new edge type", which opens the codebook
+  // entity editor: its only field a researcher must supply is "Edge type name"
+  // (its colour is seeded from the shared new-type draft), and it commits with
+  // "Save entity".
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Do they know each other?');
     // Scoped to the entity editor's own dialog: the prompt dialog behind it is

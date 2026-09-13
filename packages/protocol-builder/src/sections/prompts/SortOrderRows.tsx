@@ -51,7 +51,8 @@ export type SortOrderRowsProps = Readonly<{
   title: string;
   description: string;
   label: string;
-  hint: string;
+  /** Absent where the list stands on its own words, as a sociogram's does. */
+  hint?: string;
   /** Visible text and accessible name of the add button. */
   addButtonLabel: string;
   emptyStateMessage: string;

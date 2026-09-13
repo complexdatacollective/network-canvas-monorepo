@@ -28,13 +28,14 @@ test('creates a valid OneToManyDyadCensus stage from scratch', async ({
   // The shared prompts section's row dialog, filled with what a One-to-Many
   // prompt is made of (OneToManyDyadCensusPromptsSection.tsx): the family's
   // `PromptTextField` (`label: 'Prompt text'`) and the same `CreateEdgeField`
-  // DyadCensus uses — "Affirmative answer", with a "Create a new connection
-  // type" button opening the codebook entity editor ("Edge type name", then
-  // "Save entity"). The dialog also renders the two `SortOrderRows` groups
-  // ("Order of the people asked about" / "Order of the people to choose
-  // from"), both disabled until a connection type is chosen and entirely
-  // optional (`SortOrderSchema.optional()` in protocol-validation), so left
-  // untouched here.
+  // DyadCensus uses — rendered bare inside the "Prompt configuration" group,
+  // with a "Create a new connection type" button opening the codebook entity
+  // editor ("Edge type name", then "Save entity"). The dialog also renders the
+  // two `SortOrderRows` groups ("Bucket order" / "Bin order", the bins' own
+  // two sections, which Architect mounts here unchanged), both disabled until a
+  // connection type is chosen and entirely optional
+  // (`SortOrderSchema.optional()` in protocol-validation), so left untouched
+  // here.
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Who does this person know?');
     // Scoped to the entity editor's own dialog: the prompt dialog behind it is

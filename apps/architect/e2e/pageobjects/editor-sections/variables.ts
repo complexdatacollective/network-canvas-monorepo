@@ -14,7 +14,12 @@ export type OptionRow = { label: string; value: string };
  *   while nothing is chosen and "Change attribute" once something is, plus the
  *   chosen attribute as a typed pill (or the line "No attribute selected").
  * - The trigger opens one modal window, marked `data-variable-spotlight` and
- *   named after the field's own label. Inside it: a `role="searchbox"` named
+ *   named after the field's own label. Base UI keeps a dismissed popup mounted
+ *   (`hidden`, `data-closed`), so a second picker opened after a first would
+ *   match two windows at page scope — the OPEN one is the window, and
+ *   `data-open` is what says so. A window that has closed then matches
+ *   nothing, which is what `dismissAttributeWindow` reads. Inside it: a
+ *   `role="searchbox"` named
  *   "Find or create an attribute" — the same name whether or not this caller
  *   allows one to be created — and one flat `role="listbox"` named "Attribute
  *   results" whose rows are named for the attribute and carry
@@ -43,22 +48,11 @@ export type OptionRow = { label: string; value: string };
  *   seeding is asserted rather than retyped: this is the only place the suite
  *   reads it back end to end.
  */
-const SPOTLIGHT = '[data-variable-spotlight]';
+const SPOTLIGHT = '[data-variable-spotlight][data-open]';
 
 const TRIGGER = /^(Select|Change) attribute$/u;
 
-/**
- * The window that is OPEN, not every window this page has ever opened.
- *
- * Base UI keeps a dismissed popup mounted — `hidden`, `data-closed` — so a
- * second picker opened after a first one resolved two elements and every
- * reading of "the window" became a strict-mode violation. `data-open` is the
- * attribute that says which of them the researcher is looking at, and an
- * assertion that the window has GONE still holds against it: a window that has
- * closed matches nothing, which is not visible.
- */
-const spotlight = (field: Locator): Locator =>
-  field.page().locator(`${SPOTLIGHT}[data-open]`);
+const spotlight = (field: Locator): Locator => field.page().locator(SPOTLIGHT);
 
 /** What the window calls its offer to invent an attribute under this name. */
 const createRowName = (attributeName: string): string =>

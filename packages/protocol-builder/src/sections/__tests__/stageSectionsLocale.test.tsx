@@ -679,7 +679,7 @@ describe('the introduction-screen variant, read in Spanish', () => {
  * asks the participant nothing.
  */
 describe('the prompts section, read in Spanish', () => {
-  it('says what it is waiting for before a subject is chosen', async () => {
+  it('reads in Spanish, and offers no way in, before a subject is chosen', async () => {
     const harness = renderStageEditor({
       create: { type: 'NameGenerator', position: 0 },
       locale: 'es',
@@ -691,11 +691,17 @@ describe('the prompts section, read in Spanish', () => {
       ),
     });
 
+    // Architect keeps one sentence for both states and only switches the
+    // section off, so this is the section's own description, in Spanish, with
+    // the way in unusable.
     expect(
       await screen.findByText(
         'Crea y ordena las preguntas que se muestran en esta etapa.',
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Crear nueva pregunta' }),
+    ).toBeDisabled();
     expectNoLocaleLeaks(
       'the prompts section waiting on a subject',
       researcherWords(harness),

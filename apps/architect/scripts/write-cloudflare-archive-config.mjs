@@ -25,7 +25,7 @@
 //     same major line replaces the host's contents.
 //
 //     `/*` cannot simply keep its Cache-Control on Netlify's side either — see
-//     scripts/assert-pwa-cache-headers.mjs, where `/*` covering deep-link HTML
+//     scripts/build/assert-pwa-cache-headers.mjs, where `/*` covering deep-link HTML
 //     is asserted precisely because Netlify matches `_headers` against the
 //     requested URL before the SPA rewrite. That is why this transform happens
 //     here and not in `public/_headers`.

@@ -24,6 +24,14 @@ inputs:
   concurrent:
     description: Concurrent browser pages.
     default: '4'
+  allow-refused:
+    description: >-
+      Path to the JSON list of external URLs known to answer 401/403 because
+      they refuse automation rather than because they are broken. A refusal
+      from any URL NOT on that list fails the run — which is why this is a list
+      of URLs and not a count: a count lets a link that starts refusing us hide
+      behind one that stopped.
+    default: .github/dead-link-refusals.json
 runs:
   using: composite
   steps:
@@ -61,12 +69,14 @@ runs:
       shell: bash
       env:
         CHECK_CONCURRENT: ${{ inputs.concurrent }}
+        CHECK_ALLOW_REFUSED: ${{ inputs['allow-refused'] }}
         CHECK_REPORT: ${{ runner.temp }}/${{ inputs['report-name'] }}.json
         CHECK_URL: ${{ inputs.url }}
       run: >-
         xvfb-run --auto-servernum
-        node scripts/dead-link-checker.mjs "$CHECK_URL" --github-actions
+        node scripts/dead-links/dead-link-checker.mjs "$CHECK_URL" --github-actions
         --concurrent="$CHECK_CONCURRENT"
+        --allow-refused="$CHECK_ALLOW_REFUSED"
         --cache="$RUNNER_TEMP/dead-link-cache.json"
         --report="$CHECK_REPORT"
 

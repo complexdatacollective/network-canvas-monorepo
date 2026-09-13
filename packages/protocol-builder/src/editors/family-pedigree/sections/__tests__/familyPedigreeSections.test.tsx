@@ -508,7 +508,7 @@ describe('the pedigree’s own configuration', () => {
         'Pedigree framing',
         'Pedigree boundaries',
         'Family member data',
-        'Family member form',
+        'Form configuration',
         'Relationship data',
         'Family-building prompt',
         'Nomination prompts',
@@ -670,7 +670,7 @@ describe('the attributes a pedigree may bind', () => {
     // The fixture pedigree asks nothing about each family member, so the form
     // is switched off until the researcher turns it on.
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Family member form' }),
+      screen.getByRole('switch', { name: 'Form configuration' }),
     );
     await addFormFieldCollecting(harness, unwell);
 
@@ -703,7 +703,7 @@ describe('the attributes a pedigree may bind', () => {
     await awaitOffered(harness, 'Participant identifier', collectable);
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Family member form' }),
+      screen.getByRole('switch', { name: 'Form configuration' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new form field' }),
@@ -743,7 +743,7 @@ describe('the attributes a pedigree may bind', () => {
     await awaitOffered(harness, 'Participant identifier', collectable);
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Family member form' }),
+      screen.getByRole('switch', { name: 'Form configuration' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new form field' }),
@@ -777,7 +777,7 @@ describe('the attributes a pedigree may bind', () => {
     await awaitOffered(harness, 'Display label', 'preferred_name');
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Family member form' }),
+      screen.getByRole('switch', { name: 'Form configuration' }),
     );
     await addFormFieldCollecting(harness, 'preferred_name');
     // Saveable up to here: the label is still `fm_name`, and the field is a
@@ -828,7 +828,7 @@ describe('the attributes a pedigree may bind', () => {
     );
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Family member form' }),
+      screen.getByRole('switch', { name: 'Form configuration' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new form field' }),
@@ -1648,7 +1648,7 @@ describe('what a family member form field’s attribute holds', () => {
   /** Turns the family member form on, which is what puts its list on screen. */
   const switchTheFormOn = (harness: StageEditorHarness): Promise<void> =>
     harness.user.click(
-      screen.getByRole('switch', { name: 'Family member form' }),
+      screen.getByRole('switch', { name: 'Form configuration' }),
     );
 
   /**
@@ -2358,7 +2358,7 @@ describe('picks this session has already claimed', () => {
     await awaitOffered(harness, 'Participant identifier', unwell);
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Family member form' }),
+      screen.getByRole('switch', { name: 'Form configuration' }),
     );
     await addFormFieldCollecting(harness, unwell);
 
@@ -2414,7 +2414,7 @@ describe('picks this session has already claimed', () => {
     );
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Family member form' }),
+      screen.getByRole('switch', { name: 'Form configuration' }),
     );
     await harness.user.click(
       await screen.findByRole('button', { name: 'Create new form field' }),

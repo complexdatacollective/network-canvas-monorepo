@@ -44,7 +44,7 @@ const switchOnNodeForm = async (
   harness: ReturnType<typeof renderStageEditor>,
 ) => {
   await harness.user.click(
-    await screen.findByRole('switch', { name: 'Node attributes' }),
+    await screen.findByRole('switch', { name: 'Editable attributes' }),
   );
 };
 
@@ -119,9 +119,7 @@ describe('what a network composer lets the participant build', () => {
     expect(screen.getByText('Anything else?')).toBeInTheDocument();
     // Each list is named by the connection type it belongs to, so a researcher
     // reading two forms at once can tell which is which.
-    expect(
-      screen.getByText('Attributes for “knows” connections'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Edge Attributes — knows')).toBeInTheDocument();
   });
 
   /**
@@ -275,7 +273,7 @@ describe('what a network composer lets the participant build', () => {
 
     await harness.user.click(
       await screen.findByRole('button', {
-        name: 'Create new attribute field for “knows” connections',
+        name: 'Create new attribute for knows',
       }),
     );
     const dialog = within(await screen.findByRole('dialog'));
@@ -342,7 +340,7 @@ describe('what a network composer lets the participant build', () => {
     const harness = renderStageEditor(composerHolding({}));
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
+    const dialog = await addRow(harness, 'Create new node attribute');
     await chooseAttributeById(
       harness.user,
       picker('Attribute'),
@@ -400,7 +398,7 @@ describe('what a network composer lets the participant build', () => {
     );
     await switchOnNodeForm(harness);
 
-    await addRow(harness, 'Create new node attribute field');
+    await addRow(harness, 'Create new node attribute');
     const offered = await offeredAttributes(harness.user, picker('Attribute'));
     expect(offered).not.toContain('contactType');
     // And something nothing on this stage claims still is, so the case is
@@ -432,7 +430,9 @@ describe('what a network composer lets the participant build', () => {
       ],
     });
 
-    const grouping = await waitFor(() => picker('Grouping attribute'));
+    const grouping = await waitFor(() =>
+      picker('Create or select a categorical attribute for grouping'),
+    );
     await waitFor(async () =>
       expect(await offeredAttributes(harness.user, grouping)).toContain(
         'circle',
@@ -441,7 +441,7 @@ describe('what a network composer lets the participant build', () => {
     await chooseAttributeById(harness.user, grouping, 'circle');
     await switchOnNodeForm(harness);
 
-    await addRow(harness, 'Create new node attribute field');
+    await addRow(harness, 'Create new node attribute');
     const offered = await offeredAttributes(harness.user, picker('Attribute'));
     expect(offered).not.toContain('circle');
     // And something nothing on this stage claims still is, so the case is
@@ -475,7 +475,9 @@ describe('what a network composer lets the participant build', () => {
       ],
     });
 
-    const grouping = await waitFor(() => picker('Grouping attribute'));
+    const grouping = await waitFor(() =>
+      picker('Create or select a categorical attribute for grouping'),
+    );
     await waitFor(async () =>
       expect(await offeredAttributes(harness.user, grouping)).toContain(
         'circle',
@@ -537,7 +539,7 @@ describe('what a network composer lets the participant build', () => {
     );
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
+    const dialog = await addRow(harness, 'Create new node attribute');
     await inventAttribute(harness.user, picker('Attribute'), 'favouriteFood');
 
     // Nothing written yet: which control collects it is the next question, and
@@ -644,7 +646,7 @@ describe('what a network composer lets the participant build', () => {
     );
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
+    const dialog = await addRow(harness, 'Create new node attribute');
     await inventAttribute(harness.user, picker('Attribute'), 'favouriteFood');
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Input control' }),
@@ -697,7 +699,7 @@ describe('what a network composer lets the participant build', () => {
     );
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
+    const dialog = await addRow(harness, 'Create new node attribute');
     await inventAttribute(harness.user, picker('Attribute'), 'favouriteFood');
     await harness.user.selectOptions(
       await dialog.findByRole('combobox', { name: 'Input control' }),
@@ -728,7 +730,7 @@ describe('what a network composer lets the participant build', () => {
       composerHolding({ nodeForm: { fields: [] } }),
     );
     await switchOnNodeForm(harness);
-    await addRow(harness, 'Create new node attribute field');
+    await addRow(harness, 'Create new node attribute');
 
     // A position attribute: named on this type, and never offered here,
     // because no control can ask a participant for one.
@@ -751,7 +753,7 @@ describe('what a network composer lets the participant build', () => {
     await harness.opened();
     await inventAttribute(
       harness.user,
-      picker('Position attribute'),
+      picker('Create or select an attribute to store node coordinates'),
       'placedAt',
     );
 
@@ -760,7 +762,9 @@ describe('what a network composer lets the participant build', () => {
     // Read off the field itself: what it SHOWS is the attribute it holds.
     await waitFor(() =>
       expect(
-        within(picker('Position attribute')).getByText('placedAt'),
+        within(
+          picker('Create or select an attribute to store node coordinates'),
+        ).getByText('placedAt'),
       ).toBeVisible(),
     );
   });
@@ -776,7 +780,7 @@ describe('what a network composer lets the participant build', () => {
     await harness.opened();
     await inventAttribute(
       harness.user,
-      picker('Attribute filled in when a node is added'),
+      picker('Create or select an attribute for the quick-add form'),
       'calledThem',
     );
 
@@ -790,9 +794,9 @@ describe('what a network composer lets the participant build', () => {
     expect(created[1].type).toBe('text');
     await waitFor(() =>
       expect(
-        within(picker('Attribute filled in when a node is added')).getByText(
-          'calledThem',
-        ),
+        within(
+          picker('Create or select an attribute for the quick-add form'),
+        ).getByText('calledThem'),
       ).toBeVisible(),
     );
   });
@@ -807,7 +811,11 @@ describe('what a network composer lets the participant build', () => {
     const harness = renderStageEditor(composerHolding({}));
 
     await harness.opened();
-    await inventAttribute(harness.user, picker('Grouping attribute'), 'circle');
+    await inventAttribute(
+      harness.user,
+      picker('Create or select a categorical attribute for grouping'),
+      'circle',
+    );
 
     // Nothing written yet, and the editor holding the name the researcher
     // typed: a list of groups is what it is open to ask for.
@@ -977,7 +985,7 @@ describe('an attribute another stage starts writing mid-edit', () => {
     const harness = renderStageEditor(composerHolding({}));
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
+    const dialog = await addRow(harness, 'Create new node attribute');
     // The fixture's marking prompt already claims `highlighted`, so the picker
     // is not offering it — which is what makes the same picker offering it a
     // moment later the collaborator's change ARRIVING rather than a guess.
@@ -1065,7 +1073,7 @@ describe('an attribute a collaborator retypes mid-edit', () => {
     const harness = renderStageEditor(composerHolding({}));
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute field');
+    const dialog = await addRow(harness, 'Create new node attribute');
     await chooseAttributeById(harness.user, picker('Attribute'), 'age');
     const control = await dialog.findByRole('combobox', {
       name: 'Input control',

@@ -10,6 +10,7 @@ import {
   type StageType,
 } from '@codaco/protocol-validation';
 
+import { FilterRuleSetField } from '../../fields/RuleSetField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { type RuleDraftOptions, ruleDraftOptions } from '../../rules/rule.ts';
@@ -18,7 +19,6 @@ import {
   NO_RULES_MESSAGE,
   ruleSetRules,
 } from '../../rules/ruleSet.ts';
-import { FilterRuleSetField } from '../../rules/RuleSetField.tsx';
 import { useRuleSetValidation } from '../../rules/useRuleSetValidation.ts';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 

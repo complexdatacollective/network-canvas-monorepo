@@ -17,6 +17,11 @@ import Section from '@codaco/fresco-ui/Section';
 import type { Codebook, VariableType } from '@codaco/protocol-validation';
 
 import EntityTypePickerField from '../fields/EntityTypePickerField.tsx';
+import {
+  emptyRuleValue,
+  RULE_VALUE_FIELD,
+  RuleOperandField,
+} from '../fields/RuleValueField.tsx';
 import VariablePickerField from '../fields/VariablePickerField.tsx';
 import DialogForm, {
   type DialogFormErrors,
@@ -53,11 +58,6 @@ import {
   dateResolutionMessages,
   ruleEditorRequiredMessage,
 } from './ruleMessages.ts';
-import {
-  emptyRuleValue,
-  RULE_VALUE_FIELD,
-  RuleOperandField,
-} from './RuleValueField.tsx';
 
 const messages = defineMessages({
   title: {

@@ -122,17 +122,18 @@ describe('the network composer stage editor', () => {
     await harness.user.click(
       await screen.findByRole('button', { name: 'Choose the node type' }),
     );
-    await screen.findByText('Attribute filled in when a node is added', {
-      selector: 'label',
-    });
+    await screen.findByText(
+      'Create or select an attribute for the quick-add form',
+      { selector: 'label' },
+    );
     await chooseAttributeById(
       harness.user,
-      attributeField('Attribute filled in when a node is added'),
+      attributeField('Create or select an attribute for the quick-add form'),
       'composerName',
     );
     await chooseAttributeById(
       harness.user,
-      attributeField('Position attribute'),
+      attributeField('Create or select an attribute to store node coordinates'),
       'layout',
     );
     await harness.user.type(
@@ -180,7 +181,7 @@ describe('the network composer stage editor', () => {
         .outline()
         .filter((section) => section.state === 'Has a problem')
         .map((section) => section.title),
-    ).toEqual(['Adding and arranging nodes']);
+    ).toEqual(['Node configuration']);
   });
 
   /**

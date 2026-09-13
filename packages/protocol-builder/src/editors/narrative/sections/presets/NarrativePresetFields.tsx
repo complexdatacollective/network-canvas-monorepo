@@ -183,10 +183,7 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
 
   return (
     <>
-      <Section
-        title={intl.formatMessage(messages.presetIdentityTitle)}
-        description={intl.formatMessage(messages.presetIdentityDescription)}
-      >
+      <Section title={intl.formatMessage(messages.presetIdentityTitle)}>
         <Field<typeof InputField>
           name={LABEL_FIELD}
           label={intl.formatMessage(messages.presetNameLabel)}
@@ -198,10 +195,7 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
         />
       </Section>
 
-      <Section
-        title={intl.formatMessage(messages.presetPositionsTitle)}
-        description={intl.formatMessage(messages.presetPositionsDescription)}
-      >
+      <Section title={intl.formatMessage(messages.presetPositionsTitle)}>
         <Field<typeof VariablePicker>
           name={LAYOUT_VARIABLE_FIELD}
           label={intl.formatMessage(messages.presetLayoutLabel)}
@@ -252,7 +246,6 @@ export function NarrativePresetFields({ item }: RowEditorProps) {
         <Field<typeof OptionalTickList>
           name={HIGHLIGHT_FIELD}
           label={intl.formatMessage(messages.presetHighlightLabel)}
-          hint={intl.formatMessage(messages.presetHighlightHint)}
           component={OptionalTickList}
           options={highlightChoices}
           initialValue={committedHighlight}

@@ -88,7 +88,7 @@ test('creates a valid OrdinalBin stage from scratch', async ({
   // The shared `PromptTextField` the whole census/bin family renders
   // (`label: 'Prompt text'`, censusMessages.promptTextLabel).
   //
-  // "The scale" is the same `BinAttributeField` CategoricalBin uses, only
+  // "Ordinal response" is the same `BinAttributeField` CategoricalBin uses, only
   // asking for an ordinal attribute: a picker over what the node type already
   // has, whose own create row is the only way to invent one. A scale IS its
   // list of values, so the row escalates to the codebook's attribute editor —
@@ -104,7 +104,7 @@ test('creates a valid OrdinalBin stage from scratch', async ({
         { label: 'High', value: 'high' },
       ]),
     });
-    // The "Color of the scale" section is deliberately left untouched:
+    // The "Color gradient" section is deliberately left untouched:
     // OrdinalBinPromptsSection.tsx passes `itemTemplate: () => ({ color:
     // FIRST_ORDINAL_COLOR })` to the shared prompts section, so a brand-new
     // prompt row already carries `ord-color-seq-1` the moment its dialog

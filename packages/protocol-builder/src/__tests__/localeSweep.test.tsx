@@ -488,10 +488,13 @@ describe('the sweep itself', () => {
   });
 
   it('names that same sentence when it is the package’s own', () => {
-    document.body.innerHTML = '<p>Enter the text for this block...</p>';
+    // A sentence no other id shares, so the report names one id rather than
+    // whichever of several carrying the same words the sweep reached first.
+    document.body.innerHTML =
+      '<p>Use assigned values in skip logic or stage filtering rules.</p>';
 
     expect(localeLeaks()).toEqual([
-      'protocolBuilder.contentBlock.textPlaceholder rendered in English: Enter the text for this block...',
+      'protocolBuilder.nameGeneratorPrompts.assignmentsHint rendered in English: Use assigned values in skip logic or stage filtering rules.',
     ]);
   });
 

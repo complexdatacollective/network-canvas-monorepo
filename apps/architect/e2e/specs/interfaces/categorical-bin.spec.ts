@@ -87,13 +87,13 @@ test('creates a valid CategoricalBin stage from scratch', async ({
   // The shared `PromptTextField` the whole census/bin family renders
   // (`label: 'Prompt text'`, censusMessages.promptTextLabel).
   //
-  // "The bins" is a `BinAttributeField`: a picker over the node type's
-  // existing categorical attributes, whose own create row is the only way to
-  // invent one. A bin attribute IS its list of values — the schema refuses
-  // fewer than two — so the row cannot finish it from a name and escalates to
-  // the codebook's own editor (VariableEditor), titled "Create a new
-  // attribute" and opened with `allowedVariableTypes: ['categorical']`, so its
-  // "Attribute type" select is already on Categorical and is never touched
+  // The bins picker (labelled "Attribute") is a `BinAttributeField`: a picker
+  // over the node type's existing categorical attributes, whose own create row
+  // is the only way to invent one. A bin attribute IS its list of values — the
+  // schema refuses fewer than two — so the row cannot finish it from a name and
+  // escalates to the codebook's own editor (VariableEditor), titled "Create a
+  // new attribute" and opened with `allowedVariableTypes: ['categorical']`, so
+  // its "Attribute type" select is already on Categorical and is never touched
   // here. Nothing is pre-seeded, so both value rows are added below.
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichText('Prompt text', 'Group these');
@@ -104,7 +104,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
         { label: 'Friends', value: 'friends' },
       ]),
     });
-    // Deliberately NOT switching on the "A bin for anything else" section
+    // Deliberately NOT switching on the "Follow-up other option" section
     // (`toggleable`, `defaultOpen={committedOther !== undefined}` — closed
     // here since `otherVariable` is unset): opening it would add three more
     // required fields (`otherVariable`, `otherOptionLabel`,
@@ -136,7 +136,7 @@ test('creates a valid CategoricalBin stage from scratch', async ({
     );
   }
   expect(prompt.variable).not.toBe('');
-  // The untouched "A bin for anything else" fields must not have leaked in.
+  // The untouched "Follow-up other option" fields must not have leaked in.
   expect(prompt).not.toHaveProperty('otherVariable');
 
   // Confirm the attribute editor actually persisted the categorical attribute

@@ -323,9 +323,7 @@ describe('the prompt list a stage owns', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeEnabled();
     expect(
-      screen.getByText(
-        'Add at least one prompt and drag prompts to reorder them.',
-      ),
+      screen.getByText('Create and reorder the prompts shown in this stage.'),
     ).toBeInTheDocument();
   });
 });
@@ -456,9 +454,7 @@ describe('a stage whose subject names no type yet', () => {
       screen.getByRole('button', { name: 'Create new prompt' }),
     ).toBeEnabled();
     expect(
-      screen.getByText(
-        'Add at least one prompt and drag prompts to reorder them.',
-      ),
+      screen.getByText('Create and reorder the prompts shown in this stage.'),
     ).toBeInTheDocument();
   });
 });
