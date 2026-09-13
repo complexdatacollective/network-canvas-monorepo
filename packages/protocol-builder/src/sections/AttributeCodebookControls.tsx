@@ -54,6 +54,13 @@ import {
 const DEFAULT_VARIABLE_FIELD = 'variable';
 
 /**
+ * No rules were taken off the draft — held as one value so that saying so
+ * twice is the same value twice, and a state that has not changed is not a
+ * render.
+ */
+const NOTHING_DROPPED: readonly string[] = [];
+
+/**
  * What inside a field container can be handed focus, most preferred first.
  *
  * Queried one tier at a time rather than as one comma list, because
@@ -424,11 +431,14 @@ export default function AttributeCodebookControls({
    * The rules a change of kind of answer took off the row's draft, held for as
    * long as the notice about them is on screen.
    *
-   * Kept until another change of kind replaces it rather than cleared on the
-   * next act: it is the only record that rules the researcher wrote are no
-   * longer there, and nothing else on this surface says so.
+   * Kept rather than cleared on the next act of any kind: it is the only
+   * record that rules the researcher wrote are no longer there, and nothing
+   * else on this surface says so. It ends at the two acts that answer it — the
+   * next change of kind, and a save of the rules editor, both of which leave a
+   * draft the researcher has just seen against the kind it is now for.
    */
-  const [rulesDropped, setRulesDropped] = useState<readonly string[]>([]);
+  const [rulesDropped, setRulesDropped] =
+    useState<readonly string[]>(NOTHING_DROPPED);
   // The row's own picker is what a create here fills in, so it is the second
   // half of where the answer lands: see `useWhereTheAnswerLands`.
   const whereTheAnswerLands = useWhereTheAnswerLands(subject, () => chosen);
@@ -571,18 +581,34 @@ export default function AttributeCodebookControls({
    * What it drops is said. The researcher wrote those rules, and rules that
    * disappeared between one control and the next are a change to their work
    * that nothing else on this surface reports.
+   *
+   * Only on a MOVE of the kind, which is why the kind the draft was written
+   * for is held. `rulesSurvivingTypeChange` answers the question a kind change
+   * asks — and part of its answer is that a comparison rule never carries
+   * over, because the attribute it names was comparable with the old kind.
+   * Asked of a draft the researcher has just written against the kind the row
+   * holds now, it would take that rule away the moment it landed: the rules
+   * control offers `sameAs` on an invented text attribute, and an answer to
+   * the wrong question would delete it and blame a kind change nobody made.
    */
   const rulesField = inventing?.rulesField;
+  const kindTheDraftWasWrittenFor = useRef(inventedType);
   useEffect(() => {
+    const previousKind = kindTheDraftWasWrittenFor.current;
+    kindTheDraftWasWrittenFor.current = inventedType;
+    if (previousKind === inventedType) return;
     if (rulesField === undefined || inventedType === undefined) return;
     if (!isValidationMap(heldDraftRules)) return;
     const { kept, dropped } = rulesSurvivingTypeChange(
       heldDraftRules,
       inventedType,
     );
+    // The notice is about the change of kind that has just happened, so the
+    // next change of kind ends it — including one that takes nothing away,
+    // which is a row whose draft and kind agree again.
+    setRulesDropped(dropped.length === 0 ? NOTHING_DROPPED : dropped);
     if (dropped.length === 0) return;
     setFieldValue(rulesField, kept);
-    setRulesDropped(dropped);
   }, [heldDraftRules, inventedType, rulesField, setFieldValue]);
   /**
    * Those same rules, for the create that happens in the codebook's own
@@ -1139,6 +1165,11 @@ export default function AttributeCodebookControls({
               value={openEditor.draftRules}
               readOnly={readOnly}
               onSave={(validation) => {
+                // What this writes is the draft as the researcher has just
+                // seen it, against the kind the row holds now — so whatever an
+                // earlier change of kind took away has been answered, and the
+                // notice about it has nothing left to report.
+                setRulesDropped(NOTHING_DROPPED);
                 setFieldValue(inventing.rulesField, validation);
                 close();
               }}
