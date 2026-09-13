@@ -48,7 +48,7 @@ COPY --from=builder /deploy .
 COPY --from=builder /repo/apps/studio/server/dist ./dist
 COPY --from=builder /repo/apps/studio/server/migrations ./migrations
 COPY --chmod=755 apps/studio/docker-entrypoint.sh ./docker-entrypoint.sh
-COPY apps/studio/docker-compose.yml apps/studio/SELF_HOSTING.md apps/studio/MIGRATIONS.md apps/studio/BACKUPS.md ./deployment-bundle/
+COPY apps/studio/docker-compose.yml apps/studio/SELF_HOSTING.md apps/studio/RECOVERY_AUTHORIZATION.md apps/studio/MIGRATIONS.md apps/studio/BACKUPS.md ./deployment-bundle/
 COPY apps/studio/deployment ./deployment-bundle/deployment
 # The server's default CLIENT_DIST resolves to ../client relative to the
 # bundle — this directory.

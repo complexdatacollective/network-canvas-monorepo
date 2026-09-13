@@ -19,6 +19,36 @@ import { buildStudioInstaller } from './studio-installer-bundle.mjs';
 import { readStudioCandidate } from './studio-release-policy.mjs';
 
 const candidate = readStudioCandidate(process.cwd());
+
+test('ships the fail-closing recovery authorization guide in every installer surface', () => {
+  assert.ok(configurationFiles.includes('RECOVERY_AUTHORIZATION.md'));
+  const dockerfile = readFileSync('apps/studio/Dockerfile', 'utf8');
+  assert.match(
+    dockerfile,
+    /COPY apps\/studio\/docker-compose\.yml .*apps\/studio\/RECOVERY_AUTHORIZATION\.md .*\.\/deployment-bundle\//,
+  );
+
+  const selfHosting = readFileSync('apps/studio/SELF_HOSTING.md', 'utf8');
+  const diagnostics = selfHosting.indexOf(
+    'docker compose run --rm --no-deps studio diagnostics',
+  );
+  const successfulClosure = selfHosting.indexOf(
+    'close_restore_validation\ntrap - EXIT HUP INT TERM',
+    diagnostics,
+  );
+  assert.ok(diagnostics >= 0 && successfulClosure > diagnostics);
+
+  const authorization = readFileSync(
+    'apps/studio/RECOVERY_AUTHORIZATION.md',
+    'utf8',
+  );
+  assert.match(
+    authorization,
+    /run_closed_recovery_command docker compose[\s\S]+recovery:reconcile-authorization[\s\S]+run_closed_recovery_command docker compose[\s\S]+recovery:authorize-current/,
+  );
+  assert.match(authorization, /explicitly configure new restored-activity/);
+});
+
 function fixture() {
   const value = releasedDistribution().value;
   value.source = candidate.commit;

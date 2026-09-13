@@ -108,6 +108,7 @@ const IMAGE_RUNTIME_PATHS = {
     'apps/studio/Dockerfile.dockerignore',
     'apps/studio/BACKUPS.md',
     'apps/studio/MIGRATIONS.md',
+    'apps/studio/RECOVERY_AUTHORIZATION.md',
     'apps/studio/SELF_HOSTING.md',
     'apps/studio/docker-compose.yml',
     'apps/studio/docker-entrypoint.sh',
