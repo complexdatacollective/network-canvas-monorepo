@@ -1,6 +1,6 @@
 {
   "name": "@codaco/studio-rpc",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Internal RPC boundary between the Studio client and server — the Zod schemas and typed oRPC contract for the unpublished /rpc surface.",
   "author": "Complex Data Collective <hello@complexdatacollective.org>",
