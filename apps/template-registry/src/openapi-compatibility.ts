@@ -90,6 +90,11 @@ function convert(value: unknown): unknown {
       converted.nullable = true;
     }
   }
+  if (converted.type === 'null') {
+    converted.type = 'string';
+    converted.nullable = true;
+    converted.enum = [null];
+  }
 
   const alternatives = converted.anyOf;
   if (!Array.isArray(alternatives)) return converted;
