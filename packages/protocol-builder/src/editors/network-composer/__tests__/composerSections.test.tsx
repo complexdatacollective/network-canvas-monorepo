@@ -1236,6 +1236,53 @@ describe('what a composer field’s control accepts', () => {
 });
 
 /**
+ * Architect mounts the same nested validation section under the composer's own
+ * quick-add picker as it does under the quick-add name generator's
+ * (`sections/NodeConfiguration/NodeConfiguration.tsx:481-488`), and seeds the
+ * attribute it creates there with the one rule the role itself needs.
+ */
+describe('the rules the composer’s quick-add attribute has to satisfy', () => {
+  it('edits them under the picker, and writes them to the codebook', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Validation' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required answer' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        harness.hostCodebook().node?.person?.variables?.composerName,
+      ).toMatchObject({ validation: { required: true } }),
+    );
+  });
+
+  it('creates an attribute that has to be answered', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+
+    await inventAttribute(
+      harness.user,
+      picker('Create or select an attribute for the quick-add form'),
+      'nickname',
+    );
+
+    const created = await waitFor(() => {
+      const variables = harness.hostCodebook().node?.person?.variables ?? {};
+      const entry = Object.values(variables).find(
+        (variable) => variable.name === 'nickname',
+      );
+      if (entry === undefined) throw new Error('nothing was created yet');
+      return entry;
+    });
+    // A participant adding a node through the quick-add box gives one thing,
+    // so the attribute behind it is born requiring an answer.
+    expect(created).toMatchObject({ validation: { required: true } });
+  });
+});
+
+/**
  * The live preview beside a composer field's own controls.
  *
  * The same pane as the shared form family's, in the other of its two modes: a

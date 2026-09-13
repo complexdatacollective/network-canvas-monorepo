@@ -521,7 +521,18 @@ export default function VariableSpotlight({
 
       const busy = creating === row.name;
       return (
-        <div {...itemProps} className={cx(ROW_CLASSES, 'gap-3 font-medium')}>
+        <div
+          {...itemProps}
+          // The name this row is about, the way an attribute row states the id
+          // choosing it would store. The name is inside the row's sentence,
+          // which is translated and says three different things depending on
+          // whether the create is offered, refused or on its way — so it is
+          // the only place a reader can tell WHICH typed name produced this
+          // row. A test waiting for the list to catch up with the search box
+          // has nowhere else to read it.
+          data-create-name={row.name}
+          className={cx(ROW_CLASSES, 'gap-3 font-medium')}
+        >
           {row.kind === 'create' ? (
             <Plus aria-hidden className="size-5 shrink-0" />
           ) : (
