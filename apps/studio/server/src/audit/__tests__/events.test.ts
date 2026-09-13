@@ -48,9 +48,15 @@ describe('audit event registry', () => {
       'team.member.role_changed@1',
       'template.registry_imported@1',
       'template.registry_published@1',
+      'webhook.delivery.delivered@1',
+      'webhook.delivery.failed@1',
+      'webhook.delivery.suppressed@1',
+      'webhook.delivery.uncertain@1',
       'webhook.secret.read@1',
       'webhook.secret.rotated@1',
       'webhook.secret.updated@1',
+      'webhook.subscription.created@1',
+      'webhook.subscription.disabled@1',
     ]);
 
     const definitions = Object.entries(AUDIT_EVENT_REGISTRY);

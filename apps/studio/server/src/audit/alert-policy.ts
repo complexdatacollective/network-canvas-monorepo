@@ -71,6 +71,12 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
     case 'team.member.role_change_failed':
     case 'team.member.role_changed':
     case 'webhook.secret.rotated':
+    case 'webhook.subscription.created':
+    case 'webhook.subscription.disabled':
+    case 'webhook.delivery.delivered':
+    case 'webhook.delivery.failed':
+    case 'webhook.delivery.uncertain':
+    case 'webhook.delivery.suppressed':
       return null;
   }
   return null;

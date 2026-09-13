@@ -26,6 +26,8 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
   },
   'templates.publish': { kind: 'required' },
   'templates.import': { kind: 'required' },
+  'webhooks.create': { kind: 'required' },
+  'webhooks.disable': { kind: 'required' },
   'team.acceptInvitation': { kind: 'required' },
   'team.updateMemberRole': { kind: 'required' },
   'team.createInvitation': { kind: 'required' },

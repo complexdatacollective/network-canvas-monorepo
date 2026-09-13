@@ -10,6 +10,13 @@ import {
   UpdateAuditAlertSettingsSchema,
 } from './alerts.ts';
 import { protocolBuilderContract } from './protocolBuilder.ts';
+import {
+  CreateWebhookSubscriptionInputSchema,
+  CreateWebhookSubscriptionResultSchema,
+  DisableWebhookSubscriptionInputSchema,
+  DisableWebhookSubscriptionResultSchema,
+  WebhookSubscriptionSchema,
+} from './webhooks.ts';
 export {
   AUDIT_ALERT_MAX_RECIPIENTS,
   AuditAlertPolicySchema,
@@ -69,6 +76,12 @@ export {
   SUPPORTED_STUDIO_LOCALES,
   type SupportedStudioLocale,
 } from './locales.ts';
+export {
+  WebhookEventTypeSchema,
+  WebhookSubscriptionSchema,
+  type WebhookEventType,
+  type WebhookSubscription,
+} from './webhooks.ts';
 
 export {
   AUDIT_CATEGORIES,
@@ -160,6 +173,15 @@ export const contract = {
     import: oc
       .input(ImportRegistryTemplateInputSchema)
       .output(ImportRegistryTemplateResultSchema),
+  },
+  webhooks: {
+    list: oc.input(TeamScopedSchema).output(z.array(WebhookSubscriptionSchema)),
+    create: oc
+      .input(CreateWebhookSubscriptionInputSchema)
+      .output(CreateWebhookSubscriptionResultSchema),
+    disable: oc
+      .input(DisableWebhookSubscriptionInputSchema)
+      .output(DisableWebhookSubscriptionResultSchema),
   },
   team: {
     acceptInvitation: oc

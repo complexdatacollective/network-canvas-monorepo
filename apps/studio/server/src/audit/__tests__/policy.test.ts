@@ -281,6 +281,7 @@ describe('audit mutation policy', () => {
       'studies.get',
       'studies.list',
       'templates.list',
+      'webhooks.list',
       'audit.list',
       'audit.get',
       'audit.filterOptions',
@@ -440,6 +441,7 @@ describe('audit mutation policy', () => {
       'apps/studio/server/src/study/commands.ts',
       'apps/studio/server/src/team/commands.ts',
       'apps/studio/server/src/template/registry.ts',
+      'apps/studio/server/src/webhook/subscriptions.ts',
     ]);
   });
 

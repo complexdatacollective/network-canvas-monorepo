@@ -130,6 +130,9 @@ const webhookDeliveries = pgTable(
       .defaultNow(),
     leaseOwner: uuid('lease_owner'),
     leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+    // Durable boundary immediately before the outbound request. An expired
+    // lease after this point becomes uncertainty instead of an automatic retry.
+    sendStartedAt: timestamp('send_started_at', { withTimezone: true }),
     deliveredAt: timestamp('delivered_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     uncertainAt: timestamp('uncertain_at', { withTimezone: true }),
@@ -162,7 +165,8 @@ const webhookDeliveries = pgTable(
     ),
     check(
       'webhook_deliveries_lease_check',
-      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
+      sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)
+          AND (${table.sendStartedAt} IS NULL OR ${table.attemptCount} > 0)`,
     ),
     check(
       'webhook_deliveries_terminal_state_check',

@@ -212,6 +212,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,
     templateRegistryOrigin: env.templateRegistryOrigin,
+    encryptionKeys: deps.encryptionKeys,
   });
   const captureRpcError = (error: unknown) => {
     if (

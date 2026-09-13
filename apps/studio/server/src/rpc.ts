@@ -52,6 +52,7 @@ import {
   correlateAuthorizedTeam,
   logOperational,
 } from './observability/logger.ts';
+import type { EncryptionKeys } from './pii/keys.ts';
 import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
 import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import {
@@ -81,6 +82,12 @@ import {
   readRegistryAccount,
   TemplateRegistryCommandError,
 } from './template/registry.ts';
+import {
+  createWebhookSubscription,
+  disableWebhookSubscription,
+  listWebhookSubscriptions,
+  WebhookSubscriptionError,
+} from './webhook/subscriptions.ts';
 
 // The SPA's internal surface: unpublished and free-moving within the
 // deploy-compatibility rules on #1245 — its only client is the Studio SPA.
@@ -350,6 +357,15 @@ async function handleAuditedStudyCommand<T>(
   }
 }
 
+async function handleWebhookCommand<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (!(error instanceof WebhookSubscriptionError)) throw error;
+    throw new ORPCError(error.code);
+  }
+}
+
 export function createRpcRouter(
   caps: AuthCapabilities,
   deps: {
@@ -362,6 +378,7 @@ export function createRpcRouter(
     protocolBuilder: ProtocolBuilderRuntime;
     assetStore?: AssetStore;
     templateRegistryOrigin?: string;
+    encryptionKeys?: EncryptionKeys;
   },
 ) {
   const {
@@ -372,6 +389,7 @@ export function createRpcRouter(
     pool,
     assetStore,
     templateRegistryOrigin,
+    encryptionKeys,
   } = deps;
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
@@ -618,6 +636,37 @@ export function createRpcRouter(
             throw new ORPCError('SERVICE_UNAVAILABLE');
           }
         }),
+    },
+    webhooks: {
+      list: os.webhooks.list
+        .use(requireTeamAdministration)
+        .handler(({ context }) =>
+          handleWebhookCommand(() =>
+            listWebhookSubscriptions(auditedContextFor(context)),
+          ),
+        ),
+      create: os.webhooks.create
+        .use(requireTeamAdministration)
+        .handler(({ context, input }) => {
+          if (!encryptionKeys) throw new ORPCError('SERVICE_UNAVAILABLE');
+          return handleWebhookCommand(() =>
+            createWebhookSubscription(
+              encryptionKeys,
+              auditedContextFor(context),
+              input,
+            ),
+          );
+        }),
+      disable: os.webhooks.disable
+        .use(requireTeamAdministration)
+        .handler(({ context, input }) =>
+          handleWebhookCommand(() =>
+            disableWebhookSubscription(
+              auditedContextFor(context),
+              input.subscriptionId,
+            ),
+          ),
+        ),
     },
     team: {
       acceptInvitation: os.team.acceptInvitation

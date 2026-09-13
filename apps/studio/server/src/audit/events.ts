@@ -455,6 +455,64 @@ const WebhookCredentialV1EventSchema = CommonUserEventSchema.extend({
     purpose: z.enum(['configuration', 'delivery', 'rotation']),
   }),
 }).strict();
+const WebhookSubscriptionCommonV1EventSchema = CommonUserEventSchema.extend({
+  actorKind: z.enum(['user', 'system']),
+  actorId: IdentifierSchema.nullable(),
+  eventVersion: z.literal(1),
+  category: z.literal('integration'),
+  outcome: z.literal('succeeded'),
+  subjectType: z.null(),
+  subjectId: z.null(),
+  subjectLabel: z.null(),
+  resourceType: z.literal('webhook_subscription'),
+  resourceId: IdentifierSchema,
+  resourceLabel: z.null(),
+}).strict();
+const WebhookSubscriptionCreatedV1EventSchema =
+  WebhookSubscriptionCommonV1EventSchema.extend({
+    eventType: z.literal('webhook.subscription.created'),
+    details: z.strictObject({
+      studyId: IdentifierSchema.nullable(),
+      eventTypes: z.array(z.literal('study.created')).min(1).max(50),
+    }),
+  }).strict();
+const WebhookSubscriptionDisabledV1EventSchema =
+  WebhookSubscriptionCommonV1EventSchema.extend({
+    eventType: z.literal('webhook.subscription.disabled'),
+    details: z.strictObject({
+      reason: z.enum(['operator', 'consecutive_failures']),
+    }),
+  }).strict();
+const WebhookDeliveryV1EventSchema = z
+  .strictObject({
+    teamId: IdentifierSchema,
+    teamLabel: LabelSchema,
+    actorKind: z.literal('system'),
+    actorId: z.null(),
+    actorLabel: z.literal('Webhook delivery'),
+    requestId: z.uuid(),
+    eventVersion: z.literal(1),
+    category: z.literal('integration'),
+    outcome: z.literal('succeeded'),
+    eventType: z.enum([
+      'webhook.delivery.delivered',
+      'webhook.delivery.failed',
+      'webhook.delivery.uncertain',
+      'webhook.delivery.suppressed',
+    ]),
+    subjectType: z.null(),
+    subjectId: z.null(),
+    subjectLabel: z.null(),
+    resourceType: z.literal('webhook_delivery'),
+    resourceId: IdentifierSchema,
+    resourceLabel: z.null(),
+    details: z.strictObject({
+      subscriptionId: IdentifierSchema,
+      eventType: z.string().min(1).max(128),
+      statusCode: z.number().int().min(100).max(599).nullable(),
+    }),
+  })
+  .strict();
 
 // A plain union is intentional: eventType alone cannot remain the
 // discriminator once two retained versions of the same immutable event exist.
@@ -519,6 +577,9 @@ export const AuditEventInputSchema = z.union([
   ParticipantPiiDeniedV1EventSchema,
   ParticipantPiiMaintenanceV1EventSchema,
   WebhookCredentialV1EventSchema,
+  WebhookSubscriptionCreatedV1EventSchema,
+  WebhookSubscriptionDisabledV1EventSchema,
+  WebhookDeliveryV1EventSchema,
 ]);
 
 export type AuditEventInput = z.infer<typeof AuditEventInputSchema>;
@@ -626,6 +687,26 @@ const FIXTURE_WEBHOOK_COMMON = {
   resourceId: 'fixture-subscription',
   resourceLabel: null,
   details: { purpose: 'configuration' },
+} as const;
+const FIXTURE_WEBHOOK_DELIVERY_COMMON = {
+  ...FIXTURE_USER_COMMON,
+  actorKind: 'system',
+  actorId: null,
+  actorLabel: 'Webhook delivery',
+  eventVersion: 1,
+  category: 'integration',
+  outcome: 'succeeded',
+  subjectType: null,
+  subjectId: null,
+  subjectLabel: null,
+  resourceType: 'webhook_delivery',
+  resourceId: 'fixture-delivery',
+  resourceLabel: null,
+  details: {
+    subscriptionId: 'fixture-subscription',
+    eventType: 'study.created',
+    statusCode: 204,
+  },
 } as const;
 
 export const AUDIT_EVENT_REGISTRY = {
@@ -793,6 +874,77 @@ export const AUDIT_EVENT_REGISTRY = {
     sensitiveFields: [],
     createsAlert: false,
     fixture: { ...FIXTURE_WEBHOOK_COMMON, eventType: 'webhook.secret.rotated' },
+  },
+  'webhook.subscription.created@1': {
+    inputSchema: WebhookSubscriptionCreatedV1EventSchema,
+    title: 'Webhook subscription created',
+    detailFields: ['studyId', 'eventTypes'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_WEBHOOK_COMMON,
+      eventType: 'webhook.subscription.created',
+      details: { studyId: null, eventTypes: ['study.created'] },
+    },
+  },
+  'webhook.subscription.disabled@1': {
+    inputSchema: WebhookSubscriptionDisabledV1EventSchema,
+    title: 'Webhook subscription disabled',
+    detailFields: ['reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_WEBHOOK_COMMON,
+      eventType: 'webhook.subscription.disabled',
+      details: { reason: 'operator' },
+    },
+  },
+  'webhook.delivery.delivered@1': {
+    inputSchema: WebhookDeliveryV1EventSchema,
+    title: 'Webhook delivered',
+    detailFields: ['subscriptionId', 'eventType', 'statusCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_WEBHOOK_DELIVERY_COMMON,
+      eventType: 'webhook.delivery.delivered',
+    },
+  },
+  'webhook.delivery.failed@1': {
+    inputSchema: WebhookDeliveryV1EventSchema,
+    title: 'Webhook delivery failed',
+    detailFields: ['subscriptionId', 'eventType', 'statusCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_WEBHOOK_DELIVERY_COMMON,
+      eventType: 'webhook.delivery.failed',
+      details: { ...FIXTURE_WEBHOOK_DELIVERY_COMMON.details, statusCode: 400 },
+    },
+  },
+  'webhook.delivery.uncertain@1': {
+    inputSchema: WebhookDeliveryV1EventSchema,
+    title: 'Webhook delivery uncertain',
+    detailFields: ['subscriptionId', 'eventType', 'statusCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_WEBHOOK_DELIVERY_COMMON,
+      eventType: 'webhook.delivery.uncertain',
+      details: { ...FIXTURE_WEBHOOK_DELIVERY_COMMON.details, statusCode: null },
+    },
+  },
+  'webhook.delivery.suppressed@1': {
+    inputSchema: WebhookDeliveryV1EventSchema,
+    title: 'Webhook delivery suppressed',
+    detailFields: ['subscriptionId', 'eventType', 'statusCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_WEBHOOK_DELIVERY_COMMON,
+      eventType: 'webhook.delivery.suppressed',
+      details: { ...FIXTURE_WEBHOOK_DELIVERY_COMMON.details, statusCode: null },
+    },
   },
   'team.created@1': {
     inputSchema: TeamCreatedV1EventSchema,

@@ -31,6 +31,11 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     reason:
       'Selects encrypted webhook bytes only. The integration service re-locks the exact row, proves configuration or worker authority and commits its required audit before releasing plaintext.',
   },
+  'integration.listWebhooks': {
+    kind: 'none',
+    reason:
+      'Permission-checked read of non-secret webhook subscription configuration.',
+  },
   'audit.list': {
     kind: 'none',
     reason:

@@ -37,6 +37,10 @@ import {
 } from './team/invitation-delivery-dispatcher.ts';
 import { createServerTelemetry, type ServerTelemetry } from './telemetry.ts';
 import { STUDIO_VERSION } from './version.ts';
+import {
+  startWebhookDeliveryWorker,
+  type WebhookDeliveryWorker,
+} from './webhook/delivery.ts';
 
 // Process policy is installed before configuration or SDK loading can fail.
 let telemetry: ServerTelemetry | undefined;
@@ -96,9 +100,19 @@ const schemaPool = pool ?? maintenancePool;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 let auditAlertWorker: AuditAlertWorker | undefined;
+let webhookDeliveryWorker: WebhookDeliveryWorker | undefined;
 
 function startDatabaseWorkers(): void {
-  if (env.role === 'web' || !maintenancePool || !env.auth) return;
+  if (env.role === 'web' || !maintenancePool) return;
+  if (encryptionKeys) {
+    webhookDeliveryWorker ??= startWebhookDeliveryWorker({
+      pool: maintenancePool,
+      encryptionKeys,
+      observer: observability.metrics.observer,
+      reportError: (error) => telemetry?.capture('server_worker', error),
+    });
+  }
+  if (!env.auth) return;
   const emailMailer = env.auth.mailer.kind === 'refuse' ? undefined : mailer;
   auditAlertWorker ??= startAuditAlertWorker({
     pool: maintenancePool,
@@ -255,6 +269,7 @@ stopServing = () => {
   for (const socket of wsServer?.clients ?? []) socket.terminate();
   void invitationDeliveryWorker?.stop();
   void auditAlertWorker?.stop();
+  void webhookDeliveryWorker?.stop();
   mailer?.close();
   observability.stop();
 };
@@ -276,6 +291,7 @@ function shutdown() {
   const workersStopped = Promise.all([
     invitationDeliveryWorker?.stop(),
     auditAlertWorker?.stop(),
+    webhookDeliveryWorker?.stop(),
   ]);
   mailer?.close();
   const httpClosed = new Promise<void>((resolve, reject) => {
