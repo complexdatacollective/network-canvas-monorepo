@@ -2,6 +2,11 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../../testing/attributePicker.ts';
+import { loadFixtureStage } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
@@ -117,16 +122,18 @@ describe('the network composer stage editor', () => {
     await harness.user.click(
       await screen.findByRole('button', { name: 'Choose the node type' }),
     );
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', {
-        name: 'Create or select an attribute for the quick-add form',
-      }),
+    await screen.findByText(
+      'Create or select an attribute for the quick-add form',
+      { selector: 'label' },
+    );
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Create or select an attribute for the quick-add form'),
       'composerName',
     );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', {
-        name: 'Create or select an attribute to store node coordinates',
-      }),
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Create or select an attribute to store node coordinates'),
       'layout',
     );
     await harness.user.type(
@@ -151,14 +158,22 @@ describe('the network composer stage editor', () => {
    * something is.
    */
   it('refuses a stage with nowhere to remember node positions, and says where', async () => {
-    const harness = openFixture();
-
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', {
-        name: 'Create or select an attribute to store node coordinates',
-      }),
-      '',
-    );
+    // Opened without one rather than emptied on screen: the attribute picker
+    // chooses, and a researcher cannot un-choose in it — there is no blank row
+    // in the window — so a stage with nowhere to remember positions is one
+    // that arrived that way, which a half-written draft or an import does.
+    const composer = loadFixtureStage('network-composer-1');
+    const { layoutVariable: _layoutVariable, ...withoutPositions } =
+      composer.fields;
+    const harness = renderStageEditor({
+      stage: {
+        id: composer.id,
+        type: 'NetworkComposer',
+        fields: withoutPositions,
+      },
+      editor: composerEditor,
+    });
+    await harness.opened();
 
     expect(await harness.submit()).toBeNull();
     expect(

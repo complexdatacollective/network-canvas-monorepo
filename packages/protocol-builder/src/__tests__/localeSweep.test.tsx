@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import BoundaryOptionsSection from '../editors/family-pedigree/sections/BoundaryOptionsSection.tsx';
@@ -22,6 +22,7 @@ import PromptsSection from '../sections/PromptsSection.tsx';
 import SkipLogicSection from '../sections/skip-logic/SkipLogicSection.tsx';
 import StageNameSection from '../sections/stage-heading/StageNameSection.tsx';
 import SubjectSection from '../sections/subject-picker/SubjectSection.tsx';
+import { attributeField } from '../testing/attributePicker.ts';
 import {
   expectNoLocaleLeaks,
   localeLeaks,
@@ -237,9 +238,10 @@ describe('the row dialogs under es', () => {
       }),
     );
     await screen.findByRole('dialog');
-    await waitFor(() =>
-      expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0),
-    );
+    // Drawn rather than merely mounted: the attribute picker is the last of the
+    // dialog's controls to arrive, and a sweep taken before it is there reads
+    // half a surface.
+    await screen.findByRole('button', { name: 'Seleccionar atributo' });
 
     expectNoLocaleLeaks(
       'the add-a-form-field dialog',
@@ -274,10 +276,50 @@ describe('the row dialogs under es', () => {
         name: 'Crear nuevo campo de formulario',
       }),
     );
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Atributo' }),
-      '#create-new-attribute',
+    const row = await screen.findByRole('dialog');
+
+    // The window the attribute is chosen in is a fifth surface, with copy none
+    // of the four above render: its search box, the list under it, and what it
+    // says when nothing a researcher types matches.
+    await harness.user.click(
+      within(attributeField('Atributo', row)).getByRole('button', {
+        name: 'Seleccionar atributo',
+      }),
     );
+    const picker = await waitFor(() => {
+      const found = screen
+        .getAllByRole('dialog')
+        .find((element) => element !== row);
+      if (found === undefined) {
+        throw new Error('the attribute window did not open');
+      }
+      return found;
+    });
+
+    expectNoLocaleLeaks('the attribute window', researcherWords(harness));
+
+    const search = within(picker).getByRole('searchbox', {
+      name: 'Busca o crea un atributo',
+    });
+    await harness.user.type(search, 'apodo');
+    expectNoLocaleLeaks(
+      'the attribute window matching nothing',
+      researcherWords(harness),
+    );
+    await harness.user.clear(search);
+
+    // The picker's last option is the attribute that does not exist yet, and
+    // taking it is what draws the half-a-codebook-variable surface below.
+    const sentinel = await waitFor(() => {
+      const found = picker.querySelector<HTMLElement>(
+        '[role="option"][data-attribute-id="#create-new-attribute"]',
+      );
+      if (found === null) {
+        throw new Error('the window is not offering an attribute to invent');
+      }
+      return found;
+    });
+    await harness.user.click(sentinel);
     await screen.findByRole('combobox', { name: 'Tipo de respuesta' });
 
     expectNoLocaleLeaks(

@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
 import { addPrompt } from './prompts.js';
+import { chooseAttributeIfOffered } from './variables.js';
 
 // One sociogram prompt, as `@codaco/protocol-builder`'s `SociogramPromptFields`
 // renders it inside the shared prompt row dialog ("Create prompt", submitted
@@ -42,8 +43,9 @@ export type SociogramPromptSpec = {
  * first when the codebook has none by that name.
  *
  * The picker never invents anything: `VariablePickerField` here is handed
- * options and no `onCreateOption`, so it renders a `<select>` over what exists
- * (or a sentence saying the type has none yet, and no `<select>` at all). The
+ * options and no `onCreateOption`, so its window only chooses (and where the
+ * type has nothing of the kind, the field shows a sentence and no trigger at
+ * all). The
  * neighbouring `CreateVariableButton` is what adds one, through the codebook's
  * own editor — "Attribute name", submitted with "Create attribute" — under a
  * dialog whose title is the button's own label.
@@ -53,17 +55,7 @@ async function chooseOrCreateAttribute(
   field: Locator,
   opts: { name: string; createLabel: string; scope: Locator },
 ): Promise<void> {
-  const select = field.locator('select');
-  if (await select.count()) {
-    // Compared whole rather than by substring: an attribute called "layout"
-    // must not be answered by an existing "layout_2".
-    const offered = await select.locator('option').allInnerTexts();
-    if (offered.includes(opts.name)) {
-      await select.selectOption({ label: opts.name });
-      await expect(field.locator('option:checked')).toHaveText(opts.name);
-      return;
-    }
-  }
+  if (await chooseAttributeIfOffered(field, opts.name)) return;
   await opts.scope
     .getByRole('button', { name: opts.createLabel, exact: true })
     .click();
@@ -81,7 +73,9 @@ async function chooseOrCreateAttribute(
   // comes back afterwards, so the picker holds the new attribute only once
   // the editor has closed.
   await editor.waitFor({ state: 'detached' });
-  await expect(field.locator('option:checked')).toHaveText(opts.name);
+  // The picker states what it holds as a typed pill, not as a selected
+  // option.
+  await expect(field.locator('[data-attribute-type]')).toHaveText(opts.name);
 }
 
 export async function addSociogramPrompt(

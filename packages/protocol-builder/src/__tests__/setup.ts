@@ -22,6 +22,8 @@ if (typeof window !== 'undefined') {
  *   the form-level error alert mounts. Without it the alert throws while
  *   mounting and React tears the whole editor down, so a test asserting on an
  *   error message finds an empty page instead.
+ * - `Worker` is what every fresco-ui `Collection` builds for its search index,
+ *   filtering or not, and the attribute picker's window renders one.
  */
 function stubBrowserAPIsJsdomLacks(): void {
   Element.prototype.scrollTo ??= () => undefined;
@@ -75,6 +77,32 @@ function stubBrowserAPIsJsdomLacks(): void {
     }
   }
 
+  /**
+   * A worker that never answers, for the one fresco-ui `Collection` builds
+   * whether or not anything filters through it.
+   *
+   * jsdom has no `Worker` at all, so the collection's search worker throws
+   * while mounting and takes the whole attribute window down with it. Nothing
+   * in this package asks the worker anything: the attribute picker filters its
+   * own list in place, with no debounce, because that is what the spotlight's
+   * behaviour is specified as. So a stub that accepts a message and says
+   * nothing back is the truthful shim — a search this package never performs
+   * never returns.
+   */
+  class WorkerStub implements Worker {
+    onmessage = null;
+    onmessageerror = null;
+    onerror = null;
+    postMessage() {}
+    terminate() {}
+    addEventListener() {}
+    removeEventListener() {}
+    dispatchEvent() {
+      return true;
+    }
+  }
+
   globalThis.ResizeObserver ??= ResizeObserverStub;
   globalThis.IntersectionObserver ??= IntersectionObserverStub;
+  globalThis.Worker ??= WorkerStub;
 }

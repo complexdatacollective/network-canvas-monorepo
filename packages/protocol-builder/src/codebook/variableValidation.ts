@@ -1009,7 +1009,26 @@ const findResolvedViewDraftContradictions = (
   );
 };
 
-const variableTypeForComponent = (component: string): string | undefined => {
+/**
+ * The kind of answer an input control collects — the inverse of
+ * `VARIABLE_TYPE_COMPONENTS`, and so of `controlsForType` in
+ * `sections/collectableTypes.ts`, which reads the same table forwards.
+ *
+ * Total and unambiguous: every control in the table appears under exactly ONE
+ * type, because the variable schemas are split on `component` and a control
+ * offered for two kinds of answer would make a saved field mean two things. So
+ * a surface that knows which control the participant answers with already
+ * knows what the attribute holds — which is what lets this module's save gate
+ * read the rules of an attribute that does not exist yet, and what lets a
+ * field preview render a control chosen before the attribute it collects into
+ * exists.
+ *
+ * Exported for that preview as well as for the gate below: one lookup, so the
+ * two cannot answer the same control differently.
+ */
+export const variableTypeForComponent = (
+  component: string,
+): string | undefined => {
   for (const [variableType, components] of Object.entries(
     VARIABLE_TYPE_COMPONENTS,
   )) {

@@ -250,7 +250,7 @@ function VariableEditorDemo({ mode, surface, locked, readOnly }: DemoProps) {
         </p>
         <Button
           type="button"
-          variant="outline"
+          color="default"
           onClick={() => {
             setCompletedId(null);
             setOpenId((current) => current + 1);

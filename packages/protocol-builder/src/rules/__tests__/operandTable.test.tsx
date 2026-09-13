@@ -16,6 +16,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
+  attributeField,
+  chooseAttributeById,
+} from '../../testing/attributePicker.ts';
+import {
   canAuthorRuleForType,
   type OperandControl,
   operandRequirement,
@@ -227,8 +231,13 @@ const buildRule = async (
   );
   await user.click(await screen.findByRole('radio', { name: 'Person' }));
   await user.click(await screen.findByRole('option', { name: /Attribute/ }));
-  await user.selectOptions(
-    await screen.findByRole('combobox', { name: /Node attribute/ }),
+  // The attribute is chosen through the picker's own window, by the id a rule
+  // stores rather than by the name the window shows: this sweep is keyed by
+  // the schema's types, and the id is what the committed rule is read back
+  // against below.
+  await chooseAttributeById(
+    user,
+    await waitFor(() => attributeField('Node attribute')),
     attribute,
   );
   await user.selectOptions(

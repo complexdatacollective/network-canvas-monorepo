@@ -5,6 +5,10 @@ import {
 
 import { expect, gotoProtocol, test } from '../fixtures/architect-test.js';
 import { readStageJson } from '../helpers/read-store.js';
+import {
+  dismissAttributeWindow,
+  openAttributeWindow,
+} from '../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 import { Timeline } from '../pageobjects/timeline.js';
 
@@ -201,18 +205,20 @@ test("excludes each writer's picker from offering the other class's variable, wh
   });
   await expect(fieldDialog).toBeVisible();
 
-  const formPickerItems = fieldDialog
-    .getByRole('combobox', { name: 'Attribute', exact: true })
-    .getByRole('option');
-  // Five: the three attributes this picker may offer, plus the select's own
-  // placeholder ("Select an attribute…") and the sentinel that stands for an
-  // attribute the researcher has yet to invent ("Create a new attribute…").
-  await expect(formPickerItems).toHaveCount(5);
+  const formWindow = await openAttributeWindow(
+    fieldDialog.locator('[data-field-name="variable"]'),
+  );
+  const formPickerItems = formWindow.getByRole('option');
+  // Four: the three attributes this picker may offer, plus the sentinel that
+  // stands for an attribute the researcher has yet to invent ("Create a new
+  // attribute…").
+  await expect(formPickerItems).toHaveCount(4);
   await expect(formPickerItems.filter({ hasText: 'binOnlyVar' })).toHaveCount(
     0,
   );
   await expect(formPickerItems.filter({ hasText: 'sharedVar' })).toHaveCount(1);
   await expect(formPickerItems.filter({ hasText: 'cleanVar' })).toHaveCount(1);
+  await dismissAttributeWindow(formWindow);
 
   // Navigating away (rather than closing the dialog first) is deliberate:
   // nothing has been touched, so there is nothing to discard, and it sidesteps
@@ -234,18 +240,20 @@ test("excludes each writer's picker from offering the other class's variable, wh
   });
   await expect(promptDialog).toBeVisible();
 
-  const binPickerItems = promptDialog
-    .getByRole('combobox', { name: 'Attribute', exact: true })
-    .getByRole('option');
-  // Four rather than five: this picker invents nothing of its own — a bin
+  const binWindow = await openAttributeWindow(
+    promptDialog.locator('[data-field-name="variable"]'),
+  );
+  const binPickerItems = binWindow.getByRole('option');
+  // Three rather than four: this picker invents nothing of its own — a bin
   // attribute IS its list of values, so creating one is a separate button
   // ("Create a new attribute") that opens the codebook editor.
-  await expect(binPickerItems).toHaveCount(4);
+  await expect(binPickerItems).toHaveCount(3);
   await expect(binPickerItems.filter({ hasText: 'formOnlyVar' })).toHaveCount(
     0,
   );
   await expect(binPickerItems.filter({ hasText: 'sharedVar' })).toHaveCount(1);
   await expect(binPickerItems.filter({ hasText: 'cleanVar' })).toHaveCount(1);
+  await dismissAttributeWindow(binWindow);
 
   await gotoProtocol(architectPage);
 

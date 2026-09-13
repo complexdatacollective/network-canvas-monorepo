@@ -2,6 +2,10 @@ import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { getInterfaceTemplate } from '../../../interfaces/templates.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   expectOpenedAsANewStage,
@@ -96,8 +100,9 @@ describe('the narrative stage editor', () => {
       preset.getByRole('textbox', { name: 'Preset label' }),
       'All',
     );
-    await harness.user.selectOptions(
-      preset.getByRole('combobox', { name: 'Layout attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Layout attribute'),
       'layout',
     );
     await harness.user.click(preset.getByRole('button', { name: 'Add' }));

@@ -52,6 +52,7 @@ export const COLLECTABLE_TYPES: readonly VariableType[] = Object.freeze(
 
 const NO_OPTIONS: readonly VariablePickerOption[] = Object.freeze([]);
 const NO_EDGE_TYPES: readonly EdgeTypeChoice[] = Object.freeze([]);
+const NO_NAMES: readonly string[] = Object.freeze([]);
 
 const byLabel = <T extends Readonly<{ value: string; label: string }>>(
   first: T,
@@ -159,6 +160,30 @@ export function useVariableChoices(
     types,
     writerClass,
   ]);
+}
+
+/**
+ * Every attribute name one type already holds, whatever kind of answer it is.
+ *
+ * Wider than `useVariableChoices` on purpose. That narrows to what a control
+ * can USE; this answers what the codebook would refuse, and a name is taken by
+ * a date attribute just as firmly as by a text one. A picker offering to
+ * create an attribute checks the name it was given against this before asking,
+ * so a duplicate is said on the row the researcher typed into rather than
+ * coming back from a round trip.
+ */
+export function useSubjectVariableNames(
+  subject: CodebookSubject | undefined,
+): readonly string[] {
+  const protocolContext = useProtocolContext();
+  return useMemo(() => {
+    if (subject === undefined) return NO_NAMES;
+    return Object.freeze(
+      Object.values(variablesForSubject(protocolContext, subject)).map(
+        (variable) => variable.name,
+      ),
+    );
+  }, [protocolContext, subject]);
 }
 
 /** Every edge type the protocol defines, read live. */

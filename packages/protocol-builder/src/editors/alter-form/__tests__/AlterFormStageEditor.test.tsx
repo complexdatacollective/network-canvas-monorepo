@@ -13,6 +13,7 @@ import {
   mountedAs,
   authorsDateSettingsFromField,
   authorsValuesFromField,
+  collectAttribute,
   openField,
   personDefinition,
   removeRow,
@@ -159,10 +160,7 @@ describe('the editor for a form about each person', () => {
     );
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'relationship_to_ego',
-    );
+    await collectAttribute(harness, dialog, 'relationship_to_ego');
     await writeInto(
       harness,
       dialog.getByRole('textbox', { name: 'Question text' }),
