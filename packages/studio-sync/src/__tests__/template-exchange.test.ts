@@ -337,6 +337,36 @@ describe('template exchange metadata', () => {
 });
 
 describe('portable template artifact', () => {
+  it('round-trips Unicode display text at the public code-point limits without rewriting it', async () => {
+    const input = fixture();
+    input.template = {
+      ...input.template,
+      name: '😀'.repeat(200),
+      summary: '😀'.repeat(2000),
+    };
+    input.metadata = {
+      schema_version: 1,
+      authors: [{ name: '😀'.repeat(200) }],
+      description: '😀'.repeat(20_000),
+    };
+    const built = await createTemplateArtifact(input);
+    const restored = await readTemplateArtifact(built.bytes);
+    expect(restored.manifest.template).toEqual(input.template);
+    expect(restored.metadata).toEqual(input.metadata);
+    await expect(
+      createTemplateArtifact({
+        ...input,
+        template: { ...input.template, name: '😀'.repeat(201) },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      createTemplateArtifact({
+        ...input,
+        metadata: { ...input.metadata, description: '😀'.repeat(20_001) },
+      }),
+    ).rejects.toThrow();
+  });
+
   it('accepts large valid coordinate arrays within the asset byte limit', async () => {
     const input = datasetFixture(
       'geojson',

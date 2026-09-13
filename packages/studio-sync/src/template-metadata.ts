@@ -20,20 +20,27 @@ export const TemplateKindSchema = z.enum([
 ]);
 export const TemplateLicenseSchema = z.enum(['CC-BY-4.0', 'CC0-1.0']);
 
-const text = (maximum: number) =>
+/** Display text uses the Unicode scalar count shared by JSON Schema clients. */
+export const templateDisplayText = (maximum: number) =>
   z
     .string()
     .min(1)
-    .max(maximum)
     .refine(
       (value) =>
-        value.trim().length > 0 &&
+        Array.from(value).length <= maximum &&
         !value.includes('\0') &&
         value.isWellFormed(),
-    );
-const link = z
-  .string()
-  .max(2048)
+      {
+        message: `Must contain at most ${maximum} Unicode code points, without NUL or unpaired surrogates`,
+      },
+    )
+    .meta({ maxLength: maximum });
+
+const text = (maximum: number) =>
+  templateDisplayText(maximum)
+    .refine((value) => value.trim().length > 0)
+    .meta({ pattern: '^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])' });
+const link = templateDisplayText(2048)
   .regex(/^[Hh][Tt][Tt][Pp][Ss]:\/\//)
   .refine((value) => {
     try {
@@ -83,10 +90,7 @@ export const TemplateMetadataSchema = z.strictObject({
   publications: z
     .array(
       z.strictObject({
-        doi: z
-          .string()
-          .min(1)
-          .max(255)
+        doi: templateDisplayText(255)
           .regex(/^10\.\d{4,9}\/[^\s]+$/)
           .refine((value) => !value.includes('\0') && value.isWellFormed())
           .optional(),

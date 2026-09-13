@@ -8,7 +8,10 @@ import {
   TEMPLATE_ARTIFACT_LIMITS,
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
 } from '@codaco/studio-sync/template-exchange';
-import { StrictUuidSchema } from '@codaco/studio-sync/template-metadata';
+import {
+  TemplateMetadataSchema,
+  StrictUuidSchema,
+} from '@codaco/studio-sync/template-metadata';
 
 import {
   ClaimPublisherSchema,
@@ -730,6 +733,118 @@ describe('generated registry OpenAPI', () => {
           ? { type: 'boolean', enum: [true] }
           : { type: 'boolean', const: true },
       );
+    }
+  });
+
+  it('keeps metadata nonblank and Unicode display limits portable across both contracts', () => {
+    const metadata = {
+      schema_version: 1,
+      authors: [{ name: '😀'.repeat(200), affiliation: '😀'.repeat(500) }],
+      keywords: ['😀'.repeat(100)],
+      description: '😀'.repeat(20_000),
+      publications: [{ citation: '😀'.repeat(4000), relation: 'uses' }],
+      related_links: [{ url: 'https://example.test', label: '😀'.repeat(200) }],
+      funding: '😀'.repeat(4000),
+    };
+    expect(TemplateMetadataSchema.safeParse(metadata).success).toBe(true);
+    expect(
+      TemplateMetadataSchema.safeParse({
+        ...metadata,
+        description: '😀'.repeat(20_001),
+      }).success,
+    ).toBe(false);
+    expect(
+      EntrySchema.safeParse({
+        ...entry,
+        template: {
+          ...entry.template,
+          name: '😀'.repeat(200),
+          summary: '😀'.repeat(2000),
+        },
+        metadata,
+      }).success,
+    ).toBe(true);
+    for (const candidate of [document, toOpenApi30(document)]) {
+      const schemas = record(record(candidate.components).schemas);
+      for (const name of ['Entry', 'YankedEntry']) {
+        const properties = record(record(schemas[name]).properties);
+        const meta = record(record(properties.metadata).properties);
+        const author = record(record(record(meta.authors).items).properties);
+        const publication = record(
+          record(record(meta.publications).items).properties,
+        );
+        const related = record(
+          record(record(meta.related_links).items).properties,
+        );
+        const strings = [
+          author.name,
+          author.affiliation,
+          record(meta.keywords).items,
+          meta.description,
+          publication.citation,
+          related.label,
+          meta.funding,
+        ];
+        for (const field of strings) {
+          const schema = record(field);
+          const pattern = new RegExp(String(schema.pattern), 'u');
+          expect(pattern.test('  \t\n')).toBe(false);
+          expect(pattern.test('Example')).toBe(true);
+        }
+        expect(record(meta.description).maxLength).toBe(20_000);
+      }
+    }
+  });
+
+  it('rejects unusable Registry action URL protocols', () => {
+    for (const field of ['artifact_url', 'report_url']) {
+      for (const invalid of [
+        'mailto:artifact@example.com',
+        'urn:entry:123',
+        'file:///private/data',
+      ])
+        expect(
+          EntrySchema.safeParse({ ...entry, [field]: invalid }).success,
+        ).toBe(false);
+      for (const valid of [
+        'https://registry.test/api/v1/entries',
+        'http://localhost:3000/api/v1/entries',
+      ])
+        expect(
+          EntrySchema.safeParse({ ...entry, [field]: valid }).success,
+        ).toBe(true);
+    }
+  });
+
+  it('bounds every generated page and documents owner-only revocation and idempotent publication', () => {
+    for (const candidate of [document, toOpenApi30(document)]) {
+      const paths = record(candidate.paths);
+      expect(
+        record(record(paths['/account/tokens/{id}']).delete).description,
+      ).toContain('account owns the targeted credential');
+      expect(record(record(paths['/entries']).post).description).toContain(
+        'preserves its current withdrawal state',
+      );
+      let pages = 0;
+      const visit = (value: unknown) => {
+        if (Array.isArray(value)) {
+          value.forEach(visit);
+          return;
+        }
+        if (value === null || typeof value !== 'object') return;
+        const node = record(value);
+        if (node.properties) {
+          const props = record(node.properties);
+          if (props.data && props.has_more) {
+            expect(record(props.data).maxItems).toBe(100);
+            expect(record(props.data).description).toContain('requested limit');
+            pages++;
+          }
+        }
+        Object.values(node).forEach(visit);
+      };
+      visit(candidate);
+      expect(pages).toBeGreaterThanOrEqual(4);
     }
   });
 
