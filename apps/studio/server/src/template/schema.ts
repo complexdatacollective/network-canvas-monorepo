@@ -205,7 +205,10 @@ const templateRegistryPublications = pgTable(
       foreignColumns: [templateVersions.id, templateVersions.teamId],
     }),
     unique().on(table.teamId, table.templateVersionId, table.registryUrl),
-    unique().on(table.registryUrl, table.registryEntryId),
+    index('template_registry_publications_registry_entry_idx').on(
+      table.registryUrl,
+      table.registryEntryId,
+    ),
     index('template_registry_publications_team_version_idx').on(
       table.teamId,
       table.templateVersionId,

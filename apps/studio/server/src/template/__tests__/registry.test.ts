@@ -77,6 +77,46 @@ function importFixture(): TemplateArtifactInput {
   };
 }
 
+function twoAssetFixture(): TemplateArtifactInput {
+  const input = importFixture();
+  const second = Uint8Array.from(png);
+  second[second.length - 1] = second[second.length - 1]! ^ 1;
+  return {
+    ...input,
+    sections: {
+      ...input.sections,
+      'stage:welcome': {
+        id: 'welcome',
+        type: 'Information',
+        label: 'Welcome',
+        title: 'Welcome',
+        items: [
+          { id: 'first', type: 'asset', content: 'first' },
+          { id: 'second', type: 'asset', content: 'second' },
+        ],
+      },
+      'assets': {
+        first: { type: 'image', name: 'First', source: 'a.png' },
+        second: { type: 'image', name: 'Second', source: 'b.png' },
+      },
+    },
+    assets: [
+      {
+        source: 'a.png',
+        media_class: 'image',
+        media_type: 'image/png',
+        bytes: png,
+      },
+      {
+        source: 'b.png',
+        media_class: 'image',
+        media_type: 'image/png',
+        bytes: second,
+      },
+    ],
+  };
+}
+
 function fixture(): TemplateArtifactInput {
   return {
     template: { name: 'Portable template', kind: 'protocol', version: 1 },
@@ -204,11 +244,13 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
 
   afterAll(async () => await dispose());
 
-  async function seedPublication(teamId: string) {
+  async function seedPublication(
+    teamId: string,
+    input: TemplateArtifactInput = fixture(),
+  ) {
     const userId = `${teamId}-admin`;
     const templateId = randomUUID();
     const versionId = randomUUID();
-    const input = fixture();
     const built = await createTemplateArtifact(input);
     const manifest = Object.fromEntries(
       built.artifact.manifest.sections.map(({ id, hash }) => [id, hash]),
@@ -260,6 +302,29 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
             (version_id, team_id, section_id, section_hash)
            VALUES ($1, $2, $3, $4)`,
           [versionId, teamId, id, hash],
+        );
+      }
+      for (const asset of built.artifact.assets) {
+        await client.query(
+          `INSERT INTO assets
+            (team_id, hash, media_type, media_class, byte_size, original_filename,
+             origin, uploaded_by_user_id)
+           VALUES ($1, $2, $3, $4, $5, $6, 'upload', $7)`,
+          [
+            teamId,
+            asset.hash,
+            asset.media_type,
+            asset.media_class,
+            asset.byte_size,
+            asset.source,
+            userId,
+          ],
+        );
+        await client.query(
+          `INSERT INTO asset_references
+            (team_id, asset_hash, referrer_kind, referrer_id)
+           VALUES ($1, $2, 'template_version', $3)`,
+          [teamId, asset.hash, versionId],
         );
       }
       await client.query('COMMIT');
@@ -343,6 +408,153 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       ),
     ).rejects.toMatchObject({ code: 'FORBIDDEN' });
     expect(requests).toBe(0);
+  });
+
+  it('refuses object bytes that no longer match the immutable asset hash', async () => {
+    const seeded = await seedPublication(
+      'registry-asset-integrity',
+      importFixture(),
+    );
+    const changed = Uint8Array.from(png);
+    changed[changed.length - 1] = changed[changed.length - 1]! ^ 1;
+    let requests = 0;
+    const client = new TemplateRegistryClient({
+      origin: ORIGIN,
+      fetch: async () => {
+        requests += 1;
+        throw new Error('Registry must not be called');
+      },
+    });
+    const corruptStore: AssetStore = {
+      checkHealth: async () => undefined,
+      put: async () => {
+        throw new Error('unexpected asset write');
+      },
+      get: async () => ({
+        body: new Blob([changed]).stream(),
+        mediaType: 'image/png',
+        size: changed.byteLength,
+      }),
+    };
+
+    await expect(
+      publishTemplateVersion(
+        seeded.context,
+        { origin: ORIGIN, assetStore: corruptStore, client },
+        { versionId: seeded.versionId, credential: CREDENTIAL },
+      ),
+    ).rejects.toMatchObject({ code: 'STORAGE_UNAVAILABLE' });
+    expect(requests).toBe(0);
+  });
+
+  it('cancels an oversized object stream before contacting the Registry', async () => {
+    const seeded = await seedPublication(
+      'registry-asset-bound',
+      importFixture(),
+    );
+    let canceled = false;
+    let requests = 0;
+    let chunks = 0;
+    const oversized = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (chunks === 2) {
+          controller.close();
+          return;
+        }
+        const bytes = new Uint8Array(6 * 1024 * 1024);
+        if (chunks === 0) bytes.set(png);
+        chunks += 1;
+        controller.enqueue(bytes);
+      },
+      cancel() {
+        canceled = true;
+      },
+    });
+    const client = new TemplateRegistryClient({
+      origin: ORIGIN,
+      fetch: async () => {
+        requests += 1;
+        throw new Error('Registry must not be called');
+      },
+    });
+    const oversizedStore: AssetStore = {
+      checkHealth: async () => undefined,
+      put: async () => {
+        throw new Error('unexpected asset write');
+      },
+      get: async () => ({
+        body: oversized,
+        mediaType: 'image/png',
+        size: undefined,
+      }),
+    };
+
+    await expect(
+      publishTemplateVersion(
+        seeded.context,
+        { origin: ORIGIN, assetStore: oversizedStore, client },
+        { versionId: seeded.versionId, credential: CREDENTIAL },
+      ),
+    ).rejects.toMatchObject({ code: 'STORAGE_UNAVAILABLE' });
+    expect(canceled).toBe(true);
+    expect(requests).toBe(0);
+  });
+
+  it('finishes each bounded asset read before opening the next object', async () => {
+    const input = twoAssetFixture();
+    const seeded = await seedPublication('registry-asset-sequential', input);
+    const firstStarted = deferred();
+    const releaseFirst = deferred();
+    let reads = 0;
+    const bytesByHash = new Map(
+      input.assets.map((asset) => [
+        templateBytesHash(asset.bytes),
+        asset.bytes,
+      ]),
+    );
+    const sequentialStore: AssetStore = {
+      checkHealth: async () => undefined,
+      put: async () => {
+        throw new Error('unexpected asset write');
+      },
+      get: async (hash) => {
+        reads += 1;
+        const bytes = bytesByHash.get(hash);
+        if (!bytes) return null;
+        if (reads !== 1)
+          return {
+            body: new Blob([bytes]).stream(),
+            mediaType: 'image/png',
+            size: bytes.byteLength,
+          };
+        return {
+          body: new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(bytes);
+              firstStarted.resolve();
+              void releaseFirst.promise.then(() => controller.close());
+            },
+          }),
+          mediaType: 'image/png',
+          size: bytes.byteLength,
+        };
+      },
+    };
+    const publishing = publishTemplateVersion(
+      seeded.context,
+      {
+        origin: ORIGIN,
+        assetStore: sequentialStore,
+        client: registryClient({}),
+      },
+      { versionId: seeded.versionId, credential: CREDENTIAL },
+    );
+    await firstStarted.promise;
+    const readsWhileFirstOpen = reads;
+    releaseFirst.resolve();
+    await expect(publishing).resolves.toMatchObject({ replayed: false });
+    expect(readsWhileFirstOpen).toBe(1);
+    expect(reads).toBe(2);
   });
 
   it('retries a remote success after a local rollback by Registry content identity', async () => {

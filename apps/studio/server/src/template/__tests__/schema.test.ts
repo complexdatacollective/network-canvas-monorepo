@@ -461,6 +461,36 @@ describe.skipIf(!db)('template schema', () => {
       );
       expect(hidden.rows).toEqual([]);
     });
+
+    it('lets separate local versions cite the same Registry entry', async () => {
+      const entryId = randomUUID();
+      const common = {
+        registry_url: 'https://registry.example',
+        registry_entry_id: entryId,
+        registry_root: hex64(),
+        publisher_id: randomUUID(),
+        publisher_name: 'Portable Publisher',
+        published_at: new Date(),
+      };
+      const versionA = await newVersion(await newTemplate());
+      const templateB = await newTemplate({ team_id: TEAM_B });
+      const versionB = await newVersion(templateB, { team_id: TEAM_B });
+
+      await insert('template_registry_publications', {
+        id: randomUUID(),
+        team_id: TEAM_A,
+        template_version_id: versionA,
+        ...common,
+      });
+      await expect(
+        insert('template_registry_publications', {
+          id: randomUUID(),
+          team_id: TEAM_B,
+          template_version_id: versionB,
+          ...common,
+        }),
+      ).resolves.toHaveProperty('rowCount', 1);
+    });
   });
 
   describe('template_version_sections', () => {

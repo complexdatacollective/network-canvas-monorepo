@@ -1,6 +1,6 @@
 {
   "dialect": "postgres",
-  "id": "62ea2d1a-c914-43cc-bce1-73e509eec0cb",
+  "id": "6ee9b9ea-e348-4295-a4f6-37dcc9700e1b",
   "prevIds": ["3b8eddc9-acf2-4c96-8e40-884135ce541c"],
   "version": "8",
   "ddl": [
@@ -11406,6 +11406,34 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "registry_url",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "registry_entry_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "template_registry_publications_registry_entry_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "template_registry_publications"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "team_id",
           "isExpression": false,
           "asc": true,
@@ -14003,15 +14031,6 @@
       "columns": ["team_id", "template_version_id", "registry_url"],
       "nullsNotDistinct": false,
       "name": "template_registry_publications_team_id_template_version_id_registry_url_unique",
-      "entityType": "uniques",
-      "schema": "public",
-      "table": "template_registry_publications"
-    },
-    {
-      "nameExplicit": false,
-      "columns": ["registry_url", "registry_entry_id"],
-      "nullsNotDistinct": false,
-      "name": "template_registry_publications_registry_url_registry_entry_id_unique",
       "entityType": "uniques",
       "schema": "public",
       "table": "template_registry_publications"

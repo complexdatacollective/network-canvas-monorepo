@@ -5,6 +5,9 @@ import type pg from 'pg';
 import { manifestHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   createTemplateArtifact,
+  templateBytesHash,
+  TEMPLATE_ARTIFACT_LIMITS,
+  type TemplateArtifactInput,
   type VerifiedTemplateArtifact,
 } from '@codaco/studio-sync/template-exchange';
 import { TemplateMetadataSchema } from '@codaco/studio-sync/template-metadata';
@@ -86,23 +89,35 @@ async function requireLockedAdministrator(
     throw new TemplateRegistryCommandError('FORBIDDEN');
 }
 
-async function streamBytes(body: ReadableStream): Promise<Uint8Array> {
+async function streamBytes(
+  body: ReadableStream,
+  expectedBytes: number,
+): Promise<Uint8Array> {
   const reader = body.getReader();
-  const chunks: Uint8Array[] = [];
+  const bytes = new Uint8Array(expectedBytes);
   let size = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    size += value.byteLength;
+  let complete = false;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value.byteLength > expectedBytes - size)
+        throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
+      bytes.set(value, size);
+      size += value.byteLength;
+    }
+    if (size !== expectedBytes)
+      throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
+    complete = true;
+    return bytes;
+  } finally {
+    if (!complete) await reader.cancel().catch(() => undefined);
+    try {
+      reader.releaseLock();
+    } catch {
+      // Cancellation may retain the lock in a custom object-store transport.
+    }
   }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return bytes;
 }
 
 async function loadArtifactInput(
@@ -152,9 +167,10 @@ async function loadArtifactInput(
     hash: string;
     media_type: string;
     media_class: 'image' | 'audio' | 'video' | 'dataset';
+    byte_size: string;
     original_filename: string;
   }>(
-    `SELECT a.hash, a.media_type, a.media_class, a.original_filename
+    `SELECT a.hash, a.media_type, a.media_class, a.byte_size, a.original_filename
        FROM asset_references ar
        JOIN assets a ON a.team_id = ar.team_id AND a.hash = ar.asset_hash
       WHERE ar.team_id = $1 AND ar.referrer_kind = 'template_version'
@@ -162,19 +178,43 @@ async function loadArtifactInput(
       ORDER BY a.original_filename`,
     [teamId, versionId],
   );
-  const assets = await Promise.all(
-    assetRows.rows.map(async (asset) => {
-      const stored = await assetStore.get(asset.hash);
-      if (!stored)
-        throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
-      return {
-        source: asset.original_filename,
-        media_type: asset.media_type,
-        media_class: asset.media_class,
-        bytes: await streamBytes(stored.body),
-      };
-    }),
-  );
+  let assetBytes = 0;
+  const boundedAssets: Array<
+    Omit<(typeof assetRows.rows)[number], 'byte_size'> & { byte_size: number }
+  > = [];
+  for (const asset of assetRows.rows) {
+    const byteSize = Number(asset.byte_size);
+    if (
+      !Number.isSafeInteger(byteSize) ||
+      byteSize < 0 ||
+      byteSize > TEMPLATE_ARTIFACT_LIMITS.assetBytes ||
+      byteSize > TEMPLATE_ARTIFACT_LIMITS.inflatedBytes - assetBytes
+    )
+      throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
+    assetBytes += byteSize;
+    boundedAssets.push({ ...asset, byte_size: byteSize });
+  }
+  const assets: TemplateArtifactInput['assets'][number][] = [];
+  for (const asset of boundedAssets) {
+    const stored = await assetStore.get(asset.hash);
+    if (!stored) throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
+    if (
+      (stored.size !== undefined && stored.size !== asset.byte_size) ||
+      stored.mediaType !== asset.media_type
+    ) {
+      await stored.body.cancel().catch(() => undefined);
+      throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
+    }
+    const bytes = await streamBytes(stored.body, asset.byte_size);
+    if (templateBytesHash(bytes) !== asset.hash)
+      throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
+    assets.push({
+      source: asset.original_filename,
+      media_type: asset.media_type,
+      media_class: asset.media_class,
+      bytes,
+    });
+  }
   return {
     templateId: row.template_id,
     name: row.name,

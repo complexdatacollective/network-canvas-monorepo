@@ -248,6 +248,25 @@ describe('Studio Registry forms', () => {
     invalidateQueries.mockRestore();
   });
 
+  it('clears a used credential and reports success without waiting for a hung receipt refresh', async () => {
+    const invalidateQueries = vi
+      .spyOn(QueryClient.prototype, 'invalidateQueries')
+      .mockImplementationOnce(() => new Promise(() => undefined));
+    renderPage(<Templates />);
+    const input = await screen.findByLabelText(
+      /Registry publishing credential/,
+    );
+    fireEvent.change(input, { target: { value: credential } });
+    fireEvent.click(screen.getByRole('button', { name: 'Publish version' }));
+
+    expect(
+      await screen.findByText('The template version was published.'),
+    ).toBeInTheDocument();
+    expect(input).toHaveValue('');
+    expect(invalidateQueries).toHaveBeenCalledTimes(1);
+    invalidateQueries.mockRestore();
+  });
+
   it('imports in the selected team and distinctly reports a newer schema', async () => {
     calls.import.mockRejectedValueOnce(
       new ORPCError('UNPROCESSABLE_CONTENT', {
