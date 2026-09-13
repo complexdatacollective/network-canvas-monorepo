@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
-import { OrcidSchema } from '@codaco/studio-sync/template-metadata';
+import {
+  OrcidSchema,
+  StrictUuidSchema,
+} from '@codaco/studio-sync/template-metadata';
 import { RegistryPublisherSchema } from '@codaco/studio-sync/template-registry-contract';
 
 const nonblank = z
@@ -28,9 +31,9 @@ export const CreateTokenSchema = z.strictObject({
   lifetime_days: z.number().int().min(1).max(365).default(90),
 });
 export const TokenDescriptionSchema = z.strictObject({
-  id: z.uuid(),
+  id: StrictUuidSchema,
   name: z.string(),
-  scopes: z.array(TokenScopeSchema),
+  scopes: z.array(TokenScopeSchema).min(1).max(2),
   created_at: stamp,
   expires_at: stamp,
   revoked_at: stamp.nullable(),
@@ -88,8 +91,8 @@ export const AccountSchema = z.strictObject({
 export const ReportsPageSchema = z.strictObject({
   data: z.array(
     z.strictObject({
-      id: z.uuid(),
-      entry_id: z.uuid(),
+      id: StrictUuidSchema,
+      entry_id: StrictUuidSchema,
       category: ReportSchema.shape.category,
       details: z.string().nullable(),
       created_at: stamp,

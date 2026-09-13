@@ -6,6 +6,7 @@ import {
 } from './template-exchange.ts';
 import {
   OrcidSchema,
+  StrictUuidSchema,
   TemplateLicenseSchema,
   TemplateMetadataSchema,
 } from './template-metadata.ts';
@@ -22,13 +23,17 @@ const nonblank = z
 export const REGISTRY_CREDENTIAL_PREFIX = 'ncr1_';
 export const RegistryCredentialSchema = z
   .string()
-  .regex(/^ncr1_[A-Za-z0-9_-]{43}$/);
-export const RegistryEntryIdSchema = z
-  .uuid()
-  .describe('Publication UUID for this registry entry.');
+  .regex(/^ncr1_[A-Za-z0-9_-]{43}$(?![\s\S])/);
+export const RegistryEntryIdSchema = StrictUuidSchema.describe(
+  'Publication UUID for this registry entry.',
+);
 
 export const RegistryPublisherSchema = z
-  .strictObject({ id: z.uuid(), name: nonblank, orcid: OrcidSchema.nullable() })
+  .strictObject({
+    id: StrictUuidSchema,
+    name: nonblank,
+    orcid: OrcidSchema.nullable(),
+  })
   .meta({ id: 'Publisher' });
 
 export const RegistryEntrySummarySchema = z
