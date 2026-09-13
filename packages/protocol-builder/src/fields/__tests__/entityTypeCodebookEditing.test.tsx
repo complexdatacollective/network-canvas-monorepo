@@ -186,6 +186,37 @@ describe('making and changing a codebook type from the control that names it', (
   });
 
   /**
+   * Nor to a researcher who may not write to the stage at all.
+   *
+   * The same question P5's review asked of the attribute picker's create row:
+   * a field that has stopped taking a chosen type has stopped taking an
+   * invented one too, and what is offered has to say so before it is pressed
+   * rather than after. Here the two affordances open an editor whose save the
+   * host would refuse, so they go with the rest of the field's writing.
+   */
+  it('offers neither to a spectator', async () => {
+    const harness = renderStageEditor({
+      stageId: 'family-pedigree-1',
+      sections: <PedigreeNodeConfigurationSection />,
+      readOnly: true,
+    });
+    await harness.opened();
+
+    // The picker itself is on screen — a spectator reads what the stage is
+    // configured for — so this is about the two affordances, not about a
+    // control that never rendered.
+    expect(
+      await screen.findByRole('radio', { name: 'family member' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Create new node type' }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'Edit this node type' }),
+    ).toBeNull();
+  });
+
+  /**
    * And no section keeps a create control of its own beside a picker.
    *
    * A source-side claim rather than a sweep over rendered buttons: the three
