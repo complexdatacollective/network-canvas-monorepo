@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 import type pg from 'pg';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
+
 import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
@@ -11,7 +13,6 @@ import {
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
-import { readMigrations } from '../../db/migrations/artifact.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createMaintenancePool, createPool } from '../../db/pool.ts';
 import { createReadiness } from '../../observability/readiness.ts';

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { escapeIdentifier } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
 import { BACKUP_ROLE } from '@codaco/studio-sync/rls';
 import { runtimeRolesSql } from '@codaco/studio-sync/role-bootstrap';
 
@@ -13,7 +14,6 @@ import {
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
-import { readMigrations } from '../../db/migrations/artifact.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import {
   createPool,
