@@ -1499,24 +1499,24 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
         { label: 'South', value: 'south' },
       ],
     });
-    const grouping = await screen.findByRole('combobox', {
-      name: 'Create or select a categorical attribute for grouping',
-    });
-    await waitFor(() =>
-      expect(
-        within(grouping).getByRole('option', { name: 'region' }),
-      ).toBeInTheDocument(),
+    const grouping = await waitFor(() =>
+      picker('Create or select a categorical attribute for grouping'),
+    );
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, grouping)).toContain(
+        'region',
+      ),
     );
 
     collectInAnAlterForm(harness, 'contactType', 'region');
-    await waitFor(() =>
-      expect(
-        within(grouping).queryByRole('option', { name: 'region' }),
-      ).toBeNull(),
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, grouping)).not.toContain(
+        'region',
+      ),
     );
-    expect(
-      within(grouping).getByRole('option', { name: 'contactType' }),
-    ).toBeInTheDocument();
+    expect(await offeredAttributes(harness.user, grouping)).toContain(
+      'contactType',
+    );
 
     expect(await harness.submit()).toBeNull();
     expect(
@@ -1529,22 +1529,26 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
   /** The same rule the other way round, on the box that adds a node. */
   it('refuses the save for an attribute another stage stamps', async () => {
     const harness = renderStageEditor(composerHolding({}));
-    const quickAdd = await screen.findByRole('combobox', {
-      name: 'Create or select an attribute for the quick-add form',
-    });
-    expect(quickAdd).toHaveValue('composerName');
+    const quickAdd = await waitFor(() =>
+      picker('Create or select an attribute for the quick-add form'),
+    );
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, quickAdd)).toContain(
+        'relationship_to_ego',
+      ),
+    );
 
     // Two claims in one edit, for the same reason: `composerName` is what this
     // picker is holding, so its leaving is not something a test can watch for.
     highlightInASociogram(harness, 'composerName', 'relationship_to_ego');
-    await waitFor(() =>
-      expect(
-        within(quickAdd).queryByRole('option', { name: 'relationship_to_ego' }),
-      ).toBeNull(),
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, quickAdd)).not.toContain(
+        'relationship_to_ego',
+      ),
     );
-    expect(
-      within(quickAdd).getByRole('option', { name: 'composerName' }),
-    ).toBeInTheDocument();
+    expect(await offeredAttributes(harness.user, quickAdd)).toContain(
+      'composerName',
+    );
 
     expect(await harness.submit()).toBeNull();
     expect(
@@ -1665,6 +1669,63 @@ describe('the rules a composer field authors', () => {
     expect(
       screen.getByRole('button', { name: 'Save validation' }),
     ).toBeDisabled();
+  });
+
+  /**
+   * The same, for an attribute the row has not created yet.
+   *
+   * An invented attribute has no codebook entry at all, so the field's own
+   * control and settings are the ONLY rendering it has — and its rules are
+   * authored in the row's draft surface rather than the codebook's. Judged
+   * without them, the analyser read the invented answer as accepting any date
+   * and reported nothing.
+   */
+  it('judges an invented field’s rules against that field too', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ nodeForm: { fields: [] } }),
+    );
+    // The comparison target, bounded in the CODEBOOK: the two windows can only
+    // be judged against each other once the invented one is read from the row.
+    addPersonVariable(harness, 'bornOn', {
+      name: 'bornOn',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', min: '1990-01-01', max: '1995-12-31' },
+    });
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute');
+    await inventAttribute(harness.user, picker('Attribute'), 'metOn');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'DatePicker',
+    );
+    fireEvent.change(dialog.getByLabelText('Earliest date'), {
+      target: { value: '2020-01-01' },
+    });
+    fireEvent.change(dialog.getByLabelText('Latest date'), {
+      target: { value: '2025-12-31' },
+    });
+
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Same as another attribute',
+      }),
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Same as another attribute' }),
+      'bornOn',
+    );
+
+    expect(
+      await screen.findByText(
+        'The comparisons for bornOn and this attribute cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 });
 

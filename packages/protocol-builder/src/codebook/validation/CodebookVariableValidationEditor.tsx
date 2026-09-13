@@ -476,6 +476,18 @@ export type DraftVariableValidationEditorProps = Readonly<{
   /** The rules the row is already holding for it. */
   value: Readonly<ValidationMap>;
   readOnly?: boolean;
+  /**
+   * What this attribute will actually be rendered by, where the STAGE owns
+   * that rather than the codebook.
+   *
+   * The same fact its twin above takes, for the same reason: a network
+   * composer's row keeps its own `component` and `parameters`, and the
+   * contradiction analyser reads both. An attribute the row is INVENTING has
+   * no codebook entry at all, so the field's pair is the only rendering there
+   * is — judged without it, a rule this one dialog is able to contradict was
+   * reported nowhere.
+   */
+  stageRendering?: Readonly<{ component?: unknown; parameters?: unknown }>;
   /** Takes the rules onto the row, to be written with the create. */
   onSave(validation: ValidationMap): void;
 }>;
@@ -505,6 +517,7 @@ export function DraftVariableValidationEditor({
   allVariables,
   value,
   readOnly = false,
+  stageRendering,
   onSave,
 }: DraftVariableValidationEditorProps) {
   const intl = useAppIntl();
@@ -530,6 +543,7 @@ export function DraftVariableValidationEditor({
       currentVariableId: '',
       variableType,
       draftVariableName: variableName,
+      ...stageRendering,
     });
   const headingTag = useSurfaceHeadingTag();
 
@@ -560,6 +574,7 @@ export function DraftVariableValidationEditor({
               value={validation}
               onChange={setValidation}
               readOnly={readOnly}
+              {...(stageRendering === undefined ? {} : { stageRendering })}
             />
 
             <div className="flex flex-wrap justify-end gap-3">

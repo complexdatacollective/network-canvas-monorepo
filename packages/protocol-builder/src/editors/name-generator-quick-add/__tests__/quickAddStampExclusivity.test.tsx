@@ -1,9 +1,13 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import {
+  attributeField,
+  offeredAttributes,
+} from '../../../testing/attributePicker.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { nameGeneratorQuickAddStageEditor } from '../NameGeneratorQuickAddStageEditor.ts';
@@ -45,13 +49,12 @@ const addFreeTextVariable = (
   harness.receiveCodebookUpdate({ node: { person: updated } });
 };
 
-const optionValuesOf = (picker: HTMLElement): string[] =>
-  within(picker)
-    .getAllByRole('option')
-    .map((option) => (option as HTMLOptionElement).value);
+const QUICK_ADD_LABEL = 'Select an attribute';
 
-const quickAddPicker = async (): Promise<HTMLElement> =>
-  screen.findByRole('combobox', { name: /Select an attribute/ });
+const quickAddPicker = async (): Promise<HTMLElement> => {
+  await screen.findByText(QUICK_ADD_LABEL, { selector: 'label' });
+  return attributeField(QUICK_ADD_LABEL);
+};
 
 /**
  * The stage seeded over the fixture's own quick-add generator, so the role map
@@ -102,11 +105,12 @@ describe('what a quick-add generator and its own prompts may not share', () => {
 
     // The attribute exists and is of the one type this box can fill in, so its
     // absence below is the stamp's doing and not the type filter's.
+    const picker = await quickAddPicker();
     await waitFor(async () =>
-      expect(optionValuesOf(await quickAddPicker())).toContain('name'),
+      expect(await offeredAttributes(harness.user, picker)).toContain('name'),
     );
-    await waitFor(async () =>
-      expect(optionValuesOf(await quickAddPicker())).not.toContain('nickname'),
+    expect(await offeredAttributes(harness.user, picker)).not.toContain(
+      'nickname',
     );
   });
 });

@@ -309,7 +309,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Ordinal attribute' });
+    await findScaleField();
 
     await harness.user.click(
       await screen.findByRole('button', {
