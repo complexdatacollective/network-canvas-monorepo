@@ -431,6 +431,26 @@ export async function generateRegistryOpenApi() {
       artifact: { contentType: TEMPLATE_ARTIFACT_MEDIA_TYPE },
     };
   }
+  // These values are free text. Reserved characters must be percent-encoded
+  // by clients so that `/`, `?`, `#`, `&`, and `=` remain part of the value
+  // instead of changing the request's query structure.
+  const freeTextQueryNames = new Set(['query', 'keyword', 'author']);
+  for (const path of Object.values(doc.paths ?? {})) {
+    if (!path) continue;
+    for (const method of ['get', 'post', 'put', 'delete'] as const) {
+      const operation = path[method];
+      if (!operation) continue;
+      for (const parameter of operation.parameters ?? []) {
+        if (
+          'name' in parameter &&
+          parameter.in === 'query' &&
+          freeTextQueryNames.has(parameter.name)
+        ) {
+          parameter.allowReserved = false;
+        }
+      }
+    }
+  }
   return doc;
 }
 

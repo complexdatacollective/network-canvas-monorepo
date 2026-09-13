@@ -317,7 +317,9 @@
             "type": "object",
             "properties": {
               "schema_version": {
-                "type": "number",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1,
                 "enum": [1]
               },
               "authors": {
@@ -480,7 +482,7 @@
               "maxLength": 200
             },
             "allowEmptyValue": true,
-            "allowReserved": true
+            "allowReserved": false
           },
           {
             "in": "query",
@@ -517,7 +519,7 @@
               "maxLength": 100
             },
             "allowEmptyValue": true,
-            "allowReserved": true
+            "allowReserved": false
           },
           {
             "in": "query",
@@ -528,7 +530,7 @@
               "maxLength": 200
             },
             "allowEmptyValue": true,
-            "allowReserved": true
+            "allowReserved": false
           },
           {
             "in": "query",
