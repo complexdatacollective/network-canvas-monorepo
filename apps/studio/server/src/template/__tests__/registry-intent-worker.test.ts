@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   createScratchSchema,
@@ -44,6 +44,11 @@ describe.skipIf(!db)('Template Registry intent worker', () => {
   });
 
   afterAll(async () => await dispose());
+
+  beforeEach(async () => {
+    await owner.query('DELETE FROM template_registry_publication_intents');
+    await owner.query('DELETE FROM template_registry_import_intents');
+  });
 
   async function intent(quarantined = false): Promise<string> {
     const id = randomUUID();
@@ -88,6 +93,7 @@ describe.skipIf(!db)('Template Registry intent worker', () => {
            WHERE id = $1 AND lease_owner = $2`,
           [claim.id, claim.leaseOwner],
         );
+        return 'completed';
       },
     });
     await started.promise;
@@ -134,5 +140,105 @@ describe.skipIf(!db)('Template Registry intent worker', () => {
     await expect(claimTemplateRegistryIntent(app)).rejects.toThrow(
       'Registry intent worker requires the maintenance role',
     );
+  });
+
+  it('claims the oldest kind so publications cannot starve imports', async () => {
+    const importId = await intent();
+    await owner.query(
+      `UPDATE template_registry_import_intents
+       SET created_at = clock_timestamp() - interval '1 hour'
+       WHERE id = $1`,
+      [importId],
+    );
+    const templateId = randomUUID();
+    const versionId = randomUUID();
+    const manifestHash = randomBytes(32).toString('hex');
+    await owner.query(
+      `INSERT INTO templates (id, team_id, kind, name)
+       VALUES ($1, $2, 'protocol', 'Fair publication')`,
+      [templateId, TEAM_ID],
+    );
+    await owner.query(
+      `INSERT INTO template_versions
+        (id, team_id, template_id, version_number, manifest, manifest_hash,
+         schema_version)
+       VALUES ($1, $2, $3, 1, '{}', $4, 1)`,
+      [versionId, TEAM_ID, templateId, manifestHash],
+    );
+    await owner.query(
+      `INSERT INTO template_registry_publication_intents
+        (id, team_id, template_version_id, registry_url, registry_root,
+         publisher_id, publisher_name, initiating_actor_id,
+         initiating_actor_label, initiating_request_id)
+       VALUES ($1, $2, $3, 'https://registry.example', $4, $5,
+         'Publisher', 'admin', 'Registry Admin', $6)`,
+      [
+        randomUUID(),
+        TEAM_ID,
+        versionId,
+        randomBytes(32).toString('hex'),
+        randomUUID(),
+        randomUUID(),
+      ],
+    );
+    await expect(
+      claimTemplateRegistryIntent(maintenance),
+    ).resolves.toMatchObject({ id: importId, kind: 'import' });
+  });
+
+  it('renews a short lease while an external effect is in progress', async () => {
+    const id = await intent();
+    const started = deferred();
+    const release = deferred();
+    const running = reconcileNextTemplateRegistryIntent({
+      pool: maintenance,
+      leaseMs: 60,
+      process: async (claim) => {
+        started.resolve();
+        await release.promise;
+        const completed = await maintenance.query(
+          `UPDATE template_registry_import_intents
+           SET completed_at = clock_timestamp(), lease_owner = NULL,
+               lease_expires_at = NULL
+           WHERE id = $1 AND lease_owner = $2`,
+          [id, claim.leaseOwner],
+        );
+        expect(completed.rowCount).toBe(1);
+        return 'completed';
+      },
+    });
+    await started.promise;
+    await new Promise((resolve) => setTimeout(resolve, 90));
+    await expect(
+      reconcileNextTemplateRegistryIntent({
+        pool: maintenance,
+        leaseMs: 60,
+        process: async () => {
+          throw new Error('renewed intent must not be claimed twice');
+        },
+      }),
+    ).resolves.toEqual({ claimed: 0 });
+    release.resolve();
+    await expect(running).resolves.toEqual({ claimed: 1 });
+  });
+
+  it('defers an unresolved public lookup instead of spinning on an expired lease', async () => {
+    const id = await intent();
+    await expect(
+      reconcileNextTemplateRegistryIntent({
+        pool: maintenance,
+        retryMs: 60_000,
+        process: async () => 'deferred',
+      }),
+    ).resolves.toEqual({ claimed: 1 });
+    const row = await owner.query<{
+      lease_owner: string | null;
+      delayed: boolean;
+    }>(
+      `SELECT lease_owner, available_at > statement_timestamp() AS delayed
+       FROM template_registry_import_intents WHERE id = $1`,
+      [id],
+    );
+    expect(row.rows).toEqual([{ lease_owner: null, delayed: true }]);
   });
 });

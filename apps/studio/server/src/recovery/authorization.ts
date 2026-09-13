@@ -429,6 +429,14 @@ async function holdRestoredDeliveries(client: pg.PoolClient) {
       lease_owner = NULL, lease_expires_at = NULL
     WHERE delivered_at IS NULL AND failed_at IS NULL
       AND suppressed_at IS NULL AND uncertain_at IS NULL`);
+    await client.query(`UPDATE template_registry_publication_intents
+    SET quarantined_at = statement_timestamp(),
+      lease_owner = NULL, lease_expires_at = NULL
+    WHERE completed_at IS NULL AND quarantined_at IS NULL`);
+    await client.query(`UPDATE template_registry_import_intents
+    SET quarantined_at = statement_timestamp(),
+      lease_owner = NULL, lease_expires_at = NULL
+    WHERE completed_at IS NULL AND quarantined_at IS NULL`);
   });
 }
 
@@ -439,7 +447,8 @@ async function lockRecoveryAuthorizationState(client: pg.PoolClient) {
     study_role_grants, api_tokens, interview_links, webhook_subscriptions,
     webhook_deliveries, study_schedules, message_templates, message_deliveries,
     audit_events, credential_audit_events, audit_alert_outbox,
-    audit_alert_deliveries, leases IN SHARE ROW EXCLUSIVE MODE`);
+    audit_alert_deliveries, template_registry_publication_intents,
+    template_registry_import_intents, leases IN SHARE ROW EXCLUSIVE MODE`);
 }
 
 async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
@@ -463,6 +472,7 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
       links: number;
       live_leases: number;
       deliveries: number;
+      registry_intents: number;
     }>(`SELECT
     (SELECT count(*)::int FROM api_tokens WHERE revoked_at IS NULL) tokens,
     (SELECT count(*)::int FROM interview_links WHERE revoked_at IS NULL) links,
@@ -471,13 +481,16 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
      + (SELECT count(*) FROM team_invitation_deliveries WHERE sent_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
      + (SELECT count(*) FROM webhook_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND uncertain_at IS NULL)
      + (SELECT count(*) FROM audit_alert_outbox WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
-     + (SELECT count(*) FROM audit_alert_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL))::int deliveries`),
+     + (SELECT count(*) FROM audit_alert_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL))::int deliveries,
+    ((SELECT count(*) FROM template_registry_publication_intents WHERE completed_at IS NULL AND quarantined_at IS NULL)
+     + (SELECT count(*) FROM template_registry_import_intents WHERE completed_at IS NULL AND quarantined_at IS NULL))::int registry_intents`),
   );
   assertRows(remainingTenantState.rows[0], {
     tokens: 0,
     links: 0,
     live_leases: 0,
     deliveries: 0,
+    registry_intents: 0,
   });
 }
 
