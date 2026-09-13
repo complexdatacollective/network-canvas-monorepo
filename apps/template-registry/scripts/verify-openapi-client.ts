@@ -34,6 +34,13 @@ const store = {
       throw new Error('REGISTRY_ARTIFACT_ROOT_MISMATCH');
     return { bytes: artifactBytes, rawHash: 'b'.repeat(64), yanked: false };
   },
+  account: async () => ({
+    id: 'localhost-user',
+    email: 'localhost@example.test',
+    publisher: null,
+    suspended: false,
+    operator: false,
+  }),
 } as unknown as RegistryStore;
 const auth = {} as unknown as RegistryAuth;
 // oxlint-enable typescript/no-unsafe-type-assertion
@@ -41,6 +48,7 @@ const app = createRegistryApp({
   store,
   auth,
   accepting: () => true,
+  secureSessionCookie: false,
   ready: async () => true,
   onDiagnostic: () => undefined,
 });

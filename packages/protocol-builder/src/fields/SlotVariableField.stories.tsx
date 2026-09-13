@@ -269,8 +269,10 @@ type Story = StoryObj<typeof meta>;
 
 /**
  * The slot as the protocol holds it, with the attribute's type stated beside
- * the choice and the way to invent another underneath it — the attribute a
- * researcher wants is often the one they have only just thought of.
+ * the choice and the way to invent another inside the window the choice is
+ * made in — the attribute a researcher wants is often the one they have only
+ * just thought of, and looking for it and finding it does not exist are one
+ * act.
  */
 export const AHeldSlot: Story = {
   play: async ({ canvasElement }) => {
@@ -292,11 +294,18 @@ export const AHeldSlot: Story = {
     await expect(
       canvas.getByText('Attribute type: boolean'),
     ).toBeInTheDocument();
+    // Inventing one is offered from inside that window, on the term the
+    // researcher typed: the slot carries no create control of its own.
+    const window = await openTheWindow(canvasElement);
+    await userEvent.type(
+      window.getByRole('searchbox', { name: 'Find or create an attribute' }),
+      'seen_in_person',
+    );
     await expect(
-      canvas.getByRole('button', {
-        name: 'Create a new participant identifier attribute',
+      await window.findByRole('option', {
+        name: 'Create new attribute called “seen_in_person”.',
       }),
-    ).toBeEnabled();
+    ).toBeInTheDocument();
   },
 };
 
@@ -347,10 +356,11 @@ export const ChoosingAnotherAttribute: Story = {
 };
 
 /**
- * Held elsewhere: the binding can be read and not changed, and the create
- * control is gone rather than disabled — an action whose only explanation
- * would be that somebody else has the stage is better not offered, and the
- * banner above the editor says who has it.
+ * Held elsewhere: the binding can be read and not changed. Creating is inside
+ * the window now, so the disabled trigger is what withholds it — the window
+ * never opens, and with it neither the list nor its create row, which is the
+ * right answer for an action whose only explanation would be that somebody
+ * else has the stage. The banner above the editor says who has it.
  */
 export const ASpectator: Story = {
   args: { readOnly: true },
@@ -358,14 +368,12 @@ export const ASpectator: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    await expect(
-      await canvas.findByRole('button', { name: 'Change attribute' }),
-    ).toBeDisabled();
-    await expect(
-      canvas.queryByRole('button', {
-        name: 'Create a new participant identifier attribute',
-      }),
-    ).toBeNull();
+    const trigger = await canvas.findByRole('button', {
+      name: 'Change attribute',
+    });
+    await expect(trigger).toBeDisabled();
+    await userEvent.click(trigger);
+    await expect(within(document.body).queryByRole('dialog')).toBeNull();
   },
 };
 

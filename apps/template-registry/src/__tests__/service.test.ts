@@ -280,6 +280,121 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     }
   });
 
+  it.each([
+    {
+      name: 'curation',
+      method: 'PUT',
+      path: (entryId: string, _publisherId: string) =>
+        `/moderation/entries/${entryId}/curation`,
+      body: { curated: true },
+      action: 'entry.curated',
+    },
+    {
+      name: 'takedown',
+      method: 'POST',
+      path: (entryId: string, _publisherId: string) =>
+        `/moderation/entries/${entryId}/takedown`,
+      body: undefined,
+      action: 'artifact.taken_down',
+    },
+    {
+      name: 'suspension',
+      method: 'PUT',
+      path: (_entryId: string, publisherId: string) =>
+        `/moderation/publishers/${publisherId}/suspension`,
+      body: { suspended: true },
+      action: 'publisher.suspended',
+    },
+  ])(
+    'preserves reports submitted after completed $name transitions',
+    async (item) => {
+      const operator = await fixture.account(
+        `operator-${item.name}-report-retry@example.test`,
+        true,
+      );
+      const account = await fixture.account(
+        `${item.name}-report-retry@example.test`,
+      );
+      const created = await fixture.published(account.token);
+      const path = item.path(created.entry.id, account.publisher.id);
+      expect(
+        (await fixture.request(item.method, path, item.body, operator.bearer))
+          .status,
+      ).toBe(200);
+      const details = `Report submitted after ${item.action}`;
+      const reported = z
+        .strictObject({ id: z.uuid() })
+        .parse(
+          await (
+            await fixture.request(
+              'POST',
+              `/entries/${created.entry.id}/reports`,
+              { category: 'privacy', details },
+            )
+          ).json(),
+        );
+      expect(
+        (await fixture.request(item.method, path, item.body, operator.bearer))
+          .status,
+      ).toBe(200);
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT details FROM registry_reports WHERE id = $1',
+            [reported.id],
+          )
+        ).rows,
+      ).toEqual([{ details }]);
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT count(*)::int AS count FROM registry_audit WHERE action = $1 AND subject_id = $2',
+            [
+              item.action,
+              item.action === 'artifact.taken_down'
+                ? created.entry.root
+                : item.action === 'publisher.suspended'
+                  ? account.publisher.id
+                  : created.entry.id,
+            ],
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    },
+  );
+
+  it('distinguishes the initial publisher claim from profile updates', async () => {
+    const account = await fixture.account('publisher-audit@example.test');
+    const updated = await fixture.request(
+      'POST',
+      '/account/publisher',
+      { name: 'Updated publisher', orcid: '0000-0002-1825-0097' },
+      account.headers,
+    );
+    expect(updated.status).toBe(200);
+    expect(
+      (
+        await fixture.request(
+          'POST',
+          '/account/publisher',
+          { name: 'Updated publisher', orcid: '0000-0002-1825-0097' },
+          account.headers,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await fixture.owner.query(
+          "SELECT action, count(*)::int AS count FROM registry_audit WHERE subject_id = $1 AND action LIKE 'publisher.%' GROUP BY action ORDER BY action",
+          [account.publisher.id],
+        )
+      ).rows,
+    ).toEqual([
+      { action: 'publisher.claimed', count: 1 },
+      { action: 'publisher.updated', count: 1 },
+    ]);
+  });
+
   it('keeps person-owned locators separate from content identity across registry accounts', async () => {
     const first = await fixture.account('first@example.test');
     const second = await fixture.account('second@example.test');
@@ -519,10 +634,61 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
       has_more: false,
     });
     expect(
+      (
+        await fixture.request(
+          'PUT',
+          `/moderation/entries/${created.entry.id}/curation`,
+          { curated: true },
+          operator.bearer,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      await (
+        await fixture.request(
+          'GET',
+          '/moderation/reports',
+          undefined,
+          operator.bearer,
+        )
+      ).json(),
+    ).toMatchObject({ data: [], next_cursor: null, has_more: false });
+    expect(
+      (await fixture.owner.query('SELECT details FROM registry_reports')).rows,
+    ).toEqual([{ details: null }]);
+    expect(
       JSON.stringify(
         (await fixture.owner.query('SELECT * FROM registry_audit')).rows,
       ),
     ).not.toContain('Private operational report text');
+  });
+
+  it('does not charge the global report quota for nonexistent targets', async () => {
+    const account = await fixture.account();
+    const created = await fixture.published(account.token);
+    const app = fixture.createReplica({ reportsPerHour: 1 }).app;
+    await problem(
+      await fixture.request(
+        'POST',
+        `/entries/${randomUUID()}/reports`,
+        { category: 'other', details: 'Nonexistent target' },
+        undefined,
+        app,
+      ),
+      404,
+      'NOT_FOUND',
+    );
+    expect(
+      (
+        await fixture.request(
+          'POST',
+          `/entries/${created.entry.id}/reports`,
+          { category: 'other', details: 'Valid target' },
+          undefined,
+          app,
+        )
+      ).status,
+    ).toBe(202);
   });
 
   it('refuses app-role moderation fields on insert and protects immutable audit from every runtime role', async () => {
@@ -612,6 +778,19 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     const first = await fixture.published(account.token, 'Network alpha');
     const second = await fixture.published(account.token, 'Network beta');
     const third = await fixture.published(account.token, 'Network gamma');
+    const exact = list.parse(
+      await (
+        await fixture.request(
+          'GET',
+          `/entries?root=${third.entry.root}&publisher_id=${account.publisher.id}`,
+        )
+      ).json(),
+    );
+    expect(exact).toMatchObject({
+      data: [{ id: third.entry.id }],
+      next_cursor: null,
+      has_more: false,
+    });
     const query =
       '/entries?limit=1&query=network&kind=protocol&license=CC0-1.0&keyword=NETWORKS&author=research';
     const page = list.parse(await (await fixture.request('GET', query)).json());
@@ -651,6 +830,17 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     );
     expect(yanked.status).toBe(200);
     expect(EntrySchema.parse(await yanked.json()).yanked).toBe(true);
+    const recoveredPublication = list.parse(
+      await (
+        await fixture.request(
+          'GET',
+          `/entries?root=${third.entry.root}&publisher_id=${account.publisher.id}`,
+        )
+      ).json(),
+    );
+    expect(recoveredPublication.data).toMatchObject([
+      { id: third.entry.id, yanked: true },
+    ]);
     expect(
       list
         .parse(await (await fixture.request('GET', '/entries')).json())
@@ -687,6 +877,24 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
         )
       ).rows,
     ).toEqual([{ count: 1 }]);
+  });
+
+  it('selects only bounded summary columns for public list results', async () => {
+    const account = await fixture.account();
+    await fixture.published(account.token);
+    const query = vi.spyOn(fixture.pool, 'query');
+    const response = await fixture.request('GET', '/entries');
+    expect(response.status).toBe(200);
+    expect(list.parse(await response.json()).data).toHaveLength(1);
+    const listSql = query.mock.calls
+      .map(([statement]) => statement)
+      .find(
+        (statement): statement is string =>
+          typeof statement === 'string' &&
+          statement.includes('ORDER BY e.sequence DESC'),
+      );
+    expect(listSql).toBeDefined();
+    expect(listSql).not.toContain('c.metadata');
   });
 
   it('applies takedown and operator erasure across every locator without allowing publisher deletion', async () => {
@@ -979,6 +1187,24 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     },
   );
 
+  it('verifies storage before returning an idempotent publication', async () => {
+    const account = await fixture.account();
+    for (const condition of ['missing', 'corrupt'] as const) {
+      const created = await fixture.published(
+        account.token,
+        `Repair ${condition}`,
+      );
+      const rawHash = templateBytesHash(created.bytes);
+      if (condition === 'missing') fixture.objects.delete(rawHash);
+      else fixture.objects.set(rawHash, new Uint8Array([0, 1, 2]));
+      await problem(
+        await fixture.publish(account.token, created.bytes),
+        503,
+        'SERVICE_UNAVAILABLE',
+      );
+    }
+  });
+
   it('refuses publication while an artifact download retains memory and admits it after cancellation', async () => {
     const account = await fixture.account();
     const created = await fixture.published(account.token);
@@ -1170,6 +1396,34 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
         .status,
     ).toBe(200);
   });
+
+  it.each(['canonical', 'uppercase'])(
+    'prevents an operator from suspending their own publisher (%s)',
+    async (spelling) => {
+      const operator = await fixture.account(
+        'operator-self@example.test',
+        true,
+      );
+      await problem(
+        await fixture.request(
+          'PUT',
+          `/moderation/publishers/${spelling === 'uppercase' ? operator.publisher.id.toUpperCase() : operator.publisher.id}/suspension`,
+          { suspended: true },
+          operator.bearer,
+        ),
+        409,
+        'CONFLICT',
+      );
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT suspended_at FROM registry_publishers WHERE id = $1',
+            [operator.publisher.id],
+          )
+        ).rows,
+      ).toEqual([{ suspended_at: null }]);
+    },
+  );
 
   it('caps auth bodies before calling the mail provider even when Content-Length is omitted', async () => {
     let canceled = false;

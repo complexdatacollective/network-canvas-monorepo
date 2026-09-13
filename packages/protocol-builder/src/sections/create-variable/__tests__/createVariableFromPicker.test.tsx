@@ -5,8 +5,13 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import Section from '@codaco/fresco-ui/Section';
 
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
+import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import { useStageValue } from '../../../form/stageFormHooks.ts';
-import type { CodebookSubject } from '../../../protocol-context.ts';
+import {
+  variablesForSubject,
+  type CodebookSubject,
+} from '../../../protocol-context.ts';
+import { useProtocolContext } from '../../../state/protocolContext.ts';
 import {
   attributeField,
   openAttributePicker,
@@ -31,11 +36,30 @@ const LABEL = 'Attribute the bins sort by';
  */
 function OrdinalSlot() {
   const held = useStageValue(SLOT);
+  const { storeApi } = useStageEditorForm();
+  // Read live from the codebook, as every section that mounts a picker reads
+  // its own: an attribute invented through the escalation editor is not in
+  // this list until it exists, and the pill the slot then shows is how a
+  // reader can tell WHICH attribute it took.
+  const protocolContext = useProtocolContext();
+  const options = Object.entries(
+    variablesForSubject(protocolContext, SUBJECT),
+  ).map(([value, variable]) => ({
+    value,
+    label: variable.name,
+    type: variable.type,
+  }));
   const { createOption, editor } = useCreateVariableEditor({
     subject: SUBJECT,
-    variableType: 'ordinal',
+    variableTypes: ['ordinal'],
     title: 'Create a new ordinal attribute',
-    onCreated: () => undefined,
+    // Written onto the slot, as every real caller of this hook writes it
+    // (`SlotVariableField.tsx:135`, `ComposerFormFields.tsx:651`). A fixture
+    // that dropped the id would leave the only thing the escalation path
+    // exists to deliver — which attribute the slot ends up naming —
+    // unasserted.
+    onCreated: (variableId) =>
+      storeApi.getState().setFieldValue(SLOT, variableId),
   });
 
   return (
@@ -44,7 +68,7 @@ function OrdinalSlot() {
         name={SLOT}
         component={VariablePickerField}
         label={LABEL}
-        options={[]}
+        options={options}
         emptyMessage="This type has no ordinal attribute yet."
         onCreateOption={createOption}
         initialValue={typeof held === 'string' ? held : undefined}
@@ -115,10 +139,26 @@ describe('a slot whose attribute needs more than a name', () => {
     // Both windows go: the attribute exists, so there is nothing left to ask.
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
-    const created = Object.values(
-      harness.hostCodebook().node?.person?.variables ?? {},
-    ).find((variable) => variable.name === 'closeness');
+    const variables = harness.hostCodebook().node?.person?.variables ?? {};
+    const created = Object.values(variables).find(
+      (variable) => variable.name === 'closeness',
+    );
     expect(created).toMatchObject({ name: 'closeness', type: 'ordinal' });
+
+    // And the slot took it. The codebook holding the attribute is only half of
+    // what the create row promised — the other half is that the control the
+    // researcher started from now names it, under the id the codebook filed it
+    // under rather than under its name.
+    const createdId = Object.entries(variables).find(
+      ([, variable]) => variable.name === 'closeness',
+    )?.[0];
+    expect(createdId).toEqual(expect.any(String));
+    // And the slot took it, under the id the codebook filed it under: the
+    // attribute existing is only half of what the create row promised, and the
+    // control the researcher started from is where the other half is read.
+    expect(
+      within(attributeField(LABEL)).getByText('closeness'),
+    ).toBeInTheDocument();
   });
 
   /**

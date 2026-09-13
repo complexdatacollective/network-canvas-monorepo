@@ -9,6 +9,7 @@ import {
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
 } from '@codaco/studio-sync/template-exchange';
 
+import { RegistrySequenceSchema } from './account-contract.ts';
 import {
   EntrySchema,
   generateRegistryOpenApi,
@@ -25,6 +26,47 @@ const ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_ID = '22222222-2222-4222-8222-222222222222';
 const ROOT = 'a'.repeat(64);
 const OTHER_ROOT = 'b'.repeat(64);
+function expectSequenceRange(schema: Record<string, unknown>) {
+  expect(schema.type).toBe('string');
+  if (typeof schema.pattern !== 'string')
+    throw new Error('Missing sequence pattern');
+  const pattern = new RegExp(schema.pattern);
+  const values = [
+    '0',
+    '1',
+    '01',
+    '-1',
+    '1e3',
+    '1\n',
+    '\n1',
+    '9223372036854775806',
+    '9223372036854775807',
+    '9223372036854775808',
+    '9999999999999999999',
+  ];
+  let sample = 17n;
+  for (let index = 0; index < 256; index++) {
+    sample =
+      (sample * 6364136223846793005n + 1442695040888963407n) &
+      ((1n << 64n) - 1n);
+    values.push(sample.toString());
+  }
+  for (const value of values) {
+    const expected =
+      value.length > 0 &&
+      value[0] !== '0' &&
+      !/[^0-9]/.test(value) &&
+      BigInt(value) <= 9223372036854775807n;
+    expect(
+      pattern.test(value),
+      `OpenAPI sequence ${JSON.stringify(value)}`,
+    ).toBe(expected);
+    expect(
+      RegistrySequenceSchema.safeParse(value).success,
+      `runtime sequence ${JSON.stringify(value)}`,
+    ).toBe(expected);
+  }
+}
 const ARTIFACT_BYTES = new Uint8Array([80, 75, 3, 4]);
 const entry = EntrySchema.parse({
   id: ID,
@@ -571,7 +613,7 @@ const operationCases = [
 describe('generated registry OpenAPI', () => {
   let document: Awaited<ReturnType<typeof generateRegistryOpenApi>>;
   beforeAll(async () => {
-    document = await generateRegistryOpenApi();
+    document = await generateRegistryOpenApi({ secureSessionCookie: true });
   });
 
   it('keeps the published specification equal to the runtime Zod contract', async () => {
@@ -614,6 +656,24 @@ describe('generated registry OpenAPI', () => {
     expect(record(record(compatible.info).license)).toEqual({
       name: 'CC0-1.0',
       url: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    });
+    const compatibleAccountPublisher = record(
+      record(
+        record(
+          record(record(record(compatible.paths)['/account']).get).responses,
+        )['200'],
+      ).content,
+    );
+    const compatibleAccountSchema = record(
+      record(compatibleAccountPublisher['application/json']).schema,
+    );
+    expect(
+      record(record(compatibleAccountSchema.properties).publisher),
+    ).toMatchObject({
+      type: 'object',
+      nullable: true,
+      additionalProperties: false,
+      required: ['id', 'name', 'orcid'],
     });
     const entrySummary = record(
       record(record(document.components).schemas).EntrySummary,
@@ -715,7 +775,134 @@ describe('generated registry OpenAPI', () => {
       expect(
         record(record(metadata.metadata).properties).schema_version,
       ).toMatchObject({ type: 'integer', enum: [1] });
+      const relatedLink = record(
+        record(
+          record(record(record(metadata.metadata).properties).related_links)
+            .items,
+        ).properties,
+      );
+      expect(relatedLink.url).toMatchObject({
+        format: 'uri',
+        pattern: '^[Hh][Tt][Tt][Pp][Ss]:\\/\\/',
+      });
+      const listResponse = record(
+        record(
+          record(
+            record(record(record(candidate.paths)['/entries']).get).responses,
+          )['200'],
+        ).content,
+      );
+      const listSchema = record(
+        record(listResponse['application/json']).schema,
+      );
+      const nextCursor = record(record(listSchema.properties).next_cursor);
+      const cursorString = Array.isArray(nextCursor.anyOf)
+        ? nextCursor.anyOf
+            .map(record)
+            .find((schema) => schema.type === 'string')
+        : nextCursor;
+      expect(cursorString).toMatchObject({
+        minLength: 1,
+        maxLength: 1024,
+        pattern: '^[A-Za-z0-9_-]+$',
+      });
+
+      for (const [path, method, transport] of [
+        ['/moderation/reports', 'get', 'query'],
+        ['/account/moderation/reports', 'post', 'body'],
+      ] as const) {
+        const reports = record(record(record(candidate.paths)[path])[method]);
+        let after: Record<string, unknown>;
+        if (transport === 'query') {
+          const reportParameters = Array.isArray(reports.parameters)
+            ? reports.parameters.map(record)
+            : [];
+          after = record(
+            reportParameters.find(
+              (parameter) =>
+                parameter.in === 'query' && parameter.name === 'after',
+            )?.schema,
+          );
+        } else {
+          after = record(
+            record(
+              record(
+                record(
+                  record(record(reports.requestBody).content)[
+                    'application/json'
+                  ],
+                ).schema,
+              ).properties,
+            ).after,
+          );
+        }
+        expectSequenceRange(after);
+        const responseSchema = record(
+          record(
+            record(record(record(reports.responses)['200']).content)[
+              'application/json'
+            ],
+          ).schema,
+        );
+        const reportNextCursor = record(
+          record(responseSchema.properties).next_cursor,
+        );
+        const outputString = Array.isArray(reportNextCursor.anyOf)
+          ? reportNextCursor.anyOf
+              .map(record)
+              .find((schema) => schema.type === 'string')
+          : reportNextCursor;
+        expectSequenceRange(record(outputString));
+      }
+
+      for (const [path, method, scope] of [
+        ['/entries', 'post', 'publish'],
+        ['/entries/{id}/yank', 'post', 'publish'],
+        ['/publisher', 'get', 'publish'],
+        ['/moderation/entries/{id}/takedown', 'post', 'moderate'],
+        ['/moderation/entries/{id}/restore', 'post', 'moderate'],
+        ['/moderation/artifacts/{root}', 'delete', 'moderate'],
+        ['/moderation/publishers/{id}/suspension', 'put', 'moderate'],
+        ['/moderation/entries/{id}/curation', 'put', 'moderate'],
+        ['/moderation/reports', 'get', 'moderate'],
+      ] as const) {
+        const operation = record(record(record(candidate.paths)[path])[method]);
+        expect(operation['x-registry-token-scopes']).toEqual([scope]);
+        expect(operation.security).toEqual([{ registryToken: [] }]);
+        if (scope === 'moderate')
+          expect(operation['x-registry-operator-required']).toBe(true);
+      }
+      const issuance = record(
+        record(record(candidate.paths)['/account/tokens']).post,
+      );
+      expect(issuance['x-registry-operator-required-for-scopes']).toEqual([
+        'moderate',
+      ]);
+      expect(issuance.description).toContain('current operator');
+      for (const [path, method] of [
+        ['/account/moderation/entries/{id}/takedown', 'post'],
+        ['/account/moderation/entries/{id}/restore', 'post'],
+        ['/account/moderation/artifacts/{root}', 'delete'],
+        ['/account/moderation/publishers/{id}/suspension', 'put'],
+        ['/account/moderation/entries/{id}/curation', 'put'],
+        ['/account/moderation/reports', 'post'],
+      ] as const) {
+        const operation = record(record(record(candidate.paths)[path])[method]);
+        expect(operation['x-registry-operator-required']).toBe(true);
+        expect(operation['x-registry-token-scopes']).toBeUndefined();
+        expect(operation.security).toEqual([{ registrySession: [] }]);
+      }
     }
+  });
+
+  it('advertises the cookie name used by supported HTTP localhost mode', async () => {
+    const local = await generateRegistryOpenApi({ secureSessionCookie: false });
+    const schemes = record(record(local.components).securitySchemes);
+    expect(schemes.registrySession).toMatchObject({
+      type: 'apiKey',
+      in: 'cookie',
+      name: 'registry.session_token',
+    });
   });
 
   it('covers every operation, path target and public problem code', () => {

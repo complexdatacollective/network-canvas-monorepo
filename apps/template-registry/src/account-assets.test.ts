@@ -21,6 +21,7 @@ it('serves only compiled inventory bytes with page CSP and preserves API sandbox
   const api = await createRegistryFixture();
   try {
     const app = createRegistryApp({
+      secureSessionCookie: true,
       ...api,
       accountAssets,
       accepting: () => true,
@@ -37,6 +38,9 @@ it('serves only compiled inventory bytes with page CSP and preserves API sandbox
     expect(document.headers.get('Cache-Control')).toBe('no-store');
     expect(document.headers.get('Content-Security-Policy')).toContain(
       "script-src 'self'",
+    );
+    expect(document.headers.get('Content-Security-Policy')).toContain(
+      'img-src data:',
     );
     expect(document.headers.get('Content-Security-Policy')).not.toContain(
       'sandbox',
@@ -154,6 +158,7 @@ it('holds a bounded account bundle budget until bytes are consumed or cancelled'
   const responses: Response[] = [];
   try {
     const app = createRegistryApp({
+      secureSessionCookie: true,
       ...api,
       accountAssets,
       accepting: () => true,

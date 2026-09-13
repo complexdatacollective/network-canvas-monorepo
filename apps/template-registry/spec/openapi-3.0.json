@@ -19,13 +19,13 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "ncr1_<256-bit secret>",
-        "description": "Registry-issued credentials. Studio instance API tokens do not authenticate here."
+        "description": "Registry-issued credentials. Operations declare their required publish or moderate scope with x-registry-token-scopes. x-registry-operator-required requires the credential owner to be a current operator. Studio instance API tokens do not authenticate here."
       },
       "registrySession": {
         "type": "apiKey",
         "in": "cookie",
         "name": "__Secure-registry.session_token",
-        "description": "Verified email session issued by this registry. Account writes also require the registry Origin header."
+        "description": "Verified email session issued by this registry. Account writes also require the registry Origin header; moderation operations separately declare x-registry-operator-required."
       }
     },
     "schemas": {
@@ -76,6 +76,16 @@
           "curated": {
             "type": "string",
             "enum": ["true", "false"]
+          },
+          "root": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Exact artifact root. Combined with publisher_id, includes yanked publications while still excluding removed content."
+          },
+          "publisher_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           }
         },
         "additionalProperties": false
@@ -396,6 +406,7 @@
                     "url": {
                       "type": "string",
                       "maxLength": 2048,
+                      "pattern": "^[Hh][Tt][Tt][Pp][Ss]:\\/\\/",
                       "format": "uri"
                     },
                     "label": {
@@ -541,6 +552,28 @@
             },
             "allowEmptyValue": false,
             "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "root",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact artifact root. Combined with publisher_id, includes yanked publications while still excluding removed content."
+            },
+            "allowEmptyValue": false,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "publisher_id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "allowEmptyValue": false,
+            "allowReserved": true
           }
         ],
         "responses": {
@@ -559,6 +592,9 @@
                     },
                     "next_cursor": {
                       "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1024,
+                      "pattern": "^[A-Za-z0-9_-]+$",
                       "nullable": true
                     },
                     "has_more": {
@@ -856,7 +892,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["publish"]
       }
     },
     "/entries/{id}": {
@@ -1388,7 +1425,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["publish"]
       }
     },
     "/entries/{id}/reports": {
@@ -1719,7 +1757,8 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["publish"]
       }
     },
     "/account": {
@@ -1745,11 +1784,26 @@
                       "maxLength": 320
                     },
                     "publisher": {
-                      "allOf": [
-                        {
-                          "$ref": "#/components/schemas/Publisher"
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "orcid": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$",
+                          "nullable": true
                         }
-                      ],
+                      },
+                      "required": ["id", "name", "orcid"],
+                      "additionalProperties": false,
                       "nullable": true
                     },
                     "suspended": {
@@ -2080,6 +2134,7 @@
       "post": {
         "operationId": "createToken",
         "summary": "Issue a registry credential",
+        "description": "Requires a verified registry session with a claimed publisher. If requested scopes contain moderate, the account must be a current operator; otherwise the request returns 403. A moderate credential also requires its owner to remain a current operator when it is used.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2313,7 +2368,8 @@
             },
             "description": "The exact registry origin. Required for cookie-authenticated account writes."
           }
-        ]
+        ],
+        "x-registry-operator-required-for-scopes": ["moderate"]
       },
       "get": {
         "operationId": "listTokens",
@@ -2863,7 +2919,9 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/moderation/entries/{id}/restore": {
@@ -3037,7 +3095,9 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/moderation/artifacts/{root}": {
@@ -3210,7 +3270,9 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/moderation/publishers/{id}/suspension": {
@@ -3390,7 +3452,9 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/moderation/entries/{id}/curation": {
@@ -3570,7 +3634,9 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/moderation/reports": {
@@ -3583,7 +3649,8 @@
             "name": "after",
             "schema": {
               "type": "string",
-              "pattern": "^[1-9][0-9]{0,18}$"
+              "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
+              "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive."
             },
             "allowEmptyValue": false,
             "allowReserved": true
@@ -3656,6 +3723,8 @@
                     },
                     "next_cursor": {
                       "type": "string",
+                      "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
+                      "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive.",
                       "nullable": true
                     },
                     "has_more": {
@@ -3793,7 +3862,9 @@
           {
             "registryToken": []
           }
-        ]
+        ],
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/entries/{id}/takedown": {
@@ -3976,7 +4047,8 @@
           {
             "registrySession": []
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/entries/{id}/restore": {
@@ -4159,7 +4231,8 @@
           {
             "registrySession": []
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/artifacts/{root}": {
@@ -4341,7 +4414,8 @@
           {
             "registrySession": []
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/publishers/{id}/suspension": {
@@ -4530,7 +4604,8 @@
           {
             "registrySession": []
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/entries/{id}/curation": {
@@ -4719,7 +4794,8 @@
           {
             "registrySession": []
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/reports": {
@@ -4735,7 +4811,8 @@
                 "properties": {
                   "after": {
                     "type": "string",
-                    "pattern": "^[1-9][0-9]{0,18}$"
+                    "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
+                    "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive."
                   },
                   "limit": {
                     "default": 20,
@@ -4804,6 +4881,8 @@
                     },
                     "next_cursor": {
                       "type": "string",
+                      "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
+                      "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive.",
                       "nullable": true
                     },
                     "has_more": {
@@ -4952,7 +5031,8 @@
             },
             "description": "The exact registry origin. Required for cookie-authenticated account writes."
           }
-        ]
+        ],
+        "x-registry-operator-required": true
       }
     }
   }

@@ -67,6 +67,7 @@ export type RegistryAppDependencies = {
   accountAssets?: RegistryAccountAssets;
   accepting: () => boolean;
   ready: () => Promise<boolean>;
+  secureSessionCookie: boolean;
   onDiagnostic: (
     code: 'REGISTRY_REQUEST_FAILED' | 'REGISTRY_READINESS_FAILED',
     requestId: string,
@@ -79,6 +80,7 @@ export function createRegistryApp({
   accountAssets,
   accepting,
   ready,
+  secureSessionCookie,
   onDiagnostic,
 }: RegistryAppDependencies) {
   const router = {
@@ -340,7 +342,7 @@ export function createRegistryApp({
         : 'public, max-age=31536000, immutable',
       'ETag': asset.etag,
       'Content-Security-Policy':
-        "default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+        "default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; img-src data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
     };
     if (context.req.method === 'HEAD') return new Response(null, { headers });
     // Page downloads share a fixed 8 MiB body budget alongside the artifact
@@ -406,7 +408,7 @@ export function createRegistryApp({
     );
   });
   app.get('/api/v1/openapi.json', async (context) => {
-    openapi ??= await generateRegistryOpenApi();
+    openapi ??= await generateRegistryOpenApi({ secureSessionCookie });
     return context.json(openapi);
   });
   app.all('/api/v1/*', async (context) => {

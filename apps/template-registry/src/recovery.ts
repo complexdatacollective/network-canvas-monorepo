@@ -31,23 +31,27 @@ type Artifact = {
 
 type RecoveredUser = { id: string; email: string; email_verified: boolean };
 
-function assertReconciliationUsers(
-  actual: readonly RecoveredUser[],
-  reconciliation: RegistryRecoveryReconciliation,
-) {
-  const expected = new Map(reconciliation.users.map((user) => [user.id, user]));
-  if (
-    actual.length !== expected.size ||
-    actual.some((user) => {
-      const evidence = expected.get(user.id);
-      return (
-        !evidence ||
-        normalizeMailbox(user.email) !== evidence.email ||
-        user.email_verified !== evidence.emailVerified
-      );
-    })
-  )
-    throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+// All restored inventories are untrusted in size. Keyset pages use the same
+// database ordering for the cursor and predicate; caller-owned evidence remains
+// the independent authority set rather than a second buffered database copy.
+async function* recoveryPages<T extends pg.QueryResultRow>(
+  client: pg.PoolClient,
+  backup: pg.PoolClient,
+  query: string,
+  cursorColumn: keyof T,
+): AsyncGenerator<T[]> {
+  let cursor: string | null = null;
+  for (;;) {
+    const page = await client.query<T>(query, [cursor, 64]);
+    await keepRecoveryTransactionsAlive(client, backup);
+    if (page.rows.length === 0) return;
+    yield page.rows;
+    if (page.rows.length < 64) return;
+    const next: unknown = page.rows.at(-1)?.[cursorColumn];
+    if (typeof next !== 'string' || next === cursor)
+      throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    cursor = next;
+  }
 }
 
 async function keepRecoveryTransactionsAlive(
@@ -63,32 +67,41 @@ export async function verifyRegistryRecoveryArtifacts(
   blobs: RegistryBlobStore,
 ) {
   await blobs.ready();
-  const artifacts = await client.query<Artifact>(
+  for await (const artifacts of recoveryPages<Artifact>(
+    client,
+    backup,
     `SELECT artifact.root, artifact.raw_hash, artifact.byte_size,
       content.template, content.metadata, content.license
     FROM registry_artifacts artifact
     LEFT JOIN registry_artifact_content content ON content.root = artifact.root
-    WHERE artifact.deleted_at IS NULL ORDER BY artifact.root`,
-  );
-  for (const row of artifacts.rows) {
-    if (row.template === null || row.metadata === null || row.license === null)
-      throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
-    const bytes = await blobs.get(row.raw_hash);
-    if (!bytes || bytes.byteLength !== row.byte_size)
-      throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
-    const artifact = await readTemplateArtifact(bytes).catch(() => {
-      throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
-    });
-    try {
-      if (artifact.manifest.merkle_root !== row.root)
-        throw new Error('Registry artifact root does not match.');
-      deepStrictEqual(artifact.manifest.template, row.template);
-      deepStrictEqual(artifact.metadata, row.metadata);
-      deepStrictEqual(artifact.license, row.license);
-    } catch {
-      throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
+    WHERE artifact.deleted_at IS NULL AND ($1::text IS NULL OR artifact.root > $1)
+    ORDER BY artifact.root LIMIT $2`,
+    'root',
+  )) {
+    for (const row of artifacts) {
+      if (
+        row.template === null ||
+        row.metadata === null ||
+        row.license === null
+      )
+        throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
+      const bytes = await blobs.get(row.raw_hash);
+      if (!bytes || bytes.byteLength !== row.byte_size)
+        throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
+      const artifact = await readTemplateArtifact(bytes).catch(() => {
+        throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
+      });
+      try {
+        if (artifact.manifest.merkle_root !== row.root)
+          throw new Error('Registry artifact root does not match.');
+        deepStrictEqual(artifact.manifest.template, row.template);
+        deepStrictEqual(artifact.metadata, row.metadata);
+        deepStrictEqual(artifact.license, row.license);
+      } catch {
+        throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
+      }
+      await keepRecoveryTransactionsAlive(client, backup);
     }
-    await keepRecoveryTransactionsAlive(client, backup);
   }
 }
 
@@ -159,12 +172,32 @@ export async function reconcileRegistryRecovery({
     );
     await client.query(`LOCK TABLE registry_auth_user, registry_auth_session,
       registry_auth_verification, registry_publishers, registry_operators,
-      registry_credentials, registry_artifacts, registry_artifact_content
+      registry_credentials, registry_artifacts, registry_artifact_content,
+      registry_entries
       IN SHARE ROW EXCLUSIVE MODE`);
-    const users = await client.query<RecoveredUser>(
-      'SELECT id, email, email_verified FROM registry_auth_user ORDER BY id',
+    const expectedUsers = new Map(
+      evidence.users.map((user) => [user.id, user]),
     );
-    assertReconciliationUsers(users.rows, evidence);
+    let userCount = 0;
+    for await (const users of recoveryPages<RecoveredUser>(
+      client,
+      backup,
+      'SELECT id, email, email_verified FROM registry_auth_user WHERE ($1::text IS NULL OR id > $1) ORDER BY id LIMIT $2',
+      'id',
+    )) {
+      for (const user of users) {
+        const expected = expectedUsers.get(user.id);
+        if (
+          !expected ||
+          normalizeMailbox(user.email) !== expected.email ||
+          user.email_verified !== expected.emailVerified
+        )
+          throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+        userCount += 1;
+      }
+    }
+    if (userCount !== expectedUsers.size)
+      throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
     await verifyRegistryRecoveryArtifacts(client, backup, blobs);
     const expectedPublishers = new Map(
       evidence.users
@@ -172,17 +205,44 @@ export async function reconcileRegistryRecovery({
         .map((user) => [user.id, user.publisherId]),
     );
     const publisherIds = [...expectedPublishers.keys()];
-    const actualPublishers = await client.query<{
+    let publisherCount = 0;
+    for await (const publishers of recoveryPages<{
       id: string;
       user_id: string;
-    }>('SELECT id, user_id FROM registry_publishers');
-    if (
-      actualPublishers.rows.length !== expectedPublishers.size ||
-      actualPublishers.rows.some(
-        (publisher) =>
-          expectedPublishers.get(publisher.user_id) !== publisher.id,
-      )
-    )
+    }>(
+      client,
+      backup,
+      'SELECT id, user_id FROM registry_publishers WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
+      'id',
+    )) {
+      for (const publisher of publishers) {
+        if (expectedPublishers.get(publisher.user_id) !== publisher.id)
+          throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+        publisherCount += 1;
+      }
+    }
+    if (publisherCount !== expectedPublishers.size)
+      throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    const expectedEntries = new Map(
+      evidence.entries.map((entry) => [entry.id, entry.publisherId]),
+    );
+    let entryCount = 0;
+    for await (const entries of recoveryPages<{
+      id: string;
+      publisher_id: string;
+    }>(
+      client,
+      backup,
+      'SELECT id, publisher_id FROM registry_entries WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
+      'id',
+    )) {
+      for (const entry of entries) {
+        if (expectedEntries.get(entry.id) !== entry.publisher_id)
+          throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+        entryCount += 1;
+      }
+    }
+    if (entryCount !== expectedEntries.size)
       throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
     await client.query('DELETE FROM registry_auth_session');
     await client.query('DELETE FROM registry_auth_verification');
