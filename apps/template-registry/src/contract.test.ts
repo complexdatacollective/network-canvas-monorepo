@@ -605,10 +605,10 @@ describe('generated registry OpenAPI', () => {
         .responses,
     );
     const artifactContent = record(record(artifact['200']).content);
-    expect(Object.keys(artifactContent)).toEqual(['application/octet-stream']);
-    expect(record(artifactContent['application/octet-stream'])).toMatchObject({
-      'x-runtime-content-type': TEMPLATE_ARTIFACT_MEDIA_TYPE,
-    });
+    expect(Object.keys(artifactContent)).toEqual([
+      TEMPLATE_ARTIFACT_MEDIA_TYPE,
+    ]);
+    expect(artifactContent[TEMPLATE_ARTIFACT_MEDIA_TYPE]).toBeDefined();
   });
 
   it('covers every operation, path target and public problem code', () => {

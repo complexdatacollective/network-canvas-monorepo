@@ -6,9 +6,11 @@ for tooling that has not adopted OpenAPI 3.1. Regenerate both with
 `pnpm --filter @codaco/template-registry generate:openapi`. The running service
 serves the same generated contract at `/api/v1/openapi.json`.
 
-CI generates a client from `openapi-3.0.json` with
-`openapi-python-client==0.29.0` and uses that generated client against an actual
-Registry HTTP listener bound to localhost. Generation warnings fail the gate.
+CI generates a client from `openapi-3.0.json` with the hashed
+`openapi-python-client==0.29.0` environment in
+`scripts/openapi-python-client-requirements.txt` and its checked-in media-type
+override, then uses that generated client against an actual Registry HTTP
+listener bound to localhost. Generation warnings fail the gate.
 
 The contract and the template exchange format specification are dedicated to
 the public domain under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
