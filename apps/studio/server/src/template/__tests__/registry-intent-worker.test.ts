@@ -1,7 +1,15 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import {
   createScratchSchema,
@@ -187,13 +195,13 @@ describe.skipIf(!db)('Template Registry intent worker', () => {
     ).resolves.toMatchObject({ id: importId, kind: 'import' });
   });
 
-  it('renews a short lease while an external effect is in progress', async () => {
+  it('renews its database lease while an external effect is in progress', async () => {
     const id = await intent();
     const started = deferred();
     const release = deferred();
     const running = reconcileNextTemplateRegistryIntent({
       pool: maintenance,
-      leaseMs: 60,
+      leaseMs: 6_000,
       process: async (claim) => {
         started.resolve();
         await release.promise;
@@ -209,17 +217,34 @@ describe.skipIf(!db)('Template Registry intent worker', () => {
       },
     });
     await started.promise;
-    await new Promise((resolve) => setTimeout(resolve, 90));
-    await expect(
-      reconcileNextTemplateRegistryIntent({
-        pool: maintenance,
-        leaseMs: 60,
-        process: async () => {
-          throw new Error('renewed intent must not be claimed twice');
+    const initial = await owner.query<{ expiry: string }>(
+      'SELECT lease_expires_at::text AS expiry FROM template_registry_import_intents WHERE id=$1',
+      [id],
+    );
+    try {
+      await vi.waitFor(
+        async () => {
+          const renewed = await owner.query<{ renewed: boolean }>(
+            'SELECT lease_expires_at > $2 AS renewed FROM template_registry_import_intents WHERE id=$1',
+            [id, initial.rows[0]!.expiry],
+          );
+          expect(renewed.rows[0]?.renewed).toBe(true);
         },
-      }),
-    ).resolves.toEqual({ claimed: 0 });
-    release.resolve();
+        { timeout: 10_000, interval: 50 },
+      );
+      await expect(
+        reconcileNextTemplateRegistryIntent({
+          pool: maintenance,
+          leaseMs: 6_000,
+          process: async () => {
+            throw new Error('renewed intent must not be claimed twice');
+          },
+        }),
+      ).resolves.toEqual({ claimed: 0 });
+    } finally {
+      release.resolve();
+      await running;
+    }
     await expect(running).resolves.toEqual({ claimed: 1 });
   });
 
