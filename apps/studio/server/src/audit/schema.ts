@@ -284,8 +284,7 @@ const auditExportJobs = pgTable(
       'audit_export_jobs_failed_state_check',
       sql`(${table.status} = 'failed') = (
             ${table.failedAt} IS NOT NULL AND ${table.failureEventId} IS NOT NULL
-          )
-          AND (${table.status} <> 'failed' OR ${table.artifactKey} IS NULL)`,
+          )`,
     ),
     check(
       'audit_export_jobs_consumed_check',

@@ -26,8 +26,6 @@ import {
   AuditEventDetailSchema,
   AuditFilterOptionsSchema,
   AuditGetInputSchema,
-  AuditExportDownloadInputSchema,
-  AuditExportDownloadSchema,
   AuditExportInputSchema,
   AuditExportOutputSchema,
   AuditExportStatusInputSchema,
@@ -260,9 +258,6 @@ export const contract = {
     exportStatus: oc
       .input(AuditExportStatusInputSchema)
       .output(AuditExportStatusSchema),
-    downloadExport: oc
-      .input(AuditExportDownloadInputSchema)
-      .output(AuditExportDownloadSchema),
     /**
      * The values the list filters can take, over the team's whole history.
      * A separate procedure, not a field on the list response: the option set

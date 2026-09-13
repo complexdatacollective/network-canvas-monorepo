@@ -13,6 +13,7 @@ import {
   CLIENT_SESSION_PARAM,
   readClientSessionId,
 } from '@codaco/studio-rpc/client-session';
+import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import { createApiV1 } from './api.ts';
 import {
@@ -22,6 +23,7 @@ import {
   type AuditExportArtifactStore,
 } from './assets.ts';
 import { BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES } from './audit/better-auth-policy.ts';
+import { openAuditExportDownload } from './audit/export.ts';
 import { createAuthService } from './auth/create.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
 import type { StudioMailer } from './auth/email.ts';
@@ -53,6 +55,7 @@ const WS_PATH = '/ws';
 // Hono matches `/storage/*` against the children of /storage but not the bare
 // prefix, so anything covering the whole surface has to name both.
 const STORAGE_PATHS = ['/storage', '/storage/*'];
+const AUDIT_EXPORT_HANDLE_HEADER = 'x-studio-audit-export-handle';
 const MANAGED_INGRESS_PROOF_HEADER = 'x-studio-managed-ingress-proof';
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
@@ -202,6 +205,49 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   );
   app.route('/storage', createAssetRoutes(assetStore));
 
+  app.use('/audit-exports/*', createPrincipalMiddleware(auth));
+  app.use('/audit-exports/*', requirePrincipal());
+  app.get('/audit-exports/:teamId/:jobId', async (c) => {
+    if (!pool || !auditExportStore) {
+      return c.json({ title: 'Audit export unavailable', status: 503 }, 503, {
+        'Cache-Control': 'no-store',
+      });
+    }
+    const handle = c.req.header(AUDIT_EXPORT_HANDLE_HEADER);
+    if (!handle || handle.length < 43 || handle.length > 128) {
+      return c.json({ title: 'Not Found', status: 404 }, 404, {
+        'Cache-Control': 'no-store',
+      });
+    }
+    try {
+      const principal = c.get('principal');
+      if (!principal) throw new Error('audit export unauthenticated');
+      const download = await openAuditExportDownload(
+        {
+          tenantDb: createTenantDb(pool, c.req.param('teamId')),
+          principal,
+          requestId: c.get('requestId'),
+        },
+        c.req.param('jobId'),
+        handle,
+        auditExportStore,
+      );
+      return new Response(download.body, {
+        headers: {
+          'Cache-Control': 'no-store',
+          'Content-Disposition': 'attachment; filename="studio-activity.csv"',
+          'Content-Length': String(download.size),
+          'Content-Type': 'text/csv; charset=utf-8',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+    } catch {
+      return c.json({ title: 'Not Found', status: 404 }, 404, {
+        'Cache-Control': 'no-store',
+      });
+    }
+  });
+
   // The SPA's typed procedures (oRPC v2, decision recorded on #1244),
   // implementing the @codaco/studio-rpc boundary contract.
   if (env.auth) {
@@ -220,7 +266,6 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     maintenancePool: deps.maintenancePool,
     protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,
-    auditExportStore,
     encryptionKeys: deps.encryptionKeys,
     templateRegistryOrigin: env.templateRegistryOrigin,
   });
@@ -274,6 +319,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     '/api',
     '/rpc',
     '/storage',
+    '/audit-exports',
     '/healthz',
     '/readyz',
     '/metrics',

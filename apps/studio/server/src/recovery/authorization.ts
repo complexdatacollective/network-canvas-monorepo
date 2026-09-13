@@ -1,11 +1,12 @@
 import { deepStrictEqual } from 'node:assert';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
 
 import { assertSamePostgresDatabase } from '@codaco/studio-sync/postgres-database-identity';
-import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { TEAM_GUC, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
+import { AuditStore } from '../audit/store.ts';
 import { assertBackupAccess } from '../db/backup.ts';
 import { checkSchema } from '../db/schema.ts';
 import { tryParseRoles } from '../team/roles.ts';
@@ -20,6 +21,7 @@ import { assertStudioRecoveryQuarantine } from './quarantine.ts';
 const FAILURE = 'STUDIO_RECOVERY_AUTHORIZATION_FAILED';
 const MISMATCH = 'STUDIO_RECOVERY_RECONCILIATION_MISMATCH';
 const RECOVERY_ACTOR = 'studio-recovery';
+const auditStore = new AuditStore();
 
 type Policy = {
   allowedLogins: readonly string[];
@@ -437,6 +439,55 @@ async function holdRestoredDeliveries(client: pg.PoolClient) {
     SET quarantined_at = statement_timestamp(),
       lease_owner = NULL, lease_expires_at = NULL
     WHERE completed_at IS NULL AND quarantined_at IS NULL`);
+    const unfinishedExports = await client.query<{
+      id: string;
+      team_id: string;
+      team_name: string;
+      actor_id: string;
+      start_event_id: string;
+    }>(`SELECT jobs.id,jobs.team_id,teams.name AS team_name,jobs.actor_id,
+      jobs.start_event_id FROM audit_export_jobs jobs
+      JOIN teams ON teams.id=jobs.team_id
+      WHERE jobs.status IN ('pending','generating') ORDER BY jobs.team_id,jobs.id`);
+    for (const job of unfinishedExports.rows) {
+      await client.query(`SELECT set_config('${TEAM_GUC}', $1, true)`, [
+        job.team_id,
+      ]);
+      const event = await auditStore.append(client, {
+        teamId: job.team_id,
+        teamLabel: job.team_name.trim().slice(0, 320),
+        eventVersion: 1,
+        eventType: 'audit.export.failed',
+        category: 'audit',
+        outcome: 'succeeded',
+        actorKind: 'system',
+        actorId: null,
+        actorLabel: 'Audit export',
+        subjectType: 'audit_export',
+        subjectId: job.id,
+        subjectLabel: null,
+        resourceType: null,
+        resourceId: null,
+        resourceLabel: null,
+        requestId: randomUUID(),
+        details: {
+          startEventId: job.start_event_id,
+          requestedByActorId: job.actor_id,
+          failureCode: 'recovery_quarantined',
+        },
+      });
+      const failed = await client.query(
+        `UPDATE audit_export_jobs SET status='failed',failed_at=statement_timestamp(),
+          failure_event_id=$2,last_error='recovery quarantined',
+          lease_owner=NULL,lease_expires_at=NULL WHERE id=$1
+          AND status IN ('pending','generating')`,
+        [job.id, event.id],
+      );
+      if (failed.rowCount !== 1) throw new Error(MISMATCH);
+    }
+    await client.query(`UPDATE audit_export_jobs
+      SET handle_consumed_at=COALESCE(handle_consumed_at,statement_timestamp())
+      WHERE status='ready' AND handle_consumed_at IS NULL`);
   });
 }
 
@@ -446,7 +497,7 @@ async function lockRecoveryAuthorizationState(client: pg.PoolClient) {
     team_members, team_invitations, team_invitation_deliveries,
     study_role_grants, api_tokens, interview_links, webhook_subscriptions,
     webhook_deliveries, study_schedules, message_templates, message_deliveries,
-    audit_events, credential_audit_events, audit_alert_outbox,
+    audit_events, credential_audit_events, audit_export_jobs, audit_alert_outbox,
     audit_alert_deliveries, template_registry_publication_intents,
     template_registry_import_intents, leases IN SHARE ROW EXCLUSIVE MODE`);
 }
@@ -473,6 +524,7 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
       live_leases: number;
       deliveries: number;
       registry_intents: number;
+      audit_exports: number;
     }>(`SELECT
     (SELECT count(*)::int FROM api_tokens WHERE revoked_at IS NULL) tokens,
     (SELECT count(*)::int FROM interview_links WHERE revoked_at IS NULL) links,
@@ -483,7 +535,10 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
      + (SELECT count(*) FROM audit_alert_outbox WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
      + (SELECT count(*) FROM audit_alert_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL))::int deliveries,
     ((SELECT count(*) FROM template_registry_publication_intents WHERE completed_at IS NULL AND quarantined_at IS NULL)
-     + (SELECT count(*) FROM template_registry_import_intents WHERE completed_at IS NULL AND quarantined_at IS NULL))::int registry_intents`),
+     + (SELECT count(*) FROM template_registry_import_intents WHERE completed_at IS NULL AND quarantined_at IS NULL))::int registry_intents,
+    (SELECT count(*)::int FROM audit_export_jobs
+      WHERE status IN ('pending','generating')
+         OR (status='ready' AND handle_consumed_at IS NULL)) audit_exports`),
   );
   assertRows(remainingTenantState.rows[0], {
     tokens: 0,
@@ -491,6 +546,7 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
     live_leases: 0,
     deliveries: 0,
     registry_intents: 0,
+    audit_exports: 0,
   });
 }
 

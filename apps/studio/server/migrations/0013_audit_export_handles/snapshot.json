@@ -1,6 +1,6 @@
 {
   "dialect": "postgres",
-  "id": "315d808e-f54f-41b5-b547-a276582f53fc",
+  "id": "010aa5d4-2ded-403f-a6fb-83fcc8a933c4",
   "prevIds": ["3b55c83b-3d20-4e2f-a6d8-51e52c1d3ec1"],
   "version": "8",
   "ddl": [
@@ -16228,7 +16228,7 @@
       "table": "audit_export_jobs"
     },
     {
-      "value": "(\"status\" = 'failed') = (\n            \"failed_at\" IS NOT NULL AND \"failure_event_id\" IS NOT NULL\n          )\n          AND (\"status\" <> 'failed' OR \"artifact_key\" IS NULL)",
+      "value": "(\"status\" = 'failed') = (\n            \"failed_at\" IS NOT NULL AND \"failure_event_id\" IS NOT NULL\n          )",
       "name": "audit_export_jobs_failed_state_check",
       "entityType": "checks",
       "schema": "public",

@@ -54,11 +54,23 @@ export type AssetStore = {
 export type AuditExportArtifactStore = {
   putAuditExport(
     jobId: string,
+    attemptId: string,
     chunks: AsyncIterable<Uint8Array>,
   ): Promise<{ key: string; size: number }>;
-  getAuditExport(key: string): Promise<ReadableStream | null>;
+  getAuditExport(
+    key: string,
+  ): Promise<{ body: ReadableStream<Uint8Array>; size?: number } | null>;
   deleteAuditExport(key: string): Promise<void>;
 };
+
+export function auditExportArtifactKey(
+  jobId: string,
+  attemptId: string,
+): string {
+  if (!/^[0-9a-f-]{36}$/i.test(jobId) || !/^[0-9a-f-]{36}$/i.test(attemptId))
+    throw new Error('invalid export id');
+  return `audit-exports/${jobId}/${attemptId}.csv`;
+}
 
 export function createAssetStore(
   env: S3Env,
@@ -130,9 +142,8 @@ export function createAssetStore(
         throw error;
       }
     },
-    async putAuditExport(jobId, chunks) {
-      if (!/^[0-9a-f-]{36}$/i.test(jobId)) throw new Error('invalid export id');
-      const key = `audit-exports/${jobId}.csv`;
+    async putAuditExport(jobId, attemptId, chunks) {
+      const key = auditExportArtifactKey(jobId, attemptId);
       const created = await client.send(
         new CreateMultipartUploadCommand({
           Bucket: env.bucket,
@@ -195,19 +206,27 @@ export function createAssetStore(
       }
     },
     async getAuditExport(key) {
-      if (!/^audit-exports\/[0-9a-f-]{36}\.csv$/i.test(key)) return null;
+      if (!/^audit-exports\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.csv$/i.test(key))
+        return null;
       try {
         const result = await client.send(
           new GetObjectCommand({ Bucket: env.bucket, Key: key }),
         );
-        return result.Body?.transformToWebStream() ?? null;
+        return result.Body
+          ? {
+              body: result.Body.transformToWebStream(),
+              ...(result.ContentLength === undefined
+                ? {}
+                : { size: result.ContentLength }),
+            }
+          : null;
       } catch (error) {
         if (isNotFound(error)) return null;
         throw error;
       }
     },
     async deleteAuditExport(key) {
-      if (!/^audit-exports\/[0-9a-f-]{36}\.csv$/i.test(key))
+      if (!/^audit-exports\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.csv$/i.test(key))
         throw new Error('invalid export key');
       await client.send(
         new DeleteObjectCommand({ Bucket: env.bucket, Key: key }),

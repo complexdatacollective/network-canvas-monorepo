@@ -625,14 +625,9 @@ export const AuditExportStatusSchema = z.discriminatedUnion('status', [
     status: z.literal('ready'),
     handle: z.string().min(43).max(128),
     expiresAt: z.date(),
+    downloadPath: z.string().startsWith('/audit-exports/').max(1024),
   }),
 ]);
-export const AuditExportDownloadInputSchema = TeamScopedSchema.extend({
-  jobId: z.uuid(),
-  handle: z.string().min(43).max(128),
-});
-export const AuditExportDownloadSchema = z.object({ csv: z.string() });
-
 export const AuditEventDetailSchema = AuditEventSummarySchema.extend({
   teamLabel: z.string(),
   requestId: z.uuid(),

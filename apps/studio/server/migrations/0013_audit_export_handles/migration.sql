@@ -18,3 +18,6 @@ ALTER TABLE "audit_export_jobs" DROP CONSTRAINT "audit_export_jobs_ready_state_c
             AND "completion_event_id" IS NOT NULL
             AND "ready_at" IS NOT NULL
           ));
+ALTER TABLE "audit_export_jobs" DROP CONSTRAINT "audit_export_jobs_failed_state_check", ADD CONSTRAINT "audit_export_jobs_failed_state_check" CHECK (("status" = 'failed') = (
+            "failed_at" IS NOT NULL AND "failure_event_id" IS NOT NULL
+          ));

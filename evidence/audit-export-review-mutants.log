@@ -1,0 +1,137 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server
+
+ ❯ src/audit/__tests__/export.test.ts (10 tests | 2 failed | 8 skipped) 243ms
+     × uses per-attempt keys and a stale owner cleans only its own artifact 92ms
+     × neutralizes whitespace-prefixed spreadsheet formulas 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/audit/__tests__/export.test.ts > staged audit export > uses per-attempt keys and a stale owner cleans only its own artifact
+AssertionError: expected { claimed: 1, completed: +0, …(5) } to match object { completed: 1 }
+(6 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "completed": 1,
++   "completed": 0,
+  }
+
+ ❯ src/audit/__tests__/export.test.ts:349:20
+    347|       leaseMs: 30_000,
+    348|     }).runOnce();
+    349|     expect(winner).toMatchObject({ completed: 1 });
+       |                    ^
+    350|     releaseFirst?.();
+    351|     await expect(staleRun).resolves.toMatchObject({ leaseLost: 1 });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/audit/__tests__/export.test.ts > staged audit export > neutralizes whitespace-prefixed spreadsheet formulas
+AssertionError: expected 'id,sequence,occurred_at,event_type,ev…' to contain '"\'\t=HYPERLINK(""https://example.inv…'
+
+- Expected
++ Received
+
+- "'	=HYPERLINK(""https://example.invalid"")"
++ id,sequence,occurred_at,event_type,event_version,category,outcome,actor_kind,actor_id,actor_label,subject_type,subject_id,subject_label,resource_type,resource_id,resource_label,request_id,details
++ "278f0b73-e868-42ac-932a-2e4a839e221e","1003","2026-09-13T12:39:54.469Z","formula.fixture","1","audit","succeeded","user","export-owner","	=HYPERLINK(""https://example.invalid"")","","","","","","","776ec284-9624-417e-b7a4-3f0dd6558b79","{}"
++
+
+ ❯ src/audit/__tests__/export.test.ts:458:24
+    456|     );
+    457|     if (result.deliveryMode !== 'direct') throw new Error('expected di…
+    458|     expect(result.csv).toContain(
+       |                        ^
+    459|       `"'\t=HYPERLINK(""https://example.invalid"")"`,
+    460|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 8 skipped (10)
+   Start at  14:39:52
+   Duration  1.73s (transform 601ms, setup 0ms, import 1.40s, tests 243ms, environment 0ms)
+
+undefined
+/Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/audit/__tests__/export.test.ts -t 'uses per-attempt keys|neutralizes whitespace-prefixed'
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server
+
+ ❯ src/audit/__tests__/export.test.ts (10 tests | 1 failed | 9 skipped) 237ms
+     × rechecks administrator authority after opening and releases a refused stream 82ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/audit/__tests__/export.test.ts > staged audit export > rechecks administrator authority after opening and releases a refused stream
+AssertionError: promise resolved "{ …(2) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "body": ReadableStream {
++     Symbol(kType): "ReadableStream",
++     Symbol(kState): {
++       "controller": ReadableStreamDefaultController {
++         Symbol(kType): "ReadableStreamDefaultController",
++         Symbol(kState): {
++           "cancelAlgorithm": [Function anonymous],
++           "closeRequested": false,
++           "highWaterMark": 1,
++           "pullAgain": false,
++           "pullAlgorithm": [Function anonymous],
++           "pulling": true,
++           "queue": [],
++           "queueTotalSize": 0,
++           "sizeAlgorithm": [Function anonymous],
++           "started": true,
++           "stream": [Circular],
++         },
++       },
++       "disturbed": false,
++       "reader": undefined,
++       "state": "readable",
++       "storedError": undefined,
++       "transfer": {
++         "port1": undefined,
++         "port2": undefined,
++         "promise": undefined,
++         "writable": undefined,
++       },
++     },
++     Symbol(nodejs.webstream.isClosedPromise): {
++       "promise": Promise {},
++       "reject": [Function anonymous],
++       "resolve": [Function anonymous],
++     },
++     Symbol(nodejs.webstream.controllerErrorFunction): [Function bound error],
++   },
++   "size": 212303,
+  }
+
+ ❯ src/audit/__tests__/export.test.ts:257:8
+    255|           revokingStore,
+    256|         ),
+    257|       ).rejects.toThrow('audit export unavailable');
+       |        ^
+    258|       await vi.waitFor(() => expect(cancellations).toBe(1));
+    259|       const row = await owner.query<{ handle_consumed_at: Date | null …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 9 skipped (10)
+   Start at  14:40:33
+   Duration  1.57s (transform 511ms, setup 0ms, import 1.25s, tests 237ms, environment 0ms)
+
+undefined
+/Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/audit/__tests__/export.test.ts -t 'rechecks administrator authority'

@@ -6,7 +6,6 @@ import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { updateUserLocale } from './account/commands.ts';
 import type { AssetStore } from './assets.ts';
-import type { AuditExportArtifactStore } from './assets.ts';
 import {
   acknowledgeAuditAlert,
   AuditAlertError,
@@ -27,11 +26,7 @@ import {
 } from './audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
 import type { AuditEventInput } from './audit/events.ts';
-import {
-  downloadAuditExport,
-  readAuditExportStatus,
-  requestAuditExport,
-} from './audit/export.ts';
+import { readAuditExportStatus, requestAuditExport } from './audit/export.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
   authorizeAuditRead,
@@ -369,7 +364,6 @@ export function createRpcRouter(
     maintenancePool?: pg.Pool;
     protocolBuilder: ProtocolBuilderRuntime;
     assetStore?: AssetStore;
-    auditExportStore?: AuditExportArtifactStore;
     encryptionKeys?: EncryptionKeys;
     templateRegistryOrigin?: string;
   },
@@ -382,7 +376,6 @@ export function createRpcRouter(
     pool,
     maintenancePool,
     assetStore,
-    auditExportStore,
     encryptionKeys,
     templateRegistryOrigin,
   } = deps;
@@ -933,19 +926,6 @@ export function createRpcRouter(
               auditedContextFor(context),
               input.jobId,
               encryptionKeys,
-            ),
-          );
-        }),
-      downloadExport: os.audit.downloadExport
-        .use(requireTeam)
-        .handler(({ context, input }) => {
-          if (!auditExportStore) throw new ORPCError('SERVICE_UNAVAILABLE');
-          return guardAuditRead(context, 'audit.downloadExport', () =>
-            downloadAuditExport(
-              auditedContextFor(context),
-              input.jobId,
-              input.handle,
-              auditExportStore,
             ),
           );
         }),

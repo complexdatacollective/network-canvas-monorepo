@@ -226,7 +226,6 @@ const AuditReadDeniedV1EventSchema = CommonUserEventSchema.extend({
       'audit.filterOptions',
       'audit.export',
       'audit.exportStatus',
-      'audit.downloadExport',
       'audit.alerts.settings',
       'audit.alerts.updateSettings',
       'audit.alerts.list',
@@ -607,7 +606,20 @@ const AuditExportFailedSchema = AuditExportSystemEventSchema.extend({
   details: z.strictObject({
     startEventId: z.uuid(),
     requestedByActorId: IdentifierSchema,
-    failureCode: z.enum(['artifact_generation_failed', 'limit_exceeded']),
+    failureCode: z.enum([
+      'artifact_generation_failed',
+      'limit_exceeded',
+      'recovery_quarantined',
+    ]),
+  }),
+}).strict();
+const AuditExportCleanedSchema = AuditExportSystemEventSchema.extend({
+  eventType: z.literal('audit.export.cleaned'),
+  outcome: z.literal('succeeded'),
+  details: z.strictObject({
+    startEventId: z.uuid(),
+    requestedByActorId: IdentifierSchema,
+    reason: z.enum(['consumed', 'expired']),
   }),
 }).strict();
 export const AuditEventInputSchema = z.union([
@@ -616,6 +628,7 @@ export const AuditEventInputSchema = z.union([
   AuditExportStartedSchema,
   AuditExportCompletedSchema,
   AuditExportFailedSchema,
+  AuditExportCleanedSchema,
   AuditReadDeniedV1EventSchema,
   TeamCreatedV1EventSchema,
   TeamMemberRoleChangedV1EventSchema,
@@ -855,6 +868,34 @@ export const AUDIT_EVENT_REGISTRY = {
         startEventId: '00000000-0000-4000-8000-000000000004',
         requestedByActorId: 'fixture-user',
         failureCode: 'artifact_generation_failed',
+      },
+    },
+  },
+  'audit.export.cleaned@1': {
+    inputSchema: AuditExportCleanedSchema,
+    title: 'Activity export cleaned up',
+    detailFields: ['startEventId', 'requestedByActorId', 'reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Audit export',
+      eventVersion: 1,
+      eventType: 'audit.export.cleaned',
+      category: 'audit',
+      outcome: 'succeeded',
+      subjectType: 'audit_export',
+      subjectId: '00000000-0000-4000-8000-000000000003',
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: {
+        startEventId: '00000000-0000-4000-8000-000000000004',
+        requestedByActorId: 'fixture-user',
+        reason: 'expired',
       },
     },
   },
