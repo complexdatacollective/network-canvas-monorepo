@@ -319,6 +319,7 @@ const TemplateRegistryIntentQuarantinedV1EventSchema =
         'publication_rejected',
         'registry_changed',
         'resource_unavailable',
+        'schema_unsupported',
       ]),
     }),
   }).strict();

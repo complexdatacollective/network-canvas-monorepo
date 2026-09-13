@@ -226,7 +226,7 @@ async function loadArtifactInput(
       ORDER BY a.original_filename`,
     [teamId, versionId],
   );
-  // Imported filenames belong to this version's immutable verified manifest,
+  // Imported filenames and declared media types belong to this version's verified manifest,
   // while the team asset table deduplicates bytes across unrelated filenames.
   // Retained completed intents preserve every source alias, even after recovery.
   let versionAssets = assetRows.rows;
@@ -249,13 +249,16 @@ async function loadArtifactInput(
       if (
         !stored ||
         sources.has(reference.source) ||
-        stored.media_type !== reference.media_type ||
         stored.media_class !== reference.media_class ||
         Number(stored.byte_size) !== reference.byte_size
       )
         throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
       sources.add(reference.source);
-      return { ...stored, original_filename: reference.source };
+      return {
+        ...stored,
+        original_filename: reference.source,
+        media_type: reference.media_type,
+      };
     });
   }
   if (versionAssets.length > TEMPLATE_ARTIFACT_LIMITS.assets)
@@ -282,7 +285,7 @@ async function loadArtifactInput(
     if (!stored) throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
     if (
       (stored.size !== undefined && stored.size !== asset.byte_size) ||
-      stored.mediaType !== asset.media_type
+      (row.registry_origin === null && stored.mediaType !== asset.media_type)
     ) {
       cancelWithoutWaiting(async () => await stored.body.cancel());
       throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
@@ -875,11 +878,10 @@ async function uploadImportAssets(
     if (owned.rowCount !== 1)
       throw new Error('Registry import intent lease is not owned');
     const stored = await store.put(asset.bytes, asset.media_type);
-    if (
-      stored.hash !== asset.hash ||
-      stored.size !== asset.byte_size ||
-      stored.mediaType !== asset.media_type
-    )
+    // The store fixes transport metadata on its first write. Verified references
+    // may declare different compatible types for identical bytes (JSON/GeoJSON).
+    // Their types remain in the immutable import manifest, not the object key.
+    if (stored.hash !== asset.hash || stored.size !== asset.byte_size)
       throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
   }
 }
@@ -1201,7 +1203,11 @@ export async function importRegistryTemplate(
 async function quarantineRegistryIntent(
   pool: pg.Pool,
   claim: ClaimedTemplateRegistryIntent,
-  reason: 'publication_rejected' | 'registry_changed' | 'resource_unavailable',
+  reason:
+    | 'publication_rejected'
+    | 'registry_changed'
+    | 'resource_unavailable'
+    | 'schema_unsupported',
 ): Promise<void> {
   const table =
     claim.kind === 'publication'
@@ -1342,12 +1348,15 @@ export async function reconcileClaimedTemplateRegistryIntent(
   } catch (error) {
     if (
       error instanceof TemplateRegistryClientError &&
-      error.code === 'TEMPLATE_REGISTRY_RESOURCE_UNAVAILABLE'
+      (error.code === 'TEMPLATE_REGISTRY_RESOURCE_UNAVAILABLE' ||
+        error.code === 'TEMPLATE_REGISTRY_SCHEMA_UNSUPPORTED')
     ) {
       await quarantineRegistryIntent(
         config.maintenancePool,
         claim,
-        'resource_unavailable',
+        error.code === 'TEMPLATE_REGISTRY_SCHEMA_UNSUPPORTED'
+          ? 'schema_unsupported'
+          : 'resource_unavailable',
       );
       return 'quarantined';
     }

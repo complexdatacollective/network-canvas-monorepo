@@ -16,7 +16,10 @@ import {
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
   type TemplateArtifactInput,
 } from '@codaco/studio-sync/template-exchange';
-import { TemplateRegistryClient } from '@codaco/studio-sync/template-registry-client';
+import {
+  TemplateRegistryClient,
+  TemplateRegistryClientError,
+} from '@codaco/studio-sync/template-registry-client';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import {
@@ -1069,6 +1072,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     ['entry', 410],
     ['artifact', 404],
     ['artifact', 410],
+    ['schema', 200],
   ] as const)(
     'quarantines pending import after permanent %s HTTP %s without publishing local data',
     async (resource, status) => {
@@ -1130,13 +1134,23 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
             : new Response(null, { status });
         },
       });
+      if (resource === 'schema') {
+        vi.spyOn(client, 'entry').mockResolvedValue(entry);
+        vi.spyOn(client, 'fetchArtifact').mockRejectedValue(
+          new TemplateRegistryClientError(
+            'TEMPLATE_REGISTRY_SCHEMA_UNSUPPORTED',
+          ),
+        );
+      }
       await expect(
         reconcileClaimedTemplateRegistryIntent(
           { origin: ORIGIN, assetStore, maintenancePool: maintenance, client },
           claim,
         ),
       ).resolves.toBe('quarantined');
-      expect(paths).toHaveLength(resource === 'entry' ? 1 : 2);
+      expect(paths).toHaveLength(
+        resource === 'schema' ? 0 : resource === 'entry' ? 1 : 2,
+      );
       await expect(
         readRegistryIntentStatuses(seeded.context, [{ id, kind: 'import' }]),
       ).resolves.toEqual([{ id, kind: 'import', status: 'quarantined' }]);
@@ -1148,7 +1162,15 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
           )
         ).rows,
       ).toEqual([
-        { details: { kind: 'import', reason: 'resource_unavailable' } },
+        {
+          details: {
+            kind: 'import',
+            reason:
+              resource === 'schema'
+                ? 'schema_unsupported'
+                : 'resource_unavailable',
+          },
+        },
       ]);
       expect(
         (
@@ -1160,124 +1182,180 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     },
   );
 
-  it('preserves imported source aliases when content hashes are shared with existing team assets', async () => {
-    const teamId = 'registry-source-aliases';
-    const seeded = await seedPublication(teamId);
-    const original = twoAssetFixture();
-    const input = {
-      ...original,
-      assets: original.assets.map((asset) => ({ ...asset, bytes: png })),
-    };
-    const built = await createTemplateArtifact(input);
-    const root = built.artifact.manifest.merkle_root;
-    const hash = templateBytesHash(png);
-    await pool.query(
-      `INSERT INTO assets (team_id,hash,media_type,media_class,byte_size,original_filename,origin,uploaded_by_user_id)
-       VALUES ($1,$2,'image/png','image',$3,'preexisting.png','upload',$4)`,
-      [teamId, hash, png.byteLength, `${teamId}-admin`],
-    );
-    const entryId = randomUUID();
-    const entry = {
-      id: entryId,
-      publisher: { id: PUBLISHER_ID, name: 'Original Publisher', orcid: null },
-      root,
-      template: built.artifact.manifest.template,
-      license: built.artifact.license,
-      curated: false,
-      yanked: false,
-      published_at: '2026-09-08T00:00:00.000Z',
-      metadata: built.artifact.metadata,
-      artifact_url: `${ORIGIN}/api/v1/artifacts/${root}`,
-      report_url: `${ORIGIN}/api/v1/entries/${entryId}/reports`,
-    };
-    const publishedSources: string[][] = [];
-    const registry = new TemplateRegistryClient({
-      origin: ORIGIN,
-      fetch: async (request, init) => {
-        const path = requestUrl(request).pathname;
-        if (path === '/api/v1/publisher') return Response.json(entry.publisher);
-        if (path === `/api/v1/entries/${entryId}`) return Response.json(entry);
-        if (path === `/api/v1/artifacts/${root}`)
-          return new Response(built.bytes, {
-            headers: {
-              'Content-Type': TEMPLATE_ARTIFACT_MEDIA_TYPE,
-              'ETag': `"${templateBytesHash(built.bytes)}"`,
-              'X-Template-Root': root,
-              'X-Registry-Yanked': 'false',
-            },
-          });
-        if (path === '/api/v1/entries' && init?.method === 'GET')
-          return Response.json({
-            data: [],
-            next_cursor: null,
-            has_more: false,
-          });
-        if (path === '/api/v1/entries' && init?.method === 'POST') {
-          if (!(init.body instanceof FormData))
-            throw new Error('missing publication form');
-          const file = init.body.get('artifact');
-          if (!(file instanceof File))
-            throw new Error('missing publication artifact');
-          const artifact = await readTemplateArtifact(
-            new Uint8Array(await file.arrayBuffer()),
-          );
-          publishedSources.push(artifact.assets.map((asset) => asset.source));
-          return Response.json(entry, { status: 201 });
-        }
-        throw new Error('unexpected Registry request');
-      },
-    });
-    const store: AssetStore = {
-      checkHealth: async () => undefined,
-      put: async (bytes, mediaType) => ({
-        hash: templateBytesHash(bytes),
-        size: bytes.byteLength,
-        mediaType,
-      }),
-      get: async (requested) =>
-        requested === hash
-          ? {
-              size: png.byteLength,
-              mediaType: 'image/png',
-              body: new ReadableStream({
-                start(controller) {
-                  controller.enqueue(png);
-                  controller.close();
+  it.each([false, true])(
+    'preserves imported source aliases and declared media types (typed aliases: %s)',
+    async (typed) => {
+      const teamId = `registry-source-aliases-${typed}`;
+      const seeded = await seedPublication(teamId);
+      const original = twoAssetFixture();
+      const bytes = typed
+        ? new TextEncoder().encode('{"type":"FeatureCollection","features":[]}')
+        : png;
+      const input: TemplateArtifactInput = typed
+        ? {
+            ...fixture(),
+            sections: {
+              ...fixture().sections,
+              assets: {
+                first: { type: 'network', name: 'First', source: 'a.json' },
+                second: {
+                  type: 'geojson',
+                  name: 'Second',
+                  source: 'b.geojson',
                 },
-              }),
-            }
-          : null,
-    };
-    const config = {
-      origin: ORIGIN,
-      assetStore: store,
-      maintenancePool: maintenance,
-      client: registry,
-    };
-    const imported = await importRegistryTemplate(
-      seeded.context,
-      config,
-      entryId,
-    );
-    expect(imported.status).toBe('completed');
-    if (imported.status !== 'completed')
-      throw new Error('import did not complete');
-    await expect(
-      publishTemplateVersion(seeded.context, config, {
-        versionId: imported.versionId,
-        credential: CREDENTIAL,
-      }),
-    ).resolves.toMatchObject({ status: 'completed' });
-    expect(publishedSources).toEqual([['a.png', 'b.png']]);
-    expect(
-      (
-        await pool.query(
-          'SELECT original_filename FROM assets WHERE team_id=$1 AND hash=$2',
-          [teamId, hash],
-        )
-      ).rows,
-    ).toEqual([{ original_filename: 'preexisting.png' }]);
-  });
+              },
+            },
+            assets: [
+              {
+                source: 'a.json',
+                media_class: 'dataset',
+                media_type: 'application/json',
+                bytes,
+              },
+              {
+                source: 'b.geojson',
+                media_class: 'dataset',
+                media_type: 'application/geo+json',
+                bytes,
+              },
+            ],
+          }
+        : {
+            ...original,
+            assets: original.assets.map((asset) => ({ ...asset, bytes })),
+          };
+      const canonicalType = typed ? 'application/json' : 'image/png';
+      const canonicalClass = typed ? 'dataset' : 'image';
+      const built = await createTemplateArtifact(input);
+      const root = built.artifact.manifest.merkle_root;
+      const hash = templateBytesHash(bytes);
+      await pool.query(
+        `INSERT INTO assets (team_id,hash,media_type,media_class,byte_size,original_filename,origin,uploaded_by_user_id)
+       VALUES ($1,$2,$5,$6,$3,'preexisting.png','upload',$4)`,
+        [
+          teamId,
+          hash,
+          bytes.byteLength,
+          `${teamId}-admin`,
+          canonicalType,
+          canonicalClass,
+        ],
+      );
+      const entryId = randomUUID();
+      const entry = {
+        id: entryId,
+        publisher: {
+          id: PUBLISHER_ID,
+          name: 'Original Publisher',
+          orcid: null,
+        },
+        root,
+        template: built.artifact.manifest.template,
+        license: built.artifact.license,
+        curated: false,
+        yanked: false,
+        published_at: '2026-09-08T00:00:00.000Z',
+        metadata: built.artifact.metadata,
+        artifact_url: `${ORIGIN}/api/v1/artifacts/${root}`,
+        report_url: `${ORIGIN}/api/v1/entries/${entryId}/reports`,
+      };
+      const publishedSources: string[][] = [];
+      const registry = new TemplateRegistryClient({
+        origin: ORIGIN,
+        fetch: async (request, init) => {
+          const path = requestUrl(request).pathname;
+          if (path === '/api/v1/publisher')
+            return Response.json(entry.publisher);
+          if (path === `/api/v1/entries/${entryId}`)
+            return Response.json(entry);
+          if (path === `/api/v1/artifacts/${root}`)
+            return new Response(built.bytes, {
+              headers: {
+                'Content-Type': TEMPLATE_ARTIFACT_MEDIA_TYPE,
+                'ETag': `"${templateBytesHash(built.bytes)}"`,
+                'X-Template-Root': root,
+                'X-Registry-Yanked': 'false',
+              },
+            });
+          if (path === '/api/v1/entries' && init?.method === 'GET')
+            return Response.json({
+              data: [],
+              next_cursor: null,
+              has_more: false,
+            });
+          if (path === '/api/v1/entries' && init?.method === 'POST') {
+            if (!(init.body instanceof FormData))
+              throw new Error('missing publication form');
+            const file = init.body.get('artifact');
+            if (!(file instanceof File))
+              throw new Error('missing publication artifact');
+            const artifact = await readTemplateArtifact(
+              new Uint8Array(await file.arrayBuffer()),
+            );
+            publishedSources.push(artifact.assets.map((asset) => asset.source));
+            expect(artifact.assets.map((asset) => asset.media_type)).toEqual(
+              input.assets.map((asset) => asset.media_type),
+            );
+            expect(artifact.manifest.merkle_root).toBe(root);
+            return Response.json(entry, { status: 201 });
+          }
+          throw new Error('unexpected Registry request');
+        },
+      });
+      const store: AssetStore = {
+        checkHealth: async () => undefined,
+        put: async (uploadedBytes) => ({
+          hash: templateBytesHash(uploadedBytes),
+          size: uploadedBytes.byteLength,
+          mediaType: canonicalType,
+        }),
+        get: async (requested) =>
+          requested === hash
+            ? {
+                size: bytes.byteLength,
+                mediaType: canonicalType,
+                body: new ReadableStream({
+                  start(controller) {
+                    controller.enqueue(bytes);
+                    controller.close();
+                  },
+                }),
+              }
+            : null,
+      };
+      const config = {
+        origin: ORIGIN,
+        assetStore: store,
+        maintenancePool: maintenance,
+        client: registry,
+      };
+      const imported = await importRegistryTemplate(
+        seeded.context,
+        config,
+        entryId,
+      );
+      expect(imported.status).toBe('completed');
+      if (imported.status !== 'completed')
+        throw new Error('import did not complete');
+      await expect(
+        publishTemplateVersion(seeded.context, config, {
+          versionId: imported.versionId,
+          credential: CREDENTIAL,
+        }),
+      ).resolves.toMatchObject({ status: 'completed' });
+      expect(publishedSources).toEqual([
+        input.assets.map((asset) => asset.source),
+      ]);
+      expect(
+        (
+          await pool.query(
+            'SELECT original_filename FROM assets WHERE team_id=$1 AND hash=$2',
+            [teamId, hash],
+          )
+        ).rows,
+      ).toEqual([{ original_filename: 'preexisting.png' }]);
+    },
+  );
 
   it('imports verified Registry bytes with asset and machine origin stamps', async () => {
     const teamId = 'registry-import';
