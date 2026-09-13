@@ -1308,6 +1308,29 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     },
   );
 
+  it('preserves withdrawal when publication is repeated idempotently', async () => {
+    const account = await fixture.account();
+    const created = await fixture.published(account.token);
+    expect(created.entry.yanked).toBe(false);
+    const withdrawal = await fixture.request(
+      'POST',
+      `/entries/${created.entry.id}/yank`,
+      {},
+      account.bearer,
+    );
+    expect(withdrawal.status).toBe(200);
+    const repeated = await fixture.publish(account.token, created.bytes);
+    expect(repeated.status).toBe(201);
+    expect(EntrySchema.parse(await repeated.json())).toMatchObject({
+      id: created.entry.id,
+      root: created.entry.root,
+      yanked: true,
+    });
+    expect(
+      (await fixture.owner.query('SELECT id FROM registry_entries')).rowCount,
+    ).toBe(1);
+  });
+
   it('verifies storage before returning an idempotent publication', async () => {
     const account = await fixture.account();
     for (const condition of ['missing', 'corrupt'] as const) {

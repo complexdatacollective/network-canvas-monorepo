@@ -318,6 +318,8 @@ export const registryContract = {
         method: 'POST',
         path: '/entries',
         summary: 'Publish a verified template artifact',
+        description:
+          'A newly created entry has yanked=false. Repeating publication of the same artifact for the same publisher is idempotent: it returns the existing entry and preserves its current withdrawal state, including yanked=true. Publication never reverses a withdrawal.',
         successStatus: 201,
         spec: (operation) => tokenOperation(operation, 'publish'),
       }),
@@ -424,6 +426,8 @@ export const registryContract = {
         method: 'DELETE',
         path: '/account/tokens/{id}',
         summary: 'Revoke a registry credential',
+        description:
+          'Requires a verified registry session whose account owns the targeted credential. A credential belonging to another account is not accessible or revocable through this operation.',
         inputStructure: 'detailed',
         spec: (operation) => securedOperation(operation, cookie),
       }),
