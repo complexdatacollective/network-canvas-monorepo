@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => ({
         'migrate': 'src/migrate.ts',
         'encryption': 'src/encryption.ts',
         'backup': 'src/backup.ts',
+        'recovery-evidence': 'src/recovery-evidence.ts',
         'recovery-authorization': 'src/recovery-authorization.ts',
         'recovery-authorize-current': 'src/recovery-authorize-current.ts',
         'configure': 'src/configure.ts',

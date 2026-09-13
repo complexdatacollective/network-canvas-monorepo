@@ -401,10 +401,61 @@ reopening, complete the two-stage current-authority procedure in
 [RECOVERY_AUTHORIZATION.md](RECOVERY_AUTHORIZATION.md). It leaves database-role,
 HTTP, and worker admission closed for a separate operator decision.
 
-After successful validation, remove only `:deployment/quarantine.yml` from
-`COMPOSE_FILE` before starting the proxy and the selected worker topology. Keep
-the recovery image override until a subsequent verified release explicitly
-replaces it.
+After both authorization receipts are verified, use the fail-closing reopening
+wrapper below in the same shell as `close_recovery_admission` from that guide.
+It removes every exact quarantine-overlay entry, retains the image and
+encryption overlays, enables all three enrolled writer logins, waits for the
+selected production services, and runs your authenticated smoke-check script.
+If startup or the check fails or receives a signal, it closes and drains the
+writers again and stops the services and proxy. Keep the source installation
+stopped. Keep the recovery image override until a subsequent verified release
+explicitly replaces it.
+
+```sh
+# BEGIN RECOVERY_REOPEN_GUARD
+reopen_recovered_studio() (
+  set -eu
+  recovery_smoke_check=$1
+  shift
+  test -x "$recovery_smoke_check"
+  test "$#" -gt 0
+  cleanup_recovery_reopen() {
+    reopen_exit=$?
+    trap - EXIT HUP INT TERM
+    if ! close_recovery_admission; then reopen_exit=1; fi
+    docker compose stop traefik >/dev/null 2>&1 || reopen_exit=1
+    exit "$reopen_exit"
+  }
+  trap cleanup_recovery_reopen EXIT
+  trap 'exit 1' HUP INT TERM
+  close_recovery_admission
+  retained_compose=
+  previous_ifs=$IFS
+  IFS=:
+  set -f
+  for compose_part in ${COMPOSE_FILE:-docker-compose.yml}; do
+    if [ "$compose_part" != deployment/quarantine.yml ]; then
+      retained_compose="${retained_compose:+$retained_compose:}$compose_part"
+    fi
+  done
+  IFS=$previous_ifs
+  test -n "$retained_compose"
+  export COMPOSE_FILE="$retained_compose"
+  docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c 'BEGIN; ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; COMMIT;' >/dev/null
+  docker compose up -d --wait "$@"
+  "$recovery_smoke_check"
+  trap - EXIT HUP INT TERM
+)
+# END RECOVERY_REOPEN_GUARD
+```
+
+Prepare an operator-owned executable smoke-check script outside the checkout
+that performs the checks below and exits nonzero on any failure. Then use
+`reopen_recovered_studio /absolute/private/recovery-smoke.sh studio traefik`
+for the single-process topology, or append `worker` for the configured split
+topology. The script inherits the retained Compose overlays; keep its
+credentials in private operator custody.
 
 Privately check owner sign-in, team/study data, an authorized encrypted contact
 read, retained opt-out suppression, authorized OAuth credential read and a
