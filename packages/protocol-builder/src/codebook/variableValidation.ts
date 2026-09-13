@@ -320,29 +320,38 @@ export const isValidationMap = (value: unknown): value is ValidationMap =>
  *
  * One rule for every surface where the kind moves under rules that are already
  * written, because there is more than one: the codebook editor's own type
- * control (`draftForType`), and a form-field row holding rules for an
- * attribute it has not created yet. Each kind's `VARIABLE_TYPE_VALIDATIONS`
- * entry is the record its variable schema picks its `validation` shape from,
- * so a rule outside it is one the write would be refused for — and a rules
- * editor opened on the new kind lists only that entry, so it is not a rule the
- * researcher could switch off either.
+ * control (`draftForType`), a form-field row holding rules for an attribute it
+ * has not created yet, and the validation section beside a picker, where the
+ * kind moves because a COLLABORATOR changed it. Each kind's
+ * `VARIABLE_TYPE_VALIDATIONS` entry is the record its variable schema picks
+ * its `validation` shape from, so a rule outside it is one the write would be
+ * refused for — and a rules editor opened on the new kind lists only that
+ * entry, so it is not a rule the researcher could switch off either.
  *
  * Comparison rules go whatever the new kind accepts: each names another
  * attribute that was comparable with the old kind, and a rule comparing two
  * attributes that no longer hold the same sort of answer has to be written
  * again against a target that is.
+ *
+ * The kind is a bare string because one caller reads it off the codebook's
+ * variable union rather than from a control that offers the schema's kinds. A
+ * kind the schema does not know keeps nothing: there is no entry saying which
+ * rules its writes accept, so every rule held is one that cannot be written.
  */
 export const rulesSurvivingTypeChange = <TValue>(
   validation: Readonly<Record<string, TValue>>,
-  nextType: VariableType,
+  nextType: VariableType | string,
 ): Readonly<{ kept: Record<string, TValue>; dropped: string[] }> => {
+  const accepted: Readonly<Record<string, unknown>> = Object.hasOwn(
+    VARIABLE_TYPE_VALIDATIONS,
+    nextType,
+  )
+    ? VARIABLE_TYPE_VALIDATIONS[nextType as VariableType]
+    : {};
   const kept: Record<string, TValue> = {};
   const dropped: string[] = [];
   for (const [rule, value] of Object.entries(validation)) {
-    if (
-      Object.hasOwn(VARIABLE_TYPE_VALIDATIONS[nextType], rule) &&
-      !isValidationWithListValue(rule)
-    ) {
+    if (Object.hasOwn(accepted, rule) && !isValidationWithListValue(rule)) {
       kept[rule] = value;
     } else {
       dropped.push(rule);

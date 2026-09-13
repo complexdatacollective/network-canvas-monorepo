@@ -20,6 +20,7 @@ import { documentWithUpdatedVariable } from '../editing.ts';
 import {
   isValidationMap,
   ruleMapIssue,
+  rulesSurvivingTypeChange,
   type ValidationMap,
 } from '../variableValidation.ts';
 import { useCodebookSectionWrite } from '../writes.ts';
@@ -173,9 +174,27 @@ function VariableValidationSection({
   // made is the codebook moving under the editor, and showing the rules it
   // replaced for a frame first is showing the researcher something untrue.
   const seen = useRef(committed);
+  /**
+   * The kind of answer the rules on screen were chosen for.
+   *
+   * A collaborator can change it while this section is open, and a rule the
+   * researcher switched on but has not finished answering is held HERE rather
+   * than in the codebook — so nothing about the change would take it away. Left
+   * where it was, it is a rule the new kind's editor does not draw and the
+   * schema will not accept: every later change the researcher makes is refused
+   * by `ruleMapIssue` over a row nobody can see, and the section stops writing
+   * anything without saying why. So the draft follows the kind, by the same
+   * reading of which rules survive one that the codebook's own type control
+   * and a form-field row use.
+   */
+  const seenType = useRef(variableType);
   if (!isEqual(seen.current, committed)) {
     seen.current = committed;
+    seenType.current = variableType;
     setDraft(committed);
+  } else if (seenType.current !== variableType) {
+    seenType.current = variableType;
+    setDraft((held) => rulesSurvivingTypeChange(held, variableType).kept);
   }
 
   const commit = async (next: ValidationMap): Promise<boolean> => {
