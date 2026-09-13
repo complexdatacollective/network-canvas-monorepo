@@ -10,7 +10,14 @@ import {
 } from '@codaco/studio-sync/template-exchange';
 import { StrictUuidSchema } from '@codaco/studio-sync/template-metadata';
 
-import { RegistrySequenceSchema } from './account-contract.ts';
+import {
+  ClaimPublisherSchema,
+  CreateTokenSchema,
+  ReportSchema,
+  RegistrySequenceSchema,
+  ReportsPageSchema,
+  TokenDescriptionSchema,
+} from './account-contract.ts';
 import {
   EntrySchema,
   generateRegistryOpenApi,
@@ -37,6 +44,49 @@ it('counts search limits in Unicode code points', () => {
   expect(() =>
     ListEntriesSchema.parse({ query: `${EMOJI_150}${'😀'.repeat(51)}` }),
   ).toThrow();
+});
+
+it('counts account text limits in Unicode code points and rejects unsafe names', () => {
+  expect(ClaimPublisherSchema.parse({ name: EMOJI_150 }).name).toBe(EMOJI_150);
+  expect(
+    CreateTokenSchema.parse({ name: '😀'.repeat(100), scopes: ['publish'] }),
+  ).toMatchObject({ name: '😀'.repeat(100) });
+  expect(
+    ReportSchema.parse({ category: 'other', details: '😀'.repeat(2000) }),
+  ).toMatchObject({ details: '😀'.repeat(2000) });
+  for (const name of ['   ', 'unsafe\0name', 'unsafe\ud800name']) {
+    expect(
+      CreateTokenSchema.safeParse({ name, scopes: ['publish'] }).success,
+    ).toBe(false);
+  }
+  expect(() => ClaimPublisherSchema.parse({ name: '   ' })).toThrow();
+  expect(() =>
+    CreateTokenSchema.parse({ name: '😀'.repeat(101), scopes: ['publish'] }),
+  ).toThrow();
+  expect(() =>
+    ReportSchema.parse({ category: 'other', details: '😀'.repeat(2001) }),
+  ).toThrow();
+});
+
+it('rejects contradictory page states and revoked active-token descriptions', () => {
+  expect(
+    ReportsPageSchema.safeParse({ data: [], next_cursor: '1', has_more: false })
+      .success,
+  ).toBe(false);
+  expect(
+    ReportsPageSchema.safeParse({ data: [], next_cursor: null, has_more: true })
+      .success,
+  ).toBe(false);
+  expect(
+    TokenDescriptionSchema.safeParse({
+      id: ID,
+      name: 'Active',
+      scopes: ['publish'],
+      created_at: '2026-09-05T00:00:00.000Z',
+      expires_at: '2026-09-06T00:00:00.000Z',
+      revoked_at: '2026-09-05T12:00:00.000Z',
+    }).success,
+  ).toBe(false);
 });
 
 function expectSequenceRange(schema: Record<string, unknown>) {
@@ -79,6 +129,23 @@ function expectSequenceRange(schema: Record<string, unknown>) {
       `runtime sequence ${JSON.stringify(value)}`,
     ).toBe(expected);
   }
+}
+
+function pageBranches(schema: Record<string, unknown>) {
+  const branches = Array.isArray(schema.oneOf) ? schema.oneOf.map(record) : [];
+  expect(branches).toHaveLength(2);
+  const branch = (hasMore: boolean) =>
+    branches.find((candidate) => {
+      const value = record(record(candidate.properties).has_more);
+      return (
+        value.const === hasMore ||
+        (Array.isArray(value.enum) && value.enum[0] === hasMore)
+      );
+    });
+  const more = branch(true);
+  const done = branch(false);
+  if (!more || !done) throw new Error('Missing correlated page branches');
+  return { more, done };
 }
 const ARTIFACT_BYTES = new Uint8Array([80, 75, 3, 4]);
 const entry = EntrySchema.parse({
@@ -804,6 +871,14 @@ describe('generated registry OpenAPI', () => {
         format: 'uri',
         pattern: '^[Hh][Tt][Tt][Pp][Ss]:\\/\\/',
       });
+      const publisher = record(
+        record(record(candidate.components).schemas).Publisher,
+      );
+      expect(record(record(publisher.properties).name)).toMatchObject({
+        minLength: 1,
+        maxLength: 200,
+        pattern: '^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])',
+      });
       const listResponse = record(
         record(
           record(
@@ -814,13 +889,17 @@ describe('generated registry OpenAPI', () => {
       const listSchema = record(
         record(listResponse['application/json']).schema,
       );
-      const nextCursor = record(record(listSchema.properties).next_cursor);
-      const cursorString = Array.isArray(nextCursor.anyOf)
-        ? nextCursor.anyOf
-            .map(record)
-            .find((schema) => schema.type === 'string')
-        : nextCursor;
-      expect(cursorString).toMatchObject({
+      const listBranches = pageBranches(listSchema);
+      expect(
+        record(record(listBranches.done.properties).next_cursor),
+      ).toMatchObject(
+        candidate.openapi === '3.0.3'
+          ? { nullable: true, enum: [null] }
+          : { type: 'null' },
+      );
+      expect(
+        record(record(listBranches.more.properties).next_cursor),
+      ).toMatchObject({
         minLength: 1,
         maxLength: 1024,
         pattern: '^[A-Za-z0-9_-]+$(?![\\s\\S])',
@@ -863,15 +942,10 @@ describe('generated registry OpenAPI', () => {
             ],
           ).schema,
         );
-        const reportNextCursor = record(
-          record(responseSchema.properties).next_cursor,
+        const reportBranches = pageBranches(responseSchema);
+        expectSequenceRange(
+          record(record(reportBranches.more.properties).next_cursor),
         );
-        const outputString = Array.isArray(reportNextCursor.anyOf)
-          ? reportNextCursor.anyOf
-              .map(record)
-              .find((schema) => schema.type === 'string')
-          : reportNextCursor;
-        expectSequenceRange(record(outputString));
       }
 
       for (const [path, method, scope] of [
@@ -907,10 +981,77 @@ describe('generated registry OpenAPI', () => {
           ).schema,
         ).properties,
       ).credential;
-      expect(record(record(credentialSchema).properties).scopes).toMatchObject({
+      const credentialProperties = record(record(credentialSchema).properties);
+      expect(credentialProperties.name).toMatchObject({
+        minLength: 1,
+        maxLength: 100,
+        pattern: '^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])',
+      });
+      expect(credentialProperties.scopes).toMatchObject({
         minItems: 1,
         maxItems: 2,
       });
+      expect(credentialProperties.revoked_at).toMatchObject(
+        candidate.openapi === '3.0.3'
+          ? { nullable: true, enum: [null] }
+          : { type: 'null' },
+      );
+      const listTokens = record(
+        record(record(candidate.paths)['/account/tokens']).get,
+      );
+      const listedTokens = record(
+        record(record(record(listTokens.responses)['200']).content)[
+          'application/json'
+        ],
+      );
+      const listedCredential = record(
+        record(record(record(listedTokens.schema).properties).data).items,
+      );
+      expect(
+        record(record(listedCredential.properties).revoked_at),
+      ).toMatchObject(
+        candidate.openapi === '3.0.3'
+          ? { nullable: true, enum: [null] }
+          : { type: 'null' },
+      );
+      const issuanceBody = record(
+        record(record(record(issuance.responses)['201']).content)[
+          'application/json'
+        ],
+      );
+      expect(
+        record(record(record(issuanceBody.schema).properties).token),
+      ).toMatchObject({
+        pattern: '^ncr1_[A-Za-z0-9_-]{43}$(?![\\s\\S])',
+      });
+      for (const path of ['/entries/{id}', '/artifacts/{root}']) {
+        expect(
+          record(record(record(candidate.paths)[path]).get).requestBody,
+        ).toBeUndefined();
+      }
+      for (const path of [
+        '/moderation/reports',
+        '/account/moderation/reports',
+      ]) {
+        const method = path.startsWith('/account/') ? 'post' : 'get';
+        const reportOperation = record(
+          record(record(candidate.paths)[path])[method],
+        );
+        const reportResponse = record(
+          record(record(record(reportOperation.responses)['200']).content)[
+            'application/json'
+          ],
+        );
+        const reportPage = pageBranches(record(reportResponse.schema));
+        for (const branch of [reportPage.more, reportPage.done]) {
+          const item = record(record(record(branch.properties).data).items);
+          const details = record(record(item.properties).details);
+          const text = Array.isArray(details.anyOf)
+            ? details.anyOf.map(record).find((value) => value.type === 'string')
+            : details;
+          expect(text).toMatchObject({ minLength: 1, maxLength: 2000 });
+        }
+      }
       const yank = record(
         record(record(candidate.paths)['/entries/{id}/yank']).post,
       );
@@ -990,7 +1131,26 @@ describe('generated registry OpenAPI', () => {
         const content = record(record(responses[status]).content);
         expect(Object.keys(content)).toEqual(['application/problem+json']);
         expect(record(content['application/problem+json']).schema).toEqual({
-          $ref: '#/components/schemas/RegistryProblem',
+          $ref: `#/components/schemas/RegistryProblem${status}`,
+        });
+        expect(
+          record(
+            record(record(document.components).schemas)[
+              `RegistryProblem${status}`
+            ],
+          ),
+        ).toMatchObject({
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            status: { type: 'integer', enum: [Number(status)] },
+            code: {
+              type: 'string',
+              enum: errorCases
+                .filter((candidate) => String(candidate.status) === status)
+                .map((candidate) => candidate.code),
+            },
+          },
         });
       }
     },

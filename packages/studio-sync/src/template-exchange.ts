@@ -443,8 +443,11 @@ async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
         fatal: true,
         ignoreBOM: false,
       }).decode(asset.bytes);
-      // oxlint-disable-next-line no-control-regex -- Dataset controls cannot hide active/binary payloads.
-      if (!text.trim() || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text))
+      if (
+        text.length === 0 ||
+        // oxlint-disable-next-line no-control-regex -- Dataset controls cannot hide active/binary payloads.
+        /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text)
+      )
         invalid();
       if (asset.media_type === 'text/csv') {
         // CSV is inert dataset text, never an inline browser document.
