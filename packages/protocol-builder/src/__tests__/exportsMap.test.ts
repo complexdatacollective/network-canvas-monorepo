@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
  * The `exports` maps of both protocol-builder halves, in both directions,
  * because nothing else checks them.
  *
- * `scripts/verify-publish-exports.mjs` — the guard that proves every published
+ * `scripts/release/verify-publish-exports.mjs` — the guard that proves every published
  * package's map resolves into its tarball — skips both: neither has a
  * `publishConfig` swap and both are `private`, so there is no pack step and no
  * `dist/` for it to walk. That is correct, and it leaves hand-written maps with

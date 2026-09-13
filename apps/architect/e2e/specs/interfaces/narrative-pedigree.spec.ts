@@ -223,16 +223,15 @@ test('creates a valid NarrativePedigree stage from scratch', async ({
       // DiseaseRow.tsx's `label` field, which asks for the name the
       // participant reads in the pedigree's key.
       await architectPage
-        .getByRole('textbox', { name: 'Disease name', exact: true })
+        .getByRole('textbox', { name: 'Disease label', exact: true })
         .fill('Condition X');
 
       // fresco-ui's ColorPicker over `NodeColorSequence` renders a radio group
-      // of swatch buttons. The palette's colours are the study's own theme
-      // colours and have no names of their own, so each swatch is named for
-      // its position — "Color 1" is `node-color-seq-1`, which is what the
-      // saved disease carries.
+      // of swatch buttons, each named for the hue the theme gives it, as
+      // released Architect named them. "Neon Coral" is `node-color-seq-1`,
+      // which is what the saved disease carries.
       await architectPage
-        .getByRole('radio', { name: 'Color 1', exact: true })
+        .getByRole('radio', { name: 'Neon Coral', exact: true })
         .click();
 
       // The attribute picker is deliberately pick-only: a disease READS an

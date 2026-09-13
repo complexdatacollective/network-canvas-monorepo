@@ -2,7 +2,7 @@ import { type Locator } from '@playwright/test';
 
 import { chooseAttribute } from './variables.js';
 
-// The rule builder `@codaco/protocol-builder` ships (`rules/RuleSetField.tsx`,
+// The rule builder `@codaco/protocol-builder` ships (`fields/RuleSetField.tsx`,
 // `rules/RuleEditorDialog.tsx`), mounted by the Skip logic section (ego rules
 // available) and by the Stage filter section (no ego rules). Facts read off
 // that source:

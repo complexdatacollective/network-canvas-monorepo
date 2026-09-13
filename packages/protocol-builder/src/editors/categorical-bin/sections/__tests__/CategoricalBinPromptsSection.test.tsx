@@ -207,7 +207,7 @@ describe('the questions a categorical bin asks', () => {
     );
     await findBinsField();
     expect(
-      screen.getByRole('switch', { name: 'A bin for anything else' }),
+      screen.getByRole('switch', { name: 'Follow-up other option' }),
     ).toBeDisabled();
 
     await chooseAttributeById(
@@ -218,7 +218,7 @@ describe('the questions a categorical bin asks', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'A bin for anything else' }),
+        screen.getByRole('switch', { name: 'Follow-up other option' }),
       ).toBeEnabled(),
     );
   });
@@ -254,18 +254,18 @@ describe('the questions a categorical bin asks', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'A bin for anything else' }),
+        screen.getByRole('switch', { name: 'Follow-up other option' }),
       ).toBeChecked(),
     );
     await waitFor(() =>
       expect(
-        within(attributeField('Attribute the answer is stored in')).getByText(
+        within(attributeField('Other attribute')).getByText(
           'relationship_to_ego',
         ),
       ).toBeVisible(),
     );
     expect(
-      screen.getByRole('textbox', { name: 'Bin label' }),
+      screen.getByRole('textbox', { name: 'Other bin label' }),
     ).toHaveTextContent('Other');
     expect(
       screen.getByRole('textbox', { name: 'Follow-up question' }),
@@ -300,12 +300,12 @@ describe('the questions a categorical bin asks', () => {
     await screen.findByRole('dialog');
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'A bin for anything else' }),
+        screen.getByRole('switch', { name: 'Follow-up other option' }),
       ).toBeChecked(),
     );
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'A bin for anything else' }),
+      screen.getByRole('switch', { name: 'Follow-up other option' }),
     );
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
@@ -343,13 +343,13 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     await screen.findByRole('dialog');
     await waitFor(() =>
       expect(
-        screen.getByRole('switch', { name: 'A bin for anything else' }),
+        screen.getByRole('switch', { name: 'Follow-up other option' }),
       ).toBeChecked(),
     );
   };
 
   const followUpGroup = (): HTMLElement =>
-    screen.getByRole('region', { name: 'A bin for anything else' });
+    screen.getByRole('region', { name: 'Follow-up other option' });
 
   it('opens its rules rather than the bins’ own', async () => {
     const harness = renderStageEditor(
@@ -436,7 +436,9 @@ describe('the attribute the follow-up bin’s answers are stored in', () => {
     );
     await openFollowUp(harness);
 
-    const bins = within(screen.getByRole('region', { name: 'The bins' }));
+    const bins = within(
+      screen.getByRole('region', { name: 'Categorical response' }),
+    );
     // The values behind the bins stay editable: those the interview does read.
     expect(
       bins.getByRole('button', { name: 'Change this attribute’s values' }),
@@ -579,7 +581,7 @@ describe('a categorical bin with more bins than fit on one screen', () => {
     if (followUpBin) {
       await waitFor(() =>
         expect(
-          screen.getByRole('switch', { name: 'A bin for anything else' }),
+          screen.getByRole('switch', { name: 'Follow-up other option' }),
         ).toBeChecked(),
       );
     }

@@ -140,7 +140,7 @@ const STAGE_SCENARIOS: Readonly<
       <Field
         component={AssetPickerField}
         name="dataSource"
-        label="Roster data file"
+        label="Roster data source"
         kind="network"
       />
     ),

@@ -559,7 +559,7 @@ describe('the sites Architect refused creation at stay creation-free', () => {
     expect(
       await offersCreation(
         harness.user,
-        attributeField('Position attribute', dialog),
+        attributeField('Layout attribute', dialog),
       ),
       'The narrative preset’s position attribute stopped offering creation, so the grouping attribute’s reading below proves nothing.',
     ).toBe(true);
@@ -590,7 +590,7 @@ describe('the sites Architect refused creation at stay creation-free', () => {
 
     await expectCreationFree(
       harness.user,
-      attributeField('Affected-status attribute', dialog),
+      attributeField('Node attribute', dialog),
       'The narrative pedigree’s affected-status attribute',
     );
   });
@@ -644,15 +644,15 @@ describe('a categorical bin invents its attributes from the picker', () => {
     });
     const dialog = await openPrompt(harness);
     await harness.user.click(
-      within(dialog).getByRole('switch', { name: 'A bin for anything else' }),
+      within(dialog).getByRole('switch', { name: 'Follow-up other option' }),
     );
     const group = await within(dialog).findByRole('region', {
-      name: 'A bin for anything else',
+      name: 'Follow-up other option',
     });
 
     await inventAttribute(
       harness.user,
-      attributeField('Attribute the answer is stored in', group),
+      attributeField('Other attribute', group),
       'somethingElse',
     );
 
@@ -671,9 +671,9 @@ describe('a categorical bin invents its attributes from the picker', () => {
     // stores its id, so the pill is read back: what a researcher sees is that
     // the slot now holds the attribute they just named.
     expect(
-      within(
-        attributeField('Attribute the answer is stored in', group),
-      ).getByText('somethingElse'),
+      within(attributeField('Other attribute', group)).getByText(
+        'somethingElse',
+      ),
     ).toBeInTheDocument();
   });
 });

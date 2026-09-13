@@ -7,15 +7,15 @@
     "dev:sites": "turbo watch dev --filter=@codaco/documentation --filter=networkcanvas.com",
     "test": "turbo run test",
     "test:watch": "turbo watch test:watch",
-    "test:scripts": "node --test scripts/*.test.mjs",
+    "test:scripts": "vitest run --config scripts/vitest.config.ts",
     "publish-packages": "pnpm exec changeset publish",
     "version-packages": "pnpm exec changeset version && pnpm install --no-frozen-lockfile && pnpm lint:fix",
     "changeset": "changeset add",
-    "check:changesets": "node scripts/check-changeset-app-isolation.mjs",
+    "check:changesets": "node scripts/release/check-changeset-app-isolation.mjs",
     "check:compat-protocols": "node packages/protocols/scripts/check-compat-packages.mjs",
-    "check:hydration-flag": "node scripts/check-hydration-flag.mjs",
-    "check:mapbox-tokens": "node scripts/check-mapbox-tokens.mjs",
-    "verify:publish-exports": "node scripts/verify-publish-exports.mjs",
+    "check:hydration-flag": "node scripts/build/check-hydration-flag.mjs",
+    "check:mapbox-tokens": "node scripts/build/check-mapbox-tokens.mjs",
+    "verify:publish-exports": "node scripts/release/verify-publish-exports.mjs",
     "lint": "oxlint && oxfmt --check .",
     "lint:fix": "oxlint --fix --quiet && oxfmt .",
     "format": "oxfmt .",
@@ -26,7 +26,7 @@
     "knip": "SKIP_ENV_VALIDATION=true knip",
     "agent:check": "node scripts/agent-hooks/stop-check.mjs --manual",
     "agent:test": "node scripts/agent-hooks/agent-test.mjs",
-    "ci:metrics": "node scripts/ci-metrics.mjs"
+    "ci:metrics": "node scripts/ci/ci-metrics.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.1",
@@ -49,6 +49,7 @@
     "turbo": "^2.10.4",
     "typescript": "catalog:",
     "vite": "catalog:",
+    "vitest": "catalog:",
     "yaml": "^2.9.0"
   },
   "lint-staged": {

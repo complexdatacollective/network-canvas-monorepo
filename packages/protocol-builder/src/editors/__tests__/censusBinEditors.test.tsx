@@ -359,13 +359,13 @@ const CASES: readonly EditorCase[] = [
     authoredBy: {
       text: [{ role: 'textbox', name: 'Prompt text' }],
       createEdge: [{ role: 'radio', name: 'knows', checked: true }],
-      edgeVariable: [{ role: 'attribute', name: 'Attribute' }],
-      negativeLabel: [{ role: 'textbox', name: 'Decline answer' }],
+      edgeVariable: [{ role: 'attribute', name: 'Ordinal attribute' }],
+      negativeLabel: [{ role: 'textbox', name: 'Decline option' }],
     },
     rewrite: {
       key: 'negativeLabel',
       value: 'Never met',
-      write: (harness) => retype(harness, 'Decline answer', 'Never met'),
+      write: (harness) => retype(harness, 'Decline option', 'Never met'),
     },
   },
   {
@@ -397,16 +397,16 @@ const CASES: readonly EditorCase[] = [
     authoredBy: {
       text: [{ role: 'textbox', name: 'Prompt text' }],
       createEdge: [{ role: 'radio', name: 'knows', checked: true }],
-      bucketSortOrder: sortRuleControls('Order of the people asked about'),
-      binSortOrder: sortRuleControls('Order of the people to choose from'),
+      // The bins' two sections verbatim: Architect mounts the same two here
+      // and overrides only their descriptions.
+      bucketSortOrder: sortRuleControls('Bucket order'),
+      binSortOrder: sortRuleControls('Bin order'),
     },
     rewrite: {
       key: 'bucketSortOrder',
       value: [{ property: 'name', direction: 'desc' }],
       write: async (harness) => {
-        const group = screen.getByRole('region', {
-          name: 'Order of the people asked about',
-        });
+        const group = screen.getByRole('region', { name: 'Bucket order' });
         await harness.user.selectOptions(
           within(group).getByRole('combobox', { name: 'Direction' }),
           'desc',
@@ -482,25 +482,25 @@ const CASES: readonly EditorCase[] = [
       text: [{ role: 'textbox', name: 'Prompt text' }],
       variable: [{ role: 'attribute', name: 'Attribute' }],
       otherVariable: [
-        { role: 'switch', name: 'A bin for anything else', checked: true },
+        { role: 'switch', name: 'Follow-up other option', checked: true },
         {
           role: 'attribute',
-          name: 'Attribute the answer is stored in',
-          within: 'A bin for anything else',
+          name: 'Other attribute',
+          within: 'Follow-up other option',
         },
       ],
       otherOptionLabel: [
         {
           role: 'textbox',
-          name: 'Bin label',
-          within: 'A bin for anything else',
+          name: 'Other bin label',
+          within: 'Follow-up other option',
         },
       ],
       otherVariablePrompt: [
         {
           role: 'textbox',
           name: 'Follow-up question',
-          within: 'A bin for anything else',
+          within: 'Follow-up other option',
         },
       ],
       bucketSortOrder: sortRuleControls('Bucket order'),
@@ -509,7 +509,7 @@ const CASES: readonly EditorCase[] = [
     rewrite: {
       key: 'otherOptionLabel',
       value: 'Anything else',
-      write: (harness) => retype(harness, 'Bin label', 'Anything else'),
+      write: (harness) => retype(harness, 'Other bin label', 'Anything else'),
     },
   },
   {
@@ -556,7 +556,7 @@ const CASES: readonly EditorCase[] = [
       'Node setup',
       'Roster source',
       'Prompt collection',
-      'Card details',
+      'Card display',
       'Roster sorting',
       'Roster search',
       'Nomination limits',
@@ -564,7 +564,7 @@ const CASES: readonly EditorCase[] = [
       'Interviewer guidance',
     ],
     optionalSections: [
-      'Detalles de las tarjetas',
+      'Visualización de tarjetas',
       'Orden de la lista',
       'Búsqueda en la lista',
       'Límites de nominación',
@@ -921,6 +921,114 @@ describe('the family’s editors, swept under es', () => {
         renderStageEditor({ stageId, locale: 'es', registry: editor }),
         optionalSections,
       );
+    },
+  );
+});
+
+/**
+ * What Architect calls the group a prompt's question is written in, and what
+ * it calls the connection control inside or beside it.
+ *
+ * Neither is one string. Architect heads the group "Prompt configuration"
+ * where the connection an answer creates is chosen in the same group, and
+ * "Participant prompt" where the group holds only the question; it names the
+ * connection control "Created edge type" in the two censuses answered yes or
+ * no, and "Edge type" in the one answered on a scale. The package rendered one
+ * heading, one description and one label for all five, which is what this
+ * pins.
+ */
+const PROMPT_GROUPS = [
+  {
+    interfaceName: 'DyadCensus',
+    stageId: 'dyad-census-1',
+    editor: dyadCensusStageEditor,
+    title: 'Prompt configuration',
+    description:
+      'Write the participant prompt and select the edge type created by an affirmative response.',
+    edgeGroup: 'Prompt configuration',
+    edgeLabel: 'Created edge type',
+  },
+  {
+    interfaceName: 'OneToManyDyadCensus',
+    stageId: 'one-to-many-dyad-census-1',
+    editor: oneToManyDyadCensusStageEditor,
+    title: 'Prompt configuration',
+    description:
+      'Write the participant prompt and select the edge type created for chosen nodes.',
+    edgeGroup: 'Prompt configuration',
+    edgeLabel: 'Created edge type',
+  },
+  {
+    interfaceName: 'TieStrengthCensus',
+    stageId: 'tie-strength-census-1',
+    editor: tieStrengthCensusStageEditor,
+    title: 'Participant prompt',
+    description:
+      'Explain the relationship participants should evaluate for each pair.',
+    edgeGroup: 'Edge creation',
+    edgeLabel: 'Edge type',
+  },
+  {
+    interfaceName: 'OrdinalBin',
+    stageId: 'ordinal-bin-1',
+    editor: ordinalBinStageEditor,
+    title: 'Participant prompt',
+    description:
+      'Write the instruction or question participants see for this task.',
+    edgeGroup: undefined,
+    edgeLabel: undefined,
+  },
+  {
+    interfaceName: 'CategoricalBin',
+    stageId: 'categorical-bin-1',
+    editor: categoricalBinStageEditor,
+    title: 'Participant prompt',
+    description:
+      'Write the instruction or question participants see for this task.',
+    edgeGroup: undefined,
+    edgeLabel: undefined,
+  },
+] as const satisfies readonly {
+  interfaceName: StageType;
+  stageId: FixtureStageId;
+  editor: Partial<StageEditorRegistry>;
+  title: string;
+  description: string;
+  /**
+   * The group the connection control is rendered in, where the family has
+   * one — the prompt group itself in the two censuses answered yes or no, and
+   * a group of its own in the one answered on a scale.
+   */
+  edgeGroup: string | undefined;
+  edgeLabel: string | undefined;
+}[];
+
+describe('the group a census or bin prompt is written in', () => {
+  it.each(PROMPT_GROUPS)(
+    'heads a $interfaceName prompt the way Architect does',
+    async ({ stageId, editor, title, description, edgeGroup, edgeLabel }) => {
+      const harness = renderStageEditor({ stageId, registry: editor });
+
+      await harness.user.click(
+        screen.getByRole('button', { name: 'Edit prompt' }),
+      );
+      const dialog = within(await screen.findByRole('dialog'));
+
+      expect(dialog.getByRole('heading', { name: title })).toBeInTheDocument();
+      // Scoped to the group itself rather than to the dialog around it: WHICH
+      // group holds the connection control is the thing Architect differs on,
+      // so a search of the whole dialog would pass just as well with the
+      // control moved back out of the prompt group again.
+      const promptGroup = within(dialog.getByRole('region', { name: title }));
+      expect(promptGroup.getByText(description)).toBeInTheDocument();
+      if (edgeGroup !== undefined && edgeLabel !== undefined) {
+        expect(
+          within(dialog.getByRole('region', { name: edgeGroup })).getByRole(
+            'radiogroup',
+            { name: edgeLabel },
+          ),
+        ).toBeInTheDocument();
+      }
     },
   );
 });

@@ -86,10 +86,10 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   //
   // - "Participant prompt": the family's shared `PromptTextField`
   //   (`label: 'Prompt text'`).
-  // - "Connection rated": the same `CreateEdgeField` the two dyad censuses
+  // - "Edge creation": the same `CreateEdgeField` the two dyad censuses
   //   use, so the connection type is invented through the codebook entity
   //   editor ("Edge type name", committed by "Save entity").
-  // - "The scale": an ordinal attribute OF that connection type. `ScaleField`
+  // - "Response attribute": an ordinal attribute OF that connection type. `ScaleField`
   //   renders nothing at all until `createEdge` holds a real type id
   //   (`edgeSubjectOf` answers `undefined` for anything that is not a
   //   non-empty string), so waiting for that section is a genuine check that
@@ -99,7 +99,7 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   //   to the codebook attribute editor — titled "Create a new attribute" and
   //   opened with `allowedVariableTypes: ['ordinal']`, so its "Attribute type"
   //   select is already on Ordinal and is never touched here.
-  // - "Answering that there is no connection": a RichText "Decline answer".
+  // - "Decline response": a RichText "Decline option".
   //
   // Nothing mirrors the attribute's values onto the prompt any more, so there
   // is no draft-only key to strip; `toTieStrengthPrompt` below asserts the
@@ -129,7 +129,7 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
       .click();
     await edgeTypeEditor.waitFor({ state: 'hidden' });
 
-    await expect(editor.section('The scale')).toBeVisible();
+    await expect(editor.section('Response attribute')).toBeVisible();
 
     // The scale attribute is invented from the picker's own create row, which
     // escalates to the codebook's editor because a scale IS its list of
@@ -143,7 +143,7 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
       ]),
     });
 
-    await editor.fillRichText('Decline answer', 'We are not close');
+    await editor.fillRichText('Decline option', 'We are not close');
   });
 
   await editor.expectNoIssues();

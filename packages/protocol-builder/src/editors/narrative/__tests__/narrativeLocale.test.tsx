@@ -43,14 +43,14 @@ describe('the narrative sections, read in Spanish', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(2));
     expect(harness.outline().map((section) => section.title)).toEqual([
       'Vistas predefinidas de visualización',
-      'Interacción con el lienzo',
+      'Comportamientos de la narrativa',
     ]);
     expect(
-      screen.getByRole('switch', { name: 'Permitir dibujar en el lienzo' }),
+      screen.getByRole('switch', { name: 'Dibujo libre' }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        'Construye las formas de ver la red entre las que se puede alternar durante la entrevista.',
+        'Crea visualizaciones entre las que los investigadores puedan alternar durante la entrevista.',
       ),
     ).toBeInTheDocument();
   });
@@ -69,7 +69,7 @@ describe('the narrative sections, read in Spanish', () => {
     // trigger says "change" rather than "select" in.
     expect(
       within(
-        attributeField('Atributo de posición', screen.getByRole('dialog')),
+        attributeField('Atributo de disposición', screen.getByRole('dialog')),
       ).getByRole('button', { name: 'Cambiar atributo' }),
     ).toBeInTheDocument();
     // Inventing one is offered from inside that window, on the term the
@@ -78,12 +78,12 @@ describe('the narrative sections, read in Spanish', () => {
     expect(
       await createRowIn(
         harness.user,
-        attributeField('Atributo de posición', screen.getByRole('dialog')),
+        attributeField('Atributo de disposición', screen.getByRole('dialog')),
         'Busca o crea un atributo',
         (term) => `Crear un atributo nuevo llamado “${term}”.`,
       ),
     ).not.toBeNull();
-    expect(preset.getByText('Nodos resaltados')).toBeInTheDocument();
+    expect(preset.getByText('Resaltado de nodos')).toBeInTheDocument();
   });
 
   /**
@@ -116,7 +116,7 @@ describe('the narrative sections, read in Spanish', () => {
 
     expect(
       await screen.findByText(
-        'Organiza los nodos mediante una simulación de fuerzas físicas, como atracción y repulsión. Solo se organizan los nodos para los que el atributo con el que la vista predefinida los coloca tenga posición; el resto se queda fuera del lienzo, igual que en el modo manual. El participante puede pausar y reanudar la simulación, y solo puede mover los nodos manualmente si «Permitir mover nodos» está activado.',
+        'Organiza los nodos mediante una simulación de fuerzas físicas, como atracción y repulsión. Solo se organizan los nodos para los que el atributo con el que la vista predefinida los coloca tenga posición; el resto se queda fuera del lienzo, igual que en el modo manual. El participante puede pausar y reanudar la simulación, y solo puede mover los nodos manualmente si «Permitir cambiar la posición» está activado.',
       ),
     ).toBeInTheDocument();
   });

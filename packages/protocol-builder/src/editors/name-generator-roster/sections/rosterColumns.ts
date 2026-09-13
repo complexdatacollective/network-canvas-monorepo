@@ -138,13 +138,20 @@ export function useRosterColumns(): RosterColumns {
 export function useColumnSectionShell(
   columns: RosterColumns,
   description: MessageDescriptor,
-  waitingDescription: MessageDescriptor,
+  /**
+   * Said instead of `description` while no data file has been chosen.
+   *
+   * Optional: Architect gives some of these sections a sentence for that
+   * state and others only the disabled treatment, so a section without one
+   * keeps saying what it is for.
+   */
+  waitingDescription?: MessageDescriptor,
 ): Readonly<{ description: string; disabled: boolean }> {
   const intl = useAppIntl();
   return useMemo(() => {
     if (columns.waiting) {
       return {
-        description: intl.formatMessage(waitingDescription),
+        description: intl.formatMessage(waitingDescription ?? description),
         disabled: true,
       };
     }

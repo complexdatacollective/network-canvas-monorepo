@@ -1,0 +1,1077 @@
+#!/usr/bin/env node
+// Mirrors a monorepo app's source into its standalone external repository as a
+// single linear-append commit (history preserved, all tracked files replaced).
+// Every `workspace:`/`catalog:` specifier is resolved (see resolve-manifest.mjs)
+// so the tree installs outside the workspace, and `node_modules` / build output
+// are NOT committed.
+//
+// The default shape targets the legacy Electron apps on `master` and is plain
+// `npm install`-able. Fresco mirrors to `main` as a pnpm project — see
+// APP_MIRROR_OVERRIDES, which also regenerates the single-package
+// pnpm-workspace.yaml its Dockerfile expects.
+//
+// For Architect, the Interviewer preview bundle (built in the monorepo) is vendored
+// into the mirror and the electron-builder `extraResources` paths are rewritten to
+// point at it, so the standalone repo is self-consistent.
+//
+// Usage:
+//   node scripts/release/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>] [--seed-mirror-from <mirror-ref>] [--publisher-workflow <path>] [--stage-only]
+//   node scripts/release/mirror-app.mjs --publish-from <stage-dir> --expect-app <package-name> --repo <owner/name> --version <version> [--branch <name>]
+//
+// The mirror is two phases. `stage` builds the tree the external repository
+// will be given, and RUNS code from the tree being mirrored while doing so
+// (`pnpm pack` runs each package's lifecycle scripts; the lockfile install
+// resolves the manifest). `publish` clones the external branch, replaces its
+// tree with the staged one, commits and pushes — and executes nothing from
+// that tree. One invocation normally does both; the hotfix lane splits them
+// (`--stage-only` with MIRROR_STAGE_DIR, then `--publish-from`) so the job
+// that holds the push token never runs code from the branch it releases.
+//
+// `--seed-mirror-from <mirror-ref>` (requires --with-lockfile) starts the
+// lockfile and the workspace policy from the ones the external repository
+// holds at that ref — the release the hotfix was cut from — so everything the
+// hotfix did not change keeps the exact version and policy that release
+// installed. A change that lives only in the branch's own lockfile cannot be
+// carried this way and is refused.
+//
+// `--publisher-workflow <path>` (Fresco only) stages that copy of the GHCR
+// publisher workflow instead of the app's own, and verifies at once that the
+// external repository already tracks it — the hotfix lane passes main's copy,
+// since the branch's own may predate a change pre-applied over there.
+//
+// `--vendor-changed-since <ref>` (Fresco only, requires --with-lockfile) packs
+// every workspace package in Fresco's dependency closure whose source differs
+// from <ref>, plus their dependents, into the mirror as tarballs the image
+// installs instead of the registry versions. The hotfix lane passes the newest
+// release tag: a hotfix branch cut from it must ship its cherry-picked library
+// fixes, and nothing on such a branch is published to npm. See
+// scripts/release/vendor-workspace-packages.mjs.
+//
+// Env:
+//   LEGACY_RELEASE_GH_TOKEN  cross-repo token with Contents write (classic PAT:
+//                            repo). Fresco workflow changes are pre-applied with
+//                            maintainer credentials and must already match before
+//                            this release-only token pushes app source.
+//   MONOREPO_SHA             source commit sha (recorded in the commit message)
+//   GITHUB_OUTPUT            when set, `mirror_sha=<sha>` is appended for the workflow
+//   MIRROR_DRY_RUN           when "true", stage + commit locally but skip the push
+//   MIRROR_STAGE_DIR         stage into this (not yet existing) directory instead
+//                            of a random tmpdir, so a caller can post-process the
+//                            staged tree (used by apps/fresco/release-test)
+import { spawnSync } from 'node:child_process';
+import {
+  appendFileSync,
+  cpSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, relative, resolve, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+import {
+  parseCatalog,
+  readWorkspacePackages,
+  resolveManifest,
+} from './resolve-manifest.mjs';
+import {
+  assertBranchResolutionsCarried,
+  assertSpecifierDrivenChanges,
+  assertVendoredLockfile,
+  collectClosure,
+  packagesChangedSince,
+  previouslyVendoredPackages,
+  vendorPackages,
+  withDependents,
+  writeBundleManifest,
+} from './vendor-workspace-packages.mjs';
+
+// The repository root is the working directory, not this file's location:
+// the hotfix lane runs main's copy of this script (checked out under
+// `.hotfix-lane/`) against a hotfix branch's tree. See resolve-manifest.mjs.
+const repoRoot = process.cwd();
+
+// The catalog is read when staging first needs it, not at import: `publish`
+// runs from a checkout that holds only the tooling and needs no workspace.
+let workspaceCatalog;
+function requireCatalogVersion(name) {
+  if (!workspaceCatalog) {
+    const workspaceYaml = join(repoRoot, 'pnpm-workspace.yaml');
+    if (!existsSync(workspaceYaml)) {
+      throw new Error(
+        `mirror-app: run from the monorepo root (no pnpm-workspace.yaml in ${repoRoot}).`,
+      );
+    }
+    workspaceCatalog = parseCatalog(readFileSync(workspaceYaml, 'utf8'));
+  }
+  const version = workspaceCatalog[name];
+  if (!version) {
+    throw new Error(`No default catalog entry for "${name}".`);
+  }
+  return version;
+}
+
+const GITIGNORE = `node_modules/
+dist/
+out/
+release-builds/
+.turbo/
+coverage/
+*.log
+.DS_Store
+`;
+
+// Strip any embedded credentials (e.g. the tokenized clone URL
+// https://x-access-token:<token>@github.com/...) before putting a string into a
+// thrown error, so LEGACY_RELEASE_GH_TOKEN never reaches the logs.
+function redact(text) {
+  return String(text ?? '').replace(/\/\/[^/@\s]+@/g, '//***@');
+}
+
+export function assertCommitPinnedActionUses(workflowPath, contents) {
+  const unpinned = [];
+  const usesPattern = /^\s*(?:-\s*)?uses:\s*([^\s#]+)/gm;
+
+  for (const match of contents.matchAll(usesPattern)) {
+    const action = match[1];
+    if (action.startsWith('./')) continue;
+
+    const separator = action.lastIndexOf('@');
+    const ref = separator === -1 ? '' : action.slice(separator + 1);
+    if (!/^[0-9a-f]{40}$/.test(ref)) unpinned.push(action);
+  }
+
+  if (unpinned.length > 0) {
+    throw new Error(
+      `${workflowPath} must pin every external action to a full commit SHA; found ${unpinned.join(', ')}`,
+    );
+  }
+}
+
+export function assertFrescoPublisherContract({
+  workflow,
+  trackedWorkflows,
+  sourceContents,
+  targetContents,
+}) {
+  if (trackedWorkflows.length !== 1 || trackedWorkflows[0] !== workflow) {
+    throw new Error(
+      `Fresco mirror must already contain exactly ${workflow}; found ${trackedWorkflows.join(', ') || 'no workflows'}. Refusing to add or remove workflow files with the release token.`,
+    );
+  }
+
+  if (targetContents !== sourceContents) {
+    throw new Error(
+      `${workflow} in complexdatacollective/Fresco must already match the monorepo copy. Pre-apply the workflow change with maintainer credentials before releasing; the release token intentionally cannot modify workflows.`,
+    );
+  }
+}
+
+function run(cmd, args, opts = {}) {
+  const result = spawnSync(cmd, args, { stdio: 'inherit', ...opts });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(
+      `${cmd} ${redact(args.join(' '))} exited with ${result.status}`,
+    );
+  }
+  return result;
+}
+
+function capture(cmd, args, opts = {}) {
+  const result = spawnSync(cmd, args, { encoding: 'utf8', ...opts });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(
+      `${cmd} ${redact(args.join(' '))} exited with ${result.status}\n${redact(result.stderr)}`,
+    );
+  }
+  return result.stdout.trim();
+}
+
+// Per-app deviations from the default (legacy Electron app) mirror shape.
+// Fresco is a pnpm-installed Next.js app whose Dockerfile builds the mirrored
+// tree directly, so it needs its own workspace manifest and lockfile rather
+// than the npm-installable shape the classic apps use, and it already ships a
+// .gitignore covering its own build output.
+const APP_MIRROR_OVERRIDES = {
+  fresco: {
+    keepOwnGitignore: true,
+    // `packageManager` is stripped in the monorepo (the root pins pnpm for
+    // every workspace) but the standalone Dockerfile runs `corepack enable`,
+    // which reads it from package.json.
+    restorePackageManager: true,
+    lockfile: 'pnpm',
+    extraExcludes: [
+      '.next',
+      '.turbo',
+      'storybook-static',
+      'test-results',
+      'playwright-report',
+      // Agent tooling is monorepo-only: the skills live in the canonical
+      // .agents/skills tree at the repo root, and the mirror is not a place
+      // anyone develops.
+      '.agents',
+      '.claude',
+      // The local release-testing harness references monorepo paths and must
+      // not ship in the standalone tree.
+      'release-test',
+      // Arbitrary app-local workflows must not reach the standalone repo. The
+      // release-critical publisher is restored explicitly below, then checked
+      // against the target before any mirror commit is created.
+      '.github/workflows',
+    ],
+  },
+};
+
+function parseArgs(argv) {
+  const args = { withLockfile: false, stageOnly: false };
+  for (let i = 0; i < argv.length; i += 1) {
+    const a = argv[i];
+    if (a === '--with-lockfile') args.withLockfile = true;
+    else if (a === '--stage-only') args.stageOnly = true;
+    else if (a.startsWith('--')) {
+      args[a.slice(2)] = argv[i + 1];
+      i += 1;
+    }
+  }
+  return args;
+}
+
+// Recursively copy src -> dest, skipping the named relative paths. Exclusions
+// are anchored to the source root so a legitimately-named deeper path is kept.
+function copyTree(src, dest, excludePaths) {
+  const excludes = excludePaths.map((path) => path.split('/').join(sep));
+  cpSync(src, dest, {
+    recursive: true,
+    filter: (from) => {
+      const rel = relative(src, from);
+      if (rel === '') return true;
+      return !excludes.some(
+        (excluded) => rel === excluded || rel.startsWith(`${excluded}${sep}`),
+      );
+    },
+  });
+}
+
+// Copy the app source into staging, excluding everything regenerated by a build
+// or install.
+function stageSource(appDir, staging, extraExcludes = []) {
+  copyTree(appDir, staging, [
+    'node_modules',
+    'dist',
+    'out',
+    'release-builds',
+    '.turbo',
+    'coverage',
+    '.git',
+    ...extraExcludes,
+  ]);
+}
+
+// The generated policy's overrides whose values come from the root catalog:
+// yaml key → catalog entry. Listed once so the template below and the
+// hotfix seeding agree on which lines the catalog owns.
+const CATALOG_BACKED_OVERRIDES = [
+  ['effect@3.17.7', 'effect'],
+  ['postcss', 'postcss'],
+];
+
+// The catalog entries a manifest names with a `catalog:` specifier, in any
+// dependency field.
+function catalogEntriesNamedBy(manifestPath) {
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const names = [];
+  for (const field of [
+    'dependencies',
+    'devDependencies',
+    'optionalDependencies',
+    'peerDependencies',
+  ]) {
+    for (const [name, spec] of Object.entries(manifest[field] ?? {})) {
+      if (typeof spec === 'string' && spec.startsWith('catalog:')) {
+        names.push(name);
+      }
+    }
+  }
+  return names;
+}
+
+// Every catalog entry the mirror reads on the app's behalf: the override
+// values above, the ts-reset devDependency `vendorSharedTsconfig` adds to the
+// staged manifest, and whatever the vendored Vitest config's manifest names
+// through the catalog (`vendorSharedVitestConfig` resolves it whole). A
+// hotfix that re-pins one of these is carried even though no workspace
+// manifest names it. Read from the tree being mirrored, at call time.
+export function mirrorCatalogEntries() {
+  return [
+    ...new Set([
+      ...CATALOG_BACKED_OVERRIDES.map(([, entry]) => entry),
+      '@total-typescript/ts-reset',
+      ...catalogEntriesNamedBy(
+        join(repoRoot, 'tooling', 'vitest', 'package.json'),
+      ),
+    ]),
+  ];
+}
+
+// A seeded (released) policy with its catalog-backed override values brought
+// to THIS tree's catalog. pnpm applies an override over a direct specifier,
+// so without this a hotfix that re-pins, say, postcss in the catalog would
+// resolve the manifest's new specifier and then have the release's concrete
+// override put the old version back. Only keys the seeded policy already
+// carries are touched: a key the release lacked stays absent, so the policy
+// gains nothing main's generator added since.
+export function withCatalogOverrides(workspaceYaml) {
+  let updated = workspaceYaml;
+  for (const [key, catalogEntry] of CATALOG_BACKED_OVERRIDES) {
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    updated = updated.replace(
+      new RegExp(`^(\\s+'?${escaped}'?:\\s*)'[^']*'\\s*$`, 'm'),
+      `$1'${requireCatalogVersion(catalogEntry)}'`,
+    );
+  }
+  return updated;
+}
+
+// The mirrored tree is a single-package pnpm workspace. Its manifest carries
+// only the settings that affect a standalone install of the app — the catalog
+// is deliberately absent because resolve-manifest has already replaced every
+// `catalog:` specifier with a concrete version.
+// A function, not a constant: it reads the catalog, which `publish` must not need.
+const frescoWorkspaceYaml =
+  () => `# Generated by scripts/release/mirror-app.mjs — edit apps/fresco in the
+# network-canvas monorepo, not this file.
+packages:
+  - '.'
+
+# Supply-chain cooldown: refuse dependency versions younger than 24h.
+minimumReleaseAge: 1440
+minimumReleaseAgeStrict: false
+# '@codaco/*' is a permanent exemption: these are first-party packages whose
+# releases we control, and a release mirrors here the moment they are published
+# — so the cooldown would otherwise block every release for a day.
+minimumReleaseAgeExclude:
+  - '@codaco/*'
+
+autoInstallPeers: true
+
+allowBuilds:
+  '@parcel/watcher': true
+  '@prisma/engines': true
+  '@tailwindcss/oxide': true
+  core-js-pure: true
+  esbuild: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true
+  '@posthog/cli': false
+  core-js: false
+  msgpackr-extract: false
+  protobufjs: false
+
+# Keep security-sensitive transitives on patched versions when upstream
+# manifests still pin vulnerable releases.
+overrides:
+  'effect@3.17.7': '${requireCatalogVersion('effect')}'
+  # 3.1.6 closes the fast-uri host-confusion / SSRF family (GHSA-5jgf-p345-68v8,
+  # GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp, GHSA-f65p-4m7j-42xc).
+  fast-uri: '^3.1.6'
+  find-my-way: '^9.7.0'
+  # Next pins an exact PostCSS version; this is resolved from the root catalog.
+  postcss: '${requireCatalogVersion('postcss')}'
+  sharp: '^0.35.3'
+  valibot: '^1.4.2'
+`;
+
+// Fresco's tsconfig extends the private `@codaco/tsconfig` package, which
+// resolve-manifest correctly drops from the mirrored manifest — it is
+// unpublished, so the standalone tree cannot install it. Vendor the shared
+// configs into the tree and repoint `extends` at them, so the Dockerfile's
+// `next build` can still load the base config. The configs name
+// `@total-typescript/ts-reset` in `types`; that is a root devDependency here
+// rather than one of Fresco's own, so it has to be added to the mirrored
+// manifest too or the vendored config resolves to nothing.
+function vendorSharedTsconfig(staging, manifest) {
+  const sharedDir = join(repoRoot, 'tooling', 'typescript');
+  const vendorDir = join(staging, 'tsconfig');
+  // web.json extends './base.json', so co-locating the pair keeps that working.
+  for (const file of ['base.json', 'web.json']) {
+    cpSync(join(sharedDir, file), join(vendorDir, file));
+  }
+
+  const tsconfigPath = join(staging, 'tsconfig.json');
+  const original = readFileSync(tsconfigPath, 'utf8');
+  const shared = '"@codaco/tsconfig/web.json"';
+  if (!original.includes(shared)) {
+    throw new Error(
+      `Expected ${tsconfigPath} to extend ${shared}; the mirror's tsconfig rewrite would be a no-op.`,
+    );
+  }
+  writeFileSync(
+    tsconfigPath,
+    original.replace(shared, '"./tsconfig/web.json"'),
+  );
+
+  const tsResetVersion = requireCatalogVersion('@total-typescript/ts-reset');
+  manifest.devDependencies ??= {};
+  manifest.devDependencies['@total-typescript/ts-reset'] = tsResetVersion;
+}
+
+// Mirrored apps keep their Vitest configs, but resolveManifest drops the
+// private shared config package. Vendor that package as a local ESM dependency
+// so standalone mirrors retain the same setup without publishing internal
+// tooling to npm.
+export function vendorSharedVitestConfig(staging, manifest, dropped) {
+  if (!dropped.includes('@codaco/vitest-config')) return;
+
+  const sharedDir = join(repoRoot, 'tooling', 'vitest');
+  const vendorDir = join(staging, 'vendor', 'vitest-config');
+  copyTree(sharedDir, vendorDir, ['node_modules']);
+
+  const { manifest: vendoredManifest } = resolveManifest(sharedDir);
+  const dependencyFields = [
+    'dependencies',
+    'devDependencies',
+    'optionalDependencies',
+    'peerDependencies',
+  ];
+  const usesDependency = (name) =>
+    dependencyFields.some((field) => manifest[field]?.[name] !== undefined);
+
+  if (!usesDependency('motion')) {
+    vendoredManifest.files = vendoredManifest.files.filter(
+      (entry) => entry !== 'modern/**',
+    );
+    delete vendoredManifest.exports['./modern/disable-animations'];
+    delete vendoredManifest.exports['./modern/setup-path'];
+    delete vendoredManifest.dependencies.motion;
+    // Only the modern setup configures Testing Library; the legacy one does not
+    // import it.
+    delete vendoredManifest.dependencies['@testing-library/dom'];
+  }
+  if (!usesDependency('framer-motion')) {
+    vendoredManifest.files = vendoredManifest.files.filter(
+      (entry) => entry !== 'legacy/**',
+    );
+    delete vendoredManifest.exports['./legacy/disable-animations'];
+    delete vendoredManifest.exports['./legacy/setup-path'];
+  }
+
+  writeFileSync(
+    join(vendorDir, 'package.json'),
+    `${JSON.stringify(vendoredManifest, null, 2)}\n`,
+  );
+
+  manifest.devDependencies ??= {};
+  manifest.devDependencies['@codaco/vitest-config'] =
+    'file:vendor/vitest-config';
+
+  if (manifest.name === 'fresco') {
+    const dockerfilePath = join(staging, 'Dockerfile');
+    const dockerfile = readFileSync(dockerfilePath, 'utf8');
+    const dependencyFiles =
+      'COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml prisma.config.ts env.js ./';
+    const vendoredConfig = 'COPY vendor/vitest-config ./vendor/vitest-config';
+    if (!dockerfile.includes(dependencyFiles)) {
+      throw new Error(
+        `Expected ${dockerfilePath} to copy dependency files before installing; the vendored Vitest config would be unavailable.`,
+      );
+    }
+    writeFileSync(
+      dockerfilePath,
+      dockerfile.replace(
+        dependencyFiles,
+        `${dependencyFiles}\n${vendoredConfig}`,
+      ),
+    );
+  }
+}
+
+// Architect renders the Interviewer app in its preview window from a bundle that
+// electron-builder copies via extraResources. In the monorepo that bundle lives at
+// ../interviewer-classic/out; vendor it into the mirror and repoint the config.
+function vendorInterviewerPreview(appDir, staging) {
+  const interviewerOut = join(appDir, '..', 'interviewer-classic', 'out');
+  const vendorDir = join(staging, 'interviewer-preview');
+  for (const part of ['renderer', 'preload']) {
+    const from = join(interviewerOut, part);
+    if (!existsSync(from)) {
+      throw new Error(
+        `Cannot vendor Interviewer preview: ${from} not found. Build the interviewer app first.`,
+      );
+    }
+    cpSync(from, join(vendorDir, part), { recursive: true });
+  }
+  const configPath = join(staging, 'electron-builder.config.js');
+  const original = readFileSync(configPath, 'utf8');
+  const rendererPattern = /['"]\.\.\/interviewer-classic\/out\/renderer['"]/g;
+  const preloadPattern = /['"]\.\.\/interviewer-classic\/out\/preload['"]/g;
+  // Fail loudly rather than silently leaving broken extraResources paths in the
+  // mirror if the source config's path text ever drifts.
+  if (!rendererPattern.test(original) || !preloadPattern.test(original)) {
+    throw new Error(
+      `Expected ../interviewer-classic/out renderer+preload paths in ${configPath}; ` +
+        'the Architect preview vendoring rewrite would be a no-op.',
+    );
+  }
+  const config = original
+    .replace(rendererPattern, "'interviewer-preview/renderer'")
+    .replace(preloadPattern, "'interviewer-preview/preload'");
+  writeFileSync(configPath, config);
+}
+
+// Copies the lockfile AND the generated workspace policy the external
+// repository holds at `ref` into the staged tree. The lockfile makes the
+// resolution that follows keep every package the hotfix did not change at the
+// exact version the released image installed: a fresh
+// `pnpm install --lockfile-only` would instead take the newest version each
+// range admits — a library published after the release, a third-party patch
+// — and a hotfix cut from the release tag would silently ship work that tag
+// never saw. The workspace policy (overrides, allowed builds, the cooldown)
+// is likewise the release's rather than whatever main's generator says now,
+// for the same reason; only the vendored overrides are added to it. Only the
+// specifiers the stage changed are re-resolved. Anonymous: the ref is public
+// and nothing is pushed.
+export function seedMirror({ staging, cloneUrl, ref }) {
+  const source = mkdtempSync(join(tmpdir(), 'mirror-seed-'));
+  run('git', [
+    'clone',
+    '--quiet',
+    '--depth',
+    '1',
+    '--branch',
+    ref,
+    '--single-branch',
+    cloneUrl,
+    source,
+  ]);
+  for (const file of ['pnpm-lock.yaml', 'pnpm-workspace.yaml']) {
+    if (!existsSync(join(source, file))) {
+      throw new Error(
+        `${ref} of the mirror has no ${file} to seed the stage from.`,
+      );
+    }
+    cpSync(join(source, file), join(staging, file));
+  }
+  console.error(
+    `[mirror] seeded pnpm-lock.yaml and pnpm-workspace.yaml from the mirror at ${ref}`,
+  );
+}
+
+// Everything up to a tree the external repository can be handed: the source
+// copy, the resolved manifest, the vendored shared config, any vendored
+// workspace packages, the lockfile. This phase RUNS code from the tree being
+// mirrored — `pnpm pack` runs each packed package's lifecycle scripts, and the
+// lockfile install resolves the app's manifest — so the hotfix lane runs it in
+// a job that holds no push credential and hands the result to `publish`
+// through an artifact (`--stage-only`, then `--publish-from`).
+function stage({
+  app,
+  repo,
+  branch,
+  withLockfile,
+  vendorChangedSince,
+  seedMirrorFrom,
+  publisherWorkflow,
+}) {
+  const appDir = resolve(app);
+  const manifest = JSON.parse(
+    readFileSync(join(appDir, 'package.json'), 'utf8'),
+  );
+  const appName = manifest.name;
+  const overrides = APP_MIRROR_OVERRIDES[appName] ?? {};
+
+  let staging;
+  if (process.env.MIRROR_STAGE_DIR) {
+    staging = resolve(process.env.MIRROR_STAGE_DIR);
+    // Refuse a pre-existing directory: stale files would silently leak into
+    // the staged tree (copyTree only adds, never removes).
+    if (existsSync(staging)) {
+      throw new Error(
+        `MIRROR_STAGE_DIR ${staging} already exists; remove it first.`,
+      );
+    }
+    mkdirSync(staging, { recursive: true });
+  } else {
+    staging = mkdtempSync(join(tmpdir(), 'mirror-stage-'));
+  }
+  console.error(`[mirror] staging ${appName} -> ${staging}`);
+
+  stageSource(appDir, staging, overrides.extraExcludes);
+
+  if (appName === 'fresco') {
+    // The push to Fresco/main is only useful if it still triggers the external
+    // repository's image publisher. Keep that one workflow source-controlled
+    // here while the directory-level exclusion above blocks every other local
+    // or future workflow from leaking into the release mirror.
+    // `--publisher-workflow` names a trusted copy to stage instead of the
+    // app's own: the hotfix lane passes main's, because a branch cut from an
+    // older tag carries the publisher as it was then, and a publisher change
+    // pre-applied to the external repository since would otherwise make the
+    // push refuse — after the release tag had been claimed.
+    const workflow = '.github/workflows/docker-publish.yml';
+    const source = publisherWorkflow
+      ? resolve(publisherWorkflow)
+      : join(appDir, workflow);
+    const destination = join(staging, workflow);
+    if (!existsSync(source)) {
+      throw new Error(
+        `Fresco mirror requires ${source}; without it a release cannot publish the GHCR image.`,
+      );
+    }
+    assertCommitPinnedActionUses(workflow, readFileSync(source, 'utf8'));
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(source, destination);
+  }
+
+  const { manifest: resolved, dropped } = resolveManifest(appDir);
+  if (overrides.restorePackageManager) {
+    const root = JSON.parse(
+      readFileSync(join(repoRoot, 'package.json'), 'utf8'),
+    );
+    if (!root.packageManager) {
+      throw new Error(
+        'Root package.json has no `packageManager`; the mirrored app needs it for corepack.',
+      );
+    }
+    resolved.packageManager = root.packageManager;
+  }
+  if (appName === 'fresco') {
+    // Before the manifest is written — this adds a devDependency to it.
+    vendorSharedTsconfig(staging, resolved);
+  }
+  vendorSharedVitestConfig(staging, resolved, dropped);
+  writeFileSync(
+    join(staging, 'package.json'),
+    `${JSON.stringify(resolved, null, 2)}\n`,
+  );
+  if (dropped.length) {
+    console.error(
+      `[mirror] dropped private workspace deps: ${dropped.join(', ')}`,
+    );
+  }
+
+  if (!overrides.keepOwnGitignore) {
+    writeFileSync(join(staging, '.gitignore'), GITIGNORE);
+  }
+
+  if (appName === '@codaco/architect-classic') {
+    vendorInterviewerPreview(appDir, staging);
+  }
+
+  if (appName === 'fresco') {
+    // The Dockerfile COPYs pnpm-workspace.yaml unconditionally; the monorepo
+    // deleted the app-level one when Fresco moved in, so regenerate it here.
+    writeFileSync(join(staging, 'pnpm-workspace.yaml'), frescoWorkspaceYaml());
+  }
+
+  if (seedMirrorFrom) {
+    if (!withLockfile) {
+      throw new Error('--seed-mirror-from requires --with-lockfile.');
+    }
+    seedMirror({
+      staging,
+      cloneUrl: process.env.MIRROR_REPO_URL ?? `https://github.com/${repo}.git`,
+      ref: seedMirrorFrom,
+    });
+    if (appName === 'fresco') {
+      const policyPath = join(staging, 'pnpm-workspace.yaml');
+      const seeded = readFileSync(policyPath, 'utf8');
+      const current = withCatalogOverrides(seeded);
+      if (current !== seeded) {
+        writeFileSync(policyPath, current);
+        console.error(
+          "[mirror] brought the seeded policy's catalog-backed overrides to this tree's catalog",
+        );
+      }
+    }
+  }
+
+  let vendorManifest = null;
+  let rootLocks = null;
+  if (vendorChangedSince) {
+    // Only Fresco builds its image from the mirrored tree; the Electron apps
+    // vendor nothing and the Netlify apps never come through here.
+    if (appName !== 'fresco') {
+      throw new Error(
+        `--vendor-changed-since is only supported for the Fresco mirror (got ${appName}).`,
+      );
+    }
+    // The Dockerfile installs with --frozen-lockfile, so overrides that no
+    // lockfile records would never take effect in the image.
+    if (!withLockfile) {
+      throw new Error('--vendor-changed-since requires --with-lockfile.');
+    }
+    const wsPackages = readWorkspacePackages();
+    const closure = collectClosure(wsPackages, app);
+    assertSpecifierDrivenChanges(vendorChangedSince, app, closure, wsPackages, {
+      mirrorCatalogEntries: mirrorCatalogEntries(),
+    });
+    // The root lockfile is several megabytes, past spawnSync's default
+    // buffer. Read once here; the carried-changes check below reuses it.
+    rootLocks = {
+      refLock: capture(
+        'git',
+        ['show', `${vendorChangedSince}:pnpm-lock.yaml`],
+        {
+          maxBuffer: 256 * 1024 * 1024,
+        },
+      ),
+      headLock: readFileSync(join(repoRoot, 'pnpm-lock.yaml'), 'utf8'),
+    };
+    const changed = packagesChangedSince(
+      vendorChangedSince,
+      closure,
+      wsPackages,
+      rootLocks,
+    );
+    // A previous hotfix's vendored packages, still unpublished, that the
+    // seeded policy points at tarballs this stage does not have yet.
+    const carried = previouslyVendoredPackages(staging).filter((name) =>
+      closure.includes(name),
+    );
+    const names = withDependents(
+      [...new Set([...changed, ...carried])],
+      closure,
+      wsPackages,
+    );
+    console.error(
+      `[mirror] vendoring packages changed since ${vendorChangedSince}: ${changed.join(', ') || 'none'}` +
+        (carried.length
+          ? `; still unpublished from the previous hotfix: ${carried.join(', ')}`
+          : ''),
+    );
+    vendorManifest = vendorPackages({
+      stageDir: staging,
+      names,
+      closure,
+      wsPackages,
+      note: `Packages changed since ${vendorChangedSince} (and their dependents), bundled by the hotfix lane (local tarballs).`,
+    });
+    // Recorded in the mirror itself, so the external repository says why its
+    // tree carries vendor/ where a normal release's does not.
+    writeBundleManifest(staging, vendorManifest);
+  }
+
+  if (withLockfile) {
+    if (overrides.lockfile === 'pnpm') {
+      // The Dockerfile installs with `--frozen-lockfile`, so the mirror must
+      // ship a lockfile that matches the resolved manifest exactly.
+      console.error('[mirror] generating pnpm-lock.yaml');
+      run('pnpm', ['install', '--lockfile-only', '--ignore-scripts'], {
+        cwd: staging,
+      });
+      if (vendorManifest) {
+        console.error(
+          `[mirror] vendoring guard OK: ${assertVendoredLockfile(staging, vendorManifest)}`,
+        );
+      }
+      if (vendorChangedSince) {
+        const wsPackages = readWorkspacePackages();
+        const closure = collectClosure(wsPackages, app);
+        assertBranchResolutionsCarried({
+          ...rootLocks,
+          mirrorLock: readFileSync(join(staging, 'pnpm-lock.yaml'), 'utf8'),
+          appImporter: app,
+          closureImporters: Object.fromEntries(
+            closure.map((name) => [wsPackages[name].dir, name]),
+          ),
+          workspaceNames: new Set(Object.keys(wsPackages)),
+        });
+        console.error(
+          '[mirror] every resolution the branch changed is carried by the mirror',
+        );
+      }
+    } else {
+      console.error(
+        '[mirror] generating package-lock.json (validates npm resolvability)',
+      );
+      run('npm', ['install', '--package-lock-only', '--ignore-scripts'], {
+        cwd: staging,
+      });
+    }
+  }
+
+  if (publisherWorkflow) {
+    // A trusted publisher was staged for a push that happens later, from
+    // elsewhere. Verify now — on the FINISHED tree, after the packing and
+    // resolution above have run code from it — that the external repository
+    // will accept it, so the lane learns of a mismatch or a stray workflow
+    // before it has claimed anything. The push repeats the check on its own
+    // clone.
+    const checkout = mkdtempSync(join(tmpdir(), 'mirror-publisher-'));
+    run('git', [
+      'clone',
+      '--quiet',
+      '--depth',
+      '1',
+      '--branch',
+      branch,
+      '--single-branch',
+      process.env.MIRROR_REPO_URL ?? `https://github.com/${repo}.git`,
+      checkout,
+    ]);
+    assertStagedPublisherMatches({ staging, checkout });
+    console.error(
+      '[mirror] the external repository tracks exactly the staged publisher workflow',
+    );
+  }
+
+  return { staging, appName };
+}
+
+// The staged publisher workflow — the app's own, or the trusted copy `stage`
+// was given — must already be what the external checkout tracks: the release
+// token intentionally cannot modify workflows. Reading it from the stage
+// keeps the publish phase independent of any source checkout.
+function assertStagedPublisherMatches({ staging, checkout }) {
+  const workflow = '.github/workflows/docker-publish.yml';
+  // The STAGED set, not only the publisher's contents: the stage is handed
+  // to a push that copies it whole, and code from the tree being mirrored
+  // ran after it was assembled (`pnpm pack` lifecycle scripts), so anything
+  // that appeared under .github/workflows since would reach the external
+  // repository as workflow code running with its secrets. Checked here,
+  // immediately before the copy, rather than when the publisher was staged.
+  const stagedWorkflows = listFiles(join(staging, '.github', 'workflows'));
+  if (stagedWorkflows.length !== 1 || stagedWorkflows[0] !== workflow) {
+    throw new Error(
+      `Staged tree must carry exactly ${workflow} under .github/workflows; found ${stagedWorkflows.join(', ') || 'no workflows'}. Refusing to push workflow files with the release token.`,
+    );
+  }
+  const target = join(checkout, workflow);
+  const trackedWorkflows = capture('git', [
+    '-C',
+    checkout,
+    'ls-files',
+    '.github/workflows',
+  ])
+    .split('\n')
+    .filter(Boolean);
+  assertFrescoPublisherContract({
+    workflow,
+    trackedWorkflows,
+    sourceContents: readFileSync(join(staging, workflow), 'utf8'),
+    targetContents: existsSync(target) ? readFileSync(target, 'utf8') : '',
+  });
+}
+
+// Every file under `dir`, as paths relative to its grandparent's parent —
+// i.e. `.github/workflows/<name>` for the workflows directory — sorted. A
+// symlink anywhere on or under the path is refused: `readdirSync` follows
+// one, `copyTree` preserves it, and the push would then carry a link where
+// git expects a workflow — either rejected, or landing without a publisher.
+function listFiles(dir) {
+  const root = resolve(dir, '..', '..');
+  for (const path of [resolve(dir, '..'), dir]) {
+    if (!existsSync(path)) return [];
+    if (lstatSync(path).isSymbolicLink()) {
+      throw new Error(
+        `${relative(root, path)} in the staged tree is a symlink; refusing to push workflow files through one.`,
+      );
+    }
+  }
+  const entries = readdirSync(dir, { recursive: true, withFileTypes: true });
+  const link = entries.find((entry) => entry.isSymbolicLink());
+  if (link) {
+    throw new Error(
+      `${relative(root, join(link.parentPath ?? link.path, link.name))} in the staged tree is a symlink; refusing to push workflow files through one.`,
+    );
+  }
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) =>
+      relative(root, join(entry.parentPath ?? entry.path, entry.name)),
+    )
+    .toSorted();
+}
+
+// Where a push goes and what it authenticates with. MIRROR_REPO_URL overrides
+// the GitHub URL (used by tests against a local remote, and for non-github
+// mirrors); when unset, a token is required unless the run is a dry run.
+function pushTarget(repo) {
+  const dryRun = process.env.MIRROR_DRY_RUN === 'true';
+  const token = process.env.LEGACY_RELEASE_GH_TOKEN;
+  const repoUrlOverride = process.env.MIRROR_REPO_URL;
+  if (!token && !dryRun && !repoUrlOverride) {
+    throw new Error('LEGACY_RELEASE_GH_TOKEN is required to push the mirror.');
+  }
+  const cloneUrl =
+    repoUrlOverride ??
+    (dryRun
+      ? `https://github.com/${repo}.git`
+      : `https://x-access-token:${token}@github.com/${repo}.git`);
+  return { dryRun, cloneUrl };
+}
+
+// Clone the external branch, replace its entire tracked tree with the staged
+// one, commit on top (linear append) and push. Executes nothing from the
+// staged tree: git handles it as content, the publisher workflow it carries is
+// compared as text, and a fresh clone has no hooks. That is what lets the
+// hotfix lane run this phase in a job that holds the push token and has never
+// checked out the branch being released.
+function publish({ staging, expectApp, repo, branch, version }) {
+  // The staged manifest is content the tree being mirrored could have
+  // rewritten (its lifecycle scripts ran during staging), so it decides
+  // nothing: the caller names the app it is publishing, the stage must agree,
+  // and the Fresco checks below key off that name.
+  const { name: stagedName, version: stagedVersion } = JSON.parse(
+    readFileSync(join(staging, 'package.json'), 'utf8'),
+  );
+  if (stagedName !== expectApp) {
+    throw new Error(
+      `Staged tree names package "${stagedName}", not the "${expectApp}" this publish is for.`,
+    );
+  }
+  // The Fresco publisher tags the image with the manifest's version, so a
+  // staged version that differs from the one being released would publish an
+  // image under a different tag from the releases that describe it.
+  if (stagedVersion !== version) {
+    throw new Error(
+      `Staged tree is version "${stagedVersion}", not the "${version}" this publish is for.`,
+    );
+  }
+  const appName = expectApp;
+  const { dryRun, cloneUrl } = pushTarget(repo);
+  const checkout = mkdtempSync(join(tmpdir(), 'mirror-repo-'));
+  run('git', [
+    'clone',
+    '--branch',
+    branch,
+    '--single-branch',
+    cloneUrl,
+    checkout,
+  ]);
+
+  if (appName === 'fresco') {
+    assertStagedPublisherMatches({ staging, checkout });
+  }
+
+  run('git', ['-C', checkout, 'rm', '-r', '--quiet', '.']);
+  copyTree(staging, checkout, ['.git']);
+  run('git', ['-C', checkout, 'add', '-A']);
+
+  // If the mirrored tree is byte-identical to current master (e.g. a forced
+  // re-release with no source change), there's nothing to commit — `git commit`
+  // would exit non-zero and abort the rerun. Skip commit/push and reuse HEAD.
+  const hasChanges =
+    spawnSync('git', ['-C', checkout, 'diff', '--cached', '--quiet']).status !==
+    0;
+
+  if (hasChanges) {
+    const sourceSha =
+      process.env.MONOREPO_SHA || capture('git', ['rev-parse', 'HEAD']);
+    const message = `Release v${version} (mirrored from monorepo ${sourceSha})`;
+    const authorName =
+      process.env.GIT_AUTHOR_NAME || 'Network Canvas Release Bot';
+    const authorEmail =
+      process.env.GIT_AUTHOR_EMAIL || 'releases@networkcanvas.com';
+    run('git', [
+      '-C',
+      checkout,
+      '-c',
+      `user.name=${authorName}`,
+      '-c',
+      `user.email=${authorEmail}`,
+      '-c',
+      'commit.gpgsign=false',
+      'commit',
+      '-m',
+      message,
+    ]);
+
+    if (dryRun) {
+      console.error('[mirror] MIRROR_DRY_RUN=true — skipping push.');
+    } else {
+      run('git', ['-C', checkout, 'push', 'origin', branch]);
+    }
+  } else {
+    console.error(
+      '[mirror] no content changes vs current master; reusing existing HEAD.',
+    );
+  }
+
+  const mirrorSha = capture('git', ['-C', checkout, 'rev-parse', 'HEAD']);
+  console.error(`[mirror] ${appName} mirrored at ${mirrorSha}`);
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(process.env.GITHUB_OUTPUT, `mirror_sha=${mirrorSha}\n`);
+  }
+}
+
+const USAGE =
+  'Usage: node scripts/release/mirror-app.mjs --app <appDir> --repo <owner/name> --version <version> [--branch <name>] [--with-lockfile] [--vendor-changed-since <ref>] [--seed-mirror-from <mirror-ref>] [--publisher-workflow <path>] [--stage-only]\n' +
+  '       node scripts/release/mirror-app.mjs --publish-from <stage-dir> --expect-app <package-name> --repo <owner/name> --version <version> [--branch <name>]';
+
+function main() {
+  const {
+    app,
+    repo,
+    version,
+    withLockfile,
+    stageOnly,
+    branch = 'master',
+    'vendor-changed-since': vendorChangedSince,
+    'seed-mirror-from': seedMirrorFrom,
+    'publisher-workflow': publisherWorkflow,
+    'publish-from': publishFrom,
+    'expect-app': expectApp,
+  } = parseArgs(process.argv.slice(2));
+
+  if (publishFrom) {
+    if (!repo || !version) {
+      console.error(USAGE);
+      process.exit(1);
+    }
+    if (!expectApp) {
+      console.error(USAGE);
+      process.exit(1);
+    }
+    publish({
+      staging: resolve(publishFrom),
+      expectApp,
+      repo,
+      branch,
+      version,
+    });
+    return;
+  }
+
+  if (!app || !repo || !version) {
+    console.error(USAGE);
+    process.exit(1);
+  }
+  if (stageOnly && !process.env.MIRROR_STAGE_DIR) {
+    throw new Error(
+      '--stage-only needs MIRROR_STAGE_DIR; a staged tree in a random tmpdir is lost with the process.',
+    );
+  }
+  // Fail before staging when the push could not happen anyway.
+  if (!stageOnly) pushTarget(repo);
+
+  const { staging, appName } = stage({
+    app,
+    repo,
+    branch,
+    withLockfile,
+    vendorChangedSince,
+    seedMirrorFrom,
+    publisherWorkflow,
+  });
+  if (stageOnly) {
+    console.error(`[mirror] --stage-only: ${appName} staged at ${staging}`);
+    return;
+  }
+  publish({ staging, expectApp: appName, repo, branch, version });
+}
+
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  main();
+}

@@ -290,7 +290,7 @@ Registration mechanics (all confirmed against current tooling): nothing to
 add in `pnpm-workspace.yaml`, `.changeset/config.json`, `turbo.json`, or
 `knip.json` for the package itself; a first-publication approval entry in
 `.github/npm-first-publications.json` in the publishing PR (removed after);
-`scripts/verify-publish-exports.mjs` picks the package up automatically.
+`scripts/release/verify-publish-exports.mjs` picks the package up automatically.
 
 ### 4.3 Message model
 

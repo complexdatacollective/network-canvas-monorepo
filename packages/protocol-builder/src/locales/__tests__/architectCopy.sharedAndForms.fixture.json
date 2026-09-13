@@ -284,11 +284,6 @@
     "es": "Establece el orden inicial de la lista. Sin una regla, los nodos conservan su orden en el archivo de datos.",
     "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.setTheRosterSInitialSortOrder"
   },
-  "protocolBuilder.sortOptions.orderEmptyState": {
-    "en": "No sort rules have been created yet.",
-    "es": "Todavía no se han creado reglas de orden.",
-    "from": "74a07e626 architect.additional.sections.binSortOrderSection.noSortRulesHaveBeenCreated"
-  },
   "protocolBuilder.sortOptions.sortableLabel": {
     "en": "Sortable properties",
     "es": "Propiedades ordenables",
@@ -303,11 +298,6 @@
     "en": "Add new sortable property",
     "es": "Añadir nueva propiedad ordenable",
     "from": "74a07e626 architect.additional.sections.sortOptionsForExternalData.sortOptionsForExternalData.addNewSortableProperty"
-  },
-  "protocolBuilder.sortOptions.sortableEmptyState": {
-    "en": "No items available.",
-    "es": "No hay elementos disponibles.",
-    "from": "74a07e626 architect.defaults.components.Form.arrayFields.MultiSelect.emptyStateMessage"
   },
   "protocolBuilder.sortOptions.labelPlaceholder": {
     "en": "Label",

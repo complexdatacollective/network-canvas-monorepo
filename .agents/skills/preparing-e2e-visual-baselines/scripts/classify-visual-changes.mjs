@@ -10,7 +10,7 @@ import {
   E2E_SUITE_SUBJECTS,
   relevanceDirsForSubject,
   SUITE_KEYS,
-} from '../../../../scripts/release-e2e-policy.mjs';
+} from '../../../../scripts/ci/release-e2e-policy.mjs';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ROOT = resolve(SCRIPT_DIR, '../../../..');
