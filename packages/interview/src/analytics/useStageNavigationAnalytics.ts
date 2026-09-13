@@ -3,7 +3,11 @@
 import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
-import type { StageTimingExitDirection } from '../contract/types';
+import type {
+  PromptTimingExit,
+  StageTimingExit,
+  StageTimingExitDirection,
+} from '../contract/types';
 import { recordStageTiming } from '../store/modules/session';
 import { type RootState, useAppDispatch } from '../store/store';
 import { SUPER_PROPS } from './PROPERTY_KEYS';
@@ -19,6 +23,8 @@ type StageShape = {
   type?: string;
   prompts?: unknown[];
 };
+
+type ExitDirection = StageTimingExitDirection;
 
 /**
  * Emits stage-level navigation events. Called from the Interview component
@@ -46,48 +52,81 @@ export function useStageNavigationAnalytics({
   const lastIndexRef = useRef<number | null>(null);
   const lastEnteredAtRef = useRef<number | null>(null);
   const lastPromptIndexRef = useRef(0);
+  const lastPromptEnteredAtRef = useRef<number | null>(null);
   const lastPromptCountRef = useRef(1);
+  const totalStageDurationRef = useRef(0);
   const startedRef = useRef(false);
-  const startedAtRef = useRef<number | null>(null);
   const completionTrackedRef = useRef(false);
   const unmountCleanupScheduledRef = useRef(false);
   const emitStageExitRef = useRef<
-    (now: number, exit_direction: StageTimingExitDirection) => void
+    (now: number, exit_direction: ExitDirection) => void
+  >(() => {});
+  const emitPromptExitRef = useRef<
+    (now: number, exit_direction: ExitDirection) => PromptTimingExit | undefined
   >(() => {});
 
   const promptCount = stages?.[stage_index]?.prompts?.length ?? 1;
 
   useEffect(() => {
-    emitStageExitRef.current = (
-      now,
-      exit_direction: StageTimingExitDirection,
-    ) => {
+    emitPromptExitRef.current = (now, exit_direction) => {
+      const previousIndex = lastIndexRef.current;
+      const previousEnteredAt = lastPromptEnteredAtRef.current;
+      if (previousIndex === null || previousEnteredAt === null)
+        return undefined;
+
+      const promptExit = {
+        stageIndex: previousIndex,
+        stageType: stages?.[previousIndex]?.type ?? 'unknown',
+        promptIndex: lastPromptIndexRef.current,
+        promptCount: lastPromptCountRef.current,
+        durationMs: Math.max(0, now - previousEnteredAt),
+        exitDirection: exit_direction,
+      };
+      track('prompt_exited', {
+        [SUPER_PROPS.STAGE_TYPE]: promptExit.stageType,
+        [SUPER_PROPS.STAGE_INDEX]: previousIndex,
+        [SUPER_PROPS.PROMPT_INDEX]: promptExit.promptIndex,
+        duration_ms: promptExit.durationMs,
+        prompt_count: promptExit.promptCount,
+        exit_direction,
+      });
+      return promptExit;
+    };
+
+    emitStageExitRef.current = (now, exit_direction) => {
       const previousIndex = lastIndexRef.current;
       const previousEnteredAt = lastEnteredAtRef.current;
       if (previousIndex === null || previousEnteredAt === null) return;
 
       const duration_ms = Math.max(0, now - previousEnteredAt);
       const previousType = stages?.[previousIndex]?.type;
-      track('stage_exited', {
-        [SUPER_PROPS.STAGE_TYPE]: previousType,
-        [SUPER_PROPS.STAGE_INDEX]: previousIndex,
-        duration_ms,
-        prompt_index: lastPromptIndexRef.current,
-        prompt_count: lastPromptCountRef.current,
-        exit_direction,
-      });
-      dispatch(
-        recordStageTiming({
-          stageExit: {
-            stageIndex: previousIndex,
-            stageType: previousType ?? 'unknown',
-            promptIndex: lastPromptIndexRef.current,
-            promptCount: lastPromptCountRef.current,
-            durationMs: duration_ms,
-            exitDirection: exit_direction,
-          },
-        }),
-      );
+      const promptExit = emitPromptExitRef.current(now, exit_direction);
+
+      // FinishSession is a synthetic presentation step. Completion is
+      // recorded on entry, after the authored stage before it has exited, so
+      // its time must not be appended to the completed interview total.
+      if (previousType !== 'FinishSession') {
+        totalStageDurationRef.current += duration_ms;
+        const stageExit: StageTimingExit = {
+          stageIndex: previousIndex,
+          stageType: previousType ?? 'unknown',
+          promptIndex: lastPromptIndexRef.current,
+          promptCount: lastPromptCountRef.current,
+          durationMs: duration_ms,
+          exitDirection: exit_direction,
+        };
+        dispatch(recordStageTiming({ promptExit, stageExit }));
+        track('stage_exited', {
+          [SUPER_PROPS.STAGE_TYPE]: previousType,
+          [SUPER_PROPS.STAGE_INDEX]: previousIndex,
+          [SUPER_PROPS.PROMPT_INDEX]: lastPromptIndexRef.current,
+          duration_ms,
+          prompt_count: lastPromptCountRef.current,
+          exit_direction,
+        });
+      } else if (promptExit) {
+        dispatch(recordStageTiming({ promptExit }));
+      }
     };
   }, [dispatch, stages, track]);
 
@@ -97,31 +136,21 @@ export function useStageNavigationAnalytics({
     if (!startedRef.current) {
       track('interview_started');
       startedRef.current = true;
-      startedAtRef.current = now;
     }
 
     // An unavailable saved/current step is render-gated while navigation
     // recovers. It was never shown, so it must not enter the stage analytics
     // history or generate a matching exit event later.
-    if (!enabled) {
-      return;
-    }
+    if (!enabled) return;
 
     const previousIndex = lastIndexRef.current;
     const previousEnteredAt = lastEnteredAtRef.current;
 
     // Effect replay in React StrictMode must not duplicate an event for the
-    // same displayed stage. Prompt changes are tracked by the metadata effect
-    // below and do not re-enter this stage.
-    if (previousIndex === stage_index && previousEnteredAt !== null) {
-      return;
-    }
+    // same displayed stage. Prompt changes are tracked by the metadata effect.
+    if (previousIndex === stage_index && previousEnteredAt !== null) return;
 
-    if (
-      previousIndex !== null &&
-      previousEnteredAt !== null &&
-      previousIndex !== stage_index
-    ) {
+    if (previousIndex !== null && previousEnteredAt !== null) {
       emitStageExitRef.current(
         now,
         stage_index > previousIndex
@@ -150,27 +179,33 @@ export function useStageNavigationAnalytics({
       direction,
     });
 
-    if (stage_type === 'FinishSession') {
-      const startedAt = startedAtRef.current ?? now;
-      if (!completionTrackedRef.current) {
-        completionTrackedRef.current = true;
-        track('interview_finished', {
-          stage_count: stages?.length ?? 0,
-          total_duration_ms: Math.max(0, now - startedAt),
-        });
-        dispatch(
-          recordStageTiming({
-            totalDurationMs: Math.max(0, now - startedAt),
-          }),
-        );
-      }
+    if (stage_type === 'FinishSession' && !completionTrackedRef.current) {
+      completionTrackedRef.current = true;
+      track('interview_finished', {
+        stage_count: stages?.length ?? 0,
+        total_duration_ms: totalStageDurationRef.current,
+      });
+      dispatch(
+        recordStageTiming({
+          totalDurationMs: totalStageDurationRef.current,
+        }),
+      );
     }
 
     lastIndexRef.current = stage_index;
     lastEnteredAtRef.current = now;
     lastPromptIndexRef.current = promptIndex;
+    lastPromptEnteredAtRef.current = now;
     lastPromptCountRef.current = promptCount;
+
+    track('prompt_entered', {
+      [SUPER_PROPS.STAGE_TYPE]: stage_type,
+      [SUPER_PROPS.STAGE_INDEX]: stage_index,
+      [SUPER_PROPS.PROMPT_INDEX]: promptIndex,
+      prompt_count: promptCount,
+    });
   }, [
+    dispatch,
     enabled,
     promptCount,
     promptIndex,
@@ -181,19 +216,38 @@ export function useStageNavigationAnalytics({
   ]);
 
   useEffect(() => {
-    // Prompt navigation does not change the displayed stage, so it must update
-    // the exit metadata without re-emitting stage_entered.
-    if (lastIndexRef.current === stage_index) {
-      lastPromptIndexRef.current = promptIndex;
-      lastPromptCountRef.current = promptCount;
+    // Prompt navigation does not change the displayed stage, so it emits a
+    // prompt-level transition while leaving stage_entered untouched.
+    if (
+      lastIndexRef.current !== stage_index ||
+      lastPromptIndexRef.current === promptIndex
+    ) {
+      if (lastIndexRef.current === stage_index) {
+        lastPromptCountRef.current = promptCount;
+      }
+      return;
     }
-  }, [promptCount, promptIndex, stage_index]);
+
+    const now = performance.now();
+    const direction: ExitDirection =
+      promptIndex > lastPromptIndexRef.current ? 'forward' : 'back';
+    const promptExit = emitPromptExitRef.current(now, direction);
+    if (promptExit) dispatch(recordStageTiming({ promptExit }));
+    lastPromptIndexRef.current = promptIndex;
+    lastPromptEnteredAtRef.current = now;
+    lastPromptCountRef.current = promptCount;
+    track('prompt_entered', {
+      [SUPER_PROPS.STAGE_TYPE]: stage_type,
+      [SUPER_PROPS.STAGE_INDEX]: stage_index,
+      [SUPER_PROPS.PROMPT_INDEX]: promptIndex,
+      prompt_count: promptCount,
+    });
+  }, [promptCount, promptIndex, stage_index, stage_type, track]);
 
   useEffect(() => {
     // React StrictMode runs an effect cleanup immediately before re-running its
-    // setup. Defer the teardown emission by one microtask so that probe cleanup
-    // is cancelled by the second setup, while a real unmount still records the
-    // final stage exactly once.
+    // setup. Defer the teardown emission by one microtask so probe cleanup is
+    // cancelled while a real unmount still records the final authored stage.
     unmountCleanupScheduledRef.current = false;
     return () => {
       if (unmountCleanupScheduledRef.current) return;

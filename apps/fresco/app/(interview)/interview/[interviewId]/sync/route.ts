@@ -39,6 +39,7 @@ const StageTimingExitSchema = z.object({
 const StageTimingSchema = z
   .object({
     stageExits: z.array(StageTimingExitSchema).max(10_000),
+    promptExits: z.array(StageTimingExitSchema).max(10_000).optional(),
     totalDurationMs: z.number().finite().nonnegative().optional(),
   })
   .optional();

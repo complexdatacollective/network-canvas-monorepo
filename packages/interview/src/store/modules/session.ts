@@ -17,7 +17,11 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
-import type { StageTimingExit, StageTimingPayload } from '../../contract/types';
+import type {
+  PromptTimingExit,
+  StageTimingExit,
+  StageTimingPayload,
+} from '../../contract/types';
 import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
 import {
   makeGetCodebookVariablesForEdgeType,
@@ -610,6 +614,7 @@ export const updateStageMetadata = createAction<{
 
 export type RecordStageTimingPayload = {
   stageExit?: StageTimingExit;
+  promptExit?: PromptTimingExit;
   totalDurationMs?: number;
 };
 
@@ -926,12 +931,15 @@ const sessionReducer = createReducer(initialState, (builder) => {
   });
 
   builder.addCase(recordStageTiming, (state, action) => {
-    const { stageExit, totalDurationMs } = action.payload;
-    const previous = state.stageTiming ?? { stageExits: [] };
+    const { promptExit, stageExit, totalDurationMs } = action.payload;
+    const previous = state.stageTiming ?? { stageExits: [], promptExits: [] };
     const stageTiming: StageTimingPayload = {
       stageExits: stageExit
         ? [...previous.stageExits, stageExit]
         : previous.stageExits,
+      promptExits: promptExit
+        ? [...(previous.promptExits ?? []), promptExit]
+        : (previous.promptExits ?? []),
       ...(totalDurationMs === undefined
         ? previous.totalDurationMs === undefined
           ? {}

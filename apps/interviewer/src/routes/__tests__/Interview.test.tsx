@@ -543,6 +543,7 @@ describe('InterviewRoute finish flow', () => {
           exitDirection: 'forward' as const,
         },
       ],
+      promptExits: [],
       totalDurationMs: 1250,
     };
 

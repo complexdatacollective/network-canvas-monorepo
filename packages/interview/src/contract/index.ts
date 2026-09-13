@@ -32,6 +32,7 @@ export type {
   ProtocolPayload,
   ResolvedAsset,
   SessionPayload,
+  PromptTimingExit,
   StageTimingExit,
   StageTimingExitDirection,
   StageTimingPayload,

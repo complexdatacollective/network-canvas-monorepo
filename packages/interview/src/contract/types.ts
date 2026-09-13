@@ -55,6 +55,9 @@ export type StageTimingExit = {
   exitDirection: StageTimingExitDirection;
 };
 
+/** A privacy-safe interval for one prompt within a stage. */
+export type PromptTimingExit = StageTimingExit;
+
 /**
  * Runtime timing accumulated in the session payload. `stageExits` is ordered
  * by observation, including abandoned final stages; hosts may roll it up by
@@ -62,6 +65,8 @@ export type StageTimingExit = {
  */
 export type StageTimingPayload = {
   stageExits: StageTimingExit[];
+  /** Optional for payloads persisted by runtimes before prompt timing shipped. */
+  promptExits?: PromptTimingExit[];
   totalDurationMs?: number;
 };
 

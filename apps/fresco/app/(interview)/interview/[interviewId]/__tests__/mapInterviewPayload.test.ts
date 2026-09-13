@@ -81,6 +81,7 @@ describe('mapInterviewPayload', () => {
           exitDirection: 'forward' as const,
         },
       ],
+      promptExits: [],
       totalDurationMs: 1250,
     };
 

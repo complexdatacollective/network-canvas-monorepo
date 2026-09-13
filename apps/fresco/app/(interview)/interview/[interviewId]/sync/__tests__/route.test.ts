@@ -180,6 +180,7 @@ describe('interview sync route', () => {
           exitDirection: 'forward',
         },
       ],
+      promptExits: [],
       totalDurationMs: 1250,
     };
 

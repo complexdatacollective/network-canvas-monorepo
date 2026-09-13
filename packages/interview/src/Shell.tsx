@@ -491,7 +491,7 @@ const Shell = ({
   // relying on this.
   useEffect(() => {
     return () => {
-      void reduxStore.flushSync();
+      void reduxStore.flushSync({ waitForCleanup: true });
     };
   }, [reduxStore]);
 
