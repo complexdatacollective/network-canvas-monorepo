@@ -2,7 +2,6 @@ import { useCallback, useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ColorPickerField from '@codaco/fresco-ui/form/fields/ColorPicker';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
@@ -44,13 +43,6 @@ const BIN_LIMIT = 5;
 
 /** What only an Ordinal Bin says; the words both bins use are in `binMessages`. */
 const messages = defineMessages({
-  guidance: {
-    id: 'protocolBuilder.censusPrompts.ordinalBinGuidance',
-    defaultMessage:
-      'The participant drags each person into one of a row of bins running from least to most, so write a question those bins are the scale of — “how often do you see this person?” rather than a yes or no question.',
-    description:
-      'Guidance shown above the box where a researcher writes an Ordinal Bin prompt, saying what the participant does with it. The quoted sentence is an example of a question a scale can answer.',
-  },
   placeholder: {
     id: 'protocolBuilder.censusPrompts.ordinalBinPlaceholder',
     defaultMessage: 'Enter your prompt...',
@@ -135,17 +127,6 @@ const SCALE_SLOT: BinAttributeSlot = Object.freeze({
 const asString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
-function OrdinalBinGuidance() {
-  const intl = useAppIntl();
-  return (
-    <Alert variant="info" className="mb-6">
-      <AlertDescription>
-        {intl.formatMessage(messages.guidance)}
-      </AlertDescription>
-    </Alert>
-  );
-}
-
 /**
  * One Ordinal Bin question: what to ask, which attribute's ordered values
  * become the scale, the colours that scale runs through, and the two orders
@@ -169,7 +150,6 @@ function OrdinalBinPromptEditor({ item }: RowEditorProps) {
     <>
       <PromptTextField
         item={item}
-        guidance={<OrdinalBinGuidance />}
         placeholder={intl.formatMessage(messages.placeholder)}
         title={intl.formatMessage(censusMessages.promptTextTitle)}
         description={intl.formatMessage(censusMessages.promptTextDescription)}

@@ -447,10 +447,6 @@
     "defaultMessage": "Categorical response",
     "description": "Heading of the group that picks the attribute whose values are the bins the participant drags people into."
   },
-  "protocolBuilder.censusPrompts.categoricalBinGuidance": {
-    "defaultMessage": "The participant drags each person into one of the bins below, so write a question the bins are the answers to — “what kind of contact do you have with this person?” rather than a yes or no question.",
-    "description": "Guidance shown above the box where a researcher writes a Categorical Bin prompt, saying what the participant does with it. The quoted sentence is an example of a question whose answers are the bins."
-  },
   "protocolBuilder.censusPrompts.categoricalBinLimitDescription": {
     "defaultMessage": "This interface is designed for up to eight bins, including a follow-up bin. Beyond that the bins become hard to read and hard to drop into, which costs data quality. Consider grouping the values and asking for the detail in a later question.",
     "description": "Body of the warning shown when a Categorical Bin prompt would draw more bins than its interview screen is designed for. The follow-up bin is the extra one this prompt can add for answers none of the attribute’s values cover."
@@ -586,10 +582,6 @@
   "protocolBuilder.censusPrompts.ordinalBinColorTitle": {
     "defaultMessage": "Color gradient",
     "description": "Heading of the group that picks the colour gradient the bins of an Ordinal Bin are shaded along."
-  },
-  "protocolBuilder.censusPrompts.ordinalBinGuidance": {
-    "defaultMessage": "The participant drags each person into one of a row of bins running from least to most, so write a question those bins are the scale of — “how often do you see this person?” rather than a yes or no question.",
-    "description": "Guidance shown above the box where a researcher writes an Ordinal Bin prompt, saying what the participant does with it. The quoted sentence is an example of a question a scale can answer."
   },
   "protocolBuilder.censusPrompts.ordinalBinLimitDescription": {
     "defaultMessage": "This interface is designed for up to five bins. Beyond that the bins become hard to read and hard to drop into, which costs data quality.",
