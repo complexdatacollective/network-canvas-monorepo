@@ -3159,12 +3159,8 @@ describe('a form whose list is not a list', () => {
  * row they do not touch refused.
  */
 describe('a stored field the schema refuses for its own shape', () => {
-  const outlineEntry = () =>
-    [
-      ...screen
-        .getByRole('navigation', { name: 'Stage sections' })
-        .querySelectorAll('button'),
-    ].map((item) => item.textContent);
+  const outlineEntry = (harness: ReturnType<typeof renderStageEditor>) =>
+    harness.outline().map(({ title, state }) => `${title}${state}`);
 
   const alterFormHolding = (fields: readonly Record<string, unknown>[]) => ({
     id: 'alter-form-1',
@@ -3195,7 +3191,7 @@ describe('a stored field the schema refuses for its own shape', () => {
 
     expect(await harness.submit()).toBeNull();
     await waitFor(() =>
-      expect(outlineEntry()).toEqual([
+      expect(outlineEntry(harness)).toEqual([
         'Form configurationHas a problem. Form fields holds settings this stage does not have.',
       ]),
     );
@@ -3209,7 +3205,7 @@ describe('a stored field the schema refuses for its own shape', () => {
 
     expect(await harness.submit()).toBeNull();
     await waitFor(() =>
-      expect(outlineEntry()).toEqual([
+      expect(outlineEntry(harness)).toEqual([
         'Form configurationHas a problem. Form fields holds the wrong kind of value.',
       ]),
     );
@@ -3250,7 +3246,7 @@ describe('a stored field the schema refuses for its own shape', () => {
 
     expect(fieldsOf(await harness.submit())).toEqual([RELATIONSHIP]);
     await waitFor(() =>
-      expect(outlineEntry()).toEqual(['Form configurationFinished']),
+      expect(outlineEntry(harness)).toEqual(['Form configurationFinished']),
     );
   });
 
@@ -3270,7 +3266,7 @@ describe('a stored field the schema refuses for its own shape', () => {
     // researcher agrees to lose stored data.
     expect(await harness.submit()).toBeNull();
     await waitFor(() =>
-      expect(outlineEntry()).toEqual([
+      expect(outlineEntry(harness)).toEqual([
         'Form configurationHas a problem. Form fields holds settings this stage does not have.',
       ]),
     );
@@ -4007,5 +4003,259 @@ describe('the control a row saves for the attribute it finally collects', () => 
           component,
         );
       });
+  });
+});
+
+/**
+ * The preview beside the fields, as the researcher meets it.
+ *
+ * `FieldPreviewPane.test.tsx` holds the pane to what it renders from a draft
+ * it is handed; these are about the dialog it is mounted in — the two regions
+ * a researcher moves between, the draft reaching it without the row reporting
+ * anything, and the trial answer going nowhere near what the row commits.
+ */
+describe('the live preview beside a form field’s settings', () => {
+  const FOLLOW_UP = 'seeded-follow-up';
+  const QUESTION = 'Should we follow up?';
+
+  /**
+   * A boolean attribute a form may collect, handed over by the host.
+   *
+   * The fixture's own two booleans are written unvalidated by a sociogram, so
+   * the picker offers neither — and a boolean is what these tests want,
+   * because its two controls are the pair whose rendered roles differ most
+   * plainly (a Yes/No group against a switch) and its answers are authored in
+   * the codebook's own editor rather than the row's.
+   */
+  const seedFollowUp = (harness: ReturnType<typeof renderStageEditor>) => {
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          ...personDocument(harness),
+          variables: {
+            ...personVariables(harness),
+            [FOLLOW_UP]: {
+              name: 'follow_up',
+              type: 'boolean',
+              component: 'Boolean',
+            },
+          },
+        },
+      },
+    });
+  };
+
+  const collectFollowUp = async (
+    harness: ReturnType<typeof renderStageEditor>,
+  ) => {
+    seedFollowUp(harness);
+    await addFieldCollecting(harness, FOLLOW_UP, QUESTION);
+    return openField(harness, 'Edit field', 2);
+  };
+
+  it('offers the fields and the preview as two named regions', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    await openField(harness, 'Create new form field');
+    const dialog = within(
+      screen.getByRole('dialog', { name: 'Create form field' }),
+    );
+
+    expect(dialog.getByRole('form', { name: 'Configuration' })).toBeVisible();
+    expect(
+      dialog.getByRole('region', { name: 'Interactive preview' }),
+    ).toBeVisible();
+  });
+
+  it('shows the question in the preview as it is typed, and commits nothing', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    seedFollowUp(harness);
+    const dialog = await openField(harness, 'Create new form field');
+    await chooseAttributeById(harness.user, attributePicker(dialog), FOLLOW_UP);
+    const preview = within(
+      dialog.getByRole('region', { name: 'Interactive preview' }),
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      QUESTION,
+    );
+
+    await waitFor(() =>
+      expect(preview.getByRole('radiogroup', { name: QUESTION })).toBeVisible(),
+    );
+
+    // Nothing typed in an open dialog is part of the stage until the row is
+    // committed, and a preview is not a commit.
+    await harness.user.click(dialog.getByRole('button', { name: 'Cancel' }));
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Discard changes' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    expect(fieldsOf(await harness.submit())).not.toContainEqual(
+      expect.objectContaining({ prompt: QUESTION }),
+    );
+  });
+
+  it('previews the control the researcher chooses, as they choose it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const dialog = await collectFollowUp(harness);
+    const preview = within(
+      dialog.getByRole('region', { name: 'Interactive preview' }),
+    );
+
+    expect(preview.getByRole('radiogroup', { name: QUESTION })).toBeVisible();
+
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'Toggle',
+    );
+
+    await waitFor(() =>
+      expect(preview.getByRole('switch', { name: QUESTION })).toBeVisible(),
+    );
+    expect(preview.queryByRole('radiogroup')).toBeNull();
+  });
+
+  it('gains the answers authored in the codebook without the dialog reopening', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const dialog = await collectFollowUp(harness);
+    const preview = within(
+      dialog.getByRole('region', { name: 'Interactive preview' }),
+    );
+    expect(preview.getByRole('radio', { name: 'Yes' })).toBeVisible();
+
+    // The answers belong to the attribute, and the editor that writes them
+    // commits on its own, under the codebook section's lock — so this is a
+    // change the preview has to see without anything reopening it.
+    await harness.user.click(
+      await dialog.findByRole('button', { name: EDIT_ANSWER_LABELS }),
+    );
+    await screen.findByRole('button', { name: 'Save attribute' });
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Label for “true”' }),
+      'Yes, definitely',
+    );
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Label for “false”' }),
+      'No, not at all',
+    );
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save attribute' }),
+    );
+    await waitFor(() =>
+      expect(
+        asRecord(personVariables(harness)[FOLLOW_UP]).options,
+      ).toHaveLength(2),
+    );
+
+    await waitFor(() =>
+      expect(
+        preview.getByRole('radio', { name: 'Yes, definitely' }),
+      ).toBeVisible(),
+    );
+    expect(
+      preview.getByRole('radio', { name: 'No, not at all' }),
+    ).toBeVisible();
+  });
+
+  it('keeps a trial answer out of the row it commits', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+    const dialog = await collectFollowUp(harness);
+    const preview = within(
+      dialog.getByRole('region', { name: 'Interactive preview' }),
+    );
+
+    await harness.user.click(preview.getByRole('radio', { name: 'Yes' }));
+    await harness.user.click(
+      preview.getByRole('button', { name: 'Check response' }),
+    );
+    expect(preview.getByRole('radio', { name: 'Yes' })).toBeChecked();
+    // The dialog is still open: the preview's submit is the preview's own.
+    expect(
+      screen.getByRole('dialog', { name: 'Edit form field' }),
+    ).toBeVisible();
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+
+    // The whole key set, not a subset: `preview-value` reaching the row is
+    // exactly the failure this is here to catch, and `toMatchObject` alone
+    // would not see it.
+    const saved = fieldsOf(await harness.submit()).at(-1) ?? {};
+    expect(Object.keys(saved).toSorted()).toEqual(['id', 'prompt', 'variable']);
+    expect(saved).toMatchObject({ variable: FOLLOW_UP, prompt: QUESTION });
+  });
+
+  /**
+   * The invention the picker's create row starts, with the preview mounted
+   * beside it.
+   *
+   * This row defers its codebook write to its own save, so while the
+   * researcher is authoring there is no attribute for the pane to read — it
+   * follows the row's draft instead. Both halves are asserted, because they
+   * are answered by different readings: the draft is previewed as the kind of
+   * answer is chosen, and the row that saved it, reopened, is previewed from
+   * the attribute the create really wrote.
+   */
+  it('previews an attribute the picker’s create row is inventing, and then the one it created', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await openField(harness, 'Create new form field');
+    await inventThroughThePicker(harness, dialog, 'nickname');
+    const preview = within(
+      dialog.getByRole('region', { name: 'Interactive preview' }),
+    );
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Kind of answer' }),
+      'boolean',
+    );
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question text' }),
+      QUESTION,
+    );
+
+    await waitFor(() =>
+      expect(preview.getByRole('radiogroup', { name: QUESTION })).toBeVisible(),
+    );
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryAllByRole('dialog')).toHaveLength(0),
+    );
+    expect(savedAttribute(harness, 'nickname')?.[1]).toMatchObject({
+      name: 'nickname',
+      type: 'boolean',
+      component: 'Boolean',
+    });
+
+    const reopened = await openField(harness, 'Edit field', 2);
+    expect(
+      within(
+        reopened.getByRole('region', { name: 'Interactive preview' }),
+      ).getByRole('radiogroup', { name: QUESTION }),
+    ).toBeVisible();
   });
 });

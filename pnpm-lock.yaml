@@ -2859,6 +2859,9 @@ importers:
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../fresco-ui
+      '@codaco/interview':
+        specifier: workspace:^
+        version: link:../interview
       '@codaco/network-query':
         specifier: workspace:^
         version: link:../network-query

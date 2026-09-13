@@ -15,6 +15,7 @@ import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
+import type { DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
 import { resolveFieldPath } from '@codaco/fresco-ui/form/FieldNamespace';
 import {
   ArrayFieldDragHandle,
@@ -131,6 +132,22 @@ export type RowPreviewProps = Readonly<{ item: RowValues }>;
 export type RowPreviewComponent = ComponentType<RowPreviewProps>;
 
 /**
+ * What supporting content shown BESIDE a row's fields is told.
+ *
+ * The row as it was opened, and where in the list it came from — the same two
+ * facts the editor gets, and deliberately not the draft: an aside that needs
+ * to follow what the researcher is typing reads the dialog's own store, which
+ * it is rendered inside. `item` is what stands until a field has registered.
+ */
+export type RowAsideProps = Readonly<{
+  item: RowValues;
+  /** Its index in the committed list; absent for a row being added. */
+  editIndex?: number;
+}>;
+
+export type RowAsideComponent = ComponentType<RowAsideProps>;
+
+/**
  * What a section's own gate makes of the row about to be committed: the row to
  * commit, or the reason it may not be.
  *
@@ -170,6 +187,25 @@ export type RowListConfig = Readonly<{
   Preview: RowPreviewComponent;
   /** The section's own fields, rendered inside the row dialog. */
   Editor: RowEditorComponent;
+  /**
+   * Supporting content beside the fields — a live preview of the row, where
+   * the row is a thing the researcher can be shown rather than only told
+   * about. Absent for a list with nothing to show, which is most of them.
+   *
+   * Rendered outside the dialog's `<form>` and inside its store, so a preview
+   * that is itself interactive owns its own form semantics; a dialog that has
+   * one widens to the workspace preset unless {@link dialogSize} says
+   * otherwise. See `DialogForm`'s `aside`.
+   */
+  Aside?: RowAsideComponent;
+  /**
+   * How wide the row's dialog opens.
+   *
+   * Absent leaves the decision to `DialogForm`, which widens for an aside and
+   * otherwise stays at the editor preset — so a list has to say this only
+   * where neither answer is the one it wants.
+   */
+  dialogSize?: DialogProps['size'];
   addTitle: MessageDescriptor;
   editTitle: MessageDescriptor;
   /** Stable, human-readable stem for the dialog form's DOM id. */
@@ -402,6 +438,8 @@ export function RowDialog({
     beforeSave,
     normalize,
     Editor,
+    Aside,
+    dialogSize,
   } = useRowListConfig();
   const session = useRowEditorSession(item, index, isNewItem, expand);
 
@@ -421,7 +459,16 @@ export function RowDialog({
       title={intl.formatMessage(session.isNewItem ? addTitle : editTitle)}
       formId={formId}
       document={session.row}
-      size="editor"
+      /**
+       * A list with an aside leaves the width to `DialogForm`, which widens
+       * for one; every other list keeps the editor preset it has always
+       * opened at, so nothing moves that did not gain a second pane.
+       */
+      {...(dialogSize === undefined
+        ? Aside === undefined
+          ? { size: 'editor' as const }
+          : {}
+        : { size: dialogSize })}
       submitLabel={intl.formatMessage(
         session.isNewItem ? messages.addSubmit : commonMessages.save,
       )}
@@ -450,6 +497,18 @@ export function RowDialog({
         ? {}
         : { layoutId: session.layoutId })}
       style={{ borderRadius: 'var(--radius)' }}
+      {...(Aside === undefined
+        ? {}
+        : {
+            aside: (
+              <Aside
+                item={session.row}
+                {...(session.editIndex === undefined
+                  ? {}
+                  : { editIndex: session.editIndex })}
+              />
+            ),
+          })}
     >
       <RowFields
         name={name}

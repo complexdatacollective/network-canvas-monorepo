@@ -44,7 +44,7 @@ function PreviewOn({
     <div className="flex flex-col items-start gap-4">
       <Button
         type="button"
-        variant="outline"
+        color="default"
         size="sm"
         onClick={() => setOpen(true)}
       >

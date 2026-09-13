@@ -209,8 +209,7 @@ export default function MapCenterField({
 
       <Button
         type="button"
-        variant="outline"
-        size="sm"
+        color="primary"
         className="self-start"
         disabled={locked}
         onClick={() => setMapOpen(true)}
