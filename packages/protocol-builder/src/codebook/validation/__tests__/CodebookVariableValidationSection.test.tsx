@@ -18,9 +18,14 @@ const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
  * it is mounted the way every other section is rather than rendered bare: the
  * point of the surface is that the write reaches the protocol.
  */
-const open = (subject: CodebookSubject, variableId: string | undefined) =>
+const open = (
+  subject: CodebookSubject,
+  variableId: string | undefined,
+  options: Readonly<{ readOnly?: true }> = {},
+) =>
   renderStageEditor({
     stageId: 'ego-form-1',
+    ...options,
     sections: (
       <CodebookVariableValidationSection
         subject={subject}
@@ -28,6 +33,25 @@ const open = (subject: CodebookSubject, variableId: string | undefined) =>
       />
     ),
   });
+
+/** A node type holding one attribute of the kind given, and nothing else. */
+const personHolding = (type: string) => ({
+  node: {
+    person: {
+      name: 'person',
+      color: 'node-color-seq-1',
+      icon: 'add-a-person',
+      shape: { default: 'circle' },
+      variables: {
+        story: {
+          name: 'story',
+          type,
+          component: type === 'text' ? 'Text' : 'Number',
+        },
+      },
+    },
+  },
+});
 
 const egoValidation = (
   harness: StageEditorHarness,
@@ -92,6 +116,60 @@ describe('the rules one codebook attribute’s answers have to satisfy', () => {
     expect(
       screen.queryByRole('switch', { name: 'Validation' }),
     ).not.toBeInTheDocument();
+  });
+
+  /**
+   * A rule switched on but not yet answered is held on screen rather than in
+   * the codebook, so nothing about a COLLABORATOR changing the kind of answer
+   * takes it away. Left where it was it is a rule the new kind's rows do not
+   * draw and the schema will not accept, so every later change is refused over
+   * a row nobody can see and the section silently stops writing anything.
+   */
+  it('drops a half-set rule the new kind of answer has no room for', async () => {
+    const harness = open(PERSON, 'story');
+    harness.receiveCodebookUpdate(personHolding('text'));
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Validation' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
+    );
+
+    harness.receiveCodebookUpdate(personHolding('number'));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('checkbox', { name: 'Minimum text length' }),
+      ).not.toBeInTheDocument(),
+    );
+
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required answer' }),
+    );
+
+    await waitFor(() =>
+      expect(
+        Reflect.get(
+          harness.hostCodebook().node?.person?.variables?.story ?? {},
+          'validation',
+        ),
+      ).toEqual({ required: true }),
+    );
+  });
+
+  /**
+   * The rules are the codebook's, but the gesture that changes them is made
+   * inside a stage this researcher may only be reading — and a spectator who
+   * could still clear an attribute's rules would be writing to the protocol
+   * from a surface that told them they could not.
+   */
+  it('offers no change on a stage this researcher may only read', async () => {
+    const harness = open(EGO, 'ego_name', { readOnly: true });
+
+    await harness.opened();
+    expect(
+      await screen.findByRole('switch', { name: 'Validation' }),
+    ).toBeDisabled();
   });
 
   it('renders nothing for an attribute the codebook does not have', async () => {

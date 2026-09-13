@@ -1478,18 +1478,10 @@ describe('the rules the composer’s quick-add attribute has to satisfy', () => 
   it('creates an attribute that has to be answered', async () => {
     const harness = renderStageEditor(composerHolding({}));
 
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new attribute to fill in',
-      }),
-    );
-    const creator = within(await screen.findByRole('dialog'));
-    await harness.user.type(
-      creator.getByRole('textbox', { name: 'Attribute name' }),
+    await inventAttribute(
+      harness.user,
+      picker('Create or select an attribute for the quick-add form'),
       'nickname',
-    );
-    await harness.user.click(
-      creator.getByRole('button', { name: 'Create attribute' }),
     );
 
     const created = await waitFor(() => {

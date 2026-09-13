@@ -42,6 +42,18 @@ export type CreateVariableEditorOptions = Readonly<{
   lockedOptions?: readonly VariableOption[];
   /** Title of the editor's dialog, already formatted. */
   title: string;
+  /**
+   * Rules the SLOT requires of an attribute created here, written with it.
+   *
+   * A quick-add box is the one place a participant's typing becomes a network
+   * member, so the attribute behind it has to hold a value from the moment
+   * that member exists — Architect seeds the same rule where it creates one
+   * (`sections/NodeConfiguration/NodeConfiguration.tsx`). The editor does not
+   * render rules, so the seed travels as an unrendered draft property and the
+   * validation section beside the picker is where the researcher sees it and
+   * can take it off.
+   */
+  seedValidation?: Readonly<Record<string, unknown>>;
   onCreated(variableId: string): void;
 }>;
 
@@ -117,6 +129,7 @@ export function useCreateVariableEditor({
   variableTypes,
   lockedOptions,
   title,
+  seedValidation,
   onCreated,
 }: CreateVariableEditorOptions): CreateVariableEditor {
   const { readOnly } = useStageEditorForm();
@@ -302,11 +315,13 @@ export function useCreateVariableEditor({
           authoritativeDocument={openedSection ?? session.openedDocument}
           readOnly={editorReadOnly}
           variableId={session.variableId}
-          initialDraft={
-            onlyType === undefined
-              ? { name: session.name }
-              : { name: session.name, type: onlyType }
-          }
+          initialDraft={{
+            name: session.name,
+            ...(onlyType === undefined ? {} : { type: onlyType }),
+            ...(seedValidation === undefined
+              ? {}
+              : { validation: seedValidation }),
+          }}
           allowedVariableTypes={variableTypes}
           lockedOptions={lockedOptions ?? null}
           protocolContext={protocolContext}

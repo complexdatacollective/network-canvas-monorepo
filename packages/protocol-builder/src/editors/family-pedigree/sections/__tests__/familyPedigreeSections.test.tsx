@@ -2666,7 +2666,10 @@ describe('the rules the display-label attribute’s answers have to satisfy', ()
   it('offers them for the display label only', async () => {
     renderStageEditor(openFixture());
 
-    await screen.findByRole('combobox', { name: 'Display label' });
+    // The display-label picker is the boot wait: the editor draws every
+    // pedigree slot in one pass, so once this one is on screen the structural
+    // slots beside it are too — and none of them offers rules.
+    await waitFor(() => attributeField('Display label'));
     expect(screen.getAllByRole('switch', { name: 'Validation' })).toHaveLength(
       1,
     );
