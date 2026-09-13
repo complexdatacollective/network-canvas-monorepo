@@ -285,6 +285,62 @@ describe('FieldPreviewPane', () => {
     expect(screen.getByRole('spinbutton', { name: 'Age' })).toBeVisible();
   });
 
+  it('treats a caption of nothing but spaces as nothing authored', () => {
+    // The same rule the interview applies: `authoredFieldLabel` trims before
+    // deciding whether the researcher wrote anything, so a stray space is not
+    // a caption and the participant meets the fallback rather than a blank.
+    renderPreview(
+      { variable: 'age', component: 'Number', label: '   ' },
+      { mode: 'composer' },
+    );
+    expect(screen.getByRole('spinbutton', { name: 'Age' })).toBeVisible();
+
+    cleanup();
+
+    // An emptied box reads the same way, and an authored one still wins.
+    renderPreview(
+      { variable: 'age', component: 'Number', label: '' },
+      { mode: 'composer' },
+    );
+    expect(screen.getByRole('spinbutton', { name: 'Age' })).toBeVisible();
+
+    cleanup();
+
+    renderPreview(
+      { variable: 'age', component: 'Number', label: 'Research_Label_Á1' },
+      { mode: 'composer' },
+    );
+    expect(
+      screen.getByRole('spinbutton', { name: 'Research_Label_Á1' }),
+    ).toBeVisible();
+
+    cleanup();
+
+    // And the form family's question, which is read by the same rule.
+    renderPreview({ variable: 'age', prompt: '  \n  ' });
+    expect(
+      screen.getByRole('spinbutton', {
+        name: 'Your question will appear here.',
+      }),
+    ).toBeVisible();
+  });
+
+  it('previews the answer the chosen control collects when no kind has been chosen', () => {
+    // An invented attribute whose kind the row does not hold: the control
+    // itself says what the attribute will collect, because every control
+    // belongs to exactly one kind of answer.
+    renderPreview({
+      variable: CREATE_NEW_ATTRIBUTE,
+      _newVariableName: 'Nickname',
+      _component: 'Text',
+      prompt: 'Research_Question_Á2',
+    });
+
+    expect(
+      screen.getByRole('textbox', { name: 'Research_Question_Á2' }),
+    ).toBeVisible();
+  });
+
   it('stands in for a question nobody has written yet', () => {
     renderPreview({ variable: 'age' });
 

@@ -26,7 +26,10 @@ import {
   type Variable,
 } from '@codaco/protocol-validation';
 
-import { completeRuleValues } from '../../codebook/variableValidation.ts';
+import {
+  completeRuleValues,
+  variableTypeForComponent,
+} from '../../codebook/variableValidation.ts';
 import type { RowValues } from '../../form/rowDialog.tsx';
 import {
   type CodebookSubject,
@@ -38,7 +41,6 @@ import {
   controlsForType,
   isCollectableType,
   isOptionType,
-  typeForControl,
 } from '../collectableTypes.ts';
 
 const messages = defineMessages({
@@ -119,6 +121,26 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const isInputControl = (value: unknown): value is ComponentType =>
   typeof value === 'string' &&
   ComponentTypesKeys.some((control) => control === value);
+
+/**
+ * What the researcher has actually written, by the interview's own rule.
+ *
+ * `@codaco/interview`'s `authoredFieldLabel` TRIMS before deciding whether
+ * anything was authored, so a caption of nothing but spaces is nothing
+ * authored and the participant meets the fallback — the attribute's name in a
+ * composer, the stand-in sentence in a form. Read through `asText` first,
+ * because a row may hold anything at all here.
+ *
+ * Replicated rather than imported: that helper is internal to the runtime and
+ * its root entry does not export it. `FieldPreviewPane.test.tsx` pins the
+ * three cases the runtime's own rule turns on — whitespace-only, empty, and
+ * ordinary text — so the preview cannot caption a field the interview would
+ * not.
+ */
+const authoredText = (value: unknown): string | undefined => {
+  const text = asText(value)?.trim();
+  return text === undefined || text === '' ? undefined : text;
+};
 
 /**
  * A trial answer is checked against the attribute's own rules and nothing
@@ -232,7 +254,9 @@ export default function FieldPreviewPane({
   const variableType: string | undefined =
     codebookVariable?.type ??
     asText(draft._newVariableType) ??
-    (draftControl === undefined ? undefined : typeForControl(draftControl));
+    (draftControl === undefined
+      ? undefined
+      : variableTypeForComponent(draftControl));
 
   // The control has to be one this kind of answer allows. A row being rebound
   // still holds the control it was given for the attribute it USED to collect
@@ -249,8 +273,8 @@ export default function FieldPreviewPane({
         ? attributeControl
         : undefined;
 
-  const authoredLabel = asText(draft.label);
-  const prompt = asText(draft.prompt);
+  const authoredLabel = authoredText(draft.label);
+  const prompt = authoredText(draft.prompt);
   const label =
     mode === 'composer'
       ? (authoredLabel ??

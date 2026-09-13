@@ -1906,6 +1906,9 @@ importers:
       '@codaco/fresco-ui':
         specifier: workspace:^
         version: link:../../../packages/fresco-ui
+      '@codaco/interview':
+        specifier: workspace:^
+        version: link:../../../packages/interview
       '@codaco/protocol-builder':
         specifier: workspace:^
         version: link:../../../packages/protocol-builder
