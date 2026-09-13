@@ -372,6 +372,7 @@ export function InterviewRoute({ sessionId }: { sessionId: string }) {
           network: session.network,
           currentStep: currentStepRef.current,
           stageMetadata: session.stageMetadata,
+          stageTiming: session.stageTiming,
         });
       },
       { waitMs: SYNC_BATCH_MS },
@@ -551,5 +552,6 @@ function hydrateSession(stored: StoredSession): SessionPayload {
     network: stored.network,
     promptIndex: 0,
     stageMetadata: stored.stageMetadata,
+    stageTiming: stored.stageTiming,
   };
 }

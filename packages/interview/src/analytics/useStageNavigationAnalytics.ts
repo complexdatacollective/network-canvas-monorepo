@@ -3,7 +3,9 @@
 import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 
-import type { RootState } from '../store/store';
+import type { StageTimingExitDirection } from '../contract/types';
+import { recordStageTiming } from '../store/modules/session';
+import { type RootState, useAppDispatch } from '../store/store';
 import { SUPER_PROPS } from './PROPERTY_KEYS';
 import { useTrack } from './useTrack';
 
@@ -33,6 +35,7 @@ export function useStageNavigationAnalytics({
   enabled = true,
 }: StageDescriptor): void {
   const track = useTrack();
+  const dispatch = useAppDispatch();
   const stages = useSelector((s: RootState) => s.protocol?.stages) as
     | StageShape[]
     | undefined;
@@ -42,19 +45,23 @@ export function useStageNavigationAnalytics({
 
   const lastIndexRef = useRef<number | null>(null);
   const lastEnteredAtRef = useRef<number | null>(null);
+  const lastPromptIndexRef = useRef(0);
   const lastPromptCountRef = useRef(1);
   const startedRef = useRef(false);
   const startedAtRef = useRef<number | null>(null);
   const completionTrackedRef = useRef(false);
   const unmountCleanupScheduledRef = useRef(false);
   const emitStageExitRef = useRef<
-    (now: number, exit_direction: string) => void
+    (now: number, exit_direction: StageTimingExitDirection) => void
   >(() => {});
 
   const promptCount = stages?.[stage_index]?.prompts?.length ?? 1;
 
   useEffect(() => {
-    emitStageExitRef.current = (now, exit_direction) => {
+    emitStageExitRef.current = (
+      now,
+      exit_direction: StageTimingExitDirection,
+    ) => {
       const previousIndex = lastIndexRef.current;
       const previousEnteredAt = lastEnteredAtRef.current;
       if (previousIndex === null || previousEnteredAt === null) return;
@@ -65,11 +72,24 @@ export function useStageNavigationAnalytics({
         [SUPER_PROPS.STAGE_TYPE]: previousType,
         [SUPER_PROPS.STAGE_INDEX]: previousIndex,
         duration_ms,
+        prompt_index: lastPromptIndexRef.current,
         prompt_count: lastPromptCountRef.current,
         exit_direction,
       });
+      dispatch(
+        recordStageTiming({
+          stageExit: {
+            stageIndex: previousIndex,
+            stageType: previousType ?? 'unknown',
+            promptIndex: lastPromptIndexRef.current,
+            promptCount: lastPromptCountRef.current,
+            durationMs: duration_ms,
+            exitDirection: exit_direction,
+          },
+        }),
+      );
     };
-  }, [stages, track]);
+  }, [dispatch, stages, track]);
 
   useEffect(() => {
     const now = performance.now();
@@ -138,11 +158,17 @@ export function useStageNavigationAnalytics({
           stage_count: stages?.length ?? 0,
           total_duration_ms: Math.max(0, now - startedAt),
         });
+        dispatch(
+          recordStageTiming({
+            totalDurationMs: Math.max(0, now - startedAt),
+          }),
+        );
       }
     }
 
     lastIndexRef.current = stage_index;
     lastEnteredAtRef.current = now;
+    lastPromptIndexRef.current = promptIndex;
     lastPromptCountRef.current = promptCount;
   }, [
     enabled,
@@ -158,9 +184,10 @@ export function useStageNavigationAnalytics({
     // Prompt navigation does not change the displayed stage, so it must update
     // the exit metadata without re-emitting stage_entered.
     if (lastIndexRef.current === stage_index) {
+      lastPromptIndexRef.current = promptIndex;
       lastPromptCountRef.current = promptCount;
     }
-  }, [promptCount, stage_index]);
+  }, [promptCount, promptIndex, stage_index]);
 
   useEffect(() => {
     // React StrictMode runs an effect cleanup immediately before re-running its

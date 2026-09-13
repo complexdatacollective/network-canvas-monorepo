@@ -527,6 +527,38 @@ describe('InterviewRoute finish flow', () => {
     expect(patch).not.toHaveProperty('finishedAt');
   });
 
+  it('persists stage timing from the runtime sync payload', async () => {
+    render(<InterviewRoute sessionId="s1" />);
+    await screen.findByTestId('shell-mounted');
+    updateSessionMock.mockClear();
+
+    const stageTiming = {
+      stageExits: [
+        {
+          stageIndex: 1,
+          stageType: 'Information',
+          promptIndex: 0,
+          promptCount: 1,
+          durationMs: 1250,
+          exitDirection: 'forward' as const,
+        },
+      ],
+      totalDurationMs: 1250,
+    };
+
+    await act(async () => {
+      await lastShellProps().onSync('s1', makeSyncPayload({ stageTiming }), {
+        immediate: true,
+        unloading: false,
+      });
+    });
+
+    expect(updateSessionMock).toHaveBeenCalledWith(
+      's1',
+      expect.objectContaining({ stageTiming }),
+    );
+  });
+
   it('does not un-finish when a trailing sync lands after finish', async () => {
     render(<InterviewRoute sessionId="s1" />);
     await screen.findByTestId('shell-mounted');

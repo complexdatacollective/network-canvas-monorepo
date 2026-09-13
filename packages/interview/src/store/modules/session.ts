@@ -17,6 +17,7 @@ import {
   type VariableValue,
 } from '@codaco/shared-consts';
 
+import type { StageTimingExit, StageTimingPayload } from '../../contract/types';
 import { generateSecureAttributes } from '../../interfaces/Anonymisation/utils';
 import {
   makeGetCodebookVariablesForEdgeType,
@@ -118,6 +119,7 @@ export type SessionState = {
   network: NcNetwork;
   promptIndex?: number;
   stageMetadata?: StageMetadata; // Used as temporary storage by DyadCensus/TieStrengthCensus
+  stageTiming?: StageTimingPayload;
   stageRequiresEncryption?: boolean; // Set to true by the stage if it detects that nodes it creates require encryption
 };
 
@@ -125,6 +127,7 @@ const actionTypes = {
   updatePrompt: 'SESSION/UPDATE_PROMPT',
   transitionStage: 'SESSION/TRANSITION_STAGE',
   updateStageMetadata: 'SESSION/UPDATE_STAGE_METADATA',
+  recordStageTiming: 'SESSION/RECORD_STAGE_TIMING',
   addNode: 'NETWORK/ADD_NODE' as const,
   deleteNode: 'NETWORK/DELETE_NODE' as const,
   updateNode: 'NETWORK/UPDATE_NODE' as const,
@@ -605,6 +608,15 @@ export const updateStageMetadata = createAction<{
   metadata: StageMetadataEntry;
 }>(actionTypes.updateStageMetadata);
 
+export type RecordStageTimingPayload = {
+  stageExit?: StageTimingExit;
+  totalDurationMs?: number;
+};
+
+export const recordStageTiming = createAction<RecordStageTimingPayload>(
+  actionTypes.recordStageTiming,
+);
+
 const sessionReducer = createReducer(initialState, (builder) => {
   builder.addCase(addNode.fulfilled, (state, action) => {
     const { secureAttributes, sessionMeta, modelData } = action.payload;
@@ -911,6 +923,23 @@ const sessionReducer = createReducer(initialState, (builder) => {
         [currentStep]: metadata,
       },
     });
+  });
+
+  builder.addCase(recordStageTiming, (state, action) => {
+    const { stageExit, totalDurationMs } = action.payload;
+    const previous = state.stageTiming ?? { stageExits: [] };
+    const stageTiming: StageTimingPayload = {
+      stageExits: stageExit
+        ? [...previous.stageExits, stageExit]
+        : previous.stageExits,
+      ...(totalDurationMs === undefined
+        ? previous.totalDurationMs === undefined
+          ? {}
+          : { totalDurationMs: previous.totalDurationMs }
+        : { totalDurationMs }),
+    };
+
+    return withLastUpdated({ ...state, stageTiming });
   });
 
   builder.addCase(updateEgo.fulfilled, (state, action) => {

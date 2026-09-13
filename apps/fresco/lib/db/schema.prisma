@@ -103,6 +103,7 @@ model Interview {
   protocolId    String      @map("protocolId")
   currentStep   Int         @default(0)
   stageMetadata Json? // Used to store negative responses in tiestrength census and dyadcensus
+  stageTiming   Json? // Privacy-safe stage durations for monitoring rollups
   isSynthetic   Boolean     @default(false)
   // Write-ordering guard for the interview sync endpoint. The participant's
   // browser numbers each sync it issues and the endpoint only applies one

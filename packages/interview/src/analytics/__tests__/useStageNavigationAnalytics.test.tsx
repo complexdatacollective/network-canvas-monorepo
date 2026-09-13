@@ -30,15 +30,18 @@ function makeWrapper(
     },
     middleware: (g) => g({ serializableCheck: false }),
   });
-  return function Wrapper({ children }: { children: ReactNode }) {
-    return (
-      <Provider store={store}>
-        <AnalyticsContext.Provider value={tracker}>
-          {children}
-        </AnalyticsContext.Provider>
-      </Provider>
-    );
-  };
+  return Object.assign(
+    function Wrapper({ children }: { children: ReactNode }) {
+      return (
+        <Provider store={store}>
+          <AnalyticsContext.Provider value={tracker}>
+            {children}
+          </AnalyticsContext.Provider>
+        </Provider>
+      );
+    },
+    { store },
+  );
 }
 
 describe('useStageNavigationAnalytics', () => {
@@ -140,6 +143,16 @@ describe('useStageNavigationAnalytics', () => {
         }),
       ],
     ]);
+    expect(BaseWrapper.store.getState().session.stageTiming).toEqual({
+      stageExits: [
+        expect.objectContaining({
+          stageIndex: 0,
+          stageType: 'NameGenerator',
+          durationMs: 175,
+          exitDirection: 'abandoned',
+        }),
+      ],
+    });
   });
 
   it('reports the live prompt index and count when a stage exits', () => {
@@ -174,9 +187,17 @@ describe('useStageNavigationAnalytics', () => {
       'stage_exited',
       expect.objectContaining({
         stage_index: 0,
+        prompt_index: 2,
         prompt_count: 3,
       }),
     );
+    expect(wrapper.store.getState().session.stageTiming?.stageExits).toEqual([
+      expect.objectContaining({
+        stageIndex: 0,
+        promptIndex: 2,
+        promptCount: 3,
+      }),
+    ]);
   });
 
   it('emits interview_finished when entering FinishSession stage', () => {
@@ -201,6 +222,10 @@ describe('useStageNavigationAnalytics', () => {
         total_duration_ms: expect.any(Number),
       }),
     );
+    expect(wrapper.store.getState().session.stageTiming).toEqual({
+      stageExits: [],
+      totalDurationMs: expect.any(Number),
+    });
   });
 
   it('does not record an unavailable render-gated step before recovery', () => {

@@ -26,6 +26,7 @@ function makeSource(schemaVersion: number): NonNullable<GetInterviewByIdQuery> {
     protocolId: 'protocol-1',
     currentStep: 3,
     stageMetadata: null,
+    stageTiming: null,
     isSynthetic: false,
     syncRevision: 7,
     protocol: {
@@ -66,6 +67,29 @@ describe('mapInterviewPayload', () => {
     );
 
     expect(initialSyncRevision).toBe(7);
+  });
+
+  it('carries persisted stage timing into the runtime session payload', () => {
+    const stageTiming = {
+      stageExits: [
+        {
+          stageIndex: 1,
+          stageType: 'Information',
+          promptIndex: 0,
+          promptCount: 1,
+          durationMs: 1250,
+          exitDirection: 'forward' as const,
+        },
+      ],
+      totalDurationMs: 1250,
+    };
+
+    const { payload } = mapInterviewPayload({
+      ...makeSource(COMPATIBLE_PROTOCOL_SCHEMA_VERSION),
+      stageTiming,
+    });
+
+    expect(payload.session.stageTiming).toEqual(stageTiming);
   });
 
   it('refuses a protocol row stored below the compatible version rather than mislabelling it', () => {

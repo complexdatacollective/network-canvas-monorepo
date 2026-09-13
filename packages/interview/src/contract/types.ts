@@ -35,6 +35,36 @@ export type ProtocolPayload = Omit<CurrentProtocol, 'assetManifest'> & {
   assets: ResolvedAsset[];
 };
 
+export type StageTimingExitDirection =
+  | 'forward'
+  | 'back'
+  | 'jumped'
+  | 'abandoned';
+
+/**
+ * A privacy-safe completed stage interval. The fields are structural or
+ * numeric so hosts can persist them for monitoring without carrying protocol
+ * author content or participant answers.
+ */
+export type StageTimingExit = {
+  stageIndex: number;
+  stageType: string;
+  promptIndex: number;
+  promptCount: number;
+  durationMs: number;
+  exitDirection: StageTimingExitDirection;
+};
+
+/**
+ * Runtime timing accumulated in the session payload. `stageExits` is ordered
+ * by observation, including abandoned final stages; hosts may roll it up by
+ * stage type/index without reconstructing the interview UI state.
+ */
+export type StageTimingPayload = {
+  stageExits: StageTimingExit[];
+  totalDurationMs?: number;
+};
+
 /**
  * Session payload. Matches the persisted session state used by the reducer,
  * but is kept explicit so the public contract does not expose Redux internals.
@@ -48,6 +78,7 @@ export type SessionPayload = {
   network: NcNetwork;
   promptIndex?: number;
   stageMetadata?: StageMetadata;
+  stageTiming?: StageTimingPayload;
   stageRequiresEncryption?: boolean;
 };
 

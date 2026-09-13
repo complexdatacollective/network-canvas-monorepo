@@ -1,3 +1,4 @@
+import type { StageTimingPayload } from '@codaco/interview/contract';
 import type { CurrentProtocol } from '@codaco/protocol-validation';
 import type { NcNetwork, StageMetadata } from '@codaco/shared-consts';
 
@@ -63,6 +64,7 @@ export type StoredSession = {
   resumeStageOverrideIndex?: number;
   network: NcNetwork;
   stageMetadata?: StageMetadata;
+  stageTiming?: StageTimingPayload;
   // Optional so pre-existing rows (undefined) read as not synthetic.
   isSynthetic?: boolean;
 };
