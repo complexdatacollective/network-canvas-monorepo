@@ -29,6 +29,7 @@ import type { EncryptionKeys } from '../pii/keys.ts';
 import { ProtectedDataError } from '../pii/protection.ts';
 import {
   readWebhookSecretForDelivery,
+  WebhookSecretChangedError,
   type WebhookSecretRead,
 } from '../pii/webhooks.ts';
 
@@ -570,6 +571,8 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
         status,
       );
     } catch (error) {
+      if (error instanceof WebhookSecretChangedError)
+        throw new WebhookDeliveryError('retryable');
       if (error instanceof ProtectedDataError) return 'suppressed';
       if (error instanceof LeaseLostError) throw error;
       if (error instanceof WebhookDeliveryError) throw error;
@@ -672,7 +675,7 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
               `UPDATE webhook_subscriptions
                SET consecutive_failures = 0, last_failure_at = NULL,
                    updated_at = clock_timestamp()
-               WHERE id = $1 AND team_id = $2`,
+               WHERE id = $1 AND team_id = $2 AND state = 'active'`,
               [claim.subscriptionId, claim.teamId],
             );
           } else if (outcome === 'failed' || outcome === 'uncertain') {

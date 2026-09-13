@@ -78,7 +78,9 @@ function assertUrl(value: string): string {
     url.protocol !== 'https:' ||
     url.username !== '' ||
     url.password !== '' ||
-    url.hash !== ''
+    url.hash !== '' ||
+    url.href.length < 12 ||
+    url.href.length > 2000
   )
     throw new WebhookSubscriptionError('CONFLICT');
   return url.href;
@@ -173,14 +175,7 @@ export async function createWebhookSubscription(
       await lockAdministrator(client, context);
       const teamId = context.tenantDb.teamId;
       const studyId = input.studyId ?? null;
-      if (studyId) {
-        const study = await client.query(
-          'SELECT 1 FROM studies WHERE id = $1 AND team_id = $2 FOR SHARE',
-          [studyId, teamId],
-        );
-        if (study.rowCount !== 1)
-          throw new WebhookSubscriptionError('NOT_FOUND');
-      }
+      if (studyId !== null) throw new WebhookSubscriptionError('CONFLICT');
       const protection = createDataProtection(keys, {
         participant: async () => {
           throw new ProtectedDataError();

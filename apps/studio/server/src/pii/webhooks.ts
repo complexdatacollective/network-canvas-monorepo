@@ -35,6 +35,14 @@ export type WebhookSecretRead = {
   };
 };
 
+/** A live delivery must reread ciphertext after a concurrent rotation. */
+export class WebhookSecretChangedError extends Error {
+  constructor() {
+    super('WEBHOOK_SECRET_CHANGED');
+    this.name = 'WebhookSecretChangedError';
+  }
+}
+
 export async function selectWebhookCiphertext(
   client: pg.PoolClient,
   teamId: string,
@@ -125,13 +133,15 @@ async function readWebhookSecretWithSnapshot(
       subscriptionId,
       true,
     );
+    if (!current) throw new ProtectedDataError();
     if (
-      !current ||
       current.secret_key_id !== row.secret_key_id ||
       current.secret_algorithm !== row.secret_algorithm ||
       !current.secret_ciphertext.equals(row.secret_ciphertext)
-    )
+    ) {
+      if (authority.kind === 'delivery') throw new WebhookSecretChangedError();
       throw new ProtectedDataError();
+    }
     return current;
   };
   const protection = createDataProtection(keys, {

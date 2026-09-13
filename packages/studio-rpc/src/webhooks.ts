@@ -57,8 +57,12 @@ export type WebhookSubscription = z.infer<typeof WebhookSubscriptionSchema>;
 
 export const CreateWebhookSubscriptionInputSchema = TeamScopedSchema.extend({
   subscriptionId: z.uuid(),
-  studyId: z.uuid().nullable().optional(),
-  url: z.url({ protocol: /^https$/ }),
+  // study.created is emitted before an existing study could be subscribed to.
+  studyId: z.null().optional(),
+  url: z
+    .url({ protocol: /^https$/ })
+    .min(12)
+    .max(2000),
   description: z.string().trim().min(1).max(500).nullable().optional(),
   eventTypes: WebhookEventTypesSchema,
   // Generated client-side so the secret never needs a separate reveal route.

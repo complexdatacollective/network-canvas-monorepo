@@ -4,6 +4,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { safe } from '@orpc/client';
 import { describe, expect, it } from 'vitest';
 
+import { CreateWebhookSubscriptionInputSchema } from '@codaco/studio-rpc/webhooks';
+
 import { stubAuthService } from '../../__tests__/support/auth.ts';
 import { createHttpTestApp } from '../../__tests__/support/http-app.ts';
 import { createRpcClient } from '../../__tests__/support/rpc.ts';
@@ -37,7 +39,7 @@ const secret = `whsec_${secretBytes.toString('base64url')}`;
 
 async function addSubscription(
   input: Parameters<Parameters<typeof participantFixture>[0]>[0],
-  studyId: string | null = input.target.studyId,
+  studyId: string | null = null,
 ) {
   const subscriptionId = randomUUID();
   await createWebhookSubscription(input.keys, input.context, {
@@ -67,6 +69,135 @@ async function enqueue(
 }
 
 describe('webhook runtime', () => {
+  it('rejects creation subscriptions for an existing study and callback URLs outside database bounds', async () => {
+    await participantFixture(async (fixture) => {
+      const input = {
+        teamId: fixture.context.tenantDb.teamId,
+        subscriptionId: randomUUID(),
+        url: 'https://hooks.example.org/studio',
+        eventTypes: ['study.created' as const],
+        secret,
+      };
+      expect(
+        CreateWebhookSubscriptionInputSchema.safeParse(input).success,
+      ).toBe(true);
+      expect(
+        CreateWebhookSubscriptionInputSchema.safeParse({
+          ...input,
+          studyId: fixture.target.studyId,
+        }).success,
+      ).toBe(false);
+      await expect(
+        createWebhookSubscription(fixture.keys, fixture.context, {
+          ...input,
+          studyId: fixture.target.studyId,
+        }),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+      const maximum = 'https://example.test/' + 'x'.repeat(1979);
+      expect(maximum).toHaveLength(2000);
+      expect(
+        CreateWebhookSubscriptionInputSchema.safeParse({
+          ...input,
+          url: maximum,
+        }).success,
+      ).toBe(true);
+      expect(
+        CreateWebhookSubscriptionInputSchema.safeParse({
+          ...input,
+          url: maximum + 'x',
+        }).success,
+      ).toBe(false);
+      await expect(
+        createWebhookSubscription(fixture.keys, fixture.context, {
+          ...input,
+          url: maximum + 'x',
+        }),
+      ).rejects.toMatchObject({ code: 'CONFLICT' });
+    });
+  });
+
+  it('preserves the disabling failure history when an already handed-off request succeeds', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await enqueue(fixture);
+      const dispatcher = createWebhookDeliveryDispatcher({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        sender: {
+          async send() {
+            await fixture.scratch.pool.query(
+              `UPDATE webhook_subscriptions SET state = 'disabled', disabled_at = clock_timestamp(), consecutive_failures = 5, last_failure_at = clock_timestamp() WHERE id = $1`,
+              [subscriptionId],
+            );
+            return 204;
+          },
+        },
+      });
+      expect(await dispatcher.runOnce()).toMatchObject({ completed: 1 });
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT state, consecutive_failures, last_failure_at IS NOT NULL AS evidence FROM webhook_subscriptions WHERE id = $1`,
+            [subscriptionId],
+          )
+        ).rows,
+      ).toEqual([
+        { state: 'disabled', consecutive_failures: 5, evidence: true },
+      ]);
+    });
+  });
+
+  it('retries a ciphertext rotation that commits between the initial secret select and its locked recheck', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await enqueue(fixture);
+      const adapter = new WebhookDeliveryAdapter({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+      });
+      const lease = { owner: randomUUID(), durationMs: 10_000 };
+      const claim = await adapter.claim(lease, 3);
+      if (!claim) throw new Error('expected delivery claim');
+      const blocker = await fixture.scratch.pool.connect();
+      let delivery: ReturnType<typeof adapter.deliver> | undefined;
+      try {
+        await blocker.query('BEGIN');
+        const pid = (
+          await blocker.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+        ).rows[0]!.pid;
+        await blocker.query(
+          'SELECT id FROM webhook_subscriptions WHERE id = $1 FOR UPDATE',
+          [subscriptionId],
+        );
+        delivery = adapter.deliver(claim);
+        // Observe the actual recheck waiter, rather than assume a scheduling delay.
+        await expect
+          .poll(
+            async () =>
+              (
+                await fixture.scratch.pool.query<{ waiting: boolean }>(
+                  `SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid)) AND query LIKE '%secret_ciphertext%FOR UPDATE%') AS waiting`,
+                  [pid],
+                )
+              ).rows[0]!.waiting,
+          )
+          .toBe(true);
+        await blocker.query(
+          'UPDATE webhook_subscriptions SET secret_ciphertext = $2 WHERE id = $1',
+          [subscriptionId, Buffer.alloc(32, 72)],
+        );
+        await blocker.query('COMMIT');
+        await expect(delivery).rejects.toMatchObject({
+          disposition: 'retryable',
+        });
+      } finally {
+        await blocker.query('ROLLBACK');
+        blocker.release();
+        await delivery?.catch(() => undefined);
+      }
+    });
+  });
+
   it('matches the Node lookup callback shape and normalizes IPv6 URL literals', async () => {
     const pinnedLookup = createPinnedLookup({
       address: '2606:4700:4700::1111',
@@ -167,7 +298,7 @@ describe('webhook runtime', () => {
         rpc.webhooks.create({
           teamId: fixture.context.tenantDb.teamId,
           subscriptionId,
-          studyId: fixture.target.studyId,
+          studyId: null,
           url: 'https://hooks.example.org/studio',
           eventTypes: ['study.created'],
           secret,
