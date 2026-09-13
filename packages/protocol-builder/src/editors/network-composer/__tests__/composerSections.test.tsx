@@ -24,6 +24,7 @@ import {
   edgeFormFieldsOf,
   edgesOf,
   highlightInASociogram,
+  narrowPersonVariable,
   nodeFormFieldsOf,
   openRow,
   retypePersonVariable,
@@ -1997,10 +1998,91 @@ describe('the rules a composer field authors', () => {
   });
 
   /**
-   * And the same reading in the other direction, which is the half a check
-   * that only ever refuses more would get wrong.
+   * And not offered because the FORM would make it satisfiable, because the
+   * form is not what the rule is saved on.
+   *
+   * A validation rule is written to the CODEBOOK attribute, and the protocol
+   * judges that record through the codebook's own controls
+   * (`rejectValidationContradictions`, over the entity's variables with no
+   * stage overlay). So a comparison two fields' windows bring together is
+   * still refused by the write when the attributes' own windows are disjoint:
+   * offering it sent the researcher to a Save that could not succeed.
    */
-  it('offers a comparison the fields’ own windows make satisfiable', async () => {
+  it('does not offer one the codebook record could not hold', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            {
+              id: 'field-1',
+              variable: 'metOn',
+              ...YEAR_PICKER('2020', '2025'),
+            },
+            {
+              id: 'field-2',
+              variable: 'bornOn',
+              ...YEAR_PICKER('2020', '2025'),
+            },
+            {
+              id: 'field-3',
+              variable: 'movedOn',
+              ...YEAR_PICKER('2020', '2025'),
+            },
+          ],
+        },
+      }),
+    );
+    // Disjoint in the CODEBOOK from the attribute being edited, and brought
+    // together only by the window the second field renders it with.
+    addPersonVariable(harness, 'bornOn', {
+      name: 'bornOn',
+      type: 'datetime',
+      ...YEAR_PICKER('1990', '1995'),
+    });
+    addPersonVariable(harness, 'metOn', {
+      name: 'metOn',
+      type: 'datetime',
+      ...YEAR_PICKER('2020', '2025'),
+    });
+    addPersonVariable(harness, 'movedOn', {
+      name: 'movedOn',
+      type: 'datetime',
+      ...YEAR_PICKER('2020', '2025'),
+    });
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Same as another attribute',
+      }),
+    );
+
+    const targets = await screen.findByRole('combobox', {
+      name: 'Same as another attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(targets).queryByRole('option', { name: 'bornOn' }),
+      ).not.toBeInTheDocument(),
+    );
+    // The one the codebook can hold is still there, so what is being read is
+    // the record rather than an empty answer.
+    expect(
+      within(targets).getByRole('option', { name: 'movedOn' }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * A comparison both readings accept is taken, and reaches the codebook.
+   *
+   * The codebook reading may only ever take a target away — read as the whole
+   * answer it would refuse every comparison the fields' own windows make
+   * possible, which is the half the round before this one was about.
+   */
+  it('writes one both readings accept', async () => {
     const harness = renderStageEditor(
       composerHolding({
         nodeForm: {
@@ -2019,18 +2101,13 @@ describe('the rules a composer field authors', () => {
         },
       }),
     );
-    // Disjoint in the CODEBOOK, and brought together by the window the second
-    // field renders its attribute with.
-    addPersonVariable(harness, 'bornOn', {
-      name: 'bornOn',
-      type: 'datetime',
-      ...YEAR_PICKER('1990', '1995'),
-    });
-    addPersonVariable(harness, 'metOn', {
-      name: 'metOn',
-      type: 'datetime',
-      ...YEAR_PICKER('2020', '2025'),
-    });
+    for (const variableId of ['bornOn', 'metOn']) {
+      addPersonVariable(harness, variableId, {
+        name: variableId,
+        type: 'datetime',
+        ...YEAR_PICKER('2020', '2025'),
+      });
+    }
 
     const dialog = await openRow(harness, 'Edit form field');
     await harness.user.click(
@@ -2050,15 +2127,91 @@ describe('the rules a composer field authors', () => {
       ).toBeInTheDocument(),
     );
     await harness.user.selectOptions(targets, 'bornOn');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Save validation' }),
+    );
 
-    // Taken, with nothing to report: the rule is satisfiable in the renderings
-    // the saved form actually carries.
-    expect(
-      screen.queryByText(/cannot be satisfied within their allowed ranges/),
-    ).not.toBeInTheDocument();
+    // The codebook as the PROTOCOL holds it: the rule is on the attribute, so
+    // nothing short of that is the rule having been saved.
+    await waitFor(() =>
+      expect(
+        harness.hostCodebook().node?.person?.variables?.metOn,
+      ).toHaveProperty('validation', { sameAs: 'bornOn' }),
+    );
+  });
+
+  /**
+   * And when only the codebook refuses it, the refusal says so.
+   *
+   * "These dates cannot overlap", in front of two fields that plainly do
+   * overlap, reads as the application being wrong about what is on the screen.
+   * Reached by a collaborator narrowing the target in the codebook under an
+   * open dialog: the form goes on rendering the window it renders, and the
+   * record the rule would be written to can no longer hold it.
+   */
+  it('says when it is the codebook record refusing, not the form', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            {
+              id: 'field-1',
+              variable: 'metOn',
+              ...YEAR_PICKER('2020', '2025'),
+            },
+            {
+              id: 'field-2',
+              variable: 'bornOn',
+              ...YEAR_PICKER('2020', '2025'),
+            },
+          ],
+        },
+      }),
+    );
+    for (const variableId of ['bornOn', 'metOn']) {
+      addPersonVariable(harness, variableId, {
+        name: variableId,
+        type: 'datetime',
+        ...YEAR_PICKER('2020', '2025'),
+      });
+    }
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Same as another attribute',
+      }),
+    );
+    const targets = await screen.findByRole('combobox', {
+      name: 'Same as another attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(targets).getByRole('option', { name: 'bornOn' }),
+      ).toBeInTheDocument(),
+    );
+    await harness.user.selectOptions(targets, 'bornOn');
     expect(
       screen.getByRole('button', { name: 'Save validation' }),
     ).toBeEnabled();
+
+    narrowPersonVariable(harness, 'bornOn', {
+      type: 'year',
+      min: '1990',
+      max: '1995',
+    });
+
+    expect(
+      await screen.findByText(
+        'These rules are saved on the attribute itself, so the codebook’s own input controls decide whether they can be met — not this form’s. The comparisons for bornOn and metOn cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Save validation' }),
+    ).toBeDisabled();
   });
 
   /**
@@ -2113,6 +2266,69 @@ describe('the rules a composer field authors', () => {
     expect(
       screen.getByRole('button', { name: 'Save validation' }),
     ).toBeDisabled();
+  });
+
+  /**
+   * And the attribute a row has just STOPPED rendering is not one of this
+   * form's either.
+   *
+   * The list the row belongs to holds what was committed, so the row under
+   * edit still names its old attribute while the picker shows the new one —
+   * and read as part of this form, an attribute the row has moved off is
+   * judged at a codebook control nothing renders it with, refusing a
+   * comparison the protocol accepts. The row's committed name is the one
+   * `siblingRenderings` already leaves out, for the same reason.
+   */
+  it('ignores the attribute the row under edit has moved off', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            { id: 'field-1', variable: 'isKin', component: 'Boolean' },
+            { id: 'field-2', variable: 'isPinned', component: 'Boolean' },
+          ],
+        },
+      }),
+    );
+    for (const variableId of ['isKin', 'isPinned', 'isClose']) {
+      addPersonVariable(harness, variableId, {
+        name: variableId,
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+      });
+    }
+    // `isKin` is asked for by another composer as well, with a control this
+    // editor cannot see — so once this row moves off it, nothing here renders
+    // it.
+    composerInAnotherStage(harness, [
+      { id: 'other-field-1', variable: 'isKin', component: 'Toggle' },
+    ]);
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await chooseAttributeById(harness.user, picker('Attribute'), 'isClose');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Different from another attribute',
+      }),
+    );
+
+    const targets = screen.getByRole('combobox', {
+      name: 'Different from another attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(targets).getByRole('option', { name: 'isKin' }),
+      ).toBeInTheDocument(),
+    );
+    // The one this form still renders is refused, so what changed is which
+    // attributes count as this form's rather than the reading itself.
+    expect(
+      within(targets).queryByRole('option', { name: 'isPinned' }),
+    ).not.toBeInTheDocument();
   });
 
   /**

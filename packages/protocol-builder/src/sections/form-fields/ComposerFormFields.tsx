@@ -799,12 +799,19 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
    * composer form in another stage overrides them, and this dialog has no way
    * to know which control it chose. Handed to the rules editor so they are
    * judged at no control rather than at one nothing renders them with.
+   *
+   * The row under edit is left out by POSITION and answered for by `chosen`,
+   * exactly as `siblingRenderings` leaves it out: the list holds what was
+   * committed, so a row the researcher has re-pointed still names its old
+   * attribute here, and counting that as one this form renders judges an
+   * attribute the row has moved off at a codebook control nothing asks for it
+   * with.
    */
   const unknownRenderings = useMemo(() => {
     const here = new Set(
-      rows.flatMap((row) => {
+      rows.flatMap((row, index) => {
         const variable = asText(row[VARIABLE_FIELD]);
-        return variable === undefined ? [] : [variable];
+        return index === editIndex || variable === undefined ? [] : [variable];
       }),
     );
     return new Set(
@@ -812,7 +819,7 @@ function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
         (variable) => variable !== chosen && !here.has(variable),
       ),
     );
-  }, [chosen, renderedElsewhere, rows]);
+  }, [chosen, editIndex, renderedElsewhere, rows]);
   const variableOptions = useMemo(
     () =>
       offered.filter(

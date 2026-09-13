@@ -6051,6 +6051,10 @@
     "defaultMessage": "Attribute unavailable",
     "description": "Heading of the alert shown in place of the rules when the attribute they belong to has been deleted from the codebook."
   },
+  "protocolBuilder.variableValidation.codebookRenderingContradiction": {
+    "defaultMessage": "These rules are saved on the attribute itself, so the codebook’s own input controls decide whether they can be met — not this form’s. {contradiction}",
+    "description": "Refusal shown in a stage’s rules editor when a comparison the form’s own input controls would allow cannot be saved, because the rules are stored on the codebook attribute and the controls the codebook gives those attributes cannot satisfy the comparison. contradiction is the sentence the protocol’s own validation writes about it, already translated."
+  },
   "protocolBuilder.variableValidation.comparisonsHeading": {
     "defaultMessage": "Compare to another attribute",
     "description": "Heading over the validation rules that judge this attribute’s answer against another attribute’s. \"Attribute\" is a codebook variable."

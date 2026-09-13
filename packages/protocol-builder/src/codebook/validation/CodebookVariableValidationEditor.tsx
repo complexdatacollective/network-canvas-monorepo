@@ -32,8 +32,7 @@ import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import { documentWithUpdatedVariable } from '../editing.ts';
 import {
   isValidationWithListValue,
-  ruleMapIssue,
-  stageRenderingContext,
+  ruleMapIssueForWrite,
   type StageRendering,
   type ValidationMap,
   type ValidationValue,
@@ -310,19 +309,22 @@ export default function CodebookVariableValidationEditor({
     : attributeTypeChanged
       ? intl.formatMessage(messages.typeChangedIssue)
       : (missingTargetIssue(validation, variablesForValidation, intl) ??
-        ruleMapIssue(validation, {
-          ...stageRenderingContext(
-            Object.fromEntries(Object.entries(variablesForValidation)),
-            stageRendering,
-          ),
-          currentVariableId: variableId,
-          variableType: openedOnType,
-          // The values from the document this editor was opened against,
-          // which is the freshest the host has: a rule about how many of them
-          // an answer may hold is judged against the list the attribute
-          // actually carries now.
-          options: authoritativeVariable?.options,
-        }));
+        ruleMapIssueForWrite(
+          validation,
+          {
+            allVariables: Object.fromEntries(
+              Object.entries(variablesForValidation),
+            ),
+            currentVariableId: variableId,
+            variableType: openedOnType,
+            // The values from the document this editor was opened against,
+            // which is the freshest the host has: a rule about how many of
+            // them an answer may hold is judged against the list the attribute
+            // actually carries now.
+            options: authoritativeVariable?.options,
+          },
+          stageRendering,
+        ));
   const dirty = canonicalize(validation) !== canonicalize(committedValidation);
   const variableName =
     authoritativeVariable !== undefined &&
@@ -536,17 +538,18 @@ export function DraftVariableValidationEditor({
 
   const issue =
     missingTargetIssue(validation, allVariables, intl) ??
-    ruleMapIssue(validation, {
-      ...stageRenderingContext(
-        Object.fromEntries(Object.entries(allVariables)),
-        stageRendering,
-      ),
-      // Nothing to exclude from the comparison targets: the attribute these
-      // rules belong to has no record key yet, so no rule can point at it.
-      currentVariableId: '',
-      variableType,
-      draftVariableName: variableName,
-    });
+    ruleMapIssueForWrite(
+      validation,
+      {
+        allVariables: Object.fromEntries(Object.entries(allVariables)),
+        // Nothing to exclude from the comparison targets: the attribute these
+        // rules belong to has no record key yet, so no rule can point at it.
+        currentVariableId: '',
+        variableType,
+        draftVariableName: variableName,
+      },
+      stageRendering,
+    );
   const headingTag = useSurfaceHeadingTag();
 
   return (
