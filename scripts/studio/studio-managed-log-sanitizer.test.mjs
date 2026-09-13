@@ -43,6 +43,44 @@ const registryRequest = (changes = {}) => ({
   ...changes,
 });
 
+test('rejects inherited catalog names and missing diagnostic severity', () => {
+  for (const code of [
+    'constructor',
+    '__proto__',
+    'toString',
+    'hasOwnProperty',
+  ]) {
+    for (const level of [undefined, 30, 40, 50]) {
+      assert.equal(
+        sanitizeManagedLogRecord(
+          line({ event: 'operational', time: observedAt, code, level }),
+          binding('studio-production', 'production'),
+        ),
+        undefined,
+        `inherited diagnostic ${code} with level ${level}`,
+      );
+    }
+    assert.equal(
+      sanitizeManagedLogRecord(
+        line(studioRequest()),
+        binding(code, 'production'),
+      ),
+      undefined,
+    );
+  }
+  assert.equal(
+    sanitizeManagedLogRecord(
+      line({
+        event: 'operational',
+        time: observedAt,
+        code: 'STUDIO_SERVER_STARTED',
+      }),
+      binding('studio-production', 'production'),
+    ),
+    undefined,
+  );
+});
+
 test('publishes a pinned exact output schema over the emitter-owned catalogs', () => {
   assert.equal(
     MANAGED_OPERATIONAL_LOG_SCHEMA_IDENTITY,

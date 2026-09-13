@@ -169,7 +169,8 @@ function exactBinding(binding) {
     !keys.includes('service') ||
     !keys.includes('environment') ||
     typeof binding.service !== 'string' ||
-    typeof binding.environment !== 'string'
+    typeof binding.environment !== 'string' ||
+    !Object.hasOwn(MANAGED_LOG_SERVICE_BINDINGS, binding.service)
   )
     return undefined;
   const expected = MANAGED_LOG_SERVICE_BINDINGS[binding.service];
@@ -251,7 +252,8 @@ function sanitizeStudio(record, binding) {
   if (
     record.event !== 'operational' ||
     !hasOnlyKeys(record, STUDIO_DIAGNOSTIC_KEYS) ||
-    typeof record.code !== 'string'
+    typeof record.code !== 'string' ||
+    !Object.hasOwn(STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS, record.code)
   )
     return undefined;
   const diagnosticLevel = STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS[record.code];
