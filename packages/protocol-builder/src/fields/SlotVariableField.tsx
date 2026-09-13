@@ -11,24 +11,24 @@ import type {
   VariableType,
 } from '@codaco/protocol-validation';
 
-import type { WriterClass } from '../../../codebook/variableRoles.ts';
-import VariablePickerField from '../../../fields/VariablePickerField.tsx';
-import { REQUIRED } from '../../../form/requiredField.ts';
-import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
-import { useStageValue } from '../../../form/stageFormHooks.ts';
-import type { CodebookSubject } from '../../../protocol-context.ts';
-import { variablesForSubject } from '../../../protocol-context.ts';
-import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
-import { useProtocolContext } from '../../../state/protocolContext.ts';
-import { usePedigreeVariableIndexes } from './entityTypeReset.ts';
-import { pedigreeMessages } from './pedigreeMessages.ts';
+import type { WriterClass } from '../codebook/variableRoles.ts';
+import { usePedigreeVariableIndexes } from '../editors/family-pedigree/sections/entityTypeReset.ts';
+import { pedigreeMessages } from '../editors/family-pedigree/sections/pedigreeMessages.ts';
 import {
   ruleOutValuesOutsideOwnedSet,
   slotCrossClassIssue,
   slotPickerOptions,
   type SlotVariableOption,
   unusableVariableIssue,
-} from './slotWiring.ts';
+} from '../editors/family-pedigree/sections/slotWiring.ts';
+import { REQUIRED } from '../form/requiredField.ts';
+import { useStageEditorForm } from '../form/stageEditorContext.ts';
+import { useStageValue } from '../form/stageFormHooks.ts';
+import type { CodebookSubject } from '../protocol-context.ts';
+import { variablesForSubject } from '../protocol-context.ts';
+import CreateVariableButton from '../sections/create-variable/CreateVariableButton.tsx';
+import { useProtocolContext } from '../state/protocolContext.ts';
+import VariablePickerField from './VariablePickerField.tsx';
 
 const NO_VARIABLES: Readonly<Variables> = Object.freeze({});
 

@@ -291,11 +291,13 @@ export default function DiseasesSection() {
   return (
     <BuilderSection
       title={intl.formatMessage(narrativePedigreeMessages.diseasesTitle)}
-      description={intl.formatMessage(
+      description={
         waiting
-          ? narrativePedigreeMessages.diseasesWaitingDescription
-          : narrativePedigreeMessages.diseasesDescription,
-      )}
+          ? intl.formatMessage(
+              narrativePedigreeMessages.diseasesWaitingDescription,
+            )
+          : undefined
+      }
       disabled={waiting}
     >
       <RowList config={rowList}>

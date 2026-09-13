@@ -5,6 +5,14 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 
+import CreateEdgeField, {
+  CREATE_EDGE_FIELD,
+  missingEdgeTypeIssue,
+} from '../../../fields/CreateEdgeField.tsx';
+import {
+  PromptTextField,
+  PromptTextPreview,
+} from '../../../fields/PromptTextField.tsx';
 import type { SortableProperty } from '../../../fields/sortOrderOptions.ts';
 import type {
   RowEditorProps,
@@ -17,14 +25,6 @@ import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
-import CreateEdgeField, {
-  CREATE_EDGE_FIELD,
-  missingEdgeTypeIssue,
-} from '../../dyad-census/sections/CreateEdgeField.tsx';
-import {
-  PromptTextField,
-  PromptTextPreview,
-} from '../../dyad-census/sections/PromptTextField.tsx';
 import { binMessages } from '../../ordinal-bin/sections/binMessages.ts';
 
 /**

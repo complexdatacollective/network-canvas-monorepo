@@ -20,7 +20,7 @@ export const narrativePresetMessages = defineMessages({
   presetsDescription: {
     id: 'protocolBuilder.networkCanvas.presetsDescription',
     defaultMessage:
-      'Build the ways of looking at the network that can be switched between during the interview.',
+      'Create visualizations that researchers can switch between during the interview.',
     description: 'Description of the visualisation-presets section.',
   },
   presetsWaitingDescription: {
@@ -39,7 +39,7 @@ export const narrativePresetMessages = defineMessages({
   presetsFieldHint: {
     id: 'protocolBuilder.networkCanvas.presetsFieldHint',
     defaultMessage:
-      'Each preset is a whole picture of the network. They are offered in this order, so drag them into the order you want to talk through.',
+      'Add one or more "presets" below, to create different visualizations that you can switch between within the interview.',
     description:
       'Guidance under the list of presets. Addressed to the researcher.',
   },
@@ -93,26 +93,21 @@ export const narrativePresetMessages = defineMessages({
     description:
       'Heading of the group inside the preset dialog holding what this saved view is called.',
   },
-  presetIdentityDescription: {
-    id: 'protocolBuilder.networkCanvas.presetIdentityDescription',
-    defaultMessage: 'Name this way of looking at the network.',
-    description: 'Description of the preset-identity group.',
-  },
   presetNameLabel: {
     id: 'protocolBuilder.networkCanvas.presetNameLabel',
-    defaultMessage: 'Preset name',
+    defaultMessage: 'Preset label',
     description: 'Label of the box holding what this saved view is called.',
   },
   presetNameHint: {
     id: 'protocolBuilder.networkCanvas.presetNameHint',
     defaultMessage:
-      'Shown to the participant when they switch between presets, so name it in their words.',
+      'The preset label will used to quickly identify the preset from within the narrative interface. It will be visible to the participant.',
     description:
       'Guidance under the preset-name box, warning the researcher that this name is participant-facing rather than an internal label.',
   },
   presetNamePlaceholder: {
     id: 'protocolBuilder.networkCanvas.presetNamePlaceholder',
-    defaultMessage: 'Enter a name for this preset...',
+    defaultMessage: 'Enter a label for the preset...',
     description:
       'Placeholder shown in the empty preset-name box. The trailing dots are an ellipsis written as three full stops.',
   },
@@ -124,25 +119,20 @@ export const narrativePresetMessages = defineMessages({
   },
   presetPositionsTitle: {
     id: 'protocolBuilder.networkCanvas.presetPositionsTitle',
-    defaultMessage: 'Node positions',
+    defaultMessage: 'Node layout',
     description:
       'Heading of the group inside the preset dialog deciding where this saved view puts each node.',
   },
-  presetPositionsDescription: {
-    id: 'protocolBuilder.networkCanvas.presetPositionsDescription',
-    defaultMessage: 'Where this preset puts each node on the canvas.',
-    description: 'Description of the preset node-positions group.',
-  },
   presetLayoutLabel: {
     id: 'protocolBuilder.networkCanvas.presetLayoutLabel',
-    defaultMessage: 'Position attribute',
+    defaultMessage: 'Layout attribute',
     description:
       'Label of the picker naming the codebook attribute a preset reads each node’s position from. A layout attribute holds a pair of coordinates.',
   },
   presetLayoutHint: {
     id: 'protocolBuilder.networkCanvas.presetLayoutHint',
     defaultMessage:
-      "The attribute that stores each node's position. Presets sharing an attribute share their positions.",
+      'Select an attribute to use to position the nodes for this preset.',
     description: 'Guidance under the preset position-attribute picker.',
   },
   presetLayoutEmpty: {
@@ -173,7 +163,7 @@ export const narrativePresetMessages = defineMessages({
   presetGroupingDescription: {
     id: 'protocolBuilder.networkCanvas.presetGroupingDescription',
     defaultMessage:
-      'Draw a shaded outline around the nodes that share a value.',
+      'Draw convex hulls around nodes that share a categorical attribute.',
     description: 'Description of the preset node-grouping group.',
   },
   presetGroupLabel: {
@@ -185,7 +175,7 @@ export const narrativePresetMessages = defineMessages({
   presetGroupHint: {
     id: 'protocolBuilder.networkCanvas.presetGroupHint',
     defaultMessage:
-      'Nodes sharing a value of this attribute are outlined together. A node with several values appears in several overlapping outlines.',
+      'The selected values draw semi-transparent convex hulls around matching nodes; nodes with multiple values appear in overlapping hulls.',
     description: 'Guidance under the preset grouping-attribute picker.',
   },
   presetGroupEmpty: {
@@ -197,18 +187,18 @@ export const narrativePresetMessages = defineMessages({
   },
   presetConnectionsTitle: {
     id: 'protocolBuilder.networkCanvas.presetConnectionsTitle',
-    defaultMessage: 'Connections',
+    defaultMessage: 'Displayed edges',
     description:
-      'Heading of the group inside the preset dialog deciding which kinds of relationship are drawn between the nodes. A connection is an edge.',
+      'Heading of the group inside the preset dialog deciding which kinds of relationship are drawn between the nodes. An edge is a connection between two members of the network.',
   },
   presetConnectionsDescription: {
     id: 'protocolBuilder.networkCanvas.presetConnectionsDescription',
-    defaultMessage: 'The kinds of connection this preset draws between nodes.',
+    defaultMessage: 'Select the edge types shown in this visualization preset.',
     description: 'Description of the preset connections group.',
   },
   presetDisplayEdgesLabel: {
     id: 'protocolBuilder.networkCanvas.presetDisplayEdgesLabel',
-    defaultMessage: 'Connection types shown',
+    defaultMessage: 'Edge types',
     description:
       'Label of the tick list choosing which edge types a preset draws.',
   },
@@ -220,13 +210,14 @@ export const narrativePresetMessages = defineMessages({
   },
   presetHighlightTitle: {
     id: 'protocolBuilder.networkCanvas.presetHighlightTitle',
-    defaultMessage: 'Highlighted nodes',
+    defaultMessage: 'Node highlighting',
     description:
       'Heading of the group inside the preset dialog deciding which nodes are drawn so as to stand out.',
   },
   presetHighlightDescription: {
     id: 'protocolBuilder.networkCanvas.presetHighlightDescription',
-    defaultMessage: 'Make some nodes stand out from the rest.',
+    defaultMessage:
+      'Highlight nodes whose selected boolean attributes are true.',
     description: 'Description of the preset highlighted-nodes group.',
   },
   presetHighlightLabel: {
@@ -234,13 +225,6 @@ export const narrativePresetMessages = defineMessages({
     defaultMessage: 'Highlight attributes',
     description:
       'Label of the tick list choosing which true-or-false codebook attributes make a node stand out.',
-  },
-  presetHighlightHint: {
-    id: 'protocolBuilder.networkCanvas.presetHighlightHint',
-    defaultMessage:
-      'The interviewer picks one of these attributes at a time, and the nodes it is true of are shown highlighted.',
-    description:
-      'Guidance under the preset highlight-attributes tick list. It says what the interview does with the list, because ticking several attributes does not highlight by all of them at once: the interview offers the ticked attributes as a set of radio buttons and highlights by the one chosen.',
   },
   presetUnavailableHighlightAttribute: {
     id: 'protocolBuilder.networkCanvas.presetUnavailableHighlightAttribute',

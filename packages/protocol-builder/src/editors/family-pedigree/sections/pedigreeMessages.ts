@@ -72,14 +72,14 @@ export const pedigreeMessages = defineMessages({
   },
   memberFormTitle: {
     id: 'protocolBuilder.pedigree.memberFormTitle',
-    defaultMessage: 'Family member form',
+    defaultMessage: 'Form configuration',
     description:
-      'Heading of the section holding what a Family Pedigree asks about each person the participant adds. Replaces the shared form section’s generic heading, because this form describes a relative rather than standing on its own.',
+      'Heading of the section holding what a Family Pedigree asks about each person the participant adds.',
   },
   memberFormDescription: {
     id: 'protocolBuilder.pedigree.memberFormDescription',
     defaultMessage:
-      'Optionally ask the participant more about each family member as they add them.',
+      'Optionally add fields shown when participants add or edit family members.',
     description:
       'Description of the family member form section. Optional because a pedigree may ask nothing at all about each person.',
   },
@@ -88,12 +88,6 @@ export const pedigreeMessages = defineMessages({
     defaultMessage: 'Form fields',
     description:
       'Label of the ordered list of questions the family member form asks.',
-  },
-  memberFormFieldHint: {
-    id: 'protocolBuilder.pedigree.memberFormFieldHint',
-    defaultMessage:
-      'The participant answers these when they add or edit a family member. Drag to reorder them.',
-    description: 'Guidance under the list of family member form fields.',
   },
   memberFormAddLabel: {
     id: 'protocolBuilder.pedigree.memberFormAddLabel',
@@ -293,12 +287,6 @@ export const pedigreeMessages = defineMessages({
     description:
       'Heading of the section holding the single question shown while a participant is drawing their family.',
   },
-  censusDescription: {
-    id: 'protocolBuilder.pedigree.censusDescription',
-    defaultMessage:
-      'Write the question the participant answers while they build their family.',
-    description: 'Description of the family-building prompt section.',
-  },
   censusFieldLabel: {
     id: 'protocolBuilder.pedigree.censusFieldLabel',
     defaultMessage: 'Census prompt',
@@ -308,7 +296,7 @@ export const pedigreeMessages = defineMessages({
   censusFieldHint: {
     id: 'protocolBuilder.pedigree.censusFieldHint',
     defaultMessage:
-      'Shown throughout the family-building phase, so it should describe the whole task rather than one step of it.',
+      'Configure the prompt shown to participants during the family building phase.',
     description: 'Guidance under the census prompt field.',
   },
   censusPlaceholder: {
@@ -337,12 +325,6 @@ export const pedigreeMessages = defineMessages({
     defaultMessage: 'Node type',
     description:
       'Label of the control choosing which node type of the codebook a family member is.',
-  },
-  nodeTypeHint: {
-    id: 'protocolBuilder.pedigree.nodeTypeHint',
-    defaultMessage:
-      'Every family member the participant adds will be a node of this type.',
-    description: 'Guidance under the pedigree’s node type control.',
   },
   dependentStagesTitle: {
     id: 'protocolBuilder.pedigree.dependentStagesTitle',
@@ -418,7 +400,7 @@ export const pedigreeMessages = defineMessages({
   nodeLabelHint: {
     id: 'protocolBuilder.pedigree.nodeLabelHint',
     defaultMessage:
-      'A text attribute holding the name shown on each family member other than the participant, who is drawn without one.',
+      'A text attribute used to store the display label for each family member other than the participant.',
     description: 'Guidance under the display label control.',
   },
   nodeLabelCreateLabel: {
@@ -436,9 +418,9 @@ export const pedigreeMessages = defineMessages({
   nodeEgoHint: {
     id: 'protocolBuilder.pedigree.nodeEgoHint',
     defaultMessage:
-      'A boolean attribute marking which node is the participant. Every completeness check keys off it, so nothing else may write it.',
+      'A boolean attribute used to identify which node represents the participant in the family pedigree.',
     description:
-      'Guidance under the participant identifier control. A completeness check is one of the boundary rules that decide whether the participant may finish the stage.',
+      'Guidance under the participant identifier control. Boolean because the attribute either marks a node as the participant or does not.',
   },
   nodeEgoCreateLabel: {
     id: 'protocolBuilder.pedigree.nodeEgoCreateLabel',
@@ -455,7 +437,7 @@ export const pedigreeMessages = defineMessages({
   nodeRelationshipHint: {
     id: 'protocolBuilder.pedigree.nodeRelationshipHint',
     defaultMessage:
-      "A text attribute holding each person's relationship to the participant, such as mother, uncle, or daughter. The pedigree works this out from the family tree.",
+      "Stores each person's relationship to the participant, such as mother, uncle, or daughter. The family pedigree interface calculates this value automatically.",
     description:
       'Guidance under the relationship-to-participant control. The three examples are kinship terms and should be replaced with natural ones in your language.',
   },
@@ -474,9 +456,9 @@ export const pedigreeMessages = defineMessages({
   nodeBiologicalSexHint: {
     id: 'protocolBuilder.pedigree.nodeBiologicalSexHint',
     defaultMessage:
-      "A categorical attribute holding each family member's sex recorded at birth, which the pedigree traces sex-linked inheritance through. Its values are fixed by the interface.",
+      "Stores each family member's sex recorded at birth for sex-linked inheritance.",
     description:
-      'Guidance under the biological sex control. "Its values are fixed by the interface" means the researcher may not edit the list of answers this attribute offers, because the genetics engine branches on those exact values.',
+      'Guidance under the biological sex control. Sex-linked inheritance is a condition passed on differently depending on that recorded sex.',
   },
   nodeBiologicalSexCreateLabel: {
     id: 'protocolBuilder.pedigree.nodeBiologicalSexCreateLabel',
@@ -504,12 +486,6 @@ export const pedigreeMessages = defineMessages({
     description:
       'Label of the control choosing which edge type of the codebook a family relationship is.',
   },
-  edgeTypeHint: {
-    id: 'protocolBuilder.pedigree.edgeTypeHint',
-    defaultMessage:
-      'Every relationship the pedigree records — parents, partners and donors alike — is an edge of this one type.',
-    description: 'Guidance under the pedigree’s edge type control.',
-  },
   edgeRelationshipTypeLabel: {
     id: 'protocolBuilder.pedigree.edgeRelationshipTypeLabel',
     defaultMessage: 'Relationship type',
@@ -519,9 +495,9 @@ export const pedigreeMessages = defineMessages({
   edgeRelationshipTypeHint: {
     id: 'protocolBuilder.pedigree.edgeRelationshipTypeHint',
     defaultMessage:
-      'A categorical attribute holding what kind of relationship each edge is — biological, social, donor, surrogate, adoptive or partner. Its values are fixed by the interface.',
+      'Stores the relationship category between family members, such as biological, social, donor, surrogate, adoptive, or partner.',
     description:
-      'Guidance under the relationship type control. The six words are the kinds of relationship a pedigree can record. "Its values are fixed by the interface" means the researcher may not edit the answers this attribute offers.',
+      'Guidance under the relationship type control. The six words are the kinds of relationship a pedigree can record.',
   },
   edgeRelationshipTypeCreateLabel: {
     id: 'protocolBuilder.pedigree.edgeRelationshipTypeCreateLabel',
@@ -538,7 +514,7 @@ export const pedigreeMessages = defineMessages({
   edgeIsActiveHint: {
     id: 'protocolBuilder.pedigree.edgeIsActiveHint',
     defaultMessage:
-      'A boolean attribute recording whether the relationship is a current one.',
+      'A boolean attribute indicating whether the relationship is currently active.',
     description: 'Guidance under the active status control.',
   },
   edgeIsActiveCreateLabel: {
@@ -556,7 +532,7 @@ export const pedigreeMessages = defineMessages({
   edgeGestationalCarrierHint: {
     id: 'protocolBuilder.pedigree.edgeGestationalCarrierHint',
     defaultMessage:
-      'A boolean attribute recording who carried each pregnancy. It is only written on parent relationships.',
+      'A boolean attribute indicating whether a parent is a gestational carrier. Used only for parent relationships.',
     description: 'Guidance under the gestational carrier control.',
   },
   edgeGestationalCarrierCreateLabel: {
@@ -574,9 +550,9 @@ export const pedigreeMessages = defineMessages({
   edgeGameteRoleHint: {
     id: 'protocolBuilder.pedigree.edgeGameteRoleHint',
     defaultMessage:
-      'A categorical attribute recording whether a parent contributed the egg or the sperm, which the pedigree traces biological inheritance through. Its values are fixed by the interface.',
+      'Stores whether a parent contributed the egg or sperm. The interface uses this fixed value set to trace biological inheritance.',
     description:
-      'Guidance under the gamete role control. "Its values are fixed by the interface" means the researcher may not edit the answers this attribute offers.',
+      'Guidance under the gamete role control. The fixed value set is the list of answers this attribute offers, which the researcher may not edit because the genetics engine branches on those exact values.',
   },
   edgeGameteRoleCreateLabel: {
     id: 'protocolBuilder.pedigree.edgeGameteRoleCreateLabel',
@@ -595,7 +571,7 @@ export const pedigreeMessages = defineMessages({
   nominationDescription: {
     id: 'protocolBuilder.pedigree.nominationDescription',
     defaultMessage:
-      'Optionally ask the participant to mark family members who share a condition or trait.',
+      'Optionally collect a specific condition or trait in a boolean attribute for each family member.',
     description:
       'Description of the nomination prompts section. Optional because a pedigree that only draws the family is a complete pedigree.',
   },
@@ -608,15 +584,9 @@ export const pedigreeMessages = defineMessages({
   },
   nominationFieldLabel: {
     id: 'protocolBuilder.pedigree.nominationFieldLabel',
-    defaultMessage: 'Nomination prompts',
+    defaultMessage: 'Prompts',
     description:
-      'Label of the list of nomination prompts. The same words as the section heading, and translated once for each: the heading names the part of the stage, and this names the control.',
-  },
-  nominationFieldHint: {
-    id: 'protocolBuilder.pedigree.nominationFieldHint',
-    defaultMessage:
-      'The participant answers each of these across the whole family, in this order. Drag to reorder them.',
-    description: 'Guidance under the list of nomination prompts.',
+      'Label of the list of nomination prompts. A nomination prompt asks the participant which family members a question applies to.',
   },
   nominationAddLabel: {
     id: 'protocolBuilder.pedigree.nominationAddLabel',
@@ -682,7 +652,7 @@ export const pedigreeMessages = defineMessages({
   },
   nominationVariableHint: {
     id: 'protocolBuilder.pedigree.nominationVariableHint',
-    defaultMessage: 'The boolean attribute each answer is recorded in.',
+    defaultMessage: 'Select the boolean attribute this prompt will update.',
     description:
       'Guidance under a nomination prompt’s attribute control. Boolean because the participant either marks a family member or does not.',
   },

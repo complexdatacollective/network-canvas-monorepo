@@ -21,6 +21,7 @@ import Section from '@codaco/fresco-ui/Section';
 import type { Asset } from '@codaco/protocol-validation';
 
 import AssetPickerField from '../../fields/AssetPickerField.tsx';
+import { FilterRuleSetField } from '../../fields/RuleSetField.tsx';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import {
   RowDialog,
@@ -48,7 +49,6 @@ import {
   type RuleSetValue,
   type RuleSetVariant,
 } from '../../rules/ruleSet.ts';
-import { FilterRuleSetField } from '../../rules/RuleSetField.tsx';
 import { useProtocolContext } from '../../state/protocolContext.ts';
 import { useRowValue } from '../AttributeCodebookControls.tsx';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';

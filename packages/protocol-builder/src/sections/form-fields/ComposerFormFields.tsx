@@ -32,6 +32,9 @@ import {
   hasUnvalidatedUse,
 } from '../../codebook/variableRoles.ts';
 import { unvalidatedElsewhereMessage } from '../../codebook/variableValidation.ts';
+import ComposerParametersField, {
+  type ComposerParameters,
+} from '../../fields/ComposerParametersField.tsx';
 import VariablePickerField from '../../fields/VariablePickerField.tsx';
 import { withoutAbsentValues } from '../../form/absentValues.ts';
 import { crossClassPickIssue } from '../../form/arrayFields/crossClassPick.ts';
@@ -67,9 +70,6 @@ import {
 import { asText } from '../canvas/rowValues.ts';
 import { controlsForType } from '../collectableTypes.ts';
 import { composerFormFieldMessages as messages } from './composerFormFieldMessages.ts';
-import ComposerParametersField, {
-  type ComposerParameters,
-} from './ComposerParametersField.tsx';
 import FieldPreviewPane from './FieldPreviewPane.tsx';
 
 const VARIABLE_FIELD = 'variable';
