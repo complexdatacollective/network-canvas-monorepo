@@ -25,6 +25,14 @@ export default defineConfig({
       'scripts/*/**/*.test.mjs',
       '.agents/skills/**/scripts/*.test.mjs',
     ],
+    // These two suites deliberately use node:test because they exercise the
+    // collector in child processes and against a disposable NATS server. The
+    // Vitest-owned observability wrapper below invokes both through Node's
+    // runner, so exclude their source files from Vitest discovery itself.
+    exclude: [
+      'scripts/studio/studio-managed-log-collector.test.mjs',
+      'scripts/studio/studio-managed-log-collector-image.test.mjs',
+    ],
     // These suites spawn processes, servers and browsers rather than
     // exercising functions in-process: the dead-link checker drives a real
     // Chrome, the release guards shell out to git. Vitest's 5s default is for
