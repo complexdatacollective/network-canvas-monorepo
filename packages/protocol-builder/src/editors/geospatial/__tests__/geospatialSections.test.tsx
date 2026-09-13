@@ -637,13 +637,11 @@ describe('the places a geospatial stage asks about', () => {
       dialog.getByRole('textbox', { name: 'Prompt text' }),
       'Work?',
     );
-    await waitFor(() =>
-      expect(offeredAttributes(dialog)).toEqual(['workplace']),
-    );
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Location attribute' }),
+    const picker = attributeField('Location attribute');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([
       'workplace',
-    );
+    ]);
+    await chooseAttributeById(harness.user, picker, 'workplace');
 
     // Somebody else's form field, arriving after the pick was made. The
     // picker takes the attribute off its own list as the revision arrives,
@@ -693,9 +691,11 @@ describe('the places a geospatial stage asks about', () => {
     addLocationAttribute(harness, 'workplace');
 
     const dialog = await openPrompt(harness, 'Edit prompt');
-    await waitFor(() =>
-      expect(offeredAttributes(dialog)).toEqual(['location', 'workplace']),
-    );
+    const picker = attributeField('Location attribute');
+    expect(await offeredAttributes(harness.user, picker)).toEqual([
+      'location',
+      'workplace',
+    ]);
 
     // The form starts collecting BOTH: the free attribute leaving the picker
     // is how this test knows the revision arrived, and the prompt's own
@@ -715,9 +715,7 @@ describe('the places a geospatial stage asks about', () => {
         ],
       },
     }));
-    await waitFor(() =>
-      expect(offeredAttributes(dialog)).toEqual(['location']),
-    );
+    expect(await offeredAttributes(harness.user, picker)).toEqual(['location']);
 
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 

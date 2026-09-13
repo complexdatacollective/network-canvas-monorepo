@@ -22,4 +22,9 @@ Canvas, pedigree and anonymisation fixes in the stage editors:
   so the view is framed on what the participant will see.
 - Each node type in the Anonymisation stage now has its own switch, and
   switching one off stops encrypting every attribute of that type at once,
-  after confirming.
+  after confirming. An editor that loses its lock while that confirmation is on
+  screen no longer carries the change out.
+- The Anonymisation stage's two remaining sentences are Architect's own again:
+  the section says values for encrypted attributes are not stored in the
+  database, and a type's switch says it enables encryption for attributes
+  belonging to that node type.
