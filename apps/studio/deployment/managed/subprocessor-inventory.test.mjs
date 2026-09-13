@@ -430,6 +430,28 @@ for (const [file, pattern, replacement] of [
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /regions.*US candidate/);
   });
+for (const [service, field, value] of [
+  ['collector', 'region', 'cdg'],
+  ['anchor', 'region', 'eu-west-1'],
+  ['collector', 'provider', 'unreviewed-provider'],
+  ['anchor', 'provider', 'unreviewed-provider'],
+  ['collector', 'region', undefined],
+  ['anchor', 'region', undefined],
+])
+  test(`refuses an approved monitoring placement change: ${service}.${field}=${value}`, async (context) => {
+    const temp = await mkdtemp(join(tmpdir(), 'studio-monitoring-placement-'));
+    context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
+    await copyReviewedEstate(temp);
+    const path = join(temp, 'candidate-sizing.json');
+    const sizing = JSON.parse(await readFile(path, 'utf8'));
+    sizing.monitoring[service][field] = value;
+    await writeFile(path, JSON.stringify(sizing));
+    await approveManifestFile(temp, 'candidate-sizing.json');
+    const result = generateAt(temp);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /monitoring placements/);
+  });
+
 test('generated inventory is current and includes every referenced estate provider', async () => {
   const script = join(directory, 'generate-subprocessor-inventory.mjs');
   const result = spawnSync(process.execPath, [script, '--check'], {
@@ -460,6 +482,19 @@ test('generated inventory is current and includes every referenced estate provid
       inventory.providers.some((provider) => provider.name === name),
       name,
     );
+});
+
+test('reports both validated monitoring placements in the generated inventory', async () => {
+  const inventory = JSON.parse(
+    await readFile(join(directory, 'subprocessor-inventory.json'), 'utf8'),
+  );
+  assert.deepEqual(inventory.configuredEstate.monitoring, {
+    collector: { provider: 'fly', region: 'iad' },
+    anchor: { provider: 'aws', region: 'us-east-1' },
+  });
+  const markdown = await readFile(join(directory, 'SUBPROCESSORS.md'), 'utf8');
+  assert.match(markdown, /monitoring collector `fly\/iad`/);
+  assert.match(markdown, /monitoring anchor `aws\/us-east-1`/);
 });
 
 test('scopes geography claims and preserves unqualified provider geography', async () => {

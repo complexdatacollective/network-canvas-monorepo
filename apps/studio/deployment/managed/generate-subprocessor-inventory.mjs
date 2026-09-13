@@ -376,6 +376,28 @@ if (sizing.region !== 'iad')
     'Managed estate candidate sizing is not the reviewed US candidate.',
   );
 
+// Both monitoring workloads are emitted by outputs.tf independently of the
+// application compute region; their provider and placement need their own gate.
+const monitoringPlacements = {
+  collector: {
+    provider: sizing.monitoring?.collector?.provider,
+    region: sizing.monitoring?.collector?.region,
+  },
+  anchor: {
+    provider: sizing.monitoring?.anchor?.provider,
+    region: sizing.monitoring?.anchor?.region,
+  },
+};
+if (
+  monitoringPlacements.collector.provider !== 'fly' ||
+  monitoringPlacements.collector.region !== 'iad' ||
+  monitoringPlacements.anchor.provider !== 'aws' ||
+  monitoringPlacements.anchor.region !== 'us-east-1'
+)
+  throw new Error(
+    'Managed monitoring placements differ from the reviewed US candidate.',
+  );
+
 const estate = {
   validatedInfrastructure: {
     jurisdiction: source.residency.managedRegion,
@@ -385,6 +407,7 @@ const estate = {
   selfHostingAlternative: source.residency.selfHostingAlternative,
   configuredEstate: {
     computeRegion: sizing.region,
+    monitoring: monitoringPlacements,
     postgresRegion: crunchyRegion,
     primaryObjectJurisdiction,
     recoveryRegion,
@@ -408,7 +431,7 @@ const rows = estate.providers.map(
   (provider) =>
     `| ${provider.name} | ${provider.role} | ${provider.dataCategories.join('; ')} | ${provider.geography ?? 'Provider-wide geography is not qualified by this inventory.'} | ${provider.status} |`,
 );
-const outputMarkdown = `# Managed Studio subprocessor inventory\n\nGenerated from \`subprocessor-estate.json\`, \`candidate-sizing.json\`, the managed Terraform estate, and the reviewed \`estate-config-manifest.json\`. Configuration changes fail closed until the manifest is deliberately reviewed and updated. This is an infrastructure inventory, not legal or contractual qualification.\n\nValidated infrastructure placement jurisdiction: **${estate.validatedInfrastructure.jurisdiction}** for the configured candidate locations below only. Provider-wide geography, including mail delivery, telemetry, CDN, and edge processing, is not qualified by this inventory. ${estate.selfHostingAlternative}\n\nConfigured candidate: compute \`${estate.configuredEstate.computeRegion}\`; PostgreSQL \`${estate.configuredEstate.postgresRegion}\` (${estate.configuredEstate.postgresPlan}, ${estate.configuredEstate.postgresStorageGb} GB); primary R2 jurisdiction \`${estate.configuredEstate.primaryObjectJurisdiction}\`; recovery \`${estate.configuredEstate.recoveryRegion}\`; KMS \`${estate.configuredEstate.kmsRegion}\`. Services: ${estate.configuredEstate.serviceNames.join(', ')}.\n\n| Provider | Role | Data categories | Geography qualification | Estate status |\n| --- | --- | --- | --- | --- |\n${rows.join('\n')}\n\nProvider legal entities, affiliates, retention/deletion, security reports, breach terms, support, and account recovery must be confirmed by the #1260 publication process.\n`;
+const outputMarkdown = `# Managed Studio subprocessor inventory\n\nGenerated from \`subprocessor-estate.json\`, \`candidate-sizing.json\`, the managed Terraform estate, and the reviewed \`estate-config-manifest.json\`. Configuration changes fail closed until the manifest is deliberately reviewed and updated. This is an infrastructure inventory, not legal or contractual qualification.\n\nValidated infrastructure placement jurisdiction: **${estate.validatedInfrastructure.jurisdiction}** for the configured candidate locations below only. Provider-wide geography, including mail delivery, telemetry, CDN, and edge processing, is not qualified by this inventory. ${estate.selfHostingAlternative}\n\nConfigured candidate: compute \`${estate.configuredEstate.computeRegion}\`; PostgreSQL \`${estate.configuredEstate.postgresRegion}\` (${estate.configuredEstate.postgresPlan}, ${estate.configuredEstate.postgresStorageGb} GB); primary R2 jurisdiction \`${estate.configuredEstate.primaryObjectJurisdiction}\`; recovery \`${estate.configuredEstate.recoveryRegion}\`; KMS \`${estate.configuredEstate.kmsRegion}\`; monitoring collector \`${monitoringPlacements.collector.provider}/${monitoringPlacements.collector.region}\`; monitoring anchor \`${monitoringPlacements.anchor.provider}/${monitoringPlacements.anchor.region}\`. Services: ${estate.configuredEstate.serviceNames.join(', ')}.\n\n| Provider | Role | Data categories | Geography qualification | Estate status |\n| --- | --- | --- | --- | --- |\n${rows.join('\n')}\n\nProvider legal entities, affiliates, retention/deletion, security reports, breach terms, support, and account recovery must be confirmed by the #1260 publication process.\n`;
 
 const formattedMarkdown = await formatOutput(
   'SUBPROCESSORS.md',

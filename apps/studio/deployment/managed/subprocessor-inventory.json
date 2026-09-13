@@ -6,6 +6,16 @@
   "selfHostingAlternative": "Self-host the identical Studio artifact in an institution-selected region.",
   "configuredEstate": {
     "computeRegion": "iad",
+    "monitoring": {
+      "collector": {
+        "provider": "fly",
+        "region": "iad"
+      },
+      "anchor": {
+        "provider": "aws",
+        "region": "us-east-1"
+      }
+    },
     "postgresRegion": "us-east-1",
     "primaryObjectJurisdiction": "us",
     "recoveryRegion": "us-west-004",
