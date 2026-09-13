@@ -6,6 +6,7 @@ import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { updateUserLocale } from './account/commands.ts';
 import type { AssetStore } from './assets.ts';
+import type { AuditExportArtifactStore } from './assets.ts';
 import {
   acknowledgeAuditAlert,
   AuditAlertError,
@@ -26,6 +27,11 @@ import {
 } from './audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
 import type { AuditEventInput } from './audit/events.ts';
+import {
+  downloadAuditExport,
+  readAuditExportStatus,
+  requestAuditExport,
+} from './audit/export.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
   authorizeAuditRead,
@@ -52,6 +58,7 @@ import {
   correlateAuthorizedTeam,
   logOperational,
 } from './observability/logger.ts';
+import type { EncryptionKeys } from './pii/keys.ts';
 import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
 import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import {
@@ -361,6 +368,8 @@ export function createRpcRouter(
     pool?: pg.Pool;
     protocolBuilder: ProtocolBuilderRuntime;
     assetStore?: AssetStore;
+    auditExportStore?: AuditExportArtifactStore;
+    encryptionKeys?: EncryptionKeys;
     templateRegistryOrigin?: string;
   },
 ) {
@@ -371,6 +380,8 @@ export function createRpcRouter(
     bootstrapToken,
     pool,
     assetStore,
+    auditExportStore,
+    encryptionKeys,
     templateRegistryOrigin,
   } = deps;
   // Tenancy is checked per request against an explicit teamId in the
@@ -898,6 +909,43 @@ export function createRpcRouter(
         if (!event) throw new ORPCError('NOT_FOUND');
         return renderAuditEventDetail(event);
       }),
+      export: os.audit.export.use(requireTeam).handler(({ context, input }) =>
+        guardAuditRead(context, 'audit.export', () =>
+          requestAuditExport(auditedContextFor(context), {
+            categories: input.categories,
+            eventTypes: input.eventTypes,
+            actor: input.actor,
+            outcomes: input.outcomes,
+            from: input.from,
+            to: input.to,
+          }),
+        ),
+      ),
+      exportStatus: os.audit.exportStatus
+        .use(requireTeam)
+        .handler(({ context, input }) => {
+          if (!encryptionKeys) throw new ORPCError('SERVICE_UNAVAILABLE');
+          return guardAuditRead(context, 'audit.exportStatus', () =>
+            readAuditExportStatus(
+              auditedContextFor(context),
+              input.jobId,
+              encryptionKeys,
+            ),
+          );
+        }),
+      downloadExport: os.audit.downloadExport
+        .use(requireTeam)
+        .handler(({ context, input }) => {
+          if (!auditExportStore) throw new ORPCError('SERVICE_UNAVAILABLE');
+          return guardAuditRead(context, 'audit.downloadExport', () =>
+            downloadAuditExport(
+              auditedContextFor(context),
+              input.jobId,
+              input.handle,
+              auditExportStore,
+            ),
+          );
+        }),
       // The same rows as audit.list through the same read surface, so it takes
       // the same locked-membership authorization inside the read's own
       // transaction, and the same committed, rate-limited denial.

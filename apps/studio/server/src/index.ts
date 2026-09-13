@@ -10,6 +10,7 @@ import {
   type AuditAlertWorker,
 } from './audit/alert-delivery.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
+import { startAuditExportWorker } from './audit/export.ts';
 import { createMailer } from './auth/email.ts';
 import { mountClient } from './client-assets.ts';
 import {
@@ -25,6 +26,7 @@ import { logOperational } from './observability/logger.ts';
 import { createOperationalApp } from './observability/operational-app.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
 import { createObservability } from './observability/runtime.ts';
+import type { OutboxWorker } from './outbox/worker.ts';
 import type { EncryptionKeys } from './pii/keys.ts';
 import {
   DatabaseRuntimeAdmissionError,
@@ -96,9 +98,20 @@ const schemaPool = pool ?? maintenancePool;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 let auditAlertWorker: AuditAlertWorker | undefined;
+let auditExportWorker: OutboxWorker | undefined;
 
 function startDatabaseWorkers(): void {
-  if (env.role === 'web' || !maintenancePool || !env.auth) return;
+  if (env.role === 'web' || !maintenancePool) return;
+  if (assetStore && encryptionKeys) {
+    auditExportWorker ??= startAuditExportWorker({
+      pool: maintenancePool,
+      store: assetStore,
+      keys: encryptionKeys,
+      observer: observability.metrics.observer,
+      reportError: (error) => telemetry?.capture('server_worker', error),
+    });
+  }
+  if (!env.auth) return;
   const emailMailer = env.auth.mailer.kind === 'refuse' ? undefined : mailer;
   auditAlertWorker ??= startAuditAlertWorker({
     pool: maintenancePool,
@@ -255,6 +268,7 @@ stopServing = () => {
   for (const socket of wsServer?.clients ?? []) socket.terminate();
   void invitationDeliveryWorker?.stop();
   void auditAlertWorker?.stop();
+  void auditExportWorker?.stop();
   mailer?.close();
   observability.stop();
 };
@@ -276,6 +290,7 @@ function shutdown() {
   const workersStopped = Promise.all([
     invitationDeliveryWorker?.stop(),
     auditAlertWorker?.stop(),
+    auditExportWorker?.stop(),
   ]);
   mailer?.close();
   const httpClosed = new Promise<void>((resolve, reject) => {

@@ -19,6 +19,7 @@ import {
   createAssetRoutes,
   createAssetStore,
   type AssetStore,
+  type AuditExportArtifactStore,
 } from './assets.ts';
 import { BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES } from './audit/better-auth-policy.ts';
 import { createAuthService } from './auth/create.ts';
@@ -69,6 +70,7 @@ type CreateAppDeps = {
   mailer?: StudioMailer;
   auth?: AuthService;
   assetStore?: AssetStore;
+  auditExportStore?: AuditExportArtifactStore;
   observability?: ReturnType<typeof createObservability>;
   logger?: OperationalLogger;
   /** A supported dispatcher is configured, locally or in a separate worker. */
@@ -97,6 +99,11 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     });
   const assetStore =
     deps.assetStore ?? (env.s3 ? createAssetStore(env.s3) : undefined);
+  const auditExportStore =
+    deps.auditExportStore ??
+    (assetStore && 'putAuditExport' in assetStore
+      ? (assetStore as AssetStore & AuditExportArtifactStore)
+      : undefined);
   const observability =
     deps.observability ??
     createObservability({
@@ -211,6 +218,8 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     pool,
     protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,
+    auditExportStore,
+    encryptionKeys: deps.encryptionKeys,
     templateRegistryOrigin: env.templateRegistryOrigin,
   });
   const captureRpcError = (error: unknown) => {
@@ -243,7 +252,11 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
         ),
       },
     });
-    if (matched) return c.newResponse(response.body, response);
+    if (matched) {
+      const headers = new Headers(response.headers);
+      headers.set('Cache-Control', 'no-store');
+      return c.newResponse(response.body, { ...response, headers });
+    }
     await next();
   });
 

@@ -6,6 +6,21 @@ import type { AuditPolicy } from './policy.ts';
 // any other path. Protocol audit producers are delivered by #1521; lease
 // lifecycle writes are permanently excluded from the audit-log design.
 export const NO_AUDIT_TRANSACTION_POLICIES = {
+  'audit.export.status': {
+    kind: 'none',
+    reason:
+      'Permission-checked read of one actor-bound export job and its encrypted handle.',
+  },
+  'audit.export.consume': {
+    kind: 'none',
+    reason:
+      'Atomically consumes the operational single-use download handle; export creation and completion carry the immutable audit events.',
+  },
+  'audit.export.generate': {
+    kind: 'none',
+    reason:
+      'Maintenance-only bounded page reads below an immutable high-water mark; completion or failure is audited separately.',
+  },
   'audit.alerts.settings': {
     kind: 'none',
     reason:

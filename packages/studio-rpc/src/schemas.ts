@@ -583,6 +583,40 @@ export const AuditGetInputSchema = TeamScopedSchema.extend({
   eventId: z.uuid(),
 });
 
+export const AuditExportInputSchema = AuditListInputSchema.omit({
+  cursor: true,
+  limit: true,
+});
+export const AuditExportOutputSchema = z.discriminatedUnion('deliveryMode', [
+  z.object({
+    deliveryMode: z.literal('direct'),
+    csv: z.string(),
+    rowCount: z.number().int().nonnegative(),
+  }),
+  z.object({
+    deliveryMode: z.literal('staged'),
+    jobId: z.uuid(),
+    status: z.enum(['pending', 'generating']),
+  }),
+]);
+export const AuditExportStatusInputSchema = TeamScopedSchema.extend({
+  jobId: z.uuid(),
+});
+export const AuditExportStatusSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.enum(['pending', 'generating']) }),
+  z.object({ status: z.literal('failed') }),
+  z.object({
+    status: z.literal('ready'),
+    handle: z.string().min(43).max(128),
+    expiresAt: z.date(),
+  }),
+]);
+export const AuditExportDownloadInputSchema = TeamScopedSchema.extend({
+  jobId: z.uuid(),
+  handle: z.string().min(43).max(128),
+});
+export const AuditExportDownloadSchema = z.object({ csv: z.string() });
+
 export const AuditEventDetailSchema = AuditEventSummarySchema.extend({
   teamLabel: z.string(),
   requestId: z.uuid(),

@@ -6,6 +6,12 @@ export type AuditPolicy =
 // Every currently exposed meaningful domain mutation is required. Lease-only
 // coordination remains excluded by the audit design.
 export const RPC_MUTATION_AUDIT_POLICIES = {
+  'audit.export': { kind: 'required' },
+  'audit.downloadExport': {
+    kind: 'none',
+    reason:
+      'Consumes an actor-bound operational single-use handle after the export completion event committed.',
+  },
   'audit.alerts.updateSettings': { kind: 'required' },
   'audit.alerts.acknowledge': { kind: 'required' },
   'audit.alerts.markRead': {

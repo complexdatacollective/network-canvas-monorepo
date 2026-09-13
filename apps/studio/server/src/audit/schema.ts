@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  bytea,
   check,
   foreignKey,
   index,
@@ -201,6 +202,9 @@ const auditExportJobs = pgTable(
     // sha256 hex of a 256-bit CSPRNG handle. The handle itself is returned
     // once, in the response that announces readiness, and never stored.
     handleHash: text('handle_hash'),
+    handleCiphertext: bytea('handle_ciphertext'),
+    handleKeyId: text('handle_key_id'),
+    handleAlgorithm: text('handle_algorithm'),
     handleExpiresAt: timestamp('handle_expires_at', { withTimezone: true }),
     handleConsumedAt: timestamp('handle_consumed_at', { withTimezone: true }),
     completionEventId: uuid('completion_event_id'),
@@ -249,6 +253,14 @@ const auditExportJobs = pgTable(
       'audit_export_jobs_handle_hash_format_check',
       sql`${table.handleHash} IS NULL OR ${table.handleHash} ~ '^[0-9a-f]{64}$'`,
     ),
+    check(
+      'audit_export_jobs_handle_envelope_check',
+      sql`(${table.handleCiphertext} IS NULL) = (${table.handleKeyId} IS NULL)
+          AND (${table.handleCiphertext} IS NULL) = (${table.handleAlgorithm} IS NULL)
+          AND (${table.handleCiphertext} IS NULL OR octet_length(${table.handleCiphertext}) BETWEEN 30 AND 512)
+          AND (${table.handleKeyId} IS NULL OR char_length(${table.handleKeyId}) BETWEEN 1 AND 64)
+          AND (${table.handleAlgorithm} IS NULL OR char_length(${table.handleAlgorithm}) BETWEEN 1 AND 64)`,
+    ),
     // Readiness is all-or-nothing: no handle, no artifact coordinates, and
     // no completion event may exist unless the job is ready, and a ready job
     // must carry every one of them. This is the database half of "no handle
@@ -257,6 +269,9 @@ const auditExportJobs = pgTable(
       'audit_export_jobs_ready_state_check',
       sql`(${table.status} = 'ready') = (
             ${table.handleHash} IS NOT NULL
+            AND ${table.handleCiphertext} IS NOT NULL
+            AND ${table.handleKeyId} IS NOT NULL
+            AND ${table.handleAlgorithm} IS NOT NULL
             AND ${table.handleExpiresAt} IS NOT NULL
             AND ${table.artifactKey} IS NOT NULL
             AND ${table.artifactRowCount} IS NOT NULL
@@ -473,6 +488,9 @@ CREATE OR REPLACE TRIGGER audit_export_handle_single_use
   WHEN (
     (OLD.handle_consumed_at IS NOT NULL AND NEW.handle_consumed_at IS DISTINCT FROM OLD.handle_consumed_at)
     OR (OLD.handle_hash IS NOT NULL AND NEW.handle_hash IS DISTINCT FROM OLD.handle_hash)
+    OR (OLD.handle_ciphertext IS NOT NULL AND NEW.handle_ciphertext IS DISTINCT FROM OLD.handle_ciphertext)
+    OR (OLD.handle_key_id IS NOT NULL AND NEW.handle_key_id IS DISTINCT FROM OLD.handle_key_id)
+    OR (OLD.handle_algorithm IS NOT NULL AND NEW.handle_algorithm IS DISTINCT FROM OLD.handle_algorithm)
   )
   EXECUTE FUNCTION audit_export_handle_is_single_use();
 

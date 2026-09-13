@@ -49,9 +49,12 @@ type EventIdentity = {
   event_version: number;
 };
 
-/** The seven columns a ready job must carry, all or none. */
+/** Every column a ready job must carry, all or none. */
 const READY_COLUMNS = [
   'handle_hash',
+  'handle_ciphertext',
+  'handle_key_id',
+  'handle_algorithm',
   'handle_expires_at',
   'artifact_key',
   'artifact_row_count',
@@ -99,6 +102,9 @@ describe.skipIf(!db)('audit outbox schema', () => {
   const readyPayload = (): Row => ({
     status: 'ready',
     handle_hash: hex64(),
+    handle_ciphertext: randomBytes(61),
+    handle_key_id: 'integration-v1',
+    handle_algorithm: 'aes-256-gcm.v1',
     handle_expires_at: new Date(),
     artifact_key: `exports/${randomUUID()}.csv`,
     artifact_row_count: 10,
@@ -213,7 +219,12 @@ describe.skipIf(!db)('audit outbox schema', () => {
         await expect(
           insert('audit_export_jobs', jobRow(partial)),
         ).rejects.toMatchObject({
-          constraint: 'audit_export_jobs_ready_state_check',
+          constraint:
+            column.startsWith('handle_') &&
+            column !== 'handle_hash' &&
+            column !== 'handle_expires_at'
+              ? 'audit_export_jobs_handle_envelope_check'
+              : 'audit_export_jobs_ready_state_check',
         });
       },
     );
@@ -420,11 +431,13 @@ describe.skipIf(!db)('audit outbox schema', () => {
         `UPDATE audit_export_jobs
          SET status = 'ready', lease_owner = NULL, lease_expires_at = NULL,
              handle_hash = $2, handle_expires_at = now() + interval '1 hour',
+             handle_ciphertext = $5, handle_key_id = 'integration-v1',
+             handle_algorithm = 'aes-256-gcm.v1',
              artifact_key = $3, artifact_row_count = 10,
              artifact_byte_count = 2048, completion_event_id = $4,
              ready_at = now()
          WHERE id = $1`,
-        [id, hex64(), `exports/${id}.csv`, randomUUID()],
+        [id, hex64(), `exports/${id}.csv`, randomUUID(), randomBytes(61)],
       );
       expect(completed.rowCount).toBe(1);
     });

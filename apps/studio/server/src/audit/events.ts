@@ -224,6 +224,9 @@ const AuditReadDeniedV1EventSchema = CommonUserEventSchema.extend({
       'audit.list',
       'audit.get',
       'audit.filterOptions',
+      'audit.export',
+      'audit.exportStatus',
+      'audit.downloadExport',
       'audit.alerts.settings',
       'audit.alerts.updateSettings',
       'audit.alerts.list',
@@ -489,9 +492,60 @@ const AuditAlertAcknowledgedSchema = CommonUserEventSchema.extend({
     disposition: z.literal('uncertainty_acknowledged_no_resend'),
   }),
 });
+const AuditExportUserEventSchema = CommonUserEventSchema.extend({
+  eventVersion: z.literal(1),
+  category: z.literal('audit'),
+  subjectType: z.literal('audit_export'),
+  subjectId: z.uuid(),
+  subjectLabel: z.null(),
+  resourceType: z.null(),
+  resourceId: z.null(),
+  resourceLabel: z.null(),
+});
+const AuditExportStartedSchema = AuditExportUserEventSchema.extend({
+  eventType: z.literal('audit.export.started'),
+  outcome: z.literal('succeeded'),
+  details: z.strictObject({
+    deliveryMode: z.enum(['direct', 'staged']),
+    highWaterSequence: DecimalSequenceSchema,
+    rowLimit: z.number().int().positive(),
+    byteLimit: z.number().int().positive(),
+  }),
+}).strict();
+const AuditExportSystemEventSchema = AuditExportUserEventSchema.omit({
+  actorKind: true,
+  actorId: true,
+  actorLabel: true,
+}).extend({
+  actorKind: z.literal('system'),
+  actorId: z.null(),
+  actorLabel: z.literal('Audit export'),
+});
+const AuditExportCompletedSchema = AuditExportSystemEventSchema.extend({
+  eventType: z.literal('audit.export.completed'),
+  outcome: z.literal('succeeded'),
+  details: z.strictObject({
+    startEventId: z.uuid(),
+    requestedByActorId: IdentifierSchema,
+    rowCount: z.number().int().nonnegative(),
+    byteCount: z.number().int().nonnegative(),
+  }),
+}).strict();
+const AuditExportFailedSchema = AuditExportSystemEventSchema.extend({
+  eventType: z.literal('audit.export.failed'),
+  outcome: z.literal('succeeded'),
+  details: z.strictObject({
+    startEventId: z.uuid(),
+    requestedByActorId: IdentifierSchema,
+    failureCode: z.enum(['artifact_generation_failed', 'limit_exceeded']),
+  }),
+}).strict();
 export const AuditEventInputSchema = z.union([
   AuditAlertSettingsUpdatedSchema,
   AuditAlertAcknowledgedSchema,
+  AuditExportStartedSchema,
+  AuditExportCompletedSchema,
+  AuditExportFailedSchema,
   AuditReadDeniedV1EventSchema,
   TeamCreatedV1EventSchema,
   TeamMemberRoleChangedV1EventSchema,
@@ -629,6 +683,99 @@ const FIXTURE_WEBHOOK_COMMON = {
 } as const;
 
 export const AUDIT_EVENT_REGISTRY = {
+  'audit.export.started@1': {
+    inputSchema: AuditExportStartedSchema,
+    title: 'Activity export started',
+    detailFields: [
+      'deliveryMode',
+      'highWaterSequence',
+      'rowLimit',
+      'byteLimit',
+    ],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      eventVersion: 1,
+      eventType: 'audit.export.started',
+      category: 'audit',
+      outcome: 'succeeded',
+      subjectType: 'audit_export',
+      subjectId: '00000000-0000-4000-8000-000000000003',
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: {
+        deliveryMode: 'staged',
+        highWaterSequence: '41',
+        rowLimit: 100_000,
+        byteLimit: 104_857_600,
+      },
+    },
+  },
+  'audit.export.completed@1': {
+    inputSchema: AuditExportCompletedSchema,
+    title: 'Activity export completed',
+    detailFields: [
+      'startEventId',
+      'requestedByActorId',
+      'rowCount',
+      'byteCount',
+    ],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Audit export',
+      eventVersion: 1,
+      eventType: 'audit.export.completed',
+      category: 'audit',
+      outcome: 'succeeded',
+      subjectType: 'audit_export',
+      subjectId: '00000000-0000-4000-8000-000000000003',
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: {
+        startEventId: '00000000-0000-4000-8000-000000000004',
+        requestedByActorId: 'fixture-user',
+        rowCount: 41,
+        byteCount: 4096,
+      },
+    },
+  },
+  'audit.export.failed@1': {
+    inputSchema: AuditExportFailedSchema,
+    title: 'Activity export failed',
+    detailFields: ['startEventId', 'requestedByActorId', 'failureCode'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_USER_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Audit export',
+      eventVersion: 1,
+      eventType: 'audit.export.failed',
+      category: 'audit',
+      outcome: 'succeeded',
+      subjectType: 'audit_export',
+      subjectId: '00000000-0000-4000-8000-000000000003',
+      subjectLabel: null,
+      resourceType: null,
+      resourceId: null,
+      resourceLabel: null,
+      details: {
+        startEventId: '00000000-0000-4000-8000-000000000004',
+        requestedByActorId: 'fixture-user',
+        failureCode: 'artifact_generation_failed',
+      },
+    },
+  },
   'audit.alert_settings.updated@1': {
     inputSchema: AuditAlertSettingsUpdatedSchema,
     title: 'Activity alert recipients updated',

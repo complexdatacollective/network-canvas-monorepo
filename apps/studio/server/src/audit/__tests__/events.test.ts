@@ -21,6 +21,9 @@ describe('audit event registry', () => {
     expect(Object.keys(AUDIT_EVENT_REGISTRY).toSorted()).toEqual([
       'audit.alert_delivery.acknowledged@1',
       'audit.alert_settings.updated@1',
+      'audit.export.completed@1',
+      'audit.export.failed@1',
+      'audit.export.started@1',
       'audit.read_denied@1',
       'participant.pii.denied@1',
       'participant.pii.lookup@1',

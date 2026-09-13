@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0013_audit_export_handles",
+  "previous": "0012_registry_template_exchange",
+  "fingerprint": "1db377c73d7116dbaf9a56bc0785f815ba38a4ef6b773c948164e7562bdead66",
+  "snapshotHash": "d322789880913ab27c583e083d737f79a8fb520e4c78b7e4ae136620c220e545",
+  "sqlHash": "a504f3f36489d824f45fd36c7ae11f69e29ef6bef33e6522c74ee7de61cc269d",
+  "sidecarsHash": "2640867908aa79fb52aae23938fb4738c5e4995a05cf20045b4a49058a15c298"
+}
