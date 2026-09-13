@@ -20,3 +20,60 @@ export async function admitRegistryRate(
   if (!result.rowCount)
     throw new RegistryError('RATE_LIMITED', { retry_after_seconds: seconds });
 }
+
+export const REGISTRY_SEARCH_ADMISSION_SCOPE =
+  'template-registry/public-search/v1';
+
+/**
+ * One scan per replica and a small database-wide slot set prevent anonymous
+ * search from occupying every connection used by readiness and account reads.
+ */
+export class RegistrySharedSearchAdmission {
+  readonly #pool: pg.Pool;
+  #active = false;
+
+  constructor(pool: pg.Pool) {
+    this.#pool = pool;
+  }
+
+  async run<T>(work: (client: pg.PoolClient) => Promise<T>): Promise<T> {
+    if (this.#active)
+      throw new RegistryError('RATE_LIMITED', { retry_after_seconds: 1 });
+    this.#active = true;
+    let client: pg.PoolClient | undefined;
+    let slot: number | undefined;
+    let discard = false;
+    try {
+      client = await this.#pool.connect();
+      for (const candidate of [0, 1]) {
+        const acquired = await client.query<{ acquired: boolean }>(
+          'SELECT pg_try_advisory_lock(hashtext($1), $2) AS acquired',
+          [REGISTRY_SEARCH_ADMISSION_SCOPE, candidate],
+        );
+        if (acquired.rows[0]?.acquired) {
+          slot = candidate;
+          break;
+        }
+      }
+      if (slot === undefined)
+        throw new RegistryError('RATE_LIMITED', { retry_after_seconds: 1 });
+      return await work(client);
+    } finally {
+      if (client) {
+        if (slot !== undefined) {
+          try {
+            const unlocked = await client.query<{ unlocked: boolean }>(
+              'SELECT pg_advisory_unlock(hashtext($1), $2) AS unlocked',
+              [REGISTRY_SEARCH_ADMISSION_SCOPE, slot],
+            );
+            discard = unlocked.rows[0]?.unlocked !== true;
+          } catch {
+            discard = true;
+          }
+        }
+        client.release(discard);
+      }
+      this.#active = false;
+    }
+  }
+}

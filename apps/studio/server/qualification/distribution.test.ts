@@ -262,13 +262,19 @@ printf '%s\\n' \\
     );
   });
 
-  it('requires real TCP and UDP egress controls from the browser namespace', () => {
-    const logs = `${TELEMETRY_KERNEL_EGRESS_MARKER} {"protocol":"tcp"}\n${TELEMETRY_KERNEL_EGRESS_MARKER} {"protocol":"udp"}\n`;
-    expect(() => assertKernelTelemetryEgressProtocols(logs)).not.toThrow();
+  it('requires real TCP and UDP egress controls at the exact detector endpoint', () => {
+    const endpoint = { destination: '192.0.2.1', port: 9443 };
+    const tcp = `${TELEMETRY_KERNEL_EGRESS_MARKER} ${JSON.stringify({ protocol: 'tcp', ...endpoint })}`;
+    const udp = `${TELEMETRY_KERNEL_EGRESS_MARKER} ${JSON.stringify({ protocol: 'udp', ...endpoint })}`;
     expect(() =>
-      assertKernelTelemetryEgressProtocols(
-        logs.replace('"protocol":"udp"', '"protocol":"missing"'),
-      ),
+      assertKernelTelemetryEgressProtocols(`${tcp}\n${udp}\n`, endpoint),
+    ).not.toThrow();
+    expect(() =>
+      assertKernelTelemetryEgressProtocols(`${tcp}\n`, endpoint),
+    ).toThrow('udp egress');
+    const mdns = `${TELEMETRY_KERNEL_EGRESS_MARKER} {"protocol":"udp","destination":"224.0.0.251","port":5353}`;
+    expect(() =>
+      assertKernelTelemetryEgressProtocols(`${tcp}\n${mdns}\n`, endpoint),
     ).toThrow('udp egress');
   });
   it('fails closed for a wrong-off mutant after a singular positive canary', () => {

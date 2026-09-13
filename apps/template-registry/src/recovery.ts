@@ -29,6 +29,9 @@ type Artifact = {
   template: unknown;
   metadata: unknown;
   license: unknown;
+  deleted: boolean;
+  deletion_requested: boolean;
+  deletion_completed: boolean;
 };
 
 type RecoveredUser = { id: string; email: string; email_verified: boolean };
@@ -73,21 +76,37 @@ export async function verifyRegistryRecoveryArtifacts(
     client,
     backup,
     `SELECT artifact.root, artifact.raw_hash, artifact.byte_size,
-      content.template, content.metadata, content.license
+      content.template, content.metadata, content.license,
+      artifact.deleted_at IS NOT NULL AS deleted,
+      deletion.root IS NOT NULL AS deletion_requested,
+      deletion.completed_at IS NOT NULL AS deletion_completed
     FROM registry_artifacts artifact
     LEFT JOIN registry_artifact_content content ON content.root = artifact.root
-    WHERE artifact.deleted_at IS NULL AND ($1::text IS NULL OR artifact.root > $1)
+    LEFT JOIN registry_delete_jobs deletion ON deletion.root = artifact.root
+    WHERE ($1::text IS NULL OR artifact.root > $1)
     ORDER BY artifact.root LIMIT $2`,
     'root',
   )) {
     for (const row of artifacts) {
+      const bytes = await blobs.get(row.raw_hash);
+      if (row.deleted) {
+        if (
+          !row.deletion_requested ||
+          (row.deletion_completed && bytes !== null) ||
+          row.template !== null ||
+          row.metadata !== null ||
+          row.license !== null
+        )
+          throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
+        await keepRecoveryTransactionsAlive(client, backup);
+        continue;
+      }
       if (
         row.template === null ||
         row.metadata === null ||
         row.license === null
       )
         throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
-      const bytes = await blobs.get(row.raw_hash);
       if (!bytes || bytes.byteLength !== row.byte_size)
         throw new Error('REGISTRY_RECOVERY_ARTIFACT_INVALID');
       const artifact = await readTemplateArtifact(bytes).catch(() => {
@@ -220,17 +239,21 @@ export async function reconcileRegistryRecovery({
     for await (const publishers of recoveryPages<{
       id: string;
       user_id: string;
+      name: string;
+      orcid: string | null;
       suspended: boolean;
     }>(
       client,
       backup,
-      'SELECT id, user_id, suspended_at IS NOT NULL AS suspended FROM registry_publishers WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
+      'SELECT id, user_id, name, orcid, suspended_at IS NOT NULL AS suspended FROM registry_publishers WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
       'id',
     )) {
       for (const publisher of publishers)
         publishersInventory.add({
           id: publisher.id,
           userId: publisher.user_id,
+          name: publisher.name,
+          orcid: publisher.orcid,
           suspended: publisher.suspended,
         });
     }

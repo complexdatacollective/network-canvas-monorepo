@@ -10,6 +10,8 @@ import {
   parseBoundedJson,
   templateBytesHash,
 } from '@codaco/studio-sync/template-exchange';
+import { OrcidSchema } from '@codaco/studio-sync/template-metadata';
+import { RegistryPublisherNameSchema } from '@codaco/studio-sync/template-registry-contract';
 
 const userId = z
   .string()
@@ -45,6 +47,8 @@ const inventoryRows = {
   publishers: z.strictObject({
     id: canonicalUuid,
     userId,
+    name: RegistryPublisherNameSchema,
+    orcid: OrcidSchema.nullable(),
     suspended: z.boolean(),
   }),
   operators: z.strictObject({ userId }),
@@ -153,7 +157,7 @@ export function createRegistryRecoveryInventory<
 
 const reconciliationSchema = z.strictObject({
   format: z.literal('template-registry-recovery-reconciliation'),
-  version: z.literal(3),
+  version: z.literal(4),
   inventories: z.strictObject({
     users: inventory,
     publishers: inventory,

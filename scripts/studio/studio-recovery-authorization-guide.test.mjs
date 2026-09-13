@@ -147,7 +147,7 @@ test('recovery reopening enables enrolled writers and recloses failed smoke chec
   const smoke = join(root, 'smoke');
   writeFileSync(
     guard,
-    `#!/bin/sh\nset -eu\n${close}\n${reopen}\nreopen_recovered_studio "$@"\n`,
+    `#!/bin/sh\nset -eu\n${close}\n${reopen}\nreopen_recovered_studio "$@"\nprintf 'caller:%s\\n' "$COMPOSE_FILE" >> "$ROLE_TRACE"\n`,
   );
   writeFileSync(
     docker,
@@ -215,5 +215,11 @@ esac
       mode,
     );
   }
-  assert.equal(readFileSync(trace, 'utf8').trim().split('\n').length, 4);
+  const entries = readFileSync(trace, 'utf8').trim().split('\n');
+  assert.equal(entries.length, 5);
+  assert(
+    entries.includes(
+      'caller:docker-compose.yml:deployment/encryption.yml:deployment/recovery-images.yml',
+    ),
+  );
 });
