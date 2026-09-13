@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
+import type { InferContractRouterOutputs } from '@orpc/contract';
 import type pg from 'pg';
 
+import type { contract } from '@codaco/studio-rpc';
 import { manifestHash, type SectionDoc } from '@codaco/studio-sync/apply';
 import {
   createTemplateArtifact,
@@ -63,6 +65,12 @@ export type RegistryConfig = {
   client?: TemplateRegistryClient;
 };
 
+// Reconciliation must remain active when an operator removes Registry/storage configuration.
+type ReconciliationConfig = Omit<RegistryConfig, 'origin' | 'assetStore'> & {
+  origin?: string;
+  assetStore?: AssetStore;
+};
+
 type Publisher = { id: string; name: string; orcid: string | null };
 type RegistryEntryIdentity = Pick<
   RegistryEntry,
@@ -90,7 +98,9 @@ function registryEntryIdentity(entry: RegistryEntry): RegistryEntryIdentity {
   };
 }
 
-function clientFor(config: RegistryConfig): TemplateRegistryClient {
+function clientFor(
+  config: Pick<RegistryConfig, 'origin' | 'client'>,
+): TemplateRegistryClient {
   return config.client ?? new TemplateRegistryClient({ origin: config.origin });
 }
 
@@ -449,7 +459,22 @@ export async function listTemplateVersions(context: AuditedCommandContext) {
       ORDER BY v.published_at DESC, v.id`,
     [context.tenantDb.teamId],
   );
-  return result.rows;
+  type Summary = InferContractRouterOutputs<
+    typeof contract
+  >['templates']['list'][number];
+  const rows: (Omit<Summary, 'publications'> & {
+    publications: (Omit<Publication, 'publishedAt'> & {
+      publishedAt: string;
+    })[];
+  })[] = result.rows;
+  return rows.map((row) => ({
+    ...row,
+    // PostgreSQL decodes top-level timestamptz into Date, but JSON aggregates into strings.
+    publications: row.publications.map((publication) => ({
+      ...publication,
+      publishedAt: new Date(publication.publishedAt),
+    })),
+  }));
 }
 
 async function finalizePublicationIntent(
@@ -1176,7 +1201,7 @@ export async function importRegistryTemplate(
 async function quarantineRegistryIntent(
   pool: pg.Pool,
   claim: ClaimedTemplateRegistryIntent,
-  reason: 'publication_rejected' | 'registry_changed',
+  reason: 'publication_rejected' | 'registry_changed' | 'resource_unavailable',
 ): Promise<void> {
   const table =
     claim.kind === 'publication'
@@ -1222,11 +1247,19 @@ async function quarantineRegistryIntent(
 }
 
 export async function reconcileClaimedTemplateRegistryIntent(
-  config: RegistryConfig,
+  config: ReconciliationConfig,
   claim: ClaimedTemplateRegistryIntent,
 ): Promise<'completed' | 'deferred' | 'quarantined'> {
   if (!config.maintenancePool)
     throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');
+  if (!config.origin) {
+    await quarantineRegistryIntent(
+      config.maintenancePool,
+      claim,
+      'registry_changed',
+    );
+    return 'quarantined';
+  }
   if (claim.kind === 'publication') {
     const found = await config.maintenancePool.query<{
       registry_root: string;
@@ -1250,7 +1283,10 @@ export async function reconcileClaimedTemplateRegistryIntent(
       );
       return 'quarantined';
     }
-    const registry = clientFor(config);
+    const registry = clientFor({
+      origin: config.origin,
+      client: config.client,
+    });
     const entry = await registry.findEntry(
       intent.registry_root,
       intent.publisher_id,
@@ -1281,24 +1317,40 @@ export async function reconcileClaimedTemplateRegistryIntent(
     );
     return 'quarantined';
   }
-  const registry = clientFor(config);
-  const entry = await registry.entry(intent.registry_entry_id);
-  const fetched = await registry.fetchArtifact(intent.registry_root);
-  assertRegistryEntryArtifact(entry, fetched.artifact);
-  if (
-    !isDeepStrictEqual(
-      registryEntryIdentity(entry),
-      registryEntryIdentity(intent.entry_snapshot),
-    ) ||
-    fetched.root !== intent.registry_root
-  )
-    throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');
-  await uploadImportAssets(
-    config.assetStore,
-    fetched,
-    config.maintenancePool,
-    claim,
-  );
-  await finalizeImportIntent(config.maintenancePool, claim, entry, fetched);
-  return 'completed';
+  if (!config.assetStore) return 'deferred';
+  const registry = clientFor({ origin: config.origin, client: config.client });
+  try {
+    const entry = await registry.entry(intent.registry_entry_id);
+    const fetched = await registry.fetchArtifact(intent.registry_root);
+    assertRegistryEntryArtifact(entry, fetched.artifact);
+    if (
+      !isDeepStrictEqual(
+        registryEntryIdentity(entry),
+        registryEntryIdentity(intent.entry_snapshot),
+      ) ||
+      fetched.root !== intent.registry_root
+    )
+      throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');
+    await uploadImportAssets(
+      config.assetStore,
+      fetched,
+      config.maintenancePool,
+      claim,
+    );
+    await finalizeImportIntent(config.maintenancePool, claim, entry, fetched);
+    return 'completed';
+  } catch (error) {
+    if (
+      error instanceof TemplateRegistryClientError &&
+      error.code === 'TEMPLATE_REGISTRY_RESOURCE_UNAVAILABLE'
+    ) {
+      await quarantineRegistryIntent(
+        config.maintenancePool,
+        claim,
+        'resource_unavailable',
+      );
+      return 'quarantined';
+    }
+    throw error;
+  }
 }

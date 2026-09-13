@@ -106,7 +106,7 @@ function startDatabaseWorkers(): void {
   if (env.role === 'web' || !maintenancePool || !env.auth) return;
   const emailMailer = env.auth.mailer.kind === 'refuse' ? undefined : mailer;
   const registryOrigin = env.templateRegistryOrigin;
-  if (!templateRegistryIntentWorker && registryOrigin && assetStore) {
+  if (!templateRegistryIntentWorker) {
     templateRegistryIntentWorker = startTemplateRegistryIntentWorker({
       pool: maintenancePool,
       process: (claim) =>
