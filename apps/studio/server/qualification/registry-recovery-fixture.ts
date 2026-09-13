@@ -8,37 +8,56 @@ import {
   templateBytesHash,
 } from '@codaco/studio-sync/template-exchange';
 
-import type { RegistryRecoveryReconciliation } from '../../../template-registry/src/recovery-reconciliation.ts';
+import {
+  createRegistryRecoveryInventory,
+  type RegistryRecoveryReconciliation,
+} from '../../../template-registry/src/recovery-reconciliation.ts';
 import recoveryFixture from './combined-recovery.fixture.json' with { type: 'json' };
 
 // These facts are fixed before the backup is created. Never derive current
 // recovery authority from the database being restored.
-export const registryRecoveryReconciliation = {
-  format: 'template-registry-recovery-reconciliation',
-  version: 2,
-  users: [
-    {
-      id: recoveryFixture.registry.userId,
-      email: recoveryFixture.registry.email,
-      emailVerified: true,
-      publisher: 'active',
-      publisherId: recoveryFixture.registry.publisherId,
-      operator: false,
+export function createRegistryRecoveryReconciliation(
+  artifactRoot: string,
+): RegistryRecoveryReconciliation {
+  return {
+    format: 'template-registry-recovery-reconciliation',
+    version: 3,
+    inventories: {
+      users: createRegistryRecoveryInventory('users', [
+        {
+          id: recoveryFixture.registry.userId,
+          email: recoveryFixture.registry.email,
+          emailVerified: true,
+        },
+      ]),
+      publishers: createRegistryRecoveryInventory('publishers', [
+        {
+          id: recoveryFixture.registry.publisherId,
+          userId: recoveryFixture.registry.userId,
+          suspended: false,
+        },
+      ]),
+      operators: createRegistryRecoveryInventory('operators', []),
+      entries: createRegistryRecoveryInventory('entries', [
+        {
+          id: recoveryFixture.registry.entryId,
+          publisherId: recoveryFixture.registry.publisherId,
+          artifactRoot,
+        },
+      ]),
     },
-  ],
-  entries: [
-    {
-      id: recoveryFixture.registry.entryId,
-      publisherId: recoveryFixture.registry.publisherId,
-    },
-  ],
-} satisfies RegistryRecoveryReconciliation;
+  };
+}
 
 export const emptyRegistryRecoveryReconciliation = {
   format: 'template-registry-recovery-reconciliation',
-  version: 2,
-  users: [],
-  entries: [],
+  version: 3,
+  inventories: {
+    users: createRegistryRecoveryInventory('users', []),
+    publishers: createRegistryRecoveryInventory('publishers', []),
+    operators: createRegistryRecoveryInventory('operators', []),
+    entries: createRegistryRecoveryInventory('entries', []),
+  },
 } satisfies RegistryRecoveryReconciliation;
 
 export function createRegistryRecoveryArtifact() {

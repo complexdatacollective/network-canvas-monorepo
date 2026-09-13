@@ -30,7 +30,7 @@ import recoveryFixture from './combined-recovery.fixture.json' with { type: 'jso
 import { owner, populate, rpc, signIn } from './data.ts';
 import {
   createRegistryRecoveryArtifact,
-  registryRecoveryReconciliation,
+  createRegistryRecoveryReconciliation,
   seedRegistryRecoveryFixture,
 } from './registry-recovery-fixture.ts';
 import {
@@ -936,6 +936,8 @@ async function exerciseCombinedRecovery(
   const artifact = await createRegistryRecoveryArtifact();
   const rawHash = templateBytesHash(artifact.bytes);
   const artifactRoot = artifact.artifact.manifest.merkle_root;
+  const registryRecoveryReconciliation =
+    createRegistryRecoveryReconciliation(artifactRoot);
   const registryEnv = parseEnv(
     readFileSync(join(configuration, 'registry.env'), 'utf8'),
   );
