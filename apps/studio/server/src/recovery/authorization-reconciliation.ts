@@ -101,6 +101,9 @@ const reconciliationSchema = z
         }),
       )
       .max(MAX_IDENTITIES),
+    // Inventory only. Authorization always pauses restored schedules and
+    // cancels pending occurrences; an operator must review the complete
+    // recurrence/channel/time-zone/settings state before re-enabling them.
     activeScheduleIds: z.array(z.uuid()).max(MAX_IDENTITIES),
     publishedMessageTemplateIds: z.array(z.uuid()).max(MAX_IDENTITIES),
   })
