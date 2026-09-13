@@ -90,9 +90,13 @@ function csvCell(value: unknown): string {
       ? ''
       : value instanceof Date
         ? value.toISOString()
-        : typeof value === 'object'
-          ? JSON.stringify(value)
-          : String(value);
+        : typeof value === 'string'
+          ? value
+          : typeof value === 'number' ||
+              typeof value === 'boolean' ||
+              typeof value === 'bigint'
+            ? String(value)
+            : (JSON.stringify(value) ?? '');
   const safe = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
   return `"${safe.replaceAll('"', '""')}"`;
 }
@@ -240,7 +244,39 @@ function startedEvent(
   jobId: string,
   mode: 'direct' | 'staged',
   highWater: string,
+  filters: AuditExportFilters,
+  preflight: Awaited<ReturnType<typeof collectDirect>>,
 ): AuditEventInput {
+  const serializedFilters: Record<string, unknown> = {
+    ...(filters.categories ? { categories: [...filters.categories] } : {}),
+    ...(filters.eventTypes ? { eventTypes: [...filters.eventTypes] } : {}),
+    ...(filters.actor
+      ? { actor: { kind: filters.actor.kind, id: filters.actor.id } }
+      : {}),
+    ...(filters.outcomes ? { outcomes: [...filters.outcomes] } : {}),
+    ...(filters.from ? { from: filters.from.toISOString() } : {}),
+    ...(filters.to ? { to: filters.to.toISOString() } : {}),
+  };
+  const details =
+    mode === 'direct' && preflight.direct
+      ? {
+          deliveryMode: mode,
+          highWaterSequence: highWater,
+          filters: serializedFilters,
+          rowLimit: DIRECT_ROWS,
+          byteLimit: DIRECT_BYTES,
+          rowCount: preflight.direct.rowCount,
+          byteCount: preflight.preflightByteCount,
+        }
+      : {
+          deliveryMode: 'staged' as const,
+          highWaterSequence: highWater,
+          filters: serializedFilters,
+          rowLimit: STAGED_ROWS,
+          byteLimit: STAGED_BYTES,
+          preflightRowCount: preflight.preflightRowCount,
+          preflightByteCount: preflight.preflightByteCount,
+        };
   return {
     ...auditActorEventContext(context),
     eventVersion: 1,
@@ -253,19 +289,22 @@ function startedEvent(
     resourceType: null,
     resourceId: null,
     resourceLabel: null,
-    details: {
-      deliveryMode: mode,
-      highWaterSequence: highWater,
-      rowLimit: mode === 'direct' ? DIRECT_ROWS : STAGED_ROWS,
-      byteLimit: mode === 'direct' ? DIRECT_BYTES : STAGED_BYTES,
-    },
+    details,
   };
 }
+
+type AuditExportRequestResult =
+  | { deliveryMode: 'direct'; csv: string; rowCount: number }
+  | {
+      deliveryMode: 'staged';
+      jobId: string;
+      status: 'pending' | 'generating';
+    };
 
 export async function requestAuditExport(
   context: AuditedCommandContext,
   filters: AuditExportFilters,
-) {
+): Promise<AuditExportRequestResult> {
   const immutableFilters: AuditExportFilters = Object.freeze({
     ...(filters.categories
       ? { categories: Object.freeze([...filters.categories]) }
@@ -280,64 +319,98 @@ export async function requestAuditExport(
     ...(filters.from ? { from: new Date(filters.from) } : {}),
     ...(filters.to ? { to: new Date(filters.to) } : {}),
   });
-  return runAuditedCommand(context, async (client, locked) => {
-    const actor = await teamStore.lockActor(
-      client,
-      context.tenantDb.teamId,
-      context.principal.userId,
-    );
-    if (!actor || !roleGrantsTeamAdministration(actor.role))
-      throw new Error('audit export forbidden');
-    const high = await client.query<{ sequence: string }>(
-      `SELECT COALESCE(MAX(sequence), 0)::text AS sequence FROM audit_events WHERE team_id = $1`,
-      [context.tenantDb.teamId],
-    );
-    const highWater = high.rows[0]?.sequence ?? '0';
-    const preflight = await collectDirect(
-      client,
-      context.tenantDb.teamId,
-      highWater,
-      immutableFilters,
-    );
-    const direct = preflight.direct;
-    const jobId = randomUUID();
-    const mode = direct ? 'direct' : 'staged';
-    return {
-      status: 'succeeded' as const,
-      result: direct
-        ? { deliveryMode: 'direct' as const, ...direct }
-        : {
-            deliveryMode: 'staged' as const,
+  return runAuditedCommand<AuditExportRequestResult>(
+    context,
+    async (client, locked) => {
+      const actor = await teamStore.lockActor(
+        client,
+        context.tenantDb.teamId,
+        context.principal.userId,
+      );
+      if (!actor || !roleGrantsTeamAdministration(actor.role))
+        return {
+          status: 'denied' as const,
+          error: new Error('audit export forbidden'),
+          events: [
+            {
+              ...auditActorEventContext(locked),
+              eventVersion: 1 as const,
+              eventType: 'audit.read_denied' as const,
+              category: 'audit' as const,
+              outcome: 'denied' as const,
+              subjectType: null,
+              subjectId: null,
+              subjectLabel: null,
+              resourceType: null,
+              resourceId: null,
+              resourceLabel: null,
+              details: {
+                procedure: 'audit.export' as const,
+                reason: 'insufficient_permission' as const,
+              },
+            },
+          ],
+        };
+      const high = await client.query<{ sequence: string }>(
+        `SELECT COALESCE(MAX(sequence), 0)::text AS sequence FROM audit_events WHERE team_id = $1`,
+        [context.tenantDb.teamId],
+      );
+      const highWater = high.rows[0]?.sequence ?? '0';
+      const preflight = await collectDirect(
+        client,
+        context.tenantDb.teamId,
+        highWater,
+        immutableFilters,
+      );
+      const direct = preflight.direct;
+      const jobId = randomUUID();
+      const mode = direct ? 'direct' : 'staged';
+      return {
+        status: 'succeeded' as const,
+        result: direct
+          ? { deliveryMode: 'direct' as const, ...direct }
+          : {
+              deliveryMode: 'staged' as const,
+              jobId,
+              status: 'pending' as const,
+            },
+        events: [
+          startedEvent(
+            locked,
             jobId,
-            status: 'pending' as const,
-          },
-      events: [startedEvent(locked, jobId, mode, highWater)],
-      afterEventsStored: async (transaction, events) => {
-        if (direct) return;
-        const start = events[0];
-        await transaction.query(
-          `INSERT INTO audit_export_jobs
+            mode,
+            highWater,
+            immutableFilters,
+            preflight,
+          ),
+        ],
+        afterEventsStored: async (transaction, events) => {
+          if (direct) return;
+          const start = events[0];
+          await transaction.query(
+            `INSERT INTO audit_export_jobs
           (id, team_id, actor_kind, actor_id, start_event_id, start_event_sequence,
            high_water_sequence, filters, row_limit, byte_limit,
            preflight_row_count, preflight_byte_count)
           VALUES ($1,$2,'user',$3,$4,$5::bigint,$6::bigint,$7::jsonb,$8,$9,$10,$11)`,
-          [
-            jobId,
-            context.tenantDb.teamId,
-            context.principal.userId,
-            start.id,
-            start.sequence,
-            highWater,
-            JSON.stringify(immutableFilters),
-            STAGED_ROWS,
-            STAGED_BYTES,
-            preflight.preflightRowCount,
-            preflight.preflightByteCount,
-          ],
-        );
-      },
-    };
-  });
+            [
+              jobId,
+              context.tenantDb.teamId,
+              context.principal.userId,
+              start.id,
+              start.sequence,
+              highWater,
+              JSON.stringify(immutableFilters),
+              STAGED_ROWS,
+              STAGED_BYTES,
+              preflight.preflightRowCount,
+              preflight.preflightByteCount,
+            ],
+          );
+        },
+      };
+    },
+  );
 }
 
 async function authorizedExportRow(
@@ -570,7 +643,11 @@ class AuditExportAdapter implements OutboxAdapter<Claim> {
     let after = '0',
       count = 0,
       bytes = Buffer.byteLength(HEADER);
-    const self = this;
+    const stillOwnsLease = () =>
+      this.remainsDeliverable(c, {
+        owner: c.leaseOwner,
+        durationMs: 1,
+      });
     async function* chunks() {
       yield Buffer.from(HEADER);
       for (;;) {
@@ -590,12 +667,7 @@ class AuditExportAdapter implements OutboxAdapter<Claim> {
           yield chunk;
           after = row.sequence;
         }
-        if (
-          !(await self.remainsDeliverable(c, {
-            owner: c.leaseOwner,
-            durationMs: 1,
-          }))
-        ) {
+        if (!(await stillOwnsLease())) {
           // The dispatcher heartbeat owns cancellation; this second check prevents new pages after loss.
           throw new Error('audit export lease lost');
         }
@@ -630,6 +702,11 @@ class AuditExportAdapter implements OutboxAdapter<Claim> {
     return e instanceof Error && e.message.includes('limit exceeded')
       ? ('permanent' as const)
       : ('retryable' as const);
+  }
+  completionFailureDisposition() {
+    // The object key is deterministic and generation/finalization are both
+    // fenced and replayable, so a database completion failure may retry.
+    return 'retryable' as const;
   }
   async recordFailure(
     c: Claim,

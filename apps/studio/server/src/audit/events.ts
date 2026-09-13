@@ -561,12 +561,26 @@ const AuditExportUserEventSchema = CommonUserEventSchema.extend({
 const AuditExportStartedSchema = AuditExportUserEventSchema.extend({
   eventType: z.literal('audit.export.started'),
   outcome: z.literal('succeeded'),
-  details: z.strictObject({
-    deliveryMode: z.enum(['direct', 'staged']),
-    highWaterSequence: DecimalSequenceSchema,
-    rowLimit: z.number().int().positive(),
-    byteLimit: z.number().int().positive(),
-  }),
+  details: z.discriminatedUnion('deliveryMode', [
+    z.strictObject({
+      deliveryMode: z.literal('direct'),
+      highWaterSequence: DecimalSequenceSchema,
+      filters: z.record(z.string(), z.unknown()),
+      rowLimit: z.number().int().positive(),
+      byteLimit: z.number().int().positive(),
+      rowCount: z.number().int().nonnegative(),
+      byteCount: z.number().int().nonnegative(),
+    }),
+    z.strictObject({
+      deliveryMode: z.literal('staged'),
+      highWaterSequence: DecimalSequenceSchema,
+      filters: z.record(z.string(), z.unknown()),
+      rowLimit: z.number().int().positive(),
+      byteLimit: z.number().int().positive(),
+      preflightRowCount: z.number().int().nonnegative(),
+      preflightByteCount: z.number().int().nonnegative(),
+    }),
+  ]),
 }).strict();
 const AuditExportSystemEventSchema = AuditExportUserEventSchema.omit({
   actorKind: true,
@@ -749,8 +763,13 @@ export const AUDIT_EVENT_REGISTRY = {
     detailFields: [
       'deliveryMode',
       'highWaterSequence',
+      'filters',
       'rowLimit',
       'byteLimit',
+      'rowCount',
+      'byteCount',
+      'preflightRowCount',
+      'preflightByteCount',
     ],
     sensitiveFields: [],
     createsAlert: false,
@@ -771,6 +790,9 @@ export const AUDIT_EVENT_REGISTRY = {
         highWaterSequence: '41',
         rowLimit: 100_000,
         byteLimit: 104_857_600,
+        filters: {},
+        preflightRowCount: 1_001,
+        preflightByteCount: 1_048_577,
       },
     },
   },

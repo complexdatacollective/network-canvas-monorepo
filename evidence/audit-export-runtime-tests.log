@@ -8,8 +8,13 @@ Red-before proof:
 
 Passing focused verification:
 - @codaco/studio-server typecheck: pass
-- export, outbox schema, event registry, encryption, audit policy, and migration
-  artifact tests: 6 files, 161 tests passed
+- export, outbox schema, event registry, encryption, audit policy, migration
+  artifact, populated upgrade, and shared dispatcher tests: 8 files, 211 tests
+  passed
+- package-scoped Knip for Studio server and Studio RPC: pass
+- focused oxlint and full-tree oxfmt: pass
+- the combined root lint command remains nonzero on the unchanged Fresco
+  `queries/interviews.ts` array-sort comparator error
 - The real PostgreSQL flow proves staged enqueue, immutable high water,
   paged generation, audited completion, encrypted actor-bound handle,
   single-use retrieval, and retry with lease release after storage failure.
