@@ -96,6 +96,10 @@ export class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAler
       : 'uncertain';
   }
 
+  completionFailureDisposition(claim: ClaimedAuditAlert) {
+    return claim.channel === 'in_app' ? 'retryable' : 'uncertain';
+  }
+
   async suppressUndeliverable(): Promise<number> {
     const suppressed = await this.pool.query(
       `WITH candidates AS (
