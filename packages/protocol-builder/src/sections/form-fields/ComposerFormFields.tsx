@@ -46,6 +46,7 @@ import {
   isValidationMap,
   unvalidatedElsewhereMessage,
   variableTypeForComponent,
+  type VariableOverlay,
 } from '../../codebook/variableValidation.ts';
 import ComposerParametersField, {
   type ComposerParameters,
@@ -644,7 +645,7 @@ function ComposerFieldPreviewPane({ item }: RowAsideProps) {
   return <FieldPreviewPane subject={subject} mode="composer" item={item} />;
 }
 
-function ComposerFormFieldEditor({ item }: RowEditorProps) {
+function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
   const { subject, rows, draftUnvalidated, rowUnderEdit } =
@@ -685,6 +686,39 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
         }),
       ),
     [committed, rows],
+  );
+  /**
+   * What the REST of this form renders its attributes with, for the rules the
+   * row is about to author to be judged against.
+   *
+   * The control and its settings live on the FIELD here, so a rule comparing
+   * this answer with another one this form asks for is satisfiable in the
+   * renderings both rows arrive with rather than in the codebook's. Keyed by
+   * the attribute, which is what a rule names; addressed by POSITION rather
+   * than by the row's id, because `id` is optional on a field an import
+   * carried in and the row being edited has to be left out however it is
+   * spelled — the draft the researcher is typing is what stands for it.
+   */
+  const siblingRenderings = useMemo<VariableOverlay>(
+    () =>
+      Object.fromEntries(
+        rows.flatMap((row, index) => {
+          const variable = asText(row[VARIABLE_FIELD]);
+          if (index === editIndex || variable === undefined) return [];
+          const component = asText(row[COMPONENT_FIELD]);
+          const parameters = row[PARAMETERS_FIELD];
+          return [
+            [
+              variable,
+              {
+                ...(component === undefined ? {} : { component }),
+                ...(isRecord(parameters) ? { parameters } : {}),
+              },
+            ],
+          ];
+        }),
+      ),
+    [editIndex, rows],
   );
   const variableOptions = useMemo(
     () =>
@@ -1007,6 +1041,7 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
         committedVariable={item[VARIABLE_FIELD]}
         componentField={COMPONENT_FIELD}
         parametersField={PARAMETERS_FIELD}
+        siblingRenderings={siblingRenderings}
         offerParameters={false}
         {...(inventing
           ? {

@@ -2611,6 +2611,10 @@
     "defaultMessage": "connection type",
     "description": "What one row of a network composer’s connection list is called, used in the accessible names of its edit, delete and reorder controls and in the confirmation that deletes it."
   },
+  "protocolBuilder.networkCanvas.composerEdgeQuestionsDropped": {
+    "defaultMessage": "{questionCount, plural, one {Pointing this connection at another kind removed the question it asked: it recorded an attribute the new kind does not have.} other {Pointing this connection at another kind removed the # questions it asked: they recorded attributes the new kind does not have.}}",
+    "description": "Shown after the researcher points a row of a network composer’s connection list at a different kind of connection, when questions had already been written for the kind it used to stand for. Those questions record attributes that belong to the old kind alone, so they cannot be carried over. questionCount is how many were removed."
+  },
   "protocolBuilder.networkCanvas.composerEdgeTitle": {
     "defaultMessage": "Edge configuration",
     "description": "Heading of the section deciding which kinds of connection a participant may draw between nodes on a composer canvas. Also names the section in the editor outline and to assistive technology."

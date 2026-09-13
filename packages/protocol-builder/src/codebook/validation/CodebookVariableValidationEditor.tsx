@@ -33,6 +33,8 @@ import { documentWithUpdatedVariable } from '../editing.ts';
 import {
   isValidationWithListValue,
   ruleMapIssue,
+  stageRenderingContext,
+  type StageRendering,
   type ValidationMap,
   type ValidationValue,
 } from '../variableValidation.ts';
@@ -178,12 +180,12 @@ export type CodebookVariableValidationEditorProps = Readonly<{
     outcome: Extract<CodebookWriteOutcome, { status: 'applied' }>,
   ): void;
   /**
-   * What this attribute is actually rendered by, where the STAGE owns that
-   * rather than the codebook — see `VariableValidationEditor`, which this
-   * hands it to so the save gate and the rules in front of the researcher
-   * judge one rendering between them.
+   * How the STAGE renders the attributes these rules compare, where the
+   * codebook does not decide it — see `StageRendering`. Handed on to
+   * `VariableValidationEditor`, so the save gate and the rules in front of the
+   * researcher judge one view between them.
    */
-  stageRendering?: Readonly<{ component?: unknown; parameters?: unknown }>;
+  stageRendering?: StageRendering;
 }>;
 
 /**
@@ -309,8 +311,9 @@ export default function CodebookVariableValidationEditor({
       ? intl.formatMessage(messages.typeChangedIssue)
       : (missingTargetIssue(validation, variablesForValidation, intl) ??
         ruleMapIssue(validation, {
-          allVariables: Object.fromEntries(
-            Object.entries(variablesForValidation),
+          ...stageRenderingContext(
+            Object.fromEntries(Object.entries(variablesForValidation)),
+            stageRendering,
           ),
           currentVariableId: variableId,
           variableType: openedOnType,
@@ -319,7 +322,6 @@ export default function CodebookVariableValidationEditor({
           // an answer may hold is judged against the list the attribute
           // actually carries now.
           options: authoritativeVariable?.options,
-          ...stageRendering,
         }));
   const dirty = canonicalize(validation) !== canonicalize(committedValidation);
   const variableName =
@@ -477,17 +479,15 @@ export type DraftVariableValidationEditorProps = Readonly<{
   value: Readonly<ValidationMap>;
   readOnly?: boolean;
   /**
-   * What this attribute will actually be rendered by, where the STAGE owns
-   * that rather than the codebook.
-   *
    * The same fact its twin above takes, for the same reason: a network
    * composer's row keeps its own `component` and `parameters`, and the
-   * contradiction analyser reads both. An attribute the row is INVENTING has
-   * no codebook entry at all, so the field's pair is the only rendering there
-   * is — judged without it, a rule this one dialog is able to contradict was
-   * reported nowhere.
+   * contradiction analyser reads both, for this row and for the siblings it
+   * compares itself with. An attribute the row is INVENTING has no codebook
+   * entry at all, so the field's pair is the only rendering there is — judged
+   * without it, a rule this one dialog is able to contradict was reported
+   * nowhere.
    */
-  stageRendering?: Readonly<{ component?: unknown; parameters?: unknown }>;
+  stageRendering?: StageRendering;
   /** Takes the rules onto the row, to be written with the create. */
   onSave(validation: ValidationMap): void;
 }>;
@@ -537,13 +537,15 @@ export function DraftVariableValidationEditor({
   const issue =
     missingTargetIssue(validation, allVariables, intl) ??
     ruleMapIssue(validation, {
-      allVariables: Object.fromEntries(Object.entries(allVariables)),
+      ...stageRenderingContext(
+        Object.fromEntries(Object.entries(allVariables)),
+        stageRendering,
+      ),
       // Nothing to exclude from the comparison targets: the attribute these
       // rules belong to has no record key yet, so no rule can point at it.
       currentVariableId: '',
       variableType,
       draftVariableName: variableName,
-      ...stageRendering,
     });
   const headingTag = useSurfaceHeadingTag();
 

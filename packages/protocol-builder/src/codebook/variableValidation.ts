@@ -1012,6 +1012,56 @@ const withOverlay = (
   return Object.fromEntries(entries);
 };
 
+/**
+ * What a STAGE decides about how the attributes it renders are asked for,
+ * where the codebook does not decide it.
+ *
+ * A network composer's form field keeps its own `component` and `parameters`,
+ * and the analyser reads both: a date window is the picker's own
+ * `before`/`after`, and a boolean's domain is the control's options. The field
+ * being edited hands its own pair; `overlay` is every OTHER field of the same
+ * form, keyed by the attribute it renders, because a rule comparing two
+ * answers is satisfiable or not in the renderings BOTH of them arrive with.
+ */
+export type StageRendering = Readonly<{
+  component?: unknown;
+  parameters?: unknown;
+  overlay?: VariableOverlay;
+}>;
+
+/**
+ * The part of a rule check the stage's own renderings decide, for an editor to
+ * spread over the rest of its context.
+ *
+ * One helper for `ruleMapIssue` and `findLegalReferenceTargets` alike, so the
+ * rules a surface OFFERS and the verdict it gives are read from one view. The
+ * view is resolved rather than guessed — every attribute this form renders
+ * carries the form's own pair — which is what earns
+ * `stageEffectiveComponents`: the analyser reads a `Boolean` control's
+ * `options` as the participant-facing domain only from a caller that has
+ * settled each variable's rendering, and it is exactly the reading protocol
+ * validation makes of the saved form (`schema.ts`'s composer overlay). Absent
+ * where the codebook's own control is what the interview renders, which is
+ * every other caller.
+ */
+export const stageRenderingContext = (
+  allVariables: UnknownRecord,
+  stageRendering: StageRendering | undefined,
+): Readonly<{
+  allVariables: UnknownRecord;
+  component?: unknown;
+  parameters?: unknown;
+  stageEffectiveComponents?: boolean;
+}> =>
+  stageRendering === undefined
+    ? { allVariables }
+    : {
+        allVariables: withOverlay(allVariables, stageRendering.overlay),
+        component: stageRendering.component,
+        parameters: stageRendering.parameters,
+        stageEffectiveComponents: true,
+      };
+
 const withoutUnknownRenderings = (
   variables: UnknownRecord,
   allRenderedVariableIds: ReadonlySet<string>,

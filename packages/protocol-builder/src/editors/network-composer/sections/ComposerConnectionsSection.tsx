@@ -1,6 +1,7 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
+import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
@@ -88,6 +89,8 @@ export default function ComposerConnectionsSection() {
   const intl = useAppIntl();
   const held = useStageValue(EDGES_FIELD);
   const entries = useMemo(() => rowsOf(held), [held]);
+  /** How many questions the last re-point took away, for the notice below. */
+  const [questionsDropped, setQuestionsDropped] = useState(0);
 
   /**
    * One kind of connection may only be drawable once, and an entry pointed at
@@ -106,6 +109,17 @@ export default function ComposerConnectionsSection() {
    * asking a "family" connection for what only a "knows" connection has.
    * Cleared rather than refused: the researcher came here to change the type,
    * and the questions are asked again below the list once it has.
+   *
+   * An entry that arrived naming NO type is the same act: `edges` tolerates
+   * one — `typeOf` reads it, the preview names it, and its questions are
+   * invisible until a type is given — so the questions it carries are the old
+   * type's just as much, and answering "unchanged" for it left them recording
+   * attributes the chosen type does not have. A row being ADDED reaches the
+   * same branch with no form to lose.
+   *
+   * What it drops is said, because nothing else here reports it: the dialog
+   * shows the type alone, so the questions go from a list the researcher
+   * cannot see while they press Save.
    */
   const rowList = useMemo<RowListConfig>(
     () => ({
@@ -129,7 +143,8 @@ export default function ComposerConnectionsSection() {
           };
         }
         const openedOn = typeOf(context.openedOn);
-        if (openedOn === undefined || openedOn === type) return { row };
+        if (openedOn === type) return { row };
+        setQuestionsDropped(fieldsOf(context.openedOn).length);
         const { form: _form, ...repointed } = row;
         return { row: repointed };
       },
@@ -158,6 +173,22 @@ export default function ComposerConnectionsSection() {
           sortable
         />
       </RowList>
+      {/* Always mounted, so a screen reader is watching this region before the
+          notice appears: a live region added to the page at the same moment as
+          its own content is not reliably announced. The `Alert` inside it is
+          presentational because its `info` variant is a `role="status"` of its
+          own, and a second polite region inside this one is announced twice. */}
+      <div role="status" aria-live="polite">
+        {questionsDropped > 0 && (
+          <Alert variant="info" role="presentation" className="mb-8">
+            <AlertDescription>
+              {intl.formatMessage(messages.connectionQuestionsDropped, {
+                questionCount: questionsDropped,
+              })}
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
       <ConnectionForms entries={entries} />
     </BuilderSection>
   );
