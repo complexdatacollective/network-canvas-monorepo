@@ -23,6 +23,7 @@ import {
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import {
+  createScratchDatabase,
   createScratchSchema,
   provisionScratchSchema,
   reachableDb,
@@ -1968,7 +1969,9 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
   });
   it('starts the actual worker with Registry and storage disabled and quarantines existing work', async () => {
     if (!db) throw new Error('database unavailable');
-    const isolated = await createScratchSchema(db);
+    // Startup admission inspects database-wide catalog state, so a scratch
+    // schema is not isolated from triggers or rewrite rules in other schemas.
+    const isolated = await createScratchDatabase(db);
     let child: ReturnType<typeof spawn> | undefined;
     let exited: Promise<unknown> | undefined;
     let output = '';
@@ -1999,13 +2002,6 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
           randomUUID(),
         ],
       );
-      const schema = (
-        await isolated.pool.query<{ name: string }>(
-          'SELECT current_schema() AS name',
-        )
-      ).rows[0]!.name;
-      const url = new URL(db.url);
-      url.searchParams.set('options', `-c search_path=${schema}`);
       child = spawn(
         process.execPath,
         [new URL('../../index.ts', import.meta.url).pathname],
@@ -2014,7 +2010,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
             NODE_ENV: 'test',
             STUDIO_DEV_DEFAULTS: 'true',
             STUDIO_ROLE: 'worker',
-            DATABASE_URL: url.href,
+            DATABASE_URL: isolated.db.url,
             STUDIO_TELEMETRY: 'false',
             HOST: '127.0.0.1',
             PORT: '0',
