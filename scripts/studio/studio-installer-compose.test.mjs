@@ -35,3 +35,25 @@ test('enables enough prepared transactions for Registry migration coordination',
     '16',
   );
 });
+
+test('renders the offline Registry recovery entrypoint with explicit private database transport', () => {
+  const base = parse(
+    readFileSync('apps/template-registry/deployment/compose.yml', 'utf8'),
+  );
+  const recovery = parse(
+    readFileSync('apps/template-registry/deployment/recovery.yml', 'utf8'),
+  );
+  const service = base.services['registry-recover-verify'];
+  const environment = {
+    ...service.environment,
+    ...recovery.services['registry-recover-verify'].environment,
+  };
+
+  assert.deepEqual(service.entrypoint, ['node', 'dist/recover.js']);
+  assert.equal(environment.REGISTRY_DATABASE_INSECURE_PRIVATE_NETWORK, 'true');
+  for (const name of [
+    'REGISTRY_RECOVERY_DATABASE_URL',
+    'REGISTRY_BACKUP_DATABASE_URL',
+  ])
+    assert.match(environment[name], /@registry-postgres:5432\/registry$/);
+});

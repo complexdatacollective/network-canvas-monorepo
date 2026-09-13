@@ -5,6 +5,7 @@ services:
     environment:
       REGISTRY_RECOVERY_DATABASE_URL: postgresql://registry_migrator:${REGISTRY_MIGRATION_PASSWORD:?Missing registry migration password}@registry-postgres:5432/registry
       REGISTRY_BACKUP_DATABASE_URL: postgresql://registry_backup_login:${REGISTRY_BACKUP_PASSWORD:?Missing registry backup password}@registry-postgres:5432/registry
+      REGISTRY_DATABASE_INSECURE_PRIVATE_NETWORK: 'true'
       REGISTRY_DATABASE_ALLOWED_LOGINS: '["registry_migrator","registry_runtime","registry_operations","registry_backup_login"]'
       REGISTRY_RECOVERY_RECONCILIATION_PATH: /operator/reconciliation.json
       REGISTRY_RECOVERY_RECONCILIATION_SHA256: ${REGISTRY_RECOVERY_RECONCILIATION_SHA256:?Pin independently obtained reconciliation evidence}
