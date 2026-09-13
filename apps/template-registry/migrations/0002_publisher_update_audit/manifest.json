@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0002_publisher_update_audit",
+  "previous": "0001_initial",
+  "fingerprint": "3f30e3029e2e8c66bcfacb082df101fe13d64154b9a0e2a47bd964407c1c2369",
+  "snapshotHash": "9653ab351c12df5437022c42b7e46c2bc67ec0e2ffc0390f3fd2c7e8a1ef2625",
+  "sqlHash": "11ed75d29ae1b0250228ba694a0fbd1dd719eafe6787b2f2ac34fa661f527119",
+  "sidecarsHash": "fbaacd1e1f771b16c3c3a985e292d5430ed52dced13d34621028ebb9c5a00a78"
+}

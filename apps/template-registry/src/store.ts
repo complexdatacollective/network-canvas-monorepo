@@ -271,7 +271,7 @@ export class RegistryStore {
       await appendRegistryAudit(
         client,
         { kind: 'publisher', id },
-        'publisher.claimed',
+        row ? 'publisher.updated' : 'publisher.claimed',
         id,
         requestId,
       );
@@ -830,14 +830,14 @@ export class RegistryStore {
       const row = result.rows[0];
       if (!row) throw new RegistryError('NOT_FOUND');
       if (row.deleted_at) throw new RegistryError('CONTENT_REMOVED');
-      await client.query(
-        `UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL
-         AND entry_id IN (SELECT id FROM registry_entries WHERE artifact_root=$1)`,
-        [row.artifact_root],
-      );
       if ((row.blocked_at !== null) === removed) return;
       await client.query(
         `UPDATE registry_artifacts SET blocked_at = ${removed ? 'statement_timestamp()' : 'NULL'} WHERE root = $1`,
+        [row.artifact_root],
+      );
+      await client.query(
+        `UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL
+         AND entry_id IN (SELECT id FROM registry_entries WHERE artifact_root=$1)`,
         [row.artifact_root],
       );
       await appendRegistryAudit(
@@ -867,17 +867,17 @@ export class RegistryStore {
       if (!publisher) throw new RegistryError('NOT_FOUND');
       if (suspended && actor.kind === 'operator' && actor.id === publisher.id)
         throw new RegistryError('CONFLICT');
-      await client.query(
-        `UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL
-         AND entry_id IN (SELECT id FROM registry_entries WHERE publisher_id=$1)`,
-        [publisher.id],
-      );
       if ((publisher.suspended_at !== null) === suspended) return;
       const result = await client.query(
         `UPDATE registry_publishers SET suspended_at = ${suspended ? 'statement_timestamp()' : 'NULL'} WHERE id = $1 RETURNING id`,
         [id],
       );
       if (!result.rowCount) throw new RegistryError('NOT_FOUND');
+      await client.query(
+        `UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL
+         AND entry_id IN (SELECT id FROM registry_entries WHERE publisher_id=$1)`,
+        [publisher.id],
+      );
       await appendRegistryAudit(
         client,
         actor,
@@ -902,13 +902,13 @@ export class RegistryStore {
           !hasCuratedMetadata(TemplateMetadataSchema.parse(entry.metadata)))
       )
         throw new RegistryError('CURATION_METADATA_REQUIRED');
-      await client.query(
-        'UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL AND entry_id=$1',
-        [id],
-      );
       if (entry.curated === curated) return;
       await client.query(
         `UPDATE registry_entries SET curated_at = ${curated ? 'statement_timestamp()' : 'NULL'} WHERE id = $1`,
+        [id],
+      );
+      await client.query(
+        'UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL AND entry_id=$1',
         [id],
       );
       await appendRegistryAudit(
