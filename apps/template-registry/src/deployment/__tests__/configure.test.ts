@@ -139,6 +139,30 @@ describe('Registry deployment configuration', () => {
     });
   });
 
+  it('rejects writable configuration roots and writable scoped ancestors', async () => {
+    await fixture(async (output) => {
+      await configureRegistryDeployment({ ...options, output }, templateRoot);
+      await chmod(output, 0o777);
+      await expect(
+        configureRegistryDeployment({ ...options, output }, templateRoot),
+      ).rejects.toThrow('output is unsafe');
+      await chmod(output, 0o700);
+    });
+
+    const parent = await mkdtemp(join(tmpdir(), 'registry-configure-parent-'));
+    try {
+      await chmod(parent, 0o777);
+      const output = join(parent, 'private-root');
+      await expect(
+        configureRegistryDeployment({ ...options, output }, templateRoot),
+      ).rejects.toThrow('output is unsafe');
+      await expect(lstat(output)).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally {
+      await chmod(parent, 0o700);
+      await rm(parent, { recursive: true, force: true });
+    }
+  });
+
   it('removes a partially written owned deployment template', async () => {
     await fixture(async (output) => {
       await expect(

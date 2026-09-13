@@ -192,6 +192,7 @@ async function readRegistryConfiguration(
   root: string,
   lockName?: string,
 ): Promise<Record<string, string | undefined>> {
+  await assertSecureConfigurationRoot(root);
   const rootInfo = await lstat(root);
   if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink())
     throw new Error('Registry configuration directory is incomplete.');
@@ -243,6 +244,61 @@ async function readRegistryConfiguration(
       throw new Error('Registry configuration directory is incomplete.');
   }
   return values;
+}
+
+function currentUserId(): number | undefined {
+  return typeof process.getuid === 'function' ? process.getuid() : undefined;
+}
+
+function assertPrivateRoot(info: Awaited<ReturnType<typeof lstat>>) {
+  const uid = currentUserId();
+  if (
+    (uid !== undefined && info.uid !== uid) ||
+    (Number(info.mode) & 0o022) !== 0
+  )
+    throw new Error('Registry configuration output is unsafe.');
+}
+
+function assertSafeAncestor(info: Awaited<ReturnType<typeof lstat>>) {
+  // A sticky system temporary directory is safe as a parent: it prevents a
+  // different user from replacing a child they do not own. Every other
+  // writable ancestor would allow an installer peer to swap the root.
+  if ((Number(info.mode) & 0o022) !== 0 && (Number(info.mode) & 0o1000) === 0)
+    throw new Error('Registry configuration output is unsafe.');
+}
+
+async function assertSecureConfigurationRoot(root: string): Promise<void> {
+  const suppliedInfo = await lstat(root);
+  if (!suppliedInfo.isDirectory() || suppliedInfo.isSymbolicLink())
+    throw new Error('Registry configuration output is unsafe.');
+  const canonical = await realpath(root);
+  const rootInfo = await lstat(canonical);
+  if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink())
+    throw new Error('Registry configuration output is unsafe.');
+  assertPrivateRoot(rootInfo);
+  let ancestor = dirname(canonical);
+  while (true) {
+    const info = await lstat(ancestor);
+    if (!info.isDirectory() || info.isSymbolicLink())
+      throw new Error('Registry configuration output is unsafe.');
+    assertSafeAncestor(info);
+    const parent = dirname(ancestor);
+    if (parent === ancestor) break;
+    ancestor = parent;
+  }
+}
+
+async function assertSecureConfigurationAncestors(path: string): Promise<void> {
+  let ancestor = dirname(path);
+  while (true) {
+    const info = await lstat(ancestor);
+    if (!info.isDirectory() || info.isSymbolicLink())
+      throw new Error('Registry configuration output is unsafe.');
+    assertSafeAncestor(info);
+    const parent = dirname(ancestor);
+    if (parent === ancestor) break;
+    ancestor = parent;
+  }
 }
 
 function nested(left: string, right: string) {
@@ -310,6 +366,21 @@ export async function configureRegistryDeployment(
   );
   const output = resolve(options.output);
   const canonicalOutput = await outputRoot(output);
+  let outputExists = true;
+  try {
+    await lstat(output);
+  } catch (error: unknown) {
+    if (
+      !(
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'ENOENT'
+      )
+    )
+      throw error;
+    outputExists = false;
+  }
   const publicEnvironment = {
     REGISTRY_DOMAIN: options.domain,
     REGISTRY_MAIL_FROM: options.mailFrom,
@@ -328,6 +399,7 @@ export async function configureRegistryDeployment(
         const previous = await realpath(
           resolve(options.previousConfigurationRoot!),
         );
+        await assertSecureConfigurationRoot(previous);
         if (
           nested(canonicalOutput, previous) ||
           nested(previous, canonicalOutput)
@@ -338,7 +410,10 @@ export async function configureRegistryDeployment(
         return retainedGenerated(await readRegistryConfiguration(previous));
       })()
     : null;
+  if (outputExists) await assertSecureConfigurationRoot(canonicalOutput);
+  else await assertSecureConfigurationAncestors(output);
   await mkdir(output, { recursive: true, mode: 0o700 });
+  await assertSecureConfigurationRoot(await realpath(output));
   const lockPath = join(output, '.registry-configure.lock');
   const lock = await open(lockPath, 'wx', 0o600);
   const written: string[] = [];
