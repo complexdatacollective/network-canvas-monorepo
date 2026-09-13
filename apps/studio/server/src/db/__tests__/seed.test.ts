@@ -907,29 +907,27 @@ describe.skipIf(!db)('the seeded dataset', () => {
     // A payload is thin, but the resource it names exists — in the study
     // the payload cites, of the subscription's own team — and the event was
     // enqueued no earlier than the moment that row records.
-    const cases: [string, string, string][] = [
-      ['session.completed', 'interview_sessions', 'completed_at'],
-      ['session.abandoned', 'interview_sessions', 'abandoned_at'],
-      ['participant.enrolled', 'participants', 'enrolled_at'],
-      ['wave.opened', 'study_waves', 'opens_at'],
-      ['consent.withdrawn', 'participant_consents', 'withdrawn_at'],
-    ];
-    for (const [eventType, table, occurredAt] of cases) {
-      await expect(
-        count(
-          pool,
-          `select count(*)::int as n from webhook_deliveries d
-           left join ${table} r
-             on r.id = (d.payload->>'resourceId')::uuid
-            and r.team_id = d.team_id
-            and r.study_id = (d.payload->>'studyId')::uuid
-            and r.${occurredAt} is not null
-            and r.${occurredAt} <= d.created_at
-           where d.event_type = $1 and r.id is null`,
-          [eventType],
-        ),
-      ).resolves.toBe(0);
-    }
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from webhook_deliveries d
+         left join studies r
+           on r.id = (d.payload->>'resourceId')::uuid
+          and r.id = (d.payload->>'studyId')::uuid
+          and r.team_id = d.team_id
+          and r.created_at <= d.created_at
+         where d.event_type = 'study.created' and r.id is null`,
+      ),
+    ).resolves.toBe(0);
+    await expect(
+      count(
+        pool,
+        `select count(*)::int as n from webhook_deliveries
+         where event_type <> 'study.created'
+            or payload->>'type' <> event_type
+            or (select count(*) from jsonb_object_keys(payload)) <> 4`,
+      ),
+    ).resolves.toBe(0);
     await expect(
       count(
         pool,

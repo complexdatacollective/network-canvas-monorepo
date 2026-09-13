@@ -81,8 +81,10 @@ export {
   type SupportedStudioLocale,
 } from './locales.ts';
 export {
+  StoredWebhookEventTypeSchema,
   WebhookEventTypeSchema,
   WebhookSubscriptionSchema,
+  type StoredWebhookEventType,
   type WebhookEventType,
   type WebhookSubscription,
 } from './webhooks.ts';

@@ -247,7 +247,7 @@ async function populate(
       scale,
     );
     await recordLinkRedemptions(client, team.id);
-    const withdrawals = await seedParticipantConsents(
+    await seedParticipantConsents(
       client,
       team,
       studies,
@@ -257,14 +257,7 @@ async function populate(
 
     await seedScheduling(client, team, studies, encryptionKeys);
     await seedApiTokens(client, team, studies);
-    await seedWebhooks(
-      client,
-      team,
-      studies,
-      sessions,
-      withdrawals,
-      encryptionKeys,
-    );
+    await seedWebhooks(client, team, studies, encryptionKeys);
     await seedExperiments(client, team, studies, sessions);
     await seedFeedback(client, team, studies);
     await seedMonitoringRollups(client, team.id, seedTime(0));
