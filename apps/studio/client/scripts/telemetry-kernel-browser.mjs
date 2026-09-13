@@ -477,36 +477,25 @@ export async function launchKernelObservedChromium({
       },
       async proveExternalLookalike() {
         await assertObserverRunning(observer);
-        const page = await browser.newPage();
-        await page
-          .goto(`http://${detectorIp}:9443/`, { waitUntil: 'commit' })
-          .catch(() => {});
-        await page.evaluate(
-          async ({ address, port }) => {
-            const connection = new RTCPeerConnection({
-              // The relay-only probe targets only the synthetic TURN detector.
-              iceTransportPolicy: 'relay',
-              iceServers: [
-                {
-                  urls: `turn:${address}:${port}?transport=udp`,
-                  username: 'qualification-control',
-                  credential: 'synthetic-control',
-                },
-              ],
-            });
-            try {
-              connection.createDataChannel('kernel-egress-control');
-              await connection.setLocalDescription(
-                await connection.createOffer(),
-              );
-              await new Promise((resolve) => setTimeout(resolve, 750));
-            } finally {
-              connection.close();
-            }
-          },
-          { address: detectorIp, port: 9443 },
-        );
-        await page.close();
+        // Refused navigation may asynchronously replace its execution context.
+        // Close the TCP probe before creating the stable UDP probe page.
+        const tcpPage = await browser.newPage();
+        try {
+          await tcpPage
+            .goto(`http://${detectorIp}:9443/`, { waitUntil: 'commit' })
+            .catch(() => {});
+        } finally {
+          await tcpPage.close();
+        }
+        const udpPage = await browser.newPage();
+        try {
+          await udpPage.evaluate(emitKernelBrowserUdpControl, {
+            address: detectorIp,
+            port: 9443,
+          });
+        } finally {
+          await udpPage.close();
+        }
         for (let attempt = 0; attempt < 50; attempt++) {
           const logs = await docker(['logs', observer]);
           try {
