@@ -2413,6 +2413,61 @@ CREATE OR REPLACE TRIGGER audit_export_request_immutable
   )
   EXECUTE FUNCTION audit_export_request_is_immutable();
 
+CREATE OR REPLACE FUNCTION audit_export_artifact_attempt_identity_is_immutable() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'audit export artifact attempt identity is immutable';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER audit_export_artifact_attempt_identity_immutable
+  BEFORE UPDATE ON audit_export_artifact_attempts
+  FOR EACH ROW
+  WHEN (
+    NEW.id IS DISTINCT FROM OLD.id
+    OR NEW.job_id IS DISTINCT FROM OLD.job_id
+    OR NEW.artifact_key IS DISTINCT FROM OLD.artifact_key
+    OR NEW.created_at IS DISTINCT FROM OLD.created_at
+  )
+  EXECUTE FUNCTION audit_export_artifact_attempt_identity_is_immutable();
+
+-- Clearing or deleting a job's attempt pointer is the durable retirement
+-- fence. The independent row remains after the mutable job (or its team) is
+-- deleted, so a provider-side effect acknowledged after client cancellation
+-- is still discovered and removed by later sweeps.
+CREATE OR REPLACE FUNCTION audit_export_retire_detached_attempt() RETURNS trigger AS $$
+BEGIN
+  IF OLD.artifact_attempt_id IS NOT NULL
+     AND (TG_OP = 'DELETE' OR NEW.artifact_attempt_id IS DISTINCT FROM OLD.artifact_attempt_id) THEN
+    UPDATE audit_export_artifact_attempts SET
+      state = 'retired',
+      retired_at = COALESCE(retired_at, statement_timestamp()),
+      next_sweep_at = COALESCE(next_sweep_at, statement_timestamp()),
+      sweep_owner = NULL,
+      sweep_expires_at = NULL
+    WHERE id = OLD.artifact_attempt_id AND state = 'active';
+  END IF;
+  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER audit_export_detached_attempt_retired
+  BEFORE UPDATE OR DELETE ON audit_export_jobs
+  FOR EACH ROW EXECUTE FUNCTION audit_export_retire_detached_attempt();
+
+-- Export jobs deliberately do not foreign-key mutable tenant rows to retained
+-- audit provenance. Remove their operational state when a team is erased; the
+-- job trigger above retires every attached private object attempt first.
+CREATE OR REPLACE FUNCTION audit_export_delete_team_jobs() RETURNS trigger AS $$
+BEGIN
+  DELETE FROM audit_export_jobs WHERE team_id = OLD.id;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER audit_export_team_jobs_deleted
+  BEFORE DELETE ON teams
+  FOR EACH ROW EXECUTE FUNCTION audit_export_delete_team_jobs();
+
 -- A handle is single-use: once consumed it can never be un-consumed, and a
 -- consumed or expired handle can never be re-issued on the same row.
 CREATE OR REPLACE FUNCTION audit_export_handle_is_single_use() RETURNS trigger AS $$
@@ -2470,6 +2525,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON audit_events, audit_export_jobs, audit_a
 -- table-level UPDATE. One statement per table so both are documented.
 REVOKE UPDATE, DELETE ON audit_export_jobs FROM studio_app;
 REVOKE UPDATE, DELETE ON audit_alert_outbox FROM studio_app;
+REVOKE ALL ON audit_export_artifact_attempts FROM studio_app;
+REVOKE DELETE, TRUNCATE ON audit_export_artifact_attempts FROM studio_maintenance;
+GRANT SELECT, INSERT, UPDATE ON audit_export_artifact_attempts TO studio_maintenance;
 GRANT UPDATE (handle_consumed_at) ON audit_export_jobs TO studio_app;
 
 REVOKE UPDATE, DELETE, TRUNCATE ON audit_events

@@ -335,22 +335,33 @@ async function seedRestoredState() {
         VALUES (gen_random_uuid(), 'current-team',
           ${pg.escapeLiteral(auditAlertId)}::uuid, gen_random_uuid(),
           'current-membership', 'current-user', 'email');
+      INSERT INTO audit_export_artifact_attempts (id,job_id,artifact_key)
+        VALUES ('00000000-0000-4000-8000-000000000030',
+          '00000000-0000-4000-8000-000000000031',
+          'audit-exports/00000000-0000-4000-8000-000000000031/00000000-0000-4000-8000-000000000030.csv');
       INSERT INTO audit_export_jobs
         (id,team_id,actor_kind,actor_id,start_event_id,start_event_sequence,
           high_water_sequence,filters,row_limit,byte_limit,
-          preflight_row_count,preflight_byte_count)
+          preflight_row_count,preflight_byte_count,status,artifact_attempt_id,artifact_key)
         SELECT '00000000-0000-4000-8000-000000000031','current-team','user',
-          'current-user',id,sequence,sequence,'{}',100000,104857600,1001,1048577
+          'current-user',id,sequence,sequence,'{}',100000,104857600,1001,1048577,
+          'generating','00000000-0000-4000-8000-000000000030',
+          'audit-exports/00000000-0000-4000-8000-000000000031/00000000-0000-4000-8000-000000000030.csv'
         FROM audit_events WHERE id=${pg.escapeLiteral(auditEventId)}::uuid;
+      INSERT INTO audit_export_artifact_attempts (id,job_id,artifact_key)
+        VALUES ('00000000-0000-4000-8000-000000000033',
+          '00000000-0000-4000-8000-000000000032',
+          'audit-exports/00000000-0000-4000-8000-000000000032/00000000-0000-4000-8000-000000000033.csv');
       INSERT INTO audit_export_jobs
         (id,team_id,actor_kind,actor_id,start_event_id,start_event_sequence,
           high_water_sequence,filters,row_limit,byte_limit,
-          preflight_row_count,preflight_byte_count,status,artifact_key,
+          preflight_row_count,preflight_byte_count,status,artifact_attempt_id,artifact_key,
           artifact_row_count,artifact_byte_count,handle_hash,handle_ciphertext,
           handle_key_id,handle_algorithm,handle_expires_at,completion_event_id,ready_at)
         SELECT '00000000-0000-4000-8000-000000000032','current-team','user',
           'current-user',id,sequence,sequence,'{}',100000,104857600,1001,1048577,
-          'ready','audit-exports/00000000-0000-4000-8000-000000000032/00000000-0000-4000-8000-000000000033.csv',
+          'ready','00000000-0000-4000-8000-000000000033',
+          'audit-exports/00000000-0000-4000-8000-000000000032/00000000-0000-4000-8000-000000000033.csv',
           1001,4096,repeat('e',64),decode(repeat('ab',30),'hex'),
           'integration-current','aes-256-gcm.v1',now()+interval '15 minutes',
           '00000000-0000-4000-8000-000000000034',now()
@@ -444,6 +455,7 @@ beforeEach(async () => {
       DELETE FROM audit_alert_deliveries;
       DELETE FROM audit_alert_outbox;
       DELETE FROM audit_export_jobs;
+      DELETE FROM audit_export_artifact_attempts;
       DELETE FROM template_registry_publication_intents;
       DELETE FROM template_registry_import_intents;
       DELETE FROM webhook_deliveries;
@@ -845,6 +857,7 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_audit_deliveries: number;
         quarantined_registry_intents: number;
         quarantined_audit_exports: number;
+        retired_export_attempts: number;
         recovery_export_audit: boolean;
         deletion_audit: boolean;
       }>(`SELECT
@@ -865,6 +878,8 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
           WHERE (status='failed' AND id='00000000-0000-4000-8000-000000000031')
              OR (status='ready' AND id='00000000-0000-4000-8000-000000000032'
                AND handle_consumed_at IS NOT NULL)) quarantined_audit_exports,
+        (SELECT count(*)::int FROM audit_export_artifact_attempts
+          WHERE state='retired' AND job_id='00000000-0000-4000-8000-000000000031') retired_export_attempts,
         EXISTS (SELECT 1 FROM audit_events WHERE event_type='audit.export.failed'
           AND subject_id='00000000-0000-4000-8000-000000000031'
           AND details->>'failureCode'='recovery_quarantined') recovery_export_audit,
@@ -883,6 +898,7 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_audit_deliveries: 1,
         quarantined_registry_intents: 2,
         quarantined_audit_exports: 2,
+        retired_export_attempts: 1,
         recovery_export_audit: true,
         deletion_audit: true,
       });

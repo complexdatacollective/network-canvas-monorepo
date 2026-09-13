@@ -56,6 +56,7 @@ const READY_COLUMNS = [
   'handle_key_id',
   'handle_algorithm',
   'handle_expires_at',
+  'artifact_attempt_id',
   'artifact_key',
   'artifact_row_count',
   'artifact_byte_count',
@@ -106,6 +107,7 @@ describe.skipIf(!db)('audit outbox schema', () => {
     handle_key_id: 'integration-v1',
     handle_algorithm: 'aes-256-gcm.v1',
     handle_expires_at: new Date(),
+    artifact_attempt_id: randomUUID(),
     artifact_key: `exports/${randomUUID()}.csv`,
     artifact_row_count: 10,
     artifact_byte_count: 2048,
@@ -186,9 +188,7 @@ describe.skipIf(!db)('audit outbox schema', () => {
 
       const row = await pool.query<Row>(
         `SELECT status, attempt_count, lease_owner, lease_expires_at,
-                artifact_key, artifact_upload_id, artifact_effect_expires_at,
-                artifact_cleanup_owner, artifact_cleanup_expires_at,
-                artifact_cleanup_not_before, artifact_cleanup_observed_at,
+                artifact_attempt_id, artifact_key,
                 handle_hash, handle_consumed_at,
                 completion_event_id, failure_event_id, ready_at, failed_at,
                 available_at IS NOT NULL AS scheduled,
@@ -201,13 +201,8 @@ describe.skipIf(!db)('audit outbox schema', () => {
         attempt_count: 0,
         lease_owner: null,
         lease_expires_at: null,
+        artifact_attempt_id: null,
         artifact_key: null,
-        artifact_upload_id: null,
-        artifact_effect_expires_at: null,
-        artifact_cleanup_owner: null,
-        artifact_cleanup_expires_at: null,
-        artifact_cleanup_not_before: null,
-        artifact_cleanup_observed_at: null,
         handle_hash: null,
         handle_consumed_at: null,
         completion_event_id: null,
@@ -229,11 +224,13 @@ describe.skipIf(!db)('audit outbox schema', () => {
           insert('audit_export_jobs', jobRow(partial)),
         ).rejects.toMatchObject({
           constraint:
-            column.startsWith('handle_') &&
-            column !== 'handle_hash' &&
-            column !== 'handle_expires_at'
-              ? 'audit_export_jobs_handle_envelope_check'
-              : 'audit_export_jobs_ready_state_check',
+            column === 'artifact_attempt_id' || column === 'artifact_key'
+              ? 'audit_export_jobs_artifact_attempt_check'
+              : column.startsWith('handle_') &&
+                  column !== 'handle_hash' &&
+                  column !== 'handle_expires_at'
+                ? 'audit_export_jobs_handle_envelope_check'
+                : 'audit_export_jobs_ready_state_check',
         });
       },
     );
@@ -292,44 +289,24 @@ describe.skipIf(!db)('audit outbox schema', () => {
       ).resolves.toMatchObject({ rowCount: 1 });
     });
 
-    it('retains a failed attempt artifact under a restart-safe cleanup fence', async () => {
-      await expect(
-        insert(
-          'audit_export_jobs',
-          jobRow({
-            status: 'failed',
-            failed_at: new Date(),
-            failure_event_id: randomUUID(),
-            artifact_key: `audit-exports/${randomUUID()}/${randomUUID()}.csv`,
-            artifact_upload_id: 'upload-id',
-            artifact_effect_expires_at: new Date(),
-            artifact_cleanup_not_before: new Date(),
-          }),
-        ),
-      ).resolves.toMatchObject({ rowCount: 1 });
-    });
-
     it.each([
-      ['an upload id without an artifact key', { artifact_upload_id: 'id' }],
       [
-        'a cleanup owner without its lease expiry',
+        'an attempt id without an artifact key',
         {
-          artifact_key: 'exports/partial.csv',
-          artifact_cleanup_owner: randomUUID(),
+          artifact_attempt_id: randomUUID(),
         },
       ],
       [
-        'an observed cleanup without a durable not-before',
+        'an artifact key without an attempt id',
         {
           artifact_key: 'exports/partial.csv',
-          artifact_cleanup_observed_at: new Date(),
         },
       ],
     ])('refuses %s', async (_label, overrides) => {
       await expect(
         insert('audit_export_jobs', jobRow(overrides)),
       ).rejects.toMatchObject({
-        constraint: 'audit_export_jobs_artifact_cleanup_check',
+        constraint: 'audit_export_jobs_artifact_attempt_check',
       });
     });
 
@@ -474,13 +451,83 @@ describe.skipIf(!db)('audit outbox schema', () => {
              handle_hash = $2, handle_expires_at = now() + interval '1 hour',
              handle_ciphertext = $5, handle_key_id = 'integration-v1',
              handle_algorithm = 'aes-256-gcm.v1',
-             artifact_key = $3, artifact_row_count = 10,
+             artifact_attempt_id = $6, artifact_key = $3, artifact_row_count = 10,
              artifact_byte_count = 2048, completion_event_id = $4,
              ready_at = now()
          WHERE id = $1`,
-        [id, hex64(), `exports/${id}.csv`, randomUUID(), randomBytes(61)],
+        [
+          id,
+          hex64(),
+          `exports/${id}.csv`,
+          randomUUID(),
+          randomBytes(61),
+          randomUUID(),
+        ],
       );
       expect(completed.rowCount).toBe(1);
+    });
+  });
+
+  describe('audit_export_artifact_attempts', () => {
+    it('keeps immutable cleanup identity outside the application role', async () => {
+      const id = randomUUID();
+      const jobId = randomUUID();
+      const key = `audit-exports/${jobId}/${id}.csv`;
+      await insert('audit_export_artifact_attempts', {
+        id,
+        job_id: jobId,
+        artifact_key: key,
+      });
+
+      await expect(
+        tenantA.query(
+          `SELECT id FROM audit_export_artifact_attempts WHERE id=$1`,
+          [id],
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        maintenance.query<{ artifact_key: string }>(
+          `SELECT artifact_key FROM audit_export_artifact_attempts WHERE id=$1`,
+          [id],
+        ),
+      ).resolves.toHaveProperty('rows', [{ artifact_key: key }]);
+      await expect(
+        maintenance.query(
+          `UPDATE audit_export_artifact_attempts SET artifact_key='changed' WHERE id=$1`,
+          [id],
+        ),
+      ).rejects.toThrow('audit export artifact attempt identity is immutable');
+      await expect(
+        maintenance.query(
+          `DELETE FROM audit_export_artifact_attempts WHERE id=$1`,
+          [id],
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
+    });
+
+    it('requires retirement time, sweep schedule and lease pairs', async () => {
+      const base = {
+        id: randomUUID(),
+        job_id: randomUUID(),
+        artifact_key: `audit-exports/${randomUUID()}/${randomUUID()}.csv`,
+      };
+      await expect(
+        insert('audit_export_artifact_attempts', {
+          ...base,
+          state: 'retired',
+        }),
+      ).rejects.toMatchObject({
+        constraint: 'audit_export_artifact_attempts_state_check',
+      });
+      await expect(
+        insert('audit_export_artifact_attempts', {
+          ...base,
+          id: randomUUID(),
+          sweep_owner: randomUUID(),
+        }),
+      ).rejects.toMatchObject({
+        constraint: 'audit_export_artifact_attempts_lease_check',
+      });
     });
   });
 

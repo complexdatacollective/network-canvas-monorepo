@@ -1,6 +1,6 @@
 {
   "dialect": "postgres",
-  "id": "124e0627-7334-4b8f-bc6c-4587d0f493b1",
+  "id": "5108ca7a-08a8-4873-97a0-835d57ae5c70",
   "prevIds": ["3b55c83b-3d20-4e2f-a6d8-51e52c1d3ec1"],
   "version": "8",
   "ddl": [
@@ -355,6 +355,12 @@
     {
       "isRlsEnabled": true,
       "name": "audit_events",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "audit_export_artifact_attempts",
       "entityType": "tables",
       "schema": "public"
     },
@@ -8624,6 +8630,162 @@
       "name": "id",
       "entityType": "columns",
       "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "job_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "artifact_key",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "upload_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'active'",
+      "generated": null,
+      "identity": null,
+      "name": "state",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "next_sweep_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
+      "generated": null,
+      "identity": null,
+      "name": "sweep_count",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "sweep_owner",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "sweep_expires_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "last_sweep_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "retired_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
       "table": "audit_export_jobs"
     },
     {
@@ -8835,6 +8997,19 @@
       "table": "audit_export_jobs"
     },
     {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "artifact_attempt_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_jobs"
+    },
+    {
       "type": "text",
       "typeSchema": null,
       "notNull": false,
@@ -8843,84 +9018,6 @@
       "generated": null,
       "identity": null,
       "name": "artifact_key",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "audit_export_jobs"
-    },
-    {
-      "type": "text",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "artifact_upload_id",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "audit_export_jobs"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "artifact_effect_expires_at",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "audit_export_jobs"
-    },
-    {
-      "type": "uuid",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "artifact_cleanup_owner",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "audit_export_jobs"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "artifact_cleanup_expires_at",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "audit_export_jobs"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "artifact_cleanup_not_before",
-      "entityType": "columns",
-      "schema": "public",
-      "table": "audit_export_jobs"
-    },
-    {
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": false,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "name": "artifact_cleanup_observed_at",
       "entityType": "columns",
       "schema": "public",
       "table": "audit_export_jobs"
@@ -12582,6 +12679,55 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "artifact_key",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "audit_export_artifact_attempts_key_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "next_sweep_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "sweep_expires_at",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": "state = 'retired'",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "audit_export_artifact_attempts_sweep_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "team_id",
           "isExpression": false,
           "asc": true,
@@ -14370,6 +14516,14 @@
       "name": "audit_events_pkey",
       "schema": "public",
       "table": "audit_events",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "audit_export_artifact_attempts_pkey",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts",
       "entityType": "pks"
     },
     {
@@ -16257,6 +16411,27 @@
       "table": "audit_events"
     },
     {
+      "value": "\"state\" IN ('active', 'retired')\n          AND (\"state\" = 'retired') = (\"retired_at\" IS NOT NULL)\n          AND (\"state\" = 'retired') = (\"next_sweep_at\" IS NOT NULL)",
+      "name": "audit_export_artifact_attempts_state_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "value": "(\"sweep_owner\" IS NULL) = (\"sweep_expires_at\" IS NULL)",
+      "name": "audit_export_artifact_attempts_lease_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
+      "value": "\"sweep_count\" >= 0\n          AND char_length(\"artifact_key\") BETWEEN 1 AND 1024\n          AND (\"upload_id\" IS NULL OR char_length(\"upload_id\") BETWEEN 1 AND 1024)",
+      "name": "audit_export_artifact_attempts_values_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_export_artifact_attempts"
+    },
+    {
       "value": "\"status\" IN ('pending', 'generating', 'ready', 'failed')",
       "name": "audit_export_jobs_status_check",
       "entityType": "checks",
@@ -16299,7 +16474,7 @@
       "table": "audit_export_jobs"
     },
     {
-      "value": "(\"status\" = 'ready') = (\n            \"handle_hash\" IS NOT NULL\n            AND \"handle_ciphertext\" IS NOT NULL\n            AND \"handle_key_id\" IS NOT NULL\n            AND \"handle_algorithm\" IS NOT NULL\n            AND \"handle_expires_at\" IS NOT NULL\n            AND \"artifact_key\" IS NOT NULL\n            AND \"artifact_row_count\" IS NOT NULL\n            AND \"artifact_byte_count\" IS NOT NULL\n            AND \"completion_event_id\" IS NOT NULL\n            AND \"ready_at\" IS NOT NULL\n          )",
+      "value": "(\"status\" = 'ready') = (\n            \"handle_hash\" IS NOT NULL\n            AND \"handle_ciphertext\" IS NOT NULL\n            AND \"handle_key_id\" IS NOT NULL\n            AND \"handle_algorithm\" IS NOT NULL\n            AND \"handle_expires_at\" IS NOT NULL\n            AND \"artifact_attempt_id\" IS NOT NULL\n            AND \"artifact_key\" IS NOT NULL\n            AND \"artifact_row_count\" IS NOT NULL\n            AND \"artifact_byte_count\" IS NOT NULL\n            AND \"completion_event_id\" IS NOT NULL\n            AND \"ready_at\" IS NOT NULL\n          )",
       "name": "audit_export_jobs_ready_state_check",
       "entityType": "checks",
       "schema": "public",
@@ -16327,8 +16502,8 @@
       "table": "audit_export_jobs"
     },
     {
-      "value": "(\"artifact_cleanup_owner\" IS NULL) = (\"artifact_cleanup_expires_at\" IS NULL)\n          AND (\"artifact_upload_id\" IS NULL OR \"artifact_key\" IS NOT NULL)\n          AND (\"artifact_effect_expires_at\" IS NULL OR \"artifact_key\" IS NOT NULL)\n          AND (\"artifact_cleanup_owner\" IS NULL OR \"artifact_key\" IS NOT NULL)\n          AND (\"artifact_cleanup_not_before\" IS NULL OR \"artifact_key\" IS NOT NULL)\n          AND (\"artifact_cleanup_observed_at\" IS NULL OR \"artifact_cleanup_not_before\" IS NOT NULL)",
-      "name": "audit_export_jobs_artifact_cleanup_check",
+      "value": "(\"artifact_attempt_id\" IS NULL) = (\"artifact_key\" IS NULL)",
+      "name": "audit_export_jobs_artifact_attempt_check",
       "entityType": "checks",
       "schema": "public",
       "table": "audit_export_jobs"
@@ -16341,7 +16516,7 @@
       "table": "audit_export_jobs"
     },
     {
-      "value": "char_length(\"team_id\") BETWEEN 1 AND 255\n          AND char_length(\"actor_id\") BETWEEN 1 AND 255\n          AND (\"artifact_key\" IS NULL OR char_length(\"artifact_key\") BETWEEN 1 AND 1024)\n          AND (\"artifact_upload_id\" IS NULL OR char_length(\"artifact_upload_id\") BETWEEN 1 AND 1024)\n          AND (\"last_error\" IS NULL OR char_length(\"last_error\") <= 1000)",
+      "value": "char_length(\"team_id\") BETWEEN 1 AND 255\n          AND char_length(\"actor_id\") BETWEEN 1 AND 255\n          AND (\"artifact_key\" IS NULL OR char_length(\"artifact_key\") BETWEEN 1 AND 1024)\n          AND (\"last_error\" IS NULL OR char_length(\"last_error\") <= 1000)",
       "name": "audit_export_jobs_identifier_lengths_check",
       "entityType": "checks",
       "schema": "public",

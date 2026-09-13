@@ -1,0 +1,49 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server
+
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > commits producer, streams below high-water, finalizes, and consumes once
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > releases its lease and retains a retryable job after storage failure
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > rejects an invalid handle before opening an object stream
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > rechecks administrator authority after opening and releases a refused stream
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > cancels an opened body when the consumption transaction throws
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > releases a size-mismatched body without consuming the handle
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > releases the source reader after EOF and consumer cancellation
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > cancels a stream that exceeds its recorded size while downloading
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > uses a fresh durable attempt key for every retry under one dispatcher owner
+ × src/audit/__tests__/export.test.ts > staged audit export > retains cleanup through two empty scans and removes a later remote effect after restart 76ms
+   → expected [] to deeply equal [ …(2) ]
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > sweeps an old retired attempt without deleting the newer ready artifact
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > retains cleanup responsibility after its job and team are deleted
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > leases retired cleanup to one owner and backs off retained tombstones
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > neutralizes whitespace-prefixed spreadsheet formulas
+ ↓ src/audit/__tests__/export.test.ts > staged audit export > deletes consumed artifacts in a bounded audited cleanup pass
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/audit/__tests__/export.test.ts > staged audit export > retains cleanup through two empty scans and removes a later remote effect after restart
+AssertionError: expected [] to deeply equal [ …(2) ]
+
+- Expected
++ Received
+
+- [
+-   "audit-exports/106f5727-6a5b-417a-ad89-30e26e93bc6e/98425107-9b08-4a13-82e6-e9738ba5e793.csv",
+-   "audit-exports/106f5727-6a5b-417a-ad89-30e26e93bc6e/98425107-9b08-4a13-82e6-e9738ba5e793.csv",
+- ]
++ []
+
+ ❯ src/audit/__tests__/export.test.ts:521:19
+    519|     );
+    520|     await adapter.suppressUndeliverable();
+    521|     expect(scans).toEqual([claim.artifactKey, claim.artifactKey]);
+       |                   ^
+    522|
+    523|     releaseCreate?.();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 14 skipped (15)
+   Start at  16:32:41
+   Duration  4.25s (transform 1.20s, setup 0ms, import 2.25s, tests 1.88s, environment 0ms)

@@ -36,6 +36,8 @@ const HANDLE_TTL_MS = 15 * 60_000;
 const ARTIFACT_EFFECT_TIMEOUT_MS = 15 * 60_000;
 const ARTIFACT_CLEANUP_LEASE_MS = 30_000;
 const ARTIFACT_CLEANUP_TIMEOUT_MS = 25_000;
+const ARTIFACT_SWEEP_BASE_MS = 60_000;
+const ARTIFACT_SWEEP_MAX_MS = 24 * 60 * 60_000;
 const teamStore = new TeamStore();
 
 export type AuditExportFilters = {
@@ -634,6 +636,8 @@ type Claim = {
   filters: AuditExportFilters;
   attemptCount: number;
   leaseOwner: string;
+  attemptId: string | null;
+  artifactKey: string | null;
 };
 type Generated = {
   key: string;
@@ -646,23 +650,29 @@ type Generated = {
     hash: string;
   };
 };
-type CleanupClaim = {
+type ReadyCleanupClaim = {
   id: string;
   teamId: string;
   actorId: string;
   startEventId: string;
+  attemptId: string;
   artifactKey: string;
-  artifactUploadId: string | null;
-  status: string;
   cleanupOwner: string;
-  cleanupObservedAt: Date | null;
   reason: 'consumed' | 'expired';
+};
+type RetiredAttemptClaim = {
+  attemptId: string;
+  artifactKey: string;
+  uploadId: string | null;
+  sweepCount: number;
+  cleanupOwner: string;
 };
 
 class CleanupClaimLostError extends Error {}
 
-function generatedId(claim: Pick<Claim, 'id' | 'leaseOwner'>): string {
-  return `${claim.id}:${claim.leaseOwner}`;
+function generatedId(claim: Pick<Claim, 'attemptId'>): string {
+  if (!claim.attemptId) throw new Error('audit export attempt missing');
+  return claim.attemptId;
 }
 
 export class AuditExportAdapter implements OutboxAdapter<Claim> {
@@ -683,81 +693,116 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
     this.keys = keys;
     this.cleanupConsumedAfterMs = cleanupConsumedAfterMs;
   }
-  private forgetGenerated(c: Pick<Claim, 'id' | 'leaseOwner'>): void {
-    this.generated.delete(generatedId(c));
+  private forgetGenerated(c: Pick<Claim, 'attemptId'>): void {
+    if (c.attemptId) this.generated.delete(c.attemptId);
+  }
+  private generatedFor(c: Pick<Claim, 'attemptId'>): Generated | undefined {
+    return c.attemptId ? this.generated.get(c.attemptId) : undefined;
   }
 
-  private async releaseCleanupClaim(claim: CleanupClaim): Promise<void> {
+  private async releaseAttemptSweep(
+    claim: RetiredAttemptClaim,
+    delayMs: number,
+  ): Promise<boolean> {
+    const result = await this.pool.query(
+      `UPDATE audit_export_artifact_attempts SET
+         sweep_count=sweep_count+1,last_sweep_at=statement_timestamp(),
+         next_sweep_at=statement_timestamp()+($3*interval '1 millisecond'),
+         sweep_owner=NULL,sweep_expires_at=NULL
+       WHERE id=$1 AND state='retired' AND sweep_owner=$2
+         AND sweep_expires_at>statement_timestamp()`,
+      [claim.attemptId, claim.cleanupOwner, delayMs],
+    );
+    return result.rowCount === 1;
+  }
+
+  private async claimRetiredAttempt(): Promise<RetiredAttemptClaim | null> {
+    const cleanupOwner = randomUUID();
+    const result = await this.pool.query<RetiredAttemptClaim>(
+      `WITH candidate AS (
+         SELECT id FROM audit_export_artifact_attempts
+         WHERE state='retired' AND next_sweep_at<=statement_timestamp()
+           AND (sweep_owner IS NULL OR sweep_expires_at<=statement_timestamp())
+         ORDER BY next_sweep_at,id FOR UPDATE SKIP LOCKED LIMIT 1
+       )
+       UPDATE audit_export_artifact_attempts attempts SET sweep_owner=$1,
+         sweep_expires_at=statement_timestamp()+($2*interval '1 millisecond')
+       FROM candidate WHERE attempts.id=candidate.id
+       RETURNING attempts.id AS "attemptId",attempts.artifact_key AS "artifactKey",
+         attempts.upload_id AS "uploadId",attempts.sweep_count AS "sweepCount",
+         attempts.sweep_owner::text AS "cleanupOwner"`,
+      [cleanupOwner, ARTIFACT_CLEANUP_LEASE_MS],
+    );
+    return result.rows[0] ?? null;
+  }
+
+  private async retireExpiredAttempt(): Promise<boolean> {
+    const result = await this.pool.query(
+      `WITH candidate AS (
+         SELECT jobs.id, jobs.artifact_attempt_id FROM audit_export_jobs jobs
+         JOIN audit_export_artifact_attempts attempts
+           ON attempts.id=jobs.artifact_attempt_id AND attempts.state='active'
+         WHERE jobs.status='generating'
+           AND jobs.lease_expires_at<=statement_timestamp()
+         ORDER BY jobs.lease_expires_at,jobs.id FOR UPDATE OF jobs SKIP LOCKED LIMIT 1
+       ), retired AS (
+         UPDATE audit_export_artifact_attempts attempts SET state='retired',
+           retired_at=statement_timestamp(),next_sweep_at=statement_timestamp()
+         FROM candidate WHERE attempts.id=candidate.artifact_attempt_id
+           AND attempts.state='active' RETURNING attempts.id
+       )
+       UPDATE audit_export_jobs jobs SET status='pending',artifact_attempt_id=NULL,
+         artifact_key=NULL,lease_owner=NULL,lease_expires_at=NULL
+       FROM candidate,retired WHERE jobs.id=candidate.id
+         AND jobs.artifact_attempt_id=retired.id RETURNING jobs.id`,
+    );
+    return result.rowCount === 1;
+  }
+
+  private async releaseReadyCleanup(claim: ReadyCleanupClaim): Promise<void> {
     await this.pool.query(
-      `UPDATE audit_export_jobs
-       SET artifact_cleanup_owner=NULL,artifact_cleanup_expires_at=NULL
-       WHERE id=$1 AND artifact_cleanup_owner=$2`,
-      [claim.id, claim.cleanupOwner],
+      `UPDATE audit_export_artifact_attempts SET sweep_owner=NULL,sweep_expires_at=NULL
+       WHERE id=$1 AND state='active' AND sweep_owner=$2`,
+      [claim.attemptId, claim.cleanupOwner],
     );
   }
 
-  private async claimCleanup(): Promise<CleanupClaim | null> {
+  private async claimReadyCleanup(): Promise<ReadyCleanupClaim | null> {
     const cleanupOwner = randomUUID();
-    const result = await this.pool.query<CleanupClaim>(
+    const result = await this.pool.query<ReadyCleanupClaim>(
       `WITH candidate AS (
-         SELECT id FROM audit_export_jobs
-         WHERE artifact_key IS NOT NULL
-           AND (artifact_cleanup_owner IS NULL
-             OR artifact_cleanup_expires_at<=statement_timestamp())
-           AND (artifact_cleanup_not_before IS NULL
-             OR artifact_cleanup_not_before<=statement_timestamp())
-           AND (
-             status IN ('pending','failed')
-             OR (status='generating'
-               AND lease_expires_at<=statement_timestamp())
-             OR (status='ready' AND (
-               (handle_consumed_at IS NULL
-                 AND handle_expires_at<=statement_timestamp())
-               OR (handle_consumed_at IS NOT NULL
-                 AND handle_consumed_at<=statement_timestamp()-($1*interval '1 millisecond'))
-             ))
-           )
-         ORDER BY CASE WHEN status='ready' THEN 1 ELSE 0 END,
-           COALESCE(handle_consumed_at,handle_expires_at,available_at),id
-         FOR UPDATE SKIP LOCKED LIMIT 1
+         SELECT jobs.id,jobs.artifact_attempt_id FROM audit_export_jobs jobs
+         JOIN audit_export_artifact_attempts attempts
+           ON attempts.id=jobs.artifact_attempt_id AND attempts.state='active'
+         WHERE jobs.status='ready' AND (
+           (jobs.handle_consumed_at IS NULL
+             AND jobs.handle_expires_at<=statement_timestamp())
+           OR (jobs.handle_consumed_at IS NOT NULL
+             AND jobs.handle_consumed_at<=statement_timestamp()-($1*interval '1 millisecond'))
+         ) AND (attempts.sweep_owner IS NULL
+           OR attempts.sweep_expires_at<=statement_timestamp())
+         ORDER BY COALESCE(jobs.handle_consumed_at,jobs.handle_expires_at),jobs.id
+         FOR UPDATE OF attempts SKIP LOCKED LIMIT 1
+       ), claimed AS (
+         UPDATE audit_export_artifact_attempts attempts SET sweep_owner=$2,
+           sweep_expires_at=statement_timestamp()+($3*interval '1 millisecond')
+         FROM candidate WHERE attempts.id=candidate.artifact_attempt_id
+         RETURNING attempts.id,attempts.artifact_key
        )
-       UPDATE audit_export_jobs jobs
-       SET artifact_cleanup_owner=$2,
-         artifact_cleanup_expires_at=statement_timestamp()+($3*interval '1 millisecond'),
-         artifact_cleanup_not_before=COALESCE(
-           artifact_cleanup_not_before,
-          GREATEST(
-            statement_timestamp(),
-            artifact_effect_expires_at+interval '1 millisecond'
-          )
-         )
-       FROM candidate WHERE jobs.id=candidate.id
-       RETURNING jobs.id,jobs.team_id AS "teamId",jobs.actor_id AS "actorId",
-         jobs.start_event_id AS "startEventId",jobs.artifact_key AS "artifactKey",
-         jobs.artifact_upload_id AS "artifactUploadId",jobs.status,
-         jobs.artifact_cleanup_owner::text AS "cleanupOwner",
-         jobs.artifact_cleanup_observed_at AS "cleanupObservedAt",
-         CASE WHEN jobs.handle_consumed_at IS NULL THEN 'expired' ELSE 'consumed' END AS reason`,
+       SELECT jobs.id,jobs.team_id AS "teamId",jobs.actor_id AS "actorId",
+         jobs.start_event_id AS "startEventId",claimed.id AS "attemptId",
+         claimed.artifact_key AS "artifactKey",$2::text AS "cleanupOwner",
+         CASE WHEN jobs.handle_consumed_at IS NULL THEN 'expired' ELSE 'consumed' END AS reason
+       FROM audit_export_jobs jobs JOIN candidate ON candidate.id=jobs.id
+       JOIN claimed ON claimed.id=candidate.artifact_attempt_id`,
       [this.cleanupConsumedAfterMs, cleanupOwner, ARTIFACT_CLEANUP_LEASE_MS],
     );
     return result.rows[0] ?? null;
   }
 
-  private async completeAttemptCleanup(claim: CleanupClaim): Promise<boolean> {
-    const result = await this.pool.query(
-      `UPDATE audit_export_jobs SET artifact_key=NULL,artifact_upload_id=NULL,
-         artifact_effect_expires_at=NULL,artifact_cleanup_owner=NULL,
-         artifact_cleanup_expires_at=NULL,artifact_cleanup_not_before=NULL,
-         artifact_cleanup_observed_at=NULL
-       WHERE id=$1 AND artifact_key=$2 AND artifact_cleanup_owner=$3
-         AND artifact_cleanup_expires_at>statement_timestamp()
-         AND status<>'ready'`,
-      [claim.id, claim.artifactKey, claim.cleanupOwner],
-    );
-    return result.rowCount === 1;
-  }
-
-  private async completeReadyCleanup(claim: CleanupClaim): Promise<boolean> {
+  private async completeReadyCleanup(
+    claim: ReadyCleanupClaim,
+  ): Promise<boolean> {
     const tenant = createTenantDb(this.pool, claim.teamId);
     try {
       await runAuditedSystemMutation(
@@ -790,10 +835,23 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
           ],
           afterEventsStored: async (client) => {
             const deleted = await client.query(
-              `DELETE FROM audit_export_jobs WHERE id=$1 AND status='ready'
-               AND artifact_key=$2 AND artifact_cleanup_owner=$3
-               AND artifact_cleanup_expires_at>statement_timestamp()`,
-              [claim.id, claim.artifactKey, claim.cleanupOwner],
+              `WITH retired AS (
+                 UPDATE audit_export_artifact_attempts SET state='retired',
+                   retired_at=statement_timestamp(),next_sweep_at=statement_timestamp(),
+                   sweep_owner=NULL,sweep_expires_at=NULL
+                 WHERE id=$2 AND state='active' AND artifact_key=$3
+                   AND sweep_owner=$4 AND sweep_expires_at>statement_timestamp()
+                 RETURNING id
+               )
+               DELETE FROM audit_export_jobs jobs USING retired
+               WHERE jobs.id=$1 AND jobs.status='ready'
+                 AND jobs.artifact_attempt_id=retired.id RETURNING jobs.id`,
+              [
+                claim.id,
+                claim.attemptId,
+                claim.artifactKey,
+                claim.cleanupOwner,
+              ],
             );
             if (deleted.rowCount !== 1) throw new CleanupClaimLostError();
           },
@@ -807,50 +865,39 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
   }
 
   async suppressUndeliverable() {
-    const claim = await this.claimCleanup();
-    if (!claim) return 0;
-    try {
-      // The first durable pass fences the old attempt. It never touches the
-      // store before the absolute deadline shared by every old storage call.
-      const notBefore = await this.pool.query<{ ready: boolean }>(
-        `SELECT artifact_cleanup_not_before<=statement_timestamp() AS ready
-         FROM audit_export_jobs WHERE id=$1 AND artifact_cleanup_owner=$2`,
-        [claim.id, claim.cleanupOwner],
-      );
-      if (!notBefore.rows[0]?.ready) {
-        await this.releaseCleanupClaim(claim);
-        return 1;
+    let changed = (await this.retireExpiredAttempt()) ? 1 : 0;
+    const ready = await this.claimReadyCleanup();
+    if (ready) {
+      try {
+        if (await this.completeReadyCleanup(ready)) changed++;
+      } catch (error) {
+        await this.releaseReadyCleanup(ready).catch(() => undefined);
+        if (!(error instanceof CleanupClaimLostError)) throw error;
       }
+    }
+    const claim = await this.claimRetiredAttempt();
+    if (!claim) return changed;
+    try {
       const settled = await this.store.cleanupAuditExport(
         claim.artifactKey,
-        claim.artifactUploadId,
+        claim.uploadId,
         AbortSignal.timeout(ARTIFACT_CLEANUP_TIMEOUT_MS),
       );
-      if (!settled) {
-        await this.releaseCleanupClaim(claim);
-        return 1;
-      }
-      if (!claim.cleanupObservedAt) {
-        const observed = await this.pool.query(
-          `UPDATE audit_export_jobs SET
-             artifact_cleanup_observed_at=statement_timestamp(),
-             artifact_cleanup_owner=NULL,artifact_cleanup_expires_at=NULL
-           WHERE id=$1 AND artifact_key=$2 AND artifact_cleanup_owner=$3
-             AND artifact_cleanup_expires_at>statement_timestamp()`,
-          [claim.id, claim.artifactKey, claim.cleanupOwner],
-        );
-        if (observed.rowCount !== 1) throw new CleanupClaimLostError();
-        return 1;
-      }
-      const completed =
-        claim.status === 'ready'
-          ? await this.completeReadyCleanup(claim)
-          : await this.completeAttemptCleanup(claim);
-      if (!completed) throw new CleanupClaimLostError();
-      return 1;
+      const exponent = Math.min(claim.sweepCount, 10);
+      const delay = settled
+        ? Math.min(
+            ARTIFACT_SWEEP_MAX_MS,
+            ARTIFACT_SWEEP_BASE_MS * 2 ** exponent,
+          )
+        : ARTIFACT_SWEEP_BASE_MS;
+      if (!(await this.releaseAttemptSweep(claim, delay)))
+        throw new CleanupClaimLostError();
+      return changed + 1;
     } catch (error) {
-      await this.releaseCleanupClaim(claim).catch(() => undefined);
-      if (error instanceof CleanupClaimLostError) return 0;
+      await this.releaseAttemptSweep(claim, ARTIFACT_SWEEP_BASE_MS).catch(
+        () => undefined,
+      );
+      if (error instanceof CleanupClaimLostError) return changed;
       throw error;
     }
   }
@@ -866,7 +913,8 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
       lease_expires_at=statement_timestamp()+interval '1 minute' FROM candidate
       WHERE j.id=candidate.id RETURNING j.id,j.team_id AS "teamId",j.actor_id AS "actorId",
       j.start_event_id AS "startEventId",j.high_water_sequence::text AS "highWater",
-      j.filters,j.attempt_count AS "attemptCount",j.lease_owner::text AS "leaseOwner"`,
+      j.filters,j.attempt_count AS "attemptCount",j.lease_owner::text AS "leaseOwner",
+      NULL::text AS "attemptId",NULL::text AS "artifactKey"`,
       [max, owner],
     );
     const claim = r.rows[0];
@@ -881,20 +929,27 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
       : 0;
   }
   async claim(lease: OutboxLease, max: number) {
+    const attemptId = randomUUID();
     const r = await this.pool.query<Claim>(
       `WITH candidate AS (SELECT id FROM audit_export_jobs
       WHERE status IN ('pending','generating') AND attempt_count < $1
-      AND artifact_key IS NULL
+      AND artifact_attempt_id IS NULL AND artifact_key IS NULL
       AND available_at <= statement_timestamp()
       AND (lease_expires_at IS NULL OR lease_expires_at <= statement_timestamp())
-      ORDER BY available_at,id FOR UPDATE SKIP LOCKED LIMIT 1)
-      UPDATE audit_export_jobs j SET status='generating', attempt_count=attempt_count+1,
-      lease_owner=$2, lease_expires_at=statement_timestamp()+($3*interval '1 millisecond')
-      FROM candidate WHERE j.id=candidate.id RETURNING j.id,j.team_id AS "teamId",
-      j.actor_id AS "actorId",j.start_event_id AS "startEventId",
-      j.high_water_sequence::text AS "highWater",j.filters,j.attempt_count AS "attemptCount",
-      j.lease_owner::text AS "leaseOwner"`,
-      [max, lease.owner, lease.durationMs],
+      ORDER BY available_at,id FOR UPDATE SKIP LOCKED LIMIT 1), claimed AS (
+        UPDATE audit_export_jobs j SET status='generating', attempt_count=attempt_count+1,
+        lease_owner=$2, lease_expires_at=statement_timestamp()+($3*interval '1 millisecond'),
+        artifact_attempt_id=$4::uuid,artifact_key='audit-exports/'||j.id::text||'/'||$4::text||'.csv'
+        FROM candidate WHERE j.id=candidate.id RETURNING j.*
+      ), attempt AS (
+        INSERT INTO audit_export_artifact_attempts (id,job_id,artifact_key)
+        SELECT artifact_attempt_id,id,artifact_key FROM claimed RETURNING id
+      ) SELECT claimed.id,claimed.team_id AS "teamId",claimed.actor_id AS "actorId",
+        claimed.start_event_id AS "startEventId",claimed.high_water_sequence::text AS "highWater",
+        claimed.filters,claimed.attempt_count AS "attemptCount",claimed.lease_owner::text AS "leaseOwner",
+        claimed.artifact_attempt_id::text AS "attemptId",claimed.artifact_key AS "artifactKey"
+      FROM claimed JOIN attempt ON attempt.id=claimed.artifact_attempt_id`,
+      [max, lease.owner, lease.durationMs, attemptId],
     );
     return r.rows[0] ?? null;
   }
@@ -902,8 +957,8 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
     const r = await this.pool.query(
       `SELECT 1 FROM audit_export_jobs WHERE id=$1
       AND lease_owner=$2 AND lease_expires_at>statement_timestamp()
-      AND artifact_cleanup_not_before IS NULL AND status='generating'`,
-      [c.id, l.owner],
+      AND artifact_attempt_id=$3 AND artifact_key=$4 AND status='generating'`,
+      [c.id, l.owner, c.attemptId, c.artifactKey],
     );
     return r.rowCount === 1;
   }
@@ -915,8 +970,8 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
       `UPDATE audit_export_jobs SET lease_expires_at=
       statement_timestamp()+($3*interval '1 millisecond') WHERE id=$1 AND lease_owner=$2
       AND lease_expires_at>statement_timestamp()
-      AND artifact_cleanup_not_before IS NULL AND status='generating' RETURNING id`,
-      [c.id, l.owner, l.durationMs],
+      AND artifact_attempt_id=$4 AND artifact_key=$5 AND status='generating' RETURNING id`,
+      [c.id, l.owner, l.durationMs, c.attemptId, c.artifactKey],
     );
     return r.rowCount === 1;
   }
@@ -962,43 +1017,38 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
         }
       }
     }
+    if (!c.attemptId || !c.artifactKey)
+      throw new Error('audit export attempt missing');
     const generated: Generated = {
-      key: auditExportArtifactKey(c.id, c.leaseOwner),
+      key: auditExportArtifactKey(c.id, c.attemptId),
       rowCount: 0,
       byteCount: 0,
     };
     this.generated.set(generatedId(c), generated);
-    const recordedArtifact = await this.pool.query(
-      `UPDATE audit_export_jobs SET artifact_key=$3,
-         artifact_effect_expires_at=statement_timestamp()+($4*interval '1 millisecond')
-       WHERE id=$1 AND lease_owner=$2
-       AND lease_expires_at>statement_timestamp() AND status='generating'
-       AND artifact_cleanup_not_before IS NULL
-       RETURNING id`,
-      [c.id, c.leaseOwner, generated.key, ARTIFACT_EFFECT_TIMEOUT_MS],
-    );
-    if (recordedArtifact.rowCount !== 1) {
-      this.generated.delete(generatedId(c));
-      throw new Error('audit export lease lost');
-    }
+    if (generated.key !== c.artifactKey)
+      throw new Error('audit export artifact key mismatch');
     const artifact = await this.store.putAuditExport(
       c.id,
-      c.leaseOwner,
+      c.attemptId,
       chunks(),
       {
         signal,
         recordUploadId: async (uploadId) => {
-          signal.throwIfAborted();
-          const recorded = await this.pool.query(
-            `UPDATE audit_export_jobs SET artifact_upload_id=$4
-             WHERE id=$1 AND lease_owner=$2 AND artifact_key=$3
-               AND lease_expires_at>statement_timestamp()
-               AND artifact_effect_expires_at>statement_timestamp()
-               AND artifact_cleanup_not_before IS NULL
-               AND status='generating' RETURNING id`,
-            [c.id, c.leaseOwner, generated.key, uploadId],
+          const recorded = await this.pool.query<{ active: boolean }>(
+            `WITH saved AS (
+               UPDATE audit_export_artifact_attempts SET upload_id=$4
+               WHERE id=$3 AND artifact_key=$5
+                 AND (upload_id IS NULL OR upload_id=$4) RETURNING id
+             ) SELECT EXISTS (
+               SELECT 1 FROM audit_export_jobs jobs JOIN saved
+                 ON saved.id=jobs.artifact_attempt_id
+               WHERE jobs.id=$1 AND jobs.lease_owner=$2
+                 AND jobs.lease_expires_at>statement_timestamp()
+                 AND jobs.artifact_key=$5 AND jobs.status='generating'
+             ) AS active`,
+            [c.id, c.leaseOwner, c.attemptId, uploadId, generated.key],
           );
-          return recorded.rowCount === 1;
+          return recorded.rows[0]?.active === true;
         },
       },
     );
@@ -1085,15 +1135,10 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
               const r = await client.query(
                 `UPDATE audit_export_jobs SET status='failed',
               failed_at=statement_timestamp(),failure_event_id=$3,last_error=$4,
-              artifact_key=COALESCE(artifact_key,$5),lease_owner=NULL,lease_expires_at=NULL WHERE id=$1
-              AND lease_owner=$2`,
-                [
-                  c.id,
-                  l.owner,
-                  events[0]?.id,
-                  message,
-                  this.generated.get(generatedId(c))?.key ?? null,
-                ],
+              artifact_attempt_id=NULL,artifact_key=NULL,lease_owner=NULL,lease_expires_at=NULL
+              WHERE id=$1 AND lease_owner=$2
+              AND ($5::uuid IS NULL OR artifact_attempt_id=$5)`,
+                [c.id, l.owner, events[0]?.id, message, c.attemptId],
               );
               if (r.rowCount !== 1) throw new Error('audit export lease lost');
             },
@@ -1110,22 +1155,17 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
       `UPDATE audit_export_jobs SET status=CASE WHEN $4::bigint IS NULL THEN 'failed' ELSE 'pending' END,
       failed_at=CASE WHEN $4::bigint IS NULL THEN statement_timestamp() ELSE NULL END,
       available_at=CASE WHEN $4::bigint IS NULL THEN available_at ELSE statement_timestamp()+($4*interval '1 millisecond') END,
-      last_error=$3,artifact_key=COALESCE(artifact_key,$5),lease_owner=NULL,lease_expires_at=NULL
-      WHERE id=$1 AND lease_owner=$2 RETURNING id`,
-      [
-        c.id,
-        l.owner,
-        message,
-        retry,
-        this.generated.get(generatedId(c))?.key ?? null,
-      ],
+      last_error=$3,artifact_attempt_id=NULL,artifact_key=NULL,lease_owner=NULL,lease_expires_at=NULL
+      WHERE id=$1 AND lease_owner=$2
+        AND ($5::uuid IS NULL OR artifact_attempt_id=$5) RETURNING id`,
+      [c.id, l.owner, message, retry, c.attemptId],
     );
     this.forgetGenerated(c);
     return r.rowCount === 1;
   }
   async recordComplete(c: Claim, l: OutboxLease) {
-    const g = this.generated.get(generatedId(c));
-    if (!g?.sealed) return false;
+    const g = this.generatedFor(c);
+    if (!g?.sealed || !c.attemptId || !c.artifactKey) return false;
     const sealed = g.sealed;
     const tenant = createTenantDb(this.pool, c.teamId);
     const completionId = randomUUID();
@@ -1157,13 +1197,12 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
         afterEventsStored: async (client, events) => {
           const r = await client.query(
             `UPDATE audit_export_jobs SET
-          status='ready',artifact_key=$3,artifact_row_count=$4,artifact_byte_count=$5,
-          artifact_upload_id=NULL,artifact_effect_expires_at=NULL,
+          status='ready',artifact_row_count=$4,artifact_byte_count=$5,
           handle_hash=$6,handle_ciphertext=$7,handle_key_id=$8,handle_algorithm=$9,
           handle_expires_at=statement_timestamp()+($10*interval '1 millisecond'),
           completion_event_id=$11,ready_at=statement_timestamp(),lease_owner=NULL,lease_expires_at=NULL
           WHERE id=$1 AND lease_owner=$2 AND lease_expires_at>statement_timestamp()
-          AND artifact_cleanup_not_before IS NULL AND status='generating'`,
+          AND artifact_attempt_id=$12 AND artifact_key=$3 AND status='generating'`,
             [
               c.id,
               l.owner,
@@ -1176,6 +1215,7 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
               sealed.algorithm,
               HANDLE_TTL_MS,
               events[0]?.id ?? completionId,
+              c.attemptId,
             ],
           );
           if (r.rowCount !== 1) throw new Error('audit export lease lost');

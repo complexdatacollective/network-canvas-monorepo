@@ -30,3 +30,14 @@ keys, and cleanup of an older key cannot overwrite or delete a newer ready key.
 Provider bucket lifecycle rules remain a second cleanup layer for incomplete
 multipart uploads. They do not replace Studio's durable exact-key tombstones or
 authorize treating a timed-out remote effect as cancelled.
+
+Team deletion is not an application operation: Better Auth ships with
+`disableOrganizationDeletion: true`, and its route is covered by a regression
+that expects `ORGANIZATION_DELETION_DISABLED`. An administrative database owner
+may erase a team during an explicit purge or restore procedure; the invoker
+trigger then deletes its export jobs and retires their attempts with the owner's
+existing privileges. Normal job expiry and consumption cleanup runs as
+`studio_maintenance`, which has both job deletion and attempt update privileges.
+The trigger stays `SECURITY INVOKER`, and `studio_app` receives no privilege on
+the retained-attempt table; an unexpected raw application-role team deletion
+therefore fails closed instead of bypassing the cleanup fence.

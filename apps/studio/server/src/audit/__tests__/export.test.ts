@@ -66,13 +66,16 @@ describe.skipIf(!db)('staged audit export', () => {
     );
     if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
     const keys = await loadTestKeys();
-    const result = await createAuditExportDispatcher({
+    const dispatcher = createAuditExportDispatcher({
       pool: maintenance,
       store,
       keys,
-    }).runOnce();
-    expect(result).toMatchObject({ completed: 1 });
-    const status = await readAuditExportStatus(context, requested.jobId, keys);
+    });
+    let status = await readAuditExportStatus(context, requested.jobId, keys);
+    for (let i = 0; i < 20 && status.status !== 'ready'; i += 1) {
+      await dispatcher.runOnce();
+      status = await readAuditExportStatus(context, requested.jobId, keys);
+    }
     if (status.status !== 'ready') throw new Error('expected ready');
     return { requested, status, keys };
   }
@@ -420,242 +423,70 @@ describe.skipIf(!db)('staged audit export', () => {
     expect(source?.locked).toBe(false);
   });
 
-  it('uses per-attempt keys and a stale owner cleans only its own artifact', async () => {
+  it('uses a fresh durable attempt key for every retry under one dispatcher owner', async () => {
     const requested = await requestAuditExport(
       { ...context, requestId: randomUUID() },
       {},
     );
     if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
-    let uploadedFirst: (() => void) | undefined;
-    const firstUploaded = new Promise<void>((resolve) => {
-      uploadedFirst = resolve;
-    });
-    let releaseFirst: (() => void) | undefined;
-    const firstMayFinish = new Promise<void>((resolve) => {
-      releaseFirst = resolve;
-    });
-    let uploadCount = 0;
-    const racingStore: AuditExportArtifactStore = {
-      ...store,
-      async putAuditExport(jobId, attemptId, chunks, options) {
-        uploadCount += 1;
-        const written = await store.putAuditExport(
-          jobId,
-          attemptId,
-          chunks,
-          options,
-        );
-        if (uploadCount === 1) {
-          uploadedFirst?.();
-          await firstMayFinish;
-        }
-        return written;
-      },
-    };
-    const keys = await loadTestKeys();
-    const staleRun = createAuditExportDispatcher({
-      pool: maintenance,
-      store: racingStore,
-      keys,
-      leaseMs: 30_000,
-    }).runOnce();
-    await firstUploaded;
-    await owner.query(
-      `UPDATE audit_export_jobs SET
-         lease_expires_at=statement_timestamp()-interval '1 second',
-         artifact_effect_expires_at=statement_timestamp()-interval '1 second'
-       WHERE id=$1`,
-      [requested.jobId],
-    );
-    await createAuditExportDispatcher({
-      pool: maintenance,
-      store: racingStore,
-      keys,
-      leaseMs: 30_000,
-    }).runOnce();
-    const winner = await createAuditExportDispatcher({
-      pool: maintenance,
-      store: racingStore,
-      keys,
-      leaseMs: 30_000,
-    }).runOnce();
-    expect(winner).toMatchObject({ completed: 1 });
-    releaseFirst?.();
-    await expect(staleRun).resolves.toMatchObject({ leaseLost: 1 });
-    const row = await owner.query<{ artifact_key: string }>(
-      'SELECT artifact_key FROM audit_export_jobs WHERE id=$1',
-      [requested.jobId],
-    );
-    expect(objects.has(row.rows[0]!.artifact_key)).toBe(true);
-    expect(
-      [...objects.keys()].filter((key) =>
-        key.startsWith(`audit-exports/${requested.jobId}/`),
-      ),
-    ).toEqual([row.rows[0]!.artifact_key]);
-  });
-
-  it('fences expired-owner renewal and completion while cleanup owns the row', async () => {
-    const requested = await requestAuditExport(
-      { ...context, requestId: randomUUID() },
-      {},
-    );
-    if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
-    const keys = await loadTestKeys();
-    let deleting: (() => void) | undefined;
-    const deleteStarted = new Promise<void>((resolve) => {
-      deleting = resolve;
-    });
-    let releaseDelete: (() => void) | undefined;
-    const mayDelete = new Promise<void>((resolve) => {
-      releaseDelete = resolve;
-    });
-    const blockingStore: AuditExportArtifactStore = {
-      ...store,
-      async cleanupAuditExport(key, uploadId, signal) {
-        deleting?.();
-        await mayDelete;
-        return store.cleanupAuditExport(key, uploadId, signal);
-      },
-    };
-    const adapter = new AuditExportAdapter(maintenance, blockingStore, keys, 0);
-    const ownerId = randomUUID();
-    const lease = { owner: ownerId, durationMs: 30_000 };
-    const claim = await adapter.claim(lease, 8);
-    if (!claim) throw new Error('expected claim');
-    await adapter.deliver(claim);
-    await owner.query(
-      `UPDATE audit_export_jobs SET
-         lease_expires_at=statement_timestamp()-interval '1 second',
-         artifact_effect_expires_at=statement_timestamp()-interval '1 second'
-       WHERE id=$1`,
-      [claim.id],
-    );
-    const cleanup = adapter.suppressUndeliverable();
-    await deleteStarted;
-    const renewal = adapter.renewLease(claim, lease);
-    const completion = adapter.recordComplete(claim, lease);
-    releaseDelete?.();
-    await expect(cleanup).resolves.toBe(1);
-    await expect(renewal).resolves.toBe(false);
-    await expect(completion).rejects.toThrow('audit export lease lost');
-    await expect(adapter.suppressUndeliverable()).resolves.toBe(1);
-    await expect(
-      owner.query<{ artifact_key: string | null; status: string }>(
-        'SELECT artifact_key,status FROM audit_export_jobs WHERE id=$1',
-        [claim.id],
-      ),
-    ).resolves.toHaveProperty('rows', [
-      { artifact_key: null, status: 'generating' },
-    ]);
-    await owner.query('DELETE FROM audit_export_jobs WHERE id=$1', [claim.id]);
-  });
-
-  it('recovers a persisted attempt key after a crash immediately after upload', async () => {
-    const requested = await requestAuditExport(
-      { ...context, requestId: randomUUID() },
-      {},
-    );
-    if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
-    const keys = await loadTestKeys();
-    const crashingStore: AuditExportArtifactStore = {
-      ...store,
-      async putAuditExport(jobId, attemptId, chunks, options) {
-        await store.putAuditExport(jobId, attemptId, chunks, options);
-        throw new Error('synthetic crash after upload');
-      },
-    };
-    const crashedOwner = randomUUID();
-    const crashedAdapter = new AuditExportAdapter(
+    const adapter = new AuditExportAdapter(
       maintenance,
-      crashingStore,
-      keys,
+      store,
+      await loadTestKeys(),
       0,
     );
-    const claim = await crashedAdapter.claim(
-      { owner: crashedOwner, durationMs: 30_000 },
-      8,
-    );
-    if (!claim) throw new Error('expected claim');
-    await expect(crashedAdapter.deliver(claim)).rejects.toThrow(
-      'synthetic crash after upload',
-    );
-    const interrupted = await owner.query<{
-      artifact_key: string;
-      artifact_upload_id: string;
-    }>(
-      'SELECT artifact_key,artifact_upload_id FROM audit_export_jobs WHERE id=$1',
-      [claim.id],
-    );
-    const interruptedKey = interrupted.rows[0]?.artifact_key;
-    if (!interruptedKey) throw new Error('expected persisted artifact key');
-    expect(interruptedKey).toContain(claim.id);
-    expect(interrupted.rows[0]?.artifact_upload_id).toBe(
-      `upload-${claim.leaseOwner}`,
-    );
-    expect(objects.has(interruptedKey)).toBe(true);
-
-    await owner.query(
-      `UPDATE audit_export_jobs SET
-         lease_expires_at=statement_timestamp()-interval '1 second',
-         artifact_effect_expires_at=statement_timestamp()-interval '1 second'
-       WHERE id=$1`,
-      [claim.id],
-    );
-    const restartedDispatcher = createAuditExportDispatcher({
-      pool: maintenance,
-      store,
-      keys,
-    });
-    const firstCleanup = await restartedDispatcher.runOnce();
-    expect(firstCleanup).toMatchObject({ completed: 0, suppressed: 1 });
+    const lease = { owner: randomUUID(), durationMs: 30_000 };
+    const first = await adapter.claim(lease, 8);
+    if (!first?.attemptId || !first.artifactKey)
+      throw new Error('expected attempt');
     await expect(
-      owner.query<{ artifact_cleanup_observed_at: Date; artifact_key: string }>(
-        `SELECT artifact_cleanup_observed_at,artifact_key
-         FROM audit_export_jobs WHERE id=$1`,
-        [claim.id],
-      ),
-    ).resolves.toHaveProperty('rows', [
-      {
-        artifact_cleanup_observed_at: expect.any(Date),
-        artifact_key: interruptedKey,
-      },
-    ]);
-    const restarted = await restartedDispatcher.runOnce();
-    expect(restarted).toMatchObject({ completed: 1, suppressed: 1 });
-    const ready = await owner.query<{ artifact_key: string; status: string }>(
-      'SELECT artifact_key,status FROM audit_export_jobs WHERE id=$1',
-      [claim.id],
+      adapter.recordFailure(first, lease, new Error('retry'), 0),
+    ).resolves.toBe(true);
+    const second = await adapter.claim(lease, 8);
+    if (!second?.attemptId || !second.artifactKey)
+      throw new Error('expected retry attempt');
+    expect(second.attemptId).not.toBe(first.attemptId);
+    expect(second.artifactKey).not.toBe(first.artifactKey);
+    await owner.query(
+      `UPDATE audit_export_jobs SET lease_expires_at=statement_timestamp()-interval '1 second'
+       WHERE id=$1`,
+      [second.id],
     );
-    expect(ready.rows[0]?.status).toBe('ready');
-    expect(ready.rows[0]?.artifact_key).not.toBe(interruptedKey);
-    expect(objects.has(interruptedKey)).toBe(false);
+    await adapter.suppressUndeliverable();
   });
 
-  it('fences cleanup before a delayed multipart create can begin', async () => {
+  it('retains cleanup through two empty scans and removes a later remote effect after restart', async () => {
     const requested = await requestAuditExport(
       { ...context, requestId: randomUUID() },
       {},
     );
     if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
-    let createStarted: (() => void) | undefined;
-    const atCreate = new Promise<void>((resolve) => {
-      createStarted = resolve;
-    });
     let releaseCreate: (() => void) | undefined;
     const mayCreate = new Promise<void>((resolve) => {
       releaseCreate = resolve;
     });
-    let cleanupCalls = 0;
+    let createStarted: (() => void) | undefined;
+    const atCreate = new Promise<void>((resolve) => {
+      createStarted = resolve;
+    });
+    const lateEffects = new Set<string>();
+    const scans: string[] = [];
     const delayedStore: AuditExportArtifactStore = {
       ...store,
-      async putAuditExport(jobId, attemptId, chunks, options) {
+      async putAuditExport(jobId, attemptId) {
         createStarted?.();
         await mayCreate;
-        return store.putAuditExport(jobId, attemptId, chunks, options);
+        const key = `audit-exports/${jobId}/${attemptId}.csv`;
+        lateEffects.add(key);
+        objects.set(key, Buffer.from('late'));
+        throw new Error('client aborted while remote create completed');
       },
-      async cleanupAuditExport(key, uploadId, signal) {
-        cleanupCalls += 1;
-        return store.cleanupAuditExport(key, uploadId, signal);
+      async cleanupAuditExport(key) {
+        scans.push(key);
+        const pendingFound = lateEffects.delete(key);
+        const objectFound = objects.delete(key);
+        const found = pendingFound || objectFound;
+        return !found;
       },
     };
     const adapter = new AuditExportAdapter(
@@ -664,70 +495,100 @@ describe.skipIf(!db)('staged audit export', () => {
       await loadTestKeys(),
       0,
     );
-    const claim = await adapter.claim(
-      { owner: randomUUID(), durationMs: 30_000 },
-      8,
-    );
-    if (!claim) throw new Error('expected claim');
+    const lease = { owner: randomUUID(), durationMs: 30_000 };
+    const claim = await adapter.claim(lease, 8);
+    if (!claim?.attemptId || !claim.artifactKey)
+      throw new Error('expected claim');
     const delivery = adapter.deliver(claim);
     await atCreate;
     await owner.query(
-      `UPDATE audit_export_jobs SET lease_expires_at=
-       statement_timestamp()-interval '1 second' WHERE id=$1`,
-      [claim.id],
-    );
-    await expect(adapter.suppressUndeliverable()).resolves.toBe(1);
-    expect(cleanupCalls).toBe(0);
-    const fenced = await owner.query<{
-      artifact_key: string;
-      artifact_cleanup_not_before: Date;
-      artifact_effect_expires_at: Date;
-    }>(
-      `SELECT artifact_key,artifact_cleanup_not_before,artifact_effect_expires_at
-        FROM audit_export_jobs WHERE id=$1`,
-      [claim.id],
-    );
-    expect(fenced.rows[0]?.artifact_key).toContain(claim.id);
-    expect(
-      fenced.rows[0]!.artifact_cleanup_not_before.getTime(),
-    ).toBeGreaterThan(fenced.rows[0]!.artifact_effect_expires_at.getTime());
-    releaseCreate?.();
-    await expect(delivery).rejects.toThrow('audit export lease lost');
-    await owner.query(
-      `UPDATE audit_export_jobs SET artifact_cleanup_not_before=
-       statement_timestamp()-interval '1 second',
-       artifact_effect_expires_at=statement_timestamp()-interval '1 second'
+      `UPDATE audit_export_jobs SET lease_expires_at=statement_timestamp()-interval '1 second'
        WHERE id=$1`,
       [claim.id],
     );
-    await expect(adapter.suppressUndeliverable()).resolves.toBe(1);
-    await expect(adapter.suppressUndeliverable()).resolves.toBe(1);
-    await owner.query('DELETE FROM audit_export_jobs WHERE id=$1', [claim.id]);
+    await owner.query(
+      `UPDATE audit_export_artifact_attempts SET next_sweep_at=statement_timestamp()+interval '1 day'
+       WHERE state='retired'`,
+    );
+    await adapter.suppressUndeliverable();
+    await owner.query(
+      `UPDATE audit_export_artifact_attempts SET next_sweep_at=CASE WHEN id=$1
+         THEN statement_timestamp()-interval '1 second'
+         ELSE statement_timestamp()+interval '1 day' END WHERE state='retired'`,
+      [claim.attemptId],
+    );
+    await adapter.suppressUndeliverable();
+    expect(scans).toEqual([claim.artifactKey, claim.artifactKey]);
+
+    releaseCreate?.();
+    await expect(delivery).rejects.toThrow(
+      'client aborted while remote create completed',
+    );
+    expect(objects.has(claim.artifactKey)).toBe(true);
+    await owner.query(
+      `UPDATE audit_export_artifact_attempts SET next_sweep_at=CASE WHEN id=$1
+         THEN statement_timestamp()-interval '1 second'
+         ELSE statement_timestamp()+interval '1 day' END WHERE state='retired'`,
+      [claim.attemptId],
+    );
+    const restarted = new AuditExportAdapter(
+      maintenance,
+      delayedStore,
+      await loadTestKeys(),
+      0,
+    );
+    await restarted.suppressUndeliverable();
+    expect(objects.has(claim.artifactKey)).toBe(false);
+    await expect(
+      owner.query<{ state: string; sweep_count: number }>(
+        `SELECT state,sweep_count FROM audit_export_artifact_attempts WHERE id=$1`,
+        [claim.attemptId],
+      ),
+    ).resolves.toHaveProperty('rows', [{ state: 'retired', sweep_count: 3 }]);
   });
 
-  it('recovers a multipart create accepted before its upload id was recorded', async () => {
+  it('sweeps an old retired attempt without deleting the newer ready artifact', async () => {
     const requested = await requestAuditExport(
       { ...context, requestId: randomUUID() },
       {},
     );
     if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
-    const pendingUploads = new Set<string>();
-    const acceptedCreateStore: AuditExportArtifactStore = {
-      ...store,
-      async putAuditExport(jobId, attemptId) {
-        pendingUploads.add(`audit-exports/${jobId}/${attemptId}.csv`);
-        throw new Error('synthetic crash before upload id callback');
-      },
-      async cleanupAuditExport(key, uploadId) {
-        expect(uploadId).toBeNull();
-        pendingUploads.delete(key);
-        objects.delete(key);
-        return true;
-      },
-    };
     const adapter = new AuditExportAdapter(
       maintenance,
-      acceptedCreateStore,
+      store,
+      await loadTestKeys(),
+      0,
+    );
+    const lease = { owner: randomUUID(), durationMs: 30_000 };
+    const old = await adapter.claim(lease, 8);
+    if (!old?.attemptId || !old.artifactKey)
+      throw new Error('expected old attempt');
+    objects.set(old.artifactKey, Buffer.from('old'));
+    await adapter.recordFailure(old, lease, new Error('retry'), 0);
+    const current = await adapter.claim(lease, 8);
+    if (!current?.artifactKey) throw new Error('expected current attempt');
+    await adapter.deliver(current);
+    await adapter.recordComplete(current, lease);
+    await owner.query(
+      `UPDATE audit_export_artifact_attempts SET next_sweep_at=CASE WHEN id=$1
+         THEN statement_timestamp()-interval '1 second'
+         ELSE statement_timestamp()+interval '1 day' END WHERE state='retired'`,
+      [old.attemptId],
+    );
+    await adapter.suppressUndeliverable();
+    expect(objects.has(old.artifactKey)).toBe(false);
+    expect(objects.has(current.artifactKey)).toBe(true);
+  });
+
+  it('retains cleanup responsibility after its job and team are deleted', async () => {
+    const requested = await requestAuditExport(
+      { ...context, requestId: randomUUID() },
+      {},
+    );
+    if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
+    const adapter = new AuditExportAdapter(
+      maintenance,
+      store,
       await loadTestKeys(),
       0,
     );
@@ -735,136 +596,111 @@ describe.skipIf(!db)('staged audit export', () => {
       { owner: randomUUID(), durationMs: 30_000 },
       8,
     );
-    if (!claim) throw new Error('expected claim');
-    await expect(adapter.deliver(claim)).rejects.toThrow(
-      'synthetic crash before upload id callback',
-    );
-    expect(pendingUploads.size).toBe(1);
+    if (!claim?.attemptId) throw new Error('expected claim');
+    await owner.query("DELETE FROM teams WHERE id='export-team'");
+    await expect(
+      owner.query(`SELECT id FROM audit_export_jobs WHERE id=$1`, [claim.id]),
+    ).resolves.toHaveProperty('rowCount', 0);
+    await expect(
+      owner.query<{ state: string; job_id: string }>(
+        `SELECT state,job_id FROM audit_export_artifact_attempts WHERE id=$1`,
+        [claim.attemptId],
+      ),
+    ).resolves.toHaveProperty('rows', [{ state: 'retired', job_id: claim.id }]);
     await owner.query(
-      `UPDATE audit_export_jobs SET
-         lease_expires_at=statement_timestamp()-interval '1 second',
-         artifact_effect_expires_at=statement_timestamp()-interval '1 second'
+      `INSERT INTO teams (id,name,slug) VALUES ('export-team','Export Team','export-team');
+       INSERT INTO team_members (id,team_id,user_id,role)
+       VALUES ('export-membership','export-team','export-owner','owner')`,
+    );
+    const secondRequest = await requestAuditExport(
+      { ...context, requestId: randomUUID() },
+      {},
+    );
+    if (secondRequest.deliveryMode !== 'staged')
+      throw new Error('expected staged');
+    const second = await adapter.claim(
+      { owner: randomUUID(), durationMs: 30_000 },
+      8,
+    );
+    if (!second?.attemptId) throw new Error('expected second claim');
+    await owner.query('DELETE FROM audit_export_jobs WHERE id=$1', [second.id]);
+    await expect(
+      owner.query<{ state: string }>(
+        `SELECT state FROM audit_export_artifact_attempts WHERE id=$1`,
+        [second.attemptId],
+      ),
+    ).resolves.toHaveProperty('rows', [{ state: 'retired' }]);
+  });
+
+  it('leases retired cleanup to one owner and backs off retained tombstones', async () => {
+    const requested = await requestAuditExport(
+      { ...context, requestId: randomUUID() },
+      {},
+    );
+    if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
+    let cleanupCalls = 0;
+    let enteredCleanup: (() => void) | undefined;
+    const cleanupEntered = new Promise<void>((resolve) => {
+      enteredCleanup = resolve;
+    });
+    let releaseCleanup: (() => void) | undefined;
+    const cleanupMayFinish = new Promise<void>((resolve) => {
+      releaseCleanup = resolve;
+    });
+    const blocking: AuditExportArtifactStore = {
+      ...store,
+      async cleanupAuditExport() {
+        cleanupCalls += 1;
+        enteredCleanup?.();
+        await cleanupMayFinish;
+        return true;
+      },
+    };
+    const keys = await loadTestKeys();
+    const initial = new AuditExportAdapter(maintenance, store, keys, 0);
+    const claim = await initial.claim(
+      { owner: randomUUID(), durationMs: 30_000 },
+      8,
+    );
+    if (!claim?.attemptId) throw new Error('expected claim');
+    await owner.query(
+      `UPDATE audit_export_jobs SET lease_expires_at=statement_timestamp()-interval '1 second'
        WHERE id=$1`,
       [claim.id],
     );
-    await expect(adapter.suppressUndeliverable()).resolves.toBe(1);
-    await expect(adapter.suppressUndeliverable()).resolves.toBe(1);
-    expect(pendingUploads.size).toBe(0);
-    await expect(
-      owner.query<{ artifact_key: string | null }>(
-        'SELECT artifact_key FROM audit_export_jobs WHERE id=$1',
-        [claim.id],
-      ),
-    ).resolves.toHaveProperty('rows', [{ artifact_key: null }]);
-    await owner.query('DELETE FROM audit_export_jobs WHERE id=$1', [claim.id]);
-  });
-
-  it('cleans an uploaded artifact when handle sealing fails', async () => {
-    const requested = await requestAuditExport(
-      { ...context, requestId: randomUUID() },
-      {},
-    );
-    if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
-    const keys = await loadTestKeys();
-    Object.defineProperty(keys, 'currentId', {
-      value: () => 'missing-export-key',
-    });
-    const result = await createAuditExportDispatcher({
-      pool: maintenance,
-      store,
-      keys,
-    }).runOnce();
-    expect(result).toMatchObject({ retried: 1 });
     await owner.query(
-      `UPDATE audit_export_jobs SET artifact_effect_expires_at=
-       statement_timestamp()-interval '1 second' WHERE id=$1`,
-      [requested.jobId],
+      `UPDATE audit_export_artifact_attempts SET next_sweep_at=statement_timestamp()+interval '1 day'
+       WHERE state='retired'`,
     );
-    const cleanup = new AuditExportAdapter(
-      maintenance,
-      store,
-      await loadTestKeys(),
-      0,
-    );
-    await expect(cleanup.suppressUndeliverable()).resolves.toBe(1);
-    await expect(cleanup.suppressUndeliverable()).resolves.toBe(1);
-    expect(
-      [...objects.keys()].some((key) =>
-        key.startsWith(`audit-exports/${requested.jobId}/`),
-      ),
-    ).toBe(false);
-  });
-
-  it('persists a failed cleanup key and resumes deletion after restart', async () => {
-    const requested = await requestAuditExport(
-      { ...context, requestId: randomUUID() },
-      {},
-    );
-    if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
-    const keys = await loadTestKeys();
-    Object.defineProperty(keys, 'currentId', {
-      value: () => 'missing-export-key',
-    });
-    let refuseDelete = true;
-    const failingCleanupStore: AuditExportArtifactStore = {
-      ...store,
-      async cleanupAuditExport(key, uploadId, signal) {
-        if (key.includes(requested.jobId) && refuseDelete) {
-          refuseDelete = false;
-          throw new Error('synthetic cleanup outage');
-        }
-        return store.cleanupAuditExport(key, uploadId, signal);
-      },
-    };
-    await createAuditExportDispatcher({
-      pool: maintenance,
-      store: failingCleanupStore,
-      keys,
-    }).runOnce();
+    await initial.suppressUndeliverable();
     await owner.query(
-      `UPDATE audit_export_jobs SET artifact_effect_expires_at=
-       statement_timestamp()-interval '1 second' WHERE id=$1`,
-      [requested.jobId],
+      `UPDATE audit_export_artifact_attempts SET next_sweep_at=CASE WHEN id=$1
+         THEN statement_timestamp()-interval '1 second'
+         ELSE statement_timestamp()+interval '1 day' END WHERE state='retired'`,
+      [claim.attemptId],
     );
-    const failedCleaner = new AuditExportAdapter(
-      maintenance,
-      failingCleanupStore,
-      keys,
-      0,
-    );
-    await expect(failedCleaner.suppressUndeliverable()).rejects.toThrow(
-      'synthetic cleanup outage',
-    );
+    cleanupCalls = 0;
+    const adapter = new AuditExportAdapter(maintenance, blocking, keys, 0);
+    const other = new AuditExportAdapter(maintenance, blocking, keys, 0);
+    const first = adapter.suppressUndeliverable();
+    await cleanupEntered;
+    const second = other.suppressUndeliverable();
+    expect(cleanupCalls).toBe(1);
+    releaseCleanup?.();
+    await Promise.all([first, second]);
     const retained = await owner.query<{
-      status: string;
-      artifact_key: string;
-    }>(`SELECT status,artifact_key FROM audit_export_jobs WHERE id=$1`, [
-      requested.jobId,
-    ]);
-    expect(retained.rows[0]).toMatchObject({
-      status: 'pending',
-      artifact_key: expect.stringContaining(requested.jobId),
-    });
-
-    const restarted = new AuditExportAdapter(
-      maintenance,
-      failingCleanupStore,
-      await loadTestKeys(),
-      0,
+      sweep_count: number;
+      next_sweep_at: Date;
+      last_sweep_at: Date;
+    }>(
+      `SELECT sweep_count,next_sweep_at,last_sweep_at
+       FROM audit_export_artifact_attempts WHERE id=$1`,
+      [claim.attemptId],
     );
-    await expect(restarted.suppressUndeliverable()).resolves.toBe(1);
-    await expect(restarted.suppressUndeliverable()).resolves.toBe(1);
-    await expect(
-      owner.query<{ artifact_key: string | null }>(
-        'SELECT artifact_key FROM audit_export_jobs WHERE id=$1',
-        [requested.jobId],
-      ),
-    ).resolves.toHaveProperty('rows', [{ artifact_key: null }]);
-    expect(
-      [...objects.keys()].some((key) =>
-        key.startsWith(`audit-exports/${requested.jobId}/`),
-      ),
-    ).toBe(false);
+    expect(retained.rows[0]!.sweep_count).toBe(2);
+    expect(retained.rows[0]!.next_sweep_at.getTime()).toBeGreaterThan(
+      retained.rows[0]!.last_sweep_at.getTime(),
+    );
   });
 
   it('neutralizes whitespace-prefixed spreadsheet formulas', async () => {

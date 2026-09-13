@@ -2,8 +2,8 @@
   "format": 1,
   "id": "0013_audit_export_handles",
   "previous": "0012_registry_template_exchange",
-  "fingerprint": "334333cb115bf8dc1e45d41bb3f1ede7bc998475dc815f3c176f82d0fb67433e",
-  "snapshotHash": "02f5420cd13569b4a5f840f2c737cc52e3e6750320495b961dc765a57a3401a6",
-  "sqlHash": "858572413c599a389536361712a4050e7521caec5859e5b61c8297fc25a5ee7b",
-  "sidecarsHash": "2b397b1e76b52cc778f0a10061073f58da402ad6f837327616446c5420f148a5"
+  "fingerprint": "a1650761262531a2ffdb87eec4212bae222fca3374b761737aae942f00bdfd2e",
+  "snapshotHash": "659808374ab51cae1d6fcbb06e406d0ac378b3bf9f4aaef3ce3ef38076685e12",
+  "sqlHash": "9de98064330481fff3e99730beedbd0e1e444d0cac9edd656ac38fba8ac957a4",
+  "sidecarsHash": "f1aed4d76ab0835506e125f12794288803a253811f1645f9fc58ca99dc4fb90b"
 }
