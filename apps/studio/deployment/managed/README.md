@@ -102,6 +102,18 @@ Unmarked name collisions are refused. Interrupted exact state remains at
 it. Runtime passwords cross only a caller-owned credential callback and are
 never returned in the plan or result.
 
+Before creating a missing database, the operator records durable intent on its
+verified owner role, including that role's PostgreSQL OID. `CREATE DATABASE`
+uses `ALLOW_CONNECTIONS false` and `CONNECTION LIMIT 0`; a single transaction
+then records the database marker, replaces the default ACL with the reviewed
+admission ACL, enables connections, and restores the normal role marker. A
+retry accepts this intermediate database only with the exact owner name and
+OID, durable intent, disabled admission, zero connection limit, default ACL,
+no database marker, and no sessions. It never adopts or deletes an arbitrary
+unmarked database. The advisory lock coordinates instances of this operator;
+concurrent catalog intervention by a superuser outside that cooperating lock
+is unsupported and causes later identity readback to refuse the estate.
+
 The operator creates no application tables and invokes no numbered migration.
 It establishes database ownership, database-local admission, exact SET-only
 role memberships, large-object restrictions, and a 256 MiB login `work_mem`

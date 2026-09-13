@@ -75,7 +75,8 @@ export type ManagedPostgresEstatePlan = Readonly<{
   databases: readonly Readonly<{
     key: ManagedPostgresDatabase['key'];
     database: string;
-    state: 'absent' | 'quarantined' | 'active';
+    ownerRoleOid: number | null;
+    state: 'absent' | 'pending' | 'creating' | 'quarantined' | 'active';
   }>[];
   missingRoles: readonly string[];
 }>;
@@ -123,6 +124,13 @@ function marker(kind: 'database' | 'role', name: string): string {
   return `${MARKER_VERSION}:${kind}:${name}`;
 }
 
+function pendingDatabaseMarker(
+  database: ManagedPostgresDatabase,
+  ownerRoleOid: number,
+): string {
+  return `${MARKER_VERSION}:pending-database:${database.database}:owner-role-oid:${ownerRoleOid}`;
+}
+
 function planIdentity(): string {
   return createHash('sha256')
     .update(
@@ -158,13 +166,14 @@ async function inspectEstate(
     throw new UnsafeManagedPostgresEstateError('tuning');
 
   const roles = await client.query<{
+    oid: number;
     rolname: string;
     rolcanlogin: boolean;
     rolinherit: boolean;
     safe: boolean;
     description: string | null;
   }>(
-    `SELECT role.rolname, role.rolcanlogin, role.rolinherit,
+    `SELECT role.oid, role.rolname, role.rolcanlogin, role.rolinherit,
       NOT (role.rolsuper OR role.rolbypassrls OR role.rolcreaterole OR role.rolcreatedb OR role.rolreplication) AS safe,
       pg_catalog.shobj_description(role.oid, 'pg_authid') AS description
     FROM pg_catalog.pg_roles role WHERE role.rolname = ANY($1::pg_catalog.text[])`,
@@ -172,11 +181,17 @@ async function inspectEstate(
   );
   for (const role of roles.rows) {
     const isLogin = allLogins().includes(role.rolname);
+    const ownerDatabase = MANAGED_POSTGRES_DATABASES.find(
+      ({ logins }) => logins.ownerMigrator === role.rolname,
+    );
+    const acceptedMarkers = [marker('role', role.rolname)];
+    if (ownerDatabase)
+      acceptedMarkers.push(pendingDatabaseMarker(ownerDatabase, role.oid));
     if (
       !role.safe ||
       role.rolinherit ||
       (!isLogin && role.rolcanlogin) ||
-      role.description !== marker('role', role.rolname)
+      !acceptedMarkers.includes(role.description ?? '')
     )
       throw new UnsafeManagedPostgresEstateError('identity');
   }
@@ -220,14 +235,21 @@ async function inspectEstate(
   }
 
   const databases = await client.query<{
+    oid: number;
     datname: string;
+    ownerOid: number;
     owner: string;
     datallowconn: boolean;
     datconnlimit: number;
+    defaultAcl: boolean;
+    sessions: number;
     description: string | null;
   }>(
-    `SELECT database.datname, pg_catalog.pg_get_userbyid(database.datdba) AS owner,
-      database.datallowconn, database.datconnlimit,
+    `SELECT database.oid, database.datname, database.datdba AS "ownerOid",
+      pg_catalog.pg_get_userbyid(database.datdba) AS owner,
+      database.datallowconn, database.datconnlimit, database.datacl IS NULL AS "defaultAcl",
+      (SELECT pg_catalog.count(*)::int FROM pg_catalog.pg_stat_activity activity
+       WHERE activity.datid = database.oid) AS sessions,
       pg_catalog.shobj_description(database.oid, 'pg_database') AS description
     FROM pg_catalog.pg_database database WHERE database.datname = ANY($1::pg_catalog.text[])`,
     [MANAGED_POSTGRES_DATABASES.map(({ database }) => database)],
@@ -236,22 +258,57 @@ async function inspectEstate(
     const found = databases.rows.find(
       ({ datname }) => datname === expected.database,
     );
+    const ownerRole = roles.rows.find(
+      ({ rolname }) => rolname === expected.logins.ownerMigrator,
+    );
+    if (!ownerRole) {
+      if (found) throw new UnsafeManagedPostgresEstateError('identity');
+      return {
+        key: expected.key,
+        database: expected.database,
+        ownerRoleOid: null,
+        state: 'absent' as const,
+      };
+    }
+    const normalOwnerMarker = marker('role', ownerRole.rolname);
+    const pendingOwnerMarker = pendingDatabaseMarker(expected, ownerRole.oid);
+    const ownerIsPending = ownerRole.description === pendingOwnerMarker;
     if (!found)
       return {
         key: expected.key,
         database: expected.database,
-        state: 'absent' as const,
+        ownerRoleOid: ownerRole.oid,
+        state: ownerIsPending ? ('pending' as const) : ('absent' as const),
+      };
+    if (
+      found.owner === expected.logins.ownerMigrator &&
+      found.ownerOid === ownerRole.oid &&
+      !found.datallowconn &&
+      found.datconnlimit === 0 &&
+      found.defaultAcl &&
+      found.sessions === 0 &&
+      found.description === null &&
+      ownerIsPending
+    )
+      return {
+        key: expected.key,
+        database: expected.database,
+        ownerRoleOid: ownerRole.oid,
+        state: 'creating' as const,
       };
     if (
       found.owner !== expected.logins.ownerMigrator ||
+      found.ownerOid !== ownerRole.oid ||
       !found.datallowconn ||
       ![0, FINAL_CONNECTION_LIMIT].includes(found.datconnlimit) ||
-      found.description !== marker('database', expected.database)
+      found.description !== marker('database', expected.database) ||
+      ownerRole.description !== normalOwnerMarker
     )
       throw new UnsafeManagedPostgresEstateError('identity');
     return {
       key: expected.key,
       database: expected.database,
+      ownerRoleOid: ownerRole.oid,
       state:
         found.datconnlimit === 0
           ? ('quarantined' as const)
@@ -275,6 +332,13 @@ async function inspectEstate(
     [MANAGED_POSTGRES_DATABASES.map(({ database }) => database)],
   );
   for (const grant of connectGrants.rows) {
+    if (
+      states.some(
+        ({ database, state }) =>
+          database === grant.database && state === 'creating',
+      )
+    )
+      continue;
     const expected = MANAGED_POSTGRES_DATABASES.find(
       ({ database }) => database === grant.database,
     );
@@ -337,31 +401,50 @@ async function createMissingDatabases(
   client: pg.PoolClient,
   plan: ManagedPostgresEstatePlan,
 ): Promise<void> {
-  for (const target of plan.databases.filter(
-    ({ state }) => state === 'absent',
+  for (const target of plan.databases.filter(({ state }) =>
+    ['absent', 'pending', 'creating'].includes(state),
   )) {
     const database = MANAGED_POSTGRES_DATABASES.find(
       ({ key }) => key === target.key,
     )!;
-    await client.query(
-      `CREATE DATABASE ${escapeIdentifier(database.database)} OWNER ${escapeIdentifier(database.logins.ownerMigrator)} CONNECTION LIMIT 0`,
-    );
-    await client.query(
-      `COMMENT ON DATABASE ${escapeIdentifier(database.database)} IS ${escapeLiteral(marker('database', database.database))}`,
-    );
-    // Database ACLs are cluster catalog state, so establish quarantine before
-    // the first connection to the new database. A transient connector failure
-    // must leave an exact state that the next read-only plan can accept.
+    if (target.ownerRoleOid === null)
+      throw new UnsafeManagedPostgresEstateError('identity');
+    if (target.state === 'absent')
+      await client.query(
+        `COMMENT ON ROLE ${escapeIdentifier(database.logins.ownerMigrator)} IS ${escapeLiteral(pendingDatabaseMarker(database, target.ownerRoleOid))}`,
+      );
+    if (target.state !== 'creating')
+      await client.query(
+        `CREATE DATABASE ${escapeIdentifier(database.database)} OWNER ${escapeIdentifier(database.logins.ownerMigrator)} ALLOW_CONNECTIONS false CONNECTION LIMIT 0`,
+      );
     const everyIdentity = [...allDomainRoles(), ...allLogins()]
       .map(escapeIdentifier)
       .join(', ');
     const allowed = Object.values(database.logins)
       .map(escapeIdentifier)
       .join(', ');
-    await client.query(
-      `REVOKE CONNECT, TEMPORARY ON DATABASE ${escapeIdentifier(database.database)} FROM PUBLIC, ${everyIdentity};
-       GRANT CONNECT ON DATABASE ${escapeIdentifier(database.database)} TO ${allowed}`,
-    );
+    await client.query('BEGIN');
+    try {
+      await client.query(
+        `COMMENT ON DATABASE ${escapeIdentifier(database.database)} IS ${escapeLiteral(marker('database', database.database))}`,
+      );
+      await client.query(
+        `REVOKE CONNECT, TEMPORARY ON DATABASE ${escapeIdentifier(database.database)} FROM PUBLIC, ${everyIdentity}`,
+      );
+      await client.query(
+        `GRANT CONNECT ON DATABASE ${escapeIdentifier(database.database)} TO ${allowed}`,
+      );
+      await client.query(
+        `ALTER DATABASE ${escapeIdentifier(database.database)} ALLOW_CONNECTIONS true`,
+      );
+      await client.query(
+        `COMMENT ON ROLE ${escapeIdentifier(database.logins.ownerMigrator)} IS ${escapeLiteral(marker('role', database.logins.ownerMigrator))}`,
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
   }
 }
 
@@ -425,16 +508,23 @@ async function disableAndDrain(client: pg.PoolClient): Promise<void> {
   await client.query('BEGIN');
   try {
     const existing = await client.query<{
+      oid: number;
       rolname: string;
       description: string | null;
     }>(
-      `SELECT rolname, pg_catalog.shobj_description(oid, 'pg_authid') AS description
+      `SELECT oid, rolname, pg_catalog.shobj_description(oid, 'pg_authid') AS description
        FROM pg_catalog.pg_roles WHERE rolname = ANY($1::pg_catalog.text[])`,
       [logins],
     );
     const ownedLogins = existing.rows
       .filter(
-        ({ rolname, description }) => description === marker('role', rolname),
+        ({ oid, rolname, description }) =>
+          description === marker('role', rolname) ||
+          MANAGED_POSTGRES_DATABASES.some(
+            (database) =>
+              database.logins.ownerMigrator === rolname &&
+              description === pendingDatabaseMarker(database, oid),
+          ),
       )
       .map(({ rolname }) => rolname);
     for (const login of ownedLogins)
@@ -539,7 +629,9 @@ export async function applyManagedPostgresEstate(
     const plan = await inspectEstate(client);
     mutationStarted = true;
     await createMissingRoles(client, plan);
-    await createMissingDatabases(client, plan);
+    // Re-read every role, including its OID and membership boundary, before
+    // publishing durable database-creation intent on an owner role.
+    await createMissingDatabases(client, await inspectEstate(client));
     await configureClusterMemberships(client);
     for (const database of MANAGED_POSTGRES_DATABASES) {
       const databaseAdmin = await connectDatabase(database);
