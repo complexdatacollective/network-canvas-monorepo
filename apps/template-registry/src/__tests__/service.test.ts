@@ -664,6 +664,17 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     );
     expect(yanked.status).toBe(200);
     expect(EntrySchema.parse(await yanked.json()).yanked).toBe(true);
+    const recoveredPublication = list.parse(
+      await (
+        await fixture.request(
+          'GET',
+          `/entries?root=${third.entry.root}&publisher_id=${account.publisher.id}`,
+        )
+      ).json(),
+    );
+    expect(recoveredPublication.data).toMatchObject([
+      { id: third.entry.id, yanked: true },
+    ]);
     expect(
       list
         .parse(await (await fixture.request('GET', '/entries')).json())

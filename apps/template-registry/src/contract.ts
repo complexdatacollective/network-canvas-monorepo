@@ -52,7 +52,9 @@ export const ListEntriesSchema = z
     keyword: z.string().min(1).max(100).optional(),
     author: z.string().min(1).max(200).optional(),
     curated: z.enum(['true', 'false']).optional(),
-    root: TemplateContentHashSchema.optional(),
+    root: TemplateContentHashSchema.describe(
+      'Exact artifact root. Combined with publisher_id, includes yanked publications while still excluding removed content.',
+    ).optional(),
     publisher_id: z.uuid().optional(),
   })
   .meta({ id: 'ListEntries' });

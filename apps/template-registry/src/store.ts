@@ -481,11 +481,14 @@ export class RegistryStore {
       return `$${parameters.length}`;
     };
     const where = [
-      'e.yanked_at IS NULL',
       'a.blocked_at IS NULL',
       'a.deleted_at IS NULL',
       'c.root IS NOT NULL',
     ];
+    // A known publication can be reconciled after withdrawal just as it can
+    // still be read by entry ID. Ordinary browse/search omits withdrawn entries.
+    if (!(filters.root && filters.publisher_id))
+      where.push('e.yanked_at IS NULL');
     if (after) where.push(`e.sequence < ${bind(after)}::bigint`);
     if (filters.kind) where.push(`c.template->>'kind' = ${bind(filters.kind)}`);
     if (filters.license) where.push(`c.license = ${bind(filters.license)}`);
