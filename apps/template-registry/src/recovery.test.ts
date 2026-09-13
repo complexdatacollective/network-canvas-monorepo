@@ -35,6 +35,22 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
       VALUES ('Zulu', 'Zulu', 'zulu@example.test', true, now()),
         ('alpha', 'Alpha', 'alpha@example.test', true, now());
       INSERT INTO registry_publishers(id, user_id, name) VALUES ('00000000-0000-4000-8000-000000000001', 'Zulu', 'Zulu'), ('00000000-0000-4000-8000-000000000002', 'alpha', 'Alpha')`);
+    // Cross the recovery page boundary for both authority inventories, under
+    // the locale-aware user-id ordering above.
+    await fixture.owner
+      .query(`INSERT INTO registry_auth_user(id, name, email, email_verified, updated_at)
+      SELECT 'page-user-' || value, 'Page user', 'page-' || value || '@example.test', true, now()
+      FROM generate_series(1, 65) AS value;
+      INSERT INTO registry_publishers(id, user_id, name)
+      SELECT gen_random_uuid(), id, name FROM registry_auth_user WHERE id LIKE 'page-user-%'`);
+    const pagedUsers = await fixture.owner.query<{
+      id: string;
+      email: string;
+      publisher_id: string;
+    }>(
+      `SELECT u.id, u.email, p.id AS publisher_id FROM registry_auth_user u
+       JOIN registry_publishers p ON p.user_id = u.id WHERE u.id LIKE 'page-user-%'`,
+    );
     const account = await fixture.account('restored@example.test', true);
     await fixture.published(account.token, 'Recovered template');
     await fixture.owner.query(
@@ -61,6 +77,14 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
         format: 'template-registry-recovery-reconciliation',
         version: 1,
         users: [
+          ...pagedUsers.rows.map((user) => ({
+            id: user.id,
+            email: user.email,
+            emailVerified: true,
+            publisher: 'active' as const,
+            publisherId: user.publisher_id,
+            operator: false,
+          })),
           {
             id: 'Zulu',
             email: 'zulu@example.test',
@@ -121,7 +145,7 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
         verifications: 0,
         credentials: 0,
         operators: 0,
-        publishers: 3,
+        publishers: 68,
       },
     ]);
   } finally {
