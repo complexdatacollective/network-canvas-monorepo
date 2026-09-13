@@ -599,7 +599,9 @@ A month transition additionally carries one short-lived authorization:
 The Ed25519 signature covers the canonical, recursively key-sorted UTF-8 JSON
 bytes of `format`, `version`, `authorityKeyId`, and `approval`. The validity
 window cannot exceed 15 minutes. Verification binds the fixed account, exact
-previous and next checkpoint digests, and exact target UTC month. The
+previous and next checkpoint digests, and exact target UTC month. The target
+must also be the verifier's current UTC month: an approval may be signed shortly
+before rollover, but cannot reset counters early or reopen a past month. The
 forwarder token cannot call the month route, and the signing private key never
 enters the Lambda or collector environment.
 

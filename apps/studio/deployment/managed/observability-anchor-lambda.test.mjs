@@ -47,7 +47,7 @@ function checkpoint(overrides = {}) {
   return value;
 }
 
-function fixture() {
+function fixture(now = () => Date.parse('2026-09-13T12:05:00.000Z')) {
   const key = generateKeyPairSync('ed25519').privateKey.export({
     format: 'pem',
     type: 'pkcs8',
@@ -65,7 +65,7 @@ function fixture() {
   const commands = [];
   const lambda = createManagedAnchorLambda({
     env,
-    now: () => Date.parse('2026-09-13T12:05:00.000Z'),
+    now,
     dynamoClient: {
       async send(command) {
         commands.push(command);
@@ -129,7 +129,8 @@ test('adapts one bounded HTTP API v2 request to the fixed account handler', asyn
 });
 
 test('advances a month only with the separately signed exact transition', async () => {
-  const f = fixture();
+  let clock = Date.parse('2026-09-30T23:59:59.999Z');
+  const f = fixture(() => clock);
   const previous = checkpoint();
   const next = checkpoint({
     lastObservedAt: '2026-10-01T00:00:00.000Z',
@@ -142,12 +143,12 @@ test('advances a month only with the separately signed exact transition', async 
       previousStateSha256: previous.stateSha256,
       nextStateSha256: next.stateSha256,
       targetMonthUtc: next.monthUtc,
-      issuedAt: '2026-09-13T12:00:00.000Z',
-      expiresAt: '2026-09-13T12:15:00.000Z',
+      issuedAt: '2026-09-30T23:55:00.000Z',
+      expiresAt: '2026-10-01T00:05:00.000Z',
     },
     authorityKeyId: 'month-authority-1',
     key: f.key,
-    now: Date.parse('2026-09-13T12:05:00.000Z'),
+    now: Date.parse('2026-09-30T23:55:00.000Z'),
   });
   const body = JSON.stringify({
     authorization: canonicalize(receipt),
@@ -155,6 +156,25 @@ test('advances a month only with the separately signed exact transition', async 
     next,
     previous,
   });
+  const early = await f.lambda(
+    f.event({
+      rawPath: '/v1/advance-month',
+      requestContext: { http: { method: 'POST', path: '/v1/advance-month' } },
+      headers: {
+        'authorization': `Bearer ${f.env.STUDIO_ANCHOR_OPERATOR_TOKEN}`,
+        'content-type': 'application/json',
+      },
+      body,
+    }),
+  );
+  assert.equal(early.statusCode, 400);
+  assert.equal(
+    f.commands.some(
+      (command) => command.constructor.name === 'TransactWriteItemsCommand',
+    ),
+    false,
+  );
+  clock = Date.parse('2026-10-01T00:00:00.000Z');
   const accepted = await f.lambda(
     f.event({
       rawPath: '/v1/advance-month',

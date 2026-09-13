@@ -13,7 +13,7 @@ import {
   signMonthAuthorization,
 } from './observability-month-authorization.mjs';
 
-const now = Date.parse('2026-09-13T12:05:00.000Z');
+const now = Date.parse('2026-10-01T12:05:00.000Z');
 const account = 'a'.repeat(64);
 const previous = { stateSha256: 'b'.repeat(64) };
 const next = { monthUtc: '2026-10', stateSha256: 'c'.repeat(64) };
@@ -33,8 +33,8 @@ function approval(overrides = {}) {
     previousStateSha256: previous.stateSha256,
     nextStateSha256: next.stateSha256,
     targetMonthUtc: next.monthUtc,
-    issuedAt: '2026-09-13T12:00:00.000Z',
-    expiresAt: '2026-09-13T12:15:00.000Z',
+    issuedAt: '2026-10-01T12:00:00.000Z',
+    expiresAt: '2026-10-01T12:15:00.000Z',
     ...overrides,
   };
 }
@@ -71,6 +71,37 @@ test('accepts one short-lived signature for the exact account, lineage states, a
   );
 });
 
+test('accepts pre-signed approval only within its target UTC month after rollover', async () => {
+  const key = keys();
+  const signedAt = Date.parse('2026-09-30T23:55:00.000Z');
+  const authorization = canonicalize(
+    signMonthAuthorization({
+      approval: approval({
+        issuedAt: '2026-09-30T23:55:00.000Z',
+        expiresAt: '2026-10-01T00:05:00.000Z',
+      }),
+      authorityKeyId: 'month-authority-1',
+      key: key.privatePem,
+      now: signedAt,
+    }),
+  );
+  for (const [time, expected] of [
+    ['2026-09-30T23:59:59.999Z', false],
+    ['2026-10-01T00:00:00.000Z', true],
+    ['2026-10-01T00:04:59.999Z', true],
+    ['2026-10-01T00:05:00.000Z', false],
+  ])
+    assert.equal(
+      await verifier(key, { now: () => Date.parse(time) })({
+        authorization,
+        previous,
+        next,
+      }),
+      expected,
+      time,
+    );
+});
+
 test('rejects wrong account, state, month, key, expiry, and tampering', async () => {
   const key = keys();
   const other = keys();
@@ -98,7 +129,7 @@ test('rejects wrong account, state, month, key, expiry, and tampering', async ()
         accountIdentitySha256: account,
         authorityKeyId: 'month-authority-1',
         authorityPublicKey: key.publicKey,
-        now: () => Date.parse('2026-09-13T12:15:00.000Z'),
+        now: () => Date.parse('2026-10-01T12:15:00.000Z'),
       }),
       value: valid,
     },
@@ -106,7 +137,7 @@ test('rejects wrong account, state, month, key, expiry, and tampering', async ()
       verify: verifier(key),
       value: {
         ...valid,
-        approval: { ...valid.approval, expiresAt: '2026-09-13T12:14:59.000Z' },
+        approval: { ...valid.approval, expiresAt: '2026-10-01T12:14:59.000Z' },
       },
     },
   ];
@@ -130,7 +161,7 @@ test('rejects wrong account, state, month, key, expiry, and tampering', async ()
     false,
   );
   assert.throws(
-    () => receipt(key, { expiresAt: '2026-09-13T12:15:00.001Z' }),
+    () => receipt(key, { expiresAt: '2026-10-01T12:15:00.001Z' }),
     /ANCHOR_MONTH_AUTHORIZATION_INPUT_INVALID/,
   );
 });

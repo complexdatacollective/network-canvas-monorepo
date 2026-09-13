@@ -103,7 +103,15 @@ export function createMonthAuthorizationVerifier({
       )
         return false;
       if (canonicalize(receipt) !== authorization) return false;
-      const approval = validateApproval(receipt.approval, now());
+      const observedAt = now();
+      const approval = validateApproval(receipt.approval, observedAt);
+      // Signatures can be prepared shortly before rollover, but cannot spend
+      // a future month's allowance or reactivate a past month's counters.
+      if (
+        approval.targetMonthUtc !==
+        new Date(observedAt).toISOString().slice(0, 7)
+      )
+        return false;
       if (
         approval.accountIdentitySha256 !== accountIdentitySha256 ||
         approval.previousStateSha256 !== previous.stateSha256 ||
