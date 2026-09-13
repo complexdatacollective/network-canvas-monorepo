@@ -759,11 +759,12 @@ export class RegistryStore {
     // Invalid locators do not consume the deployment-wide public reporting
     // allowance. Entries are retained for their installation's lifetime, so
     // this existence proof cannot be invalidated by an ordinary request.
-    const target = await this.#pool.query(
+    const target = await this.#pool.query<{ id: string }>(
       'SELECT id FROM registry_entries WHERE id = $1',
       [id],
     );
-    if (!target.rowCount) throw new RegistryError('NOT_FOUND');
+    const canonicalId = target.rows[0]?.id;
+    if (canonicalId === undefined) throw new RegistryError('NOT_FOUND');
     await admitRegistryRate(
       this.#pool,
       'report:global',
@@ -772,7 +773,7 @@ export class RegistryStore {
     );
     await admitRegistryRate(
       this.#pool,
-      `report:${id}`,
+      `report:${canonicalId}`,
       this.#limits.reportsPerEntryPerHour,
       3600,
     );
@@ -786,7 +787,7 @@ export class RegistryStore {
       const reportId = randomUUID();
       await client.query(
         'INSERT INTO registry_reports(id, entry_id, category, details) VALUES ($1, $2, $3, $4)',
-        [reportId, id, input.category, input.details],
+        [reportId, canonicalId, input.category, input.details],
       );
       return { id: reportId };
     });
