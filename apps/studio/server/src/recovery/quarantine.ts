@@ -20,7 +20,7 @@ export async function assertStudioRecoveryQuarantine(
     allowedLogins: readonly string[];
     administrativeLogins: readonly string[];
     allowedClientPids?: readonly number[];
-    transaction: StudioRecoveryTransaction;
+    expectedTransaction: StudioRecoveryTransaction;
   },
 ): Promise<void> {
   try {

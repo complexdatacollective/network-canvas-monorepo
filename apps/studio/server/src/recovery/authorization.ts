@@ -535,7 +535,7 @@ export async function reconcileStudioRecoveryAuthorization(options: {
     });
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      transaction: { isolation: 'serializable', readOnly: false },
+      expectedTransaction: { isolation: 'serializable', readOnly: false },
     });
     await reconcileInventories(client, evidence, 'revoke-stale');
     await invalidateRestoredAdmission(client);
@@ -548,7 +548,7 @@ export async function reconcileStudioRecoveryAuthorization(options: {
     await reconcileInventories(client, evidence, 'revoke-stale');
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      transaction: { isolation: 'serializable', readOnly: false },
+      expectedTransaction: { isolation: 'serializable', readOnly: false },
     });
     const destination = (
       await client.query<{ database: string; fingerprint: string }>(
@@ -643,7 +643,7 @@ export async function authorizeCurrentStudioRecovery(options: {
     });
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      transaction: { isolation: 'serializable', readOnly: false },
+      expectedTransaction: { isolation: 'serializable', readOnly: false },
     });
     await reconcileInventories(client, evidence, 'require-exact');
     await assertRestoredAdmissionInvalidated(client);
@@ -673,7 +673,7 @@ export async function authorizeCurrentStudioRecovery(options: {
     await assertRestoredAdmissionInvalidated(client);
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      transaction: { isolation: 'serializable', readOnly: false },
+      expectedTransaction: { isolation: 'serializable', readOnly: false },
     });
     const destination = (
       await client.query<{ database: string; fingerprint: string }>(
