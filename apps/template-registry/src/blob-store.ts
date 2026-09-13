@@ -50,15 +50,16 @@ const versionPageSize = 1_000;
 
 type ObjectVersion = { Key?: string; VersionId?: string };
 
-async function deleteObjectVersions(
+async function listObjectVersions(
   client: S3Client,
   bucket: string,
   key: string,
   signal: AbortSignal,
-): Promise<void> {
+): Promise<ObjectVersion[]> {
   let keyMarker: string | undefined;
   let versionIdMarker: string | undefined;
-  let foundVersion = false;
+  const markers = new Set<string>();
+  const versions = new Map<string, ObjectVersion>();
   let truncated = true;
   while (truncated) {
     const page = await client.send(
@@ -71,19 +72,54 @@ async function deleteObjectVersions(
       }),
       { abortSignal: signal },
     );
-    const versions: ObjectVersion[] = [
+    const pageVersions: ObjectVersion[] = [
       ...(page.Versions ?? []),
       ...(page.DeleteMarkers ?? []),
     ].filter((version) => version.Key === key);
-    if (versions.length > 0) foundVersion = true;
-    if (versions.some((version) => typeof version.VersionId !== 'string'))
+    if (pageVersions.some((version) => typeof version.VersionId !== 'string'))
       throw new Error('REGISTRY_STORAGE_VERSION_ID_MISSING');
-    if (versions.length > 0) {
+    for (const version of pageVersions)
+      versions.set(version.VersionId!, version);
+    truncated = page.IsTruncated === true;
+    if (!truncated) continue;
+    if (!page.NextKeyMarker && !page.NextVersionIdMarker)
+      throw new Error('REGISTRY_STORAGE_VERSION_PAGINATION_INVALID');
+    const next = `${page.NextKeyMarker ?? ''}\0${page.NextVersionIdMarker ?? ''}`;
+    if (markers.has(next))
+      throw new Error('REGISTRY_STORAGE_VERSION_PAGINATION_INVALID');
+    markers.add(next);
+    keyMarker = page.NextKeyMarker;
+    versionIdMarker = page.NextVersionIdMarker;
+  }
+  return [...versions.values()];
+}
+
+async function deleteObjectVersions(
+  client: S3Client,
+  bucket: string,
+  key: string,
+  signal: AbortSignal,
+): Promise<void> {
+  let sawVersion = false;
+  let attemptedOrdinaryDelete = false;
+  while (true) {
+    const versions = await listObjectVersions(client, bucket, key, signal);
+    if (versions.length === 0) {
+      if (sawVersion || attemptedOrdinaryDelete) return;
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }), {
+        abortSignal: signal,
+      });
+      attemptedOrdinaryDelete = true;
+      continue;
+    }
+    sawVersion = true;
+    for (let offset = 0; offset < versions.length; offset += versionPageSize) {
+      const batch = versions.slice(offset, offset + versionPageSize);
       const deleted = await client.send(
         new DeleteObjectsCommand({
           Bucket: bucket,
           Delete: {
-            Objects: versions.map((version) => ({
+            Objects: batch.map((version) => ({
               Key: key,
               VersionId: version.VersionId,
             })),
@@ -95,21 +131,7 @@ async function deleteObjectVersions(
       if ((deleted.Errors?.length ?? 0) > 0)
         throw new Error('REGISTRY_STORAGE_VERSION_DELETE_FAILED');
     }
-    truncated = page.IsTruncated === true;
-    if (!truncated) continue;
-    if (!page.NextKeyMarker && !page.NextVersionIdMarker)
-      throw new Error('REGISTRY_STORAGE_VERSION_PAGINATION_INVALID');
-    keyMarker = page.NextKeyMarker;
-    versionIdMarker = page.NextVersionIdMarker;
   }
-
-  // An unversioned bucket has no version records. Only in that case is the
-  // ordinary delete safe; on a versioned or suspended bucket every byte and
-  // delete marker was removed by DeleteObjects above.
-  if (!foundVersion)
-    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }), {
-      abortSignal: signal,
-    });
 }
 
 /** The bucket remains private; every download passes the live moderation gate. */

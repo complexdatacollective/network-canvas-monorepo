@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   configureRegistryDeployment,
+  isSecureConfigurationAncestor,
   registryConfigurationFiles,
   renderRegistryDeploymentTemplate,
 } from '../configure.ts';
@@ -59,6 +60,18 @@ async function environment(output: string) {
 }
 
 describe('Registry deployment configuration', () => {
+  it('rejects a non-root foreign owner that can replace a protected child', () => {
+    expect(isSecureConfigurationAncestor({ mode: 0o755, uid: 501 }, 502)).toBe(
+      false,
+    );
+    expect(isSecureConfigurationAncestor({ mode: 0o755, uid: 502 }, 502)).toBe(
+      true,
+    );
+    expect(isSecureConfigurationAncestor({ mode: 0o755, uid: 0 }, 502)).toBe(
+      true,
+    );
+  });
+
   it('limits public rendering to the signed Registry template inventory', () => {
     expect(() =>
       renderRegistryDeploymentTemplate('unrelated.env', Buffer.from('value')),

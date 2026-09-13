@@ -105,13 +105,14 @@ the 32-hex account ID and default HTTPS port; userinfo, paths, and query data
 are rejected.
 Offline recovery inherits that provider unless `REGISTRY_RECOVERY_S3_PROVIDER`
 is set explicitly, and applies the same endpoint admission.
-Hard deletion enumerates the exact artifact key with S3 `ListObjectVersions`
-and removes every returned version and delete marker before the database job is
-completed. A provider that does not implement that operation (including the
-current Cloudflare R2 S3 compatibility surface) fails deletion closed. The
-explicit R2 provider is admitted because R2 does not expose object versioning;
-it uses ordinary `DeleteObject` for its no-versioning contract. Never select
-R2 for an endpoint that does not match the verified account form.
+Hard deletion enumerates the exact artifact key with S3 `ListObjectVersions`,
+removes every returned version and delete marker, and restarts enumeration
+until the key is empty before the database job is completed. A provider that
+does not implement that operation (including the current Cloudflare R2 S3
+compatibility surface) fails deletion closed. The explicit R2 provider is
+admitted because R2 does not expose object versioning; it uses ordinary
+`DeleteObject` for its no-versioning contract. Never select R2 for an endpoint
+that does not match the verified account form.
 
 Every runtime and offline command requires `REGISTRY_DATABASE_ALLOWED_LOGINS`,
 an explicit JSON array of the complete database login inventory, including the

@@ -87,7 +87,7 @@ it('uses authenticated private requests, conditional content-addressed uploads, 
     expect(await fixture.blobs.get(rawHash)).toEqual(bytes);
     await fixture.blobs.delete(rawHash);
     expect(Buffer.concat(received)).toEqual(Buffer.from(bytes));
-    expect(requests).toHaveLength(5);
+    expect(requests).toHaveLength(6);
     expect(
       requests.map(({ method, path, signed }) => ({ method, path, signed })),
     ).toEqual([
@@ -108,6 +108,7 @@ it('uses authenticated private requests, conditional content-addressed uploads, 
         path: `/private-registry/template-artifacts/${rawHash}`,
         signed: true,
       },
+      { method: 'GET', path: '/private-registry/', signed: true },
     ]);
     expect(requests[1]).toMatchObject({
       condition: '*',
@@ -119,7 +120,7 @@ it('uses authenticated private requests, conditional content-addressed uploads, 
     await expect(fixture.blobs.get('../escape')).rejects.toMatchObject({
       code: 'SERVICE_UNAVAILABLE',
     });
-    expect(requests).toHaveLength(5);
+    expect(requests).toHaveLength(6);
   } finally {
     await fixture.close();
   }
@@ -141,7 +142,9 @@ it('permanently removes every version and delete marker for a versioned bucket',
       response.end(
         listCalls === 1
           ? `<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>true</IsTruncated><NextKeyMarker>${key}</NextKeyMarker><NextVersionIdMarker>old-version</NextVersionIdMarker><Version><Key>${key}</Key><VersionId>old-version</VersionId></Version></ListVersionsResult>`
-          : `<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated><DeleteMarker><Key>${key}</Key><VersionId>delete-marker</VersionId></DeleteMarker></ListVersionsResult>`,
+          : listCalls === 2
+            ? `<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated><DeleteMarker><Key>${key}</Key><VersionId>delete-marker</VersionId></DeleteMarker></ListVersionsResult>`
+            : '<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated></ListVersionsResult>',
       );
       return;
     }
@@ -161,8 +164,8 @@ it('permanently removes every version and delete marker for a versioned bucket',
   });
   try {
     await fixture.blobs.delete(rawHash);
-    expect(listCalls).toBe(2);
-    expect(deleteBodies).toHaveLength(2);
+    expect(listCalls).toBe(3);
+    expect(deleteBodies).toHaveLength(1);
     expect(deleteBodies.join('\n')).toContain(
       '<VersionId>old-version</VersionId>',
     );
@@ -170,6 +173,61 @@ it('permanently removes every version and delete marker for a versioned bucket',
       '<VersionId>delete-marker</VersionId>',
     );
     expect(methods).not.toContain('DELETE');
+  } finally {
+    await fixture.close();
+  }
+});
+
+it('restarts version enumeration so a write behind the cursor is also deleted', async () => {
+  const rawHash = 'f'.repeat(64);
+  const key = `template-artifacts/${rawHash}`;
+  let listCalls = 0;
+  let lateVersionExists = false;
+  const deleteBodies: string[] = [];
+  const fixture = await peer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://s3.test');
+    if (request.method === 'GET' && url.searchParams.has('versions')) {
+      listCalls += 1;
+      response.setHeader('Content-Type', 'application/xml');
+      if (listCalls === 1)
+        response.end(
+          `<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>true</IsTruncated><NextKeyMarker>${key}</NextKeyMarker><NextVersionIdMarker>old-version</NextVersionIdMarker><Version><Key>${key}</Key><VersionId>old-version</VersionId></Version></ListVersionsResult>`,
+        );
+      else if (listCalls === 2)
+        response.end(
+          '<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated></ListVersionsResult>',
+        );
+      else if (lateVersionExists) {
+        lateVersionExists = false;
+        response.end(
+          `<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated><Version><Key>${key}</Key><VersionId>late-version</VersionId></Version></ListVersionsResult>`,
+        );
+      } else
+        response.end(
+          '<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated></ListVersionsResult>',
+        );
+      return;
+    }
+    if (request.method === 'POST' && url.searchParams.has('delete')) {
+      const chunks: Buffer[] = [];
+      request.on('data', (chunk: Buffer) => chunks.push(chunk));
+      request.on('end', () => {
+        deleteBodies.push(Buffer.concat(chunks).toString('utf8'));
+        if (deleteBodies.length === 1) lateVersionExists = true;
+        response.setHeader('Content-Type', 'application/xml');
+        response.end(
+          '<DeleteResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"/>',
+        );
+      });
+      return;
+    }
+    response.end();
+  });
+  try {
+    await fixture.blobs.delete(rawHash);
+    expect(listCalls).toBe(4);
+    expect(deleteBodies).toHaveLength(2);
+    expect(deleteBodies[1]).toContain('<VersionId>late-version</VersionId>');
   } finally {
     await fixture.close();
   }

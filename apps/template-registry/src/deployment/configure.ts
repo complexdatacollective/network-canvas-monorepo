@@ -259,11 +259,21 @@ function assertPrivateRoot(info: Awaited<ReturnType<typeof lstat>>) {
     throw new Error('Registry configuration output is unsafe.');
 }
 
-function assertSafeAncestor(info: Awaited<ReturnType<typeof lstat>>) {
+export function isSecureConfigurationAncestor(
+  info: Pick<Awaited<ReturnType<typeof lstat>>, 'mode' | 'uid'>,
+  uid: number | undefined,
+): boolean {
   // A sticky system temporary directory is safe as a parent: it prevents a
   // different user from replacing a child they do not own. Every other
   // writable ancestor would allow an installer peer to swap the root.
-  if ((Number(info.mode) & 0o022) !== 0 && (Number(info.mode) & 0o1000) === 0)
+  if (uid !== undefined && info.uid !== 0 && info.uid !== uid) return false;
+  return !(
+    (Number(info.mode) & 0o022) !== 0 && (Number(info.mode) & 0o1000) === 0
+  );
+}
+
+function assertSafeAncestor(info: Awaited<ReturnType<typeof lstat>>) {
+  if (!isSecureConfigurationAncestor(info, currentUserId()))
     throw new Error('Registry configuration output is unsafe.');
 }
 
