@@ -79,6 +79,7 @@ function fixture() {
     operatorToken: operator,
   });
   const handler = createMonotonicAnchorHandler({
+    now: () => Date.parse('2026-09-13T12:00:00.000Z'),
     accountIdentitySha256: account,
     authenticate,
     authorizeMonth: async ({ authorization, previous, next }) =>
@@ -270,6 +271,7 @@ test('deadline cancels the locked request reader and prevents late initializatio
   let initializeCalls = 0;
   const durable = store();
   const handler = createMonotonicAnchorHandler({
+    now: () => Date.parse('2026-09-13T12:00:00.000Z'),
     accountIdentitySha256: account,
     authenticate: fixedBearerAuthenticator({
       accountIdentitySha256: account,
@@ -319,6 +321,7 @@ test('deadline prevents initialization after delayed authentication completes', 
   let initializeCalls = 0;
   const durable = store();
   const handler = createMonotonicAnchorHandler({
+    now: () => Date.parse('2026-09-13T12:00:00.000Z'),
     accountIdentitySha256: account,
     authenticate: async () => {
       await ready;
@@ -365,6 +368,7 @@ test('deadline prevents a late authorized month reset from mutating the anchor',
   });
   await durable.initialize(previous);
   const handler = createMonotonicAnchorHandler({
+    now: () => Date.parse('2026-09-13T12:00:00.000Z'),
     accountIdentitySha256: account,
     authenticate: fixedBearerAuthenticator({
       accountIdentitySha256: account,
@@ -414,6 +418,7 @@ test('deadline propagates cancellation to the month authorizer', async () => {
   let aborted = false;
   let settled = false;
   const handler = createMonotonicAnchorHandler({
+    now: () => Date.parse('2026-09-13T12:00:00.000Z'),
     accountIdentitySha256: account,
     authenticate: fixedBearerAuthenticator({
       accountIdentitySha256: account,
@@ -489,6 +494,7 @@ test('refuses substituted account checkpoints before authorization or durable wr
     let casCalls = 0;
     let authorizationCalls = 0;
     const handler = createMonotonicAnchorHandler({
+      now: () => Date.parse('2026-09-13T12:00:00.000Z'),
       accountIdentitySha256: account,
       authenticate: fixedBearerAuthenticator({
         accountIdentitySha256: account,

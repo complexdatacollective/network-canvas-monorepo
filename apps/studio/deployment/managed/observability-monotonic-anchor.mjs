@@ -222,11 +222,13 @@ export function createMonotonicAnchorHandler({
   authorizeMonth,
   store,
   operationTimeoutMs = 5_000,
+  now = Date.now,
 }) {
   if (
     !SHA256.test(accountIdentitySha256) ||
     typeof authenticate !== 'function' ||
     typeof authorizeMonth !== 'function' ||
+    typeof now !== 'function' ||
     !store ||
     typeof store.read !== 'function' ||
     typeof store.initialize !== 'function' ||
@@ -297,6 +299,10 @@ export function createMonotonicAnchorHandler({
           const previous = boundCheckpoint(body.previous);
           const next = boundCheckpoint(body.next);
           validateAdvance(previous, next);
+          // The collector clock is untrusted; stale-month allowance cannot be
+          // spent after the provider has entered a new billing month.
+          if (next.monthUtc !== new Date(now()).toISOString().slice(0, 7))
+            refuse('ANCHOR_STATE_INVALID');
           signal.throwIfAborted();
           if (!(await store.compareAndSet(previous, next)))
             refuse('ANCHOR_CONFLICT');

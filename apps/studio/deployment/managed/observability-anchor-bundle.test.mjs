@@ -1,17 +1,20 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import {
+  cp,
   mkdir,
   mkdtemp,
   readFile,
   readdir,
   stat,
+  symlink,
+  rm,
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import JSZip from 'jszip';
 
@@ -85,4 +88,28 @@ test('builds a checkout-free Lambda and operator closure with its pinned AWS SDK
   assert.deepEqual(JSON.parse(result.body), {
     code: 'ANCHOR_INTERNAL_FAILURE',
   });
+});
+
+void test('builds from a repository path containing URL-escaped characters', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'studio anchor # % ü-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const managed = join(root, 'apps/studio/deployment/managed');
+  await cp(import.meta.dirname, managed, {
+    recursive: true,
+    filter: (source) => !source.includes('/dist-anchor'),
+  });
+  const originalRoot = fileURLToPath(new URL('../../../../', import.meta.url));
+  await symlink(join(originalRoot, 'node_modules'), join(root, 'node_modules'));
+  await symlink(join(originalRoot, 'packages'), join(root, 'packages'));
+  const copied = await import(
+    pathToFileURL(join(managed, 'build-observability-anchor.mjs')).href
+  );
+  const built = await copied.buildManagedAnchorArtifact(
+    join(root, 'output # % ü'),
+  );
+  assert.ok((await stat(built.artifact)).size > 0);
+  const bundled = await import(
+    pathToFileURL(join(built.runtime, 'lambda.mjs')).href
+  );
+  assert.equal((await bundled.handler({ version: '2.0' })).statusCode, 503);
 });

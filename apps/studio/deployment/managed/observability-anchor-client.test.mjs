@@ -89,6 +89,7 @@ function memoryHandler() {
     },
   };
   return createMonotonicAnchorHandler({
+    now: () => Date.parse('2026-09-13T12:00:00.000Z'),
     accountIdentitySha256: account,
     authenticate: fixedBearerAuthenticator({
       accountIdentitySha256: account,
@@ -394,6 +395,7 @@ test(
     });
     assert.equal(await store.enroll(), true);
     const handler = createMonotonicAnchorHandler({
+      now: () => Date.parse('2026-09-13T12:00:00.000Z'),
       accountIdentitySha256: e2eAccount,
       authenticate: fixedBearerAuthenticator({
         accountIdentitySha256: e2eAccount,

@@ -128,6 +128,45 @@ test('adapts one bounded HTTP API v2 request to the fixed account handler', asyn
   assert.equal(f.commands.length, 2);
 });
 
+void test('ordinary advances stop at trusted UTC rollover until the signed transition', async () => {
+  let clock = Date.parse('2026-09-30T23:59:59.999Z');
+  const f = fixture(() => clock);
+  const previous = checkpoint();
+  const next = checkpoint({
+    payloadAttemptedBytes: 20,
+    reservationSequence: 1,
+  });
+  const request = (before, after) =>
+    f.event({
+      rawPath: '/v1/advance',
+      requestContext: { http: { method: 'POST', path: '/v1/advance' } },
+      body: JSON.stringify({ format: 1, previous: before, next: after }),
+    });
+  assert.equal((await f.lambda(request(previous, next))).statusCode, 200);
+  const writes = f.commands.filter(
+    (command) => command.constructor.name === 'TransactWriteItemsCommand',
+  ).length;
+  clock = Date.parse('2026-10-01T00:00:00.000Z');
+  const refused = await f.lambda(
+    request(
+      next,
+      checkpoint({ payloadAttemptedBytes: 40, reservationSequence: 2 }),
+    ),
+  );
+  assert.equal(refused.statusCode, 400);
+  assert.equal(
+    f.commands.filter(
+      (command) => command.constructor.name === 'TransactWriteItemsCommand',
+    ).length,
+    writes,
+  );
+  assert.equal(
+    JSON.parse((await f.lambda(f.event())).body).checkpoint
+      .payloadAttemptedBytes,
+    20,
+  );
+});
+
 test('advances a month only with the separately signed exact transition', async () => {
   let clock = Date.parse('2026-09-30T23:59:59.999Z');
   const f = fixture(() => clock);
@@ -203,6 +242,24 @@ test('advances a month only with the separately signed exact transition', async 
     }),
   );
   assert.equal(replay.statusCode, 409);
+  const advanced = await f.lambda(
+    f.event({
+      rawPath: '/v1/advance',
+      requestContext: { http: { method: 'POST', path: '/v1/advance' } },
+      body: JSON.stringify({
+        format: 1,
+        previous: next,
+        next: checkpoint({
+          lastObservedAt: '2026-10-01T00:00:00.000Z',
+          monthSequence: 2,
+          monthUtc: '2026-10',
+          payloadAttemptedBytes: 20,
+          reservationSequence: 1,
+        }),
+      }),
+    }),
+  );
+  assert.equal(advanced.statusCode, 200);
 });
 
 test('rejects malformed transport, oversized bodies, and duplicate authorization before DynamoDB', async () => {

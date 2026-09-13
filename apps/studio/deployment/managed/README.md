@@ -603,7 +603,10 @@ previous and next checkpoint digests, and exact target UTC month. The target
 must also be the verifier's current UTC month: an approval may be signed shortly
 before rollover, but cannot reset counters early or reopen a past month. The
 forwarder token cannot call the month route, and the signing private key never
-enters the Lambda or collector environment.
+enters the Lambda or collector environment. Ordinary forwarder advances also
+require the checkpoint month to match trusted Lambda UTC time. After rollover,
+intake remains closed until the signed transition completes; a regressed
+collector clock cannot spend the prior month's remaining allowance.
 
 An independently administered operator creates the private approval input and
 uses private regular files for both it and the Ed25519 PKCS#8 key:

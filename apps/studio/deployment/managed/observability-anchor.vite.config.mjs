@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vite';
 
 export default defineConfig({
@@ -9,14 +11,18 @@ export default defineConfig({
     emptyOutDir: true,
     rolldownOptions: {
       input: {
-        'lambda': new URL('./observability-anchor-lambda.mjs', import.meta.url)
-          .pathname,
-        'authorize-month': new URL(
-          './observability-anchor-authorize-month.mjs',
-          import.meta.url,
-        ).pathname,
-        'enroll': new URL('./observability-anchor-enroll.mjs', import.meta.url)
-          .pathname,
+        'lambda': fileURLToPath(
+          new URL('./observability-anchor-lambda.mjs', import.meta.url),
+        ),
+        'authorize-month': fileURLToPath(
+          new URL(
+            './observability-anchor-authorize-month.mjs',
+            import.meta.url,
+          ),
+        ),
+        'enroll': fileURLToPath(
+          new URL('./observability-anchor-enroll.mjs', import.meta.url),
+        ),
       },
       output: { entryFileNames: '[name].mjs' },
     },

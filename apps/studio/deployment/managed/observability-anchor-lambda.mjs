@@ -80,6 +80,7 @@ export function createManagedAnchorLambda({
       managedAnchorDynamoClientConfiguration(configuration.region),
     );
   const anchor = createMonotonicAnchorHandler({
+    now,
     accountIdentitySha256: configuration.accountIdentitySha256,
     authenticate: fixedBearerAuthenticator(configuration),
     authorizeMonth: createMonthAuthorizationVerifier({

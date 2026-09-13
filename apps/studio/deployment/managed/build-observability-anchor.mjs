@@ -1,5 +1,6 @@
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import JSZip from 'jszip';
 import { build } from 'vite';
@@ -23,10 +24,9 @@ export async function buildManagedAnchorArtifact(outputDirectory) {
   await rm(outputDirectory, { force: true, recursive: true });
   await mkdir(outputDirectory, { recursive: true, mode: 0o700 });
   await build({
-    configFile: new URL(
-      './observability-anchor.vite.config.mjs',
-      import.meta.url,
-    ).pathname,
+    configFile: fileURLToPath(
+      new URL('./observability-anchor.vite.config.mjs', import.meta.url),
+    ),
     build: { outDir: runtime },
   });
   const archive = new JSZip();
@@ -51,7 +51,7 @@ export async function buildManagedAnchorArtifact(outputDirectory) {
 
 if (import.meta.main) {
   try {
-    const output = new URL('./dist-anchor', import.meta.url).pathname;
+    const output = fileURLToPath(new URL('./dist-anchor', import.meta.url));
     const result = await buildManagedAnchorArtifact(output);
     process.stdout.write(`${result.artifact}\n`);
   } catch {
