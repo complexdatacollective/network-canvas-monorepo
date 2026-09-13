@@ -438,6 +438,13 @@ const interviewSessions = pgTable(
     stageMetadata: jsonb('stage_metadata')
       .notNull()
       .default(sql`'{}'::jsonb`),
+    // Privacy-safe timing accumulated by the interview runtime. This is a
+    // sibling of the opaque stage scratch state: Studio may aggregate these
+    // numeric intervals, but must never interpret stageMetadata as timing.
+    stageTiming: jsonb('stage_timing'),
+    // The host's monotonic sync counter. A participant can have overlapping
+    // unload and ordinary writes, so the server accepts only a newer number.
+    syncRevision: integer('sync_revision').notNull().default(0),
 
     // The ego entity of NcNetwork. Exactly one per session, so a 1:1 table
     // would be pure overhead; ego variables are a researcher-defined
@@ -542,10 +549,16 @@ const interviewSessions = pgTable(
           AND (${table.holderId} IS NULL OR char_length(${table.holderId}) BETWEEN 1 AND 128)`,
     ),
     check(
+      'interview_sessions_sync_revision_check',
+      sql`${table.syncRevision} >= 0`,
+    ),
+    check(
       'interview_sessions_ego_check',
       sql`char_length(${table.egoUid}) BETWEEN 1 AND 128
           AND jsonb_typeof(${table.egoAttributes}) = 'object'
           AND jsonb_typeof(${table.stageMetadata}) = 'object'
+          AND (${table.stageTiming} IS NULL
+               OR jsonb_typeof(${table.stageTiming}) = 'object')
           AND (${table.egoSecureAttributes} IS NULL
                OR jsonb_typeof(${table.egoSecureAttributes}) = 'object')`,
     ),

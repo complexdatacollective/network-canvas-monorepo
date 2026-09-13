@@ -128,7 +128,7 @@
 <!-- user&#45;&gt;session -->
 <g id="edge2" class="edge">
 <title>user:e&#45;&gt;session:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M802.39,-18994.37C999.84,-18994.37 1051.14,-19111.59 1132.79,-19291.37 1191.85,-19421.44 1085.84,-21746.07 1168.79,-21862.37 1339.62,-22101.91 1497.53,-22089.7 1788.57,-22089.38"/>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M802.39,-18994.37C1182.97,-18994.37 1054.67,-19411.89 1132.79,-19784.37 1156.48,-19897.38 1101.59,-21768.48 1168.79,-21862.37 1340.02,-22101.62 1497.54,-22089.69 1788.57,-22089.38"/>
 <polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="1788.98,-22092.88 1798.98,-22089.37 1788.98,-22085.88 1788.98,-22092.88"/>
 <text text-anchor="middle" x="1805.2" y="-22060.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
 <text text-anchor="middle" x="793.5" y="-18965.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
@@ -260,8 +260,8 @@
 <!-- user&#45;&gt;account -->
 <g id="edge4" class="edge">
 <title>user:e&#45;&gt;account:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M802.39,-18994.37C999.84,-18994.37 1044.89,-19114.56 1132.79,-19291.37 1175.17,-19376.64 1147.99,-19625.44 1168.79,-19718.37 1322.57,-20405.54 1019.36,-21202.74 1713.94,-21210.32"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="1713.96,-21213.82 1723.98,-21210.37 1714,-21206.82 1713.96,-21213.82"/>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M802.39,-18994.37C1065.67,-18994.37 1447.47,-21154.46 1713.76,-21209.31"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="1713.67,-21212.82 1723.98,-21210.37 1714.39,-21205.86 1713.67,-21212.82"/>
 <text text-anchor="middle" x="1730.2" y="-21181.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
 <text text-anchor="middle" x="793.5" y="-19003.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
@@ -477,46 +477,46 @@
 <!-- verification -->
 <g id="verification" class="node">
 <title>verification</title>
-<ellipse fill="none" stroke="black" stroke-width="0" cx="566.39" cy="-19600.37" rx="277.79" ry="299.63"/>
-<polygon fill="#1d71b8" stroke="transparent" points="372.39,-19750.37 372.39,-19810.37 761.39,-19810.37 761.39,-19750.37 372.39,-19750.37"/>
-<polygon fill="none" stroke="#29235c" points="372.39,-19750.37 372.39,-19810.37 761.39,-19810.37 761.39,-19750.37 372.39,-19750.37"/>
-<text text-anchor="start" x="428.19" y="-19771.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;verification &#160;&#160;&#160;&#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-19690.37 372.39,-19750.37 761.39,-19750.37 761.39,-19690.37 372.39,-19690.37"/>
-<polygon fill="none" stroke="#29235c" points="372.39,-19690.37 372.39,-19750.37 761.39,-19750.37 761.39,-19690.37 372.39,-19690.37"/>
-<text text-anchor="start" x="383.39" y="-19711.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">id</text>
-<text text-anchor="start" x="408.28" y="-19711.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="698.82" y="-19711.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-19630.37 372.39,-19690.37 761.39,-19690.37 761.39,-19630.37 372.39,-19630.37"/>
-<polygon fill="none" stroke="#29235c" points="372.39,-19630.37 372.39,-19690.37 761.39,-19690.37 761.39,-19630.37 372.39,-19630.37"/>
-<text text-anchor="start" x="383.39" y="-19650.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">identifier &#160;&#160;&#160;</text>
-<text text-anchor="start" x="659.73" y="-19651.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="711.3" y="-19651.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="720.19" y="-19651.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-19570.37 372.39,-19630.37 761.39,-19630.37 761.39,-19570.37 372.39,-19570.37"/>
-<polygon fill="none" stroke="#29235c" points="372.39,-19570.37 372.39,-19630.37 761.39,-19630.37 761.39,-19570.37 372.39,-19570.37"/>
-<text text-anchor="start" x="383.39" y="-19590.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">value &#160;&#160;&#160;</text>
-<text text-anchor="start" x="659.73" y="-19591.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="711.3" y="-19591.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="720.19" y="-19591.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-19510.37 372.39,-19570.37 761.39,-19570.37 761.39,-19510.37 372.39,-19510.37"/>
-<polygon fill="none" stroke="#29235c" points="372.39,-19510.37 372.39,-19570.37 761.39,-19570.37 761.39,-19510.37 372.39,-19510.37"/>
-<text text-anchor="start" x="383.39" y="-19530.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">expiresAt &#160;&#160;&#160;</text>
-<text text-anchor="start" x="563.74" y="-19531.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
-<text text-anchor="start" x="711.3" y="-19531.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="720.19" y="-19531.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-19450.37 372.39,-19510.37 761.39,-19510.37 761.39,-19450.37 372.39,-19450.37"/>
-<polygon fill="none" stroke="#29235c" points="372.39,-19450.37 372.39,-19510.37 761.39,-19510.37 761.39,-19450.37 372.39,-19450.37"/>
-<text text-anchor="start" x="383.39" y="-19470.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">createdAt &#160;&#160;&#160;</text>
-<text text-anchor="start" x="563.74" y="-19471.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
-<text text-anchor="start" x="711.3" y="-19471.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="720.19" y="-19471.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-19390.37 372.39,-19450.37 761.39,-19450.37 761.39,-19390.37 372.39,-19390.37"/>
-<polygon fill="none" stroke="#29235c" points="372.39,-19390.37 372.39,-19450.37 761.39,-19450.37 761.39,-19390.37 372.39,-19390.37"/>
-<text text-anchor="start" x="383.18" y="-19410.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">updatedAt &#160;&#160;&#160;</text>
-<text text-anchor="start" x="564.07" y="-19411.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
-<text text-anchor="start" x="711.63" y="-19411.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="720.52" y="-19411.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="none" stroke="#29235c" stroke-width="2" points="370.89,-19389.37 370.89,-19811.37 761.89,-19811.37 761.89,-19389.37 370.89,-19389.37"/>
+<ellipse fill="none" stroke="black" stroke-width="0" cx="566.39" cy="-20093.37" rx="277.79" ry="299.63"/>
+<polygon fill="#1d71b8" stroke="transparent" points="372.39,-20243.37 372.39,-20303.37 761.39,-20303.37 761.39,-20243.37 372.39,-20243.37"/>
+<polygon fill="none" stroke="#29235c" points="372.39,-20243.37 372.39,-20303.37 761.39,-20303.37 761.39,-20243.37 372.39,-20243.37"/>
+<text text-anchor="start" x="428.19" y="-20264.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;verification &#160;&#160;&#160;&#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-20183.37 372.39,-20243.37 761.39,-20243.37 761.39,-20183.37 372.39,-20183.37"/>
+<polygon fill="none" stroke="#29235c" points="372.39,-20183.37 372.39,-20243.37 761.39,-20243.37 761.39,-20183.37 372.39,-20183.37"/>
+<text text-anchor="start" x="383.39" y="-20204.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">id</text>
+<text text-anchor="start" x="408.28" y="-20204.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="698.82" y="-20204.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-20123.37 372.39,-20183.37 761.39,-20183.37 761.39,-20123.37 372.39,-20123.37"/>
+<polygon fill="none" stroke="#29235c" points="372.39,-20123.37 372.39,-20183.37 761.39,-20183.37 761.39,-20123.37 372.39,-20123.37"/>
+<text text-anchor="start" x="383.39" y="-20143.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">identifier &#160;&#160;&#160;</text>
+<text text-anchor="start" x="659.73" y="-20144.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="711.3" y="-20144.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="720.19" y="-20144.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-20063.37 372.39,-20123.37 761.39,-20123.37 761.39,-20063.37 372.39,-20063.37"/>
+<polygon fill="none" stroke="#29235c" points="372.39,-20063.37 372.39,-20123.37 761.39,-20123.37 761.39,-20063.37 372.39,-20063.37"/>
+<text text-anchor="start" x="383.39" y="-20083.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">value &#160;&#160;&#160;</text>
+<text text-anchor="start" x="659.73" y="-20084.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="711.3" y="-20084.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="720.19" y="-20084.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-20003.37 372.39,-20063.37 761.39,-20063.37 761.39,-20003.37 372.39,-20003.37"/>
+<polygon fill="none" stroke="#29235c" points="372.39,-20003.37 372.39,-20063.37 761.39,-20063.37 761.39,-20003.37 372.39,-20003.37"/>
+<text text-anchor="start" x="383.39" y="-20023.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">expiresAt &#160;&#160;&#160;</text>
+<text text-anchor="start" x="563.74" y="-20024.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
+<text text-anchor="start" x="711.3" y="-20024.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="720.19" y="-20024.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-19943.37 372.39,-20003.37 761.39,-20003.37 761.39,-19943.37 372.39,-19943.37"/>
+<polygon fill="none" stroke="#29235c" points="372.39,-19943.37 372.39,-20003.37 761.39,-20003.37 761.39,-19943.37 372.39,-19943.37"/>
+<text text-anchor="start" x="383.39" y="-19963.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">createdAt &#160;&#160;&#160;</text>
+<text text-anchor="start" x="563.74" y="-19964.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
+<text text-anchor="start" x="711.3" y="-19964.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="720.19" y="-19964.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="372.39,-19883.37 372.39,-19943.37 761.39,-19943.37 761.39,-19883.37 372.39,-19883.37"/>
+<polygon fill="none" stroke="#29235c" points="372.39,-19883.37 372.39,-19943.37 761.39,-19943.37 761.39,-19883.37 372.39,-19883.37"/>
+<text text-anchor="start" x="383.18" y="-19903.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">updatedAt &#160;&#160;&#160;</text>
+<text text-anchor="start" x="564.07" y="-19904.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
+<text text-anchor="start" x="711.63" y="-19904.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="720.52" y="-19904.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="none" stroke="#29235c" stroke-width="2" points="370.89,-19882.37 370.89,-20304.37 761.89,-20304.37 761.89,-19882.37 370.89,-19882.37"/>
 </g>
 <!-- rateLimit -->
 <g id="rateLimit" class="node">
@@ -612,43 +612,43 @@
 <g id="protocols" class="node">
 <title>protocols</title>
 <g id="a_protocols"><a xlink:title="protocols&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security">
-<ellipse fill="none" stroke="black" stroke-width="0" cx="1993.98" cy="-12704.37" rx="287.59" ry="299.63"/>
-<polygon fill="#1d71b8" stroke="transparent" points="1792.98,-12854.37 1792.98,-12914.37 2195.98,-12914.37 2195.98,-12854.37 1792.98,-12854.37"/>
-<polygon fill="none" stroke="#29235c" points="1792.98,-12854.37 1792.98,-12914.37 2195.98,-12914.37 2195.98,-12854.37 1792.98,-12854.37"/>
-<text text-anchor="start" x="1867.33" y="-12875.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;protocols &#160;&#160;&#160;&#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12794.37 1792.98,-12854.37 2195.98,-12854.37 2195.98,-12794.37 1792.98,-12794.37"/>
-<polygon fill="none" stroke="#29235c" points="1792.98,-12794.37 1792.98,-12854.37 2195.98,-12854.37 2195.98,-12794.37 1792.98,-12794.37"/>
-<text text-anchor="start" x="1803.98" y="-12815.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">id</text>
-<text text-anchor="start" x="1828.87" y="-12815.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="2124.51" y="-12815.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12734.37 1792.98,-12794.37 2195.98,-12794.37 2195.98,-12734.37 1792.98,-12734.37"/>
-<polygon fill="none" stroke="#29235c" points="1792.98,-12734.37 1792.98,-12794.37 2195.98,-12794.37 2195.98,-12734.37 1792.98,-12734.37"/>
-<text text-anchor="start" x="1803.98" y="-12754.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="2094.31" y="-12755.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="2145.89" y="-12755.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="2154.78" y="-12755.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12674.37 1792.98,-12734.37 2195.98,-12734.37 2195.98,-12674.37 1792.98,-12674.37"/>
-<polygon fill="none" stroke="#29235c" points="1792.98,-12674.37 1792.98,-12734.37 2195.98,-12734.37 2195.98,-12674.37 1792.98,-12674.37"/>
-<text text-anchor="start" x="1803.98" y="-12694.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">name &#160;&#160;&#160;</text>
-<text text-anchor="start" x="2094.31" y="-12695.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="2145.89" y="-12695.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="2154.78" y="-12695.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12614.37 1792.98,-12674.37 2195.98,-12674.37 2195.98,-12614.37 1792.98,-12614.37"/>
-<polygon fill="none" stroke="#29235c" points="1792.98,-12614.37 1792.98,-12674.37 2195.98,-12674.37 2195.98,-12614.37 1792.98,-12614.37"/>
-<text text-anchor="start" x="1803.98" y="-12634.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">created_at &#160;&#160;&#160;</text>
-<text text-anchor="start" x="1998.33" y="-12635.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
-<text text-anchor="start" x="2145.89" y="-12635.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="2154.78" y="-12635.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12554.37 1792.98,-12614.37 2195.98,-12614.37 2195.98,-12554.37 1792.98,-12554.37"/>
-<polygon fill="none" stroke="#29235c" points="1792.98,-12554.37 1792.98,-12614.37 2195.98,-12614.37 2195.98,-12554.37 1792.98,-12554.37"/>
-<text text-anchor="start" x="1803.65" y="-12574.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">updated_at &#160;&#160;&#160;</text>
-<text text-anchor="start" x="1998.65" y="-12575.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
-<text text-anchor="start" x="2146.21" y="-12575.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="2155.11" y="-12575.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12494.37 1792.98,-12554.37 2195.98,-12554.37 2195.98,-12494.37 1792.98,-12494.37"/>
-<polygon fill="none" stroke="#29235c" points="1792.98,-12494.37 1792.98,-12554.37 2195.98,-12554.37 2195.98,-12494.37 1792.98,-12494.37"/>
-<text text-anchor="start" x="1880.67" y="-12515.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;id, team_id &#160;&#160;&#160;</text>
-<polygon fill="none" stroke="#29235c" stroke-width="2" points="1791.48,-12493.37 1791.48,-12915.37 2196.48,-12915.37 2196.48,-12493.37 1791.48,-12493.37"/>
+<ellipse fill="none" stroke="black" stroke-width="0" cx="1993.98" cy="-12667.37" rx="287.59" ry="299.63"/>
+<polygon fill="#1d71b8" stroke="transparent" points="1792.98,-12817.37 1792.98,-12877.37 2195.98,-12877.37 2195.98,-12817.37 1792.98,-12817.37"/>
+<polygon fill="none" stroke="#29235c" points="1792.98,-12817.37 1792.98,-12877.37 2195.98,-12877.37 2195.98,-12817.37 1792.98,-12817.37"/>
+<text text-anchor="start" x="1867.33" y="-12838.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;protocols &#160;&#160;&#160;&#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12757.37 1792.98,-12817.37 2195.98,-12817.37 2195.98,-12757.37 1792.98,-12757.37"/>
+<polygon fill="none" stroke="#29235c" points="1792.98,-12757.37 1792.98,-12817.37 2195.98,-12817.37 2195.98,-12757.37 1792.98,-12757.37"/>
+<text text-anchor="start" x="1803.98" y="-12778.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">id</text>
+<text text-anchor="start" x="1828.87" y="-12778.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="2124.51" y="-12778.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12697.37 1792.98,-12757.37 2195.98,-12757.37 2195.98,-12697.37 1792.98,-12697.37"/>
+<polygon fill="none" stroke="#29235c" points="1792.98,-12697.37 1792.98,-12757.37 2195.98,-12757.37 2195.98,-12697.37 1792.98,-12697.37"/>
+<text text-anchor="start" x="1803.98" y="-12717.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="2094.31" y="-12718.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="2145.89" y="-12718.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="2154.78" y="-12718.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12637.37 1792.98,-12697.37 2195.98,-12697.37 2195.98,-12637.37 1792.98,-12637.37"/>
+<polygon fill="none" stroke="#29235c" points="1792.98,-12637.37 1792.98,-12697.37 2195.98,-12697.37 2195.98,-12637.37 1792.98,-12637.37"/>
+<text text-anchor="start" x="1803.98" y="-12657.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">name &#160;&#160;&#160;</text>
+<text text-anchor="start" x="2094.31" y="-12658.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="2145.89" y="-12658.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="2154.78" y="-12658.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12577.37 1792.98,-12637.37 2195.98,-12637.37 2195.98,-12577.37 1792.98,-12577.37"/>
+<polygon fill="none" stroke="#29235c" points="1792.98,-12577.37 1792.98,-12637.37 2195.98,-12637.37 2195.98,-12577.37 1792.98,-12577.37"/>
+<text text-anchor="start" x="1803.98" y="-12597.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">created_at &#160;&#160;&#160;</text>
+<text text-anchor="start" x="1998.33" y="-12598.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
+<text text-anchor="start" x="2145.89" y="-12598.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="2154.78" y="-12598.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12517.37 1792.98,-12577.37 2195.98,-12577.37 2195.98,-12517.37 1792.98,-12517.37"/>
+<polygon fill="none" stroke="#29235c" points="1792.98,-12517.37 1792.98,-12577.37 2195.98,-12577.37 2195.98,-12517.37 1792.98,-12517.37"/>
+<text text-anchor="start" x="1803.65" y="-12537.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">updated_at &#160;&#160;&#160;</text>
+<text text-anchor="start" x="1998.65" y="-12538.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
+<text text-anchor="start" x="2146.21" y="-12538.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="2155.11" y="-12538.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="1792.98,-12457.37 1792.98,-12517.37 2195.98,-12517.37 2195.98,-12457.37 1792.98,-12457.37"/>
+<polygon fill="none" stroke="#29235c" points="1792.98,-12457.37 1792.98,-12517.37 2195.98,-12517.37 2195.98,-12457.37 1792.98,-12457.37"/>
+<text text-anchor="start" x="1880.67" y="-12478.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;id, team_id &#160;&#160;&#160;</text>
+<polygon fill="none" stroke="#29235c" stroke-width="2" points="1791.48,-12456.37 1791.48,-12878.37 2196.48,-12878.37 2196.48,-12456.37 1791.48,-12456.37"/>
 </a>
 </g>
 </g>
@@ -656,9 +656,9 @@
 <!-- teams&#45;&gt;protocols -->
 <g id="edge18" class="edge">
 <title>teams:e&#45;&gt;protocols:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M764.39,-17520.37C1301.6,-17520.37 1252,-12824.56 1781.75,-12764.94"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="1782.19,-12768.43 1791.98,-12764.37 1781.8,-12761.44 1782.19,-12768.43"/>
-<text text-anchor="middle" x="1798.2" y="-12735.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M764.39,-17520.37C1305.59,-17520.37 1248.08,-12788.03 1781.68,-12727.95"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="1782.19,-12731.43 1791.98,-12727.37 1781.8,-12724.44 1782.19,-12731.43"/>
+<text text-anchor="middle" x="1798.2" y="-12698.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
 <text text-anchor="middle" x="773.29" y="-17491.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- studies -->
@@ -1555,28 +1555,28 @@
 <!-- protocols&#45;&gt;protocol_versions -->
 <g id="edge20" class="edge">
 <title>protocols:e&#45;&gt;protocol_versions:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M2196.98,-12524.37C4045.97,-12524.37 1305.29,-8481.22 3137.48,-8466.41"/>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M2196.98,-12487.37C4029.99,-12487.37 1321.18,-8481.08 3137.56,-8466.41"/>
 <polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="3137.62,-8469.91 3147.61,-8466.37 3137.59,-8462.91 3137.62,-8469.91"/>
 <text text-anchor="middle" x="3153.83" y="-8437.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
-<text text-anchor="middle" x="2188.08" y="-12495.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
+<text text-anchor="middle" x="2188.08" y="-12458.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- protocols&#45;&gt;protocol_drafts -->
 <!-- protocols&#45;&gt;protocol_drafts -->
 <g id="edge30" class="edge">
 <title>protocols:e&#45;&gt;protocol_drafts:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M2196.98,-12524.37C3357.79,-12524.37 2034.98,-8163.81 2855.17,-7342.37 3305.91,-6890.95 3641.48,-7155.49 4276.15,-7158.35"/>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M2196.98,-12487.37C3349.63,-12487.37 2040.38,-8157.67 2855.17,-7342.37 3306.11,-6891.16 3641.48,-7155.5 4276.15,-7158.35"/>
 <polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="4276.45,-7161.85 4286.46,-7158.37 4276.47,-7154.85 4276.45,-7161.85"/>
 <text text-anchor="middle" x="4280.24" y="-7129.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
-<text text-anchor="middle" x="2205.87" y="-12495.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
+<text text-anchor="middle" x="2205.87" y="-12458.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- protocols&#45;&gt;studies -->
 <!-- protocols&#45;&gt;studies -->
 <g id="edge42" class="edge">
 <title>protocols:e&#45;&gt;studies:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M2196.98,-12524.37C3853.08,-12524.37 1534.72,-16110.44 3174.33,-16125.33"/>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M2196.98,-12487.37C3869.02,-12487.37 1518.7,-16110.73 3174.53,-16125.33"/>
 <polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="3174.59,-16128.83 3184.61,-16125.37 3174.62,-16121.83 3174.59,-16128.83"/>
 <text text-anchor="middle" x="3190.83" y="-16096.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
-<text text-anchor="middle" x="2188.08" y="-12533.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
+<text text-anchor="middle" x="2188.08" y="-12496.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- protocol_versions&#45;&gt;protocol_versions -->
 <!-- protocol_versions&#45;&gt;protocol_versions -->
@@ -1600,7 +1600,7 @@
 <!-- protocol_versions&#45;&gt;protocol_drafts -->
 <g id="edge32" class="edge">
 <title>protocol_versions:e&#45;&gt;protocol_drafts:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M3743.61,-8406.37C3948.02,-8406.37 3956.33,-8239.61 4036.04,-8051.37 4091.85,-7919.58 4040.9,-7871.06 4072.04,-7731.37 4135.91,-7444.85 3992.85,-7106.41 4276.2,-7098.51"/>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M3743.61,-8406.37C3951.13,-8406.37 3955.99,-8233.83 4036.04,-8042.37 4089.72,-7914 4041.55,-7867.14 4072.04,-7731.37 4136.37,-7444.95 3992.86,-7106.41 4276.2,-7098.51"/>
 <polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="4276.51,-7102.01 4286.46,-7098.37 4276.41,-7095.01 4276.51,-7102.01"/>
 <text text-anchor="middle" x="4280.24" y="-7069.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
 <text text-anchor="middle" x="3734.71" y="-8415.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
@@ -1690,144 +1690,154 @@
 <g id="interview_sessions" class="node">
 <title>interview_sessions</title>
 <g id="a_interview_sessions"><a xlink:title="interview_sessions&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger interview_sessions_writable: BEFORE INSERT OR UPDATE OR DELETE calls interview_sessions_are_writable(); sidecar trigger interview_sessions_link_own: AFTER INSERT OR UPDATE OF link_id calls interview_session_link_is_own(); sidecar trigger interview_sessions_version_wave_pin: AFTER INSERT calls interview_session_version_is_wave_pin(); sidecar trigger interview_sessions_completion_snapshot: AFTER INSERT OR UPDATE OF status calls interview_session_completion_has_snapshot()">
-<ellipse fill="none" stroke="black" stroke-width="0" cx="6344.56" cy="-11187.37" rx="392.39" ry="1233.39"/>
-<polygon fill="#1d71b8" stroke="transparent" points="6069.56,-11997.37 6069.56,-12057.37 6620.56,-12057.37 6620.56,-11997.37 6069.56,-11997.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11997.37 6069.56,-12057.37 6620.56,-12057.37 6620.56,-11997.37 6069.56,-11997.37"/>
-<text text-anchor="start" x="6148.57" y="-12018.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;interview_sessions &#160;&#160;&#160;&#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11937.37 6069.56,-11997.37 6620.56,-11997.37 6620.56,-11937.37 6069.56,-11937.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11937.37 6069.56,-11997.37 6620.56,-11997.37 6620.56,-11937.37 6069.56,-11937.37"/>
-<text text-anchor="start" x="6080.56" y="-11958.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">id</text>
-<text text-anchor="start" x="6105.45" y="-11958.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6549.09" y="-11958.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11877.37 6069.56,-11937.37 6620.56,-11937.37 6620.56,-11877.37 6069.56,-11877.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11877.37 6069.56,-11937.37 6620.56,-11937.37 6620.56,-11877.37 6069.56,-11877.37"/>
-<text text-anchor="start" x="6080.56" y="-11897.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">study_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6510" y="-11898.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<text text-anchor="start" x="6570.47" y="-11898.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-11898.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11817.37 6069.56,-11877.37 6620.56,-11877.37 6620.56,-11817.37 6069.56,-11817.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11817.37 6069.56,-11877.37 6620.56,-11877.37 6620.56,-11817.37 6069.56,-11817.37"/>
-<text text-anchor="start" x="6080.56" y="-11837.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6518.89" y="-11838.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="6570.47" y="-11838.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-11838.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11757.37 6069.56,-11817.37 6620.56,-11817.37 6620.56,-11757.37 6069.56,-11757.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11757.37 6069.56,-11817.37 6620.56,-11817.37 6620.56,-11757.37 6069.56,-11757.37"/>
-<text text-anchor="start" x="6080.56" y="-11777.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">wave_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6510" y="-11778.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<text text-anchor="start" x="6570.47" y="-11778.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-11778.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11697.37 6069.56,-11757.37 6620.56,-11757.37 6620.56,-11697.37 6069.56,-11697.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11697.37 6069.56,-11757.37 6620.56,-11757.37 6620.56,-11697.37 6069.56,-11697.37"/>
-<text text-anchor="start" x="6080.56" y="-11717.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">participant_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6549.09" y="-11718.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11637.37 6069.56,-11697.37 6620.56,-11697.37 6620.56,-11637.37 6069.56,-11637.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11637.37 6069.56,-11697.37 6620.56,-11697.37 6620.56,-11637.37 6069.56,-11637.37"/>
-<text text-anchor="start" x="6080.56" y="-11657.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">protocol_version_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6510" y="-11658.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<text text-anchor="start" x="6570.47" y="-11658.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-11658.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11577.37 6069.56,-11637.37 6620.56,-11637.37 6620.56,-11577.37 6069.56,-11577.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11577.37 6069.56,-11637.37 6620.56,-11637.37 6620.56,-11577.37 6069.56,-11577.37"/>
-<text text-anchor="start" x="6080.56" y="-11597.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">link_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6549.09" y="-11598.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11517.37 6069.56,-11577.37 6620.56,-11577.37 6620.56,-11517.37 6069.56,-11517.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11517.37 6069.56,-11577.37 6620.56,-11577.37 6620.56,-11517.37 6069.56,-11517.37"/>
-<text text-anchor="start" x="6080.56" y="-11537.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">delivery_mode &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6518.89" y="-11538.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="6570.47" y="-11538.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-11538.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11457.37 6069.56,-11517.37 6620.56,-11517.37 6620.56,-11457.37 6069.56,-11457.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11457.37 6069.56,-11517.37 6620.56,-11517.37 6620.56,-11457.37 6069.56,-11457.37"/>
-<text text-anchor="start" x="6080.56" y="-11477.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">initiated_by_user_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6557.98" y="-11478.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11397.37 6069.56,-11457.37 6620.56,-11457.37 6620.56,-11397.37 6069.56,-11397.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11397.37 6069.56,-11457.37 6620.56,-11457.37 6620.56,-11397.37 6069.56,-11397.37"/>
-<text text-anchor="start" x="6080.56" y="-11417.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">status &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6518.89" y="-11418.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="6570.47" y="-11418.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-11418.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11337.37 6069.56,-11397.37 6620.56,-11397.37 6620.56,-11337.37 6069.56,-11337.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11337.37 6069.56,-11397.37 6620.56,-11397.37 6620.56,-11337.37 6069.56,-11337.37"/>
-<text text-anchor="start" x="6080.56" y="-11357.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">current_stage_index &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6472.66" y="-11358.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
-<text text-anchor="start" x="6570.47" y="-11358.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-11358.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11277.37 6069.56,-11337.37 6620.56,-11337.37 6620.56,-11277.37 6069.56,-11277.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11277.37 6069.56,-11337.37 6620.56,-11337.37 6620.56,-11277.37 6069.56,-11277.37"/>
-<text text-anchor="start" x="6080.56" y="-11297.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">current_stage_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6557.98" y="-11298.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11217.37 6069.56,-11277.37 6620.56,-11277.37 6620.56,-11217.37 6069.56,-11217.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11217.37 6069.56,-11277.37 6620.56,-11277.37 6620.56,-11217.37 6069.56,-11217.37"/>
-<text text-anchor="start" x="6080.56" y="-11237.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">stage_metadata &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6494" y="-11238.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
-<text text-anchor="start" x="6570.47" y="-11238.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-11238.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11157.37 6069.56,-11217.37 6620.56,-11217.37 6620.56,-11157.37 6069.56,-11157.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11157.37 6069.56,-11217.37 6620.56,-11217.37 6620.56,-11157.37 6069.56,-11157.37"/>
-<text text-anchor="start" x="6080.56" y="-11177.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">ego_uid &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6518.89" y="-11178.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="6570.47" y="-11178.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-11178.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11097.37 6069.56,-11157.37 6620.56,-11157.37 6620.56,-11097.37 6069.56,-11097.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11097.37 6069.56,-11157.37 6620.56,-11157.37 6620.56,-11097.37 6069.56,-11097.37"/>
-<text text-anchor="start" x="6080.56" y="-11117.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">ego_attributes &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6494" y="-11118.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
-<text text-anchor="start" x="6570.47" y="-11118.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-11118.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11037.37 6069.56,-11097.37 6620.56,-11097.37 6620.56,-11037.37 6069.56,-11037.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-11037.37 6069.56,-11097.37 6620.56,-11097.37 6620.56,-11037.37 6069.56,-11037.37"/>
-<text text-anchor="start" x="6080.56" y="-11057.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">ego_secure_attributes &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6533.09" y="-11058.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10977.37 6069.56,-11037.37 6620.56,-11037.37 6620.56,-10977.37 6069.56,-10977.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10977.37 6069.56,-11037.37 6620.56,-11037.37 6620.56,-10977.37 6069.56,-10977.37"/>
-<text text-anchor="start" x="6080.56" y="-10997.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">holder_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6557.98" y="-10998.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10917.37 6069.56,-10977.37 6620.56,-10977.37 6620.56,-10917.37 6069.56,-10917.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10917.37 6069.56,-10977.37 6620.56,-10977.37 6620.56,-10917.37 6069.56,-10917.37"/>
-<text text-anchor="start" x="6080.56" y="-10937.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">holder_epoch &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6494" y="-10938.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">bigint</text>
-<text text-anchor="start" x="6570.47" y="-10938.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-10938.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10857.37 6069.56,-10917.37 6620.56,-10917.37 6620.56,-10857.37 6069.56,-10857.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10857.37 6069.56,-10917.37 6620.56,-10917.37 6620.56,-10857.37 6069.56,-10857.37"/>
-<text text-anchor="start" x="6080.56" y="-10877.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">started_at &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6422.91" y="-10878.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
-<text text-anchor="start" x="6570.47" y="-10878.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-10878.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10797.37 6069.56,-10857.37 6620.56,-10857.37 6620.56,-10797.37 6069.56,-10797.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10797.37 6069.56,-10857.37 6620.56,-10857.37 6620.56,-10797.37 6069.56,-10797.37"/>
-<text text-anchor="start" x="6080.56" y="-10817.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">last_activity_at &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6422.91" y="-10818.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
-<text text-anchor="start" x="6570.47" y="-10818.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="6579.36" y="-10818.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10737.37 6069.56,-10797.37 6620.56,-10797.37 6620.56,-10737.37 6069.56,-10737.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10737.37 6069.56,-10797.37 6620.56,-10797.37 6620.56,-10737.37 6069.56,-10737.37"/>
-<text text-anchor="start" x="6080.56" y="-10757.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">completed_at &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6462" y="-10758.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10677.37 6069.56,-10737.37 6620.56,-10737.37 6620.56,-10677.37 6069.56,-10677.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10677.37 6069.56,-10737.37 6620.56,-10737.37 6620.56,-10677.37 6069.56,-10677.37"/>
-<text text-anchor="start" x="6080.56" y="-10697.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">abandoned_at &#160;&#160;&#160;</text>
-<text text-anchor="start" x="6462" y="-10698.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10617.37 6069.56,-10677.37 6620.56,-10677.37 6620.56,-10617.37 6069.56,-10617.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10617.37 6069.56,-10677.37 6620.56,-10677.37 6620.56,-10617.37 6069.56,-10617.37"/>
-<text text-anchor="start" x="6116.55" y="-10638.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;study_id, team_id, wave_id &#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10557.37 6069.56,-10617.37 6620.56,-10617.37 6620.56,-10557.37 6069.56,-10557.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10557.37 6069.56,-10617.37 6620.56,-10617.37 6620.56,-10557.37 6069.56,-10557.37"/>
-<text text-anchor="start" x="6080.09" y="-10578.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;study_id, team_id, participant_id &#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10497.37 6069.56,-10557.37 6620.56,-10557.37 6620.56,-10497.37 6069.56,-10497.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10497.37 6069.56,-10557.37 6620.56,-10557.37 6620.56,-10497.37 6069.56,-10497.37"/>
-<text text-anchor="start" x="6105" y="-10518.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, protocol_version_id &#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10437.37 6069.56,-10497.37 6620.56,-10497.37 6620.56,-10437.37 6069.56,-10437.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10437.37 6069.56,-10497.37 6620.56,-10497.37 6620.56,-10437.37 6069.56,-10437.37"/>
-<text text-anchor="start" x="6198.36" y="-10458.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, link_id &#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10377.37 6069.56,-10437.37 6620.56,-10437.37 6620.56,-10377.37 6069.56,-10377.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10377.37 6069.56,-10437.37 6620.56,-10437.37 6620.56,-10377.37 6069.56,-10377.37"/>
-<text text-anchor="start" x="6162.78" y="-10398.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;id, study_id, team_id &#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10317.37 6069.56,-10377.37 6620.56,-10377.37 6620.56,-10317.37 6069.56,-10317.37"/>
-<polygon fill="none" stroke="#29235c" points="6069.56,-10317.37 6069.56,-10377.37 6620.56,-10377.37 6620.56,-10317.37 6069.56,-10317.37"/>
-<text text-anchor="start" x="6231.25" y="-10338.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;id, team_id &#160;&#160;&#160;</text>
-<polygon fill="none" stroke="#29235c" stroke-width="2" points="6068.06,-10316.37 6068.06,-12058.37 6621.06,-12058.37 6621.06,-10316.37 6068.06,-10316.37"/>
+<ellipse fill="none" stroke="black" stroke-width="0" cx="6344.56" cy="-11102.37" rx="392.39" ry="1318.09"/>
+<polygon fill="#1d71b8" stroke="transparent" points="6069.56,-11972.37 6069.56,-12032.37 6620.56,-12032.37 6620.56,-11972.37 6069.56,-11972.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11972.37 6069.56,-12032.37 6620.56,-12032.37 6620.56,-11972.37 6069.56,-11972.37"/>
+<text text-anchor="start" x="6148.57" y="-11993.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;interview_sessions &#160;&#160;&#160;&#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11912.37 6069.56,-11972.37 6620.56,-11972.37 6620.56,-11912.37 6069.56,-11912.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11912.37 6069.56,-11972.37 6620.56,-11972.37 6620.56,-11912.37 6069.56,-11912.37"/>
+<text text-anchor="start" x="6080.56" y="-11933.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">id</text>
+<text text-anchor="start" x="6105.45" y="-11933.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6549.09" y="-11933.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11852.37 6069.56,-11912.37 6620.56,-11912.37 6620.56,-11852.37 6069.56,-11852.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11852.37 6069.56,-11912.37 6620.56,-11912.37 6620.56,-11852.37 6069.56,-11852.37"/>
+<text text-anchor="start" x="6080.56" y="-11872.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">study_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6510" y="-11873.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<text text-anchor="start" x="6570.47" y="-11873.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-11873.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11792.37 6069.56,-11852.37 6620.56,-11852.37 6620.56,-11792.37 6069.56,-11792.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11792.37 6069.56,-11852.37 6620.56,-11852.37 6620.56,-11792.37 6069.56,-11792.37"/>
+<text text-anchor="start" x="6080.56" y="-11812.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6518.89" y="-11813.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="6570.47" y="-11813.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-11813.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11732.37 6069.56,-11792.37 6620.56,-11792.37 6620.56,-11732.37 6069.56,-11732.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11732.37 6069.56,-11792.37 6620.56,-11792.37 6620.56,-11732.37 6069.56,-11732.37"/>
+<text text-anchor="start" x="6080.56" y="-11752.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">wave_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6510" y="-11753.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<text text-anchor="start" x="6570.47" y="-11753.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-11753.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11672.37 6069.56,-11732.37 6620.56,-11732.37 6620.56,-11672.37 6069.56,-11672.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11672.37 6069.56,-11732.37 6620.56,-11732.37 6620.56,-11672.37 6069.56,-11672.37"/>
+<text text-anchor="start" x="6080.56" y="-11692.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">participant_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6549.09" y="-11693.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11612.37 6069.56,-11672.37 6620.56,-11672.37 6620.56,-11612.37 6069.56,-11612.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11612.37 6069.56,-11672.37 6620.56,-11672.37 6620.56,-11612.37 6069.56,-11612.37"/>
+<text text-anchor="start" x="6080.56" y="-11632.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">protocol_version_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6510" y="-11633.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<text text-anchor="start" x="6570.47" y="-11633.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-11633.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11552.37 6069.56,-11612.37 6620.56,-11612.37 6620.56,-11552.37 6069.56,-11552.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11552.37 6069.56,-11612.37 6620.56,-11612.37 6620.56,-11552.37 6069.56,-11552.37"/>
+<text text-anchor="start" x="6080.56" y="-11572.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">link_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6549.09" y="-11573.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11492.37 6069.56,-11552.37 6620.56,-11552.37 6620.56,-11492.37 6069.56,-11492.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11492.37 6069.56,-11552.37 6620.56,-11552.37 6620.56,-11492.37 6069.56,-11492.37"/>
+<text text-anchor="start" x="6080.56" y="-11512.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">delivery_mode &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6518.89" y="-11513.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="6570.47" y="-11513.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-11513.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11432.37 6069.56,-11492.37 6620.56,-11492.37 6620.56,-11432.37 6069.56,-11432.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11432.37 6069.56,-11492.37 6620.56,-11492.37 6620.56,-11432.37 6069.56,-11432.37"/>
+<text text-anchor="start" x="6080.56" y="-11452.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">initiated_by_user_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6557.98" y="-11453.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11372.37 6069.56,-11432.37 6620.56,-11432.37 6620.56,-11372.37 6069.56,-11372.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11372.37 6069.56,-11432.37 6620.56,-11432.37 6620.56,-11372.37 6069.56,-11372.37"/>
+<text text-anchor="start" x="6080.56" y="-11392.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">status &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6518.89" y="-11393.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="6570.47" y="-11393.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-11393.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11312.37 6069.56,-11372.37 6620.56,-11372.37 6620.56,-11312.37 6069.56,-11312.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11312.37 6069.56,-11372.37 6620.56,-11372.37 6620.56,-11312.37 6069.56,-11312.37"/>
+<text text-anchor="start" x="6080.56" y="-11332.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">current_stage_index &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6472.66" y="-11333.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
+<text text-anchor="start" x="6570.47" y="-11333.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-11333.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11252.37 6069.56,-11312.37 6620.56,-11312.37 6620.56,-11252.37 6069.56,-11252.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11252.37 6069.56,-11312.37 6620.56,-11312.37 6620.56,-11252.37 6069.56,-11252.37"/>
+<text text-anchor="start" x="6080.56" y="-11272.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">current_stage_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6557.98" y="-11273.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11192.37 6069.56,-11252.37 6620.56,-11252.37 6620.56,-11192.37 6069.56,-11192.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11192.37 6069.56,-11252.37 6620.56,-11252.37 6620.56,-11192.37 6069.56,-11192.37"/>
+<text text-anchor="start" x="6080.56" y="-11212.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">stage_metadata &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6494" y="-11213.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
+<text text-anchor="start" x="6570.47" y="-11213.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-11213.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11132.37 6069.56,-11192.37 6620.56,-11192.37 6620.56,-11132.37 6069.56,-11132.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11132.37 6069.56,-11192.37 6620.56,-11192.37 6620.56,-11132.37 6069.56,-11132.37"/>
+<text text-anchor="start" x="6080.56" y="-11152.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">stage_timing &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6533.09" y="-11153.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11072.37 6069.56,-11132.37 6620.56,-11132.37 6620.56,-11072.37 6069.56,-11072.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11072.37 6069.56,-11132.37 6620.56,-11132.37 6620.56,-11072.37 6069.56,-11072.37"/>
+<text text-anchor="start" x="6080.56" y="-11092.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">sync_revision &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6472.66" y="-11093.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
+<text text-anchor="start" x="6570.47" y="-11093.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-11093.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-11012.37 6069.56,-11072.37 6620.56,-11072.37 6620.56,-11012.37 6069.56,-11012.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-11012.37 6069.56,-11072.37 6620.56,-11072.37 6620.56,-11012.37 6069.56,-11012.37"/>
+<text text-anchor="start" x="6080.56" y="-11032.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">ego_uid &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6518.89" y="-11033.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="6570.47" y="-11033.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-11033.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10952.37 6069.56,-11012.37 6620.56,-11012.37 6620.56,-10952.37 6069.56,-10952.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10952.37 6069.56,-11012.37 6620.56,-11012.37 6620.56,-10952.37 6069.56,-10952.37"/>
+<text text-anchor="start" x="6080.56" y="-10972.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">ego_attributes &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6494" y="-10973.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
+<text text-anchor="start" x="6570.47" y="-10973.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-10973.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10892.37 6069.56,-10952.37 6620.56,-10952.37 6620.56,-10892.37 6069.56,-10892.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10892.37 6069.56,-10952.37 6620.56,-10952.37 6620.56,-10892.37 6069.56,-10892.37"/>
+<text text-anchor="start" x="6080.56" y="-10912.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">ego_secure_attributes &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6533.09" y="-10913.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10832.37 6069.56,-10892.37 6620.56,-10892.37 6620.56,-10832.37 6069.56,-10832.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10832.37 6069.56,-10892.37 6620.56,-10892.37 6620.56,-10832.37 6069.56,-10832.37"/>
+<text text-anchor="start" x="6080.56" y="-10852.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">holder_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6557.98" y="-10853.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10772.37 6069.56,-10832.37 6620.56,-10832.37 6620.56,-10772.37 6069.56,-10772.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10772.37 6069.56,-10832.37 6620.56,-10832.37 6620.56,-10772.37 6069.56,-10772.37"/>
+<text text-anchor="start" x="6080.56" y="-10792.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">holder_epoch &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6494" y="-10793.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">bigint</text>
+<text text-anchor="start" x="6570.47" y="-10793.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-10793.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10712.37 6069.56,-10772.37 6620.56,-10772.37 6620.56,-10712.37 6069.56,-10712.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10712.37 6069.56,-10772.37 6620.56,-10772.37 6620.56,-10712.37 6069.56,-10712.37"/>
+<text text-anchor="start" x="6080.56" y="-10732.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">started_at &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6422.91" y="-10733.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
+<text text-anchor="start" x="6570.47" y="-10733.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-10733.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10652.37 6069.56,-10712.37 6620.56,-10712.37 6620.56,-10652.37 6069.56,-10652.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10652.37 6069.56,-10712.37 6620.56,-10712.37 6620.56,-10652.37 6069.56,-10652.37"/>
+<text text-anchor="start" x="6080.56" y="-10672.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">last_activity_at &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6422.91" y="-10673.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
+<text text-anchor="start" x="6570.47" y="-10673.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="6579.36" y="-10673.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10592.37 6069.56,-10652.37 6620.56,-10652.37 6620.56,-10592.37 6069.56,-10592.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10592.37 6069.56,-10652.37 6620.56,-10652.37 6620.56,-10592.37 6069.56,-10592.37"/>
+<text text-anchor="start" x="6080.56" y="-10612.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">completed_at &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6462" y="-10613.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10532.37 6069.56,-10592.37 6620.56,-10592.37 6620.56,-10532.37 6069.56,-10532.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10532.37 6069.56,-10592.37 6620.56,-10592.37 6620.56,-10532.37 6069.56,-10532.37"/>
+<text text-anchor="start" x="6080.56" y="-10552.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">abandoned_at &#160;&#160;&#160;</text>
+<text text-anchor="start" x="6462" y="-10553.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10472.37 6069.56,-10532.37 6620.56,-10532.37 6620.56,-10472.37 6069.56,-10472.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10472.37 6069.56,-10532.37 6620.56,-10532.37 6620.56,-10472.37 6069.56,-10472.37"/>
+<text text-anchor="start" x="6116.55" y="-10493.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;study_id, team_id, wave_id &#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10412.37 6069.56,-10472.37 6620.56,-10472.37 6620.56,-10412.37 6069.56,-10412.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10412.37 6069.56,-10472.37 6620.56,-10472.37 6620.56,-10412.37 6069.56,-10412.37"/>
+<text text-anchor="start" x="6080.09" y="-10433.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;study_id, team_id, participant_id &#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10352.37 6069.56,-10412.37 6620.56,-10412.37 6620.56,-10352.37 6069.56,-10352.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10352.37 6069.56,-10412.37 6620.56,-10412.37 6620.56,-10352.37 6069.56,-10352.37"/>
+<text text-anchor="start" x="6105" y="-10373.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, protocol_version_id &#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10292.37 6069.56,-10352.37 6620.56,-10352.37 6620.56,-10292.37 6069.56,-10292.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10292.37 6069.56,-10352.37 6620.56,-10352.37 6620.56,-10292.37 6069.56,-10292.37"/>
+<text text-anchor="start" x="6198.36" y="-10313.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, link_id &#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10232.37 6069.56,-10292.37 6620.56,-10292.37 6620.56,-10232.37 6069.56,-10232.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10232.37 6069.56,-10292.37 6620.56,-10292.37 6620.56,-10232.37 6069.56,-10232.37"/>
+<text text-anchor="start" x="6162.78" y="-10253.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;id, study_id, team_id &#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="6069.56,-10172.37 6069.56,-10232.37 6620.56,-10232.37 6620.56,-10172.37 6069.56,-10172.37"/>
+<polygon fill="none" stroke="#29235c" points="6069.56,-10172.37 6069.56,-10232.37 6620.56,-10232.37 6620.56,-10172.37 6069.56,-10172.37"/>
+<text text-anchor="start" x="6231.25" y="-10193.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;id, team_id &#160;&#160;&#160;</text>
+<polygon fill="none" stroke="#29235c" stroke-width="2" points="6068.06,-10171.37 6068.06,-12033.37 6621.06,-12033.37 6621.06,-10171.37 6068.06,-10171.37"/>
 </a>
 </g>
 </g>
@@ -1835,73 +1845,73 @@
 <!-- protocol_versions&#45;&gt;interview_sessions -->
 <g id="edge54" class="edge">
 <title>protocol_versions:e&#45;&gt;interview_sessions:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M3743.61,-8406.37C3889.71,-8406.37 3926.01,-8415.73 4072.04,-8420.37 4122.41,-8421.97 5848.9,-8423.96 5885.71,-8458.37 6220.31,-8771.22 5616.25,-10500.91 6058.26,-10527.07"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="6058.46,-10530.58 6068.56,-10527.37 6058.66,-10523.58 6058.46,-10530.58"/>
-<text text-anchor="middle" x="6074.78" y="-10498.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M3743.61,-8406.37C3889.71,-8406.37 3926.01,-8415.73 4072.04,-8420.37 4122.41,-8421.97 5848.79,-8424.08 5885.71,-8458.37 6197.86,-8748.3 5648.06,-10356.17 6058.37,-10382.06"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="6058.45,-10385.56 6068.56,-10382.37 6058.67,-10378.56 6058.45,-10385.56"/>
+<text text-anchor="middle" x="6074.78" y="-10353.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
 <text text-anchor="middle" x="3752.5" y="-8377.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- session_snapshots -->
 <g id="session_snapshots" class="node">
 <title>session_snapshots</title>
 <g id="a_session_snapshots"><a xlink:title="session_snapshots&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger session_snapshots_insert_frozen: AFTER INSERT calls session_snapshots_insert_at_finalization(); sidecar trigger session_snapshots_immutable: BEFORE UPDATE OR DELETE calls session_snapshots_are_immutable()">
-<ellipse fill="none" stroke="black" stroke-width="0" cx="7350.71" cy="-9334.37" rx="364.73" ry="469.54"/>
-<polygon fill="#1d71b8" stroke="transparent" points="7094.71,-9604.37 7094.71,-9664.37 7606.71,-9664.37 7606.71,-9604.37 7094.71,-9604.37"/>
-<polygon fill="none" stroke="#29235c" points="7094.71,-9604.37 7094.71,-9664.37 7606.71,-9664.37 7606.71,-9604.37 7094.71,-9604.37"/>
-<text text-anchor="start" x="7152.41" y="-9625.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;session_snapshots &#160;&#160;&#160;&#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9544.37 7094.71,-9604.37 7606.71,-9604.37 7606.71,-9544.37 7094.71,-9544.37"/>
-<polygon fill="none" stroke="#29235c" points="7094.71,-9544.37 7094.71,-9604.37 7606.71,-9604.37 7606.71,-9544.37 7094.71,-9544.37"/>
-<text text-anchor="start" x="7105.71" y="-9565.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">session_id</text>
-<text text-anchor="start" x="7256.85" y="-9565.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7535.24" y="-9565.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9484.37 7094.71,-9544.37 7606.71,-9544.37 7606.71,-9484.37 7094.71,-9484.37"/>
-<polygon fill="none" stroke="#29235c" points="7094.71,-9484.37 7094.71,-9544.37 7606.71,-9544.37 7606.71,-9484.37 7094.71,-9484.37"/>
-<text text-anchor="start" x="7105.71" y="-9504.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7505.04" y="-9505.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="7556.62" y="-9505.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7565.51" y="-9505.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9424.37 7094.71,-9484.37 7606.71,-9484.37 7606.71,-9424.37 7094.71,-9424.37"/>
-<polygon fill="none" stroke="#29235c" points="7094.71,-9424.37 7094.71,-9484.37 7606.71,-9484.37 7606.71,-9424.37 7094.71,-9424.37"/>
-<text text-anchor="start" x="7105.71" y="-9444.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">study_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7496.15" y="-9445.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<text text-anchor="start" x="7556.62" y="-9445.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7565.51" y="-9445.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9364.37 7094.71,-9424.37 7606.71,-9424.37 7606.71,-9364.37 7094.71,-9364.37"/>
-<polygon fill="none" stroke="#29235c" points="7094.71,-9364.37 7094.71,-9424.37 7606.71,-9424.37 7606.71,-9364.37 7094.71,-9364.37"/>
-<text text-anchor="start" x="7105.71" y="-9384.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">protocol_version_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7496.15" y="-9385.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<text text-anchor="start" x="7556.62" y="-9385.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7565.51" y="-9385.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9304.37 7094.71,-9364.37 7606.71,-9364.37 7606.71,-9304.37 7094.71,-9304.37"/>
-<polygon fill="none" stroke="#29235c" points="7094.71,-9304.37 7094.71,-9364.37 7606.71,-9364.37 7606.71,-9304.37 7094.71,-9304.37"/>
-<text text-anchor="start" x="7105.71" y="-9324.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">schema_version &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7458.81" y="-9325.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
-<text text-anchor="start" x="7556.62" y="-9325.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7565.51" y="-9325.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9244.37 7094.71,-9304.37 7606.71,-9304.37 7606.71,-9244.37 7094.71,-9244.37"/>
-<polygon fill="none" stroke="#29235c" points="7094.71,-9244.37 7094.71,-9304.37 7606.71,-9304.37 7606.71,-9244.37 7094.71,-9244.37"/>
-<text text-anchor="start" x="7105.71" y="-9264.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">payload &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7480.15" y="-9265.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
-<text text-anchor="start" x="7556.62" y="-9265.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7565.51" y="-9265.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9184.37 7094.71,-9244.37 7606.71,-9244.37 7606.71,-9184.37 7094.71,-9184.37"/>
-<polygon fill="none" stroke="#29235c" points="7094.71,-9184.37 7094.71,-9244.37 7606.71,-9244.37 7606.71,-9184.37 7094.71,-9184.37"/>
-<text text-anchor="start" x="7105.71" y="-9204.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">payload_hash &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7505.04" y="-9205.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="7556.62" y="-9205.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7565.51" y="-9205.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9124.37 7094.71,-9184.37 7606.71,-9184.37 7606.71,-9124.37 7094.71,-9124.37"/>
-<polygon fill="none" stroke="#29235c" points="7094.71,-9124.37 7094.71,-9184.37 7606.71,-9184.37 7606.71,-9124.37 7094.71,-9124.37"/>
-<text text-anchor="start" x="7105.71" y="-9144.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">created_at &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7409.06" y="-9145.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
-<text text-anchor="start" x="7556.62" y="-9145.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7565.51" y="-9145.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9064.37 7094.71,-9124.37 7606.71,-9124.37 7606.71,-9064.37 7094.71,-9064.37"/>
-<polygon fill="none" stroke="#29235c" points="7094.71,-9064.37 7094.71,-9124.37 7606.71,-9124.37 7606.71,-9064.37 7094.71,-9064.37"/>
-<text text-anchor="start" x="7105.3" y="-9085.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;session_id, team_id, study_id &#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9004.37 7094.71,-9064.37 7606.71,-9064.37 7606.71,-9004.37 7094.71,-9004.37"/>
-<polygon fill="none" stroke="#29235c" points="7094.71,-9004.37 7094.71,-9064.37 7606.71,-9064.37 7606.71,-9004.37 7094.71,-9004.37"/>
-<text text-anchor="start" x="7110.65" y="-9025.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, protocol_version_id &#160;&#160;&#160;</text>
-<polygon fill="none" stroke="#29235c" stroke-width="2" points="7093.71,-9003.37 7093.71,-9665.37 7607.71,-9665.37 7607.71,-9003.37 7093.71,-9003.37"/>
+<ellipse fill="none" stroke="black" stroke-width="0" cx="7350.71" cy="-9322.37" rx="364.73" ry="469.54"/>
+<polygon fill="#1d71b8" stroke="transparent" points="7094.71,-9592.37 7094.71,-9652.37 7606.71,-9652.37 7606.71,-9592.37 7094.71,-9592.37"/>
+<polygon fill="none" stroke="#29235c" points="7094.71,-9592.37 7094.71,-9652.37 7606.71,-9652.37 7606.71,-9592.37 7094.71,-9592.37"/>
+<text text-anchor="start" x="7152.41" y="-9613.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;session_snapshots &#160;&#160;&#160;&#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9532.37 7094.71,-9592.37 7606.71,-9592.37 7606.71,-9532.37 7094.71,-9532.37"/>
+<polygon fill="none" stroke="#29235c" points="7094.71,-9532.37 7094.71,-9592.37 7606.71,-9592.37 7606.71,-9532.37 7094.71,-9532.37"/>
+<text text-anchor="start" x="7105.71" y="-9553.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">session_id</text>
+<text text-anchor="start" x="7256.85" y="-9553.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7535.24" y="-9553.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9472.37 7094.71,-9532.37 7606.71,-9532.37 7606.71,-9472.37 7094.71,-9472.37"/>
+<polygon fill="none" stroke="#29235c" points="7094.71,-9472.37 7094.71,-9532.37 7606.71,-9532.37 7606.71,-9472.37 7094.71,-9472.37"/>
+<text text-anchor="start" x="7105.71" y="-9492.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7505.04" y="-9493.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="7556.62" y="-9493.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7565.51" y="-9493.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9412.37 7094.71,-9472.37 7606.71,-9472.37 7606.71,-9412.37 7094.71,-9412.37"/>
+<polygon fill="none" stroke="#29235c" points="7094.71,-9412.37 7094.71,-9472.37 7606.71,-9472.37 7606.71,-9412.37 7094.71,-9412.37"/>
+<text text-anchor="start" x="7105.71" y="-9432.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">study_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7496.15" y="-9433.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<text text-anchor="start" x="7556.62" y="-9433.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7565.51" y="-9433.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9352.37 7094.71,-9412.37 7606.71,-9412.37 7606.71,-9352.37 7094.71,-9352.37"/>
+<polygon fill="none" stroke="#29235c" points="7094.71,-9352.37 7094.71,-9412.37 7606.71,-9412.37 7606.71,-9352.37 7094.71,-9352.37"/>
+<text text-anchor="start" x="7105.71" y="-9372.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">protocol_version_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7496.15" y="-9373.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<text text-anchor="start" x="7556.62" y="-9373.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7565.51" y="-9373.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9292.37 7094.71,-9352.37 7606.71,-9352.37 7606.71,-9292.37 7094.71,-9292.37"/>
+<polygon fill="none" stroke="#29235c" points="7094.71,-9292.37 7094.71,-9352.37 7606.71,-9352.37 7606.71,-9292.37 7094.71,-9292.37"/>
+<text text-anchor="start" x="7105.71" y="-9312.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">schema_version &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7458.81" y="-9313.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
+<text text-anchor="start" x="7556.62" y="-9313.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7565.51" y="-9313.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9232.37 7094.71,-9292.37 7606.71,-9292.37 7606.71,-9232.37 7094.71,-9232.37"/>
+<polygon fill="none" stroke="#29235c" points="7094.71,-9232.37 7094.71,-9292.37 7606.71,-9292.37 7606.71,-9232.37 7094.71,-9232.37"/>
+<text text-anchor="start" x="7105.71" y="-9252.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">payload &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7480.15" y="-9253.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
+<text text-anchor="start" x="7556.62" y="-9253.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7565.51" y="-9253.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9172.37 7094.71,-9232.37 7606.71,-9232.37 7606.71,-9172.37 7094.71,-9172.37"/>
+<polygon fill="none" stroke="#29235c" points="7094.71,-9172.37 7094.71,-9232.37 7606.71,-9232.37 7606.71,-9172.37 7094.71,-9172.37"/>
+<text text-anchor="start" x="7105.71" y="-9192.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">payload_hash &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7505.04" y="-9193.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="7556.62" y="-9193.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7565.51" y="-9193.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9112.37 7094.71,-9172.37 7606.71,-9172.37 7606.71,-9112.37 7094.71,-9112.37"/>
+<polygon fill="none" stroke="#29235c" points="7094.71,-9112.37 7094.71,-9172.37 7606.71,-9172.37 7606.71,-9112.37 7094.71,-9112.37"/>
+<text text-anchor="start" x="7105.71" y="-9132.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">created_at &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7409.06" y="-9133.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
+<text text-anchor="start" x="7556.62" y="-9133.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7565.51" y="-9133.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-9052.37 7094.71,-9112.37 7606.71,-9112.37 7606.71,-9052.37 7094.71,-9052.37"/>
+<polygon fill="none" stroke="#29235c" points="7094.71,-9052.37 7094.71,-9112.37 7606.71,-9112.37 7606.71,-9052.37 7094.71,-9052.37"/>
+<text text-anchor="start" x="7105.3" y="-9073.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;session_id, team_id, study_id &#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7094.71,-8992.37 7094.71,-9052.37 7606.71,-9052.37 7606.71,-8992.37 7094.71,-8992.37"/>
+<polygon fill="none" stroke="#29235c" points="7094.71,-8992.37 7094.71,-9052.37 7606.71,-9052.37 7606.71,-8992.37 7094.71,-8992.37"/>
+<text text-anchor="start" x="7110.65" y="-9013.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, protocol_version_id &#160;&#160;&#160;</text>
+<polygon fill="none" stroke="#29235c" stroke-width="2" points="7093.71,-8991.37 7093.71,-9653.37 7607.71,-9653.37 7607.71,-8991.37 7093.71,-8991.37"/>
 </a>
 </g>
 </g>
@@ -1909,9 +1919,9 @@
 <!-- protocol_versions&#45;&gt;session_snapshots -->
 <g id="edge64" class="edge">
 <title>protocol_versions:e&#45;&gt;session_snapshots:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M3743.61,-8406.37C3889.97,-8406.37 3925.78,-8387.71 4072.04,-8382.37 4877.58,-8352.98 5080.1,-8356.96 5885.71,-8384.37 6278.19,-8397.73 6436.01,-8231.65 6767.41,-8442.37 7017.96,-8601.68 6798.55,-9024.31 7083.36,-9034.2"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7083.65,-9037.7 7093.71,-9034.37 7083.77,-9030.7 7083.65,-9037.7"/>
-<text text-anchor="middle" x="7099.93" y="-9005.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M3743.61,-8406.37C3889.93,-8406.37 3925.8,-8388.49 4072.04,-8383.37 4877.62,-8355.2 5080.08,-8358.41 5885.71,-8385.37 6278.17,-8398.5 6435.01,-8233.3 6767.41,-8442.37 7014.84,-8598 6803.02,-9012.51 7083.52,-9022.2"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7083.65,-9025.7 7093.71,-9022.37 7083.77,-9018.7 7083.65,-9025.7"/>
+<text text-anchor="middle" x="7099.93" y="-8993.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
 <text text-anchor="middle" x="3752.5" y="-8415.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- assets -->
@@ -2935,9 +2945,9 @@
 <!-- study_waves&#45;&gt;interview_sessions -->
 <g id="edge50" class="edge">
 <title>study_waves:e&#45;&gt;interview_sessions:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M4803.46,-10202.37C5184.87,-10202.37 4777.22,-8754.51 5066.88,-8506.37 5135.97,-8447.18 5818.69,-8444.84 5885.71,-8506.37 6058.99,-8665.49 5836.5,-10589.77 6058.36,-10646.11"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="6058.2,-10649.62 6068.56,-10647.37 6059.06,-10642.67 6058.2,-10649.62"/>
-<text text-anchor="middle" x="6074.78" y="-10618.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M4803.46,-10202.37C5184.87,-10202.37 4777.22,-8754.51 5066.88,-8506.37 5135.97,-8447.18 5818.5,-8445.04 5885.71,-8506.37 6212.14,-8804.27 5632.33,-10475.96 6058.31,-10502.06"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="6058.46,-10505.57 6068.56,-10502.37 6058.67,-10498.57 6058.46,-10505.57"/>
+<text text-anchor="middle" x="6074.78" y="-10473.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
 <text text-anchor="middle" x="4794.56" y="-10173.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- interview_links -->
@@ -3041,71 +3051,71 @@
 <g id="session_stats" class="node">
 <title>session_stats</title>
 <g id="a_session_stats"><a xlink:title="session_stats&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger session_stats_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger session_stats_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger session_stats_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger session_stats_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
-<ellipse fill="none" stroke="black" stroke-width="0" cx="7350.71" cy="-12609.37" rx="392.39" ry="554.24"/>
-<polygon fill="#1d71b8" stroke="transparent" points="7075.71,-12939.37 7075.71,-12999.37 7626.71,-12999.37 7626.71,-12939.37 7075.71,-12939.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12939.37 7075.71,-12999.37 7626.71,-12999.37 7626.71,-12939.37 7075.71,-12939.37"/>
-<text text-anchor="start" x="7192.04" y="-12960.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;session_stats &#160;&#160;&#160;&#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12879.37 7075.71,-12939.37 7626.71,-12939.37 7626.71,-12879.37 7075.71,-12879.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12879.37 7075.71,-12939.37 7626.71,-12939.37 7626.71,-12879.37 7075.71,-12879.37"/>
-<text text-anchor="start" x="7086.71" y="-12899.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7525.04" y="-12900.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="7576.62" y="-12900.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7585.51" y="-12900.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12819.37 7075.71,-12879.37 7626.71,-12879.37 7626.71,-12819.37 7075.71,-12819.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12819.37 7075.71,-12879.37 7626.71,-12879.37 7626.71,-12819.37 7075.71,-12819.37"/>
-<text text-anchor="start" x="7086.71" y="-12840.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">session_id</text>
-<text text-anchor="start" x="7237.85" y="-12840.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7555.24" y="-12840.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12759.37 7075.71,-12819.37 7626.71,-12819.37 7626.71,-12759.37 7075.71,-12759.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12759.37 7075.71,-12819.37 7626.71,-12819.37 7626.71,-12759.37 7075.71,-12759.37"/>
-<text text-anchor="start" x="7086.71" y="-12779.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">study_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7516.15" y="-12780.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<text text-anchor="start" x="7576.62" y="-12780.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7585.51" y="-12780.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12699.37 7075.71,-12759.37 7626.71,-12759.37 7626.71,-12699.37 7075.71,-12699.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12699.37 7075.71,-12759.37 7626.71,-12759.37 7626.71,-12699.37 7075.71,-12699.37"/>
-<text text-anchor="start" x="7086.71" y="-12719.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">wave_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7516.15" y="-12720.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<text text-anchor="start" x="7576.62" y="-12720.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7585.51" y="-12720.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12639.37 7075.71,-12699.37 7626.71,-12699.37 7626.71,-12639.37 7075.71,-12639.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12639.37 7075.71,-12699.37 7626.71,-12699.37 7626.71,-12639.37 7075.71,-12639.37"/>
-<text text-anchor="start" x="7086.71" y="-12659.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">wave_number &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7478.81" y="-12660.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
-<text text-anchor="start" x="7576.62" y="-12660.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7585.51" y="-12660.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12579.37 7075.71,-12639.37 7626.71,-12639.37 7626.71,-12579.37 7075.71,-12579.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12579.37 7075.71,-12639.37 7626.71,-12639.37 7626.71,-12579.37 7075.71,-12579.37"/>
-<text text-anchor="start" x="7086.71" y="-12599.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">participant_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7555.24" y="-12600.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12519.37 7075.71,-12579.37 7626.71,-12579.37 7626.71,-12519.37 7075.71,-12519.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12519.37 7075.71,-12579.37 7626.71,-12579.37 7626.71,-12519.37 7075.71,-12519.37"/>
-<text text-anchor="start" x="7086.71" y="-12539.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">node_count &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7478.81" y="-12540.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
-<text text-anchor="start" x="7576.62" y="-12540.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7585.51" y="-12540.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12459.37 7075.71,-12519.37 7626.71,-12519.37 7626.71,-12459.37 7075.71,-12459.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12459.37 7075.71,-12519.37 7626.71,-12519.37 7626.71,-12459.37 7075.71,-12459.37"/>
-<text text-anchor="start" x="7086.71" y="-12479.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">edge_count &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7478.81" y="-12480.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
-<text text-anchor="start" x="7576.62" y="-12480.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7585.51" y="-12480.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12399.37 7075.71,-12459.37 7626.71,-12459.37 7626.71,-12399.37 7075.71,-12399.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12399.37 7075.71,-12459.37 7626.71,-12459.37 7626.71,-12399.37 7075.71,-12399.37"/>
-<text text-anchor="start" x="7086.71" y="-12419.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">computed_at &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7429.06" y="-12420.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
-<text text-anchor="start" x="7576.62" y="-12420.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7585.51" y="-12420.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12339.37 7075.71,-12399.37 7626.71,-12399.37 7626.71,-12339.37 7075.71,-12339.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12339.37 7075.71,-12399.37 7626.71,-12399.37 7626.71,-12339.37 7075.71,-12339.37"/>
-<text text-anchor="start" x="7105.8" y="-12360.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, session_id, study_id &#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12279.37 7075.71,-12339.37 7626.71,-12339.37 7626.71,-12279.37 7075.71,-12279.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12279.37 7075.71,-12339.37 7626.71,-12339.37 7626.71,-12279.37 7075.71,-12279.37"/>
-<text text-anchor="start" x="7122.7" y="-12300.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, study_id, wave_id &#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12219.37 7075.71,-12279.37 7626.71,-12279.37 7626.71,-12219.37 7075.71,-12219.37"/>
-<polygon fill="none" stroke="#29235c" points="7075.71,-12219.37 7075.71,-12279.37 7626.71,-12279.37 7626.71,-12219.37 7075.71,-12219.37"/>
-<text text-anchor="start" x="7086.24" y="-12240.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, study_id, participant_id &#160;&#160;&#160;</text>
-<polygon fill="none" stroke="#29235c" stroke-width="2" points="7074.21,-12218.37 7074.21,-13000.37 7627.21,-13000.37 7627.21,-12218.37 7074.21,-12218.37"/>
+<ellipse fill="none" stroke="black" stroke-width="0" cx="7350.71" cy="-12584.37" rx="392.39" ry="554.24"/>
+<polygon fill="#1d71b8" stroke="transparent" points="7075.71,-12914.37 7075.71,-12974.37 7626.71,-12974.37 7626.71,-12914.37 7075.71,-12914.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12914.37 7075.71,-12974.37 7626.71,-12974.37 7626.71,-12914.37 7075.71,-12914.37"/>
+<text text-anchor="start" x="7192.04" y="-12935.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;session_stats &#160;&#160;&#160;&#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12854.37 7075.71,-12914.37 7626.71,-12914.37 7626.71,-12854.37 7075.71,-12854.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12854.37 7075.71,-12914.37 7626.71,-12914.37 7626.71,-12854.37 7075.71,-12854.37"/>
+<text text-anchor="start" x="7086.71" y="-12874.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7525.04" y="-12875.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="7576.62" y="-12875.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7585.51" y="-12875.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12794.37 7075.71,-12854.37 7626.71,-12854.37 7626.71,-12794.37 7075.71,-12794.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12794.37 7075.71,-12854.37 7626.71,-12854.37 7626.71,-12794.37 7075.71,-12794.37"/>
+<text text-anchor="start" x="7086.71" y="-12815.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">session_id</text>
+<text text-anchor="start" x="7237.85" y="-12815.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7555.24" y="-12815.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12734.37 7075.71,-12794.37 7626.71,-12794.37 7626.71,-12734.37 7075.71,-12734.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12734.37 7075.71,-12794.37 7626.71,-12794.37 7626.71,-12734.37 7075.71,-12734.37"/>
+<text text-anchor="start" x="7086.71" y="-12754.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">study_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7516.15" y="-12755.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<text text-anchor="start" x="7576.62" y="-12755.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7585.51" y="-12755.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12674.37 7075.71,-12734.37 7626.71,-12734.37 7626.71,-12674.37 7075.71,-12674.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12674.37 7075.71,-12734.37 7626.71,-12734.37 7626.71,-12674.37 7075.71,-12674.37"/>
+<text text-anchor="start" x="7086.71" y="-12694.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">wave_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7516.15" y="-12695.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<text text-anchor="start" x="7576.62" y="-12695.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7585.51" y="-12695.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12614.37 7075.71,-12674.37 7626.71,-12674.37 7626.71,-12614.37 7075.71,-12614.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12614.37 7075.71,-12674.37 7626.71,-12674.37 7626.71,-12614.37 7075.71,-12614.37"/>
+<text text-anchor="start" x="7086.71" y="-12634.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">wave_number &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7478.81" y="-12635.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
+<text text-anchor="start" x="7576.62" y="-12635.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7585.51" y="-12635.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12554.37 7075.71,-12614.37 7626.71,-12614.37 7626.71,-12554.37 7075.71,-12554.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12554.37 7075.71,-12614.37 7626.71,-12614.37 7626.71,-12554.37 7075.71,-12554.37"/>
+<text text-anchor="start" x="7086.71" y="-12574.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">participant_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7555.24" y="-12575.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12494.37 7075.71,-12554.37 7626.71,-12554.37 7626.71,-12494.37 7075.71,-12494.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12494.37 7075.71,-12554.37 7626.71,-12554.37 7626.71,-12494.37 7075.71,-12494.37"/>
+<text text-anchor="start" x="7086.71" y="-12514.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">node_count &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7478.81" y="-12515.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
+<text text-anchor="start" x="7576.62" y="-12515.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7585.51" y="-12515.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12434.37 7075.71,-12494.37 7626.71,-12494.37 7626.71,-12434.37 7075.71,-12434.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12434.37 7075.71,-12494.37 7626.71,-12494.37 7626.71,-12434.37 7075.71,-12434.37"/>
+<text text-anchor="start" x="7086.71" y="-12454.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">edge_count &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7478.81" y="-12455.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
+<text text-anchor="start" x="7576.62" y="-12455.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7585.51" y="-12455.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12374.37 7075.71,-12434.37 7626.71,-12434.37 7626.71,-12374.37 7075.71,-12374.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12374.37 7075.71,-12434.37 7626.71,-12434.37 7626.71,-12374.37 7075.71,-12374.37"/>
+<text text-anchor="start" x="7086.71" y="-12394.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">computed_at &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7429.06" y="-12395.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">timestamp</text>
+<text text-anchor="start" x="7576.62" y="-12395.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7585.51" y="-12395.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12314.37 7075.71,-12374.37 7626.71,-12374.37 7626.71,-12314.37 7075.71,-12314.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12314.37 7075.71,-12374.37 7626.71,-12374.37 7626.71,-12314.37 7075.71,-12314.37"/>
+<text text-anchor="start" x="7105.8" y="-12335.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, session_id, study_id &#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12254.37 7075.71,-12314.37 7626.71,-12314.37 7626.71,-12254.37 7075.71,-12254.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12254.37 7075.71,-12314.37 7626.71,-12314.37 7626.71,-12254.37 7075.71,-12254.37"/>
+<text text-anchor="start" x="7122.7" y="-12275.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, study_id, wave_id &#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7075.71,-12194.37 7075.71,-12254.37 7626.71,-12254.37 7626.71,-12194.37 7075.71,-12194.37"/>
+<polygon fill="none" stroke="#29235c" points="7075.71,-12194.37 7075.71,-12254.37 7626.71,-12254.37 7626.71,-12194.37 7075.71,-12194.37"/>
+<text text-anchor="start" x="7086.24" y="-12215.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, study_id, participant_id &#160;&#160;&#160;</text>
+<polygon fill="none" stroke="#29235c" stroke-width="2" points="7074.21,-12193.37 7074.21,-12975.37 7627.21,-12975.37 7627.21,-12193.37 7074.21,-12193.37"/>
 </a>
 </g>
 </g>
@@ -3113,9 +3123,9 @@
 <!-- study_waves&#45;&gt;session_stats -->
 <g id="edge76" class="edge">
 <title>study_waves:e&#45;&gt;session_stats:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M4803.46,-10202.37C5177.62,-10202.37 4782.36,-8782.37 5066.88,-8539.37 5101.47,-8509.83 5853.39,-8507.35 5885.71,-8539.37 5962.47,-8615.43 5844.94,-12353.32 5921.71,-12429.37 6055.21,-12561.64 6582.72,-12464.15 6767.41,-12429.37 6908.12,-12402.87 6927.24,-12313.69 7064.61,-12309.52"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7064.76,-12313.02 7074.71,-12309.37 7064.66,-12306.02 7064.76,-12313.02"/>
-<text text-anchor="middle" x="7080.93" y="-12280.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M4803.46,-10202.37C5177.62,-10202.37 4782.36,-8782.37 5066.88,-8539.37 5101.47,-8509.83 5853.39,-8507.35 5885.71,-8539.37 5962.47,-8615.43 5844.94,-12353.32 5921.71,-12429.37 6055.21,-12561.64 6584.02,-12470.46 6767.41,-12429.37 6911.32,-12397.12 6923.19,-12289.58 7064.32,-12284.55"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7064.77,-12288.05 7074.71,-12284.37 7064.65,-12281.05 7064.77,-12288.05"/>
+<text text-anchor="middle" x="7080.93" y="-12255.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
 <text text-anchor="middle" x="4812.35" y="-10173.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- study_waves&#45;&gt;study_schedules -->
@@ -3316,9 +3326,9 @@
 <!-- participants&#45;&gt;interview_sessions -->
 <g id="edge52" class="edge">
 <title>participants:e&#45;&gt;interview_sessions:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M4764.46,-14170.37C4899.62,-14170.37 4932.14,-14149.03 5066.88,-14138.37 5112.29,-14134.78 5853.5,-14127.59 5885.71,-14095.37 6159.22,-13821.76 5686.69,-10643.96 6058.47,-10588.12"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="6058.84,-10591.6 6068.56,-10587.37 6058.33,-10584.62 6058.84,-10591.6"/>
-<text text-anchor="middle" x="6074.78" y="-10558.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M4764.46,-14170.37C4899.62,-14170.37 4932.14,-14149.03 5066.88,-14138.37 5112.29,-14134.78 5853.54,-14127.62 5885.71,-14095.37 6170.27,-13810.11 5670.83,-10499.66 6058.34,-10443.1"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="6058.83,-10446.58 6068.56,-10442.37 6058.33,-10439.6 6058.83,-10446.58"/>
+<text text-anchor="middle" x="6074.78" y="-10413.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
 <text text-anchor="middle" x="4755.56" y="-14141.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- participants&#45;&gt;interview_links -->
@@ -3334,9 +3344,9 @@
 <!-- participants&#45;&gt;session_stats -->
 <g id="edge78" class="edge">
 <title>participants:e&#45;&gt;session_stats:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M4764.46,-14170.37C4826.79,-14170.37 5831.55,-14162.23 5885.71,-14131.37 6516.81,-13771.83 6382.93,-13371.6 6767.41,-12755.37 6904.85,-12535.09 6814.06,-12256.82 7064.49,-12249.52"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7064.76,-12253.01 7074.71,-12249.37 7064.66,-12246.02 7064.76,-12253.01"/>
-<text text-anchor="middle" x="7080.93" y="-12220.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M4764.46,-14170.37C4826.79,-14170.37 5831.61,-14162.32 5885.71,-14131.37 6519.73,-13768.64 6385.61,-13367.1 6767.41,-12744.37 6905.94,-12518.42 6808.79,-12231.75 7064.66,-12224.51"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7064.76,-12228.01 7074.71,-12224.37 7064.66,-12221.01 7064.76,-12228.01"/>
+<text text-anchor="middle" x="7080.93" y="-12195.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
 <text text-anchor="middle" x="4773.35" y="-14141.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- participant_consents -->
@@ -3702,66 +3712,66 @@
 <!-- interview_sessions&#45;&gt;session_snapshots -->
 <g id="edge62" class="edge">
 <title>interview_sessions:e&#45;&gt;session_snapshots:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10407.37C7238.21,-10407.37 6482.15,-9109.08 7083.39,-9094.5"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7083.75,-9097.99 7093.71,-9094.37 7083.67,-9090.99 7083.75,-9097.99"/>
-<text text-anchor="middle" x="7099.93" y="-9065.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
-<text text-anchor="middle" x="6630.45" y="-10378.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10262.37C7182.98,-10262.37 6536.82,-9096.73 7083.5,-9082.5"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7083.75,-9086 7093.71,-9082.37 7083.66,-9079 7083.75,-9086"/>
+<text text-anchor="middle" x="7099.93" y="-9053.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<text text-anchor="middle" x="6630.45" y="-10233.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- nodes -->
 <g id="nodes" class="node">
 <title>nodes</title>
 <g id="a_nodes"><a xlink:title="nodes&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger nodes_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger nodes_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger nodes_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger nodes_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
-<ellipse fill="none" stroke="black" stroke-width="0" cx="7350.71" cy="-10997.37" rx="270.23" ry="469.54"/>
-<polygon fill="#1d71b8" stroke="transparent" points="7161.71,-11267.37 7161.71,-11327.37 7539.71,-11327.37 7539.71,-11267.37 7161.71,-11267.37"/>
-<polygon fill="none" stroke="#29235c" points="7161.71,-11267.37 7161.71,-11327.37 7539.71,-11327.37 7539.71,-11267.37 7161.71,-11267.37"/>
-<text text-anchor="start" x="7244.88" y="-11288.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;nodes &#160;&#160;&#160;&#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-11207.37 7161.71,-11267.37 7539.71,-11267.37 7539.71,-11207.37 7161.71,-11207.37"/>
-<polygon fill="none" stroke="#29235c" points="7161.71,-11207.37 7161.71,-11267.37 7539.71,-11267.37 7539.71,-11207.37 7161.71,-11207.37"/>
-<text text-anchor="start" x="7172.71" y="-11227.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7438.04" y="-11228.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="7489.62" y="-11228.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7498.51" y="-11228.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-11147.37 7161.71,-11207.37 7539.71,-11207.37 7539.71,-11147.37 7161.71,-11147.37"/>
-<polygon fill="none" stroke="#29235c" points="7161.71,-11147.37 7161.71,-11207.37 7539.71,-11207.37 7539.71,-11147.37 7161.71,-11147.37"/>
-<text text-anchor="start" x="7172.71" y="-11168.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">session_id</text>
-<text text-anchor="start" x="7323.85" y="-11168.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7468.24" y="-11168.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-11087.37 7161.71,-11147.37 7539.71,-11147.37 7539.71,-11087.37 7161.71,-11087.37"/>
-<polygon fill="none" stroke="#29235c" points="7161.71,-11087.37 7161.71,-11147.37 7539.71,-11147.37 7539.71,-11087.37 7161.71,-11087.37"/>
-<text text-anchor="start" x="7172.71" y="-11108.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">node_id</text>
-<text text-anchor="start" x="7286.54" y="-11108.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7477.13" y="-11108.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-11027.37 7161.71,-11087.37 7539.71,-11087.37 7539.71,-11027.37 7161.71,-11027.37"/>
-<polygon fill="none" stroke="#29235c" points="7161.71,-11027.37 7161.71,-11087.37 7539.71,-11087.37 7539.71,-11027.37 7161.71,-11027.37"/>
-<text text-anchor="start" x="7172.71" y="-11047.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">type &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7438.04" y="-11048.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="7489.62" y="-11048.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7498.51" y="-11048.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10967.37 7161.71,-11027.37 7539.71,-11027.37 7539.71,-10967.37 7161.71,-10967.37"/>
-<polygon fill="none" stroke="#29235c" points="7161.71,-10967.37 7161.71,-11027.37 7539.71,-11027.37 7539.71,-10967.37 7161.71,-10967.37"/>
-<text text-anchor="start" x="7172.71" y="-10987.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">attributes &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7413.15" y="-10988.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
-<text text-anchor="start" x="7489.62" y="-10988.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7498.51" y="-10988.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10907.37 7161.71,-10967.37 7539.71,-10967.37 7539.71,-10907.37 7161.71,-10907.37"/>
-<polygon fill="none" stroke="#29235c" points="7161.71,-10907.37 7161.71,-10967.37 7539.71,-10967.37 7539.71,-10907.37 7161.71,-10907.37"/>
-<text text-anchor="start" x="7172.22" y="-10927.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">secure_attributes &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7452.47" y="-10928.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10847.37 7161.71,-10907.37 7539.71,-10907.37 7539.71,-10847.37 7161.71,-10847.37"/>
-<polygon fill="none" stroke="#29235c" points="7161.71,-10847.37 7161.71,-10907.37 7539.71,-10907.37 7539.71,-10847.37 7161.71,-10847.37"/>
-<text text-anchor="start" x="7172.71" y="-10867.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">stage_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7477.13" y="-10868.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10787.37 7161.71,-10847.37 7539.71,-10847.37 7539.71,-10787.37 7161.71,-10787.37"/>
-<polygon fill="none" stroke="#29235c" points="7161.71,-10787.37 7161.71,-10847.37 7539.71,-10847.37 7539.71,-10787.37 7161.71,-10787.37"/>
-<text text-anchor="start" x="7172.71" y="-10807.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">prompt_ids &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7459.35" y="-10808.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text[]</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10727.37 7161.71,-10787.37 7539.71,-10787.37 7539.71,-10727.37 7161.71,-10727.37"/>
-<polygon fill="none" stroke="#29235c" points="7161.71,-10727.37 7161.71,-10787.37 7539.71,-10787.37 7539.71,-10727.37 7161.71,-10727.37"/>
-<text text-anchor="start" x="7173.77" y="-10748.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, session_id &#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10667.37 7161.71,-10727.37 7539.71,-10727.37 7539.71,-10667.37 7161.71,-10667.37"/>
-<polygon fill="none" stroke="#29235c" points="7161.71,-10667.37 7161.71,-10727.37 7539.71,-10727.37 7539.71,-10667.37 7161.71,-10667.37"/>
-<text text-anchor="start" x="7173.75" y="-10688.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;session_id, node_id &#160;&#160;&#160;</text>
-<polygon fill="none" stroke="#29235c" stroke-width="2" points="7160.71,-10666.37 7160.71,-11328.37 7540.71,-11328.37 7540.71,-10666.37 7160.71,-10666.37"/>
+<ellipse fill="none" stroke="black" stroke-width="0" cx="7350.71" cy="-10972.37" rx="270.23" ry="469.54"/>
+<polygon fill="#1d71b8" stroke="transparent" points="7161.71,-11242.37 7161.71,-11302.37 7539.71,-11302.37 7539.71,-11242.37 7161.71,-11242.37"/>
+<polygon fill="none" stroke="#29235c" points="7161.71,-11242.37 7161.71,-11302.37 7539.71,-11302.37 7539.71,-11242.37 7161.71,-11242.37"/>
+<text text-anchor="start" x="7244.88" y="-11263.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;nodes &#160;&#160;&#160;&#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-11182.37 7161.71,-11242.37 7539.71,-11242.37 7539.71,-11182.37 7161.71,-11182.37"/>
+<polygon fill="none" stroke="#29235c" points="7161.71,-11182.37 7161.71,-11242.37 7539.71,-11242.37 7539.71,-11182.37 7161.71,-11182.37"/>
+<text text-anchor="start" x="7172.71" y="-11202.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7438.04" y="-11203.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="7489.62" y="-11203.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7498.51" y="-11203.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-11122.37 7161.71,-11182.37 7539.71,-11182.37 7539.71,-11122.37 7161.71,-11122.37"/>
+<polygon fill="none" stroke="#29235c" points="7161.71,-11122.37 7161.71,-11182.37 7539.71,-11182.37 7539.71,-11122.37 7161.71,-11122.37"/>
+<text text-anchor="start" x="7172.71" y="-11143.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">session_id</text>
+<text text-anchor="start" x="7323.85" y="-11143.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7468.24" y="-11143.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-11062.37 7161.71,-11122.37 7539.71,-11122.37 7539.71,-11062.37 7161.71,-11062.37"/>
+<polygon fill="none" stroke="#29235c" points="7161.71,-11062.37 7161.71,-11122.37 7539.71,-11122.37 7539.71,-11062.37 7161.71,-11062.37"/>
+<text text-anchor="start" x="7172.71" y="-11083.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">node_id</text>
+<text text-anchor="start" x="7286.54" y="-11083.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7477.13" y="-11083.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-11002.37 7161.71,-11062.37 7539.71,-11062.37 7539.71,-11002.37 7161.71,-11002.37"/>
+<polygon fill="none" stroke="#29235c" points="7161.71,-11002.37 7161.71,-11062.37 7539.71,-11062.37 7539.71,-11002.37 7161.71,-11002.37"/>
+<text text-anchor="start" x="7172.71" y="-11022.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">type &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7438.04" y="-11023.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="7489.62" y="-11023.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7498.51" y="-11023.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10942.37 7161.71,-11002.37 7539.71,-11002.37 7539.71,-10942.37 7161.71,-10942.37"/>
+<polygon fill="none" stroke="#29235c" points="7161.71,-10942.37 7161.71,-11002.37 7539.71,-11002.37 7539.71,-10942.37 7161.71,-10942.37"/>
+<text text-anchor="start" x="7172.71" y="-10962.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">attributes &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7413.15" y="-10963.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
+<text text-anchor="start" x="7489.62" y="-10963.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7498.51" y="-10963.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10882.37 7161.71,-10942.37 7539.71,-10942.37 7539.71,-10882.37 7161.71,-10882.37"/>
+<polygon fill="none" stroke="#29235c" points="7161.71,-10882.37 7161.71,-10942.37 7539.71,-10942.37 7539.71,-10882.37 7161.71,-10882.37"/>
+<text text-anchor="start" x="7172.22" y="-10902.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">secure_attributes &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7452.47" y="-10903.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10822.37 7161.71,-10882.37 7539.71,-10882.37 7539.71,-10822.37 7161.71,-10822.37"/>
+<polygon fill="none" stroke="#29235c" points="7161.71,-10822.37 7161.71,-10882.37 7539.71,-10882.37 7539.71,-10822.37 7161.71,-10822.37"/>
+<text text-anchor="start" x="7172.71" y="-10842.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">stage_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7477.13" y="-10843.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10762.37 7161.71,-10822.37 7539.71,-10822.37 7539.71,-10762.37 7161.71,-10762.37"/>
+<polygon fill="none" stroke="#29235c" points="7161.71,-10762.37 7161.71,-10822.37 7539.71,-10822.37 7539.71,-10762.37 7161.71,-10762.37"/>
+<text text-anchor="start" x="7172.71" y="-10782.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">prompt_ids &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7459.35" y="-10783.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text[]</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10702.37 7161.71,-10762.37 7539.71,-10762.37 7539.71,-10702.37 7161.71,-10702.37"/>
+<polygon fill="none" stroke="#29235c" points="7161.71,-10702.37 7161.71,-10762.37 7539.71,-10762.37 7539.71,-10702.37 7161.71,-10702.37"/>
+<text text-anchor="start" x="7173.77" y="-10723.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, session_id &#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7161.71,-10642.37 7161.71,-10702.37 7539.71,-10702.37 7539.71,-10642.37 7161.71,-10642.37"/>
+<polygon fill="none" stroke="#29235c" points="7161.71,-10642.37 7161.71,-10702.37 7539.71,-10702.37 7539.71,-10642.37 7161.71,-10642.37"/>
+<text text-anchor="start" x="7173.75" y="-10663.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;session_id, node_id &#160;&#160;&#160;</text>
+<polygon fill="none" stroke="#29235c" stroke-width="2" points="7160.71,-10641.37 7160.71,-11303.37 7540.71,-11303.37 7540.71,-10641.37 7160.71,-10641.37"/>
 </a>
 </g>
 </g>
@@ -3769,73 +3779,73 @@
 <!-- interview_sessions&#45;&gt;nodes -->
 <g id="edge66" class="edge">
 <title>interview_sessions:e&#45;&gt;nodes:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10347.37C6768.7,-10347.37 6999.54,-10739.16 7150.43,-10756.76"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7150.52,-10760.27 7160.71,-10757.37 7150.93,-10753.28 7150.52,-10760.27"/>
-<text text-anchor="middle" x="7166.93" y="-10728.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
-<text text-anchor="middle" x="6630.45" y="-10318.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10202.37C6702.61,-10202.37 7050.96,-10695.76 7150.81,-10730.45"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7150.22,-10733.9 7160.71,-10732.37 7151.56,-10727.03 7150.22,-10733.9"/>
+<text text-anchor="middle" x="7166.93" y="-10703.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<text text-anchor="middle" x="6630.45" y="-10173.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- edges -->
 <g id="edges" class="node">
 <title>edges</title>
 <g id="a_edges"><a xlink:title="edges&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger edges_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger edges_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger edges_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger edges_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
-<ellipse fill="none" stroke="black" stroke-width="0" cx="8597.27" cy="-10967.37" rx="296.06" ry="511.89"/>
-<polygon fill="#1d71b8" stroke="transparent" points="8390.27,-11267.37 8390.27,-11327.37 8805.27,-11327.37 8805.27,-11267.37 8390.27,-11267.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-11267.37 8390.27,-11327.37 8805.27,-11327.37 8805.27,-11267.37 8390.27,-11267.37"/>
-<text text-anchor="start" x="8491.95" y="-11288.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;edges &#160;&#160;&#160;&#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-11207.37 8390.27,-11267.37 8805.27,-11267.37 8805.27,-11207.37 8390.27,-11207.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-11207.37 8390.27,-11267.37 8805.27,-11267.37 8805.27,-11207.37 8390.27,-11207.37"/>
-<text text-anchor="start" x="8401.27" y="-11227.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="8703.61" y="-11228.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="8755.18" y="-11228.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="8764.08" y="-11228.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-11147.37 8390.27,-11207.37 8805.27,-11207.37 8805.27,-11147.37 8390.27,-11147.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-11147.37 8390.27,-11207.37 8805.27,-11207.37 8805.27,-11147.37 8390.27,-11147.37"/>
-<text text-anchor="start" x="8401.27" y="-11168.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">session_id</text>
-<text text-anchor="start" x="8552.42" y="-11168.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="8733.81" y="-11168.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-11087.37 8390.27,-11147.37 8805.27,-11147.37 8805.27,-11087.37 8390.27,-11087.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-11087.37 8390.27,-11147.37 8805.27,-11147.37 8805.27,-11087.37 8390.27,-11087.37"/>
-<text text-anchor="start" x="8401.27" y="-11108.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">edge_id</text>
-<text text-anchor="start" x="8515.11" y="-11108.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="8742.7" y="-11108.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-11027.37 8390.27,-11087.37 8805.27,-11087.37 8805.27,-11027.37 8390.27,-11027.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-11027.37 8390.27,-11087.37 8805.27,-11087.37 8805.27,-11027.37 8390.27,-11027.37"/>
-<text text-anchor="start" x="8401.27" y="-11047.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">type &#160;&#160;&#160;</text>
-<text text-anchor="start" x="8703.61" y="-11048.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="8755.18" y="-11048.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="8764.08" y="-11048.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10967.37 8390.27,-11027.37 8805.27,-11027.37 8805.27,-10967.37 8390.27,-10967.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-10967.37 8390.27,-11027.37 8805.27,-11027.37 8805.27,-10967.37 8390.27,-10967.37"/>
-<text text-anchor="start" x="8401.27" y="-10987.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">from_node &#160;&#160;&#160;</text>
-<text text-anchor="start" x="8703.61" y="-10988.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="8755.18" y="-10988.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="8764.08" y="-10988.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10907.37 8390.27,-10967.37 8805.27,-10967.37 8805.27,-10907.37 8390.27,-10907.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-10907.37 8390.27,-10967.37 8805.27,-10967.37 8805.27,-10907.37 8390.27,-10907.37"/>
-<text text-anchor="start" x="8401.27" y="-10927.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">to_node &#160;&#160;&#160;</text>
-<text text-anchor="start" x="8703.61" y="-10928.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="8755.18" y="-10928.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="8764.08" y="-10928.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10847.37 8390.27,-10907.37 8805.27,-10907.37 8805.27,-10847.37 8390.27,-10847.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-10847.37 8390.27,-10907.37 8805.27,-10907.37 8805.27,-10847.37 8390.27,-10847.37"/>
-<text text-anchor="start" x="8401.27" y="-10867.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">attributes &#160;&#160;&#160;</text>
-<text text-anchor="start" x="8678.72" y="-10868.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
-<text text-anchor="start" x="8755.18" y="-10868.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="8764.08" y="-10868.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10787.37 8390.27,-10847.37 8805.27,-10847.37 8805.27,-10787.37 8390.27,-10787.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-10787.37 8390.27,-10847.37 8805.27,-10847.37 8805.27,-10787.37 8390.27,-10787.37"/>
-<text text-anchor="start" x="8401.27" y="-10807.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">secure_attributes &#160;&#160;&#160;</text>
-<text text-anchor="start" x="8717.81" y="-10808.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10727.37 8390.27,-10787.37 8805.27,-10787.37 8805.27,-10727.37 8390.27,-10727.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-10727.37 8390.27,-10787.37 8805.27,-10787.37 8805.27,-10727.37 8390.27,-10727.37"/>
-<text text-anchor="start" x="8420.84" y="-10748.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, session_id &#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10667.37 8390.27,-10727.37 8805.27,-10727.37 8805.27,-10667.37 8390.27,-10667.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-10667.37 8390.27,-10727.37 8805.27,-10727.37 8805.27,-10667.37 8390.27,-10667.37"/>
-<text text-anchor="start" x="8401.27" y="-10688.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;session_id, from_node &#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10607.37 8390.27,-10667.37 8805.27,-10667.37 8805.27,-10607.37 8390.27,-10607.37"/>
-<polygon fill="none" stroke="#29235c" points="8390.27,-10607.37 8390.27,-10667.37 8805.27,-10667.37 8805.27,-10607.37 8390.27,-10607.37"/>
-<text text-anchor="start" x="8419.92" y="-10628.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;session_id, to_node &#160;&#160;&#160;</text>
-<polygon fill="none" stroke="#29235c" stroke-width="2" points="8388.77,-10606.37 8388.77,-11328.37 8805.77,-11328.37 8805.77,-10606.37 8388.77,-10606.37"/>
+<ellipse fill="none" stroke="black" stroke-width="0" cx="8597.27" cy="-10942.37" rx="296.06" ry="511.89"/>
+<polygon fill="#1d71b8" stroke="transparent" points="8390.27,-11242.37 8390.27,-11302.37 8805.27,-11302.37 8805.27,-11242.37 8390.27,-11242.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-11242.37 8390.27,-11302.37 8805.27,-11302.37 8805.27,-11242.37 8390.27,-11242.37"/>
+<text text-anchor="start" x="8491.95" y="-11263.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;edges &#160;&#160;&#160;&#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-11182.37 8390.27,-11242.37 8805.27,-11242.37 8805.27,-11182.37 8390.27,-11182.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-11182.37 8390.27,-11242.37 8805.27,-11242.37 8805.27,-11182.37 8390.27,-11182.37"/>
+<text text-anchor="start" x="8401.27" y="-11202.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="8703.61" y="-11203.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="8755.18" y="-11203.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="8764.08" y="-11203.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-11122.37 8390.27,-11182.37 8805.27,-11182.37 8805.27,-11122.37 8390.27,-11122.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-11122.37 8390.27,-11182.37 8805.27,-11182.37 8805.27,-11122.37 8390.27,-11122.37"/>
+<text text-anchor="start" x="8401.27" y="-11143.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">session_id</text>
+<text text-anchor="start" x="8552.42" y="-11143.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="8733.81" y="-11143.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-11062.37 8390.27,-11122.37 8805.27,-11122.37 8805.27,-11062.37 8390.27,-11062.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-11062.37 8390.27,-11122.37 8805.27,-11122.37 8805.27,-11062.37 8390.27,-11062.37"/>
+<text text-anchor="start" x="8401.27" y="-11083.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">edge_id</text>
+<text text-anchor="start" x="8515.11" y="-11083.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="8742.7" y="-11083.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-11002.37 8390.27,-11062.37 8805.27,-11062.37 8805.27,-11002.37 8390.27,-11002.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-11002.37 8390.27,-11062.37 8805.27,-11062.37 8805.27,-11002.37 8390.27,-11002.37"/>
+<text text-anchor="start" x="8401.27" y="-11022.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">type &#160;&#160;&#160;</text>
+<text text-anchor="start" x="8703.61" y="-11023.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="8755.18" y="-11023.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="8764.08" y="-11023.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10942.37 8390.27,-11002.37 8805.27,-11002.37 8805.27,-10942.37 8390.27,-10942.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-10942.37 8390.27,-11002.37 8805.27,-11002.37 8805.27,-10942.37 8390.27,-10942.37"/>
+<text text-anchor="start" x="8401.27" y="-10962.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">from_node &#160;&#160;&#160;</text>
+<text text-anchor="start" x="8703.61" y="-10963.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="8755.18" y="-10963.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="8764.08" y="-10963.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10882.37 8390.27,-10942.37 8805.27,-10942.37 8805.27,-10882.37 8390.27,-10882.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-10882.37 8390.27,-10942.37 8805.27,-10942.37 8805.27,-10882.37 8390.27,-10882.37"/>
+<text text-anchor="start" x="8401.27" y="-10902.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">to_node &#160;&#160;&#160;</text>
+<text text-anchor="start" x="8703.61" y="-10903.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="8755.18" y="-10903.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="8764.08" y="-10903.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10822.37 8390.27,-10882.37 8805.27,-10882.37 8805.27,-10822.37 8390.27,-10822.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-10822.37 8390.27,-10882.37 8805.27,-10882.37 8805.27,-10822.37 8390.27,-10822.37"/>
+<text text-anchor="start" x="8401.27" y="-10842.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">attributes &#160;&#160;&#160;</text>
+<text text-anchor="start" x="8678.72" y="-10843.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
+<text text-anchor="start" x="8755.18" y="-10843.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="8764.08" y="-10843.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10762.37 8390.27,-10822.37 8805.27,-10822.37 8805.27,-10762.37 8390.27,-10762.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-10762.37 8390.27,-10822.37 8805.27,-10822.37 8805.27,-10762.37 8390.27,-10762.37"/>
+<text text-anchor="start" x="8401.27" y="-10782.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">secure_attributes &#160;&#160;&#160;</text>
+<text text-anchor="start" x="8717.81" y="-10783.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">jsonb</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10702.37 8390.27,-10762.37 8805.27,-10762.37 8805.27,-10702.37 8390.27,-10702.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-10702.37 8390.27,-10762.37 8805.27,-10762.37 8805.27,-10702.37 8390.27,-10702.37"/>
+<text text-anchor="start" x="8420.84" y="-10723.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, session_id &#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10642.37 8390.27,-10702.37 8805.27,-10702.37 8805.27,-10642.37 8390.27,-10642.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-10642.37 8390.27,-10702.37 8805.27,-10702.37 8805.27,-10642.37 8390.27,-10642.37"/>
+<text text-anchor="start" x="8401.27" y="-10663.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;session_id, from_node &#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="8390.27,-10582.37 8390.27,-10642.37 8805.27,-10642.37 8805.27,-10582.37 8390.27,-10582.37"/>
+<polygon fill="none" stroke="#29235c" points="8390.27,-10582.37 8390.27,-10642.37 8805.27,-10642.37 8805.27,-10582.37 8390.27,-10582.37"/>
+<text text-anchor="start" x="8419.92" y="-10603.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;session_id, to_node &#160;&#160;&#160;</text>
+<polygon fill="none" stroke="#29235c" stroke-width="2" points="8388.77,-10581.37 8388.77,-11303.37 8805.77,-11303.37 8805.77,-10581.37 8388.77,-10581.37"/>
 </a>
 </g>
 </g>
@@ -3843,54 +3853,54 @@
 <!-- interview_sessions&#45;&gt;edges -->
 <g id="edge68" class="edge">
 <title>interview_sessions:e&#45;&gt;edges:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10347.37C7193.94,-10347.37 7350.02,-10353.06 7898.01,-10518.37 8127.18,-10587.5 8145.97,-10752.61 8379.09,-10757.27"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="8379.24,-10760.77 8389.27,-10757.37 8379.31,-10753.77 8379.24,-10760.77"/>
-<text text-anchor="middle" x="8383.05" y="-10728.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
-<text text-anchor="middle" x="6612.66" y="-10318.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10202.37C7203.42,-10202.37 7349.15,-10300.17 7898.01,-10493.37 8123.8,-10572.85 8145.87,-10727.9 8379.09,-10732.28"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="8379.24,-10735.78 8389.27,-10732.37 8379.31,-10728.78 8379.24,-10735.78"/>
+<text text-anchor="middle" x="8383.05" y="-10703.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<text text-anchor="middle" x="6612.66" y="-10173.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- interview_sessions&#45;&gt;session_stats -->
 <!-- interview_sessions&#45;&gt;session_stats -->
 <g id="edge74" class="edge">
 <title>interview_sessions:e&#45;&gt;session_stats:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10407.37C6986.91,-10407.37 6660.81,-11705 6803.41,-12041.37 6875.91,-12212.4 6885.2,-12363.81 7064.63,-12369.22"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7064.66,-12372.72 7074.71,-12369.37 7064.76,-12365.72 7064.66,-12372.72"/>
-<text text-anchor="middle" x="7080.93" y="-12340.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
-<text text-anchor="middle" x="6630.45" y="-10416.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10262.37C6817.49,-10262.37 6727.61,-11835.69 6803.41,-12016.37 6875.27,-12187.68 6885.18,-12338.82 7064.63,-12344.22"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7064.66,-12347.72 7074.71,-12344.37 7064.76,-12340.72 7064.66,-12347.72"/>
+<text text-anchor="middle" x="7080.93" y="-12315.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<text text-anchor="middle" x="6630.45" y="-10271.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- session_degree_hist -->
 <g id="session_degree_hist" class="node">
 <title>session_degree_hist</title>
 <g id="a_session_degree_hist"><a xlink:title="session_degree_hist&#10;RLS policy team_isolation; RLS policy backup_read; sidecar forces row&#45;level security; sidecar trigger session_degree_hist_parent_writable_insert: AFTER INSERT calls network_rows_parent_is_writable(); sidecar trigger session_degree_hist_parent_writable_update: AFTER UPDATE calls network_rows_parent_is_writable(); sidecar trigger session_degree_hist_parent_writable_delete: AFTER DELETE calls network_rows_parent_is_writable(); sidecar trigger session_degree_hist_session_immutable: BEFORE UPDATE calls network_row_session_is_immutable()">
-<ellipse fill="none" stroke="black" stroke-width="0" cx="7350.71" cy="-11742.37" rx="313.5" ry="257.27"/>
-<polygon fill="#1d71b8" stroke="transparent" points="7131.71,-11862.37 7131.71,-11922.37 7570.71,-11922.37 7570.71,-11862.37 7131.71,-11862.37"/>
-<polygon fill="none" stroke="#29235c" points="7131.71,-11862.37 7131.71,-11922.37 7570.71,-11922.37 7570.71,-11862.37 7131.71,-11862.37"/>
-<text text-anchor="start" x="7142.25" y="-11883.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;session_degree_hist &#160;&#160;&#160;&#160;&#160;&#160;</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7131.71,-11802.37 7131.71,-11862.37 7570.71,-11862.37 7570.71,-11802.37 7131.71,-11802.37"/>
-<polygon fill="none" stroke="#29235c" points="7131.71,-11802.37 7131.71,-11862.37 7570.71,-11862.37 7570.71,-11802.37 7131.71,-11802.37"/>
-<text text-anchor="start" x="7142.71" y="-11822.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7469.04" y="-11823.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
-<text text-anchor="start" x="7520.62" y="-11823.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7529.51" y="-11823.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7131.71,-11742.37 7131.71,-11802.37 7570.71,-11802.37 7570.71,-11742.37 7131.71,-11742.37"/>
-<polygon fill="none" stroke="#29235c" points="7131.71,-11742.37 7131.71,-11802.37 7570.71,-11802.37 7570.71,-11742.37 7131.71,-11742.37"/>
-<text text-anchor="start" x="7142.71" y="-11763.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">session_id</text>
-<text text-anchor="start" x="7293.85" y="-11763.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7499.24" y="-11763.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7131.71,-11682.37 7131.71,-11742.37 7570.71,-11742.37 7570.71,-11682.37 7131.71,-11682.37"/>
-<polygon fill="none" stroke="#29235c" points="7131.71,-11682.37 7131.71,-11742.37 7570.71,-11742.37 7570.71,-11682.37 7131.71,-11682.37"/>
-<text text-anchor="start" x="7142.71" y="-11703.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">degree</text>
-<text text-anchor="start" x="7242.3" y="-11703.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7461.91" y="-11703.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7131.71,-11622.37 7131.71,-11682.37 7570.71,-11682.37 7570.71,-11622.37 7131.71,-11622.37"/>
-<polygon fill="none" stroke="#29235c" points="7131.71,-11622.37 7131.71,-11682.37 7570.71,-11682.37 7570.71,-11622.37 7131.71,-11622.37"/>
-<text text-anchor="start" x="7142.71" y="-11642.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">node_count &#160;&#160;&#160;</text>
-<text text-anchor="start" x="7422.81" y="-11643.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
-<text text-anchor="start" x="7520.62" y="-11643.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
-<text text-anchor="start" x="7529.51" y="-11643.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
-<polygon fill="#e7e2dd" stroke="transparent" points="7131.71,-11562.37 7131.71,-11622.37 7570.71,-11622.37 7570.71,-11562.37 7131.71,-11562.37"/>
-<polygon fill="none" stroke="#29235c" points="7131.71,-11562.37 7131.71,-11622.37 7570.71,-11622.37 7570.71,-11562.37 7131.71,-11562.37"/>
-<text text-anchor="start" x="7174.27" y="-11583.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, session_id &#160;&#160;&#160;</text>
-<polygon fill="none" stroke="#29235c" stroke-width="2" points="7130.21,-11561.37 7130.21,-11923.37 7571.21,-11923.37 7571.21,-11561.37 7130.21,-11561.37"/>
+<ellipse fill="none" stroke="black" stroke-width="0" cx="7350.71" cy="-11717.37" rx="313.5" ry="257.27"/>
+<polygon fill="#1d71b8" stroke="transparent" points="7131.71,-11837.37 7131.71,-11897.37 7570.71,-11897.37 7570.71,-11837.37 7131.71,-11837.37"/>
+<polygon fill="none" stroke="#29235c" points="7131.71,-11837.37 7131.71,-11897.37 7570.71,-11897.37 7570.71,-11837.37 7131.71,-11837.37"/>
+<text text-anchor="start" x="7142.25" y="-11858.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#ffffff"> &#160;&#160;&#160;&#160;&#160;&#160;session_degree_hist &#160;&#160;&#160;&#160;&#160;&#160;</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7131.71,-11777.37 7131.71,-11837.37 7570.71,-11837.37 7570.71,-11777.37 7131.71,-11777.37"/>
+<polygon fill="none" stroke="#29235c" points="7131.71,-11777.37 7131.71,-11837.37 7570.71,-11837.37 7570.71,-11777.37 7131.71,-11777.37"/>
+<text text-anchor="start" x="7142.71" y="-11797.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">team_id &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7469.04" y="-11798.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">text</text>
+<text text-anchor="start" x="7520.62" y="-11798.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7529.51" y="-11798.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7131.71,-11717.37 7131.71,-11777.37 7570.71,-11777.37 7570.71,-11717.37 7131.71,-11717.37"/>
+<polygon fill="none" stroke="#29235c" points="7131.71,-11717.37 7131.71,-11777.37 7570.71,-11777.37 7570.71,-11717.37 7131.71,-11717.37"/>
+<text text-anchor="start" x="7142.71" y="-11738.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">session_id</text>
+<text text-anchor="start" x="7293.85" y="-11738.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7499.24" y="-11738.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">uuid</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7131.71,-11657.37 7131.71,-11717.37 7570.71,-11717.37 7570.71,-11657.37 7131.71,-11657.37"/>
+<polygon fill="none" stroke="#29235c" points="7131.71,-11657.37 7131.71,-11717.37 7570.71,-11717.37 7570.71,-11657.37 7131.71,-11657.37"/>
+<text text-anchor="start" x="7142.71" y="-11678.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">degree</text>
+<text text-anchor="start" x="7242.3" y="-11678.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7461.91" y="-11678.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7131.71,-11597.37 7131.71,-11657.37 7570.71,-11657.37 7570.71,-11597.37 7131.71,-11597.37"/>
+<polygon fill="none" stroke="#29235c" points="7131.71,-11597.37 7131.71,-11657.37 7570.71,-11657.37 7570.71,-11597.37 7131.71,-11597.37"/>
+<text text-anchor="start" x="7142.71" y="-11617.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">node_count &#160;&#160;&#160;</text>
+<text text-anchor="start" x="7422.81" y="-11618.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#29235c">integer</text>
+<text text-anchor="start" x="7520.62" y="-11618.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c"> </text>
+<text text-anchor="start" x="7529.51" y="-11618.57" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="32.00" fill="#29235c">(!)</text>
+<polygon fill="#e7e2dd" stroke="transparent" points="7131.71,-11537.37 7131.71,-11597.37 7570.71,-11597.37 7570.71,-11537.37 7131.71,-11537.37"/>
+<polygon fill="none" stroke="#29235c" points="7131.71,-11537.37 7131.71,-11597.37 7570.71,-11597.37 7570.71,-11537.37 7131.71,-11537.37"/>
+<text text-anchor="start" x="7174.27" y="-11558.57" font-family="Helvetica,sans-Serif" font-style="italic" font-size="32.00" fill="#1d71b8"> &#160;&#160;&#160;team_id, session_id &#160;&#160;&#160;</text>
+<polygon fill="none" stroke="#29235c" stroke-width="2" points="7130.21,-11536.37 7130.21,-11898.37 7571.21,-11898.37 7571.21,-11536.37 7130.21,-11536.37"/>
 </a>
 </g>
 </g>
@@ -3898,46 +3908,46 @@
 <!-- interview_sessions&#45;&gt;session_degree_hist -->
 <g id="edge80" class="edge">
 <title>interview_sessions:e&#45;&gt;session_degree_hist:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10347.37C6875.68,-10347.37 6640.68,-11281.18 6803.41,-11476.37 6900.01,-11592.25 6973.03,-11592.42 7120.43,-11592.37"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7120.71,-11595.87 7130.71,-11592.37 7120.71,-11588.87 7120.71,-11595.87"/>
-<text text-anchor="middle" x="7136.93" y="-11563.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
-<text text-anchor="middle" x="6612.66" y="-10356.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10202.37C6902.04,-10202.37 6625.44,-11234.59 6803.41,-11451.37 6899.13,-11567.98 6972.99,-11567.46 7120.43,-11567.38"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7120.71,-11570.88 7130.71,-11567.37 7120.71,-11563.88 7120.71,-11570.88"/>
+<text text-anchor="middle" x="7136.93" y="-11538.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<text text-anchor="middle" x="6612.66" y="-10211.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- interview_sessions&#45;&gt;participant_consents -->
 <!-- interview_sessions&#45;&gt;participant_consents -->
 <g id="edge92" class="edge">
 <title>interview_sessions:e&#45;&gt;participant_consents:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10407.37C6914.11,-10407.37 6760.36,-15378.9 6767.41,-15671.37 6769.76,-15769.14 6774.85,-17337.84 6803.41,-17431.37 6852.54,-17592.32 6841.39,-17749.78 7002.37,-17756.17"/>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M6621.56,-10262.37C6771.86,-10262.37 6763.84,-15521.11 6767.41,-15671.37 6769.72,-15769.14 6774.85,-17337.84 6803.41,-17431.37 6852.54,-17592.32 6841.39,-17749.78 7002.37,-17756.17"/>
 <polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="7002.64,-17759.68 7012.71,-17756.37 7002.78,-17752.68 7002.64,-17759.68"/>
 <text text-anchor="middle" x="7018.93" y="-17727.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
-<text text-anchor="middle" x="6612.66" y="-10416.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
+<text text-anchor="middle" x="6612.66" y="-10271.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- interview_links&#45;&gt;interview_sessions -->
 <!-- interview_links&#45;&gt;interview_sessions -->
 <g id="edge56" class="edge">
 <title>interview_links:e&#45;&gt;interview_sessions:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M5753.29,-11374.37C6176.62,-11374.37 5650.4,-10481.93 6058.43,-10467.55"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="6058.62,-10471.04 6068.56,-10467.37 6058.5,-10464.05 6058.62,-10471.04"/>
-<text text-anchor="middle" x="6074.78" y="-10438.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M5753.29,-11374.37C5993.89,-11374.37 5829.32,-10351.95 6058.44,-10323"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="6058.79,-10326.48 6068.56,-10322.37 6058.36,-10319.5 6058.79,-10326.48"/>
+<text text-anchor="middle" x="6074.78" y="-10293.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
 <text text-anchor="middle" x="5744.4" y="-11345.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- nodes&#45;&gt;edges -->
 <!-- nodes&#45;&gt;edges -->
 <g id="edge70" class="edge">
 <title>nodes:e&#45;&gt;edges:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M7540.71,-10697.37C7914.44,-10697.37 8010.41,-10697.37 8379.12,-10697.37"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="8379.27,-10700.87 8389.27,-10697.37 8379.27,-10693.87 8379.27,-10700.87"/>
-<text text-anchor="middle" x="8383.05" y="-10668.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
-<text text-anchor="middle" x="7549.6" y="-10668.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M7540.71,-10672.37C7914.44,-10672.37 8010.41,-10672.37 8379.12,-10672.37"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="8379.27,-10675.87 8389.27,-10672.37 8379.27,-10668.87 8379.27,-10675.87"/>
+<text text-anchor="middle" x="8383.05" y="-10643.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<text text-anchor="middle" x="7549.6" y="-10643.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- nodes&#45;&gt;edges -->
 <!-- nodes&#45;&gt;edges -->
 <g id="edge72" class="edge">
 <title>nodes:e&#45;&gt;edges:w</title>
-<path fill="none" stroke="#29235c" stroke-width="3" d="M7540.71,-10697.37C7915.37,-10697.37 8009.5,-10638.45 8379.1,-10637.39"/>
-<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="8379.28,-10640.89 8389.27,-10637.37 8379.27,-10633.89 8379.28,-10640.89"/>
-<text text-anchor="middle" x="8383.05" y="-10608.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
-<text text-anchor="middle" x="7549.6" y="-10706.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
+<path fill="none" stroke="#29235c" stroke-width="3" d="M7540.71,-10672.37C7915.37,-10672.37 8009.5,-10613.45 8379.1,-10612.39"/>
+<polygon fill="#29235c" stroke="#29235c" stroke-width="3" points="8379.28,-10615.89 8389.27,-10612.37 8379.27,-10608.89 8379.28,-10615.89"/>
+<text text-anchor="middle" x="8383.05" y="-10583.57" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">*</text>
+<text text-anchor="middle" x="7549.6" y="-10681.97" font-family="Helvetica,sans-Serif" font-size="32.00" fill="#29235c">1</text>
 </g>
 <!-- consent_items -->
 <g id="consent_items" class="node">

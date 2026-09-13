@@ -15,12 +15,13 @@
 //   delivery failed        = failed deliveries whose occurrence belongs to a
 //                            schedule scoped to the wave
 //
-// and per (wave, stage), over the stages a session actually produced nodes on:
+// and per (wave, stage), over the stages a session actually produced nodes or
+// timing exits for:
 //
-//   entered                = sessions of the wave with a node from that stage
+//   entered                = observed stage intervals or node-producing stages
 //   completed / abandoned  = of those, by session status
-//   duration               = each session's elapsed time divided evenly across
-//                            the stages it entered, summed
+//   duration               = the runtime's recorded stage exit intervals,
+//                            summed (sessions without timing contribute zero)
 //   missing items          = nodes from that stage carrying no attributes
 import type pg from 'pg';
 
@@ -73,34 +74,58 @@ export async function seedMonitoringRollups(
        team_id, study_id, wave_id, stage_id, entered_count, completed_count,
        abandoned_count, duration_ms_sum, duration_ms_count, missing_item_count,
        stale_at, recomputed_at)
-     with session_stage as (
+     with timing as (
        select s.team_id, s.study_id, s.wave_id, s.id as session_id, s.status,
-              n.stage_id,
-              count(*) filter (where n.attributes = '{}'::jsonb) as missing_items,
-              (extract(epoch from (s.last_activity_at - s.started_at)) * 1000)::bigint
-                as elapsed_ms
+              exit_item->>'stageType' as stage_id,
+              (exit_item->>'durationMs')::bigint as duration_ms
+       from interview_sessions s
+       cross join lateral jsonb_array_elements(
+         coalesce(s.stage_timing->'stageExits', '[]'::jsonb)
+       ) as exit_item
+       where s.team_id = $1
+     ),
+     observed as (
+       select s.team_id, s.study_id, s.wave_id, s.id as session_id,
+              s.status, n.stage_id
        from interview_sessions s
        join nodes n on n.session_id = s.id and n.team_id = s.team_id
        where s.team_id = $1 and n.stage_id is not null
-       group by s.team_id, s.study_id, s.wave_id, s.id, s.status, n.stage_id,
-                s.started_at, s.last_activity_at
+       group by s.team_id, s.study_id, s.wave_id, s.id, s.status, n.stage_id
+       union
+       select team_id, study_id, wave_id, session_id, status, stage_id
+       from timing
      ),
-     stages_per_session as (
-       select session_id, count(*) as stage_count
-       from session_stage group by session_id
+     node_missing as (
+       select s.wave_id, n.stage_id,
+              count(*) filter (where n.attributes = '{}'::jsonb)::int as missing
+       from interview_sessions s
+       join nodes n on n.session_id = s.id and n.team_id = s.team_id
+       where s.team_id = $1 and n.stage_id is not null
+       group by s.wave_id, n.stage_id
+     ),
+     timing_totals as (
+       select team_id, study_id, wave_id, stage_id,
+              sum(duration_ms)::bigint as duration_ms_sum,
+              count(*)::int as duration_ms_count
+       from timing
+       group by team_id, study_id, wave_id, stage_id
      )
-     select ss.team_id, ss.study_id, ss.wave_id, ss.stage_id,
+     select o.team_id, o.study_id, o.wave_id, o.stage_id,
             count(*)::int,
-            count(*) filter (where ss.status = 'completed')::int,
-            count(*) filter (where ss.status = 'abandoned')::int,
-            sum(ss.elapsed_ms / sp.stage_count)::bigint,
-            count(*)::int,
-            sum(ss.missing_items)::int,
+            count(*) filter (where o.status = 'completed')::int,
+            count(*) filter (where o.status = 'abandoned')::int,
+            coalesce(max(t.duration_ms_sum), 0)::bigint,
+            coalesce(max(t.duration_ms_count), 0)::int,
+            coalesce(max(n.missing), 0)::int,
             null,
             $2
-     from session_stage ss
-     join stages_per_session sp on sp.session_id = ss.session_id
-     group by ss.team_id, ss.study_id, ss.wave_id, ss.stage_id`,
+     from observed o
+     left join timing_totals t
+       on t.team_id = o.team_id and t.wave_id = o.wave_id
+      and t.stage_id = o.stage_id
+     left join node_missing n
+       on n.wave_id = o.wave_id and n.stage_id = o.stage_id
+     group by o.team_id, o.study_id, o.wave_id, o.stage_id`,
     [teamId, recomputedAt],
   );
 }

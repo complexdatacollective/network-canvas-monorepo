@@ -584,9 +584,18 @@ describe.skipIf(!db)('the seeded dataset', () => {
     ).resolves.toBeGreaterThan(0);
   });
 
-  it('keeps the stage rollups equal to a recomputation from the nodes', async () => {
+  it('keeps the stage rollups equal to a recomputation from nodes and timing', async () => {
     const drift = await pool.query<{ wave_id: string; stage_id: string }>(
-      `with entered as (
+      `with timing as (
+         select s.wave_id, s.id as session_id, s.status,
+                exit_item->>'stageType' as stage_id,
+                (exit_item->>'durationMs')::bigint as duration_ms
+         from interview_sessions s
+         cross join lateral jsonb_array_elements(
+           coalesce(s.stage_timing->'stageExits', '[]'::jsonb)
+         ) as exit_item
+       ),
+       entered as (
          select s.wave_id, n.stage_id, s.id as session_id, s.status,
                 count(*) filter (where n.attributes = '{}'::jsonb)::int as missing
          from nodes n
@@ -594,13 +603,23 @@ describe.skipIf(!db)('the seeded dataset', () => {
          where n.stage_id is not null
          group by s.wave_id, n.stage_id, s.id, s.status
        ),
+       observed as (
+         select wave_id, stage_id, session_id, status from entered
+         union
+         select wave_id, stage_id, session_id, status from timing
+       ),
        expected as (
-         select wave_id, stage_id,
+         select o.wave_id, o.stage_id,
                 count(*)::int as entered_count,
-                count(*) filter (where status = 'completed')::int as completed_count,
-                count(*) filter (where status = 'abandoned')::int as abandoned_count,
-                sum(missing)::int as missing_item_count
-         from entered group by wave_id, stage_id
+                count(*) filter (where o.status = 'completed')::int as completed_count,
+                count(*) filter (where o.status = 'abandoned')::int as abandoned_count,
+                coalesce((select sum(t.duration_ms)::bigint from timing t
+                          where t.wave_id = o.wave_id and t.stage_id = o.stage_id), 0)::bigint as duration_ms_sum,
+                coalesce((select count(*)::int from timing t
+                          where t.wave_id = o.wave_id and t.stage_id = o.stage_id), 0)::int as duration_ms_count,
+                coalesce((select sum(e.missing)::int from entered e
+                          where e.wave_id = o.wave_id and e.stage_id = o.stage_id), 0)::int as missing_item_count
+         from observed o group by o.wave_id, o.stage_id
        )
        select r.wave_id, r.stage_id
        from study_stage_rollups r
@@ -609,8 +628,9 @@ describe.skipIf(!db)('the seeded dataset', () => {
        where r.entered_count is distinct from e.entered_count
           or r.completed_count is distinct from e.completed_count
           or r.abandoned_count is distinct from e.abandoned_count
-          or r.missing_item_count is distinct from e.missing_item_count
-          or r.duration_ms_count is distinct from e.entered_count`,
+          or r.duration_ms_sum is distinct from e.duration_ms_sum
+          or r.duration_ms_count is distinct from e.duration_ms_count
+          or r.missing_item_count is distinct from e.missing_item_count`,
     );
     expect(drift.rows).toEqual([]);
     await expect(

@@ -2017,6 +2017,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1101.0
         version: 3.1102.0
+      '@codaco/interview':
+        specifier: workspace:^
+        version: link:../../../packages/interview
       '@codaco/protocol-builder-core':
         specifier: workspace:^
         version: link:../../../packages/protocol-builder-core

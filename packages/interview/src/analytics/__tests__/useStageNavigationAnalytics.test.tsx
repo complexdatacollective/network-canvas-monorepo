@@ -4,6 +4,7 @@ import { StrictMode, type ReactNode } from 'react';
 import { Provider } from 'react-redux';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import type { StageTimingPayload } from '../../contract/types';
 import protocol from '../../store/modules/protocol';
 import session, { updatePrompt } from '../../store/modules/session';
 import ui from '../../store/modules/ui';
@@ -15,11 +16,12 @@ function makeWrapper(
   tracker: Tracker,
   stages: Array<{ type: string; prompts?: unknown[] }>,
   promptIndex = 0,
+  stageTiming?: StageTimingPayload,
 ) {
   const store = configureStore({
     reducer: { session, protocol, ui },
     preloadedState: {
-      session: { promptIndex } as never,
+      session: { promptIndex, stageTiming } as never,
       protocol: {
         id: 'p',
         hash: 'h',
@@ -294,6 +296,48 @@ describe('useStageNavigationAnalytics', () => {
     );
     expect(wrapper.store.getState().session.stageTiming?.totalDurationMs).toBe(
       125,
+    );
+  });
+
+  it('includes persisted authored stage durations when a resumed interview finishes', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const wrapper = makeWrapper(
+      tracker,
+      [{ type: 'Information' }, { type: 'FinishSession' }],
+      0,
+      {
+        stageExits: [
+          {
+            stageIndex: 0,
+            stageType: 'Information',
+            promptIndex: 0,
+            promptCount: 1,
+            durationMs: 125,
+            exitDirection: 'forward',
+          },
+        ],
+        promptExits: [],
+      },
+    );
+    const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
+    const { rerender } = renderHook(
+      (props: { stage_index: number; stage_type?: string }) =>
+        useStageNavigationAnalytics(props),
+      {
+        wrapper,
+        initialProps: { stage_index: 0, stage_type: 'Information' },
+      },
+    );
+
+    now.mockReturnValue(1075);
+    rerender({ stage_index: 1, stage_type: 'FinishSession' });
+
+    expect(tracker.track).toHaveBeenCalledWith(
+      'interview_finished',
+      expect.objectContaining({ total_duration_ms: 200 }),
+    );
+    expect(wrapper.store.getState().session.stageTiming?.totalDurationMs).toBe(
+      200,
     );
   });
 

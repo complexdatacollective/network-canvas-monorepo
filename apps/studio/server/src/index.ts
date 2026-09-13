@@ -21,6 +21,7 @@ import { checkSchema, type SchemaState } from './db/schema.ts';
 import { readEncryptionEnv, readEnv } from './env.ts';
 import { installFatalErrorHandlers } from './fatal-errors.ts';
 import { getSetupStatus } from './instance/bootstrap.ts';
+import { startMonitoringRollupWorker } from './monitoring/recompute.ts';
 import { logOperational } from './observability/logger.ts';
 import { createOperationalApp } from './observability/operational-app.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
@@ -101,9 +102,18 @@ let auditAlertWorker: AuditAlertWorker | undefined;
 let templateRegistryIntentWorker:
   | ReturnType<typeof startTemplateRegistryIntentWorker>
   | undefined;
+let monitoringRollupWorker:
+  | ReturnType<typeof startMonitoringRollupWorker>
+  | undefined;
 
 function startDatabaseWorkers(): void {
-  if (env.role === 'web' || !maintenancePool || !env.auth) return;
+  if (env.role === 'web' || !maintenancePool) return;
+  monitoringRollupWorker ??= startMonitoringRollupWorker({
+    pool: maintenancePool,
+    observer: observability.metrics.observer,
+    onError: (error) => telemetry?.capture('server_worker', error),
+  });
+  if (!env.auth) return;
   const emailMailer = env.auth.mailer.kind === 'refuse' ? undefined : mailer;
   const registryOrigin = env.templateRegistryOrigin;
   if (!templateRegistryIntentWorker && registryOrigin && assetStore) {
@@ -279,6 +289,7 @@ stopServing = () => {
   void invitationDeliveryWorker?.stop();
   void auditAlertWorker?.stop();
   void templateRegistryIntentWorker?.stop();
+  void monitoringRollupWorker?.stop();
   mailer?.close();
   observability.stop();
 };
@@ -301,6 +312,7 @@ function shutdown() {
     invitationDeliveryWorker?.stop(),
     auditAlertWorker?.stop(),
     templateRegistryIntentWorker?.stop(),
+    monitoringRollupWorker?.stop(),
   ]);
   mailer?.close();
   const httpClosed = new Promise<void>((resolve, reject) => {

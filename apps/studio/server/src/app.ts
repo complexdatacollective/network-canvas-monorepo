@@ -42,6 +42,7 @@ import { createObservability } from './observability/runtime.ts';
 import type { EncryptionKeys } from './pii/keys.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
+import { createSessionTimingRoute } from './study/session-timing-route.ts';
 import type { ServerTelemetry } from './telemetry.ts';
 
 // The app WebSocket endpoint. In development the Vite dev server proxies this
@@ -179,6 +180,12 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   // The public data API — a separate surface from the SPA's RPC below, per
   // the 2026-08-11 decision on #1248.
   app.route('/api/v1', createApiV1(authCaps, deployment));
+
+  // The participant host sends only the privacy-safe timing sibling here. The
+  // bearer interview link is checked inside the tenant-scoped transaction;
+  // researcher cookie sessions never authorize this participant surface.
+  if (pool)
+    app.post('/interview/:sessionId/sync', createSessionTimingRoute(pool));
 
   // /storage, not /assets, which the client build claims for its hashed
   // chunks. Reading stays open: a session lookup per byte range would put the

@@ -36,6 +36,7 @@
   "dependencies": {
     "@aws-sdk/client-kms": "3.1102.0",
     "@aws-sdk/client-s3": "^3.1101.0",
+    "@codaco/interview": "workspace:^",
     "@codaco/protocol-builder-core": "workspace:^",
     "@codaco/protocol-utilities": "workspace:^",
     "@codaco/protocol-validation": "workspace:^",
