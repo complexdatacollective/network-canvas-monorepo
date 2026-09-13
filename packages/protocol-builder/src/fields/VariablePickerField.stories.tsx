@@ -223,8 +223,10 @@ export const FindingAnAttribute: Story = {
     const canvas = within(canvasElement);
     const dialog = await openThePicker(canvasElement);
 
+    // Named for what this picker can do: it was handed no way to create, so
+    // the box only finds.
     await expect(
-      dialog.getByRole('searchbox', { name: 'Find or create an attribute' }),
+      dialog.getByRole('searchbox', { name: 'Find an attribute' }),
     ).toHaveFocus();
 
     await userEvent.keyboard('contact');

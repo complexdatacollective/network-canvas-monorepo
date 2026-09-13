@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react';
 import {
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -27,18 +28,37 @@ import {
   useCodebookSectionDocument,
   useWhereTheAnswerLands,
 } from '../codebook/useCodebookVariableEdits.ts';
-import CodebookVariableValidationEditor from '../codebook/validation/CodebookVariableValidationEditor.tsx';
+import CodebookVariableValidationEditor, {
+  DraftVariableValidationEditor,
+} from '../codebook/validation/CodebookVariableValidationEditor.tsx';
 import { optionsShapeFor } from '../codebook/variableOptions.ts';
 import { parameterShapeFor } from '../codebook/variableParameters.ts';
+import {
+  getValidationLabel,
+  isValidationMap,
+  rulesSurvivingTypeChange,
+  type ValidationMap,
+} from '../codebook/variableValidation.ts';
 import { useCodebookSectionWrite } from '../codebook/writes.ts';
 import { createdUnassigned } from '../fields/VariablePickerField.tsx';
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../protocol-context.ts';
 import { useProtocolContext } from '../state/protocolContext.ts';
-import { isCollectableType, isOptionType } from './collectableTypes.ts';
+import {
+  isCollectableType,
+  isOptionType,
+  needsCodebookEditorToCreate,
+} from './collectableTypes.ts';
 
 /** Where a row that binds an attribute usually keeps the attribute it binds. */
 const DEFAULT_VARIABLE_FIELD = 'variable';
+
+/**
+ * No rules were taken off the draft — held as one value so that saying so
+ * twice is the same value twice, and a state that has not changed is not a
+ * render.
+ */
+const NOTHING_DROPPED: readonly string[] = [];
 
 /**
  * What inside a field container can be handed focus, most preferred first.
@@ -104,6 +124,13 @@ const messages = defineMessages({
       'An attribute answered on a scale needs a label at each end, so it is created together with them.',
     description:
       'The same explanation for a scale: shown above the buttons when the researcher is inventing one, saying why they are sent to the codebook editor rather than being asked for a name here.',
+  },
+  rulesDroppedForNewKind: {
+    id: 'protocolBuilder.attributeCodebookControls.rulesDroppedForNewKind',
+    defaultMessage:
+      '{ruleCount, plural, one {Changing the kind of answer removed a rule that does not carry over: {ruleNames}.} other {Changing the kind of answer removed rules that do not carry over: {ruleNames}.}}',
+    description:
+      'Shown after the researcher changes the kind of answer an attribute they are inventing holds, when rules they had already written for it cannot be kept — either the new kind does not accept them, or they compare this answer with another attribute that is no longer comparable. ruleNames is the list of rule names, already translated.',
   },
   attributeDeletedTitle: {
     id: 'protocolBuilder.attributeCodebookControls.attributeDeletedTitle',
@@ -191,10 +218,32 @@ export type AttributeCodebookControlsProps = Readonly<{
    */
   componentField: string;
   /**
-   * The type of an attribute being invented WITH its values, if that is what
-   * this row is doing.
+   * The attribute this row is inventing, while it is inventing one.
+   *
+   * One prop rather than three, because the three are one fact about the row
+   * and each of them is meaningless without the others: what is being made,
+   * what the researcher called it, and where what they author about it is
+   * held until it exists.
    */
-  inventingType?: string;
+  inventing?: Readonly<{
+    /**
+     * The kind of answer the row has chosen for it. Empty until they choose,
+     * which is the state these controls offer nothing in — the kind decides
+     * both what else the attribute needs before it can exist and which rules
+     * can be written about it.
+     */
+    type: string;
+    /** The name they typed into the picker's create row. */
+    name: string;
+    /**
+     * Where in the row the rules for it are held until the row's own save
+     * creates it.
+     *
+     * A row draft rather than a codebook write, because there is no attribute
+     * to write to yet: the create is the row's, and these rules go with it.
+     */
+    rulesField: string;
+  }>;
   /**
    * Whether the settings the chosen control takes are the CODEBOOK's to hold.
    *
@@ -252,13 +301,19 @@ export default function AttributeCodebookControls({
   committedVariable,
   variableField = DEFAULT_VARIABLE_FIELD,
   componentField,
-  inventingType,
+  inventing,
   offerParameters = true,
   offerRules = true,
 }: AttributeCodebookControlsProps) {
   const intl = useAppIntl();
   const { readOnly } = useStageEditorForm();
   const writeCodebookSection = useCodebookSectionWrite();
+  /**
+   * The row dialog's own store, for the one read that is not a subscription:
+   * the rules draft this surface opens ON. Read imperatively at that moment
+   * rather than followed, for the reason every other capture here is.
+   */
+  const rowStore = useContext(FormStoreContext);
   const protocolContext = useProtocolContext();
   const codebookDocument = useCodebookSectionDocument(subject);
   // The dialog's OWN store: the picker's choice is the row's, and the created
@@ -267,6 +322,15 @@ export default function AttributeCodebookControls({
   const chosen =
     asString(useRowValue(variableField) ?? committedVariable) ?? '';
   const liveComponent = useRowValue(componentField);
+  /**
+   * The rules the row is holding for an attribute it has not created yet.
+   *
+   * Followed rather than read once, because the kind of answer above them can
+   * change while they are held — see the effect below. The empty name for a
+   * row that is inventing nothing reads as a field the store does not hold,
+   * which is what it is.
+   */
+  const heldDraftRules = useRowValue(inventing?.rulesField ?? '');
   const [editing, setEditing] = useState<Readonly<{
     /** Fresh for every open, so the editor starts from the draft it is given. */
     openId: string;
@@ -331,6 +395,17 @@ export default function AttributeCodebookControls({
      * written beside a control that cannot take them.
      */
     component: string;
+    /**
+     * The rules the row was already holding for an attribute it is INVENTING,
+     * present exactly when this rules surface is about one.
+     *
+     * Captured on open like everything else here, and for the same reason: it
+     * is the draft this dialog is editing, and re-reading it live would let a
+     * write made behind the dialog replace what the researcher is typing into
+     * it. Absent wherever the surface is about an attribute the codebook
+     * already holds, which is what the two rules dialogs below tell apart.
+     */
+    draftRules?: ValidationMap;
   }> | null>(null);
   /**
    * Whether a nested editor's save is with the host right now.
@@ -352,6 +427,18 @@ export default function AttributeCodebookControls({
   const [createdElsewhere, setCreatedElsewhere] = useState<string | undefined>(
     undefined,
   );
+  /**
+   * The rules a change of kind of answer took off the row's draft, held for as
+   * long as the notice about them is on screen.
+   *
+   * Kept rather than cleared on the next act of any kind: it is the only
+   * record that rules the researcher wrote are no longer there, and nothing
+   * else on this surface says so. It ends at the two acts that answer it — the
+   * next change of kind, and a save of the rules editor, both of which leave a
+   * draft the researcher has just seen against the kind it is now for.
+   */
+  const [rulesDropped, setRulesDropped] =
+    useState<readonly string[]>(NOTHING_DROPPED);
   // The row's own picker is what a create here fills in, so it is the second
   // half of where the answer lands: see `useWhereTheAnswerLands`.
   const whereTheAnswerLands = useWhereTheAnswerLands(subject, () => chosen);
@@ -440,9 +527,104 @@ export default function AttributeCodebookControls({
     offerParameters &&
     picked !== undefined &&
     parameterShapeFor(pickedType, pickedComponent) !== null;
-  const canEditRules = offerRules && picked !== undefined;
+  /**
+   * The kind of answer the row is inventing, once the researcher has said what
+   * it is. Everything below is decided by it.
+   */
+  const inventedType =
+    inventing !== undefined && isCollectableType(inventing.type)
+      ? inventing.type
+      : undefined;
+  /**
+   * Whether the invention needs the codebook's own editor, rather than being
+   * finished by the name the picker's create row already took.
+   *
+   * Asked of the type rather than of the caller, so the create button and the
+   * rules below cannot disagree about one invention — and so a kind of answer
+   * that starts or stops needing more than a name moves both at once. The
+   * picker's create row asks the same question (`useCreateAttributeForSlot`).
+   */
   const canCreate =
-    inventingType !== undefined && isCollectableType(inventingType);
+    inventedType !== undefined && needsCodebookEditorToCreate(inventedType);
+  /**
+   * Whether the rules being offered are for an attribute that does not exist
+   * yet.
+   *
+   * Architect authors the rules for an attribute a form field is inventing in
+   * the same dialog and writes them with the create
+   * (`Form/fieldCommit.ts:168-172`); here they were offered only once the
+   * attribute existed, so making an invented answer required took a save, a
+   * reopen and a second dialog. The row's create is DEFERRED — the picker's
+   * create row writes a name and the row's own save turns it into an attribute
+   * — so there is no id to hang a codebook write on while the researcher is
+   * still authoring, and the rules are held on the row until that create.
+   *
+   * Only for the kinds a name finishes. The rest reach the codebook editor
+   * above, which creates the attribute as it saves, and the row then holds a
+   * real id — so those are served by the ordinary surface a moment later, and
+   * a draft offered beside it would be a second place to write the same rules.
+   */
+  const inventedRules = inventedType !== undefined && !canCreate;
+  const canEditRules = offerRules && (picked !== undefined || inventedRules);
+  /**
+   * The rules draft following the kind of answer it was written about.
+   *
+   * The draft is the ROW's — there is no attribute to write it to until the
+   * row's own save creates one — and the kind above it is a control the
+   * researcher can go back to. A rule the new kind does not accept is refused
+   * by that create, and a rules editor opened on the new kind lists the new
+   * kind's rules alone: the researcher can then neither save the row nor
+   * switch the rule off, which is a dialog with no way out of it. So the draft
+   * follows the kind, by the same reading the codebook editor's own type
+   * control makes of a variable draft (`rulesSurvivingTypeChange`).
+   *
+   * What it drops is said. The researcher wrote those rules, and rules that
+   * disappeared between one control and the next are a change to their work
+   * that nothing else on this surface reports.
+   *
+   * Only on a MOVE of the kind, which is why the kind the draft was written
+   * for is held. `rulesSurvivingTypeChange` answers the question a kind change
+   * asks — and part of its answer is that a comparison rule never carries
+   * over, because the attribute it names was comparable with the old kind.
+   * Asked of a draft the researcher has just written against the kind the row
+   * holds now, it would take that rule away the moment it landed: the rules
+   * control offers `sameAs` on an invented text attribute, and an answer to
+   * the wrong question would delete it and blame a kind change nobody made.
+   */
+  const rulesField = inventing?.rulesField;
+  const kindTheDraftWasWrittenFor = useRef(inventedType);
+  useEffect(() => {
+    const previousKind = kindTheDraftWasWrittenFor.current;
+    kindTheDraftWasWrittenFor.current = inventedType;
+    if (previousKind === inventedType) return;
+    if (rulesField === undefined || inventedType === undefined) return;
+    if (!isValidationMap(heldDraftRules)) return;
+    const { kept, dropped } = rulesSurvivingTypeChange(
+      heldDraftRules,
+      inventedType,
+    );
+    // The notice is about the change of kind that has just happened, so the
+    // next change of kind ends it — including one that takes nothing away,
+    // which is a row whose draft and kind agree again.
+    setRulesDropped(dropped.length === 0 ? NOTHING_DROPPED : dropped);
+    if (dropped.length === 0) return;
+    setFieldValue(rulesField, kept);
+  }, [heldDraftRules, inventedType, rulesField, setFieldValue]);
+  /**
+   * Those same rules, for the create that happens in the codebook's own
+   * editor.
+   *
+   * A kind a name cannot finish hides the rules button, and the row goes on
+   * holding whatever was written while the kind was one a name could finish —
+   * so the editor that creates the attribute is where they belong, and seeded
+   * nowhere they would be thrown away without a word. Narrowed here as well as
+   * in the effect above because this is read during the render that opens the
+   * editor, which is the render the effect has not run after yet.
+   */
+  const draftRulesForCreate =
+    inventedType === undefined || !isValidationMap(heldDraftRules)
+      ? {}
+      : rulesSurvivingTypeChange(heldDraftRules, inventedType).kept;
   /**
    * Whether the invention is of a LIST of answers, which is what the create
    * controls are named after.
@@ -453,7 +635,7 @@ export default function AttributeCodebookControls({
    * this decides what they are told when they arrive — a scale sent here under
    * "and its values" would be asked for a list it does not have.
    */
-  const creatingValues = isOptionType(inventingType ?? '');
+  const creatingValues = isOptionType(inventedType ?? '');
   const createLabel = creatingValues
     ? messages.createWithValues
     : messages.createWithSettings;
@@ -490,7 +672,12 @@ export default function AttributeCodebookControls({
   // researcher created and this row did not take, and a component that
   // vanished at the moment it had something to say would take the sentence
   // with it.
-  if (!offerLaunch && openEditor === null && createdElsewhere === undefined) {
+  if (
+    !offerLaunch &&
+    openEditor === null &&
+    createdElsewhere === undefined &&
+    rulesDropped.length === 0
+  ) {
     return null;
   }
   // The attributes an open editor is reading about, which are the ones in the
@@ -657,6 +844,10 @@ export default function AttributeCodebookControls({
     // editor is the start of a different one. Same rule, and the same reason,
     // as the picker's own notice clearing when the researcher types a new name.
     setCreatedElsewhere(undefined);
+    const heldRules =
+      inventing === undefined || rowStore === undefined
+        ? undefined
+        : rowStore.getState().getValue(inventing.rulesField);
     setEditing({
       openId: uuid(),
       surface,
@@ -667,6 +858,9 @@ export default function AttributeCodebookControls({
       fillsIn: chosen,
       openedDocument: codebookDocument,
       component: pickedComponent,
+      ...(surface === 'rules' && inventedRules
+        ? { draftRules: isValidationMap(heldRules) ? { ...heldRules } : {} }
+        : {}),
     });
   };
 
@@ -732,13 +926,32 @@ export default function AttributeCodebookControls({
       <div
         role="status"
         aria-live="polite"
-        className={createdElsewhere === undefined ? undefined : 'mb-8'}
+        className={
+          createdElsewhere === undefined && rulesDropped.length === 0
+            ? undefined
+            : 'mb-8'
+        }
       >
         {createdElsewhere !== undefined && (
           <Alert variant="info" role="presentation">
             <AlertDescription>
               {intl.formatMessage(createdUnassigned, {
                 variableName: createdElsewhere,
+              })}
+            </AlertDescription>
+          </Alert>
+        )}
+        {rulesDropped.length > 0 && (
+          <Alert variant="info" role="presentation">
+            <AlertDescription>
+              {intl.formatMessage(messages.rulesDroppedForNewKind, {
+                ruleCount: rulesDropped.length,
+                // Joined through `formatList` rather than with a comma,
+                // because how a list of names is punctuated is the reader's
+                // language's to decide.
+                ruleNames: intl.formatList(
+                  rulesDropped.map((rule) => getValidationLabel(rule, intl)),
+                ),
               })}
             </AlertDescription>
           </Alert>
@@ -761,83 +974,98 @@ export default function AttributeCodebookControls({
           editor beneath already says for itself
           (`variableValidation.staleAuthoritativeDescription`,
           `codebookVariable.typeChangedElsewhere`). */}
-      {openEditor?.surface === 'create' && canCreate && (
-        <Dialog
-          open
-          title={editorTitle}
-          size="readable"
-          dismissible={!submitting}
-          closeDialog={requestClose}
-          // The picker outright, rather than the trigger-if-it-is-still-there
-          // rule the other two use. Creating the attribute is what takes this
-          // row out of inventing one, so the button that opened this editor is
-          // gone a render after it closes — and it is still in the document
-          // while focus is being returned, so asking whether it is there gets
-          // the wrong answer and leaves focus on a node about to be detached.
-          // The picker is the control the create just set, and the one thing
-          // on this surface guaranteed to outlive the button.
-          finalFocus={() => rowPicker() ?? createTrigger.current}
-        >
-          <VariableEditor
-            mode="create"
-            openId={openEditor.openId}
-            subject={openEditor.subject}
-            protocolContext={protocolContext}
-            authoritativeDocument={openEditor.document}
-            variableId={openEditor.variableId}
-            // The empty list only where a list is what is being authored. The
-            // editor passes a choice list through as the draft holds it, and
-            // every variable schema is a STRICT object that admits only its
-            // own keys — so an `options: []` seeded onto a scale would be
-            // written into the create request and refused there, for a key the
-            // researcher never saw a control for.
-            initialDraft={{
-              name: '',
-              type: inventingType,
-              ...(creatingValues ? { options: [] } : {}),
-            }}
-            // The kind of answer was chosen in the row behind this, and the
-            // whole reason the editor is open is what that kind needs beyond a
-            // name.
-            allowedVariableTypes={[inventingType]}
-            readOnly={editorReadOnly}
+      {openEditor?.surface === 'create' &&
+        canCreate &&
+        inventing !== undefined &&
+        inventedType !== undefined && (
+          <Dialog
+            open
             title={editorTitle}
-            onSubmitDocument={submitEdit(
-              openEditor.subject,
-              openEditor.variableId,
-            )}
-            onComplete={(variableId, variableName) => {
-              // Which codebook the attribute was written into, and which field
-              // it was going to fill in, were both decided when this editor
-              // opened — and either can move while the request is with the
-              // host. Asked HERE rather than of `editorReadOnly`, which is a
-              // fact about the render the researcher pressed Create in: this
-              // runs afterwards, out of a closure made before the protocol
-              // moved. The one reading of that question is
-              // `useWhereTheAnswerLands`.
-              //
-              // A record key belongs to exactly one type, so a row that has
-              // moved can neither resolve this id nor save it — it would leave
-              // the field pointing into a codebook it does not read. The write
-              // itself landed and stands; only the assignment does not happen,
-              // and the researcher is told where the attribute went.
-              if (
-                whereTheAnswerLands({
-                  subject: openEditor.subject,
-                  fillsIn: openEditor.fillsIn,
-                }) === 'here'
-              ) {
-                // The picker now names something that exists, which is what
-                // takes this row out of inventing anything.
-                setFieldValue(variableField, variableId);
-              } else {
-                setCreatedElsewhere(variableName);
-              }
-              close();
-            }}
-          />
-        </Dialog>
-      )}
+            size="readable"
+            dismissible={!submitting}
+            closeDialog={requestClose}
+            // The picker outright, rather than the trigger-if-it-is-still-there
+            // rule the other two use. Creating the attribute is what takes this
+            // row out of inventing one, so the button that opened this editor is
+            // gone a render after it closes — and it is still in the document
+            // while focus is being returned, so asking whether it is there gets
+            // the wrong answer and leaves focus on a node about to be detached.
+            // The picker is the control the create just set, and the one thing
+            // on this surface guaranteed to outlive the button.
+            finalFocus={() => rowPicker() ?? createTrigger.current}
+          >
+            <VariableEditor
+              mode="create"
+              openId={openEditor.openId}
+              subject={openEditor.subject}
+              protocolContext={protocolContext}
+              authoritativeDocument={openEditor.document}
+              variableId={openEditor.variableId}
+              // The empty list only where a list is what is being authored. The
+              // editor passes a choice list through as the draft holds it, and
+              // every variable schema is a STRICT object that admits only its
+              // own keys — so an `options: []` seeded onto a scale would be
+              // written into the create request and refused there, for a key the
+              // researcher never saw a control for.
+              // Holding the name the researcher already typed into the
+              // picker's create row: they named the attribute when they went
+              // looking for it and did not find it, and asked for it again
+              // here they would be answering a question they have answered.
+              initialDraft={{
+                name: inventing.name,
+                type: inventedType,
+                ...(creatingValues ? { options: [] } : {}),
+                // Whatever rules the row already holds for this invention. A
+                // kind that arrives here hides the row's rules button, so
+                // dropping them would lose work the researcher did behind a
+                // control that has since gone — and they are the codebook's
+                // from the moment this editor writes the attribute.
+                ...(Object.keys(draftRulesForCreate).length > 0
+                  ? { validation: draftRulesForCreate }
+                  : {}),
+              }}
+              // The kind of answer was chosen in the row behind this, and the
+              // whole reason the editor is open is what that kind needs beyond a
+              // name.
+              allowedVariableTypes={[inventedType]}
+              readOnly={editorReadOnly}
+              title={editorTitle}
+              onSubmitDocument={submitEdit(
+                openEditor.subject,
+                openEditor.variableId,
+              )}
+              onComplete={(variableId, variableName) => {
+                // Which codebook the attribute was written into, and which field
+                // it was going to fill in, were both decided when this editor
+                // opened — and either can move while the request is with the
+                // host. Asked HERE rather than of `editorReadOnly`, which is a
+                // fact about the render the researcher pressed Create in: this
+                // runs afterwards, out of a closure made before the protocol
+                // moved. The one reading of that question is
+                // `useWhereTheAnswerLands`.
+                //
+                // A record key belongs to exactly one type, so a row that has
+                // moved can neither resolve this id nor save it — it would leave
+                // the field pointing into a codebook it does not read. The write
+                // itself landed and stands; only the assignment does not happen,
+                // and the researcher is told where the attribute went.
+                if (
+                  whereTheAnswerLands({
+                    subject: openEditor.subject,
+                    fillsIn: openEditor.fillsIn,
+                  }) === 'here'
+                ) {
+                  // The picker now names something that exists, which is what
+                  // takes this row out of inventing anything.
+                  setFieldValue(variableField, variableId);
+                } else {
+                  setCreatedElsewhere(variableName);
+                }
+                close();
+              }}
+            />
+          </Dialog>
+        )}
       {openEditor?.surface === 'defines' && (
         <Dialog
           open
@@ -906,30 +1134,73 @@ export default function AttributeCodebookControls({
           />
         </Dialog>
       )}
-      {openEditor?.surface === 'rules' && (
-        <Dialog
-          open
-          title={editorTitle}
-          size="readable"
-          dismissible={!submitting}
-          closeDialog={requestClose}
-          finalFocus={() => focusAfterEditor(rulesTrigger.current)}
-        >
-          <CodebookVariableValidationEditor
-            openId={openEditor.openId}
-            subject={openEditor.subject}
-            variableId={openEditor.variableId}
-            authoritativeEntityDocument={openEditor.document}
-            allSubjectVariables={editorVariables}
-            readOnly={editorReadOnly}
-            onSubmitDocument={submitEdit(
-              openEditor.subject,
-              openEditor.variableId,
-            )}
-            onComplete={close}
-          />
-        </Dialog>
-      )}
+      {/* The rules for an attribute that does not exist yet. Written onto the
+          row rather than into the codebook, because the create they belong to
+          is the row's own save — see `inventedRules`. Its own dialog rather
+          than a branch inside the one below, for the reason the three surfaces
+          above are written out: what a rules editor is editing is decided when
+          it opens, and one dialog holding both would hand whichever editor
+          rendered whatever the row had become by then. */}
+      {openEditor?.surface === 'rules' &&
+        openEditor.draftRules !== undefined &&
+        inventing !== undefined &&
+        inventedType !== undefined && (
+          <Dialog
+            open
+            title={editorTitle}
+            size="readable"
+            dismissible
+            closeDialog={requestClose}
+            finalFocus={() => focusAfterEditor(rulesTrigger.current)}
+          >
+            <DraftVariableValidationEditor
+              openId={openEditor.openId}
+              entity={openEditor.subject.entity}
+              variableName={inventing.name}
+              variableType={inventedType}
+              // The live codebook, because a comparison rule points at an
+              // attribute that already exists and the researcher is choosing
+              // it now.
+              allVariables={variables}
+              value={openEditor.draftRules}
+              readOnly={readOnly}
+              onSave={(validation) => {
+                // What this writes is the draft as the researcher has just
+                // seen it, against the kind the row holds now — so whatever an
+                // earlier change of kind took away has been answered, and the
+                // notice about it has nothing left to report.
+                setRulesDropped(NOTHING_DROPPED);
+                setFieldValue(inventing.rulesField, validation);
+                close();
+              }}
+            />
+          </Dialog>
+        )}
+      {openEditor?.surface === 'rules' &&
+        openEditor.draftRules === undefined && (
+          <Dialog
+            open
+            title={editorTitle}
+            size="readable"
+            dismissible={!submitting}
+            closeDialog={requestClose}
+            finalFocus={() => focusAfterEditor(rulesTrigger.current)}
+          >
+            <CodebookVariableValidationEditor
+              openId={openEditor.openId}
+              subject={openEditor.subject}
+              variableId={openEditor.variableId}
+              authoritativeEntityDocument={openEditor.document}
+              allSubjectVariables={editorVariables}
+              readOnly={editorReadOnly}
+              onSubmitDocument={submitEdit(
+                openEditor.subject,
+                openEditor.variableId,
+              )}
+              onComplete={close}
+            />
+          </Dialog>
+        )}
     </>
   );
 }

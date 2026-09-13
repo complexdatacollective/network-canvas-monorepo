@@ -43,7 +43,13 @@ const messages = defineMessages({
     id: 'protocolBuilder.variablePicker.searchLabel',
     defaultMessage: 'Find or create an attribute',
     description:
-      'Accessible name of the search box at the top of the attribute window. Typing in it narrows the list below, and — where this control allows it — offers to create an attribute under whatever was typed.',
+      'Accessible name of the search box at the top of the attribute window, where this control allows a new attribute to be created. Typing in it narrows the list below and offers to create an attribute under whatever was typed.',
+  },
+  searchOnlyLabel: {
+    id: 'protocolBuilder.variablePicker.searchOnlyLabel',
+    defaultMessage: 'Find an attribute',
+    description:
+      'Accessible name of the search box at the top of the attribute window where this control only chooses from attributes that already exist. Typing in it narrows the list below.',
   },
   searchPlaceholder: {
     id: 'protocolBuilder.variablePicker.searchPlaceholder',
@@ -606,7 +612,15 @@ export default function VariableSpotlight({
               disabled={creating !== undefined}
               prefixComponent={<Search aria-hidden className="size-4" />}
               className="w-full"
-              aria-label={intl.formatMessage(messages.searchLabel)}
+              // Both the name and the placeholder say whether this window can
+              // invent an attribute, because a researcher who hears only the
+              // name would be told they may create one where no create row
+              // will ever appear.
+              aria-label={intl.formatMessage(
+                onCreate === undefined
+                  ? messages.searchOnlyLabel
+                  : messages.searchLabel,
+              )}
               placeholder={intl.formatMessage(
                 onCreate === undefined
                   ? messages.searchOnlyPlaceholder

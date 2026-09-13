@@ -116,12 +116,11 @@ export const TheWholeList: Story = {
   play: async ({ canvasElement }) => {
     const dialog = await openIt(canvasElement);
 
-    const box = dialog.getByRole('searchbox', {
-      name: 'Find or create an attribute',
-    });
+    // Both the name and the placeholder say whether this caller would take a
+    // new attribute, so a researcher who hears only the name is told the same
+    // thing as one who reads the box.
+    const box = dialog.getByRole('searchbox', { name: 'Find an attribute' });
     await expect(box).toHaveFocus();
-    // The NAME never changes; only the placeholder says whether this caller
-    // would take a new attribute.
     await expect(box).toHaveAttribute('placeholder', 'Find an attribute…');
     // Alphabetical, not the order the caller handed them over in.
     const rows = dialog.getAllByRole('option');

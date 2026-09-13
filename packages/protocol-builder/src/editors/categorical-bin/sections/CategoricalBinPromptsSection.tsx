@@ -8,6 +8,7 @@ import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import Section from '@codaco/fresco-ui/Section';
 import type { VariableType } from '@codaco/protocol-validation';
 
+import CodebookVariableValidationSection from '../../../codebook/validation/CodebookVariableValidationSection.tsx';
 import BinAttributeField, {
   type BinAttributeSlot,
   binAttributePickIssue,
@@ -113,6 +114,12 @@ const messages = defineMessages({
     defaultMessage: 'Other attribute',
     description:
       'Label of the control that picks which attribute holds what the participant types into the follow-up bin.',
+  },
+  otherValidationDescription: {
+    id: 'protocolBuilder.categoricalBin.otherValidationDescription',
+    defaultMessage: 'Enable validation of the other attribute.',
+    description:
+      'Description of the nested section holding the rules the typed answer to the follow-up “other” bin has to satisfy. Said of the other attribute rather than of “the attribute”, because the prompt above it binds a second one.',
   },
   otherAttributeHint: {
     id: 'protocolBuilder.censusPrompts.categoricalBinOtherAttributeHint',
@@ -321,6 +328,15 @@ function CategoricalBinPromptEditor({ item }: RowEditorProps) {
           emptyMessage={intl.formatMessage(messages.otherAttributeEmpty)}
           requiredMessage={intl.formatMessage(messages.otherAttributeRequired)}
           createLabel={intl.formatMessage(messages.otherAttributeCreateLabel)}
+        />
+        <CodebookVariableValidationSection
+          subject={subject}
+          variableId={
+            typeof otherVariable === 'string' && otherVariable !== ''
+              ? otherVariable
+              : undefined
+          }
+          description={messages.otherValidationDescription}
         />
         <Field<typeof RichTextField>
           name={OTHER_LABEL_FIELD}
