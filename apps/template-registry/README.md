@@ -159,17 +159,30 @@ settings and the complete login inventory. `REGISTRY_RECOVERY_RECONCILIATION_PAT
 names a private regular JSON file of at most 16 MiB; its exact-byte SHA-256 is
 supplied separately as `REGISTRY_RECOVERY_RECONCILIATION_SHA256`. This is an
 operator-approved inventory, not a signature or evidence of who approved it.
-Its version 2 `users` must exactly match the restored users by ID, normalized email and
-verified-email state. Every user includes `publisherId`: the independently
-verified stable publisher UUID when `publisher` is `active` or `suspended`,
-or null when `publisher` is `none`. The command rejects missing or repeated
-publisher UUIDs and any changed user-to-publisher association. Its `entries`
-array is the complete independently reviewed ownership inventory; every member
-contains the stable entry `id` and its approved `publisherId`. Entry IDs must be
-unique, every referenced publisher must appear in `users`, and restored entries
-must match this inventory exactly. Version 1 evidence is rejected because it
-does not bind entry ownership. Current publisher and operator permissions must
-be independently reconciled before running the command. Recovery object storage
+Its version 3 `inventories` object contains constant-size `users`, `publishers`,
+`operators`, and `entries` records. Each record has a decimal PostgreSQL bigint
+`count` and a lowercase hexadecimal SHA-256 `sha256`. Versions 1 and 2 are
+rejected because they do not bind the complete scalable authority state.
+
+Prepare every inventory from an independently reviewed source, never from the
+database being restored. Feed rows in strictly increasing UTF-8 byte order of
+the indicated key. For each row, append the UTF-8 bytes of the repository's
+canonical JSON encoding of `{ "kind": <inventory name>, "value": <row> }`,
+followed by one LF byte, to SHA-256. The row contracts and ordering keys are:
+
+- `users`, key `id`: `{ id, email, emailVerified }`; normalize only the email
+  domain to lowercase before encoding.
+- `publishers`, key `id`: `{ id, userId, suspended }`.
+- `operators`, key `userId`: `{ userId }`; include enabled operators only.
+- `entries`, key `id`: `{ id, publisherId, artifactRoot }`.
+
+UUIDs and 64-character artifact roots are lowercase. The exported
+`createRegistryRecoveryInventory` helper implements this byte contract and
+rejects repeated or out-of-order rows. Recovery recomputes each digest in
+bounded memory while keyset-scanning the quarantined database. Current users,
+publisher suspension, operator grants, and entry ownership/root associations
+must already match the independently approved inventories exactly; the command
+does not derive or repair authority from the restored database. Recovery object storage
 uses the runtime HTTPS policy; a non-loopback HTTP endpoint requires the same
 explicit `REGISTRY_S3_INSECURE_PRIVATE_NETWORK=true` operator opt-in.
 `REGISTRY_S3_PROVIDER` selects the runtime `s3` or `r2` capability contract;
