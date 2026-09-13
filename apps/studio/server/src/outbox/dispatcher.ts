@@ -39,6 +39,11 @@ export type OutboxAdapter<Claim extends OutboxClaim> = {
   // A final authorization check may suppress work after its initial claim.
   deliver(claim: Claim): Promise<void | 'suppressed'>;
   failureDisposition(error: unknown): 'retryable' | 'permanent' | 'uncertain';
+  /**
+   * Override only when a successful deliver() made no external or otherwise
+   * non-idempotent handoff. The conservative default is durable uncertainty.
+   */
+  completionFailureDisposition?(claim: Claim): 'retryable' | 'uncertain';
   recordFailure(
     claim: Claim,
     lease: OutboxLease,
@@ -245,9 +250,9 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
 
     // A renewal error does not establish that ownership changed. Always try
     // the ownership CAS after acceptance, without overwriting a new owner.
-    // The provider accepted, but a failed commit must never become a normal
-    // retry. Each adapter owns crash recovery: audit alerts retain a durable
-    // handoff marker while invitations retain their existing crash semantics.
+    // The conservative default treats a failed completion write as uncertain.
+    // An adapter may opt a claim into ordinary retry only when deliver() made
+    // no external or otherwise non-idempotent handoff.
     let completionError: unknown;
     try {
       if (await this.adapter.recordComplete(claim, this.lease)) {
@@ -259,6 +264,26 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
       );
     } catch (error) {
       completionError = error;
+    }
+    if (this.adapter.completionFailureDisposition?.(claim) === 'retryable') {
+      const retryDelay =
+        claim.attemptCount >= this.maxAttempts
+          ? null
+          : this.retryDelayMs(claim.attemptCount);
+      if (
+        await this.adapter.recordFailure(
+          claim,
+          this.lease,
+          completionError,
+          retryDelay,
+        )
+      ) {
+        if (retryDelay === null) result.failed += 1;
+        else result.retried = 1;
+      } else {
+        result.leaseLost = 1;
+      }
+      return result;
     }
     if (
       await this.adapter.recordUncertain(claim, this.lease, completionError)
