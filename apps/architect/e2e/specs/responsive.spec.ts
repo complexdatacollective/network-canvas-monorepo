@@ -88,6 +88,138 @@ const VIEWPORTS = [
   { name: 'tablet', width: 768, height: 1024 },
 ] as const;
 
+/**
+ * Where the stage editor's two columns actually sit.
+ *
+ * The list of the stage's sections is Architect's own chrome, portalled into
+ * the first track of the route's grid, while the form it describes is rendered
+ * by `@codaco/protocol-builder` into the second — so nothing but a measurement
+ * can say whether the researcher is looking at one column or two. The grid's
+ * tracks are chosen by a CONTAINER query, which a page with no query container
+ * above the grid answers "no" to at every width: the two columns would then
+ * never arrive, silently, and the list would sit above the form on a desktop
+ * screen with room for both.
+ */
+async function stageEditorColumns(page: Page): Promise<{
+  outline: {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+    width: number;
+  };
+  form: {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+    width: number;
+  };
+}> {
+  const outline = page.getByRole('navigation', { name: 'Stage sections' });
+  const form = page.locator('form#edit-stage');
+  await expect(outline.getByRole('listitem').first()).toBeVisible();
+  await expect(form).toBeVisible();
+  const [outlineBox, formBox] = await Promise.all([
+    outline.boundingBox(),
+    form.boundingBox(),
+  ]);
+  if (!outlineBox || !formBox) {
+    throw new Error('the stage editor has no section list or no form');
+  }
+  const box = (b: { x: number; y: number; width: number; height: number }) => ({
+    top: b.y,
+    bottom: b.y + b.height,
+    left: b.x,
+    right: b.x + b.width,
+    width: b.width,
+  });
+  return { outline: box(outlineBox), form: box(formBox) };
+}
+
+/**
+ * The width at which the section list moves beside the form, and the widest
+ * screen Architect is designed for. Read at both, because the interesting
+ * failure is the list never moving at all.
+ */
+test('the stage editor lists its sections beside the form at desktop width', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.setViewportSize({ width: 1280, height: 900 });
+  await gotoProtocol(architectPage);
+  const [stage] = protocol.stages;
+  if (!stage) throw new Error('fixture has no stages');
+  await architectPage.goto(`/protocol/stage/${stage.id}`);
+
+  const { outline, form } = await stageEditorColumns(architectPage);
+  // Beside, not above: the list ends where the form's column begins, and the
+  // two share the same band of the page.
+  expect(outline.right).toBeLessThanOrEqual(form.left + 1);
+  expect(outline.top).toBeLessThan(form.bottom);
+  expect(form.top).toBeLessThan(outline.bottom);
+
+  // The whole of its column, with nothing inset inside it. The track is
+  // `16rem`, and the list's titles are `truncate`d — so every pixel a gutter
+  // takes inside this column is a pixel of section title the researcher
+  // stops being able to read, silently. A route gutter applied inside the
+  // query container instead of outside it measured 208 here.
+  const remInPx = await architectPage.evaluate(() =>
+    parseFloat(getComputedStyle(document.documentElement).fontSize),
+  );
+  expect(remInPx).toBeGreaterThan(0);
+  expect(outline.width).toBeGreaterThanOrEqual(16 * remInPx - 1);
+});
+
+/**
+ * The band no other case in this file covers.
+ *
+ * The grid asks its container for 60rem before it splits, and the container
+ * is the element INSIDE the route's gutter — so the answer is about the width
+ * the researcher can actually see, 48px narrower than the window, and the
+ * split lands at 1008px of viewport rather than 960. Putting the gutter
+ * inside the container instead moves it without changing a number anyone
+ * wrote down: measured in Chromium, 985px of viewport then showed two columns
+ * where the same page had shown one, the form dropping from 937px wide to
+ * 641.
+ *
+ * The rest of this file reads 390, 768 and 1280, which is exactly the span
+ * the threshold can move across unnoticed. Both sides of it are asserted
+ * here: one column while the room is only apparently there, two as soon as
+ * it is.
+ */
+test('the stage editor splits into two columns on the room the researcher can see, not the window', async ({
+  architectPage,
+  seed,
+}) => {
+  const { protocol, assets } = loadAllInterfacesFixture();
+  await seed(protocol, { name: 'All Interfaces', assets });
+  await architectPage.setViewportSize({ width: 985, height: 900 });
+  await gotoProtocol(architectPage);
+  const [stage] = protocol.stages;
+  if (!stage) throw new Error('fixture has no stages');
+  await architectPage.goto(`/protocol/stage/${stage.id}`);
+
+  // Polled rather than read once: a viewport change re-runs the container
+  // query on the next frame, and this reads the frame after the resize is
+  // settled rather than racing it.
+  const arrangement = async () => {
+    const { outline, form } = await stageEditorColumns(architectPage);
+    return outline.bottom <= form.top + 1 ? 'stacked' : 'beside';
+  };
+
+  await expect.poll(arrangement).toBe('stacked');
+
+  await architectPage.setViewportSize({ width: 1008, height: 900 });
+  await expect.poll(arrangement).toBe('beside');
+
+  const { outline, form } = await stageEditorColumns(architectPage);
+  expect(outline.right).toBeLessThanOrEqual(form.left + 1);
+  expect(outline.top).toBeLessThan(form.bottom);
+});
+
 for (const page of [
   { path: '/protocol/assets', heading: 'Resource Library' },
   { path: '/protocol/codebook', heading: 'Codebook' },
@@ -282,6 +414,31 @@ for (const viewport of VIEWPORTS) {
 
       expectNoHorizontalOverflow(await readScrollMetrics(architectPage));
     }
+  });
+
+  test(`the stage editor stacks its section list above the form at ${viewport.name} width`, async ({
+    architectPage,
+    seed,
+  }) => {
+    const { protocol, assets } = loadAllInterfacesFixture();
+    await seed(protocol, { name: 'All Interfaces', assets });
+    await architectPage.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await gotoProtocol(architectPage);
+    const [stage] = protocol.stages;
+    if (!stage) throw new Error('fixture has no stages');
+    await architectPage.goto(`/protocol/stage/${stage.id}`);
+
+    const { outline, form } = await stageEditorColumns(architectPage);
+    // Below the two-column breakpoint the list is a strip ABOVE the form
+    // rather than a column beside it: a page this narrow has no room for one.
+    // Overlapping horizontally is the other half of that — two things stacked
+    // share the page's width, and two side by side do not.
+    expect(outline.bottom).toBeLessThanOrEqual(form.top + 1);
+    expect(outline.left).toBeLessThan(form.right);
+    expect(form.left).toBeLessThan(outline.right);
   });
 
   test(`the page-actions toolbar stays inside a ${viewport.name} viewport`, async ({

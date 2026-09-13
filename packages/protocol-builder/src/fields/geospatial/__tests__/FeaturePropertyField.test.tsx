@@ -199,7 +199,9 @@ describe('the property a map selection is recorded as', () => {
     );
     await waitFor(() =>
       expect(
-        offered(screen.getByRole('combobox', { name: 'Recorded property' })),
+        offered(
+          screen.getByRole('combobox', { name: 'Map selection property' }),
+        ),
       ).toEqual(['borough', 'name — this property is not in the chosen layer']),
     );
 
@@ -212,7 +214,7 @@ describe('the property a map selection is recorded as', () => {
 
     // And the way out is the one the refusal names, in the same dialog.
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Recorded property' }),
+      screen.getByRole('combobox', { name: 'Map selection property' }),
       'borough',
     );
 
@@ -250,7 +252,9 @@ describe('the property a map selection is recorded as', () => {
     releaseHeldLayer?.();
     await waitFor(() =>
       expect(
-        offered(screen.getByRole('combobox', { name: 'Recorded property' })),
+        offered(
+          screen.getByRole('combobox', { name: 'Map selection property' }),
+        ),
       ).toEqual(['borough', 'name — this property is not in the chosen layer']),
     );
     expect(await harness.submit()).toBeNull();
@@ -294,7 +298,7 @@ describe('the property a map selection is recorded as', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('combobox', { name: 'Recorded property' }),
+      screen.queryByRole('combobox', { name: 'Map selection property' }),
     ).toBeNull();
   });
 
@@ -311,7 +315,9 @@ describe('the property a map selection is recorded as', () => {
         'This layer could not be read as GeoJSON, so its properties cannot be listed.',
       ),
     ).toBeInTheDocument();
-    const picker = screen.getByRole('combobox', { name: 'Recorded property' });
+    const picker = screen.getByRole('combobox', {
+      name: 'Map selection property',
+    });
     expect(offered(picker)).toEqual(['name']);
     expect(picker).toHaveValue('name');
   });
@@ -354,7 +360,7 @@ describe('the property a map selection is recorded as', () => {
       await screen.findByText(/holds no bytes for that resource/i),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('combobox', { name: 'Recorded property' }),
+      screen.queryByRole('combobox', { name: 'Map selection property' }),
     ).toBeNull();
   });
 

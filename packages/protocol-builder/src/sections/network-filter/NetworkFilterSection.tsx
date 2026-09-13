@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
-import type { MessageDescriptor } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
@@ -11,6 +10,7 @@ import {
   type StageType,
 } from '@codaco/protocol-validation';
 
+import { FilterRuleSetField } from '../../fields/RuleSetField.tsx';
 import { useStageEditorForm } from '../../form/stageEditorContext.ts';
 import { useStageValue } from '../../form/stageFormHooks.ts';
 import { type RuleDraftOptions, ruleDraftOptions } from '../../rules/rule.ts';
@@ -19,24 +19,27 @@ import {
   NO_RULES_MESSAGE,
   ruleSetRules,
 } from '../../rules/ruleSet.ts';
-import { FilterRuleSetField } from '../../rules/RuleSetField.tsx';
 import { useRuleSetValidation } from '../../rules/useRuleSetValidation.ts';
 import BuilderSection, { type SectionCapability } from '../BuilderSection.tsx';
 
 /** The stage's own filter. Every stage in the schema holds it here. */
 const FILTER_FIELD = 'filter';
 
-/**
- * What this filter narrows.
- *
- * The control is identical either way — a filter is a question about the whole
- * network wherever it appears — so this changes only what the section says it
- * is for. Naming the wrong entity would tell a researcher configuring an edge
- * stage that they were filtering nodes.
- */
-export type NetworkFilterSubject = 'node' | 'edge';
-
 const messages = defineMessages({
+  description: {
+    id: 'protocolBuilder.networkFilter.description',
+    defaultMessage:
+      'Create rules that filter which nodes or edges are displayed on this stage.',
+    description:
+      'Description of the stage-filter section. One sentence for both subjects, because one filter is mounted from the node-type and the edge-type sections alike. A stage is one step of an interview.',
+  },
+  rulesHint: {
+    id: 'protocolBuilder.networkFilter.rulesHint',
+    defaultMessage:
+      'Create one or more rules to filter what is shown on this stage.',
+    description:
+      'Guidance under the rule builder of the stage filter. A stage is one step of an interview.',
+  },
   title: {
     id: 'protocolBuilder.networkFilter.title',
     defaultMessage: 'Stage filter',
@@ -77,54 +80,11 @@ const messages = defineMessages({
   hiddenEdgesDescription: {
     id: 'protocolBuilder.networkFilter.hiddenEdgesDescription',
     defaultMessage:
-      'This stage creates or displays edges that these rules will not let through, so participants will not see them.',
+      'This stage has edge creation or display values that will not be shown based on the current filter rules.',
     description:
       'Warning body shown when a stage’s own filter would keep out the edges — the relationships between network members — that the same stage is configured to create or display.',
   },
 });
-
-/**
- * What the filter is said to narrow, per subject.
- *
- * Whole sentences per subject rather than one sentence with the noun swapped:
- * "a node" and "an edge" do not differ only in the noun in every language, and
- * a researcher configuring an edge stage must not be told they are filtering
- * nodes. Keyed by the subject union so a third subject arrives here as a
- * typecheck failure rather than as a missing sentence.
- */
-const SUBJECT_DESCRIPTIONS = defineMessages({
-  node: {
-    id: 'protocolBuilder.networkFilter.nodeDescription',
-    defaultMessage:
-      'Create rules that limit which nodes are available on this stage.',
-    description:
-      'Description of the stage-filter section on a stage whose filter narrows nodes — the members of the interview network.',
-  },
-  edge: {
-    id: 'protocolBuilder.networkFilter.edgeDescription',
-    defaultMessage:
-      'Create rules that limit which edges are available on this stage.',
-    description:
-      'Description of the stage-filter section on a stage whose filter narrows edges — the relationships between network members.',
-  },
-}) satisfies Record<NetworkFilterSubject, MessageDescriptor>;
-
-const SUBJECT_RULE_HINTS = defineMessages({
-  node: {
-    id: 'protocolBuilder.networkFilter.nodeRulesHint',
-    defaultMessage:
-      'Create one or more rules that must match in order for a node to be shown on this stage.',
-    description:
-      'Guidance under the rule builder on a stage whose filter narrows nodes — the members of the interview network.',
-  },
-  edge: {
-    id: 'protocolBuilder.networkFilter.edgeRulesHint',
-    defaultMessage:
-      'Create one or more rules that must match in order for an edge to be shown on this stage.',
-    description:
-      'Guidance under the rule builder on a stage whose filter narrows edges — the relationships between network members.',
-  },
-}) satisfies Record<NetworkFilterSubject, MessageDescriptor>;
 
 const FILTER_CAPABILITY: SectionCapability = {
   fields: [FILTER_FIELD],
@@ -134,10 +94,6 @@ const FILTER_CAPABILITY: SectionCapability = {
     confirmLabel: messages.clearConfirm,
   },
 };
-
-export type NetworkFilterSectionProps = Readonly<{
-  subject: NetworkFilterSubject;
-}>;
 
 /**
  * Which part of the network this stage works on.
@@ -155,9 +111,7 @@ export type NetworkFilterSectionProps = Readonly<{
  * attribute a collaborator adds or deletes while the editor is open changes
  * what the rules can ask about without this section doing anything.
  */
-export default function NetworkFilterSection({
-  subject,
-}: NetworkFilterSectionProps) {
+export default function NetworkFilterSection() {
   const intl = useAppIntl();
   const { identity } = useStageEditorForm();
   const filter = useStageValue(FILTER_FIELD);
@@ -175,7 +129,7 @@ export default function NetworkFilterSection({
   return (
     <BuilderSection
       title={intl.formatMessage(messages.title)}
-      description={intl.formatMessage(SUBJECT_DESCRIPTIONS[subject])}
+      description={intl.formatMessage(messages.description)}
       capability={FILTER_CAPABILITY}
     >
       {hidesConfiguredEdges && (
@@ -198,7 +152,7 @@ export default function NetworkFilterSection({
       <Field<typeof FilterRuleSetField>
         name={FILTER_FIELD}
         label={intl.formatMessage(messages.rulesLabel)}
-        hint={intl.formatMessage(SUBJECT_RULE_HINTS[subject])}
+        hint={intl.formatMessage(messages.rulesHint)}
         component={FilterRuleSetField}
         required={NO_RULES_MESSAGE}
         custom={rulesValidation}

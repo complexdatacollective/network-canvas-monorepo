@@ -84,4 +84,4 @@ jobs:
         env:
           DOCS_REPORT: ${{ runner.temp }}/docs-dead-link-report.json
           WEBSITE_REPORT: ${{ runner.temp }}/website-dead-link-report.json
-        run: node scripts/dead-link-refresh-gate.mjs "$DOCS_REPORT" "$WEBSITE_REPORT"
+        run: node scripts/dead-links/dead-link-refresh-gate.mjs "$DOCS_REPORT" "$WEBSITE_REPORT"

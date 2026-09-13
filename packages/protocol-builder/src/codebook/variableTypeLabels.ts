@@ -1,5 +1,6 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 import type { MessageDescriptor } from '@codaco/app-i18n/messages';
+import type { BadgeColor } from '@codaco/fresco-ui/Badge';
 import { type VariableType, VariableTypes } from '@codaco/protocol-validation';
 
 /**
@@ -74,6 +75,50 @@ const VARIABLE_TYPE_LABELS = defineMessages({
       'Choice offered for what an attribute records: a place on a map.',
   },
 });
+
+/**
+ * What one kind of attribute is called, for a surface naming the type a
+ * variable already has rather than offering the list.
+ *
+ * `undefined` for a type the schema does not know, which is what a protocol
+ * authored against a later schema arrives holding.
+ */
+export const variableTypeLabel = (
+  type: string | undefined,
+): MessageDescriptor | undefined =>
+  type !== undefined && type in VARIABLE_TYPE_LABELS
+    ? VARIABLE_TYPE_LABELS[type as keyof typeof VARIABLE_TYPE_LABELS]
+    : undefined;
+
+/**
+ * The theme colour each kind of attribute is marked in, so a badge naming a
+ * type carries the same colour wherever it appears.
+ *
+ * The same pairing Architect has used since 8.2.5
+ * (`apps/architect/src/config/variables.ts` at `74a07e626`), so a researcher
+ * moving between the two tools reads the same colours. Keyed by the schema's
+ * own name for the type, and complete over it, so a type the schema adds
+ * fails to typecheck here rather than falling through to a default colour.
+ */
+export const VARIABLE_TYPE_BADGE_COLORS = {
+  text: 'cerulean-blue',
+  number: 'paradise-pink',
+  boolean: 'neon-carrot',
+  ordinal: 'sea-green',
+  categorical: 'mustard',
+  scalar: 'kiwi',
+  datetime: 'tomato',
+  layout: 'purple-pizazz',
+  location: 'slate-blue-dark',
+} as const satisfies Record<VariableType, BadgeColor>;
+
+/** The colour a badge naming `type` is drawn in. */
+export const variableTypeBadgeColor = (type: string | undefined): BadgeColor =>
+  type !== undefined && type in VARIABLE_TYPE_BADGE_COLORS
+    ? VARIABLE_TYPE_BADGE_COLORS[
+        type as keyof typeof VARIABLE_TYPE_BADGE_COLORS
+      ]
+    : 'charcoal';
 
 /**
  * The types in the order they are offered, with the descriptor each is named

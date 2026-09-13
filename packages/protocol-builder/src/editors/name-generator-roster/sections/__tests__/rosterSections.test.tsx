@@ -235,12 +235,10 @@ describe("a roster stage's data file", () => {
     // Nothing is offered, so nothing is editable either: an empty required
     // cell over a value the researcher cannot see is the state the message
     // above is there to explain.
-    expect(attributeCellIn(/Attributes shown on a card/)).toBeDisabled();
+    expect(attributeCellIn(/Additional display properties/)).toBeDisabled();
+    expect(attributeCellIn(/Sortable properties/)).toBeDisabled();
     expect(
-      attributeCellIn(/Attributes the participant may sort by/),
-    ).toBeDisabled();
-    expect(
-      screen.getByRole('group', { name: /Attributes a search matches/ }),
+      screen.getByRole('group', { name: /Searchable attributes/ }),
     ).toBeDisabled();
 
     // And nothing is lost. The file is unreadable, not the configuration: the
@@ -333,7 +331,7 @@ describe("what a roster's cards show", () => {
     });
 
     const cell = await waitFor(() => {
-      const found = attributeCellIn(/Attributes shown on a card/);
+      const found = attributeCellIn(/Additional display properties/);
       expect(found.value).toBe('nickname');
       return found;
     });
@@ -345,9 +343,9 @@ describe("what a roster's cards show", () => {
       }),
     ).toBeInTheDocument();
     // ...and never choosable afresh.
-    expect(optionIn(/Attributes shown on a card/, 'nickname')?.disabled).toBe(
-      true,
-    );
+    expect(
+      optionIn(/Additional display properties/, 'nickname')?.disabled,
+    ).toBe(true);
   });
 
   it('refuses to save a card detail naming a column the file does not have', async () => {
@@ -357,7 +355,7 @@ describe("what a roster's cards show", () => {
     });
 
     await waitFor(() =>
-      expect(attributeCellIn(/Attributes shown on a card/).value).toBe(
+      expect(attributeCellIn(/Additional display properties/).value).toBe(
         'nickname',
       ),
     );
@@ -384,14 +382,14 @@ describe("what a roster's cards show", () => {
     });
 
     await waitFor(() =>
-      expect(attributeCellIn(/Attributes shown on a card/).value).toBe(
+      expect(attributeCellIn(/Additional display properties/).value).toBe(
         'nickname',
       ),
     );
     expect(await harness.submit()).toBeNull();
 
     await harness.user.selectOptions(
-      attributeCellIn(/Attributes shown on a card/),
+      attributeCellIn(/Additional display properties/),
       'age',
     );
     await harness.user.type(
@@ -404,7 +402,9 @@ describe("what a roster's cards show", () => {
       additionalProperties: [{ variable: 'age', label: 'Age' }],
     });
     // Pointed elsewhere, so the id it used to hold stops being offered at all.
-    expect(optionIn(/Attributes shown on a card/, 'nickname')).toBeUndefined();
+    expect(
+      optionIn(/Additional display properties/, 'nickname'),
+    ).toBeUndefined();
   });
 
   /**
@@ -423,13 +423,14 @@ describe("what a roster's cards show", () => {
       sections: <CardDisplaySection />,
     });
 
-    await removeTheOnlyRow(harness, /Attributes shown on a card/);
-    await screen.findByText('No extra attributes are shown on a card.');
+    await removeTheOnlyRow(harness, /Additional display properties/);
+    // The list's shared empty state, which is what Architect leaves here.
+    await screen.findByText('No items available.');
 
     // The switch is untouched by the deletion. The researcher is mid-decision,
     // and closing the section under them would take away the Add button they
     // are reaching for.
-    expect(screen.getByRole('switch', { name: 'Card details' })).toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Card display' })).toBeChecked();
 
     const request = await harness.submit();
     expect(request).not.toBeNull();
@@ -443,7 +444,7 @@ describe("what a roster's cards show", () => {
     // And the switch now reads off, which is by then the truth about the stage.
     reopenSaved(harness, request!.stageDocument, <CardDisplaySection />);
     expect(
-      await screen.findByRole('switch', { name: 'Card details' }),
+      await screen.findByRole('switch', { name: 'Card display' }),
     ).not.toBeChecked();
   });
 });
@@ -491,7 +492,7 @@ describe('how a roster is ordered', () => {
     });
 
     await waitFor(() =>
-      expect(attributeCellIn(/Starting order/).value).toBe('nickname'),
+      expect(attributeCellIn(/Sort rule/).value).toBe('nickname'),
     );
 
     expect(await harness.submit()).toBeNull();
@@ -519,10 +520,8 @@ describe('how a roster is ordered', () => {
       sections: <SortOptionsSection />,
     });
 
-    await removeTheOnlyRow(harness, /Starting order/);
-    await screen.findByText(
-      'People appear in the order the data file lists them.',
-    );
+    await removeTheOnlyRow(harness, /Sort rule/);
+    await screen.findByText('No items available.');
 
     const request = await harness.submit();
     expect(request?.stageDocument.sortOptions).toEqual({
@@ -532,7 +531,7 @@ describe('how a roster is ordered', () => {
     // The capability still holds a decision, so it is still switched on.
     reopenSaved(harness, request!.stageDocument, <SortOptionsSection />);
     expect(
-      await screen.findByRole('switch', { name: 'Roster order' }),
+      await screen.findByRole('switch', { name: 'Roster sorting' }),
     ).toBeChecked();
   });
 
@@ -553,12 +552,16 @@ describe('how a roster is ordered', () => {
       sections: <SortOptionsSection />,
     });
 
-    await removeTheOnlyRow(harness, /Starting order/);
-    await removeTheOnlyRow(harness, /Attributes the participant may sort by/);
-    await screen.findByText('The participant cannot reorder the roster.');
+    await removeTheOnlyRow(harness, /Sort rule/);
+    await removeTheOnlyRow(harness, /Sortable properties/);
+    await waitFor(() =>
+      expect(screen.getAllByText('No items available.')).toHaveLength(2),
+    );
 
     // Still on, because the researcher has not said otherwise.
-    expect(screen.getByRole('switch', { name: 'Roster order' })).toBeChecked();
+    expect(
+      screen.getByRole('switch', { name: 'Roster sorting' }),
+    ).toBeChecked();
 
     const request = await harness.submit();
     expect(request).not.toBeNull();
@@ -568,7 +571,7 @@ describe('how a roster is ordered', () => {
 
     reopenSaved(harness, request!.stageDocument, <SortOptionsSection />);
     expect(
-      await screen.findByRole('switch', { name: 'Roster order' }),
+      await screen.findByRole('switch', { name: 'Roster sorting' }),
     ).not.toBeChecked();
   });
 
@@ -643,7 +646,7 @@ describe('how a participant searches a roster', () => {
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Roster search' }),
     );
-    await screen.findByRole('group', { name: /Attributes a search matches/ });
+    await screen.findByRole('group', { name: /Searchable attributes/ });
 
     expect(await harness.submit()).toBeNull();
     expect(
@@ -760,7 +763,7 @@ describe('how a participant searches a roster', () => {
     expect(orphan).not.toBeInTheDocument();
     expect(document.activeElement).not.toBe(document.body);
     expect(
-      screen.getByRole('group', { name: /Attributes a search matches/ }),
+      screen.getByRole('group', { name: /Searchable attributes/ }),
     ).toContainElement(document.activeElement as HTMLElement);
   });
 

@@ -26,9 +26,9 @@
     // createRequire rather than adding a root dependency.
     ".": {
       "entry": [
-        "scripts/interviewer-*-walker.mjs",
+        "scripts/release-test/interviewer-*-walker.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
-        "scripts/posthog-cli-upload-stub.mjs",
+        "scripts/build/posthog-cli-upload-stub.mjs",
         // Agent hooks are invoked by Claude Code (.claude/settings.json),
         // Codex (.codex/hooks.json) and .husky/pre-push, which knip cannot
         // parse. Only the executables are entries, so the shared library's
@@ -38,7 +38,25 @@
         "scripts/agent-hooks/stop-check.mjs",
         "scripts/agent-hooks/pre-push-knip.mjs",
         // Run by the dead-link-cache-refresh workflow, which knip cannot parse.
-        "scripts/dead-link-refresh-gate.mjs"
+        "scripts/dead-links/dead-link-refresh-gate.mjs",
+        // The guard suite runs from scripts/vitest.config.ts, which knip does
+        // not auto-detect because scripts/ is not a workspace. Without this
+        // the tests are not entries, and everything reachable only from a test
+        // reads as unused.
+        "scripts/**/*.test.mjs",
+        // Run by name from `pnpm check:mapbox-tokens`; its own test spawns it
+        // as a process rather than importing it, so nothing imports it at all.
+        "scripts/build/check-mapbox-tokens.mjs",
+        // Recognising scripts/vitest.config.ts turns on knip's vitest plugin
+        // for the root workspace, which widens the analysis to .claude/ and
+        // .agents/. The files below are invoked by name from skill markdown,
+        // which knip cannot parse, so they have to be declared the same way
+        // the release-test walkers above are.
+        ".claude/workflows/architect-release-test.js",
+        ".claude/workflows/fresco-release-test.js",
+        ".claude/workflows/interviewer-release-test.js",
+        ".agents/skills/preparing-e2e-visual-baselines/scripts/classify-visual-changes.mjs",
+        ".agents/skills/**/scripts/*.test.mjs"
       ],
       "ignoreDependencies": [
         "@playwright/test",
@@ -58,7 +76,7 @@
     "apps/fresco": {
       // release-test/scripts are invoked from shell scripts knip cannot parse;
       // list them as entries so they and their imports (e.g.
-      // scripts/resolve-manifest.mjs in the root workspace) count as used. The
+      // scripts/release/resolve-manifest.mjs in the root workspace) count as used. The
       // project glob deliberately keeps other .mjs invisible, as before.
       "entry": ["release-test/scripts/*.mjs"],
       "project": ["**/*.{js,jsx,ts,tsx}", "release-test/scripts/*.mjs"],

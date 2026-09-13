@@ -77,7 +77,7 @@ async function seedStageWithVariable(
     'Thanks for taking part in this study.',
   );
 
-  await addFormField(editor.section('Form fields'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'age',
     promptText: 'How old are you?',
     inputControl: 'Number input',
@@ -113,7 +113,7 @@ async function requireAnAnswerFromTheCodebookEditor(
   architectPage: Parameters<typeof readProtocolJson>[0],
 ): Promise<void> {
   await editor
-    .section('Form fields')
+    .section('Form configuration')
     .getByRole('button', { name: 'Edit field', exact: true })
     .click();
   const fieldDialog = architectPage.getByRole('dialog', {
@@ -121,7 +121,9 @@ async function requireAnAnswerFromTheCodebookEditor(
     exact: true,
   });
   const rules = await openValidationSection(fieldDialog);
-  await rules.getByRole('checkbox', { name: 'Required', exact: true }).check();
+  await rules
+    .getByRole('checkbox', { name: 'Required answer', exact: true })
+    .check();
   await rules
     .getByRole('button', { name: 'Save validation', exact: true })
     .click();
@@ -209,7 +211,7 @@ test('the attribute a discarded field created is kept in the codebook', async ({
   // Add a second field on a brand-new attribute, then remove the field again.
   // The attribute was written when the ROW was saved, so removing the row —
   // and then throwing the whole stage edit away — leaves it standing.
-  const section = editor.section('Form fields');
+  const section = editor.section('Form configuration');
   await addFormField(section, {
     variableName: 'orphanVar',
     promptText: 'Something we will discard.',
@@ -348,7 +350,7 @@ test('a field added to a re-opened stage is unsaved work the editor offers to sa
     architectPage.getByRole('button', { name: 'Finished Editing' }),
   ).toBeHidden();
 
-  await addFormField(editor.section('Form fields'), {
+  await addFormField(editor.section('Form configuration'), {
     variableName: 'favouriteColour',
     promptText: 'What is your favourite colour?',
   });

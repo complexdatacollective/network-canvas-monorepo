@@ -14,6 +14,8 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
+import { QueryRuleSetField } from '../../fields/RuleSetField.tsx';
+import { RULE_VALUE_FIELD } from '../../fields/RuleValueField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
 import type { RuleDraft } from '../rule.ts';
 import {
@@ -26,8 +28,6 @@ import RuleEditorDialog, {
   type RuleTypeOption,
 } from '../RuleEditorDialog.tsx';
 import { type RuleSetValue, ruleSetTargets } from '../ruleSet.ts';
-import { QueryRuleSetField } from '../RuleSetField.tsx';
-import { RULE_VALUE_FIELD } from '../RuleValueField.tsx';
 import { nodeRule, ruleSections, testCodebook } from './fixtures.ts';
 import { RuleEditorHost } from './ruleEditorHost.tsx';
 

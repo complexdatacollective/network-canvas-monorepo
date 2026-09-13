@@ -138,11 +138,11 @@ jobs:
           wait "$interview_pid" || result=1
           wait "$interviewer_pid" || result=1
 
-          node scripts/chromatic-observability.mjs \
+          node scripts/ci/chromatic-observability.mjs \
             fresco-ui "$RUNNER_TEMP/chromatic-fresco-ui.log" skipped
-          node scripts/chromatic-observability.mjs \
+          node scripts/ci/chromatic-observability.mjs \
             interview "$RUNNER_TEMP/chromatic-interview.log" skipped
-          node scripts/chromatic-observability.mjs \
+          node scripts/ci/chromatic-observability.mjs \
             interviewer "$RUNNER_TEMP/chromatic-interviewer.log" skipped
           exit "$result"
       - name: Upload Chromatic diagnostic logs
@@ -226,7 +226,7 @@ jobs:
               }
             }')
           else
-            selection=$(node scripts/chromatic-affected.mjs \
+            selection=$(node scripts/ci/chromatic-affected.mjs \
               --base "$BEFORE_SHA" \
               --head "$head_sha" \
               --main "origin/$DEFAULT_BRANCH" \
@@ -323,7 +323,7 @@ jobs:
             wait "$pid" || result=1
           done
           for project in "${projects[@]}"; do
-            node scripts/chromatic-observability.mjs \
+            node scripts/ci/chromatic-observability.mjs \
               "$project" "$RUNNER_TEMP/chromatic-$project.log" skipped
           done
           exit "$result"
@@ -370,7 +370,7 @@ jobs:
       - name: Summarize Chromatic build
         if: always()
         run: >-
-          node scripts/chromatic-observability.mjs
+          node scripts/ci/chromatic-observability.mjs
           fresco-ui
           "$RUNNER_TEMP/chromatic-fresco-ui.log"
           affected
@@ -417,7 +417,7 @@ jobs:
       - name: Summarize Chromatic build
         if: always()
         run: >-
-          node scripts/chromatic-observability.mjs
+          node scripts/ci/chromatic-observability.mjs
           interview
           "$RUNNER_TEMP/chromatic-interview.log"
           affected
@@ -464,7 +464,7 @@ jobs:
       - name: Summarize Chromatic build
         if: always()
         run: >-
-          node scripts/chromatic-observability.mjs
+          node scripts/ci/chromatic-observability.mjs
           interviewer
           "$RUNNER_TEMP/chromatic-interviewer.log"
           affected

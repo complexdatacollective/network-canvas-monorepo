@@ -37,7 +37,10 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { stageSchema } from '@codaco/protocol-validation';
 import { applyCommands, type Command } from '@codaco/studio-sync/apply';
 
-import type { StageEditorActions } from '../stage-editor-contract.ts';
+import type {
+  StageEditorActions,
+  StageSection,
+} from '../stage-editor-contract.ts';
 import {
   stageDocument,
   type StageFormDraft,
@@ -54,11 +57,11 @@ import {
   type SectionValidationIssue,
 } from './outlineStore.ts';
 import { READ_ONLY_MESSAGE } from './readOnlyRefusal.ts';
-import SectionOutline from './SectionOutline.tsx';
 import {
   type OwnCommandsResult,
   StageEditorFormContext,
 } from './stageEditorContext.ts';
+import { createStageSectionsStore } from './stageSections.ts';
 
 /**
  * Where the slot's own types live is `stage-editor-contract.ts`: they are part
@@ -83,8 +86,9 @@ export type StageEditorShellProps = Readonly<{
  *
  * Every named editor composes sections into this shell, and the shell owns
  * everything a stage editor does regardless of which stage it is editing: one
- * form store holding the whole document, the section outline, the submit that
- * hands the document back, and a slot where the host puts its own buttons.
+ * form store holding the whole document, the register of which sections are
+ * mounted and how each one stands, the submit that hands the document back,
+ * and a slot where the host puts its own buttons.
  *
  * The store is keyed by the stage and by how many drafts have been discarded,
  * because Fresco forms have no reinitialise: opening a different stage is a
@@ -213,6 +217,17 @@ function StageEditorFormBody({
   const storeApi = useContext(FormStoreContext);
   const formRef = useRef<HTMLFormElement>(null);
   const outline = useMemo(() => new SectionOutlineStore(), []);
+  // Beside the registry rather than derived from it on every render: a host
+  // reads this with `useSyncExternalStore`, which re-subscribes whenever the
+  // store's identity moves, and a new store per render would tear its list
+  // down and build it again on every keystroke.
+  const sections = useMemo(
+    () =>
+      storeApi === undefined
+        ? undefined
+        : createStageSectionsStore(outline, storeApi),
+    [outline, storeApi],
+  );
 
   const [refusedWrite, setRefusedWrite] = useState<string | undefined>(
     undefined,
@@ -287,7 +302,10 @@ function StageEditorFormBody({
 
   const handleSubmit = useCallback<FormSubmitHandler>(
     async (values) => {
-      if (storeApi === undefined) {
+      // The store and the sections resolved against it stand or fall together
+      // — the second is made from the first — and neither outliving the form
+      // it belongs to is the same news: there are no values left to save.
+      if (storeApi === undefined || sections === undefined) {
         return { success: false, formErrors: [UNAVAILABLE_MESSAGE] };
       }
       if (readOnly) {
@@ -303,17 +321,28 @@ function StageEditorFormBody({
       working.current = fields;
 
       // The schema's own reading of the stage, for the researcher's benefit.
-      // The problems a control cannot state about itself — a prompt list with
-      // nothing in it, a subject naming no type — belong to the sections that
-      // hold them rather than to one sentence at the top of the page. The rest
-      // are about the stage as a whole and have no section to belong to, so
-      // they are said in the schema's own words at the top.
-      const { sections, whole } = stageProblems(identity, fields);
-      outline.setValidationIssues(sections);
-      if (sections.length > 0 || whole.length > 0) {
+      // Every sentence it can produce is read out above the form, because
+      // that list is the one thing every host renders: an anchored problem
+      // published only to the sections seam reaches a researcher in Architect,
+      // which draws a section list, and nowhere at all in a host that draws
+      // none — a save refused with nothing on screen saying why.
+      //
+      // The anchored ones are still published to the seam as well. There they
+      // are what marks a section and what a row of the list is read out with;
+      // here they are the account of the refusal, named by the section that
+      // answers for each, in the order the sections sit on the page. The rest
+      // are about the stage as a whole and have no section to name, so they
+      // are said in the schema's own words after them.
+      const { sections: anchored, whole } = stageProblems(identity, fields);
+      outline.setValidationIssues(anchored);
+      if (anchored.length > 0 || whole.length > 0) {
+        const said = [...sectionProblems(sections.getSnapshot()), ...whole];
+        // The generic refusal only where the editor has nothing more precise
+        // to say — every anchored problem claimed by a field that is already
+        // stating it beside itself, which is two accounts of one fault.
         return {
           success: false,
-          formErrors: whole.length > 0 ? whole : [INVALID_STAGE_MESSAGE],
+          formErrors: said.length > 0 ? said : [INVALID_STAGE_MESSAGE],
         };
       }
 
@@ -348,6 +377,7 @@ function StageEditorFormBody({
       outline,
       readOnly,
       save,
+      sections,
       storeApi,
       writeRefusal,
     ],
@@ -454,13 +484,22 @@ function StageEditorFormBody({
     ],
   );
 
-  if (context === null) return null;
+  if (context === null || sections === undefined) return null;
 
   return (
     <StageEditorFormContext value={context}>
-      <div className={cx('@container flex w-full flex-col gap-6', className)}>
-        <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
-          <SectionOutline />
+      <div className={cx('@container flex w-full flex-col', className)}>
+        {/*
+          One column, at the width and with the gutters Architect's stage
+          editor has always had. A host that wants a list of the sections
+          beside the form renders it in its own chrome, out of `sections` on
+          the action slot; this package draws no list of its own.
+
+          `@container` stays on the element above rather than here, so a
+          section asking about the space it has is answered about the room the
+          host gave the editor and not about this column's own cap.
+        */}
+        <div className="phone-landscape:px-6 mx-auto flex w-full max-w-4xl flex-col gap-6 px-4">
           <form
             id={formId}
             ref={formRef}
@@ -492,10 +531,37 @@ function StageEditorFormBody({
               </EnclosingHeadingLevel>
             </LayoutGroup>
           </form>
+          {actions?.({ formId, readOnly, sections })}
         </div>
-        {actions?.({ formId, readOnly })}
       </div>
     </StageEditorFormContext>
+  );
+}
+
+/**
+ * The anchored refusals as sentences for the form's own error list, each named
+ * by the section that answers for it.
+ *
+ * Read from the published sections rather than from the issues themselves, so
+ * there is one resolution of what is wrong and who answers for it: what this
+ * says and what a host's section list says cannot come apart, and a problem a
+ * control is already stating beside itself is left to that control in both.
+ *
+ * Encoded rather than formatted, like every other refusal the form carries:
+ * these are handed to `useForm` as `formErrors` and rendered by `FormErrors`,
+ * which decodes them where they are read, so a refusal already on screen
+ * follows a change of language. The sentence inside is encoded too — or is a
+ * plain one the protocol schema wrote about a named thing, which the same
+ * route passes through untouched.
+ */
+function sectionProblems(sections: readonly StageSection[]): string[] {
+  return sections.flatMap((section) =>
+    section.problems.map((problem) =>
+      createMessageError(messages.sectionProblem, {
+        sectionTitle: section.title,
+        problem: { messageError: problem },
+      }),
+    ),
   );
 }
 
@@ -503,12 +569,13 @@ function StageEditorFormBody({
  * What the schema says is wrong with the stage, split by whether a section can
  * answer for it.
  *
- * A problem anchored at a path belongs to whichever section owns that path, and
- * the outline says so there. A problem anchored at NOTHING is about the stage
- * as a whole — a rule relating two of its keys — and no section can be pointed
- * at for it, so it is read out at the top in the schema's own words. Dropping
- * those was the same as accepting them: the save would have gone ahead with
- * nothing on screen to say why it should not have.
+ * A problem anchored at a path belongs to whichever section owns that path, so
+ * it can be named by that section — above the form, and in a host's own list
+ * of the sections. A problem anchored at NOTHING is about the stage as a whole
+ * — a rule relating two of its keys — and no section can be pointed at for it,
+ * so it is read out in the schema's own words. Dropping either was the same as
+ * accepting it: the save would have gone ahead with nothing on screen to say
+ * why it should not have.
  *
  * Each anchored issue is also asked the question the validator's own answer
  * cannot settle: is this a value that is wrong, or a value that is not there?
@@ -573,10 +640,15 @@ const messages = defineMessages({
   },
   invalidStage: {
     id: 'protocolBuilder.shell.invalidStageRefusal',
-    defaultMessage:
-      'This stage is not finished, so it was not saved. The sections below say what is missing.',
+    defaultMessage: 'This stage is not finished, so it was not saved.',
     description:
-      'Shown above a stage editor’s fields when the stage does not yet satisfy the protocol’s own rules for this interface, so the save was not attempted. A stage is one step of an interview.',
+      'Shown above a stage editor’s fields when the stage does not yet satisfy the protocol’s own rules for this interface, so the save was not attempted, and every fault is already stated beside the control that holds it. A stage is one step of an interview.',
+  },
+  sectionProblem: {
+    id: 'protocolBuilder.shell.sectionProblem',
+    defaultMessage: '{sectionTitle}: {problem}',
+    description:
+      'Shown above a stage editor’s fields, once for each thing the protocol refused about the stage, when the save was not attempted. sectionTitle is the name of the section of the editor that holds the value; problem is a whole sentence saying what is wrong with it, already in the reader’s language. Both are given, so this is only the punctuation that joins them.',
   },
   heldBy: {
     id: 'protocolBuilder.shell.heldBy',

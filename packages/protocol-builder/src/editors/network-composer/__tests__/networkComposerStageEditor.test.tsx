@@ -119,12 +119,14 @@ describe('the network composer stage editor', () => {
     );
     await harness.user.selectOptions(
       await screen.findByRole('combobox', {
-        name: 'Attribute filled in when a node is added',
+        name: 'Create or select an attribute for the quick-add form',
       }),
       'composerName',
     );
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Position attribute' }),
+      screen.getByRole('combobox', {
+        name: 'Create or select an attribute to store node coordinates',
+      }),
       'layout',
     );
     await harness.user.type(
@@ -152,7 +154,9 @@ describe('the network composer stage editor', () => {
     const harness = openFixture();
 
     await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Position attribute' }),
+      await screen.findByRole('combobox', {
+        name: 'Create or select an attribute to store node coordinates',
+      }),
       '',
     );
 
@@ -162,7 +166,7 @@ describe('the network composer stage editor', () => {
         .outline()
         .filter((section) => section.state === 'Has a problem')
         .map((section) => section.title),
-    ).toEqual(['Adding and arranging nodes']);
+    ).toEqual(['Node configuration']);
   });
 
   /**

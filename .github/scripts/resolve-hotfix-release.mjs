@@ -134,7 +134,7 @@ appendFileSync(
   // `newest` feeds release-notes.mjs --since, so the release body also carries
   // any CHANGELOG section whose own release run was dropped while pending.
   // `newest_tag` is the ref a Fresco hotfix vendors its changed packages
-  // against (scripts/mirror-app.mjs --vendor-changed-since).
+  // against (scripts/release/mirror-app.mjs --vendor-changed-since).
   [
     `version=${version}`,
     `label=${label}`,

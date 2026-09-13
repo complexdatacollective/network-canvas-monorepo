@@ -167,10 +167,10 @@ describe('the map a geospatial stage shows', () => {
     await waitFor(() => expect(harness.outline()).toHaveLength(5));
     expect(harness.outline().map((entry) => entry.title)).toEqual([
       'Map access',
-      'Map layer',
-      'Prompts',
+      'Map layers',
+      'Prompt collection',
       'Map appearance',
-      'Starting map view',
+      'Map starting position',
     ]);
   });
 
@@ -203,6 +203,25 @@ describe('the map a geospatial stage shows', () => {
   });
 
   /**
+   * A researcher without a Mapbox account cannot finish this stage, and the
+   * only way out of that is the documentation. Architect linked it from this
+   * hint, so the words have to arrive as a link a researcher can follow, not
+   * as the tags the message writes them in.
+   */
+  it('sends a researcher without a key to the interface documentation', async () => {
+    openEditor();
+
+    const documentation = await screen.findByRole('link', {
+      name: 'documentation',
+    });
+
+    expect(documentation).toHaveAttribute(
+      'href',
+      'https://documentation.networkcanvas.com/en/design-protocols/interface-documentation/geospatial/',
+    );
+  });
+
+  /**
    * The one thing this field exists to do: the property a participant's answer
    * is stored as is read from the layer itself, not typed. The harness serves
    * the real bytes of `regions.geojson`, whose features carry `name`, so a
@@ -223,11 +242,11 @@ describe('the map a geospatial stage shows', () => {
     const harness = openEditor();
 
     await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Basemap' }),
+      screen.getByRole('combobox', { name: 'Mapbox style' }),
       'mapbox://styles/mapbox/dark-v11',
     );
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Show public transport' }),
+      screen.getByRole('switch', { name: 'Show public transit' }),
     );
     const zoom = screen.getByRole('spinbutton', { name: 'Starting zoom' });
     await harness.user.clear(zoom);
@@ -251,9 +270,7 @@ describe('the map a geospatial stage shows', () => {
   it('saves the highlight colour selectable areas are drawn in', async () => {
     const harness = openEditor();
 
-    await harness.user.click(
-      screen.getByRole('radio', { name: 'Highlight color 1' }),
-    );
+    await harness.user.click(screen.getByRole('radio', { name: 'Sea Green' }));
 
     const request = await harness.submit();
     expect(mapOptionsOf(request?.stageDocument ?? {}).color).toBe(
@@ -273,7 +290,7 @@ describe('the map a geospatial stage shows', () => {
     const harness = openEditor();
 
     await harness.user.click(
-      screen.getByRole('switch', { name: 'Allow searching the map' }),
+      screen.getByRole('switch', { name: 'Allow location search' }),
     );
 
     const request = await harness.submit();
@@ -298,7 +315,7 @@ describe('the map a geospatial stage shows', () => {
     });
 
     expect(
-      screen.getByRole('switch', { name: 'Allow searching the map' }),
+      screen.getByRole('switch', { name: 'Allow location search' }),
     ).toBeChecked();
   });
 

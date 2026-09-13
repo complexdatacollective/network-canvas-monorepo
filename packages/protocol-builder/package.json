@@ -25,6 +25,7 @@
     "./fields/RichTextField": "./src/fields/RichTextField.tsx",
     "./fields/StageNameInput": "./src/fields/StageNameInput.tsx",
     "./form/stageEditorContext": "./src/form/stageEditorContext.ts",
+    "./form/stageSections": "./src/form/stageSections.ts",
     "./interfaces/StageTypeImage": "./src/interfaces/StageTypeImage.tsx",
     "./interfaces/documentation": "./src/interfaces/documentation.ts",
     "./interfaces/interfaceNames": "./src/interfaces/interfaceNames.ts",
