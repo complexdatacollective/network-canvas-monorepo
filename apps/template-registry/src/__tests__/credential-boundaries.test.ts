@@ -146,6 +146,11 @@ it('requires both the requested token scope and live operator status, and keeps 
     authorization: `Bearer ${moderating.token}`,
   });
   await refusal(
+    await fixture.request('GET', '/publisher', undefined, moderatingHeaders),
+    403,
+    'FORBIDDEN',
+  );
+  await refusal(
     await fixture.request(
       'POST',
       `/moderation/entries/${created.entry.id}/takedown`,

@@ -330,14 +330,28 @@ The following declarations are allowed:
 Dataset bytes MUST be valid UTF-8, non-empty, and contain no disallowed C0
 controls. The permitted C0 controls are only TAB (U+0009), LF (U+000A),
 and CR (U+000D); U+0000–U+0008, U+000B–U+000C, and U+000E–U+001F are
-forbidden. CSV whose first non-whitespace character is `<` is invalid. This
-rejects HTML, XML, SVG, comments, processing instructions, and other markup
-regardless of its first token. The CSV check MUST be the ECMAScript regular
+forbidden. CSV MUST consist of one or more records separated by LF or CRLF;
+a final separator is optional, and lone CR is invalid. A record consists of
+one or more comma-separated fields. An unquoted field contains any admitted
+Unicode character except comma, double quote, CR, or LF. A quoted field starts
+and ends with a double quote; inside it, commas, LF, CRLF, and Unicode text are
+allowed, and a literal double quote is represented by two consecutive double
+quotes. A double quote in an unquoted field, an unclosed quoted field, or any
+text between a closing quote and the following comma, record separator, or end
+of input is invalid. Every record MUST have the same number of fields as the
+first record. A blank line is a record containing one empty field, so it is
+valid only in a one-field CSV; a final record separator does not create a blank
+record. These rules are validated in linear time with constant auxiliary
+space.
+
+CSV whose first non-whitespace character is `<` is also invalid. This rejects
+HTML, XML, SVG, comments, processing instructions, and other markup regardless
+of its first token. The leading-markup check MUST be the ECMAScript regular
 expression `/^\s*</` applied to the decoded JavaScript string, without the
 Unicode (`u`) flag. Here `^` anchors the input and `\s*` consumes zero or more
 ECMAScript whitespace code points. For this version, ECMAScript `\s` means
-exactly U+0009–U+000D, U+0020, U+00A0,
-U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000, and U+FEFF.
+exactly U+0009–U+000D, U+0020, U+00A0, U+1680, U+2000–U+200A, U+2028, U+2029,
+U+202F, U+205F, U+3000, and U+FEFF.
 JSON datasets MUST decode to an object or array. JSON and GeoJSON dataset
 objects MUST NOT contain duplicate member names, including names that become
 equal after decoding JSON escapes, at any nesting level. Their decoded member

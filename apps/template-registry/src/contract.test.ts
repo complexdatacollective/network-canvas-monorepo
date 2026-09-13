@@ -764,6 +764,89 @@ describe('generated registry OpenAPI', () => {
         maxLength: 1024,
         pattern: '^[A-Za-z0-9_-]+$',
       });
+
+      for (const [path, method, transport] of [
+        ['/moderation/reports', 'get', 'query'],
+        ['/account/moderation/reports', 'post', 'body'],
+      ] as const) {
+        const reports = record(record(record(candidate.paths)[path])[method]);
+        let after: Record<string, unknown>;
+        if (transport === 'query') {
+          const reportParameters = Array.isArray(reports.parameters)
+            ? reports.parameters.map(record)
+            : [];
+          after = record(
+            reportParameters.find(
+              (parameter) =>
+                parameter.in === 'query' && parameter.name === 'after',
+            )?.schema,
+          );
+        } else {
+          after = record(
+            record(
+              record(
+                record(
+                  record(record(reports.requestBody).content)[
+                    'application/json'
+                  ],
+                ).schema,
+              ).properties,
+            ).after,
+          );
+        }
+        expect(after).toMatchObject({
+          type: 'string',
+          pattern: '^[1-9][0-9]{0,18}$',
+        });
+        const responseSchema = record(
+          record(
+            record(record(record(reports.responses)['200']).content)[
+              'application/json'
+            ],
+          ).schema,
+        );
+        const reportNextCursor = record(
+          record(responseSchema.properties).next_cursor,
+        );
+        const outputString = Array.isArray(reportNextCursor.anyOf)
+          ? reportNextCursor.anyOf
+              .map(record)
+              .find((schema) => schema.type === 'string')
+          : reportNextCursor;
+        expect(outputString).toMatchObject({
+          type: 'string',
+          pattern: '^[1-9][0-9]{0,18}$',
+        });
+      }
+
+      for (const [path, method, scope] of [
+        ['/entries', 'post', 'publish'],
+        ['/entries/{id}/yank', 'post', 'publish'],
+        ['/publisher', 'get', 'publish'],
+        ['/moderation/entries/{id}/takedown', 'post', 'moderate'],
+        ['/moderation/entries/{id}/restore', 'post', 'moderate'],
+        ['/moderation/artifacts/{root}', 'delete', 'moderate'],
+        ['/moderation/publishers/{id}/suspension', 'put', 'moderate'],
+        ['/moderation/entries/{id}/curation', 'put', 'moderate'],
+        ['/moderation/reports', 'get', 'moderate'],
+      ] as const) {
+        const operation = record(record(record(candidate.paths)[path])[method]);
+        expect(operation['x-registry-token-scopes']).toEqual([scope]);
+        expect(operation.security).toEqual([{ registryToken: [] }]);
+      }
+      for (const [path, method] of [
+        ['/account/moderation/entries/{id}/takedown', 'post'],
+        ['/account/moderation/entries/{id}/restore', 'post'],
+        ['/account/moderation/artifacts/{root}', 'delete'],
+        ['/account/moderation/publishers/{id}/suspension', 'put'],
+        ['/account/moderation/entries/{id}/curation', 'put'],
+        ['/account/moderation/reports', 'post'],
+      ] as const) {
+        const operation = record(record(record(candidate.paths)[path])[method]);
+        expect(operation['x-registry-operator-required']).toBe(true);
+        expect(operation['x-registry-token-scopes']).toBeUndefined();
+        expect(operation.security).toEqual([{ registrySession: [] }]);
+      }
     }
   });
 

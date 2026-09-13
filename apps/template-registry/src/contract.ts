@@ -23,6 +23,7 @@ import {
   CreateTokenSchema,
   PublisherSchema,
   ReportSchema,
+  ReportCursorSchema,
   ReportsPageSchema,
   TokenDescriptionSchema,
 } from './account-contract.ts';
@@ -69,6 +70,7 @@ const route = oc.errors({
 });
 const bearer = [{ registryToken: [] }];
 const cookie = [{ registrySession: [] }];
+type TokenScope = 'publish' | 'moderate';
 const entryId = z.strictObject({ id: z.uuid() });
 const artifactRoot = z.strictObject({ root: TemplateContentHashSchema });
 const empty = z.strictObject({});
@@ -112,10 +114,33 @@ function securedOperation<T extends { parameters?: readonly unknown[] }>(
     : secured;
 }
 
+function tokenOperation<T>(operation: T, scope: TokenScope) {
+  return {
+    ...operation,
+    'security': bearer,
+    'x-registry-token-scopes': [scope],
+  };
+}
+
+function operatorSessionOperation<
+  T extends { parameters?: readonly unknown[] },
+>(operation: T) {
+  return {
+    ...securedOperation(operation, cookie),
+    'x-registry-operator-required': true,
+  };
+}
+
 function moderationRoutes(
   prefix: '/moderation' | '/account/moderation',
   security: typeof bearer | typeof cookie,
 ) {
+  const secure = <T extends { parameters?: readonly unknown[] }>(
+    operation: T,
+  ) =>
+    security === bearer
+      ? tokenOperation(operation, 'moderate')
+      : operatorSessionOperation(operation);
   return {
     takedown: route
       .meta(
@@ -124,7 +149,7 @@ function moderationRoutes(
           path: `${prefix}/entries/{id}/takedown`,
           summary: 'Remove access to an entry’s artifact across all locators',
           inputStructure: 'detailed',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(entryTarget)
@@ -136,7 +161,7 @@ function moderationRoutes(
           path: `${prefix}/entries/{id}/restore`,
           summary: 'Restore access after a takedown',
           inputStructure: 'detailed',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(entryTarget)
@@ -149,7 +174,7 @@ function moderationRoutes(
           summary: 'Permanently remove content and queue object cleanup',
           successStatus: 202,
           inputStructure: 'detailed',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(artifactTarget)
@@ -161,7 +186,7 @@ function moderationRoutes(
           path: `${prefix}/publishers/{id}/suspension`,
           summary: 'Suspend or reinstate a publisher',
           inputStructure: 'detailed',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(
@@ -179,7 +204,7 @@ function moderationRoutes(
           path: `${prefix}/entries/{id}/curation`,
           summary: 'Grant or revoke the curated badge',
           inputStructure: 'detailed',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(
@@ -196,15 +221,12 @@ function moderationRoutes(
           method: security === cookie ? 'POST' : 'GET',
           path: `${prefix}/reports`,
           summary: 'Read pending reports',
-          spec: (operation) => securedOperation(operation, security),
+          spec: secure,
         }),
       )
       .input(
         z.strictObject({
-          after: z
-            .string()
-            .regex(/^[1-9][0-9]{0,18}$/)
-            .optional(),
+          after: ReportCursorSchema.optional(),
           limit: z.coerce.number().int().min(1).max(100).default(20),
         }),
       )
@@ -280,7 +302,7 @@ export const registryContract = {
         path: '/entries',
         summary: 'Publish a verified template artifact',
         successStatus: 201,
-        spec: (operation) => ({ ...operation, security: bearer }),
+        spec: (operation) => tokenOperation(operation, 'publish'),
       }),
     )
     .input(
@@ -296,7 +318,7 @@ export const registryContract = {
         path: '/entries/{id}/yank',
         summary: 'Withdraw an entry from browsing',
         inputStructure: 'detailed',
-        spec: (operation) => ({ ...operation, security: bearer }),
+        spec: (operation) => tokenOperation(operation, 'publish'),
       }),
     )
     .input(entryTarget)
@@ -319,7 +341,7 @@ export const registryContract = {
         method: 'GET',
         path: '/publisher',
         summary: 'Verify the registry credential and publisher',
-        spec: (operation) => ({ ...operation, security: bearer }),
+        spec: (operation) => tokenOperation(operation, 'publish'),
       }),
     )
     .output(PublisherSchema),
@@ -412,7 +434,7 @@ export async function generateRegistryOpenApi(options: {
             scheme: 'bearer',
             bearerFormat: 'ncr1_<256-bit secret>',
             description:
-              'Registry-issued credentials. Studio instance API tokens do not authenticate here.',
+              'Registry-issued credentials. Operations declare their required publish or moderate scope with x-registry-token-scopes. Studio instance API tokens do not authenticate here.',
           },
           registrySession: {
             type: 'apiKey',
@@ -421,7 +443,7 @@ export async function generateRegistryOpenApi(options: {
               ? '__Secure-registry.session_token'
               : 'registry.session_token',
             description:
-              'Verified email session issued by this registry. Account writes also require the registry Origin header.',
+              'Verified email session issued by this registry. Account writes also require the registry Origin header; moderation operations separately declare x-registry-operator-required.',
           },
         },
       },
