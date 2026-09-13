@@ -9,6 +9,7 @@ import protocol from '../../store/modules/protocol';
 import session, { updatePrompt } from '../../store/modules/session';
 import ui from '../../store/modules/ui';
 import { AnalyticsContext } from '../AnalyticsContext';
+import { abandonStageTimingBeforeFlush } from '../stageTimingLifecycle';
 import type { Tracker } from '../tracker';
 import { useStageNavigationAnalytics } from '../useStageNavigationAnalytics';
 
@@ -261,10 +262,7 @@ describe('useStageNavigationAnalytics', () => {
 
   it('emits interview_finished with the sum of completed stage durations', () => {
     const tracker = { track: vi.fn(), captureException: vi.fn() };
-    const wrapper = makeWrapper(tracker, [
-      { type: 'Information' },
-      { type: 'FinishSession' },
-    ]);
+    const wrapper = makeWrapper(tracker, [{ type: 'Information' }]);
     const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
     const { rerender } = renderHook(
       (props: { stage_index: number; stage_type?: string }) =>
@@ -290,7 +288,7 @@ describe('useStageNavigationAnalytics', () => {
     expect(tracker.track).toHaveBeenCalledWith(
       'interview_finished',
       expect.objectContaining({
-        stage_count: 2,
+        stage_count: 1,
         total_duration_ms: 125,
       }),
     );
@@ -301,24 +299,19 @@ describe('useStageNavigationAnalytics', () => {
 
   it('includes persisted authored stage durations when a resumed interview finishes', () => {
     const tracker = { track: vi.fn(), captureException: vi.fn() };
-    const wrapper = makeWrapper(
-      tracker,
-      [{ type: 'Information' }, { type: 'FinishSession' }],
-      0,
-      {
-        stageExits: [
-          {
-            stageIndex: 0,
-            stageType: 'Information',
-            promptIndex: 0,
-            promptCount: 1,
-            durationMs: 125,
-            exitDirection: 'forward',
-          },
-        ],
-        promptExits: [],
-      },
-    );
+    const wrapper = makeWrapper(tracker, [{ type: 'Information' }], 0, {
+      stageExits: [
+        {
+          stageIndex: 0,
+          stageType: 'Information',
+          promptIndex: 0,
+          promptCount: 1,
+          durationMs: 125,
+          exitDirection: 'forward',
+        },
+      ],
+      promptExits: [],
+    });
     const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
     const { rerender } = renderHook(
       (props: { stage_index: number; stage_type?: string }) =>
@@ -341,12 +334,9 @@ describe('useStageNavigationAnalytics', () => {
     );
   });
 
-  it('does not add synthetic FinishSession time to completed duration', () => {
+  it('does not author synthetic FinishSession exits on unmount', async () => {
     const tracker = { track: vi.fn(), captureException: vi.fn() };
-    const wrapper = makeWrapper(tracker, [
-      { type: 'Information' },
-      { type: 'FinishSession' },
-    ]);
+    const wrapper = makeWrapper(tracker, [{ type: 'Information' }]);
     const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
     const { rerender, unmount } = renderHook(
       (props: { stage_index: number; stage_type?: string }) =>
@@ -360,6 +350,7 @@ describe('useStageNavigationAnalytics', () => {
     rerender({ stage_index: 1, stage_type: 'FinishSession' });
     now.mockReturnValue(1500);
     unmount();
+    await Promise.resolve();
 
     expect(
       tracker.track.mock.calls.filter(([name]) => name === 'stage_exited'),
@@ -368,14 +359,16 @@ describe('useStageNavigationAnalytics', () => {
       'interview_finished',
       expect.objectContaining({ total_duration_ms: 125 }),
     );
+    expect(wrapper.store.getState().session.stageTiming).toMatchObject({
+      stageExits: [expect.objectContaining({ stageType: 'Information' })],
+      promptExits: [expect.objectContaining({ stageType: 'Information' })],
+      totalDurationMs: 125,
+    });
   });
 
-  it('refreshes the stored total whenever FinishSession is revisited', () => {
+  it('ignores FinishSession exits on back navigation and retains authored totals', () => {
     const tracker = { track: vi.fn(), captureException: vi.fn() };
-    const wrapper = makeWrapper(tracker, [
-      { type: 'Information' },
-      { type: 'FinishSession' },
-    ]);
+    const wrapper = makeWrapper(tracker, [{ type: 'Information' }]);
     const now = vi.spyOn(performance, 'now').mockReturnValue(1000);
     const { rerender } = renderHook(
       (props: { stage_index: number; stage_type?: string }) =>
@@ -401,6 +394,44 @@ describe('useStageNavigationAnalytics', () => {
         ([name]) => name === 'interview_finished',
       ),
     ).toHaveLength(1);
+    expect(wrapper.store.getState().session.stageTiming).toMatchObject({
+      stageExits: [
+        expect.objectContaining({ stageType: 'Information', durationMs: 100 }),
+        expect.objectContaining({ stageType: 'Information', durationMs: 50 }),
+      ],
+      promptExits: [
+        expect.objectContaining({ stageType: 'Information', durationMs: 100 }),
+        expect.objectContaining({ stageType: 'Information', durationMs: 50 }),
+      ],
+      totalDurationMs: 150,
+    });
+  });
+
+  it('does not author synthetic FinishSession exits when hidden', () => {
+    const tracker = { track: vi.fn(), captureException: vi.fn() };
+    const wrapper = makeWrapper(tracker, [{ type: 'Information' }]);
+    vi.spyOn(performance, 'now').mockReturnValue(1000);
+    renderHook(
+      () =>
+        useStageNavigationAnalytics({
+          stage_index: 1,
+          stage_type: 'FinishSession',
+        }),
+      { wrapper },
+    );
+
+    act(() => abandonStageTimingBeforeFlush(wrapper.store));
+
+    expect(wrapper.store.getState().session.stageTiming).toMatchObject({
+      stageExits: [],
+      promptExits: [],
+      totalDurationMs: 0,
+    });
+    expect(
+      tracker.track.mock.calls.filter(
+        ([name]) => name === 'stage_exited' || name === 'prompt_exited',
+      ),
+    ).toEqual([]);
   });
 
   it('does not record an unavailable render-gated step before recovery', () => {
