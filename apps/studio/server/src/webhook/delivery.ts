@@ -82,14 +82,24 @@ export type WebhookSender = {
   send(input: WebhookRequest): Promise<number>;
 };
 
+function validatedWebhookStatus(status: number | undefined): number {
+  if (
+    status === undefined ||
+    !Number.isInteger(status) ||
+    status < 100 ||
+    status > 599
+  )
+    throw new WebhookDeliveryError('retryable');
+  return status;
+}
+
 export function consumeWebhookResponse(response: {
   statusCode?: number;
   destroy(error?: Error): unknown;
 }): number {
   const status = response.statusCode;
   response.destroy();
-  if (status === undefined) throw new WebhookDeliveryError('retryable');
-  return status;
+  return validatedWebhookStatus(status);
 }
 
 function isPublicAddress(address: string): boolean {
@@ -555,13 +565,15 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
       const signature = `v1,${createHmac('sha256', secret)
         .update(`${claim.webhookId}.${timestamp}.${body}`)
         .digest('base64')}`;
-      const status = await this.sender.send({
-        id: claim.webhookId,
-        url: claim.url,
-        timestamp,
-        signature,
-        body,
-      });
+      const status = validatedWebhookStatus(
+        await this.sender.send({
+          id: claim.webhookId,
+          url: claim.url,
+          timestamp,
+          signature,
+          body,
+        }),
+      );
       claim.responseStatus = status;
       if (status >= 200 && status < 300) return;
       const retryable =

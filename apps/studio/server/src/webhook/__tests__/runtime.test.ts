@@ -276,6 +276,66 @@ describe('webhook runtime', () => {
     expect(destroyed).toBe(true);
   });
 
+  it.each([99, 600, 700, 200.5, Number.NaN])(
+    'rejects an out-of-range or non-integer response status %s after closing its stream',
+    (statusCode) => {
+      let destroyed = false;
+      expect(() =>
+        consumeWebhookResponse({
+          statusCode,
+          destroy() {
+            destroyed = true;
+          },
+        }),
+      ).toThrow('webhook delivery retryable');
+      expect(destroyed).toBe(true);
+    },
+  );
+
+  it('retries an invalid sender status without poisoning persisted delivery state', async () => {
+    await participantFixture(async (fixture) => {
+      await addSubscription(fixture);
+      await enqueue(fixture);
+      const statuses = [700, 204];
+      const worker = startWebhookDeliveryWorker({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        leaseMs: 5_000,
+        retryBaseMs: 0,
+        retryMaxMs: 0,
+        pollIntervalMs: 2,
+        sender: {
+          async send() {
+            return statuses.shift() ?? 204;
+          },
+        },
+      });
+      try {
+        await expect
+          .poll(
+            async () =>
+              (
+                await fixture.scratch.pool.query<{
+                  delivered: boolean;
+                  attempt_count: number;
+                  last_status_code: number | null;
+                }>(
+                  'SELECT delivered_at IS NOT NULL AS delivered,attempt_count,last_status_code FROM webhook_deliveries',
+                )
+              ).rows[0],
+            { timeout: 5_000 },
+          )
+          .toEqual({
+            delivered: true,
+            attempt_count: 2,
+            last_status_code: 204,
+          });
+      } finally {
+        await worker.stop();
+      }
+    });
+  });
+
   it('rechecks administration and never exposes stored secret material', async () => {
     await participantFixture(async (fixture) => {
       const auth = stubAuthService({
