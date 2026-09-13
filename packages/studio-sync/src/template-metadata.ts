@@ -1,5 +1,16 @@
 import { z } from 'zod';
 
+/** UUID validation with an end assertion that is strict across regex runtimes. */
+export const StrictUuidSchema = z
+  .uuid()
+  .refine(
+    (value) =>
+      /^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\s\S])/.test(
+        value,
+      ),
+    { message: 'Invalid UUID' },
+  );
+
 export const TemplateKindSchema = z.enum([
   'protocol',
   'stage',
@@ -95,7 +106,7 @@ export function hasCuratedMetadata(metadata: TemplateMetadata): boolean {
 /** Machine-written instance provenance is separate from author metadata. */
 export const TemplateRegistryOriginSchema = z.strictObject({
   registry_url: link,
-  entry_id: z.uuid(),
-  source_version_hash: z.string().regex(/^[0-9a-f]{64}$/),
+  entry_id: StrictUuidSchema,
+  source_version_hash: z.string().regex(/^[0-9a-f]{64}$(?![\s\S])/),
   fetched_at: z.iso.datetime(),
 });
