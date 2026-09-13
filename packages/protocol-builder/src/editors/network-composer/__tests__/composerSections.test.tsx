@@ -2269,6 +2269,69 @@ describe('the rules a composer field authors', () => {
   });
 
   /**
+   * And the attribute a row has just STOPPED rendering is not one of this
+   * form's either.
+   *
+   * The list the row belongs to holds what was committed, so the row under
+   * edit still names its old attribute while the picker shows the new one —
+   * and read as part of this form, an attribute the row has moved off is
+   * judged at a codebook control nothing renders it with, refusing a
+   * comparison the protocol accepts. The row's committed name is the one
+   * `siblingRenderings` already leaves out, for the same reason.
+   */
+  it('ignores the attribute the row under edit has moved off', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            { id: 'field-1', variable: 'isKin', component: 'Boolean' },
+            { id: 'field-2', variable: 'isPinned', component: 'Boolean' },
+          ],
+        },
+      }),
+    );
+    for (const variableId of ['isKin', 'isPinned', 'isClose']) {
+      addPersonVariable(harness, variableId, {
+        name: variableId,
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+      });
+    }
+    // `isKin` is asked for by another composer as well, with a control this
+    // editor cannot see — so once this row moves off it, nothing here renders
+    // it.
+    composerInAnotherStage(harness, [
+      { id: 'other-field-1', variable: 'isKin', component: 'Toggle' },
+    ]);
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await chooseAttributeById(harness.user, picker('Attribute'), 'isClose');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Different from another attribute',
+      }),
+    );
+
+    const targets = screen.getByRole('combobox', {
+      name: 'Different from another attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(targets).getByRole('option', { name: 'isKin' }),
+      ).toBeInTheDocument(),
+    );
+    // The one this form still renders is refused, so what changed is which
+    // attributes count as this form's rather than the reading itself.
+    expect(
+      within(targets).queryByRole('option', { name: 'isPinned' }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
    * And not against a control this form does not choose.
    *
    * A composer field's control lives on the stage, so an attribute another
