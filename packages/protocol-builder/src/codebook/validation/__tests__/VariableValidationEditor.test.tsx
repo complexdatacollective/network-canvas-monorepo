@@ -285,4 +285,51 @@ describe('VariableValidationEditor', () => {
     expect(onChange).toHaveBeenCalledExactlyOnceWith({ maxValue: 9 });
     expect(onSubmit).not.toHaveBeenCalled();
   });
+  /**
+   * Typing is held in the editor rather than in the map, so a value replaced
+   * from outside — a collaborator's change to the same attribute — left the
+   * box showing text about a number that is no longer there, and the next
+   * commit wrote that text over their change.
+   */
+  it('drops typing the value moved out from under', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <VariableValidationEditor
+        entity="node"
+        variableType="number"
+        currentVariableId="age"
+        allVariables={variables}
+        value={{ maxValue: 5 }}
+        onChange={onChange}
+      />,
+    );
+
+    const box = screen.getByRole('spinbutton', { name: 'Maximum value' });
+    await user.clear(box);
+    await user.type(box, '40');
+    expect(onChange).not.toHaveBeenCalled();
+
+    rerender(
+      <VariableValidationEditor
+        entity="node"
+        variableType="number"
+        currentVariableId="age"
+        allVariables={variables}
+        value={{ maxValue: 12 }}
+        onChange={onChange}
+      />,
+    );
+
+    expect(
+      screen.getByRole('spinbutton', { name: 'Maximum value' }),
+    ).toHaveValue(12);
+    // Leaving the box commits it, and then the rule is switched on: neither
+    // carries the forty that was typed over the five.
+    await user.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+    expect(onChange.mock.calls.map(([map]) => map)).toEqual([
+      { maxValue: 12 },
+      { maxValue: 12, required: true },
+    ]);
+  });
 });
