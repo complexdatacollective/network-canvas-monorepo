@@ -217,11 +217,13 @@ export default function QuickAddSection() {
 
   // Answered as an outcome rather than by writing the picker itself: the
   // control owns the name box and what becomes of the name in it, and the
-  // caller owns where the attribute goes. The refusal is kept and shown here,
-  // because the picker is handed an outcome with no words of its own.
+  // caller owns where the attribute goes. The refusal travels back WITH the
+  // outcome rather than being shown here: the name was typed in the picker's
+  // window, the window stays open on it, and this section is inert behind it
+  // while it does — so a sentence left here is one the researcher cannot read
+  // until they have given up on the name it was written about.
   const createVariable = useCreateCodebookVariable(subject);
   const answerLands = useWhereTheAnswerLands(subject, () => fillsIn);
-  const [problem, setProblem] = useState<string | undefined>(undefined);
 
   const createQuickAddAttribute = useCallback(
     async (variableName: string): Promise<CreateOptionOutcome> => {
@@ -238,10 +240,8 @@ export default function QuickAddSection() {
         type: QUICK_ADD_TYPE,
       });
       if (outcome.status === 'refused') {
-        setProblem(outcome.message);
-        return { status: 'refused' };
+        return { status: 'refused', message: outcome.message };
       }
-      setProblem(undefined);
       // The codebook holds it either way. Selecting it is only right while
       // this section is still pointed where the create was asked from: a stage
       // repointed at another type would be left naming an attribute the new
@@ -280,13 +280,6 @@ export default function QuickAddSection() {
         namesInUse={namesInUse}
         required={CHOOSE_AN_ATTRIBUTE}
       />
-      {problem !== undefined && (
-        <Alert variant="destructive" className="my-7">
-          <AlertDescription>
-            {formatMessageError(problem, intl) ?? problem}
-          </AlertDescription>
-        </Alert>
-      )}
       <QuickAddAnswerRequirement
         subject={subject}
         typeName={typeName}
