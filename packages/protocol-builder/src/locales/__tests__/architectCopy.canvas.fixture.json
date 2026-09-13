@@ -54,6 +54,16 @@
     "es": "Validación de la frase de contraseña",
     "from": "74a07e626 architect.sections.anonymisation.anonymisationValidation.passphraseValidation"
   },
+  "protocolBuilder.anonymisation.storageNotice": {
+    "en": "Values for encrypted attributes are not stored in the database.",
+    "es": "Los valores de los atributos cifrados no se guardan en la base de datos.",
+    "from": "74a07e626 architect.sections.anonymisation.encryptedVariables.valuesForEncryptedAttributesAreNot"
+  },
+  "protocolBuilder.anonymisation.typeSwitchDescription": {
+    "en": "Enable encryption for attributes belonging to this node type.",
+    "es": "Activar el cifrado de atributos pertenecientes a este tipo de nodo.",
+    "from": "74a07e626 architect.sections.anonymisation.encryptedVariables.enableEncryptionForAttributesBelongingTo"
+  },
   "protocolBuilder.geospatial.accessDescription": {
     "en": "Provide the Mapbox API key required to display the map.",
     "es": "Proporciona la clave de API de Mapbox necesaria para mostrar el mapa.",

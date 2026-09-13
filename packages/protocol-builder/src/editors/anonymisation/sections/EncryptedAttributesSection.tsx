@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import {
@@ -179,6 +179,19 @@ export default function EncryptedAttributesSection() {
   >(undefined);
   const [busy, setBusy] = useState(false);
   const { confirm } = useDialog();
+  /**
+   * Whether this researcher may still write, at the moment a decision is acted
+   * on rather than at the moment it was asked for.
+   *
+   * The sweep waits on a confirmation the researcher answers in their own
+   * time, and the lock can go in that window. The stage's read-only state does
+   * not reach the codebook — `encrypted` lives in a codebook section with a
+   * lock of its own, which a host grants a spectating editor — so nothing
+   * downstream would refuse the write. A deferred create asks the same
+   * question of its own slot (`useCreateAttributeForSlot`'s `liveTarget`).
+   */
+  const writable = useRef(!readOnly);
+  writable.current = !readOnly;
 
   const nodeTypes = useMemo<readonly NodeTypeView[]>(() => {
     const definitions = protocolContext.codebook.node ?? {};
@@ -319,6 +332,7 @@ export default function EncryptedAttributesSection() {
       onConfirm: () => undefined,
     });
     if (confirmed !== true) return false;
+    if (!writable.current) return false;
     return clearType(view);
   };
 

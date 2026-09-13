@@ -67,6 +67,33 @@ describe('the anonymisation sections, read in Spanish', () => {
   });
 
   /**
+   * The two sentences the encrypted-attributes section says about storage and
+   * about one type's switch, in Architect's own words.
+   *
+   * Read in Spanish and as literals, so a catalog that lost either — or an
+   * `es` entry left behind at the package's invented sentence — fails here
+   * rather than in the fixture alone: the fixture proves the catalog carries
+   * the string, this proves the section still puts it on screen.
+   */
+  it('says where an encrypted value is not kept, and what a type’s switch does', async () => {
+    openEditor();
+
+    expect(
+      await screen.findByText(
+        'Los valores de los atributos cifrados no se guardan en la base de datos.',
+      ),
+    ).toBeInTheDocument();
+    // Read off the switch itself rather than as loose text: every node type
+    // carries this sentence, and the one that matters is the one the switch
+    // being read announces.
+    expect(
+      screen.getByRole('switch', { name: 'person' }),
+    ).toHaveAccessibleDescription(
+      'Activar el cifrado de atributos pertenecientes a este tipo de nodo.',
+    );
+  });
+
+  /**
    * The confirmation is the one thing this family says through somebody else's
    * component — `BuilderSection` renders it — so it is where a string handed
    * over instead of a descriptor would still be English here.

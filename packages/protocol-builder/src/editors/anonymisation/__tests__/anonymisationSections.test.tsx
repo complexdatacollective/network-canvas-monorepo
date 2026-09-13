@@ -1,14 +1,20 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import {
+  StageEditorFormContext,
+  useStageEditorForm,
+} from '../../../form/stageEditorContext.ts';
 import type { InMemoryClient } from '../../../testing/host/createInMemoryHost.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../testing/renderStageEditor.tsx';
 import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
+import EncryptedAttributesSection from '../sections/EncryptedAttributesSection.tsx';
 import {
   alreadyProtecting,
   attributeCheckbox,
@@ -16,6 +22,29 @@ import {
   personVariable,
   switchOnType,
 } from './anonymisationFixtures.tsx';
+
+/**
+ * Mounts a section on a form the test can make read-only without taking it
+ * away.
+ *
+ * The shell's own transition cannot be driven here: a stage refused for its
+ * lock discards the draft and remounts everything under it, so a confirmation
+ * opened before that is a closure from a subtree that no longer exists. What
+ * this section has to get right is the question it asks when the researcher
+ * answers, and the context it reads that from is what moves here.
+ */
+function UntilTheEditorIsReadOnly({
+  stop,
+  children,
+}: Readonly<{ stop: { now: () => void }; children: ReactNode }>) {
+  const context = useStageEditorForm();
+  const [readOnly, setReadOnly] = useState(false);
+  stop.now = () => setReadOnly(true);
+  const value = useMemo(() => ({ ...context, readOnly }), [context, readOnly]);
+  return (
+    <StageEditorFormContext value={value}>{children}</StageEditorFormContext>
+  );
+}
 
 const openEditor = (): StageEditorHarness =>
   renderStageEditor({
@@ -638,6 +667,56 @@ describe('the attributes a passphrase protects', () => {
       expect(Object.hasOwn(personVariable(harness, 'name'), 'encrypted')).toBe(
         false,
       );
+    });
+
+    /**
+     * The editor going read-only WHILE the confirmation is on screen stops the
+     * sweep.
+     *
+     * The switch is disabled for a spectator, so the only way into this state
+     * is to lose the lock between the press and the answer — and the answer is
+     * a researcher's, so the window is as long as they take. The stage's
+     * read-only state does not reach the codebook: `encrypted` lives in a
+     * codebook section with a lock of its own, which the host grants a
+     * spectating editor perfectly happily. So the decision has to be re-asked
+     * where it is acted on, exactly as a deferred create re-asks whether its
+     * slot may still be written (`useCreateAttributeForSlot`'s `liveTarget`).
+     */
+    it('does not sweep when the editor goes read-only mid-confirmation', async () => {
+      const stopWriting = { now: () => undefined as void };
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        client: alreadyProtecting('name'),
+        sections: (
+          <UntilTheEditorIsReadOnly stop={stopWriting}>
+            <EncryptedAttributesSection />
+          </UntilTheEditorIsReadOnly>
+        ),
+      });
+      await waitFor(() =>
+        expect(attributeCheckbox('person', 'name')).toBeChecked(),
+      );
+
+      await harness.user.click(screen.getByRole('switch', { name: 'person' }));
+      await screen.findByRole('button', {
+        name: 'Clear encrypted attributes',
+      });
+      act(() => {
+        stopWriting.now();
+      });
+      await confirmClear(harness);
+
+      // Still protected, and the switch still says so: the researcher's
+      // decision was never carried out, so the type it was about is untouched.
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', {
+            name: 'Clear encrypted attributes',
+          }),
+        ).toBeNull(),
+      );
+      expect(personVariable(harness, 'name').encrypted).toBe(true);
+      expect(screen.getByRole('switch', { name: 'person' })).toBeChecked();
     });
 
     /** Switching a type ON is not a decision about any attribute. */
