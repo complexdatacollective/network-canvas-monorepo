@@ -274,6 +274,7 @@ function dockerEnvironment(root: string, overlay: string) {
     DOCKER_CONFIG: configuration,
     STUDIO_QUALIFICATION_DOCKER: realDocker,
     STUDIO_QUALIFICATION_COMPOSE_OVERLAY: overlay,
+    STUDIO_QUALIFICATION_START_KERNEL_OBSERVERS: '1',
   };
 }
 
@@ -502,11 +503,27 @@ networks:
     }
     throw new Error('Kernel egress observers did not become live.');
   }
+  function assertKernelObserversLive(configuration: string) {
+    for (const service of TELEMETRY_KERNEL_SERVICES) {
+      const running = compose(configuration, [
+        'ps',
+        '--status',
+        'running',
+        '-q',
+        `telemetry-kernel-${service}`,
+      ]).trim();
+      if (!running)
+        throw new Error(`Kernel egress observer ${service} is not running.`);
+      assertKernelTelemetryReady(kernelTelemetryLogs(configuration, service));
+    }
+  }
   function assertTelemetryQuiet(configuration: string) {
-    startKernelObservers(configuration);
-    const kernelLogs = kernelTelemetryLogs(configuration);
-    assertKernelTelemetryReady(kernelLogs);
-    assertNoKernelTelemetryEgress(kernelLogs);
+    assertKernelObserversLive(configuration);
+    for (const service of TELEMETRY_KERNEL_SERVICES) {
+      const kernelLogs = kernelTelemetryLogs(configuration, service);
+      assertKernelTelemetryReady(kernelLogs);
+      assertNoKernelTelemetryEgress(kernelLogs);
+    }
     assertNoTelemetryEgress(telemetryLogs(configuration));
     assertNoProcessTelemetryEgress(
       compose(configuration, [
@@ -520,7 +537,7 @@ networks:
     );
   }
   function proveKernelTelemetryControls(configuration: string) {
-    startKernelObservers(configuration);
+    assertKernelObserversLive(configuration);
     for (const service of TELEMETRY_KERNEL_SERVICES)
       assertKernelTelemetryControls(
         kernelTelemetryLogs(configuration, service),
@@ -727,6 +744,7 @@ networks:
     registerConfiguration: (configuration: string) =>
       configurations.add(configuration),
     startKernelObservers,
+    assertKernelObserversLive,
     registerCleanup: (cleanup: () => void) => extraCleanup.push(cleanup),
     assertTelemetryQuiet,
     proveKernelTelemetryControls,
