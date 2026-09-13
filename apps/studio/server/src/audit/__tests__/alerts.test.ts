@@ -20,6 +20,7 @@ import {
 import { createMailer, type AuditAlertMailer } from '../../auth/email.ts';
 import { createOwnerPool } from '../../db/pool.ts';
 import { createObservability } from '../../observability/runtime.ts';
+import { OutboxDispatcher } from '../../outbox/dispatcher.ts';
 import type { OutboxLifecycleEvent } from '../../outbox/instrumentation.ts';
 import {
   ALERT_EMAIL_DEPLOYMENT_LIMIT,
@@ -936,6 +937,57 @@ describe.skipIf(!db)('audit-alert policy and researcher delivery', () => {
         delivered_at: null,
         uncertain_at: null,
       });
+    } finally {
+      await scratch.dispose();
+    }
+  });
+
+  it('retries an in-app completion write that fails before durable finalization', async () => {
+    const scratch = await fixture();
+    try {
+      await scratch.configure([{ memberId, inApp: true, email: false }]);
+      await scratch.append();
+      const send = vi.fn<AuditAlertMailer['sendAuditAlert']>();
+      const adapter = new AuditAlertDeliveryAdapter({
+        pool: scratch.maintenance,
+        mailer: { sendAuditAlert: send },
+        publicBaseUrl: 'https://studio.example.test',
+      });
+      const recordComplete = adapter.recordComplete.bind(adapter);
+      vi.spyOn(adapter, 'recordComplete')
+        .mockRejectedValueOnce(new Error('injected completion failure'))
+        .mockImplementation(recordComplete);
+      const dispatcher = new OutboxDispatcher({
+        pool: scratch.maintenance,
+        adapter,
+        retryBaseMs: 0,
+        retryMaxMs: 0,
+      });
+
+      await expect(dispatcher.runOnce()).resolves.toMatchObject({
+        completed: 0,
+        retried: 1,
+        uncertain: 0,
+      });
+      expect((await scratch.rows()).rows[0]).toMatchObject({
+        delivered_at: null,
+        uncertain_at: null,
+        last_error: 'send_retryable',
+        attempt_count: 1,
+      });
+
+      await expect(dispatcher.runOnce()).resolves.toMatchObject({
+        completed: 1,
+        retried: 0,
+        uncertain: 0,
+      });
+      expect((await scratch.rows()).rows[0]).toMatchObject({
+        delivered_at: expect.any(Date),
+        uncertain_at: null,
+        last_error: null,
+        attempt_count: 2,
+      });
+      expect(send).not.toHaveBeenCalled();
     } finally {
       await scratch.dispose();
     }
