@@ -1,0 +1,5 @@
+# openapi-python-client does not recognize custom binary media types by default.
+# Keep the published media type in the OpenAPI document and map it only for
+# generated-client parsing.
+content_type_overrides:
+  application/vnd.networkcanvas.template+zip: application/octet-stream

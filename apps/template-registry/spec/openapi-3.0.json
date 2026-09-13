@@ -1039,13 +1039,12 @@
           "200": {
             "description": "OK",
             "content": {
-              "application/octet-stream": {
+              "application/vnd.networkcanvas.template+zip": {
                 "schema": {
                   "type": "string",
                   "format": "binary",
                   "maxLength": 26214400
-                },
-                "x-runtime-content-type": "application/vnd.networkcanvas.template+zip"
+                }
               }
             },
             "headers": {

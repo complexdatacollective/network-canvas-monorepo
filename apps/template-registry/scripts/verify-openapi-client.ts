@@ -17,13 +17,20 @@ const generatedParent = await mkdtemp(
 );
 const generated = join(generatedParent, 'registry_client');
 let receivedLimit: number | undefined;
-// The localhost gate deliberately exposes one public read operation. The complete
+const artifactRoot = 'a'.repeat(64);
+const artifactBytes = new Uint8Array([80, 75, 3, 4, 17, 34]);
+// The localhost gate deliberately exposes two public read operations. The complete
 // store is covered by the service suite, and no authenticated handler runs.
 // oxlint-disable typescript/no-unsafe-type-assertion
 const store = {
   list: async (input: { limit: number }) => {
     receivedLimit = input.limit;
     return { data: [], next_cursor: null, has_more: false };
+  },
+  artifact: async (root: string) => {
+    if (root !== artifactRoot)
+      throw new Error('REGISTRY_ARTIFACT_ROOT_MISMATCH');
+    return { bytes: artifactBytes, rawHash: 'b'.repeat(64), yanked: false };
   },
 } as unknown as RegistryStore;
 const auth = {} as unknown as RegistryAuth;
@@ -56,6 +63,8 @@ try {
     'generate',
     '--path',
     new URL('../spec/openapi-3.0.json', import.meta.url).pathname,
+    '--config',
+    new URL('./openapi-python-client.yaml', import.meta.url).pathname,
     '--output-path',
     generated,
     '--meta',

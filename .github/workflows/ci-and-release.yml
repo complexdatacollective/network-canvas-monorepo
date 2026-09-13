@@ -528,7 +528,8 @@ jobs:
         id: registry-openapi
         continue-on-error: true
         run: |
-          python -m pip install openapi-python-client==0.29.0
+          python -m pip install --require-hashes \
+            -r apps/template-registry/scripts/openapi-python-client-requirements.txt
           pnpm --filter @codaco/template-registry test:openapi-client
       - name: Check unused files, exports, and dependencies
         id: knip
