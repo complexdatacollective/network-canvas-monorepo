@@ -12,7 +12,9 @@ import {
   provisionScratchSchema,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
+import { createRpcClient } from '../../__tests__/support/rpc.ts';
 import type { AuditExportArtifactStore } from '../../assets.ts';
+import { readEnv } from '../../env.ts';
 import { loadTestKeys } from '../../pii/__tests__/fixtures.ts';
 import type { AuditedCommandContext } from '../command.ts';
 import {
@@ -20,7 +22,7 @@ import {
   createAuditExportDispatcher,
   openAuditExportDownload,
   readAuditExportStatus,
-  requestAuditExport,
+  requestAuditExport as requestAuditExportWithAvailability,
 } from '../export.ts';
 
 const db = await reachableDb();
@@ -58,6 +60,14 @@ describe.skipIf(!db)('staged audit export', () => {
       return true;
     },
   };
+
+  const requestAuditExport = (
+    commandContext: AuditedCommandContext,
+    filters: Parameters<typeof requestAuditExportWithAvailability>[1],
+  ) =>
+    requestAuditExportWithAvailability(commandContext, filters, {
+      stagedAvailable: true,
+    });
 
   async function createReadyExport() {
     const requested = await requestAuditExport(
@@ -173,6 +183,115 @@ describe.skipIf(!db)('staged audit export', () => {
     await expect(
       openAuditExportDownload(context, requested.jobId, status.handle, store),
     ).rejects.toThrow('audit export unavailable');
+  });
+
+  it('rejects unavailable staging without committing a job or started event, while direct export still works', async () => {
+    const requestId = randomUUID();
+    const priorJobs = await owner.query(
+      'SELECT id FROM audit_export_jobs ORDER BY id',
+    );
+    const rpc = createRpcClient(
+      createHttpTestApp(
+        { ...readEnv(), s3: undefined },
+        {
+          pool: app,
+          encryptionKeys: await loadTestKeys(),
+          auth: stubAuthService({
+            getSession: () => Promise.resolve(context.principal),
+            getMembership: () => Promise.resolve({ role: 'owner' }),
+          }),
+        },
+      ),
+    );
+    await expect(
+      rpc.audit.export({ teamId: 'export-team' }),
+    ).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
+
+    await expect(
+      requestAuditExportWithAvailability(
+        { ...context, requestId },
+        {},
+        { stagedAvailable: false },
+      ),
+    ).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
+    expect(
+      await owner.query('SELECT id FROM audit_events WHERE request_id=$1', [
+        requestId,
+      ]),
+    ).toHaveProperty('rowCount', 0);
+    expect(
+      await owner.query('SELECT id FROM audit_export_jobs ORDER BY id'),
+    ).toHaveProperty('rows', priorJobs.rows);
+    await expect(
+      requestAuditExportWithAvailability(
+        { ...context, requestId: randomUUID() },
+        { eventTypes: ['absent.fixture'] },
+        { stagedAvailable: false },
+      ),
+    ).resolves.toMatchObject({ deliveryMode: 'direct', rowCount: 0 });
+  });
+
+  it('returns the same typed absence for missing and another actor export jobs', async () => {
+    const keys = await loadTestKeys();
+    await expect(
+      readAuditExportStatus(context, randomUUID(), keys),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    const request = await requestAuditExport(
+      { ...context, requestId: randomUUID() },
+      {},
+    );
+    if (request.deliveryMode !== 'staged') throw new Error('expected staged');
+    await owner.query(
+      "INSERT INTO \"user\" (id,name,email,\"emailVerified\") VALUES ('other-export-owner','Other','other-export@example.test',true)",
+    );
+    await owner.query(`INSERT INTO team_members (id,team_id,user_id,role)
+      VALUES ('other-export-admin','export-team','other-export-owner','admin')`);
+    const otherActor = {
+      ...context,
+      principal: { ...context.principal, userId: 'other-export-owner' },
+    };
+    await expect(
+      readAuditExportStatus(otherActor, request.jobId, keys),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    await owner.query('DELETE FROM audit_export_jobs WHERE id=$1', [
+      request.jobId,
+    ]);
+  });
+
+  it('drops per-attempt memory when lease loss aborts an upload before finalization', async () => {
+    const controller = new AbortController();
+    const abortedStore: AuditExportArtifactStore = {
+      ...store,
+      async putAuditExport(_jobId, _attemptId, _chunks, options) {
+        controller.abort(new Error('lease lost during upload'));
+        options.signal.throwIfAborted();
+        throw new Error('expected abort');
+      },
+    };
+    const adapter = new AuditExportAdapter(
+      maintenance,
+      abortedStore,
+      await loadTestKeys(),
+      0,
+    );
+    const requested = await requestAuditExport(
+      { ...context, requestId: randomUUID() },
+      {},
+    );
+    if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
+    const claim = await adapter.claim(
+      { owner: randomUUID(), durationMs: 30_000 },
+      8,
+    );
+    if (!claim) throw new Error('expected claim');
+    await expect(adapter.deliver(claim, controller.signal)).rejects.toThrow(
+      'lease lost during upload',
+    );
+    // The dispatcher deliberately skips recordFailure after losing its lease.
+    expect(Reflect.get(adapter, 'generated')).toHaveProperty('size', 0);
+    await owner.query('DELETE FROM audit_export_jobs WHERE id=$1', [
+      requested.jobId,
+    ]);
   });
 
   it('releases its lease and retains a retryable job after storage failure', async () => {

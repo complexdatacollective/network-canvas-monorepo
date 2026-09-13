@@ -266,6 +266,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     maintenancePool: deps.maintenancePool,
     protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,
+    auditExportAvailable: Boolean(auditExportStore && deps.encryptionKeys),
     encryptionKeys: deps.encryptionKeys,
     templateRegistryOrigin: env.templateRegistryOrigin,
   });
