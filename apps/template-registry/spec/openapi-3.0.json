@@ -86,14 +86,16 @@
           "id": {
             "type": "string",
             "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Publication UUID for this registry entry."
           },
           "publisher": {
             "$ref": "#/components/schemas/Publisher"
           },
           "root": {
             "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Artifact identity: the merkle_root from the template manifest."
           },
           "template": {
             "type": "object",
@@ -252,14 +254,16 @@
           "id": {
             "type": "string",
             "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Publication UUID for this registry entry."
           },
           "publisher": {
             "$ref": "#/components/schemas/Publisher"
           },
           "root": {
             "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Artifact identity: the merkle_root from the template manifest."
           },
           "template": {
             "type": "object",
@@ -552,7 +556,8 @@
                       }
                     },
                     "next_cursor": {
-                      "type": ["string", "null"]
+                      "type": "string",
+                      "nullable": true
                     },
                     "has_more": {
                       "type": "boolean"
@@ -704,6 +709,11 @@
                 },
                 "required": ["artifact"],
                 "additionalProperties": false
+              },
+              "encoding": {
+                "artifact": {
+                  "contentType": "application/vnd.networkcanvas.template+zip"
+                }
               }
             }
           }
@@ -3592,7 +3602,8 @@
                             ]
                           },
                           "details": {
-                            "type": ["string", "null"]
+                            "type": "string",
+                            "nullable": true
                           },
                           "created_at": {
                             "type": "string",
@@ -3611,7 +3622,8 @@
                       }
                     },
                     "next_cursor": {
-                      "type": ["string", "null"]
+                      "type": "string",
+                      "nullable": true
                     },
                     "has_more": {
                       "type": "boolean"
@@ -4693,7 +4705,8 @@
                             ]
                           },
                           "details": {
-                            "type": ["string", "null"]
+                            "type": "string",
+                            "nullable": true
                           },
                           "created_at": {
                             "type": "string",
@@ -4712,7 +4725,8 @@
                       }
                     },
                     "next_cursor": {
-                      "type": ["string", "null"]
+                      "type": "string",
+                      "nullable": true
                     },
                     "has_more": {
                       "type": "boolean"

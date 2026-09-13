@@ -596,10 +596,41 @@ describe('generated registry OpenAPI', () => {
     expect(JSON.stringify(compatible)).not.toContain('"type":"null"');
     expect(JSON.stringify(compatible)).not.toContain('"contentEncoding"');
     expect(JSON.stringify(compatible)).not.toContain('"contentMediaType"');
+    const nullableTypeArrays: string[] = [];
+    const inspect = (value: unknown, path: string) => {
+      if (Array.isArray(value)) {
+        if (path.endsWith('.type') && value.includes('null')) {
+          nullableTypeArrays.push(path);
+        }
+        value.forEach((child, index) => inspect(child, `${path}[${index}]`));
+        return;
+      }
+      if (value === null || typeof value !== 'object') return;
+      for (const [key, child] of Object.entries(value))
+        inspect(child, `${path}.${key}`);
+    };
+    inspect(compatible, '$');
+    expect(nullableTypeArrays).toEqual([]);
     expect(record(record(compatible.info).license)).toEqual({
       name: 'CC0-1.0',
       url: 'https://creativecommons.org/publicdomain/zero/1.0/',
     });
+    const entrySummary = record(
+      record(record(document.components).schemas).EntrySummary,
+    );
+    expect(record(record(entrySummary.properties).id).description).toBe(
+      'Publication UUID for this registry entry.',
+    );
+    expect(record(record(entrySummary.properties).root).description).toBe(
+      'Artifact identity: the merkle_root from the template manifest.',
+    );
+    const publish = record(record(record(document.paths)['/entries']).post);
+    const multipart = record(
+      record(record(publish.requestBody).content)['multipart/form-data'],
+    );
+    expect(record(record(multipart.encoding).artifact).contentType).toBe(
+      TEMPLATE_ARTIFACT_MEDIA_TYPE,
+    );
     const artifact = record(
       record(record(record(compatible.paths)['/artifacts/{root}']).get)
         .responses,
