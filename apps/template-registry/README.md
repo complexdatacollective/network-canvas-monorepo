@@ -160,7 +160,7 @@ names a private regular JSON file of at most 16 MiB; its exact-byte SHA-256 is
 supplied separately as `REGISTRY_RECOVERY_RECONCILIATION_SHA256`. This is an
 operator-approved inventory, not a signature or evidence of who approved it.
 Its version 3 `inventories` object contains constant-size `users`, `publishers`,
-`operators`, and `entries` records. Each record has a decimal PostgreSQL bigint
+`operators`, `entries`, and `artifacts` records. Each record has a decimal PostgreSQL bigint
 `count` and a lowercase hexadecimal SHA-256 `sha256`. Versions 1 and 2 are
 rejected because they do not bind the complete scalable authority state.
 
@@ -174,14 +174,16 @@ followed by one LF byte, to SHA-256. The row contracts and ordering keys are:
   domain to lowercase before encoding.
 - `publishers`, key `id`: `{ id, userId, suspended }`.
 - `operators`, key `userId`: `{ userId }`; include enabled operators only.
-- `entries`, key `id`: `{ id, publisherId, artifactRoot }`.
+- `entries`, key `id`: `{ id, publisherId, artifactRoot, yanked }`.
+- `artifacts`, key `root`: `{ root, blocked, deleted }`; include every artifact,
+  including blocked content and retained deletion tombstones.
 
 UUIDs and 64-character artifact roots are lowercase. The exported
 `createRegistryRecoveryInventory` helper implements this byte contract and
 rejects repeated or out-of-order rows. Recovery recomputes each digest in
 bounded memory while keyset-scanning the quarantined database. Current users,
-publisher suspension, operator grants, and entry ownership/root associations
-must already match the independently approved inventories exactly; the command
+publisher suspension, operator grants, entry ownership/root associations and
+withdrawal state, and artifact takedown/deletion state must already match the independently approved inventories exactly; the command
 does not derive or repair authority from the restored database. Recovery object storage
 uses the runtime HTTPS policy; a non-loopback HTTP endpoint requires the same
 explicit `REGISTRY_S3_INSECURE_PRIVATE_NETWORK=true` operator opt-in.

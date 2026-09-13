@@ -48,10 +48,16 @@ const inventoryRows = {
     suspended: z.boolean(),
   }),
   operators: z.strictObject({ userId }),
+  artifacts: z.strictObject({
+    root: artifactRoot,
+    blocked: z.boolean(),
+    deleted: z.boolean(),
+  }),
   entries: z.strictObject({
     id: canonicalUuid,
     publisherId: canonicalUuid,
     artifactRoot,
+    yanked: z.boolean(),
   }),
 };
 
@@ -67,7 +73,8 @@ type ParsedInventoryRow =
   | z.output<(typeof inventoryRows)['users']>
   | z.output<(typeof inventoryRows)['publishers']>
   | z.output<(typeof inventoryRows)['operators']>
-  | z.output<(typeof inventoryRows)['entries']>;
+  | z.output<(typeof inventoryRows)['entries']>
+  | z.output<(typeof inventoryRows)['artifacts']>;
 
 function parseInventoryRow<Kind extends RegistryRecoveryInventoryKind>(
   kind: Kind,
@@ -82,6 +89,8 @@ function parseInventoryRow<Kind extends RegistryRecoveryInventoryKind>(
       return inventoryRows.operators.parse(value);
     case 'entries':
       return inventoryRows.entries.parse(value);
+    case 'artifacts':
+      return inventoryRows.artifacts.parse(value);
   }
   throw new Error('Unknown recovery inventory kind.');
 }
@@ -92,6 +101,7 @@ function inventoryRowKey(
 ): string {
   if (kind === 'operators' && 'userId' in value) return value.userId;
   if ('id' in value) return value.id;
+  if ('root' in value) return value.root;
   throw new Error('Recovery inventory row does not match its kind.');
 }
 
@@ -149,6 +159,7 @@ const reconciliationSchema = z.strictObject({
     publishers: inventory,
     operators: inventory,
     entries: inventory,
+    artifacts: inventory,
   }),
 });
 

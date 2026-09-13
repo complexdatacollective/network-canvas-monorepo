@@ -315,6 +315,15 @@ describe('template exchange metadata', () => {
       { ...metadata, related_links: [{ url: 'http://example.org/study' }] },
       { ...metadata, related_links: [{ url: 'ftp://example.org/study' }] },
       { ...metadata, related_links: [{ url: 'mailto:study@example.org' }] },
+      { ...metadata, related_links: [{ url: 'https:///path' }] },
+      {
+        ...metadata,
+        related_links: [{ url: 'https://example.com\\@evil.example/path' }],
+      },
+      {
+        ...metadata,
+        related_links: [{ url: 'https://user:secret@example.org/study' }],
+      },
       {
         ...metadata,
         publications: [{ citation: 'Paper', relation: 'endorses' }],
@@ -682,6 +691,8 @@ describe('portable template artifact', () => {
       'name\n\nExample\n',
       'naïve,tab\n你好,one\tvalue',
       ',\n,',
+      '\n',
+      ' ',
     ];
     const malformed = [
       'name,notes\nExample,"unclosed',
@@ -691,7 +702,7 @@ describe('portable template artifact', () => {
       'name,age\nExample',
       'name,age\n\nExample,25',
     ];
-    expect(valid).toHaveLength(6);
+    expect(valid).toHaveLength(8);
     expect(malformed).toHaveLength(6);
     for (const text of valid) {
       await expect(
@@ -797,6 +808,26 @@ describe('portable template artifact', () => {
           'application/json',
           'network.json',
           '{ "nodes": [{ "id": 1 }], "edges": [] }',
+        ),
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      createTemplateArtifact(
+        datasetFixture(
+          'geojson',
+          'application/geo+json',
+          'features.geojson',
+          '{"type":"GeometryCollection","geometries":[{"type":"Point","coordinates":[1,2]},{"type":"Point","coordinates":[],"bbox":[0,1,2,3,4,5]}]}',
+        ),
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      createTemplateArtifact(
+        datasetFixture(
+          'geojson',
+          'application/geo+json',
+          'features.geojson',
+          '{"type":"Polygon","coordinates":[[[0,0],[0,1],[1,1],[-0,0]]]}',
         ),
       ),
     ).resolves.toBeDefined();
