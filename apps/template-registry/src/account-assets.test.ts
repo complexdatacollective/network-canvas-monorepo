@@ -38,6 +38,9 @@ it('serves only compiled inventory bytes with page CSP and preserves API sandbox
     expect(document.headers.get('Content-Security-Policy')).toContain(
       "script-src 'self'",
     );
+    expect(document.headers.get('Content-Security-Policy')).toContain(
+      'img-src data:',
+    );
     expect(document.headers.get('Content-Security-Policy')).not.toContain(
       'sandbox',
     );
