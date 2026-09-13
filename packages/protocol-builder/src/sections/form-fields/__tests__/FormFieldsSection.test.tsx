@@ -3510,14 +3510,14 @@ describe('rules for the attribute a field is inventing', () => {
   });
 
   /**
-   * The notice reports one change of kind, and ends at the next act that
-   * answers it: a save of the rules editor, which is the researcher looking at
-   * the draft the row holds now, or another change of kind, which asks the
-   * question again. Left standing it would report a loss that has been made
-   * good — a rule sitting in the editor under a sentence saying it was
-   * removed.
+   * The notice ends at the act that answers it: a save of the rules editor,
+   * which is the researcher looking at the draft the row holds now. Left
+   * standing past that it would report a loss that has been made good — a rule
+   * sitting in the editor under a sentence saying it was removed. A change of
+   * kind that takes MORE away is not an end but the same report about a new
+   * loss, so it replaces what the notice names.
    */
-  it('takes the notice down once the draft and the kind agree again', async () => {
+  it('takes the notice down once the rules editor has saved, and names the newest loss', async () => {
     const harness = renderStageEditor({
       stageId: 'alter-form-1',
       sections: <FormFieldsSection subject="node" />,
@@ -3573,13 +3573,118 @@ describe('rules for the attribute a field is inventing', () => {
         'Changing the kind of answer removed a rule that does not carry over: Minimum value.',
       ),
     ).toBeInTheDocument();
+  });
 
-    // And a change of kind that takes nothing away is the end of it: the draft
-    // is empty, so this kind holds everything the last one did.
+  /**
+   * A change of kind that takes nothing away is not an answer to the notice:
+   * it has shown the researcher nothing, and the rules they wrote are still
+   * gone. Ending the notice there loses the only record of the loss — a
+   * mis-selection corrected straight back to the kind it started on would take
+   * the rules with it and say nothing at all.
+   */
+  it('leaves the notice standing through a change of kind that drops nothing', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await startInventing(harness, 'text');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('checkbox', { name: 'Minimum text length' }),
+      ).toBeNull(),
+    );
+
+    const kind = dialog.getByRole('combobox', { name: 'Kind of answer' });
+    await harness.user.selectOptions(kind, 'number');
+    expect(
+      await dialog.findByText(
+        'Changing the kind of answer removed a rule that does not carry over: Minimum text length.',
+      ),
+    ).toBeInTheDocument();
+
+    // The draft is empty now, so a yes/no answer takes nothing off it — and
+    // the rule the researcher wrote is still missing, which is what the
+    // sentence is for.
+    await harness.user.selectOptions(kind, 'boolean');
+    expect(kind).toHaveValue('boolean');
+    expect(
+      dialog.getByText(
+        'Changing the kind of answer removed a rule that does not carry over: Minimum text length.',
+      ),
+    ).toBeInTheDocument();
+
+    // Including the correction back to where it started: the kind is the one
+    // the rule was written for, and the rule is not there.
+    await harness.user.selectOptions(kind, 'text');
+    expect(kind).toHaveValue('text');
+    expect(
+      dialog.getByText(
+        'Changing the kind of answer removed a rule that does not carry over: Minimum text length.',
+      ),
+    ).toBeInTheDocument();
+
+    // Written again, under the kind that takes it: the researcher has looked
+    // at the draft the row holds, so there is nothing left to report.
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        dialog.queryByText(/Changing the kind of answer removed/),
+      ).toBeNull(),
+    );
+  });
+
+  /**
+   * The other end of the notice: the row leaving the invention. The draft it
+   * reports on belongs to an attribute that is no longer being invented, so
+   * the sentence has nothing left to be about — and an attribute the codebook
+   * already holds carries its own rules, which this never described.
+   */
+  it('takes the notice down when the row picks an attribute instead', async () => {
+    const harness = renderStageEditor({
+      stageId: 'alter-form-1',
+      sections: <FormFieldsSection subject="node" />,
+    });
+
+    const dialog = await startInventing(harness, 'text');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
+    );
+    await harness.user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('checkbox', { name: 'Minimum text length' }),
+      ).toBeNull(),
+    );
+
     await harness.user.selectOptions(
       dialog.getByRole('combobox', { name: 'Kind of answer' }),
-      'boolean',
+      'number',
     );
+    expect(
+      await dialog.findByText(
+        'Changing the kind of answer removed a rule that does not carry over: Minimum text length.',
+      ),
+    ).toBeInTheDocument();
+
+    await chooseAttributeById(harness.user, attributePicker(dialog), 'age');
+    expect(collectedAttributeName(dialog, 'age')).toBeInTheDocument();
     await waitFor(() =>
       expect(
         dialog.queryByText(/Changing the kind of answer removed/),
