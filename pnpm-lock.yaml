@@ -338,6 +338,9 @@ importers:
       '@cdktn/hcl2json':
         specifier: 0.24.0
         version: 0.24.0
+      '@aws-sdk/client-dynamodb':
+        specifier: 3.1102.0
+        version: 3.1102.0
       '@changesets/cli':
         specifier: ^3.0.1
         version: 3.0.1
