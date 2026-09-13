@@ -1002,6 +1002,11 @@ describe('the group a census or bin prompt is written in', () => {
           ),
         ).toBeInTheDocument();
       }
+      // The outer group is the tie-strength dialog's alone: the two dyad
+      // censuses share the connection control and are not wrapped in it.
+      expect(
+        dialog.queryByRole('region', { name: 'Tie-strength response' }),
+      ).toEqual(stageId === 'tie-strength-census-1' ? expect.anything() : null);
     },
   );
 });

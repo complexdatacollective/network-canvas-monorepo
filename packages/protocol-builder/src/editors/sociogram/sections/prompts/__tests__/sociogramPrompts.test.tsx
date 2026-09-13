@@ -194,7 +194,9 @@ describe('the tasks a sociogram sets', () => {
 
     const saved = promptsOf((await harness.submit())?.stageDocument ?? {})[0];
     // Absent, not `{ allowHighlighting: false }`: a prompt that never answered
-    // the question still has not.
+    // the question still has not. The prompt itself is asserted first, so a
+    // stage that did not save at all says so rather than throwing.
+    expect(saved).toMatchObject({ id: 'sociogram-prompt-1' });
     expect(saved).not.toHaveProperty('highlight');
   });
 

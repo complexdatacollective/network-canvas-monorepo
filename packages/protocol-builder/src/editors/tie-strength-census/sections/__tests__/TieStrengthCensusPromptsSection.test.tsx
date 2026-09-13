@@ -77,6 +77,42 @@ describe('the questions a tie-strength census asks about a pair', () => {
   });
 
   /**
+   * Everything an affirmative answer creates sits in one titled group, as
+   * released Architect had it
+   * (`sections/TieStrengthCensusPrompts/PromptFields.tsx:364-476`): the
+   * connection, the strength recorded on it, and the way out for a pair with
+   * no connection are one decision with three parts. The question itself is
+   * outside it.
+   */
+  it('wraps the three response decisions in Architect’s own group', async () => {
+    const harness = renderStageEditor(openSection());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit prompt' }),
+    );
+
+    const response = await screen.findByRole('region', {
+      name: 'Tie-strength response',
+    });
+    expect(response).toHaveAccessibleDescription(
+      'Configure the edge and ordinal value created by an affirmative response.',
+    );
+    for (const name of [
+      'Edge creation',
+      'Response attribute',
+      'Decline response',
+    ]) {
+      expect(
+        within(response).getByRole('region', { name }),
+      ).toBeInTheDocument();
+    }
+    // The prompt text is asked outside the group, as Architect asked it.
+    expect(
+      within(response).queryByRole('textbox', { name: 'Prompt text' }),
+    ).toBeNull();
+  });
+
+  /**
    * Architect puts this sentence under the prompt box itself (a `hint` on the
    * "Prompt text" field), not in the notice above it: it is about how to
    * phrase the question, which is what a researcher is doing while the box

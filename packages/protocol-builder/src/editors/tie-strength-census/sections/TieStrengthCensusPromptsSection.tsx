@@ -100,6 +100,19 @@ const messages = defineMessages({
     description:
       'Label of the control that picks which kind of connection a Tie-Strength Census prompt rates. Architect names this control differently here than in the two censuses whose answer is a yes or a no.',
   },
+  responseTitle: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthResponseTitle',
+    defaultMessage: 'Tie-strength response',
+    description:
+      'Heading of the group in a tie-strength prompt’s dialog holding everything an affirmative answer creates. Also names the group to assistive technology.',
+  },
+  responseDescription: {
+    id: 'protocolBuilder.censusPrompts.tieStrengthResponseDescription',
+    defaultMessage:
+      'Configure the edge and ordinal value created by an affirmative response.',
+    description:
+      'Description of the tie-strength response group. An ordinal value is one point of a scale the participant answers on.',
+  },
   edgeTitle: {
     id: 'protocolBuilder.censusPrompts.tieStrengthEdgeTitle',
     defaultMessage: 'Edge creation',
@@ -417,28 +430,33 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
         description={intl.formatMessage(messages.promptTextDescription)}
         hint={intl.formatMessage(messages.promptTextHint)}
       />
-      <CreateEdgeField
-        title={intl.formatMessage(messages.edgeTitle)}
-        description={intl.formatMessage(messages.edgeDescription)}
-        label={intl.formatMessage(messages.edgeLabel)}
-        hint={intl.formatMessage(messages.edgeHint)}
-        requiredMessage={intl.formatMessage(messages.edgeRequired)}
-      />
-      <ScaleField committed={asString(item[SCALE_FIELD])} />
       <Section
-        title={intl.formatMessage(messages.declineTitle)}
-        description={intl.formatMessage(messages.declineDescription)}
+        title={intl.formatMessage(messages.responseTitle)}
+        description={intl.formatMessage(messages.responseDescription)}
       >
-        <Field<typeof RichTextField>
-          name={DECLINE_FIELD}
-          component={RichTextField}
-          label={intl.formatMessage(messages.declineLabel)}
-          hint={intl.formatMessage(messages.declineHint)}
-          placeholder={intl.formatMessage(messages.declinePlaceholder)}
-          singleLine
-          initialValue={asString(item[DECLINE_FIELD])}
-          required={intl.formatMessage(messages.declineRequired)}
+        <CreateEdgeField
+          title={intl.formatMessage(messages.edgeTitle)}
+          description={intl.formatMessage(messages.edgeDescription)}
+          label={intl.formatMessage(messages.edgeLabel)}
+          hint={intl.formatMessage(messages.edgeHint)}
+          requiredMessage={intl.formatMessage(messages.edgeRequired)}
         />
+        <ScaleField committed={asString(item[SCALE_FIELD])} />
+        <Section
+          title={intl.formatMessage(messages.declineTitle)}
+          description={intl.formatMessage(messages.declineDescription)}
+        >
+          <Field<typeof RichTextField>
+            name={DECLINE_FIELD}
+            component={RichTextField}
+            label={intl.formatMessage(messages.declineLabel)}
+            hint={intl.formatMessage(messages.declineHint)}
+            placeholder={intl.formatMessage(messages.declinePlaceholder)}
+            singleLine
+            initialValue={asString(item[DECLINE_FIELD])}
+            required={intl.formatMessage(messages.declineRequired)}
+          />
+        </Section>
       </Section>
     </>
   );

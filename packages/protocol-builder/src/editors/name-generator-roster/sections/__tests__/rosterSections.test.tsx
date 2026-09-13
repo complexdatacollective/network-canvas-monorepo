@@ -601,6 +601,57 @@ describe('how a participant searches a roster', () => {
     expect(screen.getByRole('checkbox', { name: 'age' })).not.toBeChecked();
   });
 
+  /**
+   * Two titled groups, each with the sentence and the notice released
+   * Architect gave it (`sections/SearchOptionsForExternalData.tsx:160-222`).
+   * One flat section with a single notice left the two decisions — what is
+   * searched, and how closely it has to match — reading as one.
+   */
+  it('divides the search into Architect’s two groups', async () => {
+    renderStageEditor({
+      stage: rosterWith({
+        dataSource: 'roster_data',
+        searchOptions: { fuzziness: 0.5, matchProperties: ['name'] },
+      }),
+      sections: <SearchOptionsSection />,
+    });
+
+    const search = within(
+      await screen.findByRole('region', { name: 'Roster search' }),
+    );
+    // The whole list, in order, so a group added or reordered fails here.
+    expect(
+      search
+        .getAllByRole('region')
+        .map(
+          (region) => within(region).getAllByRole('heading')[0]?.textContent,
+        ),
+    ).toEqual(['Search matching', 'Match tolerance']);
+
+    const matching = screen.getByRole('region', { name: 'Search matching' });
+    expect(matching).toHaveAccessibleDescription(
+      "Choose the roster attributes considered when matching a participant's search.",
+    );
+    expect(
+      within(matching).getByRole('group', { name: /Searchable attributes/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(matching).getByText(
+        'Every attribute you choose is searched on each keystroke, so a long roster searches faster with fewer of them.',
+      ),
+    ).toBeInTheDocument();
+
+    const tolerance = screen.getByRole('region', { name: 'Match tolerance' });
+    expect(tolerance).toHaveAccessibleDescription(
+      "Choose how closely a participant's search must match roster text.",
+    );
+    expect(
+      within(tolerance).getByText(
+        'If the roster contains many similar nodes, selecting "Exact" or "High accuracy" will help narrow down searches. In contrast, a low accuracy search will allow for typos and spelling mistakes.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('records what the researcher chose to search on', async () => {
     const harness = renderStageEditor({
       stage: rosterWith({
