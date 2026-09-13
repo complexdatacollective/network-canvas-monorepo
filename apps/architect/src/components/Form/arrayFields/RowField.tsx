@@ -65,8 +65,6 @@ export type RowFieldProps = {
  * array-level rule on the owning field as well — `Options.tsx`'s
  * `optionsValidation` is the worked example, pairing this row's
  * `uniqueArrayAttribute` with an equivalent whole-array check.
- *
- * Follows the `Query/Rules/RuleField.tsx` precedent.
  */
 const RowField = ({
   component,

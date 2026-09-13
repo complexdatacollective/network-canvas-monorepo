@@ -64,15 +64,34 @@ test('separates history controls and returns project subpages to the timeline', 
   }
 });
 
-test('shares the separated history toolbar with the stage editor', async ({
+// Undo and redo cover the protocol's own history and not typing inside an
+// editor: the stage editor holds its document in its form until it is saved,
+// and the save is the one step the timeline records
+// (docs/superpowers/plans/2026-09-09-protocol-builder-rework.md, "no undo
+// fencing"). Before this, the History toolbar appeared as soon as a stage name
+// was typed and undid keystrokes.
+test('keeps history to saved changes while a stage editor is open', async ({
   architectPage,
   seed,
 }) => {
-  await seed(emptyProtocol());
+  // An already-valid stage, so what this measures is the history and not the
+  // schema: renaming it is a complete change that can be saved on its own.
+  await seed({
+    ...emptyProtocol(),
+    stages: [
+      {
+        id: 'information-1',
+        type: 'Information',
+        label: 'A page to rename',
+        title: 'Welcome',
+        items: [{ id: 'item-1', type: 'text', content: 'Thanks for coming.' }],
+      },
+    ],
+  });
   await gotoProtocol(architectPage);
 
   const editor = new StageEditor(architectPage);
-  await editor.createNew('Information');
+  await new Timeline(architectPage).openStage('A page to rename');
 
   const stageActions = architectPage.getByRole('toolbar', {
     name: 'Stage editor actions',
@@ -84,13 +103,9 @@ test('shares the separated history toolbar with the stage editor', async ({
 
   await editor.setStageName('Shared History Toolbar');
 
-  await expect(historyActions).toBeVisible();
-  await expect(
-    historyActions.getByRole('button', { name: 'Undo' }),
-  ).not.toHaveAttribute('aria-disabled', 'true');
-  const redo = historyActions.getByRole('button', { name: 'Redo' });
-  await expect(redo).toHaveAttribute('aria-disabled', 'true');
-  await expect(historyActions.getByRole('separator')).toHaveCount(1);
+  // Typing is not a step: nothing has been saved, so there is nothing to undo
+  // and no history controls anywhere on screen.
+  await expect(historyActions).toHaveCount(0);
   await expect(stageActions.getByRole('button', { name: 'Undo' })).toHaveCount(
     0,
   );
@@ -98,28 +113,21 @@ test('shares the separated history toolbar with the stage editor', async ({
     0,
   );
 
-  const restingDisabledStyle = await redo.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return {
-      backgroundColor: style.backgroundColor,
-      color: style.color,
-      opacity: style.opacity,
-    };
-  });
-  await redo.hover();
-  // Button's colour transition is 150ms. Read after it would have completed so
-  // this cannot pass on the first frame while a forbidden hover is beginning.
-  await architectPage.waitForTimeout(200);
-  expect(
-    await redo.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return {
-        backgroundColor: style.backgroundColor,
-        color: style.color,
-        opacity: style.opacity,
-      };
-    }),
-  ).toEqual(restingDisabledStyle);
+  await editor.save();
+
+  // …and the save IS one step: the timeline now offers an undo that takes the
+  // whole stage back out.
+  await expect(historyActions).toBeVisible();
+  const undo = historyActions.getByRole('button', { name: 'Undo' });
+  await expect(undo).not.toHaveAttribute('aria-disabled', 'true');
+  const redo = historyActions.getByRole('button', { name: 'Redo' });
+  await expect(redo).toHaveAttribute('aria-disabled', 'true');
+
+  const timeline = new Timeline(architectPage);
+  await expect(timeline.stageCard('Shared History Toolbar')).toBeVisible();
+  await undo.click();
+  await expect(timeline.stageCard('Shared History Toolbar')).toHaveCount(0);
+  await expect(timeline.stageCard('A page to rename')).toBeVisible();
 });
 
 test('downloads the active protocol as a .netcanvas', async ({

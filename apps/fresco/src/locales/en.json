@@ -1123,6 +1123,14 @@
     "defaultMessage": "You are the only user account. If you lose access to your authenticator app and recovery codes, there will be no way to recover your account. Consider creating a second user account first.",
     "description": "Researcher-facing TwoFactorSetup: You are the only user account. If you lose access to your authenticator app and recovery codes, there will be no way to "
   },
+  "fresco.TwoFactorSetupPrompt.setUpTwoFactorAuthentication": {
+    "defaultMessage": "Set up two-factor authentication",
+    "description": "Button that opens the two-factor authentication setup wizard on the mandatory setup page."
+  },
+  "fresco.TwoFactorSetupPrompt.signedInAs": {
+    "defaultMessage": "Signed in as {username}",
+    "description": "Names the account that is being asked to set up two-factor authentication. The username is literal data, not translated copy."
+  },
   "fresco.TwoFactorVerify.0123456789abcdef0123": {
     "defaultMessage": "0123456789abcdef0123",
     "description": "Researcher-facing TwoFactorVerify: 0123456789abcdef0123"
@@ -1519,6 +1527,10 @@
     "defaultMessage": "Two-factor authentication is not enabled",
     "description": "Researcher-facing actions / totp: Two-factor authentication is not enabled"
   },
+  "fresco.actions.totp.twoFactorRequiredByInstallation": {
+    "defaultMessage": "This installation of Fresco requires two-factor authentication for every account that signs in with a password, so it cannot be turned off.",
+    "description": "Error returned when a researcher tries to disable two-factor authentication while the REQUIRE_TWO_FACTOR environment variable is set."
+  },
   "fresco.actions.twoFactor.copyInvalidCodeFormat": {
     "defaultMessage": "Invalid code format",
     "description": "Researcher-facing actions / twoFactor: Invalid code format"
@@ -1650,6 +1662,18 @@
   "fresco.actions.webauthn.copyVerificationFailed": {
     "defaultMessage": "Verification failed.",
     "description": "Researcher-facing actions / webauthn: Verification failed."
+  },
+  "fresco.actions.webauthn.passkeyCannotVerifyUserAtRegistration": {
+    "defaultMessage": "This passkey cannot verify your identity. Choose a passkey that confirms who you are with a PIN, fingerprint, or face.",
+    "description": "Researcher-facing actions / webauthn: registration refused because the authenticator skipped user verification."
+  },
+  "fresco.actions.webauthn.passkeyDidNotVerifyUserAtReauth": {
+    "defaultMessage": "This passkey did not verify your identity. Add a passkey that confirms who you are with a PIN, fingerprint, or face, then try again.",
+    "description": "Researcher-facing actions / webauthn: an already signed-in researcher re-authenticated with a passkey whose authenticator skipped user verification."
+  },
+  "fresco.actions.webauthn.passkeyDidNotVerifyUserAtSignIn": {
+    "defaultMessage": "This passkey did not verify your identity. Fresco requires a passkey that confirms who you are with a PIN, fingerprint, or face. Try another passkey, or ask another administrator to reset your authentication.",
+    "description": "Researcher-facing actions / webauthn: sign-in refused because the authenticator skipped user verification; names the two ways back in."
   },
   "fresco.activity.APITokenCreated": {
     "defaultMessage": "API Token Created",
@@ -2375,6 +2399,22 @@
     "defaultMessage": "{total, number} ({completed, plural, one {# completed} other {# completed}})",
     "description": "Total interviews and completed interviews for one participant."
   },
+  "fresco.passkeyCeremony.reauthDidNotComplete": {
+    "defaultMessage": "Passkey check did not complete. If you cancelled, try again. If your passkey cannot confirm who you are with a PIN, fingerprint, or face, add a passkey that can and use that one.",
+    "description": "Researcher-facing settings: the browser closed the passkey prompt without a credential while a signed-in researcher re-authenticated before switching to a password."
+  },
+  "fresco.passkeyCeremony.registrationDidNotComplete": {
+    "defaultMessage": "Passkey creation did not complete. If you cancelled, try again. If your device or security key cannot confirm who you are with a PIN, fingerprint, or face, choose a different one.",
+    "description": "Researcher-facing setup and settings: the browser closed the passkey creation prompt without a credential."
+  },
+  "fresco.passkeyCeremony.registrationUnsupported": {
+    "defaultMessage": "This device or security key cannot create a Fresco passkey. Fresco needs a passkey that is stored on the device and confirms who you are with a PIN, fingerprint, or face. Choose a different one.",
+    "description": "Researcher-facing setup and settings: the browser reported that the chosen authenticator cannot make a discoverable, user-verifying passkey."
+  },
+  "fresco.passkeyCeremony.signInDidNotComplete": {
+    "defaultMessage": "Passkey sign-in did not complete. If you cancelled, try again. If your passkey cannot confirm who you are with a PIN, fingerprint, or face, use a different passkey or ask another administrator to reset your authentication.",
+    "description": "Researcher-facing sign-in: the browser closed the passkey prompt without a credential (cancelled, timed out, or no authenticator could verify the user); names the two ways back in."
+  },
   "fresco.passkeyName.device": {
     "defaultMessage": "Security key",
     "description": "Generic name for an unknown authenticator whose credential is bound to one device. Vendor and stored friendly names remain unchanged."
@@ -2699,6 +2739,18 @@
     "defaultMessage": "When enabled, participants have an increasing chance of abandoning the interview at each stage.",
     "description": "Researcher-facing settings / SyntheticInterviewDataSection: When enabled, participants have an increasing chance of abandoning the interview at each stage."
   },
+  "fresco.settings.TwoFactorRequirementField.requireTwoFactorAuthentication": {
+    "defaultMessage": "Require Two-Factor Authentication",
+    "description": "Label of the read-only field that reports whether the installation requires two-factor authentication of every password account."
+  },
+  "fresco.settings.TwoFactorRequirementField.whenTheEnvironmentVariableIsSet": {
+    "defaultMessage": "When the <tag1>REQUIRE_TWO_FACTOR</tag1> environment variable is set to true, every account that signs in with a password must set up two-factor authentication before it can use the dashboard, and cannot turn it off. Accounts that sign in with a passkey are not affected.",
+    "description": "Explains what the REQUIRE_TWO_FACTOR environment variable enforces and that passkey accounts are exempt. tag1 wraps the variable name in code formatting."
+  },
+  "fresco.settings.TwoFactorRequirementField.whetherTwoFactorAuthenticationIsRequired": {
+    "defaultMessage": "Whether two-factor authentication is required",
+    "description": "Accessible name of the read-only switch that shows whether the installation requires two-factor authentication."
+  },
   "fresco.settings.TwoFactorSettings.disable": {
     "defaultMessage": "Disable",
     "description": "Researcher-facing settings / TwoFactorSettings: Disable"
@@ -2734,6 +2786,10 @@
   "fresco.settings.TwoFactorSettings.regenerateRecoveryCodes": {
     "defaultMessage": "Regenerate Recovery Codes",
     "description": "Researcher-facing settings / TwoFactorSettings: Regenerate Recovery Codes"
+  },
+  "fresco.settings.TwoFactorSettings.requiredOnThisInstallation": {
+    "defaultMessage": "Two-factor authentication is required on this installation for every account that signs in with a password, so it cannot be turned off here.",
+    "description": "Shown beside the per-account two-factor switch when the REQUIRE_TWO_FACTOR environment variable is set."
   },
   "fresco.settings.TwoFactorSettings.toggleTwoFactorAuthentication": {
     "defaultMessage": "Toggle two-factor authentication",
@@ -2842,10 +2898,6 @@
   "fresco.settings.UserManagement.copyNewPasswordsDoNotMatch": {
     "defaultMessage": "New passwords do not match",
     "description": "Researcher-facing settings / UserManagement: New passwords do not match"
-  },
-  "fresco.settings.UserManagement.copyPasskeyCreationCancelled": {
-    "defaultMessage": "Passkey creation cancelled.",
-    "description": "Researcher-facing settings / UserManagement: Passkey creation cancelled."
   },
   "fresco.settings.UserManagement.copyPasskeyCreationFailed": {
     "defaultMessage": "Passkey creation failed.",
@@ -3142,6 +3194,26 @@
   "fresco.signin.page.signInToFresco": {
     "defaultMessage": "Sign In To Fresco",
     "description": "Researcher-facing signin / page: Sign In To Fresco"
+  },
+  "fresco.signin.twoFactorSetup.metadata.pageDescription": {
+    "defaultMessage": "Set up two-factor authentication to continue to Fresco.",
+    "description": "Browser metadata description for the page that makes a researcher set up mandatory two-factor authentication after signing in."
+  },
+  "fresco.signin.twoFactorSetup.metadata.pageTitle": {
+    "defaultMessage": "Fresco - Set Up Two-Factor Authentication",
+    "description": "Browser tab title for the page that makes a researcher set up mandatory two-factor authentication after signing in."
+  },
+  "fresco.signin.twoFactorSetup.page.setItUpNowToContinue": {
+    "defaultMessage": "Set it up now with an authenticator app to continue to the dashboard. You will be given recovery codes to keep somewhere safe in case you lose the app.",
+    "description": "Tells the researcher what setting up two-factor authentication involves and that the dashboard opens once it is done."
+  },
+  "fresco.signin.twoFactorSetup.page.setUpTwoFactorAuthentication": {
+    "defaultMessage": "Set Up Two-Factor Authentication",
+    "description": "Heading of the page that makes a researcher set up mandatory two-factor authentication after signing in."
+  },
+  "fresco.signin.twoFactorSetup.page.thisInstallationRequiresTwoFactor": {
+    "defaultMessage": "This installation of Fresco requires two-factor authentication for every account that signs in with a password.",
+    "description": "Explains why the researcher is being asked to set up two-factor authentication before they can reach the dashboard."
   },
   "fresco.storage.s3Label": {
     "defaultMessage": "S3 / S3-Compatible",

@@ -1,20 +1,15 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import type { Stage } from '@codaco/protocol-validation';
 import app, { setProtocolLockState } from '~/ducks/modules/app';
-import stageEditorDraft, {
-  draftTimelineActions,
-} from '~/ducks/modules/stageEditorDraft';
 
 import DialogForm from '../DialogForm';
 import { hasDirtyNestedDraft } from '../nestedDraftRegistry';
-
-const stage = { id: 'stage-1', type: 'Information', label: 'A' } as Stage;
 
 // `FormWithoutProvider` hardcodes `onSubmitInvalid: focusFirstError`
 // (fresco-ui's Form.tsx), so DialogForm relies on it rather than
@@ -359,9 +354,14 @@ describe('DialogForm', () => {
       'true',
     );
 
-    // Non-dismissible: neither Escape nor the (disabled) Cancel button close it.
-    fireEvent.keyDown(document, { key: 'Escape' });
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    // Non-dismissible while the submit is in flight: none of the three ways
+    // out close it. Driven through `userEvent` so Escape and the outside press
+    // take the same route a researcher's do — `dismissible={!isSubmitting}` is
+    // what refuses those two, and `requestClose` refuses all three.
+    const user = userEvent.setup();
+    await user.keyboard('{Escape}');
+    await user.click(document.body);
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
@@ -493,7 +493,7 @@ describe('DialogForm unsaved-changes guard', () => {
 describe('DialogForm in a tab that cannot save', () => {
   const createTestStore = () =>
     configureStore({
-      reducer: combineReducers({ app, stageEditorDraft }),
+      reducer: combineReducers({ app }),
     });
 
   const renderForm = (
@@ -541,21 +541,26 @@ describe('DialogForm in a tab that cannot save', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  // Inside a stage editor the commit lands in that editor's own draft
-  // transaction, not the protocol — and it is the only way to move an inner
-  // editor's work somewhere the blocked-reclaim choice can rescue it.
-  it('accepts the commit inside an open stage editor transaction', async () => {
+  // Every nested editor's Finish writes the canonical protocol now: a codebook
+  // edit made from a stage editor commits as it is made rather than into that
+  // editor's own draft, so there is no longer a place a demoted tab could
+  // safely take one.
+  it('refuses the commit inside a stage editor too', async () => {
     const store = createTestStore();
     store.dispatch(setProtocolLockState('reclaim-blocked'));
-    store.dispatch(draftTimelineActions.reset({ stage, codebook: {} }));
     const onSubmit = vi.fn();
 
     renderForm(store, onSubmit);
     save();
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(
+        screen.getByText(
+          'These changes cannot be saved over the version the other tab saved. Cancel this editor to continue, and you will be asked to confirm before anything in it is discarded.',
+        ),
+      ).toBeInTheDocument();
     });
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
   it('accepts the commit normally when this tab owns the protocol', async () => {

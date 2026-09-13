@@ -10,15 +10,17 @@ import { createElement, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type * as DialogModule from '@codaco/fresco-ui/dialogs/Dialog';
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
+import Field from '@codaco/fresco-ui/form/Field/Field';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
-import { useStageEditorController } from '../../controller.ts';
-import ProtocolField from '../../form/ProtocolField.tsx';
-import StageEditorShell from '../../form/StageEditorShell.tsx';
+import { QueryRuleSetField } from '../../fields/RuleSetField.tsx';
+import { RULE_VALUE_FIELD } from '../../fields/RuleValueField.tsx';
 import BuilderSection from '../../sections/BuilderSection.tsx';
-import type { ProtocolBuilderSessionStore } from '../../session.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../testing/attributePicker.ts';
 import type { RuleDraft } from '../rule.ts';
 import {
   describeRule,
@@ -30,9 +32,8 @@ import RuleEditorDialog, {
   type RuleTypeOption,
 } from '../RuleEditorDialog.tsx';
 import { type RuleSetValue, ruleSetTargets } from '../ruleSet.ts';
-import { QueryRuleSetField } from '../RuleSetField.tsx';
-import { RULE_VALUE_FIELD } from '../RuleValueField.tsx';
-import { createSession, nodeRule, testCodebook } from './fixtures.ts';
+import { nodeRule, ruleSections, testCodebook } from './fixtures.ts';
+import { RuleEditorHost } from './ruleEditorHost.tsx';
 
 /**
  * `layoutId` is a Motion prop, so it leaves no trace in the DOM: what the rule
@@ -102,33 +103,23 @@ const probedRuleSet = (): RuleSetValue | null => {
  * the editor. Everything the editor does about saving, cancelling and morphing
  * is a conversation with the list, so it is tested through the list.
  */
-function ListEditor({ session }: { session: ProtocolBuilderSessionStore }) {
-  const controller = useStageEditorController(session, 'stage-form');
-
-  return (
-    <StageEditorShell
-      controller={controller}
+function renderRuleList(rules?: readonly RuleDraft[]) {
+  render(
+    <RuleEditorHost
+      sections={ruleSections(rules)}
       actions={({ formId }) => (
         <SubmitButton form={formId}>Finished editing</SubmitButton>
       )}
     >
       <BuilderSection title="Skip logic">
-        <ProtocolField
+        <Field
           name={RULE_SET_FIELD}
           label="Rules"
           component={QueryRuleSetField}
         />
         <RuleSetProbe />
       </BuilderSection>
-    </StageEditorShell>
-  );
-}
-
-function renderRuleList(rules?: readonly RuleDraft[]) {
-  render(
-    <DialogProvider>
-      <ListEditor session={createSession(rules)} />
-    </DialogProvider>,
+    </RuleEditorHost>,
   );
 }
 
@@ -137,12 +128,10 @@ function renderRuleList(rules?: readonly RuleDraft[]) {
  * for the shared-element identity, which no list row can state a value for.
  */
 function StandaloneEditor({ layoutId }: { layoutId?: string }) {
-  const [session] = useState(() => createSession());
-  const controller = useStageEditorController(session, 'stage-form');
   const [open, setOpen] = useState(true);
 
   return (
-    <StageEditorShell controller={controller}>
+    <RuleEditorHost sections={ruleSections()}>
       <RuleEditorDialog
         open={open}
         seed={{ type: '' }}
@@ -152,15 +141,13 @@ function StandaloneEditor({ layoutId }: { layoutId?: string }) {
         onCancel={() => setOpen(false)}
         {...(layoutId === undefined ? {} : { layoutId })}
       />
-    </StageEditorShell>
+    </RuleEditorHost>
   );
 }
 
 function renderStandaloneEditor(layoutId?: string) {
   render(
-    <DialogProvider>
-      <StandaloneEditor {...(layoutId === undefined ? {} : { layoutId })} />
-    </DialogProvider>,
+    <StandaloneEditor {...(layoutId === undefined ? {} : { layoutId })} />,
   );
 }
 
@@ -180,12 +167,10 @@ function SpiedEditor({
   onSave: (rule: RuleDraft) => void;
   onCancel: () => void;
 }) {
-  const [session] = useState(() => createSession());
-  const controller = useStageEditorController(session, 'stage-form');
   const [open, setOpen] = useState(true);
 
   return (
-    <StageEditorShell controller={controller}>
+    <RuleEditorHost sections={ruleSections()}>
       <RuleEditorDialog
         open={open}
         seed={seed}
@@ -200,18 +185,14 @@ function SpiedEditor({
           setOpen(false);
         }}
       />
-    </StageEditorShell>
+    </RuleEditorHost>
   );
 }
 
 const renderSpiedEditor = (seed: RuleDraft = { type: '' }) => {
   const onSave = vi.fn<(rule: RuleDraft) => void>();
   const onCancel = vi.fn<() => void>();
-  render(
-    <DialogProvider>
-      <SpiedEditor seed={seed} onSave={onSave} onCancel={onCancel} />
-    </DialogProvider>,
-  );
+  render(<SpiedEditor seed={seed} onSave={onSave} onCancel={onCancel} />);
   return { onSave, onCancel };
 };
 
@@ -228,8 +209,11 @@ const buildNodeAttributeRuleUpTo = async (
   );
   await user.click(await screen.findByRole('radio', { name: 'Person' }));
   await user.click(await screen.findByRole('option', { name: /Attribute/ }));
-  await user.selectOptions(
-    await screen.findByRole('combobox', { name: /Node attribute/ }),
+  // Chosen through the picker's own window, by the id the rule stores: what
+  // every test below reads back is the saved rule, not the words on screen.
+  await chooseAttributeById(
+    user,
+    await waitFor(() => attributeField('Node attribute')),
     attribute,
   );
   await user.selectOptions(
@@ -265,8 +249,9 @@ const buildEgoRuleUpTo = async (
       name: 'Ego - match one of the ego attributes.',
     }),
   );
-  await user.selectOptions(
-    await screen.findByRole('combobox', { name: /Ego attribute/ }),
+  await chooseAttributeById(
+    user,
+    await waitFor(() => attributeField('Ego attribute')),
     'egoName',
   );
   await user.selectOptions(
@@ -938,14 +923,15 @@ describe('a choice a stored rule holds that the editor does not offer', () => {
 
     await openExistingRule(user);
 
-    const attribute = await screen.findByRole('combobox', {
-      name: /Node attribute/,
-    });
-    expect(attribute).toHaveValue('home');
+    const attribute = await waitFor(() => attributeField('Node attribute'));
+    // The rule's own choice is still held — the trigger offers to CHANGE it
+    // rather than to make one...
     expect(
-      within(attribute).getByRole('option', {
-        name: 'Home — cannot be used in a rule',
-      }),
+      within(attribute).getByRole('button', { name: 'Change attribute' }),
+    ).toBeInTheDocument();
+    // ...and it is shown named for what is wrong with it.
+    expect(
+      within(attribute).getByText('Home — cannot be used in a rule'),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -1296,10 +1282,7 @@ describe('a choice that invalidates the choices below it', () => {
       '30',
     );
 
-    await user.selectOptions(
-      screen.getByRole('combobox', { name: /Node attribute/ }),
-      'height',
-    );
+    await chooseAttributeById(user, attributeField('Node attribute'), 'height');
 
     // The new attribute still offers "is greater than", so an operator left
     // standing here would be one carried over rather than one chosen — and the

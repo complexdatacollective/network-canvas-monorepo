@@ -190,7 +190,7 @@ jobs:
   # release-PR refreshes may reuse an equivalent earlier verdict. Merge groups
   # deliberately skip the policy and all E2E work. Every path and history guard
   # fails closed; see
-  # scripts/release-e2e-policy.mjs.
+  # scripts/ci/release-e2e-policy.mjs.
   e2e-policy:
     if: >-
       github.event_name != 'merge_group'
@@ -234,7 +234,7 @@ jobs:
           # Read-only, feeds release-PR equivalence lookups.
           GH_TOKEN: ${{ github.token }}
         run: |
-          policy=$(node scripts/release-e2e-policy.mjs)
+          policy=$(node scripts/ci/release-e2e-policy.mjs)
           if [[ "$BENCHMARK_INTERVIEW_E2E" == "true" ]]; then
             policy=$(jq \
               '.interview = true
@@ -422,6 +422,97 @@ jobs:
   # types directly and do not need built `.d.ts`. This seed job still runs
   # `build` explicitly so the release and app-deploy jobs find a warm `build`
   # cache on main.
+  #
+  # Playwright's browser cache is a separate GitHub Actions cache from the
+  # turbo remote-cache above, and it was competing with it for the same 10 GB
+  # per-repository ceiling. Every job that installs Playwright browsers used
+  # to gate on `github.event_name != 'push'`, so main never wrote a
+  # Playwright cache entry and no PR had anything to fall back on — each PR
+  # missed, installed its own browsers, and saved a copy keyed to its own ref
+  # that no other PR could read. Measured on 2026-09-10: 14 live copies
+  # totalling 5.17 GB, 53% of the ceiling, which evicted the turbo entries
+  # the `seed-turbo-cache` job below exists to seed — the shared turbo slice
+  # was down to 0.64 GB, which is what decides whether the `test` job takes
+  # two minutes or thirty.
+  #
+  # This job restores or (on a miss) installs and saves ONE union-keyed
+  # Playwright cache entry — every browser any of the four consumer jobs
+  # below need between them — and only main writes it; every consumer reads
+  # it with `actions/cache/restore` and never writes its own PR-scoped copy.
+  # See the comment on the first of those restores (in `test-storybook`) for
+  # the full arrangement and its trade-off.
+  warm-playwright-cache:
+    # This job is the only writer of the shared key, so if it fails there is
+    # no cache until it succeeds again. Ordinarily that self-heals on the
+    # next push to main, which is frequent — but a deterministic failure (a
+    # Playwright bump landing while apt is broken for that image) would
+    # otherwise need a no-op commit to clear. Accepting a manual dispatch of
+    # this workflow gives a way to re-warm without one.
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+      || (github.event_name == 'workflow_dispatch'
+      && github.ref == 'refs/heads/main')
+    # Cache warming only — a flake here must not fail the push run, which
+    # also carries the release jobs. (`playwright install --with-deps` shells
+    # out to apt and is known to fail runner-side.)
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Resolve the pinned Playwright version
+        id: pw
+        # The same lockfile-derived pin the Docker image tag is built from:
+        # the browser build is fixed by the resolved @playwright/test version
+        # either way, so this lane is no less deterministic about Chromium.
+        run: |
+          version="$(grep -oE '@playwright/test@[0-9]+\.[0-9]+\.[0-9]+' pnpm-lock.yaml \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -uV | tail -1 || true)"
+          if [ -z "$version" ]; then
+            echo "::error::could not resolve @playwright/test from pnpm-lock.yaml"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          # No browser-set suffix: this is the one union key every consumer
+          # job restores, whatever subset of browsers it installs.
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Install every browser the consumer jobs need
+        # `actions/cache` (not `/restore`) is deliberate here: it restores if
+        # this key already has an entry and saves at job end only on a miss,
+        # so a warmed main costs nothing on later pushes — this step becomes
+        # a no-op restore. chromium, firefox and webkit together are the
+        # union test-storybook, interview-e2e-native, interviewer-e2e-native
+        # and architect-e2e-native install between them.
+        id: install
+        run: pnpm --filter @codaco/architect exec playwright install --with-deps chromium firefox webkit
+      # Same reasoning as `seed-turbo-cache`'s reporting step: this job is
+      # `continue-on-error`, so a failure leaves the run green and nothing
+      # else says a word. That matters more here than it looks, because the
+      # four consumer jobs are restore-only — if this never succeeds, main
+      # holds no browser cache, every one of them falls through to a full
+      # `playwright install`, and the only symptom is CI being quietly
+      # slower than it should be. Measured cost is about ten seconds per
+      # e2e job rather than minutes, so this is a warning and not a gate,
+      # but it must be a visible one.
+      - name: Report a failed warm
+        if: always()
+        env:
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+        run: |
+          {
+            echo "### Playwright cache warm"
+            echo
+            echo "- install: \`$INSTALL_OUTCOME\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$INSTALL_OUTCOME" != "success" ]]; then
+            echo "::warning::warm-playwright-cache did not warm the shared browser cache (install: $INSTALL_OUTCOME). Every e2e job on the next pull requests will install browsers itself until a later push to main succeeds."
+          fi
+
   seed-turbo-cache:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     # Cache warming only — a flake here must not fail the push run, which also
@@ -430,8 +521,11 @@ jobs:
     runs-on: ubuntu-latest
     # The `test` task includes the studio-sync and studio-server conformance
     # suites, which refuse to skip under CI. Without this they abort the whole
-    # `turbo run`, and the job seeds no cache at all — see the `test` job, whose
-    # service this mirrors.
+    # `turbo run`, and the job seeds no cache at all. This job seeds every
+    # package in one run, so it keeps a plain job-level service; the sharded
+    # `test` job starts an equivalent container from a step instead, because
+    # only one of its five shards holds a suite that needs a database and
+    # `services:` cannot be varied per matrix leg.
     services:
       postgres:
         image: postgres:18
@@ -468,7 +562,14 @@ jobs:
       # protocol-builder failure here killed @codaco/studio-server#test
       # mid-run, so main's tip seeded no cache entry for it and every PR built
       # on that tip had to execute the suite itself.
-      - run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
+      #
+      # Carries an `id:` so the report step below can see it. Without one the
+      # report covered two of this job's three seeding steps, and the missing
+      # one was the Studio suite — the very suite whose cold-cache cost is
+      # what motivated splitting it out of `test` in the first place.
+      - name: Seed the Studio server suite
+        id: studio-server
+        run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
         continue-on-error: true
       # Fresco's `build` script is a bare `next build`, whose env.js validates
       # the full deployment env at config load; this job has no Fresco
@@ -476,9 +577,93 @@ jobs:
       # `fresco#build`'s `passThroughEnv` (strict env mode strips undeclared
       # variables), which keeps it out of the task hash so the seeded cache
       # stays valid for runs that don't set it.
-      - run: pnpm exec turbo run build test typecheck
+      #
+      # `--continue=dependencies-successful` (turbo 2.10.4): without it turbo's
+      # default `--continue=never` cancels every task still queued the moment
+      # one task fails, so a single failing package seeds no cache entry for
+      # any task behind it. Measured across 115 seed runs, 19 (17%) ended this
+      # way, leaving main unseeded for a median of 1.7 hours and once for 12.9
+      # — and a PR's `test` job runs a measured 12.9m median against a cold
+      # cache versus 8.8m against a warm one, so an unseeded main is not a
+      # cosmetic gap. `id:` and `continue-on-error: true` let the step below
+      # report which of these two runs left something unseeded, without
+      # turning that into a job failure — the job is cache warming, not a gate.
+      - name: Build and typecheck
+        id: build-typecheck
+        continue-on-error: true
+        run: pnpm exec turbo run build typecheck --continue=dependencies-successful
         env:
           SKIP_ENV_VALIDATION: 'true'
+      # The test suites run one at a time, for the reason the `test` job
+      # gives: a single vitest already fills the runner, and suites run in
+      # parallel starve each other into timeouts. A starved failure here
+      # would abort the run and leave every suite still queued unseeded.
+      #
+      # `--continue=dependencies-successful`: see the comment above the build
+      # step. On 2026-09-10 at 06:20 UTC the killer was protocol-builder's
+      # `src/form/__tests__/lockAndSave.test.tsx > a save the protocol did not
+      # take > rebases the form once the protocol takes the save`, which
+      # failed at 5161 ms and — under the old `--continue=never` default —
+      # would have cancelled every other queued suite's cache seed along with
+      # it. Not applied to the `@codaco/studio-server#test` run above:
+      # `--continue` governs how a multi-task run treats one task's failure,
+      # and a single-task run has nothing else queued behind it to protect.
+      - name: Run tests
+        id: test
+        continue-on-error: true
+        run: pnpm exec turbo run test --concurrency=1 --continue=dependencies-successful
+        env:
+          SKIP_ENV_VALIDATION: 'true'
+      # Surfaces a broken seed instead of letting it fail silently, and then
+      # FAILS, which is the part that matters.
+      #
+      # The step-level `continue-on-error` above exists so that a failed
+      # `build typecheck` does not stop the `test` step from seeding what it
+      # still can. But those step-level flags also make every step succeed,
+      # and a job all of whose steps succeed concludes `success` — so without
+      # this final non-zero exit the job's conclusion would flip from
+      # `failure` to `success` the moment a step failed. That conclusion is
+      # not cosmetic. It is the only signal that `main` is broken at all,
+      # because `test`, `test-storybook` and `lint` are all gated
+      # `github.event_name != 'push'` and never run on a push; and it is the
+      # exact field `computeSeedHealth()` in scripts/ci/ci-metrics.mjs counts,
+      # so hiding it would have permanently zeroed the seed-failure
+      # measurement this branch adds in order to catch the next regression.
+      #
+      # The JOB-level `continue-on-error: true` at the top still keeps the
+      # push run green, so a flake here cannot fail a run that also carries
+      # the release jobs. That was always the property worth having; a green
+      # job conclusion was not.
+      - name: Report seed step outcomes
+        if: always()
+        env:
+          STUDIO_SERVER_OUTCOME: ${{ steps.studio-server.outcome }}
+          BUILD_TYPECHECK_OUTCOME: ${{ steps.build-typecheck.outcome }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+        run: |
+          {
+            echo "### Turbo cache seed outcomes"
+            echo
+            echo "- studio-server: $STUDIO_SERVER_OUTCOME"
+            echo "- build typecheck: $BUILD_TYPECHECK_OUTCOME"
+            echo "- test: $TEST_OUTCOME"
+          } >> "$GITHUB_STEP_SUMMARY"
+          failed=false
+          for result in \
+            "studio-server=$STUDIO_SERVER_OUTCOME" \
+            "build typecheck=$BUILD_TYPECHECK_OUTCOME" \
+            "test=$TEST_OUTCOME"; do
+            name="${result%%=*}"
+            outcome="${result#*=}"
+            if [[ "$outcome" != "success" ]]; then
+              echo "::warning::seed-turbo-cache: '$name' concluded '$outcome' — main's cache for one or more of those tasks was not seeded"
+              failed=true
+            fi
+          done
+          if [[ "$failed" == "true" ]]; then
+            echo "::error::seed-turbo-cache did not fully seed main's cache. The push run stays green (job-level continue-on-error), but this job's conclusion must stay 'failure' so the breakage is visible and stays countable."
+            exit 1
+          fi
 
   lint:
     if: >-
@@ -546,6 +731,10 @@ jobs:
         id: mapbox-tokens
         continue-on-error: true
         run: pnpm check:mapbox-tokens
+      - name: Check the hydration flag has one implementation
+        id: hydration-flag
+        continue-on-error: true
+        run: pnpm check:hydration-flag
       # Studio's ERD and README schema section are generated and committed. The
       # render is CPU-only — no database — so it belongs beside the other
       # artifact checks rather than in the server's vitest lane, where it
@@ -569,11 +758,13 @@ jobs:
             echo "::error::Pull request base SHA is unavailable"
             exit 1
           fi
-          node scripts/check-npm-version-collisions.mjs --base "$BASE_SHA"
+          node scripts/release/check-npm-version-collisions.mjs --base "$BASE_SHA"
       - name: Test repository scripts
         id: scripts
         continue-on-error: true
-        run: pnpm test:scripts
+        # Through turbo so the suite is cached like every other test task; it
+        # is a root task because scripts/ is not a workspace package.
+        run: pnpm exec turbo run //#test:scripts
       - name: Validate managed Studio infrastructure without provider credentials
         id: studio-managed
         continue-on-error: true
@@ -590,7 +781,7 @@ jobs:
             set +e
             git diff --quiet "$BASE_SHA" "$GITHUB_SHA" -- \
               apps/studio/deployment/managed \
-              scripts/studio-managed-estate.test.mjs \
+              scripts/studio/studio-managed-estate.test.mjs \
               .github/workflows/ci-and-release.yml
             infra_diff_exit=$?
             set -e
@@ -622,7 +813,7 @@ jobs:
         env:
           POSTHOG_PERSONAL_API_KEY: ci-release-build-preflight
           POSTHOG_PROJECT_ID: '1'
-          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/posthog-cli-upload-stub.mjs
+          POSTHOG_CLI_BINARY_PATH: ${{ github.workspace }}/scripts/build/posthog-cli-upload-stub.mjs
         run: |
           pnpm exec turbo run build --filter='./packages/*' --filter=@codaco/background-creator
           pnpm --filter=@codaco/architect build
@@ -630,6 +821,20 @@ jobs:
           pnpm --filter=@codaco/studio-client build
           pnpm --filter=@codaco/studio-server build
           pnpm --filter=@codaco/studio-server build:netlify
+      # Every other Storybook is built in CI as Chromatic's upload input
+      # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
+      # Builder has no Chromatic project by design, and the build step above
+      # skips it because a private, source-first package has no `build` script
+      # — so without this step nothing in CI runs its static build at all.
+      # `test:storybook` is not a substitute: it serves stories through Vite's
+      # dev server and never bundles, and it does not read the generated docs
+      # entries either (a CSF file with `autodocs` and no story exports is
+      # skipped). Cached through turbo like the other build tasks, so it
+      # replays on the PRs that do not touch the package.
+      - name: Build the Protocol Builder Storybook
+        id: protocol_builder_storybook
+        continue-on-error: true
+        run: pnpm exec turbo run build-storybook --filter=@codaco/protocol-builder
       - name: Verify Studio telemetry opt-out and browser privacy
         id: studio-telemetry
         continue-on-error: true
@@ -650,11 +855,13 @@ jobs:
           CHANGESETS_OUTCOME: ${{ steps.changesets.outcome }}
           COMPAT_PROTOCOLS_OUTCOME: ${{ steps.compat-protocols.outcome }}
           MAPBOX_TOKENS_OUTCOME: ${{ steps.mapbox-tokens.outcome }}
+          HYDRATION_FLAG_OUTCOME: ${{ steps.hydration-flag.outcome }}
           STUDIO_SCHEMA_DOCS_OUTCOME: ${{ steps.studio-schema-docs.outcome }}
           NPM_VERSIONS_OUTCOME: ${{ steps.npm_versions.outcome }}
           SCRIPTS_OUTCOME: ${{ steps.scripts.outcome }}
           STUDIO_MANAGED_OUTCOME: ${{ steps.studio-managed.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PROTOCOL_BUILDER_STORYBOOK_OUTCOME: ${{ steps.protocol_builder_storybook.outcome }}
           STUDIO_TELEMETRY_OUTCOME: ${{ steps.studio-telemetry.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
           REGISTRY_OPENAPI_OUTCOME: ${{ steps.registry-openapi.outcome }}
@@ -665,11 +872,13 @@ jobs:
             "changesets=$CHANGESETS_OUTCOME" \
             "compat-protocols=$COMPAT_PROTOCOLS_OUTCOME" \
             "mapbox-tokens=$MAPBOX_TOKENS_OUTCOME" \
+            "hydration-flag=$HYDRATION_FLAG_OUTCOME" \
             "studio-schema-docs=$STUDIO_SCHEMA_DOCS_OUTCOME" \
             "npm-versions=$NPM_VERSIONS_OUTCOME" \
             "scripts=$SCRIPTS_OUTCOME" \
             "studio-managed=$STUDIO_MANAGED_OUTCOME" \
             "build=$BUILD_OUTCOME" \
+            "protocol-builder-storybook=$PROTOCOL_BUILDER_STORYBOOK_OUTCOME" \
             "studio-telemetry=$STUDIO_TELEMETRY_OUTCOME" \
             "typecheck=$TYPECHECK_OUTCOME" \
             "registry-openapi=$REGISTRY_OPENAPI_OUTCOME"; do
@@ -683,7 +892,7 @@ jobs:
             exit 1
           fi
 
-  test:
+  test-studio-server:
     if: >-
       github.event_name != 'merge_group'
       && github.event_name != 'push'
@@ -708,9 +917,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
           persist-credentials: false
-          # `--affected` diffs against the PR base; on a shallow clone turbo
-          # treats every package as changed.
-          fetch-depth: 0
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         env:
@@ -723,35 +929,224 @@ jobs:
             echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
             echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
           } > packages/protocol-validation/.env
-      - name: Run the Studio server suite on an uncontended runner
-        id: studio-server
+      - name: Run the Studio server suite
         # The only workspace suite whose assertions are wall-clock budgets
-        # rather than logic: a spawnSync of the Node entrypoint capped at 10s,
-        # a 180s seeding hook, 30s operational probes, and a 150ms delivery
-        # lease that a starved event loop cannot renew. `turbo run test` uses
-        # turbo's default concurrency of 10 and each vitest opens workers of
-        # its own, so on a 4-vCPU runner this suite shares the machine with the
-        # jsdom suites (architect, protocol-builder, interview, fresco-ui,
-        # interviewer) and those budgets lapse. Measured across #1693's runs it
-        # passes at or under 408s of suite wall time and failed at every
-        # observed time above that (509s, 519s, 527s, 583s, 847s, 851s).
+        # rather than logic. The one that a starved event loop actually
+        # breaks is the 150ms delivery lease in
+        # src/team/__tests__/invitation-delivery.test.ts: the dispatcher
+        # renews it from a 50ms setTimeout that has to fire during a real
+        # 450ms pg_sleep, so scheduling jitter, not a hang, is what fails it.
+        # The rest are hang backstops rather than budgets being spent —
+        # `timeout: 10_000` on the ~10 spawnSync launches of the Node
+        # entrypoint, `testTimeout`/`hookTimeout` of 30s as the package-wide
+        # default in vitest.config.ts, and the seeding hooks' 180s (and, in
+        # src/db/__tests__/seed.test.ts, 360s, widened from 180s for being
+        # too tight). Seeding does not take 180s; the ceiling exists to fail
+        # a hung seed rather than a slow one. Read a budget as headroom that
+        # contention eats, not as time the suite spends.
+        #
+        # Before turbo's concurrency was capped here, this suite shared the
+        # 4-vCPU runner with the jsdom suites (architect, protocol-builder,
+        # interview, fresco-ui, interviewer) and those budgets lapsed.
+        # Measured across #1693's runs it passed at or under 408s of suite
+        # wall time and failed at every observed time above that (509s, 519s,
+        # 527s, 583s, 847s, 851s) — thresholds from that shared-runner shape,
+        # not comparable to the times this dedicated job now posts.
+        #
+        # What the suite costs, measured on this job: vitest's two phases sum
+        # to the work, and the workers divide it, down to a floor set by the
+        # longest single file. That floor is
+        # src/db/migrations/__tests__/security.test.ts, which spends 91% of
+        # every deployment cycle inside the real `migrateDatabase` it exists
+        # to exercise (1901ms of 2084ms; the database it creates and drops
+        # around that costs 99ms and 45ms). It cannot be shortened without
+        # deleting coverage and a single file cannot span workers, so it
+        # bounds this job until it is split. Shortening the suite means
+        # removing work — see the fingerprint-addressed DDL cache in
+        # src/__tests__/support/schema-ddl.ts, which took the import phase
+        # from ~310s to ~110s by keeping drizzle-kit out of the module graph
+        # of the sixty files that only needed the rendered statements — not
+        # loosening a budget above.
         #
         # It is selected far more often than it is touched, because
         # @codaco/protocol-utilities dev-depends on @codaco/fresco-ui: every
-        # fresco-ui change re-hashes it through `^topo`. Running it first, by
-        # itself, costs a cache replay on the PRs that do not affect it and
-        # hands it the whole runner on the ones that do; the `--affected` pass
-        # below then replays it from the cache this step just wrote.
-        continue-on-error: true
+        # fresco-ui change re-hashes it through `^topo`, and protocol-builder
+        # — where most current work sits — pulls it in the same way. When this
+        # suite ran as the first, blocking step of the `test` job, it cost
+        # about 9 minutes in 33 of 60 sampled successful PR runs (55%) and 0
+        # seconds in the other 27, 28% of that job's total wall time, on a job
+        # that gates 51% of pull requests and finished a median of 7.0 minutes
+        # after the runner-up. It now runs as its own job on its own runner
+        # instead of serially ahead of the rest of the workspace: a dedicated
+        # runner is *more* uncontended than a shared one, so the isolation
+        # this suite has always needed for its wall-clock budgets is
+        # strengthened, not weakened. It also no longer needs
+        # `continue-on-error` — as its own job its verdict is its own, and it
+        # can no longer hide behind, or be hidden by, the workspace suite's
+        # result.
         run: pnpm exec turbo run '@codaco/studio-server#test' --concurrency=1
+
+  test:
+    # The workspace unit suites, one bucket of packages per parallel runner.
+    #
+    # These suites are embarrassingly parallel across MACHINES and stubbornly
+    # serial on one. Every vitest sizes its fork pool to the runner's CPU
+    # count, so a single suite already saturates a 4-vCPU standard runner and
+    # turbo's own `--concurrency` knob buys nothing — measured on the same
+    # thirteen tasks (#1801), 25m53s at `--concurrency=1`, 25m49s at 2, 26m08s
+    # at the default. The bottleneck is CPU throughput, not scheduling, so the
+    # only lever is more CPUs. Standard runners are free on this public
+    # repository and the org has 500 concurrent standard jobs against a
+    # sampled live usage of ~26, so shard count is not the constraint either.
+    #
+    # Each shard is a whole runner running its own bucket at
+    # `--concurrency=1`, which is the same uncontended machine per suite that
+    # the single job gave — the per-test wall-clock budgets still measure the
+    # test rather than the queue. scripts/ci/test-shards.mjs owns which package
+    # is in which bucket, how the buckets were weighted, and the coverage
+    # check that refuses a package belonging to no shard.
+    name: test (shard ${{ matrix.shard }})
+    if: >-
+      github.event_name != 'merge_group'
+      && github.event_name != 'push'
+      && !(github.event_name == 'workflow_dispatch'
+      && inputs.interview_e2e_benchmark == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # Every shard's verdict is wanted. Under the default fail-fast the first
+      # red suite cancels its siblings, and a cancelled shard reports no
+      # failure of its own — a pull request would be told about one broken
+      # package at a time, one push each.
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 1
+          - shard: 2
+          # packages/studio-sync's conformance suite is the only workspace
+          # suite outside @codaco/studio-server that needs a database, and it
+          # refuses to skip under CI. Its shard starts one; the others do not
+          # pay for it. `services:` cannot be varied per matrix leg, so the
+          # container is started by a step instead — measured at 24s of
+          # "Initialize containers" on every run of the unsharded job.
+          - shard: 3
+            postgres: true
+            # @codaco/protocol-validation's suite is the only one that reads
+            # the encryption keys and the protocol-fetch token, through a
+            # `.env` in its own package directory. Only its shard writes them,
+            # so the secrets never reach a runner with no use for them.
+            protocolValidation: true
+          - shard: 4
+          - shard: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        with:
+          persist-credentials: false
+          # `--affected` diffs against the PR base; on a shallow clone turbo
+          # treats every package as changed.
+          fetch-depth: 0
+      # Both Postgres steps run BEFORE the install, so a container that cannot
+      # start fails this job in seconds rather than after a checkout, a pnpm
+      # install and a cache restore. That ordering is what the `services:`
+      # block this replaces gave for free: Actions blocked every step on the
+      # container's healthcheck. Same image, same env (POSTGRES_INITDB_ARGS is
+      # read by the official image's entrypoint either way), same port.
+      - name: Start Postgres for the studio-sync conformance suite
+        if: matrix.postgres
+        run: |
+          docker run --detach --name studio-sync-postgres \
+            --env POSTGRES_PASSWORD=spike \
+            --env POSTGRES_DB=studio_dev \
+            --env POSTGRES_INITDB_ARGS=--set=max_prepared_transactions=10 \
+            --publish 54318:5432 \
+            postgres:18
+      # `-h 127.0.0.1` on purpose: during initdb the official image runs a
+      # temporary server bound to the unix socket only, so a socket-based
+      # pg_isready (what the old service's health-cmd ran) can report ready
+      # before the TCP listener the suite actually connects to exists. The
+      # 120s budget covers that init; a container that has *stopped* is not
+      # going to start listening, so it is reported at once rather than
+      # waited out.
+      - name: Wait for Postgres
+        if: matrix.postgres
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            if docker exec studio-sync-postgres pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
+              echo "Postgres is accepting TCP connections"
+              exit 0
+            fi
+            if [[ "$(docker inspect --format '{{.State.Running}}' studio-sync-postgres 2>/dev/null)" != "true" ]]; then
+              docker logs studio-sync-postgres || true
+              echo "::error::The Postgres container stopped before accepting connections"
+              exit 1
+            fi
+            sleep 2
+          done
+          docker logs studio-sync-postgres || true
+          echo "::error::Postgres did not accept connections within 120s"
+          exit 1
+      - uses: ./.github/actions/turbo-ci-setup
+      - name: Write protocol-validation .env (test fixture)
+        # Only the shard whose bucket holds @codaco/protocol-validation. The
+        # file is that package's own turbo input, so writing it anywhere else
+        # hands three secrets to a runner that cannot use them.
+        #
+        # Withholding it elsewhere cannot cost cache hits: `.env` is
+        # gitignored, so turbo's default inputs — which is what the input-less
+        # `topo` transit task hashes, and therefore what propagates across the
+        # dependency edge — do not include it. Only a task that names `.env`
+        # in its own `inputs` hashes it, and only for its own package.
+        # Verified by diffing every task hash with the file present and
+        # absent: @codaco/protocol-validation moved, nothing else did.
+        if: matrix.protocolValidation
+        env:
+          PROTOCOL_ENCRYPTION_KEY: ${{ secrets.PROTOCOL_ENCRYPTION_KEY }}
+          PROTOCOL_ENCRYPTION_IV: ${{ secrets.PROTOCOL_ENCRYPTION_IV }}
+          TEST_PROTOCOL_TOKEN: ${{ secrets.TEST_PROTOCOL_TOKEN }}
+        run: |
+          {
+            echo "PROTOCOL_ENCRYPTION_KEY=$PROTOCOL_ENCRYPTION_KEY"
+            echo "PROTOCOL_ENCRYPTION_IV=$PROTOCOL_ENCRYPTION_IV"
+            echo "GITHUB_TOKEN=$TEST_PROTOCOL_TOKEN"
+          } > packages/protocol-validation/.env
       - name: Run tests (PRs run only affected tasks)
-        id: workspace
-        # A Studio failure must not hide the rest of the workspace's result,
-        # so both steps report and the check below decides the job.
-        continue-on-error: true
         env:
           DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SHARD: ${{ matrix.shard }}
         run: |
+          # Restrict this runner to its bucket. scripts/ci/test-shards.mjs emits
+          # one `--filter=!<pkg>` for every test-carrying workspace package
+          # this shard does not own, and refuses to emit anything at all if a
+          # package belongs to no bucket.
+          #
+          # Negations, not positive filters, because turbo UNIONS what the
+          # positive filters select: `--filter=@codaco/art` beside the
+          # affected selector below would run art on every pull request
+          # whether or not the diff touched it. Negations subtract from that
+          # union, which is the intersection a shard actually wants — the same
+          # mechanism that already kept @codaco/studio-server out. That suite
+          # is now excluded by simply belonging to no bucket, so every shard
+          # negates it and the split cannot be undone by editing one shard.
+          #
+          # Via a file rather than `mapfile < <(node ...)`: process
+          # substitution discards the script's exit status, so a script that
+          # died would leave an empty filter list and silently widen the shard
+          # to the whole workspace — every suite run five times over, in
+          # parallel with itself.
+          #
+          # The EXIT STATUS is what decides, not whether the file has content.
+          # A bucket that owned every test package would need no negations at
+          # all, and treating that empty-but-correct output as a failure would
+          # abort a shard that had nothing wrong with it.
+          set -euo pipefail
+          if ! node scripts/ci/test-shards.mjs filters "$SHARD" > "$RUNNER_TEMP/shard-filters"; then
+            echo "::error::shard $SHARD could not resolve its package filters; refusing to run an unrestricted workspace"
+            exit 1
+          fi
+          mapfile -t SHARD_FILTERS < "$RUNNER_TEMP/shard-filters"
+          echo "Shard $SHARD excludes ${#SHARD_FILTERS[@]} packages"
+
           # PR checkouts are synthetic merges. Diff against the event's base
           # SHA, then use --affected to scope the run to tasks whose declared
           # inputs the diff touches, plus their dependents (turbo.json enables
@@ -767,6 +1162,37 @@ jobs:
           # quality-support, so changing only a scripts/*.test.mjs file does
           # not invalidate workspace unit tests. Docs, changesets, and
           # markdown are inert to tests as well.
+          #
+          # `--concurrency=1`: one suite at a time. Turbo's default runs up to
+          # ten tasks at once, and every vitest sizes its fork pool to the
+          # runner's CPUs (three workers on the 4-vCPU runner, behind a main
+          # process that serves their module transforms), so a single suite
+          # already fills the machine and each further one only divides it. A
+          # fresco-ui change invalidates thirteen suites: run 34372974092
+          # (#1796) had nine in flight at once, every protocol-builder file
+          # took 4–5× as long as in a lightly loaded run (including one that
+          # renders nothing), and ten tests timed out at 20s. Serialising the
+          # suites costs no wall time, because the runner is saturated either
+          # way, and hands each suite the whole machine, so per-test budgets
+          # measure the test rather than the queue. Measured on the same
+          # thirteen tasks (#1801): 25m53s at --concurrency=1 and 25m49s at 2
+          # against 26m08s at the default, with no timeouts at either cap. Not
+          # 2: a protocol-builder file that took 9.5s alone took 20s beside
+          # one other suite, which is the headroom the 20s budgets need.
+          #
+          # `--concurrency=1` is still right per shard. A shard is a whole
+          # runner, so serialising its bucket hands each suite the same
+          # uncontended 4 vCPUs the single job did; the parallelism comes from
+          # the other runners, not from this one.
+          #
+          # The `!@codaco/studio-server` negation SHARD_FILTERS carries: that
+          # suite runs as its own `test-studio-server` job (see the comment
+          # there for why), on its own runner in parallel with these. Without
+          # the exclusion both the `--affected` pass and the full-suite
+          # fallback below would still select `@codaco/studio-server#test` as
+          # a cache miss — turbo has no notion that a sibling job already
+          # claimed it — and run the wall-clock-budgeted suite again, on a
+          # runner it was carved out specifically to avoid sharing.
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]] \
             && [[ -n "$DIFF_BASE_SHA" ]] \
             && git cat-file -e "$DIFF_BASE_SHA^{commit}" \
@@ -776,31 +1202,40 @@ jobs:
               ':(exclude)pnpm-lock.yaml' \
               ':(exclude)scripts/*.test.mjs' ':(exclude)*.md'; then
             echo "Running test tasks affected by $DIFF_BASE_SHA..HEAD"
-            TURBO_SCM_BASE="$DIFF_BASE_SHA" pnpm exec turbo run test --affected
+            # `--affected` is turbo's own sugar for `--filter=...[<base>]`,
+            # spelled out here because turbo 2.10.4 ignores every `--filter`
+            # for TASK selection when `--affected` is present. It is not a
+            # silent no-op either: the run prints a "Packages in scope" line
+            # that honours the filter and then executes the unfiltered task
+            # set anyway, so the exclusion below reads as working while the
+            # Studio suite runs in this job as well as in
+            # `test-studio-server` -- twice per pull request, the second copy
+            # on the very runner the split exists to get it off, on the
+            # affected path most pull requests take.
+            #
+            # The explicit form obeys every filter. Verified equivalent to
+            # `--affected` against two independent bases (23 and 56 selected
+            # tasks, identical task IDs both times), and verified to drop
+            # exactly one task when the negation is added. The per-shard
+            # negations ride the same form for the same reason: under
+            # `--affected` they would be ignored and every shard would run the
+            # whole affected set.
+            #
+            # Check any change here by EXECUTING turbo, never with `--dry`:
+            # `--dry`'s `packages` field reports the filtered scope even in
+            # the broken case, so it confirms a filter the run then ignores.
+            # Its `tasks` field is the one that matches what runs. Executed
+            # against base b0bc600: 22 real `test` tasks unsharded, and with a
+            # three-package bucket's negations exactly @codaco/art,
+            # @codaco/network-query and @codaco/shared-consts.
+            pnpm exec turbo run test --concurrency=1 \
+              --filter="...[$DIFF_BASE_SHA]" \
+              "${SHARD_FILTERS[@]}"
             exit 0
           fi
 
           echo "Running the full test suite for $GITHUB_EVENT_NAME"
-          pnpm exec turbo run test
-      - name: Verify every test task passed
-        if: always()
-        env:
-          STUDIO_SERVER_OUTCOME: ${{ steps.studio-server.outcome }}
-          WORKSPACE_OUTCOME: ${{ steps.workspace.outcome }}
-        run: |
-          failed=false
-          for result in \
-            "studio-server=$STUDIO_SERVER_OUTCOME" \
-            "workspace=$WORKSPACE_OUTCOME"; do
-            echo "$result"
-            if [[ "${result#*=}" != "success" ]]; then
-              failed=true
-            fi
-          done
-          if [[ "$failed" == "true" ]]; then
-            echo "::error::One or more test tasks failed"
-            exit 1
-          fi
+          pnpm exec turbo run test --concurrency=1 "${SHARD_FILTERS[@]}"
 
   test-storybook:
     # Storybook's play functions and their assertions, executed in a real
@@ -836,14 +1271,32 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # One union key, written only by `warm-playwright-cache` on pushes to
+      # main, restored read-only here and by the other three jobs that need
+      # Playwright browsers (interview-e2e-native, interviewer-e2e-native,
+      # architect-e2e-native): a PR-scoped copy is readable by exactly one
+      # pull request, and on 2026-09-10 fourteen of those PR-scoped copies
+      # held 5.17 GB — 53% of the repository's 10 GB cache ceiling — which
+      # evicted the turbo cache entries `test` depends on to stay fast.
+      # `actions/cache/restore` (not `actions/cache`) makes that one-way: each
+      # of these four jobs can read main's warm entry but never writes a
+      # competing copy of its own, warm or not. The deliberate trade: a job
+      # that needs fewer than all three browsers still restores the full
+      # union (this one restores a webkit binary it never launches), a few
+      # hundred MB and some seconds it would not pay from a job-scoped key —
+      # traded for never holding open a second key against the ceiling this
+      # rearrangement exists to protect.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-firefox
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install the pinned browsers
         # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
         # postinstall browser download never runs. Firefox is for fresco-ui,
-        # the one project whose storybook suite runs both engines.
+        # the one project whose storybook suite runs both engines. This step
+        # is the fallback for a cold cache (main's warm job hasn't run yet, or
+        # missed) — a no-op when the binaries the restore above already
+        # placed are present.
         run: pnpm --filter @codaco/interviewer exec playwright install --with-deps chromium firefox
       - name: Generate Fresco's Prisma client and Next types
         run: pnpm exec turbo run fresco#codegen
@@ -896,6 +1349,12 @@ jobs:
   # contain the open release PR's head?), never by the ref suffix. A later
   # entry that lands a changeset on top of the release PR fails here, drops
   # out of the queue, and lets the release PR merge alone.
+  #
+  # The same tree is where the publish run's other precondition is decided:
+  # the lane publishes through npm trusted publishing, which cannot create a
+  # package, so a merge whose publish would need one (a package no one has
+  # published by hand yet — @codaco/app-i18n on 2026-09-08) is refused here
+  # rather than failing halfway through `changeset publish` on main.
   version-packages-freshness:
     if: >-
       github.event_name == 'merge_group'
@@ -951,13 +1410,17 @@ jobs:
           node-version-file: '.nvmrc'
       - name: Refuse a release PR that leaves normal-lane changesets behind
         if: steps.head.outputs.release_pr == 'true'
-        run: node scripts/check-version-packages-freshness.mjs
+        run: node scripts/release/check-version-packages-freshness.mjs
+      - name: Refuse a release PR whose publish needs a package npm does not know
+        if: steps.head.outputs.release_pr == 'true'
+        run: node scripts/release/check-first-publications.mjs
 
   quality:
     needs:
       - lint
       - quality-support
       - test
+      - test-studio-server
       - test-storybook
       - detect
       - e2e-policy
@@ -986,6 +1449,7 @@ jobs:
           LINT_RESULT: ${{ needs.lint.result }}
           SUPPORT_RESULT: ${{ needs.quality-support.result }}
           TEST_RESULT: ${{ needs.test.result }}
+          STUDIO_SERVER_RESULT: ${{ needs.test-studio-server.result }}
           TEST_STORYBOOK_RESULT: ${{ needs.test-storybook.result }}
           INTERVIEW_E2E_RESULT: ${{ needs.interview-e2e.result }}
           INTERVIEW_E2E_NATIVE_RESULT: ${{ needs.interview-e2e-native.result }}
@@ -1024,6 +1488,7 @@ jobs:
             "$LINT_RESULT" \
             "$SUPPORT_RESULT" \
             "$TEST_RESULT" \
+            "$STUDIO_SERVER_RESULT" \
             "$TEST_STORYBOOK_RESULT"
 
           if [[ "$EVENT_NAME" != "merge_group" && "$DETECT_RESULT" != "success" ]]; then
@@ -1071,7 +1536,10 @@ jobs:
       && (github.head_ref == 'changeset-release/documentation'
       || github.head_ref == 'changeset-release/website')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Budgets a 15-minute Netlify status poll plus the crawl. Every link is a
+    # browser navigation now, so a cold cache is minutes rather than seconds;
+    # the site's own pages are never cached and set the floor.
+    timeout-minutes: 45
     permissions:
       contents: read
       statuses: read
@@ -1166,24 +1634,10 @@ jobs:
           done
           echo "::error::Netlify documentation preview is not reachable at $DOCS_URL"
           exit 1
-      - name: Dead-link check
-        env:
-          DEAD_LINK_CHECK_USER_AGENT: >-
-            Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)
-            Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
-          DOCS_URL: ${{ steps.netlify-preview.outputs.url }}
-        run: >-
-          node scripts/dead-link-checker.mjs "$DOCS_URL" --github-actions --concurrent=1
-          --report="$RUNNER_TEMP/docs-dead-link-report.json"
-          --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
-      - name: Upload dead-link report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: ./.github/actions/dead-link-check
         with:
-          name: docs-dead-link-report
-          path: ${{ runner.temp }}/docs-dead-link-report.json
-          if-no-files-found: error
-          retention-days: 7
+          url: ${{ steps.netlify-preview.outputs.url }}
+          report-name: docs-dead-link-report
       - name: Redirect test
         working-directory: apps/documentation
         env:
@@ -1201,8 +1655,10 @@ jobs:
       || github.head_ref == 'changeset-release/website')
     runs-on: ubuntu-latest
     # Budgets two sequential 15-minute Netlify status polls (website, then
-    # documentation) plus the reachability probes and the crawl itself.
-    timeout-minutes: 40
+    # documentation) plus the reachability probes and the crawl itself. Every
+    # link is a browser navigation now, so the crawl's share is minutes rather
+    # than seconds on a cold cache.
+    timeout-minutes: 55
     permissions:
       contents: read
       statuses: read
@@ -1384,24 +1840,10 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Dead-link check
-        env:
-          DEAD_LINK_CHECK_USER_AGENT: >-
-            Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)
-            Chrome/120.0.0.0 Safari/537.36 NetworkCanvasLinkChecker/1.0
-          WEBSITE_URL: ${{ steps.netlify-preview.outputs.url }}
-        run: >-
-          node scripts/dead-link-checker.mjs "$WEBSITE_URL/en-US/" --github-actions --concurrent=1
-          --report="$RUNNER_TEMP/website-dead-link-report.json"
-          --user-agent="$DEAD_LINK_CHECK_USER_AGENT"
-      - name: Upload dead-link report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: ./.github/actions/dead-link-check
         with:
-          name: website-dead-link-report
-          path: ${{ runner.temp }}/website-dead-link-report.json
-          if-no-files-found: error
-          retention-days: 7
+          url: ${{ steps.netlify-preview.outputs.url }}/en-US/
+          report-name: website-dead-link-report
 
   interview-e2e:
     # Runs when the policy requires the interview suite. The Dockerized suite
@@ -1541,7 +1983,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs packages/interview/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs packages/interview/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       # Dormant until a shard matrix is added (spec: enable shards only if the
@@ -1619,13 +2061,22 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restore-only, from the one union key `warm-playwright-cache` writes on
+      # pushes to main — see the comment on this same step in `test-storybook`
+      # for why (a PR-scoped write-and-save copy of this cache, multiplied
+      # across live PRs, is what forced this rearrangement in the first
+      # place). This job needs every browser the key holds, so it pays no
+      # part of the union trade the other three jobs make.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-firefox-webkit
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install the pinned browsers
         # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs.
+        # postinstall browser download never runs. This step is the fallback
+        # for a cold cache (main's warm job hasn't run yet, or missed) — a
+        # no-op when the binaries the restore above already placed are
+        # present.
         run: pnpm --filter @codaco/interview exec playwright install --with-deps chromium firefox webkit
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
@@ -1667,7 +2118,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs apps/interviewer/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim workspace ownership
@@ -1721,13 +2172,20 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restore-only, from the one union key `warm-playwright-cache` writes on
+      # pushes to main — see the comment on this same step in `test-storybook`
+      # for the full arrangement. This job skips firefox, so it restores a
+      # firefox binary it never launches as its share of the union trade.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-webkit
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install the pinned browsers
         # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs.
+        # postinstall browser download never runs. This step is the fallback
+        # for a cold cache (main's warm job hasn't run yet, or missed) — a
+        # no-op when the binaries the restore above already placed are
+        # present.
         run: pnpm --filter @codaco/interviewer exec playwright install --with-deps chromium webkit
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
@@ -1768,7 +2226,7 @@ jobs:
         id: snapshot_failure
         if: failure()
         run: |
-          detected=$(node scripts/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
+          detected=$(node scripts/ci/playwright-snapshot-failure.mjs apps/architect/e2e/test-results/results.json)
           echo "snapshot-only failure: $detected"
           echo "detected=$detected" >> "$GITHUB_OUTPUT"
       - name: Reclaim workspace ownership
@@ -1792,10 +2250,30 @@ jobs:
     # cannot reach the Turbo remote cache. The @visual tests stay in
     # architect-e2e's container, the only place a pixel comparison means
     # anything.
+    #
+    # Sharded two ways across separate runners rather than given more
+    # Playwright `workers` on one: measured at 175 tests, `fullyParallel:
+    # true`, and Playwright's default two workers (its own default caps
+    # workers around half the runner's four vCPUs), this job spends 10.5
+    # minutes actually executing tests inside an 11.2-minute median job with
+    # almost no variance (p90 12.7m) — a hard floor that gates 22% of pull
+    # requests. Raising `workers` on that same single four-vCPU runner
+    # confronts the contention this repository's suites are documented
+    # elsewhere in this file as sensitive to (see the `test` job's
+    # `--concurrency=1` comment and its measured starvation failures at
+    # higher turbo concurrency): more workers would divide the same four
+    # vCPUs more ways, not add capacity. Splitting the fixed test count
+    # across two runners instead gives each shard's two workers a whole
+    # four-vCPU machine to itself, halving wall time without reproducing that
+    # contention.
     needs: e2e-policy
     if: ${{ !cancelled() && needs.e2e-policy.outputs.architect == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/2', '2/2']
     env:
       # Build-time PostHog kill switch. Not a Docker artifact: without it the
       # CSP-blocked analytics script load interleaves non-deterministically
@@ -1828,25 +2306,46 @@ jobs:
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # Restore-only, from the one union key `warm-playwright-cache` writes on
+      # pushes to main — see the comment on this same step in `test-storybook`
+      # for the full arrangement. This job needs only chromium, so it
+      # restores the firefox and webkit binaries the key also carries and
+      # never launches: about 200 MB more than a chromium-only key, which
+      # costs one to three seconds, since this job's whole cache-hit restore
+      # has a 3.5s median. In exchange it never holds a second key against
+      # the ceiling. Across every Playwright-consuming job in the repository
+      # the union costs on the order of one runner-hour a week, against the
+      # 4.6 GB of ceiling that thirteen per-pull-request copies were holding.
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
       - name: Install the pinned browsers
         # turbo-ci-setup installs with --ignore-scripts, so Playwright's own
-        # postinstall browser download never runs.
+        # postinstall browser download never runs. This step is the fallback
+        # for a cold cache (main's warm job hasn't run yet, or missed) — a
+        # no-op when the binaries the restore above already placed are
+        # present.
         run: pnpm --filter @codaco/architect exec playwright install --with-deps chromium
       - name: Build the app under test
         # The Playwright config serves an already-built app; it does not build
         # one for us.
         run: pnpm exec turbo run build --filter=@codaco/architect
       - name: Run functional E2E tests
-        run: pnpm --filter @codaco/architect run test:e2e:native
+        # `pnpm run` forwards an unrecognised flag straight to the underlying
+        # script (verified: `pnpm --filter @codaco/architect run
+        # test:e2e:native --shard=1/2 --list` produces the same shard split
+        # as calling `playwright test --shard=1/2` directly), so `--shard`
+        # reaches Playwright without needing the `exec playwright` form.
+        run: pnpm --filter @codaco/architect run test:e2e:native --shard=${{ matrix.shard }}
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-report-architect-native
+          # Unique per shard: `matrix.shard` itself contains a `/` and is not
+          # a legal artifact name, and without a per-shard name the two
+          # shards' uploads would collide and only one report would survive.
+          name: playwright-report-architect-native-${{ strategy.job-index }}
           path: apps/architect/e2e/playwright-report/
           if-no-files-found: warn
           retention-days: 14
@@ -2121,6 +2620,36 @@ jobs:
           merge_report interviewer-e2e "$R_INTERVIEWER_PIXEL" interviewer-playwright-report
           merge_report interviewer-e2e-native "$R_INTERVIEWER_NATIVE" interviewer-playwright-report-native
           merge_report architect-e2e "$R_ARCHITECT_PIXEL" playwright-report-architect
+          # architect-e2e-native runs as a 2-way shard matrix (see that job),
+          # so each shard uploads its own numbered
+          # playwright-report-architect-native-<job-index> artifact — giving
+          # both shards the same artifact name would make their uploads
+          # collide. merge_report above assumes exactly one source directory
+          # per job, so build it a synthetic one here: copy each shard's
+          # report into its own numbered subdirectory (two independent
+          # Playwright HTML reports nested flat would clobber each other's
+          # identically-named assets) and drop a tiny index linking to both,
+          # so the PR comment's existing '<job-name>/<slug>/' link still
+          # resolves to something useful even when only one shard failed.
+          architect_native_src="reports/playwright-report-architect-native"
+          rm -rf "$architect_native_src"
+          shard_found=false
+          for shard_dir in reports/playwright-report-architect-native-*/; do
+            [ -d "$shard_dir" ] || continue
+            shard_found=true
+            shard_name=$(basename "$shard_dir")
+            mkdir -p "$architect_native_src/$shard_name"
+            cp -r "$shard_dir." "$architect_native_src/$shard_name/"
+          done
+          if [ "$shard_found" = true ]; then
+            {
+              echo '<!doctype html><title>architect-e2e-native shard reports</title>'
+              for shard_dir in "$architect_native_src"/*/; do
+                shard_name=$(basename "$shard_dir")
+                echo "<p><a href=\"./${shard_name}/\">${shard_name}</a></p>"
+              done
+            } > "$architect_native_src/index.html"
+          fi
           merge_report architect-e2e-native "$R_ARCHITECT_NATIVE" playwright-report-architect-native
           # Sweep orphaned reports AFTER merging: a directory whose slug
           # matches no live branch belongs to a deleted or merged branch (or
@@ -2355,13 +2884,25 @@ jobs:
         # package and assert no packed export/main/module/types path points into
         # `src` and every referenced file exists — guarding the swap before the
         # changesets/action publish below.
-        run: node scripts/verify-publish-exports.mjs
+        run: node scripts/release/verify-publish-exports.mjs
       - name: Hide separately gated product changesets from the normal release
         # Documentation, Website, and Studio changesets persist until their own
         # release PR consumes them. Normal-lane apps intentionally remain for
         # the Changesets CLI to version alongside library packages.
         # Working-tree-only deletion; see the script header.
-        run: node scripts/prune-ignored-changesets.mjs
+        run: node scripts/release/prune-ignored-changesets.mjs
+      - name: Refuse to publish a package npm does not know
+        # The lane publishes through npm trusted publishing, which can only
+        # publish to a package npm already knows; every first publication is
+        # made by hand (CLAUDE.md, "First publications are made by hand").
+        # `changeset publish` would try anyway — it publishes every public
+        # package whose current version npm lacks, changeset or not — and stop
+        # at the first failure with the rest of the release unpublished, so the
+        # publish path stops here first. While normal-lane changesets are
+        # pending the action only regenerates the release PR, and the check
+        # skips itself; version-packages-freshness refuses the merge that would
+        # reach the publish path.
+        run: node scripts/release/check-first-publications.mjs --publish-path-only
       - name: Confirm this run still describes main's tip
         # Push-to-main runs never cancel each other (see the top of the file)
         # and the build above takes minutes, so the run for an older main
@@ -2379,7 +2920,7 @@ jobs:
         run: bash .github/scripts/superseded-push-guard.sh
       - id: changesets
         if: steps.tip.outputs.current == 'true'
-        uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           version-script: pnpm run version-packages
           publish-script: pnpm run publish-packages
@@ -2390,7 +2931,7 @@ jobs:
           # the Documentation and Website changesets. The Git CLI path still
           # begins with the `git reset --hard` that restores them, so the prune
           # stays working-tree-only — keep it until
-          # scripts/prune-ignored-changesets.mjs no longer relies on that reset.
+          # scripts/release/prune-ignored-changesets.mjs no longer relies on that reset.
           push-with-git-cli: true
           # A fine-grained PAT makes the generated PR's pull_request event run
           # normally. GITHUB_TOKEN-created PR events always require manual
@@ -2483,7 +3024,7 @@ jobs:
       - name: Compute ${{ matrix.product }} version bump
         if: steps.tip.outputs.current == 'true'
         run: >-
-          node scripts/version-gated-products.mjs ${{ matrix.package_args }}
+          node scripts/release/version-gated-products.mjs ${{ matrix.package_args }}
           --out "${RUNNER_TEMP}/product-release-body.md"
       - name: Open/update the ${{ matrix.product }} release PR
         if: steps.tip.outputs.current == 'true'
@@ -2655,7 +3196,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.architect_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/architect
           --pkg @codaco/architect
           --version "$VERSION"
@@ -2743,7 +3284,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.interviewer_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/interviewer
           --pkg @codaco/interviewer
           --version "$VERSION"
@@ -2818,7 +3359,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.background_creator_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/background-creator
           --pkg @codaco/background-creator
           --version "$VERSION"
@@ -2900,7 +3441,7 @@ jobs:
           MONOREPO_SHA: ${{ github.sha }}
           VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/fresco
           --repo complexdatacollective/Fresco
           --branch main
@@ -2915,7 +3456,7 @@ jobs:
           VERSION: ${{ needs.apps-release-detect.outputs.fresco_version }}
           SINCE: ${{ steps.guard.outputs.newest }}
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/fresco
           --pkg fresco
           --version "$VERSION"
@@ -3168,16 +3709,16 @@ jobs:
       # renderer process to appear (macOS/Linux; Windows runs the sweep
       # only). Either check would have blocked the broken 6.6.0 releases,
       # where `files` exclusions stripped runtime modules from the asar and
-      # the apps crashed at launch. See scripts/verify-packaged-app.mjs.
+      # the apps crashed at launch. See scripts/release/verify-packaged-app.mjs.
       - name: Verify packaged app
         shell: bash
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq xvfb
-            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/interviewer-classic
+            xvfb-run --auto-servernum node scripts/release/verify-packaged-app.mjs --app apps/interviewer-classic
           else
-            node scripts/verify-packaged-app.mjs --app apps/interviewer-classic
+            node scripts/release/verify-packaged-app.mjs --app apps/interviewer-classic
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -3232,9 +3773,9 @@ jobs:
           if [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq xvfb
-            xvfb-run --auto-servernum node scripts/verify-packaged-app.mjs --app apps/architect-classic
+            xvfb-run --auto-servernum node scripts/release/verify-packaged-app.mjs --app apps/architect-classic
           else
-            node scripts/verify-packaged-app.mjs --app apps/architect-classic
+            node scripts/release/verify-packaged-app.mjs --app apps/architect-classic
           fi
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -3264,13 +3805,13 @@ jobs:
           LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/interviewer-classic
           --repo complexdatacollective/interviewer
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
       - name: Extract release notes
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/interviewer-classic
           --pkg @codaco/interviewer-classic
           --version ${{ needs.legacy-release-detect.outputs.interviewer_version }}
@@ -3343,13 +3884,13 @@ jobs:
           LEGACY_RELEASE_GH_TOKEN: ${{ secrets.LEGACY_RELEASE_GH_TOKEN }}
           MONOREPO_SHA: ${{ github.sha }}
         run: >-
-          node scripts/mirror-app.mjs
+          node scripts/release/mirror-app.mjs
           --app apps/architect-classic
           --repo complexdatacollective/architect
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}
       - name: Extract release notes
         run: >-
-          node scripts/release-notes.mjs
+          node scripts/release/release-notes.mjs
           --app apps/architect-classic
           --pkg @codaco/architect-classic
           --version ${{ needs.legacy-release-detect.outputs.architect_version }}

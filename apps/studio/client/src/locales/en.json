@@ -23,18 +23,6 @@
     "defaultMessage": "Not enabled on this deployment",
     "description": "Shown on the disabled Billing sidebar row of a deployment whose billing capability is not configured."
   },
-  "studio.editor.access": {
-    "defaultMessage": "Access",
-    "description": "Inspector term for whether this researcher may currently change the screen."
-  },
-  "studio.editor.accessEditing": {
-    "defaultMessage": "Editing",
-    "description": "Inspector value shown when this researcher holds the screen lock and may change it."
-  },
-  "studio.editor.accessReadOnly": {
-    "defaultMessage": "Read-only",
-    "description": "Inspector value shown when this researcher may read the screen but not change it."
-  },
   "studio.editor.addScreen": {
     "defaultMessage": "Add",
     "description": "Button that adds another interview screen to the protocol."
@@ -42,10 +30,6 @@
   "studio.editor.addUnconfirmed": {
     "defaultMessage": "Studio could not confirm whether the screen was added. Refresh the outline before trying again.",
     "description": "Shown when adding an interview screen failed without saying whether it was created."
-  },
-  "studio.editor.addingScreen": {
-    "defaultMessage": "Adding a new screen…",
-    "description": "Status shown while a new interview screen is being created."
   },
   "studio.editor.assemblyFailed": {
     "defaultMessage": "The protocol document could not be assembled.",
@@ -58,22 +42,6 @@
   "studio.editor.assetsBody": {
     "defaultMessage": "Images, audio, and video used by this protocol will be managed here.",
     "description": "Says what the assets section will do once it is built."
-  },
-  "studio.editor.changeHistory": {
-    "defaultMessage": "Change history",
-    "description": "Accessible name of the group holding Undo and Redo."
-  },
-  "studio.editor.changes": {
-    "defaultMessage": "Changes",
-    "description": "Inspector term for whether the screen has changes still being saved."
-  },
-  "studio.editor.changesPending": {
-    "defaultMessage": "{count, plural, one {# pending} other {# pending}}",
-    "description": "Inspector value counting the changes to the screen that are still being saved."
-  },
-  "studio.editor.changesSaved": {
-    "defaultMessage": "Saved",
-    "description": "Inspector value shown when every change to the screen has been saved."
   },
   "studio.editor.checkingProtocol": {
     "defaultMessage": "Checking protocol",
@@ -123,17 +91,9 @@
     "defaultMessage": "This protocol draft could not be opened. Return to protocols and try again.",
     "description": "Shown when the protocol draft itself could not be loaded into the editor."
   },
-  "studio.editor.historyDisabled": {
-    "defaultMessage": "Save or discard your screen changes to use Undo and Redo.",
-    "description": "Explains why Undo and Redo are unavailable while the screen form holds unsaved values."
-  },
   "studio.editor.inspector": {
     "defaultMessage": "Inspector",
-    "description": "Heading of the panel showing access, change, and validation detail for the selected screen."
-  },
-  "studio.editor.interviewScreen": {
-    "defaultMessage": "Interview screen",
-    "description": "Supporting line used when the screen being edited carries no recognisable type."
+    "description": "Heading of the panel listing the validation problems of the protocol being edited."
   },
   "studio.editor.keepEditing": {
     "defaultMessage": "Keep editing",
@@ -163,10 +123,6 @@
     "defaultMessage": "Opening protocol editor…",
     "description": "Screen-reader status announced while the protocol editor is still loading."
   },
-  "studio.editor.openingScreen": {
-    "defaultMessage": "Opening screen…",
-    "description": "Shown on the editing canvas while the selected interview screen is being opened."
-  },
   "studio.editor.outlineRefreshFailedForAdd": {
     "defaultMessage": "The outline could not be refreshed. Reload this editor before adding another screen.",
     "description": "Shown when re-reading the protocol after an unconfirmed screen addition also failed."
@@ -175,9 +131,9 @@
     "defaultMessage": "The outline could not be refreshed. Reload this editor before moving another screen.",
     "description": "Shown when re-reading the protocol after an unconfirmed screen reorder also failed."
   },
-  "studio.editor.pageHeading": {
-    "defaultMessage": "Page heading",
-    "description": "Label of the field holding the heading a participant sees on this interview screen."
+  "studio.editor.protocolNotChecked": {
+    "defaultMessage": "Protocol not checked",
+    "description": "Button reporting that the protocol could not be checked, because part of it could not be read."
   },
   "studio.editor.protocolSections": {
     "defaultMessage": "Protocol sections",
@@ -187,17 +143,17 @@
     "defaultMessage": "Protocol settings",
     "description": "Canvas heading of the section holding the settings of the protocol itself."
   },
+  "studio.editor.protocolUnreadable": {
+    "defaultMessage": "Part of this protocol could not be read, so it has not been checked.",
+    "description": "Shown in the validation panel when part of the protocol could not be read at all."
+  },
   "studio.editor.protocolValid": {
     "defaultMessage": "Protocol valid",
     "description": "Button reporting that the protocol currently has no validation problems."
   },
-  "studio.editor.readOnlyScreen": {
-    "defaultMessage": "This screen is read-only while another editor holds its lock.",
-    "description": "Shown when somebody else is editing the screen, so this researcher can only read it."
-  },
-  "studio.editor.redo": {
-    "defaultMessage": "Redo",
-    "description": "Button that reapplies the change Undo reversed."
+  "studio.editor.readingScreens": {
+    "defaultMessage": "Reading the protocol…",
+    "description": "Shown in place of the list of interview screens while the protocol is still being read."
   },
   "studio.editor.refreshOrder": {
     "defaultMessage": "Refresh order",
@@ -207,29 +163,17 @@
     "defaultMessage": "Refresh outline",
     "description": "Button that re-reads the protocol after an unconfirmed screen addition."
   },
-  "studio.editor.saveFailed": {
-    "defaultMessage": "This screen could not be saved. Wait a moment and try again.",
-    "description": "Form error shown when saving an interview screen failed."
-  },
   "studio.editor.saveScreen": {
     "defaultMessage": "Save screen",
     "description": "Submit button of the interview screen's form."
-  },
-  "studio.editor.screenName": {
-    "defaultMessage": "Screen name",
-    "description": "Label of the field naming an interview screen for the researcher, in the outline."
-  },
-  "studio.editor.screenTypeSummary": {
-    "defaultMessage": "{type} screen",
-    "description": "Supporting line naming the kind of interview screen being edited; {type} is the screen type recorded in the protocol."
   },
   "studio.editor.screens": {
     "defaultMessage": "Screens",
     "description": "Section selector group holding the interview screens of the protocol."
   },
-  "studio.editor.selectScreen": {
-    "defaultMessage": "Select a screen to see access and change details.",
-    "description": "Shown in the inspector while no interview screen is selected."
+  "studio.editor.screensUnreadable": {
+    "defaultMessage": "Part of this protocol could not be read, so its screens are not shown.",
+    "description": "Shown in place of the list of interview screens when part of the protocol could not be read at all."
   },
   "studio.editor.settings": {
     "defaultMessage": "Settings",
@@ -259,10 +203,6 @@
     "defaultMessage": "Translated protocol content will be managed here.",
     "description": "Says what the translations section will do once it is built."
   },
-  "studio.editor.undo": {
-    "defaultMessage": "Undo",
-    "description": "Button that reverses the last saved change to the screen."
-  },
   "studio.editor.unknownScreenType": {
     "defaultMessage": "Unknown screen",
     "description": "Supporting line of an outline entry whose screen carries no recognisable type."
@@ -274,42 +214,6 @@
   "studio.editor.validationProblems": {
     "defaultMessage": "{count, plural, one {# validation problem} other {# validation problems}}",
     "description": "Button reporting how many validation problems the protocol currently has."
-  },
-  "studio.editorSession.changesSaved": {
-    "defaultMessage": "Changes saved.",
-    "description": "Shown when a change to the screen has been saved."
-  },
-  "studio.editorSession.lockLost": {
-    "defaultMessage": "Editing stopped because the screen lock was lost.",
-    "description": "Shown when editing stopped because the screen lock could no longer be held."
-  },
-  "studio.editorSession.lockNowAvailable": {
-    "defaultMessage": "The screen lock is available. You can edit this screen.",
-    "description": "Shown when a screen that opened read-only has since become editable."
-  },
-  "studio.editorSession.openFailed": {
-    "defaultMessage": "This screen could not be opened. Studio is trying again.",
-    "description": "Shown when opening the chosen interview screen failed and Studio is retrying by itself."
-  },
-  "studio.editorSession.openedReadOnly": {
-    "defaultMessage": "This screen is open read-only because someone else is editing it.",
-    "description": "Shown when somebody else holds the screen lock, so the screen opened read-only."
-  },
-  "studio.editorSession.readyToEdit": {
-    "defaultMessage": "This screen is ready to edit.",
-    "description": "Shown when the researcher holds the screen lock and may change the screen."
-  },
-  "studio.editorSession.saveStopped": {
-    "defaultMessage": "Editing stopped because Studio could not save this screen.",
-    "description": "Shown when editing stopped because a change to the screen could not be saved."
-  },
-  "studio.editorSession.screenRemoved": {
-    "defaultMessage": "The selected screen is no longer in this draft.",
-    "description": "Shown when the chosen interview screen has been deleted from the protocol draft."
-  },
-  "studio.editorSession.selectScreen": {
-    "defaultMessage": "Select a screen to edit.",
-    "description": "Shown on the editing canvas while no interview screen has been chosen."
   },
   "studio.emailValidation.invalid": {
     "defaultMessage": "Enter a valid email address.",

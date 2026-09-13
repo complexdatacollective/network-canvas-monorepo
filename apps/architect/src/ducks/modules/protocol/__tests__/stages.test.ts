@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { Stage } from '@codaco/protocol-validation';
 import type { AppDispatch } from '~/ducks/store';
 
-import { commitStageEditorDraft } from '../commitStageEditorDraft';
+import { commitStage } from '../commitStage';
 import reducer, {
   actionCreators,
   getFamilyPedigreeNodeTypeChangeBlock,
@@ -30,29 +30,27 @@ const mockStages = [
 
 describe('protocol.stages', () => {
   describe('reducer', () => {
-    // Stage creation happens only as half of the stage editor's atomic
-    // commit; there is no standalone create action to insert a stage.
-    describe('commitStageEditorDraft (create)', () => {
+    // Stage creation happens only through the stage editor's save; there is
+    // no standalone create action to insert a stage.
+    describe('commitStage (create)', () => {
       it('Creates a stage', () => {
         const newStage = { id: 'new', type: 'Information', label: '' } as Stage;
 
         const appendStageToState = reducer(
           mockStages,
-          commitStageEditorDraft({
+          commitStage({
             stageId: null,
             stage: newStage,
-            codebook: null,
           }),
         );
         expect(appendStageToState[3]).toMatchObject({ ...newStage });
 
         const addStageToExistingState = reducer(
           mockStages,
-          commitStageEditorDraft({
+          commitStage({
             stageId: null,
             stage: newStage,
             index: 1,
-            codebook: null,
           }),
         );
         expect(addStageToExistingState[1]).toMatchObject({ ...newStage });

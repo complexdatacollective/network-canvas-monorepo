@@ -11,7 +11,6 @@ import activeProtocol, {
 import app from '~/ducks/modules/app';
 import { test as codebookActions } from '~/ducks/modules/protocol/codebook';
 import { timelineOptions } from '~/ducks/modules/root';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 
 /**
  * The protocol timeline as the app actually builds it — `activeProtocol`
@@ -30,7 +29,6 @@ const makeStore = () =>
     reducer: combineReducers({
       app,
       activeProtocol: createTimeline(activeProtocol, timelineOptions),
-      stageEditorDraft,
     }),
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({ serializableCheck: false }),

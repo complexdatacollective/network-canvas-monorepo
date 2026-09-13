@@ -227,6 +227,7 @@ async function importParsedProtocol(
   } catch (cause) {
     // An IndexedDB or quota rejection reads as machine output. What the
     // researcher needs is that the protocol is fine and the device is not.
+    // oxlint-disable-next-line no-console -- the raw cause is deliberately kept out of the user-facing message above; this is the only place it survives for debugging
     console.error('Protocol import failed while saving', cause);
     return importFailure('save-failed', { descriptor: messages.cannotSave });
   }
@@ -246,6 +247,7 @@ async function importFromBuffer(
   try {
     extracted = await extractZip(buffer);
   } catch (cause) {
+    // oxlint-disable-next-line no-console -- the raw cause is deliberately kept out of the user-facing message below; this is the only place it survives for debugging
     console.error('Protocol import failed while extracting', cause);
     return importFailure(
       'extract-failed',

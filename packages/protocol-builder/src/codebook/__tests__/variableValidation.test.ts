@@ -271,14 +271,22 @@ describe('rule-map and field-editor save gates', () => {
   });
 
   it('infers a new variable type from the canonical component map', () => {
+    // The repair guidance a researcher reads, named for the attribute they are
+    // still inventing — not the analyser's own diagnostic (`Attribute
+    // "NewVariable": minValue (10) is greater than maxValue (1)`), which names
+    // the schema's rule keys and is written for a validation report.
     expect(
-      makeFieldEditorValidate({})({
-        variable: 'NewVariable',
-        _createNewVariable: 'NewVariable',
-        component: 'Number',
-        validation: { minValue: 10, maxValue: 1 },
-      }).validation,
-    ).toMatch(/is greater than/);
+      readMessage(
+        makeFieldEditorValidate({})({
+          variable: 'NewVariable',
+          _createNewVariable: 'NewVariable',
+          component: 'Number',
+          validation: { minValue: 10, maxValue: 1 },
+        }).validation ?? '',
+      ),
+    ).toBe(
+      'The minimum and maximum rules for NewVariable leave no permitted answer. Adjust the bounds or the required-answer rule.',
+    );
   });
 
   it('reports a contradiction introduced by shrinking categorical options', () => {
@@ -346,13 +354,17 @@ describe('rule-map and field-editor save gates', () => {
     );
 
     expect(
-      validate({
-        variable: 'a',
-        validation: { sameAs: 'b' },
-        component: 'DatePicker',
-        parameters: {},
-      }).validation,
-    ).toContain('different resolutions');
+      readMessage(
+        validate({
+          variable: 'a',
+          validation: { sameAs: 'b' },
+          component: 'DatePicker',
+          parameters: {},
+        }).validation ?? '',
+      ),
+    ).toBe(
+      'The comparisons for A and B cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+    );
   });
 
   it('applies the unchanged-pick escape to its cross-class save backstop', () => {

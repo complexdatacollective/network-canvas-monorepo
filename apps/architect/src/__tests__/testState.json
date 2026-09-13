@@ -267,20 +267,5 @@
         }
       ]
     }
-  },
-  "stageEditorDraft": {
-    "history": {
-      "past": [],
-      "present": null,
-      "future": [],
-      "timeline": [],
-      "futureTimeline": []
-    },
-    "ui": {
-      "restoring": false,
-      "initialValues": null,
-      "liveValues": null,
-      "externalEditCount": 0
-    }
   }
 }

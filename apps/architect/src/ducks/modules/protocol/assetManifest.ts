@@ -119,14 +119,31 @@ const getImportAssetErrorInfo = (
 
 // Async thunks. `state` is narrowed to the slice this thunk actually reads, so
 // it stays dispatchable from a store built with only those reducers.
+/**
+ * A file to bring into the protocol, and what to call it.
+ *
+ * `name` is what the researcher sees; the file's own name is what the manifest
+ * records as the entry's `source`, which is the name an export writes the file
+ * under. They are the same thing for a drag-and-drop import, and are not for
+ * the resource lifecycle, which commits bytes under their content hash so that
+ * two imports of different files called `portrait.png` stay two assets.
+ */
+export type AssetImport = {
+  file: File;
+  name?: string;
+};
+
 export const importAssetAsync = createAsyncThunk<
   ImportAssetCompletePayload,
-  File,
+  AssetImport,
   { state: Pick<RootState, 'app'> }
 >(
   'assetManifest/importAssetAsync',
-  async (file, { dispatch, getState, rejectWithValue }) => {
-    const name = file.name;
+  async (
+    { file, name: displayName },
+    { dispatch, getState, rejectWithValue },
+  ) => {
+    const name = displayName ?? file.name;
     const assetId = uuid();
 
     // The asset blob is written into a store keyed by protocol id, with no
@@ -157,7 +174,7 @@ export const importAssetAsync = createAsyncThunk<
       );
       return refusal
         ? ({
-            filename: name,
+            filename: file.name,
             code: 'PROTOCOL_NOT_OWNED_HERE',
             message: refusal,
             localizedMessage: {
@@ -239,7 +256,7 @@ export const importAssetAsync = createAsyncThunk<
       // `pending`/`rejected` lifecycle actions are excluded from it
       // (`ducks/modules/root.ts`), and the rejection value below is what the
       // caller shows the researcher.
-      return rejectWithValue(getImportAssetErrorInfo(error, name));
+      return rejectWithValue(getImportAssetErrorInfo(error, file.name));
     }
   },
 );

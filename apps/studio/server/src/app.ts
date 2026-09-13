@@ -1,12 +1,18 @@
-import { timingSafeEqual } from 'node:crypto';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
 
 import { upgradeWebSocket } from '@hono/node-server';
 import { COMMON_ERROR_STATUS_MAP, onError, ORPCError } from '@orpc/server';
 import { RPCHandler } from '@orpc/server/fetch';
+import { RPCHandler as WebSocketRPCHandler } from '@orpc/server/websocket';
 import type { Context } from 'hono';
 import type pg from 'pg';
 
 import { SOCIAL_PROVIDERS } from '@codaco/studio-rpc';
+import {
+  CLIENT_SESSION_HEADER,
+  CLIENT_SESSION_PARAM,
+  readClientSessionId,
+} from '@codaco/studio-rpc/client-session';
 
 import { createApiV1 } from './api.ts';
 import {
@@ -34,6 +40,7 @@ import { createOperationalApp } from './observability/operational-app.ts';
 import { isProxyAddress } from './observability/proxy.ts';
 import { createObservability } from './observability/runtime.ts';
 import type { EncryptionKeys } from './pii/keys.ts';
+import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
 import type { ServerTelemetry } from './telemetry.ts';
 
@@ -193,36 +200,47 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     app.use('/rpc/*', requireSameOrigin(env.auth.baseUrl));
   }
   app.use('/rpc/*', createPrincipalMiddleware(auth));
-  const rpcHandler = new RPCHandler(
-    createRpcRouter(authCaps, {
-      auth,
-      deployment,
-      bootstrapToken: env.bootstrapToken,
-      telemetry: env.telemetry,
-      invitationDeliveryAvailable: Boolean(
-        deps.invitationDeliveryAvailable && authCaps.magicLink,
-      ),
-      pool,
-    }),
-    {
-      interceptors: [
-        onError((error) => {
-          if (
-            !(error instanceof ORPCError) ||
-            !Object.hasOwn(COMMON_ERROR_STATUS_MAP, error.code) ||
-            COMMON_ERROR_STATUS_MAP[
-              error.code as keyof typeof COMMON_ERROR_STATUS_MAP
-            ] >= 500
-          )
-            deps.telemetry?.capture('server_rpc', error);
-        }),
-      ],
-    },
-  );
+  const rpcRouter = createRpcRouter(authCaps, {
+    auth,
+    deployment,
+    bootstrapToken: env.bootstrapToken,
+    telemetry: env.telemetry,
+    invitationDeliveryAvailable: Boolean(
+      deps.invitationDeliveryAvailable && authCaps.magicLink,
+    ),
+    pool,
+    protocolBuilder: createProtocolBuilderRuntime(),
+    assetStore,
+  });
+  const captureRpcError = (error: unknown) => {
+    if (
+      !(error instanceof ORPCError) ||
+      !Object.hasOwn(COMMON_ERROR_STATUS_MAP, error.code) ||
+      COMMON_ERROR_STATUS_MAP[
+        error.code as keyof typeof COMMON_ERROR_STATUS_MAP
+      ] >= 500
+    )
+      deps.telemetry?.capture('server_rpc', error);
+  };
+  const rpcHandler = new RPCHandler(rpcRouter, {
+    interceptors: [onError(captureRpcError)],
+  });
+  // The same router over the socket: unary calls keep working on /rpc, and
+  // the streaming procedure the fetch transport cannot serve — the protocol
+  // builder's `watchProtocol` — is served here.
+  const socketHandler = new WebSocketRPCHandler(rpcRouter, {
+    interceptors: [onError(captureRpcError)],
+  });
   app.use('/rpc/*', async (c, next) => {
     const { matched, response } = await rpcHandler.handle(c.req.raw, {
       prefix: '/rpc',
-      context: { principal: c.get('principal'), requestId: c.get('requestId') },
+      context: {
+        principal: c.get('principal'),
+        requestId: c.get('requestId'),
+        clientSessionId: readClientSessionId(
+          c.req.header(CLIENT_SESSION_HEADER),
+        ),
+      },
     });
     if (matched) return c.newResponse(response.body, response);
     await next();
@@ -248,9 +266,8 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     app.all(`${prefix}/*`, notFound);
   }
 
-  // Placeholder handlers proving the WebSocket topology end to end; the real
-  // protocol ("studio.sync.v1", #1247) replaces the echo behaviour, not the
-  // wiring.
+  // The same RPC surface over a socket, behind the same origin check,
+  // principal, and metrics the echo placeholder proved.
   if (env.auth) {
     app.use(WS_PATH, requireWsOrigin(env.auth.baseUrl));
   }
@@ -259,20 +276,54 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   app.get(
     WS_PATH,
     upgradeWebSocket(
-      () => ({
-        onOpen() {
-          observability.metrics.socketOpened();
-        },
-        onClose() {
-          observability.metrics.socketClosed();
-        },
-        onError() {
-          logOperational('STUDIO_WEBSOCKET_ERROR');
-        },
-        onMessage(event, ws) {
-          ws.send(String(event.data));
-        },
-      }),
+      (c) => {
+        const principal = c.get('principal');
+        const requestId = c.get('requestId');
+        // The socket is the presence identity, so it needs an id of its own.
+        const connectionId = randomUUID();
+        // The lock owner is the tab, which outlives its sockets. A browser
+        // cannot put a header on a WebSocket handshake, so the tab names
+        // itself on the upgrade URL; a client that names nothing falls back to
+        // the connection and is its own owner for as long as it is connected.
+        const clientSessionId = readClientSessionId(
+          c.req.query(CLIENT_SESSION_PARAM),
+        );
+        return {
+          onOpen() {
+            observability.metrics.socketOpened();
+          },
+          onClose(_event, ws) {
+            observability.metrics.socketClosed();
+            void socketHandler.close(ws).catch(() => {
+              logOperational('STUDIO_WEBSOCKET_ERROR');
+            });
+          },
+          onError() {
+            logOperational('STUDIO_WEBSOCKET_ERROR');
+          },
+          onMessage(event, ws) {
+            const data: unknown = event.data;
+            if (typeof data !== 'string' && !(data instanceof ArrayBuffer)) {
+              logOperational('STUDIO_WEBSOCKET_ERROR');
+              return;
+            }
+            // Handed over before any await: the adapter's ordering guarantee
+            // is per message, in arrival order.
+            void socketHandler
+              .message(ws, data, {
+                context: {
+                  principal,
+                  requestId,
+                  connectionId,
+                  clientSessionId,
+                },
+              })
+              .catch(() => {
+                logOperational('STUDIO_WEBSOCKET_ERROR');
+              });
+          },
+        };
+      },
       { onError: () => logOperational('STUDIO_WEBSOCKET_ERROR') },
     ),
   );

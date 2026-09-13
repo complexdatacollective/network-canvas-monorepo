@@ -150,6 +150,10 @@ const RouteFocus = ({ location, ownerDocument }: RouteFocusProps) => {
   const lastLocation = useRef<string | null>(null);
   const [announcements, setAnnouncements] = useState<Announcements>(SILENT);
 
+  // Everything below reads and moves the live DOM — the committed route's
+  // landing point, and where focus currently is — and what it announces is
+  // decided by the live regions' text changing. Neither is available during
+  // render, so the announcements cannot be derived from the location.
   useEffect(() => {
     const previous = lastLocation.current;
     lastLocation.current = location;
