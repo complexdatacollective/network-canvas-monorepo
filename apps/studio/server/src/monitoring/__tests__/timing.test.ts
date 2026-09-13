@@ -12,6 +12,7 @@ import {
   reachableDb,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
+import { seedMonitoringRollups } from '../../db/seed/monitoring.ts';
 import { createSessionTimingOpenRoute } from '../../study/session-timing-route.ts';
 import {
   MAX_TIMING_INTERVAL_MS,
@@ -20,10 +21,7 @@ import {
   SessionTimingError,
   writeInterviewTiming,
 } from '../../study/session-timing.ts';
-import {
-  runMonitoringRollupOnce,
-  runMonitoringStageRollupOnce,
-} from '../recompute.ts';
+import { runMonitoringRollupOnce } from '../recompute.ts';
 
 const db = await reachableDb();
 
@@ -296,7 +294,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
         syncRevision: 1,
         stageTiming,
         currentStageIndex: 3,
-        currentStageId: 'edge-1',
+        currentStageId: null,
       }),
     ).resolves.toEqual({ kind: 'applied', applied: true, syncRevision: 1 });
 
@@ -349,6 +347,49 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
         stageTiming,
       }),
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('seeds completed and abandoned stages from their latest exits, with no inferred missing answers', async () => {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM study_stage_rollups');
+      await client.query('DELETE FROM study_wave_rollups');
+      await seedMonitoringRollups(client, TEAM, new Date());
+      const rows = await client.query(
+        `SELECT stage_id, completed_count, abandoned_count, missing_item_count FROM study_stage_rollups WHERE wave_id = $1 ORDER BY stage_id`,
+        [waveId],
+      );
+      expect(rows.rows).toEqual([
+        {
+          stage_id: 'edge-1',
+          completed_count: 0,
+          abandoned_count: 1,
+          missing_item_count: 0,
+        },
+        {
+          stage_id: 'ego-1',
+          completed_count: 1,
+          abandoned_count: 0,
+          missing_item_count: 0,
+        },
+        {
+          stage_id: 'info-1',
+          completed_count: 1,
+          abandoned_count: 0,
+          missing_item_count: 0,
+        },
+        {
+          stage_id: 'info-2',
+          completed_count: 1,
+          abandoned_count: 0,
+          missing_item_count: 0,
+        },
+      ]);
+    } finally {
+      await client.query('ROLLBACK');
+      client.release();
+    }
   });
 
   it('recomputes unequal stage durations, preserves missing timing, and leases stale work once', async () => {
@@ -433,7 +474,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
         where wave_id = $1`,
       [waveId],
     );
-    await expect(runMonitoringStageRollupOnce(maintenance)).resolves.toEqual({
+    await expect(runMonitoringRollupOnce(maintenance)).resolves.toEqual({
       claimed: 1,
     });
     const siblingLease = await pool.query<{ lease_owner: string | null }>(
@@ -442,7 +483,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
       [waveId, 'info-1'],
     );
     expect(siblingLease.rows[0]?.lease_owner).toBe('older-stage-worker');
-    await expect(runMonitoringStageRollupOnce(maintenance)).resolves.toEqual({
+    await expect(runMonitoringRollupOnce(maintenance)).resolves.toEqual({
       claimed: 0,
     });
   });
@@ -624,7 +665,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
       },
     });
     try {
-      await waitForBlockedApplication('timing-source-write');
+      await newerWrite;
     } finally {
       releaseRecompute?.();
     }
@@ -637,7 +678,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
 
     const claims = await Promise.all([
       runMonitoringRollupOnce(maintenance),
-      runMonitoringStageRollupOnce(maintenance),
+      runMonitoringRollupOnce(maintenance),
     ]);
     expect(claims.reduce((sum, result) => sum + result.claimed, 0)).toBe(1);
   });
@@ -716,6 +757,33 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     await expect(runMonitoringRollupOnce(maintenance)).resolves.toEqual({
       claimed: 1,
     });
+  });
+
+  it('renews the wave lease while recomputation is paused before publishing', async () => {
+    await pool.query(
+      `update study_wave_rollups set stale_at = clock_timestamp(), attempt_count = 0, failed_at = null where wave_id = $1`,
+      [waveId],
+    );
+    let renewed = 0;
+    await runMonitoringRollupOnce(maintenance, {
+      leaseMs: 6000,
+      observer: (event) => {
+        if (event.kind === 'heartbeat' && event.outcome === 'renewed')
+          renewed += 1;
+      },
+      afterRecompute: async () => {
+        await expect.poll(() => renewed, { timeout: 5000 }).toBeGreaterThan(0);
+      },
+    });
+    expect(renewed).toBeGreaterThan(0);
+    expect(
+      (
+        await pool.query(
+          'SELECT stale_at FROM study_wave_rollups WHERE wave_id = $1',
+          [waveId],
+        )
+      ).rows[0],
+    ).toEqual({ stale_at: null });
   });
 
   it('refuses completion after lease expiry and leaves the generation reclaimable', async () => {

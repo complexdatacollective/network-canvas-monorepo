@@ -494,6 +494,7 @@ export async function writeInterviewTiming(
         'current stage id requires its protocol index',
       );
     }
+    let currentStageId: string | null = null;
     if (input.currentStageIndex !== undefined) {
       const stage = stages[input.currentStageIndex];
       const isFinish = input.currentStageIndex === stages.length;
@@ -502,6 +503,7 @@ export async function writeInterviewTiming(
           'current stage is not in protocol',
         );
       }
+      currentStageId = isFinish ? 'FinishSession' : stage!.id;
       if (
         input.currentStageId !== undefined &&
         input.currentStageId !== null &&
@@ -516,7 +518,7 @@ export async function writeInterviewTiming(
       input.sessionId,
       input.syncRevision,
       input.currentStageIndex ?? null,
-      input.currentStageId ?? null,
+      currentStageId,
       timing ? JSON.stringify(timing) : null,
     ];
     await client.query(

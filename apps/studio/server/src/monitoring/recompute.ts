@@ -15,7 +15,15 @@ type RollupClaim = {
   attemptCount: number;
   leaseOwner: string;
 };
-type RollupQueue = 'study_wave_rollups' | 'study_stage_rollups';
+type WaveCounts = {
+  invited_count: number;
+  onboarding_started_count: number;
+  consented_count: number;
+  session_started_count: number;
+  session_completed_count: number;
+  session_abandoned_count: number;
+  delivery_failed_count: number;
+};
 type MonitoringRollupOptions = OutboxRetryOptions & {
   observer?: OutboxObserver;
   afterRecompute?: () => Promise<void>;
@@ -31,7 +39,7 @@ async function recomputeWave(
   client: pg.PoolClient,
   waveId: string,
   recomputedAt: Date,
-): Promise<void> {
+): Promise<WaveCounts> {
   await client.query(
     `insert into study_stage_rollups (
        team_id, study_id, wave_id, stage_id, entered_count, completed_count,
@@ -146,60 +154,57 @@ async function recomputeWave(
     [waveId],
   );
 
-  await client.query(
-    `update study_wave_rollups r
-        set invited_count = (
+  const counts = await client.query<WaveCounts>(
+    `select (
               select count(*)::int from interview_links l
-               where l.wave_id = r.wave_id and l.team_id = r.team_id),
-            onboarding_started_count = (
+               where l.wave_id = r.wave_id and l.team_id = r.team_id) AS invited_count,
+            (
               select count(distinct s.participant_id)::int
                 from interview_sessions s
                where s.wave_id = r.wave_id and s.team_id = r.team_id
-                 and s.participant_id is not null),
-            consented_count = (
+                 and s.participant_id is not null) AS onboarding_started_count,
+            (
               select count(distinct s.participant_id)::int
                 from interview_sessions s
                 join participant_consents pc
                   on pc.participant_id = s.participant_id
                  and pc.team_id = s.team_id and pc.withdrawn_at is null
-               where s.wave_id = r.wave_id and s.team_id = r.team_id),
-            session_started_count = (
+               where s.wave_id = r.wave_id and s.team_id = r.team_id) AS consented_count,
+            (
               select count(*)::int from interview_sessions s
-               where s.wave_id = r.wave_id and s.team_id = r.team_id),
-            session_completed_count = (
-              select count(*)::int from interview_sessions s
-               where s.wave_id = r.wave_id and s.team_id = r.team_id
-                 and s.status = 'completed'),
-            session_abandoned_count = (
+               where s.wave_id = r.wave_id and s.team_id = r.team_id) AS session_started_count,
+            (
               select count(*)::int from interview_sessions s
                where s.wave_id = r.wave_id and s.team_id = r.team_id
-                 and s.status = 'abandoned'),
-            delivery_failed_count = (
+                 and s.status = 'completed') AS session_completed_count,
+            (
+              select count(*)::int from interview_sessions s
+               where s.wave_id = r.wave_id and s.team_id = r.team_id
+                 and s.status = 'abandoned') AS session_abandoned_count,
+            (
               select count(*)::int from message_deliveries d
               join schedule_occurrences o
                 on o.id = d.occurrence_id and o.team_id = d.team_id
               join study_schedules sc
                 on sc.id = o.schedule_id and sc.team_id = o.team_id
                where sc.wave_id = r.wave_id and d.team_id = r.team_id
-                 and d.failed_at is not null),
-            recomputed_at = $2
+                 and d.failed_at is not null) AS delivery_failed_count
+       from study_wave_rollups r
       where r.wave_id = $1`,
-    [waveId, recomputedAt],
+    [waveId],
   );
+  const row = counts.rows[0];
+  if (!row) throw new Error('rollup wave disappeared during recompute');
+  return row;
 }
 
 class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
-  readonly queue: OutboxQueue;
+  readonly queue: OutboxQueue = 'study_wave_rollups';
   private readonly pool: pg.Pool;
   private readonly afterRecompute: (() => Promise<void>) | undefined;
 
-  constructor(
-    pool: pg.Pool,
-    queue: RollupQueue,
-    afterRecompute?: () => Promise<void>,
-  ) {
+  constructor(pool: pg.Pool, afterRecompute?: () => Promise<void>) {
     this.pool = pool;
-    this.queue = queue;
     this.afterRecompute = afterRecompute;
   }
 
@@ -315,15 +320,44 @@ class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
             and dirty_generation = $2
             and lease_owner = $3
             and lease_expires_at > clock_timestamp()
-            and stale_at is not null and failed_at is null
-          for update`,
+            and stale_at is not null and failed_at is null`,
         [claim.waveId, claim.dirtyGeneration, claim.leaseOwner],
       );
       if (owned.rowCount === 0) {
         throw new Error('rollup lease was lost before recompute');
       }
-      await recomputeWave(client, claim.waveId, new Date());
+      const recomputedAt = new Date();
+      const counts = await recomputeWave(client, claim.waveId, recomputedAt);
       await this.afterRecompute?.();
+      // Expensive reads and stage updates do not lock the wave lease row.
+      // Publish only while this same source generation and lease still belong
+      // to us; otherwise roll back the derived stage rows as well.
+      const published = await client.query(
+        `update study_wave_rollups
+            set invited_count = $3, onboarding_started_count = $4,
+                consented_count = $5, session_started_count = $6,
+                session_completed_count = $7, session_abandoned_count = $8,
+                delivery_failed_count = $9, recomputed_at = $2
+          where wave_id = $1 and dirty_generation = $10
+            and lease_owner = $11 and lease_expires_at > clock_timestamp()
+            and stale_at is not null and failed_at is null
+          returning wave_id`,
+        [
+          claim.waveId,
+          recomputedAt,
+          counts.invited_count,
+          counts.onboarding_started_count,
+          counts.consented_count,
+          counts.session_started_count,
+          counts.session_completed_count,
+          counts.session_abandoned_count,
+          counts.delivery_failed_count,
+          claim.dirtyGeneration,
+          claim.leaseOwner,
+        ],
+      );
+      if (published.rowCount !== 1)
+        throw new Error('rollup lease was lost before publication');
       await client.query('commit');
     } catch (error) {
       await client.query('rollback').catch(() => undefined);
@@ -398,15 +432,11 @@ class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
   }
 }
 
-function rollupDispatcher(
-  pool: pg.Pool,
-  queue: RollupQueue,
-  options: MonitoringRollupOptions,
-) {
+function rollupDispatcher(pool: pg.Pool, options: MonitoringRollupOptions) {
   return new OutboxDispatcher({
     ...options,
     pool,
-    adapter: new MonitoringRollupAdapter(pool, queue, options.afterRecompute),
+    adapter: new MonitoringRollupAdapter(pool, options.afterRecompute),
   });
 }
 
@@ -415,52 +445,23 @@ export async function runMonitoringRollupOnce(
   pool: pg.Pool,
   options: MonitoringRollupOptions = {},
 ): Promise<{ claimed: number }> {
-  const result = await rollupDispatcher(
-    pool,
-    'study_wave_rollups',
-    options,
-  ).runOnce();
+  const result = await rollupDispatcher(pool, options).runOnce();
   return { claimed: result.claimed };
 }
 
-export async function runMonitoringStageRollupOnce(
-  pool: pg.Pool,
-  options: MonitoringRollupOptions = {},
-): Promise<{ claimed: number }> {
-  const result = await rollupDispatcher(
-    pool,
-    'study_stage_rollups',
-    options,
-  ).runOnce();
-  return { claimed: result.claimed };
-}
-
-/** Both derived worklists use the shared lease, retry and observer machinery. */
+/** One wave claim rebuilds both wave and stage projections. */
 export function startMonitoringRollupWorker(options: {
   pool: pg.Pool;
   observer?: OutboxObserver;
   onError?: (error: unknown) => void | Promise<void>;
   pollIntervalMs?: number;
 }): OutboxWorker {
-  const wave = rollupDispatcher(options.pool, 'study_wave_rollups', options);
-  const stage = rollupDispatcher(options.pool, 'study_stage_rollups', options);
-  const waveWorker = startOutboxWorker({
+  const dispatcher = rollupDispatcher(options.pool, options);
+  return startOutboxWorker({
     queue: 'study_wave_rollups',
     pollIntervalMs: options.pollIntervalMs,
     observer: options.observer,
     onError: options.onError,
-    runOnce: async () => wave.runOnce(),
+    runOnce: async () => dispatcher.runOnce(),
   });
-  const stageWorker = startOutboxWorker({
-    queue: 'study_stage_rollups',
-    pollIntervalMs: options.pollIntervalMs,
-    observer: options.observer,
-    onError: options.onError,
-    runOnce: async () => stage.runOnce(),
-  });
-  return {
-    stop: async () => {
-      await Promise.all([waveWorker.stop(), stageWorker.stop()]);
-    },
-  };
 }
