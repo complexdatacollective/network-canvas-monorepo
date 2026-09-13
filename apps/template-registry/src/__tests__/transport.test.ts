@@ -108,11 +108,6 @@ it('retains artifact capacity while actual Node responses are blocked on a pause
     expect(fixture.blobs.get).toHaveBeenCalledTimes(2);
     sockets[0]!.destroy();
     await vi.waitFor(() => expect(responses[0]!.destroyed).toBe(true));
-    await vi.waitFor(() =>
-      expect(
-        fixture.requestLogs.filter(({ status }) => status === 499),
-      ).toHaveLength(1),
-    );
     const recovered = await fetch(`http://127.0.0.1:${bound.port}${path}`);
     expect(recovered.status).toBe(200);
     expect(new Uint8Array(await recovered.arrayBuffer())).toEqual(
@@ -121,6 +116,65 @@ it('retains artifact capacity while actual Node responses are blocked on a pause
     expect(fixture.blobs.get).toHaveBeenCalledTimes(3);
   } finally {
     for (const socket of sockets) socket.destroy();
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await fixture.dispose();
+  }
+});
+
+it('records a cancelled Node response before the artifact body is available', async () => {
+  const fixture = await createRegistryFixture();
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const server = createServer(
+    getRequestListener(fixture.app.fetch, { overrideGlobalObjects: false }),
+  );
+  let socket: Socket | undefined;
+  try {
+    const account = await fixture.account();
+    const created = await fixture.published(
+      account.token,
+      'Interrupted artifact',
+    );
+    const read = vi.mocked(fixture.blobs.get).getMockImplementation()!;
+    vi.mocked(fixture.blobs.get).mockImplementationOnce(async (...args) => {
+      await held;
+      return read(...args);
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const bound = server.address();
+    if (!bound || typeof bound === 'string')
+      throw new Error('REGISTRY_TEST_HTTP_ADDRESS_MISSING');
+    socket = createConnection({ host: '127.0.0.1', port: bound.port });
+    socket.on('error', () => undefined);
+    await once(socket, 'connect');
+    socket.write(
+      `GET /api/v1/artifacts/${created.entry.root} HTTP/1.1\r\nHost: 127.0.0.1:${bound.port}\r\nConnection: close\r\n\r\n`,
+    );
+    await vi.waitFor(() => expect(fixture.blobs.get).toHaveBeenCalledTimes(1));
+    socket.resetAndDestroy();
+    await vi.waitFor(() =>
+      expect(
+        fixture.requestLogs.filter(({ status }) => status === 499),
+      ).toHaveLength(1),
+    );
+    release();
+    const recovered = await fetch(
+      `http://127.0.0.1:${bound.port}/api/v1/artifacts/${created.entry.root}`,
+    );
+    expect(recovered.status).toBe(200);
+    expect(new Uint8Array(await recovered.arrayBuffer())).toEqual(
+      created.bytes,
+    );
+    expect(
+      fixture.requestLogs.filter(({ status }) => status === 499),
+    ).toHaveLength(1);
+  } finally {
+    release();
+    socket?.destroy();
     server.closeAllConnections();
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await fixture.dispose();
