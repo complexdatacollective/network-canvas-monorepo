@@ -28,6 +28,11 @@ it('requires a real database owner and verified account, binds grant/revoke to i
     expect(
       (await database.owner.query('SELECT * FROM registry_audit')).rows,
     ).toEqual([]);
+    await changeRegistryOperator(database.owner, 'verified', false);
+    expect(
+      (await database.owner.query('SELECT * FROM registry_operators')).rows,
+    ).toEqual([]);
+    await changeRegistryOperator(database.owner, 'verified', true);
     await changeRegistryOperator(database.owner, 'verified', true);
     expect(
       (
@@ -36,6 +41,7 @@ it('requires a real database owner and verified account, binds grant/revoke to i
         )
       ).rows,
     ).toEqual([{ user_id: 'verified', enabled: true }]);
+    await changeRegistryOperator(database.owner, 'verified', false);
     await changeRegistryOperator(database.owner, 'verified', false);
     expect(
       (

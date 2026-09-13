@@ -17,14 +17,16 @@ const generatedParent = await mkdtemp(
 );
 const generated = join(generatedParent, 'registry_client');
 let receivedLimit: number | undefined;
+let receivedQuery: string | undefined;
 const artifactRoot = 'a'.repeat(64);
 const artifactBytes = new Uint8Array([80, 75, 3, 4, 17, 34]);
 // The localhost gate deliberately exposes two public read operations. The complete
 // store is covered by the service suite, and no authenticated handler runs.
 // oxlint-disable typescript/no-unsafe-type-assertion
 const store = {
-  list: async (input: { limit: number }) => {
+  list: async (input: { limit: number; query?: string }) => {
     receivedLimit = input.limit;
+    receivedQuery = input.query;
     return { data: [], next_cursor: null, has_more: false };
   },
   artifact: async (root: string) => {
@@ -89,9 +91,9 @@ try {
     dirname(generated),
     `http://127.0.0.1:${address.port}`,
   ]);
-  if (receivedLimit !== 7)
+  if (receivedLimit !== 7 || receivedQuery !== 'a/b?c#d&x=y+z')
     throw new Error(
-      `REGISTRY_CLIENT_QUERY_ROUND_TRIP_FAILED: received ${String(receivedLimit)}`,
+      `REGISTRY_CLIENT_QUERY_ROUND_TRIP_FAILED: received limit=${String(receivedLimit)} query=${String(receivedQuery)}`,
     );
   process.stdout.write(
     `openapi-python-client ${generatorVersion}: generated without warnings; localhost round trip passed\n${probe}`,

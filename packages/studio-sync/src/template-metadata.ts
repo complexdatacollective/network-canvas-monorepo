@@ -31,7 +31,14 @@ export const OrcidSchema = z.string().regex(/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/);
 
 /** #1283's authored document. Validation does not rewrite imported metadata. */
 export const TemplateMetadataSchema = z.strictObject({
-  schema_version: z.literal(1),
+  // Keep this field an integer in the wire contract while retaining the
+  // version-1 bounds in the runtime validator.
+  schema_version: z
+    .number()
+    .int()
+    .min(1)
+    .max(1)
+    .meta({ enum: [1] }),
   authors: z
     .array(
       z.strictObject({

@@ -344,6 +344,26 @@ describe('portable template artifact', () => {
     expect(Object.keys(fetched.manifest)).not.toContain('publisher_id');
   });
 
+  it('orders section IDs by ECMAScript UTF-16 code units', async () => {
+    const astralId = '\u{10000}';
+    const bmpId = '\uE000';
+    const input = fixture();
+    const welcome = input.sections['stage:welcome'];
+    if (!welcome || !('id' in welcome))
+      throw new Error('fixture stage missing');
+    input.sections = {
+      ...input.sections,
+      stageOrder: { stages: ['welcome', astralId, bmpId] },
+      [`stage:${astralId}`]: { ...welcome, id: astralId },
+      [`stage:${bmpId}`]: { ...welcome, id: bmpId },
+    };
+    const artifact = await createTemplateArtifact(input);
+    const ids = artifact.artifact.manifest.sections.map(({ id }) => id);
+    expect(ids.indexOf(`stage:${astralId}`)).toBeLessThan(
+      ids.indexOf(`stage:${bmpId}`),
+    );
+  });
+
   it('changes the identity for metadata, license, template description and section changes', async () => {
     const base = await createTemplateArtifact(fixture());
     const variants: TemplateArtifactInput[] = [
