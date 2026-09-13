@@ -177,6 +177,13 @@ export type CodebookVariableValidationEditorProps = Readonly<{
   onComplete?(
     outcome: Extract<CodebookWriteOutcome, { status: 'applied' }>,
   ): void;
+  /**
+   * What this attribute is actually rendered by, where the STAGE owns that
+   * rather than the codebook — see `VariableValidationEditor`, which this
+   * hands it to so the save gate and the rules in front of the researcher
+   * judge one rendering between them.
+   */
+  stageRendering?: Readonly<{ component?: unknown; parameters?: unknown }>;
 }>;
 
 /**
@@ -234,6 +241,7 @@ export default function CodebookVariableValidationEditor({
   readOnly = false,
   onSubmitDocument,
   onComplete,
+  stageRendering,
 }: CodebookVariableValidationEditorProps) {
   const intl = useAppIntl();
   const authoritativeVariable = variableFromDocument(
@@ -306,6 +314,12 @@ export default function CodebookVariableValidationEditor({
           ),
           currentVariableId: variableId,
           variableType: openedOnType,
+          // The values from the document this editor was opened against,
+          // which is the freshest the host has: a rule about how many of them
+          // an answer may hold is judged against the list the attribute
+          // actually carries now.
+          options: authoritativeVariable?.options,
+          ...stageRendering,
         }));
   const dirty = canonicalize(validation) !== canonicalize(committedValidation);
   const variableName =
@@ -429,6 +443,7 @@ export default function CodebookVariableValidationEditor({
                 value={validation}
                 onChange={setValidation}
                 readOnly={readOnly || busy || attributeTypeChanged}
+                {...(stageRendering === undefined ? {} : { stageRendering })}
               />
             )}
 
@@ -461,6 +476,18 @@ export type DraftVariableValidationEditorProps = Readonly<{
   /** The rules the row is already holding for it. */
   value: Readonly<ValidationMap>;
   readOnly?: boolean;
+  /**
+   * What this attribute will actually be rendered by, where the STAGE owns
+   * that rather than the codebook.
+   *
+   * The same fact its twin above takes, for the same reason: a network
+   * composer's row keeps its own `component` and `parameters`, and the
+   * contradiction analyser reads both. An attribute the row is INVENTING has
+   * no codebook entry at all, so the field's pair is the only rendering there
+   * is — judged without it, a rule this one dialog is able to contradict was
+   * reported nowhere.
+   */
+  stageRendering?: Readonly<{ component?: unknown; parameters?: unknown }>;
   /** Takes the rules onto the row, to be written with the create. */
   onSave(validation: ValidationMap): void;
 }>;
@@ -490,6 +517,7 @@ export function DraftVariableValidationEditor({
   allVariables,
   value,
   readOnly = false,
+  stageRendering,
   onSave,
 }: DraftVariableValidationEditorProps) {
   const intl = useAppIntl();
@@ -515,6 +543,7 @@ export function DraftVariableValidationEditor({
       currentVariableId: '',
       variableType,
       draftVariableName: variableName,
+      ...stageRendering,
     });
   const headingTag = useSurfaceHeadingTag();
 
@@ -545,6 +574,7 @@ export function DraftVariableValidationEditor({
               value={validation}
               onChange={setValidation}
               readOnly={readOnly}
+              {...(stageRendering === undefined ? {} : { stageRendering })}
             />
 
             <div className="flex flex-wrap justify-end gap-3">
