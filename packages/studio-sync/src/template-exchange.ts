@@ -18,6 +18,7 @@ import { parseSectionId } from './taxonomy.ts';
 import {
   canonicalJsonBytes,
   encodeTemplateArchive,
+  parseBoundedJson,
   readCanonicalJson,
   readTemplateArchive,
   TEMPLATE_ARTIFACT_LIMITS,
@@ -157,6 +158,118 @@ const detectedMediaAliases = new Map([
   ['video/x-m4v', 'video/mp4'],
 ]);
 
+const finiteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const emptyCoordinates = (value: unknown): value is [] =>
+  Array.isArray(value) && value.length === 0;
+
+function validBbox(value: unknown): boolean {
+  return (
+    value === undefined ||
+    (Array.isArray(value) &&
+      value.length >= 4 &&
+      value.length % 2 === 0 &&
+      value.every(finiteNumber))
+  );
+}
+
+function validPosition(value: unknown): value is number[] {
+  return Array.isArray(value) && value.length >= 2 && value.every(finiteNumber);
+}
+
+function samePosition(first: number[], last: number[]): boolean {
+  return (
+    first.length === last.length &&
+    first.every((coordinate, index) => coordinate === last[index])
+  );
+}
+
+function validLine(value: unknown): value is number[][] {
+  return (
+    Array.isArray(value) && value.length >= 2 && value.every(validPosition)
+  );
+}
+
+function validRing(value: unknown): value is number[][] {
+  if (!Array.isArray(value) || value.length < 4 || !value.every(validPosition))
+    return false;
+  const first = value[0];
+  const last = value.at(-1);
+  return Boolean(first && last && samePosition(first, last));
+}
+
+function validGeometry(value: unknown, depth = 0): boolean {
+  if (!isRecord(value) || depth > 64 || !validBbox(value.bbox)) return false;
+  switch (value.type) {
+    case 'Point':
+      return (
+        emptyCoordinates(value.coordinates) || validPosition(value.coordinates)
+      );
+    case 'MultiPoint':
+      if (emptyCoordinates(value.coordinates)) return true;
+      return (
+        Array.isArray(value.coordinates) &&
+        value.coordinates.every(validPosition)
+      );
+    case 'LineString':
+      return (
+        emptyCoordinates(value.coordinates) || validLine(value.coordinates)
+      );
+    case 'MultiLineString':
+      if (emptyCoordinates(value.coordinates)) return true;
+      return (
+        Array.isArray(value.coordinates) && value.coordinates.every(validLine)
+      );
+    case 'Polygon':
+      if (emptyCoordinates(value.coordinates)) return true;
+      return (
+        Array.isArray(value.coordinates) && value.coordinates.every(validRing)
+      );
+    case 'MultiPolygon':
+      if (emptyCoordinates(value.coordinates)) return true;
+      return (
+        Array.isArray(value.coordinates) &&
+        value.coordinates.every(
+          (polygon) =>
+            Array.isArray(polygon) &&
+            polygon.length > 0 &&
+            polygon.every(validRing),
+        )
+      );
+    case 'GeometryCollection':
+      return (
+        Array.isArray(value.geometries) &&
+        value.geometries.every((geometry) => validGeometry(geometry, depth + 1))
+      );
+    default:
+      return false;
+  }
+}
+
+function validFeature(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    value.type === 'Feature' &&
+    validBbox(value.bbox) &&
+    Object.hasOwn(value, 'geometry') &&
+    (value.geometry === null || validGeometry(value.geometry)) &&
+    Object.hasOwn(value, 'properties') &&
+    (value.properties === null || isRecord(value.properties)) &&
+    (value.id === undefined ||
+      typeof value.id === 'string' ||
+      finiteNumber(value.id))
+  );
+}
+
+function validGeoJson(value: unknown): boolean {
+  if (!isRecord(value) || !validBbox(value.bbox)) return false;
+  if (value.type === 'Feature') return validFeature(value);
+  if (value.type === 'FeatureCollection')
+    return Array.isArray(value.features) && value.features.every(validFeature);
+  return validGeometry(value);
+}
+
 async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
   if (asset.bytes.byteLength !== asset.byte_size) invalid();
   requireHash(asset.bytes, asset.hash);
@@ -178,23 +291,10 @@ async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
         // CSV is inert dataset text, never an inline browser document.
         admitted = !/^\s*<(?:!doctype|html|svg|script)\b/i.test(text);
       } else {
-        const value: unknown = JSON.parse(text);
+        const value = parseBoundedJson(text);
         admitted = value !== null && typeof value === 'object';
-        if (asset.media_type === 'application/geo+json') {
-          admitted =
-            isRecord(value) &&
-            [
-              'FeatureCollection',
-              'Feature',
-              'Point',
-              'MultiPoint',
-              'LineString',
-              'MultiLineString',
-              'Polygon',
-              'MultiPolygon',
-              'GeometryCollection',
-            ].includes(String(value.type));
-        }
+        if (asset.media_type === 'application/geo+json')
+          admitted = validGeoJson(value);
       }
     } catch {
       admitted = false;
