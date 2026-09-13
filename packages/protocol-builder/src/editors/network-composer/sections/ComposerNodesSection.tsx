@@ -3,6 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
+import CodebookVariableValidationSection from '../../../codebook/validation/CodebookVariableValidationSection.tsx';
 import VariablePickerField, {
   type VariablePickerOption,
 } from '../../../fields/VariablePickerField.tsx';
@@ -27,6 +28,14 @@ const QUICK_ADD_FIELD = 'quickAdd';
 const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
 const CONVEX_HULL_FIELD = 'convexHullVariable';
 const NODE_FORM_FIELD = 'nodeForm.fields';
+
+/**
+ * A quick-add attribute must hold a value from the moment the node exists:
+ * that value is the only thing the participant gave, and a node created
+ * without it has no name at all. Architect seeds the same rule here
+ * (`sections/NodeConfiguration/NodeConfiguration.tsx`).
+ */
+const QUICK_ADD_VALIDATION = Object.freeze({ required: true });
 
 /**
  * What switching the node form off means, in the composer's own words.
@@ -192,7 +201,12 @@ export default function ComposerNodesSection() {
         subject={subject ?? null}
         variableType="text"
         label={intl.formatMessage(messages.quickAddCreateLabel)}
+        seedValidation={QUICK_ADD_VALIDATION}
         onCreated={bindQuickAdd}
+      />
+      <CodebookVariableValidationSection
+        subject={subject}
+        variableId={quickAdd}
       />
 
       <Field<typeof VariablePickerField>

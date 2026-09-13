@@ -1,4 +1,4 @@
-import { useId, useMemo } from 'react';
+import { useId, useMemo, useState, type KeyboardEvent } from 'react';
 
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
@@ -92,6 +92,18 @@ const messages = defineMessages({
     description:
       'Entry standing in for the attribute a comparison rule points at after it has been deleted from the codebook, so the researcher can see what the rule still refers to. id is that attribute’s stored record id.',
   },
+  increase: {
+    id: 'protocolBuilder.variableValidation.increaseRuleValue',
+    defaultMessage: 'Increase {label}',
+    description:
+      'Accessible name of the button raising one validation rule’s number by one. label is that rule’s own name — "Minimum length", "Maximum value" — which is translated beside it.',
+  },
+  decrease: {
+    id: 'protocolBuilder.variableValidation.decreaseRuleValue',
+    defaultMessage: 'Decrease {label}',
+    description:
+      'Accessible name of the button lowering one validation rule’s number by one. label is that rule’s own name — "Minimum length", "Maximum value" — which is translated beside it.',
+  },
 });
 
 type VariableMetadata = Readonly<{ name: string; type: string }>;
@@ -181,6 +193,17 @@ export default function VariableValidationEditor({
 }: VariableValidationEditorProps) {
   const intl = useAppIntl();
   const editorId = useId();
+  /**
+   * What is in each number box, while it differs from what the map holds.
+   *
+   * A number is held as typing rather than written on every keystroke: a
+   * researcher raising a maximum from 5 to 40 passes through 4, which is below
+   * the minimum, and a map written at every keypress refuses the intermediate
+   * and can clear the box the moment it is emptied. The box commits when the
+   * researcher is finished with it — on blur, on Enter, or on a stepper, which
+   * always settles a complete value.
+   */
+  const [drafts, setDrafts] = useState<Readonly<Record<string, string>>>({});
   const groups = useMemo(
     () => getGroupedValidationsForVariableType(variableType, entity, intl),
     [entity, intl, variableType],
@@ -260,21 +283,72 @@ export default function VariableValidationEditor({
   const describedBy =
     [fieldDescribedBy, issueId].filter(Boolean).join(' ') || undefined;
 
+  /**
+   * Every number row's typed-but-uncommitted text, applied to the map.
+   *
+   * A row a researcher is typing in has not necessarily blurred when another
+   * row commits: a stepper settles its own row on click, and Safari does not
+   * move focus to a button at all. Any commit therefore carries the whole rule
+   * list with it, so an edit cannot be left behind uncommitted while the map
+   * moves on without it. A row that is no longer there — switched off, or
+   * rolled back by the codebook moving — is skipped: its draft must not
+   * resurrect it.
+   */
+  const applyDrafts = (base: ValidationMap): ValidationMap => {
+    const next = { ...base };
+    for (const [ruleKey, text] of Object.entries(drafts)) {
+      if (!Object.hasOwn(next, ruleKey)) continue;
+      next[ruleKey] = parseForRule(ruleKey, text);
+    }
+    return next;
+  };
+
+  /** Hands the whole map on, and clears the typing it now carries. */
+  const commit = (change: (base: ValidationMap) => ValidationMap) => {
+    if (readOnly) return;
+    const next = change(applyDrafts(value));
+    setDrafts((current) => (Object.keys(current).length > 0 ? {} : current));
+    onChange(next);
+  };
+
+  /** What one number box shows: the typing in it, or the committed value. */
+  const textFor = (ruleKey: string): string =>
+    Object.hasOwn(drafts, ruleKey)
+      ? (drafts[ruleKey] ?? '')
+      : formatCommitted(value[ruleKey]);
+
+  /**
+   * Writes one number row's value into the map, keeping it even when it is
+   * empty or contradictory: a value discarded because it failed a check takes
+   * the researcher's typing off the screen and leaves a map that is trivially
+   * consistent, so nothing downstream ever objects to it.
+   */
+  const commitValue = (ruleKey: string, text?: string) => {
+    const settled = text ?? textFor(ruleKey);
+    commit((base) =>
+      Object.hasOwn(base, ruleKey)
+        ? withRule(base, ruleKey, parseForRule(ruleKey, settled))
+        : base,
+    );
+  };
+
   const toggleRule = (ruleKey: string, enabled: boolean) => {
     if (readOnly) return;
     if (!enabled) {
-      onChange(withoutRule(value, ruleKey));
+      commit((base) => withoutRule(base, ruleKey));
       return;
     }
     if (isValidationWithoutValue(ruleKey)) {
-      onChange(withRule(value, ruleKey, true));
+      commit((base) => withRule(base, ruleKey, true));
       return;
     }
     if (isValidationWithNumberValue(ruleKey)) {
-      onChange(withRule(value, ruleKey, initialNumericValue(value, ruleKey)));
+      commit((base) =>
+        withRule(base, ruleKey, initialNumericValue(base, ruleKey)),
+      );
       return;
     }
-    onChange(withRule(value, ruleKey, null));
+    commit((base) => withRule(base, ruleKey, null));
   };
 
   return (
@@ -333,22 +407,43 @@ export default function VariableValidationEditor({
                     labelHidden
                     component={InputField}
                     type="number"
-                    value={formatCommitted(selected)}
+                    step={1}
+                    stepperLabels={{
+                      increase: intl.formatMessage(messages.increase, {
+                        label: rule.label,
+                      }),
+                      decrease: intl.formatMessage(messages.decrease, {
+                        label: rule.label,
+                      }),
+                    }}
+                    value={textFor(rule.value)}
                     disabled={readOnly}
                     aria-invalid={
                       selected === null || selected === undefined
                         ? true
                         : undefined
                     }
-                    onChange={(text) =>
-                      onChange(
-                        withRule(
-                          value,
-                          rule.value,
-                          parseForRule(rule.value, text ?? ''),
-                        ),
-                      )
+                    onChange={(text: string | undefined) =>
+                      setDrafts((current) => ({
+                        ...current,
+                        [rule.value]: text ?? '',
+                      }))
                     }
+                    onBlur={() => commitValue(rule.value)}
+                    // A step always settles a complete number, and clicking a
+                    // stepper button moves focus out of the box — so the blur
+                    // that follows carries the value from BEFORE the step.
+                    onStep={(stepped: string) =>
+                      commitValue(rule.value, stepped)
+                    }
+                    onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                      if (event.key !== 'Enter') return;
+                      // Never the enclosing form's submit: this box is a rule
+                      // about an attribute, and Enter in it means "I have
+                      // finished typing this number".
+                      event.preventDefault();
+                      commitValue(rule.value);
+                    }}
                   />
                 )}
                 {enabled && isValidationWithListValue(rule.value) && (
@@ -359,15 +454,16 @@ export default function VariableValidationEditor({
                     value={typeof selected === 'string' ? selected : ''}
                     disabled={readOnly}
                     className="border-input bg-input text-input-contrast focusable w-full rounded border-2 px-3 py-2"
-                    onChange={(event) =>
-                      onChange(
+                    onChange={(event) => {
+                      const chosen = event.currentTarget.value;
+                      commit((base) =>
                         withRule(
-                          value,
+                          base,
                           rule.value,
-                          parseForRule(rule.value, event.currentTarget.value),
+                          parseForRule(rule.value, chosen),
                         ),
-                      )
-                    }
+                      );
+                    }}
                   >
                     <option value="">
                       {intl.formatMessage(messages.selectTarget)}

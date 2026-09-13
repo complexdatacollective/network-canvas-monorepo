@@ -99,17 +99,22 @@ test('the field editor blocks an inverted min/max validation pair', async ({
     .getByRole('checkbox', { name: 'Maximum value', exact: true })
     .check();
   await maxValue.fill('2');
+  // A rule's number is held as typing and commits when the researcher has
+  // finished with it — raising a maximum from 5 to 40 passes through 4, and a
+  // map written at every keystroke would judge every intermediate. So the
+  // blur is what puts 2 into the rule map for the pair to be judged.
+  await maxValue.blur();
   await expect(rules.getByText(INVERTED_BOUNDS, { exact: true })).toBeVisible();
   // The pair being refused is what the editor's own save reports now: it is
   // held shut for as long as the rule map has an issue. (The old field-level
   // `aria-invalid` marked a rule switched on with no value at all, which this
   // is not — both ends carry a number.)
   await expect(saveRules).toBeDisabled();
-  await maxValue.blur();
   await expect(maxValue).toHaveValue('2');
 
   // Correcting the value clears the complaint and lets the write through.
   await maxValue.fill('20');
+  await maxValue.blur();
   await expect(saveRules).toBeEnabled();
   await saveRules.click();
   await rules.waitFor({ state: 'detached' });

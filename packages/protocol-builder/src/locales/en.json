@@ -343,6 +343,10 @@
     "defaultMessage": "Every card is titled with the person’s <strong>name</strong> from the data file. These attributes appear beneath it.",
     "description": "Notice above the list saying which column titles a card, so a researcher does not add the name a second time. The strong tag emphasises the word for the column the interview reads as a person’s name; move the tag with the word it marks."
   },
+  "protocolBuilder.categoricalBin.otherValidationDescription": {
+    "defaultMessage": "Enable validation of the other attribute.",
+    "description": "Description of the nested section holding the rules the typed answer to the follow-up “other” bin has to satisfy. Said of the other attribute rather than of “the attribute”, because the prompt above it binds a second one."
+  },
   "protocolBuilder.censusPrompts.affirmativeRequired": {
     "defaultMessage": "Choose the type of connection an affirmative answer creates.",
     "description": "Refusal shown when a researcher saves a census prompt without saying what a yes from the participant records."
@@ -4175,14 +4179,6 @@
     "defaultMessage": "Attribute record key \"{variableId}\" is reused across entity types (first declared in {firstOwnerSectionId}).",
     "description": "Why part of the codebook could not be read: two entity types store an attribute under the same key. variableId is the key; firstOwnerSectionId identifies the part of the protocol that used it first."
   },
-  "protocolBuilder.quickAdd.canBeEmptyDescription": {
-    "defaultMessage": "What the participant types here is the only thing they gave, so a “{typeName}” added without it has no name. Requiring an answer changes the attribute everywhere the protocol uses it.",
-    "description": "Warning body offering to make the quick-add attribute one that has to be answered, and saying that the change reaches every other stage using the same attribute. typeName is the researcher’s own name for the node type this stage adds and is not translated."
-  },
-  "protocolBuilder.quickAdd.canBeEmptyTitle": {
-    "defaultMessage": "This attribute can be left empty",
-    "description": "Warning heading shown when the attribute quick add fills in does not have to be answered, so a network member could be created with no name."
-  },
   "protocolBuilder.quickAdd.description": {
     "defaultMessage": "Choose the attribute populated when a participant creates a node with Quick Add.",
     "description": "Description of the quick-add section. \"Quick Add\" is the name of the button a participant uses."
@@ -4202,18 +4198,6 @@
   "protocolBuilder.quickAdd.noTextAttribute": {
     "defaultMessage": "This type has no text attribute quick add could fill in. Create one below.",
     "description": "Shown in place of the quick-add attribute list when the chosen node type has no attribute holding typed text. Points at the control beneath, which invents one."
-  },
-  "protocolBuilder.quickAdd.nowRequired": {
-    "defaultMessage": "This attribute now has to be answered, everywhere the protocol uses it.",
-    "description": "Confirmation shown to the researcher who just asked for the quick-add attribute to be required, because focus has moved to a control that says nothing about what changed."
-  },
-  "protocolBuilder.quickAdd.nowRequiredElsewhere": {
-    "defaultMessage": "“{variableName}” now has to be answered, everywhere the protocol uses it. It is not the attribute this stage fills in any more.",
-    "description": "Confirmation shown to a researcher who asked for the quick-add attribute to be required, when the stage moved off that attribute while the change was being made — they chose a different node type, or a different attribute. The change was still made, so it is said rather than swallowed. variableName is the attribute’s own name and is not translated."
-  },
-  "protocolBuilder.quickAdd.requireAnswer": {
-    "defaultMessage": "Require an answer",
-    "description": "Action that adds \"must be answered\" to the rules of the attribute quick add fills in."
   },
   "protocolBuilder.quickAdd.title": {
     "defaultMessage": "Quick add configuration",
@@ -6007,6 +5991,10 @@
     "defaultMessage": "Compare to another attribute",
     "description": "Heading over the validation rules that judge this attribute’s answer against another attribute’s. \"Attribute\" is a codebook variable."
   },
+  "protocolBuilder.variableValidation.decreaseRuleValue": {
+    "defaultMessage": "Decrease {label}",
+    "description": "Accessible name of the button lowering one validation rule’s number by one. label is that rule’s own name — \"Minimum length\", \"Maximum value\" — which is translated beside it."
+  },
   "protocolBuilder.variableValidation.deletedTarget": {
     "defaultMessage": "Deleted attribute ({id})",
     "description": "Entry standing in for the attribute a comparison rule points at after it has been deleted from the codebook, so the researcher can see what the rule still refers to. id is that attribute’s stored record id."
@@ -6035,6 +6023,10 @@
     "defaultMessage": "Enter a value for \"{label}\", or switch the rule off.",
     "description": "Refusal shown when a rule that needs a number has been switched on without one. label is that rule’s own name, already translated."
   },
+  "protocolBuilder.variableValidation.increaseRuleValue": {
+    "defaultMessage": "Increase {label}",
+    "description": "Accessible name of the button raising one validation rule’s number by one. label is that rule’s own name — \"Minimum length\", \"Maximum value\" — which is translated beside it."
+  },
   "protocolBuilder.variableValidation.limitsHeading": {
     "defaultMessage": "Limits",
     "description": "Heading over the validation rules that bound an answer by a number the researcher types — a length, a value, or how many options may be chosen."
@@ -6054,6 +6046,14 @@
   "protocolBuilder.variableValidation.ruleFloor": {
     "defaultMessage": "{rule} must be at least {floor, number}",
     "description": "Refusal shown when a counting rule was given a number below what it allows. rule is the schema’s own name for the rule, such as maxSelected, and is not translated; floor is the smallest number it accepts."
+  },
+  "protocolBuilder.variableValidation.sectionDescription": {
+    "defaultMessage": "Enable to add validation rules to the attribute.",
+    "description": "Description under the heading of the nested validation section, saying what switching it on does. Shown beside a switch, so it is written as an instruction about the switch."
+  },
+  "protocolBuilder.variableValidation.sectionTitle": {
+    "defaultMessage": "Validation",
+    "description": "Heading of the nested section holding the rules an answer to one attribute has to satisfy. An attribute is one field the protocol records about a network member or about the participant."
   },
   "protocolBuilder.variableValidation.selectTarget": {
     "defaultMessage": "Select an attribute",

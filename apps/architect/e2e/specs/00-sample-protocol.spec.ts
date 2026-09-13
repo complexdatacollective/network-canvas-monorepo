@@ -522,13 +522,16 @@ test.describe.serial('sample protocol built from scratch', () => {
     await editor.setStageName(s('stages', 6, 'label'));
     await selectOrCreateNodeType(page, 'Person');
     // Person has no text attribute yet, so this creates `name` through the
-    // quick-add picker's own name box. NOTE: the shared editor writes
-    // `{ type: 'text', component: 'Text', validation: { required: true } }`
-    // for an attribute created here and offers no way to take the requirement
-    // off, while canonical Person `name` is `{ name, type: 'text' }` — see the
-    // codebook difference this spec's own normaliser deliberately refuses to
-    // forgive (`dropForcedRequiredValidation`).
-    await selectOrCreateQuickAddVariable(editor, 'name');
+    // quick-add picker's own name box. An attribute created there is born
+    // `{ required: true }` — quick add's box is the only thing the participant
+    // gives — while canonical Person `name` is `{ name, type: 'text' }`, so
+    // the nested Validation section beneath the picker is switched off to
+    // clear it. `dropForcedRequiredValidation` deliberately does NOT forgive
+    // this one: the section makes it removable, so a requirement left on
+    // `name` is a real difference.
+    await selectOrCreateQuickAddVariable(editor, 'name', {
+      clearRequiredValidation: true,
+    });
     await addPrompt(editor.field('prompts'), async () => {
       await editor.fillRichTextMarkdown(
         'Prompt text',
