@@ -6,3 +6,4 @@ cost-input.json
 terraform.tfvars
 *.auto.tfvars
 *.auto.tfvars.json
+dist-anchor/

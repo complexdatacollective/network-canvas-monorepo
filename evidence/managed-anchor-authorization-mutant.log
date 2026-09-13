@@ -1,0 +1,30 @@
+✔ accepts one short-lived signature for the exact account, lineage states, and UTC month (2.472375ms)
+✖ rejects wrong account, state, month, key, expiry, and tampering (1.005875ms)
+✔ offline issuance requires private regular inputs and exclusive private output (12.637833ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 87.88
+
+✖ failing tests:
+
+test at apps/studio/deployment/managed/observability-month-authorization.test.mjs:74:1
+✖ rejects wrong account, state, month, key, expiry, and tampering (1.005875ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  true !== false
+
+      at TestContext.<anonymous> (file:///Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/managed-anchor-runtime/apps/studio/deployment/managed/observability-month-authorization.test.mjs:114:12)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

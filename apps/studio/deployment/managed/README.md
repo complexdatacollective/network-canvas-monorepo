@@ -557,6 +557,77 @@ complete returned checkpoint and state digest. The injected request adapter is
 for tests; production still requires an independently authenticated HTTPS
 service and separately held operator and forwarder credentials.
 
+`observability-anchor-lambda.mjs` is the executable AWS Lambda composition for
+the anchor. It accepts only API Gateway HTTP API payload format 2.0, `POST`, an
+empty query string, and one of the four exact paths above. It bounds decoded
+request bodies and headers before constructing a web `Request`, rejects
+ambiguous comma-joined or case-duplicated authorization headers, and returns
+only fixed no-store JSON errors. Cold-start configuration is fixed by:
+
+- `AWS_REGION`
+- `STUDIO_ANCHOR_ACCOUNT_IDENTITY_SHA256`
+- `STUDIO_ANCHOR_TABLE_NAME`
+- distinct `STUDIO_ANCHOR_FORWARDER_TOKEN` and
+  `STUDIO_ANCHOR_OPERATOR_TOKEN` values, each the unpadded base64url encoding
+  of 32 random bytes
+- `STUDIO_ANCHOR_MONTH_AUTHORITY_KEY_ID`
+- `STUDIO_ANCHOR_MONTH_AUTHORITY_PUBLIC_KEY`, the unpadded base64url encoding
+  of the raw 32-byte Ed25519 public key
+
+The DynamoDB client receives only the configured region. Production has no
+endpoint override and cannot silently fall back to DynamoDB Local.
+
+A month transition additionally carries one short-lived authorization:
+
+```json
+{
+  "format": "studio-observability-anchor-month-authorization",
+  "version": 1,
+  "authorityKeyId": "month-authority-1",
+  "approval": {
+    "accountIdentitySha256": "<64 lowercase hex>",
+    "previousStateSha256": "<64 lowercase hex>",
+    "nextStateSha256": "<64 lowercase hex>",
+    "targetMonthUtc": "2026-10",
+    "issuedAt": "2026-09-30T23:55:00.000Z",
+    "expiresAt": "2026-10-01T00:10:00.000Z"
+  },
+  "signature": "<unpadded base64url Ed25519 signature>"
+}
+```
+
+The Ed25519 signature covers the canonical, recursively key-sorted UTF-8 JSON
+bytes of `format`, `version`, `authorityKeyId`, and `approval`. The validity
+window cannot exceed 15 minutes. Verification binds the fixed account, exact
+previous and next checkpoint digests, and exact target UTC month. The
+forwarder token cannot call the month route, and the signing private key never
+enters the Lambda or collector environment.
+
+An independently administered operator creates the private approval input and
+uses private regular files for both it and the Ed25519 PKCS#8 key:
+
+```sh
+node authorize-month.mjs issue \
+  ./approval.private.json ./month-authority.private.pem \
+  month-authority-1 ./authorization.private.json
+```
+
+The approval input is the one-line canonical JSON serialization of the
+`approval` object shown above. Inputs and the exclusive output must be
+owner-only regular files; symlinks, empty files, group/world permissions,
+stale approvals, overwrites, malformed
+keys, and malformed JSON fail with one fixed error. The command prints only
+the key identifier, expiry, and target month. `node enroll.mjs` is a separate
+operator action requiring only the fixed account, table, and region variables.
+It calls the store's create-once enrollment operation and cannot initialize or
+reset a lineage.
+
+`pnpm build:studio-anchor` produces
+`apps/studio/deployment/managed/dist-anchor/studio-observability-anchor.zip`.
+The archive contains the Lambda handler (`lambda.handler`), enrollment command,
+month-authorization command, and the exact lockfile-pinned AWS SDK closure; it
+does not depend on Lambda's ambient SDK or a repository checkout.
+
 The complete local path can be exercised without cloud calls against an
 explicit loopback DynamoDB Local endpoint:
 
@@ -567,14 +638,14 @@ DYNAMODB_LOCAL_ENDPOINT=http://127.0.0.1:58000 node --test apps/studio/deploymen
 Without that variable the real-service case is skipped; the client never falls
 back to a cloud endpoint.
 
-No production anchor adapter or forwarding integration is qualified here. An
-adapter stored on the same filesystem or administered through the same rollback
-boundary does not satisfy the independent monotonic-store requirement. The
-adapter must separately prove atomic compare-and-set behavior, durable readback,
-month-authorization authentication, bounded calls, and its failure semantics
-before this primitive can admit live forwarding. Descriptor revalidation also
-does not defend against a malicious same-UID process racing filesystem paths;
-the private directory remains an operator-owned custody boundary.
+The executable composition does not provision or qualify the DynamoDB table,
+point-in-time recovery, IAM roles, HTTP API, TLS endpoint, secret injection, or
+live collector path. Those independently administered resources and a live
+qualification remain deployment gates. An adapter stored on the same
+filesystem or administered through the same rollback boundary does not satisfy
+the independent monotonic-store requirement. Descriptor revalidation also does
+not defend against a malicious same-UID process racing filesystem paths; the
+private directory remains an operator-owned custody boundary.
 
 ## New Relic log transport
 

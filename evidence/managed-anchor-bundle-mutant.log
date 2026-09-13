@@ -1,0 +1,226 @@
+vite v8.1.4 building ssr environment for production...
+[2Ktransforming...✓ 14 modules transformed.
+rendering chunks...
+computing gzip size...
+../../../../../../../../../../var/folders/q7/ql25mp590n194x2v36dzcnh00000gp/T/studio-anchor-bundle-guq21a/build/runtime/enroll.mjs                                                0.99 kB │ gzip: 0.51 kB
+../../../../../../../../../../var/folders/q7/ql25mp590n194x2v36dzcnh00000gp/T/studio-anchor-bundle-guq21a/build/runtime/authorize-month.mjs                                       2.94 kB │ gzip: 1.13 kB
+../../../../../../../../../../var/folders/q7/ql25mp590n194x2v36dzcnh00000gp/T/studio-anchor-bundle-guq21a/build/runtime/assets/observability-month-authorization-Dipk1eXV.mjs     5.04 kB │ gzip: 1.80 kB
+../../../../../../../../../../var/folders/q7/ql25mp590n194x2v36dzcnh00000gp/T/studio-anchor-bundle-guq21a/build/runtime/assets/observability-dynamodb-anchor-store-D1qk_N5Y.mjs   5.65 kB │ gzip: 1.79 kB
+../../../../../../../../../../var/folders/q7/ql25mp590n194x2v36dzcnh00000gp/T/studio-anchor-bundle-guq21a/build/runtime/lambda.mjs                                               16.41 kB │ gzip: 4.50 kB
+
+✓ built in 12ms
+✖ builds a checkout-free Lambda and operator closure with its pinned AWS SDK (37.807541ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 149.752833
+
+✖ failing tests:
+
+test at apps/studio/deployment/managed/observability-anchor-bundle.test.mjs:12:1
+✖ builds a checkout-free Lambda and operator closure with its pinned AWS SDK (37.807541ms)
+  AssertionError [ERR_ASSERTION]: The input was expected to not match the regular expression /@aws-sdk\/client-dynamodb/. Input:
+
+  'import { n as readManagedAnchorEnvironment, t as createDynamoAnchorStore } from "./assets/observability-dynamodb-anchor-store-D1qk_N5Y.mjs";\n' +
+    'import { t as createMonthAuthorizationVerifier } from "./assets/observability-month-authorization-Dipk1eXV.mjs";\n' +
+    'import { DynamoDBClient } from "@aws-sdk/client-dynamodb";\n' +
+    'import { createHash, timingSafeEqual } from "node:crypto";\n' +
+    '//#region apps/studio/deployment/managed/observability-monotonic-anchor.mjs\n' +
+    'var MAX_BODY_BYTES$1 = 16384;\n' +
+    'var SHA256 = /^[a-f0-9]{64}$/;\n' +
+    'var MONTH = /^\\d{4}-(?:0[1-9]|1[0-2])$/;\n' +
+    'var CODES = /* @__PURE__ */ new Set([\n' +
+    '\t"ANCHOR_AUTH_REQUIRED",\n' +
+    '\t"ANCHOR_CONFLICT",\n' +
+    '\t"ANCHOR_INPUT_INVALID",\n' +
+    '\t"ANCHOR_INTERNAL_FAILURE",\n' +
+    '\t"ANCHOR_LINEAGE_MISSING",\n' +
+    '\t"ANCHOR_METHOD_FORBIDDEN",\n' +
+    '\t"ANCHOR_MONTH_AUTHORIZATION_REQUIRED",\n' +
+    '\t"ANCHOR_STATE_INVALID"\n' +
+    ']);\n' +
+    'var MonotonicAnchorError = class extends Error {\n' +
+    '\tconstructor(code) {\n' +
+    '\t\tconst safe = CODES.has(code) ? code : "ANCHOR_INTERNAL_FAILURE";\n' +
+    '\t\tsuper(safe);\n' +
+    '\t\tthis.name = "MonotonicAnchorError";\n' +
+    '\t\tthis.code = safe;\n' +
+    '\t}\n' +
+    '};\n' +
+    'var refuse = (code) => {\n' +
+    '\tthrow new MonotonicAnchorError(code);\n' +
+    '};\n' +
+    'var integer = (value, minimum = 0) => Number.isSafeInteger(value) && value >= minimum;\n' +
+    'var exact = (value, keys) => value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).toSorted().join() === keys.toSorted().join();\n' +
+    'var canonicalTime = (value) => typeof value === "string" && Number.isFinite(Date.parse(value)) && new Date(Date.parse(value)).toISOString() === value;\n' +
+    'var same = (left, right) => JSON.stringify(left) === JSON.stringify(right);\n' +
+    'var stateDigest = (value) => createHash("sha256").update(JSON.stringify({\n' +
+    '\tbindingSha256: value.bindingSha256,\n' +
+    '\texhausted: value.exhausted,\n' +
+    '\tfinalSignalAttemptedBytes: value.finalSignalAttemptedBytes,\n' +
+    '\tformat: 1,\n' +
+    '\tlastObservedAt: value.lastObservedAt,\n' +
+    '\tmonthSequence: value.monthSequence,\n' +
+    '\tmonthUtc: value.monthUtc,\n' +
+    '\tpayloadAttemptedBytes: value.payloadAttemptedBytes,\n' +
+    '\treservationSequence: value.reservationSequence\n' +
+    '})).digest("hex");\n' +
+    'function validateMonotonicCheckpoint(value) {\n' +
+    '\tif (!exact(value, [\n' +
+    '\t\t"accountIdentitySha256",\n' +
+    '\t\t"bindingSha256",\n' +
+    '\t\t"exhausted",\n' +
+    '\t\t"finalSignalAttemptedBytes",\n' +
+    '\t\t"finalSignalReserveBytes",\n' +
+    '\t\t"format",\n' +
+    '\t\t"lastObservedAt",\n' +
+    '\t\t"monthSequence",\n' +
+    '\t\t"monthUtc",\n' +
+    '\t\t"payloadAttemptedBytes",\n' +
+    '\t\t"payloadLimitBytes",\n' +
+    '\t\t"reservationSequence",\n' +
+    '\t\t"stateSha256"\n' +
+    '\t]) || value.format !== 2 || !SHA256.test(value.accountIdentitySha256) || !SHA256.test(value.bindingSha256) || !SHA256.test(value.stateSha256) || !MONTH.test(value.monthUtc) || !canonicalTime(value.lastObservedAt) || value.lastObservedAt.slice(0, 7) !== value.monthUtc || !integer(value.monthSequence, 1) || !integer(value.reservationSequence) || !integer(value.payloadLimitBytes, 1) || !integer(value.finalSignalReserveBytes, 1) || !integer(value.payloadAttemptedBytes) || value.payloadAttemptedBytes > value.payloadLimitBytes || !integer(value.finalSignalAttemptedBytes) || value.finalSignalAttemptedBytes > value.finalSignalReserveBytes || typeof value.exhausted !== "boolean" || value.finalSignalAttemptedBytes > 0 && !value.exhausted || value.payloadAttemptedBytes === value.payloadLimitBytes && !value.exhausted || value.stateSha256 !== stateDigest(value)) refuse("ANCHOR_STATE_INVALID");\n' +
+    '\treturn structuredClone(value);\n' +
+    '}\n' +
+    'function initial(checkpoint) {\n' +
+    '\treturn checkpoint.monthSequence === 1 && checkpoint.reservationSequence === 0 && checkpoint.payloadAttemptedBytes === 0 && checkpoint.finalSignalAttemptedBytes === 0 && checkpoint.exhausted === false;\n' +
+    '}\n' +
+    'function nextMonth(month) {\n' +
+    '\tconst [year, number] = month.split("-").map(Number);\n' +
+    '\treturn number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;\n' +
+    '}\n' +
+    'function samePolicy(previous, next) {\n' +
+    '\treturn previous.accountIdentitySha256 === next.accountIdentitySha256 && previous.bindingSha256 === next.bindingSha256 && previous.payloadLimitBytes === next.payloadLimitBytes && previous.finalSignalReserveBytes === next.finalSignalReserveBytes;\n' +
+    '}\n' +
+    'function validateAdvance(previous, next) {\n' +
+    '\tconst payloadChanged = next.payloadAttemptedBytes !== previous.payloadAttemptedBytes;\n' +
+    '\tconst signalChanged = next.finalSignalAttemptedBytes !== previous.finalSignalAttemptedBytes;\n' +
+    '\tif (!samePolicy(previous, next) || previous.monthUtc !== next.monthUtc || previous.monthSequence !== next.monthSequence || next.reservationSequence < previous.reservationSequence || next.reservationSequence > previous.reservationSequence + 1 || next.payloadAttemptedBytes < previous.payloadAttemptedBytes || next.finalSignalAttemptedBytes < previous.finalSignalAttemptedBytes || Date.parse(next.lastObservedAt) < Date.parse(previous.lastObservedAt) || previous.exhausted && !next.exhausted || previous.exhausted && payloadChanged || signalChanged && (!previous.exhausted || previous.finalSignalAttemptedBytes !== 0) || same(previous, next)) refuse("ANCHOR_STATE_INVALID");\n' +
+    '\tif (payloadChanged && signalChanged || (payloadChanged || signalChanged) && next.reservationSequence !== previous.reservationSequence + 1 || !payloadChanged && !signalChanged && next.reservationSequence !== previous.reservationSequence) refuse("ANCHOR_STATE_INVALID");\n' +
+    '}\n' +
+    'function validateMonth(previous, next) {\n' +
+    '\tif (!samePolicy(previous, next) || next.monthUtc !== nextMonth(previous.monthUtc) || next.monthSequence !== previous.monthSequence + 1 || next.reservationSequence !== 0 || next.payloadAttemptedBytes !== 0 || next.finalSignalAttemptedBytes !== 0 || next.exhausted !== false || Date.parse(next.lastObservedAt) < Date.parse(previous.lastObservedAt)) refuse("ANCHOR_STATE_INVALID");\n' +
+    '}\n' +
+    'async function readBody(request, signal) {\n' +
+    '\tif (request.headers.get("content-type") !== "application/json") refuse("ANCHOR_INPUT_INVALID");\n' +
+    '\tconst declared = Number(request.headers.get("content-length"));\n' +
+    '\tif (Number.isFinite(declared) && declared > MAX_BODY_BYTES$1) refuse("ANCHOR_INPUT_INVALID");\n' +
+    '\tconst reader = request.body?.getReader();\n' +
+    '\tif (!reader) refuse("ANCHOR_INPUT_INVALID");\n' +
+    '\tconst cancel = () => {\n' +
+    '\t\treader.cancel().catch(() => void 0);\n' +
+    '\t};\n' +
+    '\tsignal.addEventListener("abort", cancel, { once: true });\n' +
+    '\tconst chunks = [];\n' +
+    '\tlet size = 0;\n' +
+    '\ttry {\n' +
+    '\t\tfor (;;) {\n' +
+    '\t\t\tsignal.throwIfAborted();\n' +
+    '\t\t\tconst { done, value } = await reader.read();\n' +
+    '\t\t\tsignal.throwIfAborted();\n' +
+    '\t\t\tif (done) break;\n' +
+    '\t\t\tsize += value.byteLength;\n' +
+    '\t\t\tif (size > MAX_BODY_BYTES$1) refuse("ANCHOR_INPUT_INVALID");\n' +
+    '\t\t\tchunks.push(value);\n' +
+    '\t\t}\n' +
+    '\t} finally {\n' +
+    '\t\tsignal.removeEventListener("abort", cancel);\n' +
+    '\t\tcancel();\n' +
+    '\t}\n' +
+    '\ttry {\n' +
+    '\t\treturn JSON.parse(Buffer.concat(chunks, size).toString());\n' +
+    '\t} catch {\n' +
+    '\t\treturn refuse("ANCHOR_INPUT_INVALID");\n' +
+    '\t}\n' +
+    '}\n' +
+    'function json(status, body) {\n' +
+    '\treturn Response.json(body, {\n' +
+    '\t\tstatus,\n' +
+    '\t\theaders: { "cache-control": "no-store" }\n' +
+    '\t});\n' +
+    '}\n' +
+    '/**\n' +
+    '* HTTP boundary for one fixed account lineage. The injected store owns an\n' +
+    '* independently durable create-once marker and atomic full-checkpoint CAS.\n' +
+    '*/\n' +
+    'function createMonotonicAnchorHandler({ accountIdentitySha256, authenticate, authorizeMonth, store, operationTimeoutMs = 5e3 }) {\n' +
+    '\tif (!SHA256.test(accountIdentitySha256) || typeof authenticate !== "function" || typeof authorizeMonth !== "function" || !store || typeof store.read !== "function" || typeof store.initialize !== "function" || typeof store.compareAndSet !== "function" || !integer(operationTimeoutMs, 100) || operationTimeoutMs > 3e4) refuse("ANCHOR_INPUT_INVALID");\n' +
+    '\tfunction boundCheckpoint(value) {\n' +
+    '\t\tconst checkpoint = validateMonotonicCheckpoint(value);\n' +
+    '\t\tif (checkpoint.accountIdentitySha256 !== accountIdentitySha256) refuse("ANCHOR_STATE_INVALID");\n' +
+    '\t\treturn checkpoint;\n' +
+    '\t}\n' +
+    '\tasync function current() {\n' +
+    '\t\tconst value = await store.read();\n' +
+    '\t\tif (value === null) refuse("ANCHOR_LINEAGE_MISSING");\n' +
+    '\t\treturn boundCheckpoint(value);\n' +
+    '\t}\n' +
+    '\treturn async (request) => {\n' +
+    '\t\tlet timer;\n' +
+    '\t\tconst cancellation = new AbortController();\n' +
+    '\t\tconst signal = cancellation.signal;\n' +
+    '\t\tconst operation = (async () => {\n' +
+    '\t\t\ttry {\n' +
+    '\t\t\t\tif (!(request instanceof Request) || request.method !== "POST") refuse("ANCHOR_INPUT_INVALID");\n' +
+    '\t\t\t\tconst principal = await authenticate(request, { signal });\n' +
+    '\t\t\t\tsignal.throwIfAborted();\n' +
+    '\t\t\t\tif (!exact(principal, ["accountIdentitySha256", "authority"]) || principal.accountIdentitySha256 !== accountIdentitySha256 || !["forwarder", "operator"].includes(principal.authority)) refuse("ANCHOR_AUTH_REQUIRED");\n' +
+    '\t\t\t\tconst body = await readBody(request, signal);\n' +
+    '\t\t\t\tsignal.throwIfAborted();\n' +
+    '\t\t\t\tconst pathname = new URL(request.url).pathname;\n' +
+    '\t\t\t\tif (pathname === "/v1/read") {\n' +
+    '\t\t\t\t\tif (!exact(body, ["format"]) || body.format !== 1) refuse("ANCHOR_INPUT_INVALID");\n' +
+    '\t\t\t\t\treturn json(200, {\n' +
+    '\t\t\t\t\t\tcheckpoint: await current(),\n' +
+    '\t\t\t\t\t\tformat: 1\n' +
+    '\t\t\t\t\t});\n' +
+    '\t\t\t\t}\n' +
+    '\t\t\t\tif (pathname === "/v1/initialize") {\n' +
+    '\t\t\t\t\tif (principal.authority !== "operator") refuse("ANCHOR_METHOD_FORBIDDEN");\n' +
+    '\t\t\t\t\tif (!exact(body, ["format", "next"]) || body.format !== 1) refuse("ANCHOR_INPUT_INVALID");\n' +
+    '\t\t\t\t\tconst next = boundCheckpoint(body.next);\n' +
+    '\t\t\t\t\tif (next.accountIdentitySha256 !== accountIdentitySha256 || !initial(next)) refuse("ANCHOR_STATE_INVALID");\n' +
+    '\t\t\t\t\tsignal.throwIfAborted();\n' +
+    '\t\t\t\t\tif (!await store.initialize(next)) refuse("ANCHOR_CONFLICT");\n' +
+    '\t\t\t\t\tif (!same(await current(), next)) refuse("ANCHOR_INTERNAL_FAILURE");\n' +
+    '\t\t\t\t\treturn json(200, {\n' +
+    '\t\t\t\t\t\tcheckpoint: next,\n' +
+    '\t\t\t\t\t\tformat: 1\n' +
+    '\t\t\t\t\t});\n' +
+    '\t\t\t\t}\n' +
+    '\t\t\t\tif (pathname === "/v1/advance") {\n' +
+    '\t\t\t\t\tif (principal.authority !== "forwarder") refuse("ANCHOR_METHOD_FORBIDDEN");\n' +
+    '\t\t\t\t\tif (!exact(body, [\n' +
+    '\t\t\t\t\t\t"format",\n' +
+    '\t\t\t\t\t\t"next",\n' +
+    '\t\t\t\t\t\t"previous"\n' +
+    '\t\t\t\t\t]) || body.format !== 1) refuse("ANCHOR_INPUT_INVALID");\n' +
+    '\t\t\t\t\tconst previous = boundCheckpoint(body.previous);\n' +
+    '\t\t\t\t\tconst next = boundCheckpoint(body.next);\n' +
+    '\t\t\t\t\tvalidateAdvance(previous, next);\n' +
+    '\t\t\t\t\tsignal.throwIfAborted();\n' +
+    '\t\t\t\t\tif (!await store.compareAndSet(previous, next)) refuse("ANCHOR_CONFLICT");\n' +
+    '\t\t\t\t\tif (!same(await current(), next)) refuse("ANCHOR_INTERNAL_FAILURE");\n' +
+    '\t\t\t\t\treturn json(200, {\n' +
+    '\t\t\t\t\t\tcheckpoint: next,\n' +
+    '\t\t\t\t\t\tformat: 1\n' +
+    '\t\t\t\t\t});\n' +
+    '\t\t\t\t}\n' +
+    '\t\t\t\tif (pathname === "/v1/advance-month") {\n' +
+    '\t\t\t\t\tif (principal.authority !== "opera'... 6411 more characters
+
+      at TestContext.<anonymous> (file:///Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/managed-anchor-runtime/apps/studio/deployment/managed/observability-anchor-bundle.test.mjs:23:10)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'import { n as readManagedAnchorEnvironment, t as createDynamoAnchorStore } from "./assets/observability-dynamodb-anchor-store-D1qk_N5Y.mjs";\nimport { t as createMonthAuthorizationVerifier } from "./assets/observability-month-authorization-Dipk1eXV.mjs";\nimport { DynamoDBClient } from "@aws-sdk/client-dynamodb";\nimport { createHash, timingSafeEqual } from "node:crypto";\n//#region apps/studio/deployment/managed/observability-monotonic-anchor.mjs\nvar MAX_BODY_BYTES$1 = 16384;\nvar SHA256 = /^[a-f0-9]{64}$/;\nvar MONTH = /^\\d{4}-(?:0[1-9]|1[0-2])$/;\nvar CODES = /* @__PURE__ */ new Set([\n\t"ANCHOR_AUTH_REQUIRED",\n\t"ANCHOR_CONFLICT",\n\t"ANCHOR_INPUT_INVALID",\n\t"ANCHOR_INTERNAL_FAILURE",\n\t"ANCHOR_LINEAGE_MISSING",\n\t"ANCHOR_METHOD_FORBIDDEN",\n\t"ANCHOR_MONTH_AUTHORIZATION_REQUIRED",\n\t"ANCHOR_STATE_INVALID"\n]);\nvar MonotonicAnchorError = class extends Error {\n\tconstructor(code) {\n\t\tconst safe = CODES.has(code) ? code : "ANCHOR_INTERNAL_FAILURE";\n\t\tsuper(safe);\n\t\tthis.name = "MonotonicAnchorError";\n\t\tthis.code = safe;\n\t}\n};\nvar refuse = (code) => {\n\tthrow new MonotonicAnchorError(code);\n};\nvar integer = (value, minimum = 0) => Number.isSafeInteger(value) && value >= minimum;\nvar exact = (value, keys) => value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).toSorted().join() === keys.toSorted().join();\nvar canonicalTime = (value) => typeof value === "string" && Number.isFinite(Date.parse(value)) && new Date(Date.parse(value)).toISOString() === value;\nvar same = (left, right) => JSON.stringify(left) === JSON.stringify(right);\nvar stateDigest = (value) => createHash("sha256").update(JSON.stringify({\n\tbindingSha256: value.bindingSha256,\n\texhausted: value.exhausted,\n\tfinalSignalAttemptedBytes: value.finalSignalAttemptedBytes,\n\tformat: 1,\n\tlastObservedAt: value.lastObservedAt,\n\tmonthSequence: value.monthSequence,\n\tmonthUtc: value.monthUtc,\n\tpayloadAttemptedBytes: value.payloadAttemptedBytes,\n\treservationSequence: value.reservationSequence\n})).digest("hex");\nfunction validateMonotonicCheckpoint(value) {\n\tif (!exact(value, [\n\t\t"accountIdentitySha256",\n\t\t"bindingSha256",\n\t\t"exhausted",\n\t\t"finalSignalAttemptedBytes",\n\t\t"finalSignalReserveBytes",\n\t\t"format",\n\t\t"lastObservedAt",\n\t\t"monthSequence",\n\t\t"monthUtc",\n\t\t"payloadAttemptedBytes",\n\t\t"payloadLimitBytes",\n\t\t"reservationSequence",\n\t\t"stateSha256"\n\t]) || value.format !== 2 || !SHA256.test(value.accountIdentitySha256) || !SHA256.test(value.bindingSha256) || !SHA256.test(value.stateSha256) || !MONTH.test(value.monthUtc) || !canonicalTime(value.lastObservedAt) || value.lastObservedAt.slice(0, 7) !== value.monthUtc || !integer(value.monthSequence, 1) || !integer(value.reservationSequence) || !integer(value.payloadLimitBytes, 1) || !integer(value.finalSignalReserveBytes, 1) || !integer(value.payloadAttemptedBytes) || value.payloadAttemptedBytes > value.payloadLimitBytes || !integer(value.finalSignalAttemptedBytes) || value.finalSignalAttemptedBytes > value.finalSignalReserveBytes || typeof value.exhausted !== "boolean" || value.finalSignalAttemptedBytes > 0 && !value.exhausted || value.payloadAttemptedBytes === value.payloadLimitBytes && !value.exhausted || value.stateSha256 !== stateDigest(value)) refuse("ANCHOR_STATE_INVALID");\n\treturn structuredClone(value);\n}\nfunction initial(checkpoint) {\n\treturn checkpoint.monthSequence === 1 && checkpoint.reservationSequence === 0 && checkpoint.payloadAttemptedBytes === 0 && checkpoint.finalSignalAttemptedBytes === 0 && checkpoint.exhausted === false;\n}\nfunction nextMonth(month) {\n\tconst [year, number] = month.split("-").map(Number);\n\treturn number === 12 ? `${year + 1}-01` : `${year}-${String(number + 1).padStart(2, "0")}`;\n}\nfunction samePolicy(previous, next) {\n\treturn previous.accountIdentitySha256 === next.accountIdentitySha256 && previous.bindingSha256 === next.bindingSha256 && previous.payloadLimitBytes === next.payloadLimitBytes && previous.finalSignalReserveBytes === next.finalSignalReserveBytes;\n}\nfunction validateAdvance(previous, next) {\n\tconst payloadChanged = next.payloadAttemptedBytes !== previous.payloadAttemptedBytes;\n\tconst signalChanged = next.finalSignalAttemptedBytes !== previous.finalSignalAttemptedBytes;\n\tif (!samePolicy(previous, next) || previous.monthUtc !== next.monthUtc || previous.monthSequence !== next.monthSequence || next.reservationSequence < previous.reservationSequence || next.reservationSequence > previous.reservationSequence + 1 || next.payloadAttemptedBytes < previous.payloadAttemptedBytes || next.finalSignalAttemptedBytes < previous.finalSignalAttemptedBytes || Date.parse(next.lastObservedAt) < Date.parse(previous.lastObservedAt) || previous.exhausted && !next.exhausted || previous.exhausted && payloadChanged || signalChanged && (!previous.exhausted || previous.finalSignalAttemptedBytes !== 0) || same(previous, next)) refuse("ANCHOR_STATE_INVALID");\n\tif (payloadChanged && signalChanged || (payloadChanged || signalChanged) && next.reservationSequence !== previous.reservationSequence + 1 || !payloadChanged && !signalChanged && next.reservationSequence !== previous.reservationSequence) refuse("ANCHOR_STATE_INVALID");\n}\nfunction validateMonth(previous, next) {\n\tif (!samePolicy(previous, next) || next.monthUtc !== nextMonth(previous.monthUtc) || next.monthSequence !== previous.monthSequence + 1 || next.reservationSequence !== 0 || next.payloadAttemptedBytes !== 0 || next.finalSignalAttemptedBytes !== 0 || next.exhausted !== false || Date.parse(next.lastObservedAt) < Date.parse(previous.lastObservedAt)) refuse("ANCHOR_STATE_INVALID");\n}\nasync function readBody(request, signal) {\n\tif (request.headers.get("content-type") !== "application/json") refuse("ANCHOR_INPUT_INVALID");\n\tconst declared = Number(request.headers.get("content-length"));\n\tif (Number.isFinite(declared) && declared > MAX_BODY_BYTES$1) refuse("ANCHOR_INPUT_INVALID");\n\tconst reader = request.body?.getReader();\n\tif (!reader) refuse("ANCHOR_INPUT_INVALID");\n\tconst cancel = () => {\n\t\treader.cancel().catch(() => void 0);\n\t};\n\tsignal.addEventListener("abort", cancel, { once: true });\n\tconst chunks = [];\n\tlet size = 0;\n\ttry {\n\t\tfor (;;) {\n\t\t\tsignal.throwIfAborted();\n\t\t\tconst { done, value } = await reader.read();\n\t\t\tsignal.throwIfAborted();\n\t\t\tif (done) break;\n\t\t\tsize += value.byteLength;\n\t\t\tif (size > MAX_BODY_BYTES$1) refuse("ANCHOR_INPUT_INVALID");\n\t\t\tchunks.push(value);\n\t\t}\n\t} finally {\n\t\tsignal.removeEventListener("abort", cancel);\n\t\tcancel();\n\t}\n\ttry {\n\t\treturn JSON.parse(Buffer.concat(chunks, size).toString());\n\t} catch {\n\t\treturn refuse("ANCHOR_INPUT_INVALID");\n\t}\n}\nfunction json(status, body) {\n\treturn Response.json(body, {\n\t\tstatus,\n\t\theaders: { "cache-control": "no-store" }\n\t});\n}\n/**\n* HTTP boundary for one fixed account lineage. The injected store owns an\n* independently durable create-once marker and atomic full-checkpoint CAS.\n*/\nfunction createMonotonicAnchorHandler({ accountIdentitySha256, authenticate, authorizeMonth, store, operationTimeoutMs = 5e3 }) {\n\tif (!SHA256.test(accountIdentitySha256) || typeof authenticate !== "function" || typeof authorizeMonth !== "function" || !store || typeof store.read !== "function" || typeof store.initialize !== "function" || typeof store.compareAndSet !== "function" || !integer(operationTimeoutMs, 100) || operationTimeoutMs > 3e4) refuse("ANCHOR_INPUT_INVALID");\n\tfunction boundCheckpoint(value) {\n\t\tconst checkpoint = validateMonotonicCheckpoint(value);\n\t\tif (checkpoint.accountIdentitySha256 !== accountIdentitySha256) refuse("ANCHOR_STATE_INVALID");\n\t\treturn checkpoint;\n\t}\n\tasync function current() {\n\t\tconst value = await store.read();\n\t\tif (value === null) refuse("ANCHOR_LINEAGE_MISSING");\n\t\treturn boundCheckpoint(value);\n\t}\n\treturn async (request) => {\n\t\tlet timer;\n\t\tconst cancellation = new AbortController();\n\t\tconst signal = cancellation.signal;\n\t\tconst operation = (async () => {\n\t\t\ttry {\n\t\t\t\tif (!(request instanceof Request) || request.method !== "POST") refuse("ANCHOR_INPUT_INVALID");\n\t\t\t\tconst principal = await authenticate(request, { signal });\n\t\t\t\tsignal.throwIfAborted();\n\t\t\t\tif (!exact(principal, ["accountIdentitySha256", "authority"]) || principal.accountIdentitySha256 !== accountIdentitySha256 || !["forwarder", "operator"].includes(principal.authority)) refuse("ANCHOR_AUTH_REQUIRED");\n\t\t\t\tconst body = await readBody(request, signal);\n\t\t\t\tsignal.throwIfAborted();\n\t\t\t\tconst pathname = new URL(request.url).pathname;\n\t\t\t\tif (pathname === "/v1/read") {\n\t\t\t\t\tif (!exact(body, ["format"]) || body.format !== 1) refuse("ANCHOR_INPUT_INVALID");\n\t\t\t\t\treturn json(200, {\n\t\t\t\t\t\tcheckpoint: await current(),\n\t\t\t\t\t\tformat: 1\n\t\t\t\t\t});\n\t\t\t\t}\n\t\t\t\tif (pathname === "/v1/initialize") {\n\t\t\t\t\tif (principal.authority !== "operator") refuse("ANCHOR_METHOD_FORBIDDEN");\n\t\t\t\t\tif (!exact(body, ["format", "next"]) || body.format !== 1) refuse("ANCHOR_INPUT_INVALID");\n\t\t\t\t\tconst next = boundCheckpoint(body.next);\n\t\t\t\t\tif (next.accountIdentitySha256 !== accountIdentitySha256 || !initial(next)) refuse("ANCHOR_STATE_INVALID");\n\t\t\t\t\tsignal.throwIfAborted();\n\t\t\t\t\tif (!await store.initialize(next)) refuse("ANCHOR_CONFLICT");\n\t\t\t\t\tif (!same(await current(), next)) refuse("ANCHOR_INTERNAL_FAILURE");\n\t\t\t\t\treturn json(200, {\n\t\t\t\t\t\tcheckpoint: next,\n\t\t\t\t\t\tformat: 1\n\t\t\t\t\t});\n\t\t\t\t}\n\t\t\t\tif (pathname === "/v1/advance") {\n\t\t\t\t\tif (principal.authority !== "forwarder") refuse("ANCHOR_METHOD_FORBIDDEN");\n\t\t\t\t\tif (!exact(body, [\n\t\t\t\t\t\t"format",\n\t\t\t\t\t\t"next",\n\t\t\t\t\t\t"previous"\n\t\t\t\t\t]) || body.format !== 1) refuse("ANCHOR_INPUT_INVALID");\n\t\t\t\t\tconst previous = boundCheckpoint(body.previous);\n\t\t\t\t\tconst next = boundCheckpoint(body.next);\n\t\t\t\t\tvalidateAdvance(previous, next);\n\t\t\t\t\tsignal.throwIfAborted();\n\t\t\t\t\tif (!await store.compareAndSet(previous, next)) refuse("ANCHOR_CONFLICT");\n\t\t\t\t\tif (!same(await current(), next)) refuse("ANCHOR_INTERNAL_FAILURE");\n\t\t\t\t\treturn json(200, {\n\t\t\t\t\t\tcheckpoint: next,\n\t\t\t\t\t\tformat: 1\n\t\t\t\t\t});\n\t\t\t\t}\n\t\t\t\tif (pathname === "/v1/advance-month") {\n\t\t\t\t\tif (principal.authority !== "opera'... 6411 more characters,
+    expected: /@aws-sdk\/client-dynamodb/,
+    operator: 'doesNotMatch',
+    diff: 'simple'
+  }

@@ -1,0 +1,30 @@
+✔ adapts one bounded HTTP API v2 request to the fixed account handler (8.059292ms)
+✖ rejects malformed transport, oversized bodies, and duplicate authorization before DynamoDB (1.502583ms)
+✔ configuration failures expose only a fixed safe error (0.225958ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 114.734833
+
+✖ failing tests:
+
+test at apps/studio/deployment/managed/observability-anchor-lambda.test.mjs:105:1
+✖ rejects malformed transport, oversized bodies, and duplicate authorization before DynamoDB (1.502583ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  401 !== 400
+
+      at TestContext.<anonymous> (file:///Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/managed-anchor-runtime/apps/studio/deployment/managed/observability-anchor-lambda.test.mjs:130:12)
+      at async Test.run (node:internal/test_runner/test:1332:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 401,
+    expected: 400,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
