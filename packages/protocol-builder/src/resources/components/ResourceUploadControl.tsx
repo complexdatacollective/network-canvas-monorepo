@@ -9,14 +9,13 @@ import {
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
-import { useResourceGateway } from '../context.tsx';
+import { useResourceClient, type ResourceClient } from '../client.tsx';
 import {
   RESOURCE_UPLOAD_MAX_BYTE_LENGTH,
-  type ProtocolBuilderResourceGateway,
   type ResourceDescriptor,
   type ResourceResult,
   type StageUploadRequest,
-} from '../gateway.ts';
+} from '../types.ts';
 import { discardAbandonedStaging } from './abandonedStaging.ts';
 import ResourceFailureNotice from './ResourceFailureNotice.tsx';
 import {
@@ -88,16 +87,16 @@ const messages = defineMessages({
  * request is exactly what "try again" then means.
  */
 async function importFile(
-  gateway: ProtocolBuilderResourceGateway,
+  resources: ResourceClient,
   request: StageUploadRequest,
 ): Promise<ResourceResult<ResourceDescriptor>> {
-  const staged = await gateway.stageUpload(request);
+  const staged = await resources.stageUpload(request);
   if (staged.status !== 'ok') return staged;
 
-  const inspected = await gateway.inspect(staged.data.id);
+  const inspected = await resources.inspect(staged.data.id);
   if (inspected.status === 'ok') return staged;
   if (inspected.failure.reason === 'invalid-content') {
-    await gateway.discardStaged(staged.data.id);
+    await resources.discardStaged(staged.data.id);
   }
   return Object.freeze({
     status: 'failed' as const,
@@ -121,7 +120,7 @@ export type ResourceUploadControlProps = Readonly<{
 }>;
 
 /**
- * Imports a file into this editing session, through the gateway alone.
+ * Imports a file into this edit, through the resource client alone.
  *
  * Two ways in, deliberately: a drop target for a pointer, and a file input
  * that is a real, labelled, focusable control rather than a visually hidden
@@ -138,7 +137,7 @@ export default function ResourceUploadControl({
   onDraftChange,
   disabled = false,
 }: ResourceUploadControlProps) {
-  const gateway = useResourceGateway();
+  const resources = useResourceClient();
   const intl = useAppIntl();
   const { begin, busy, failure, retry } = useResourceAttempt();
   const inputId = useId();
@@ -159,7 +158,7 @@ export default function ResourceUploadControl({
   const [dragging, setDragging] = useState(false);
   /**
    * A file has been chosen and its bytes are being read, which is work of the
-   * researcher's that no gateway call has started yet.
+   * researcher's that no host call has started yet.
    *
    * `busy` cannot stand for this on its own: the read happens before any call
    * is made, so a control that reported only `busy` would report nothing for
@@ -237,7 +236,7 @@ export default function ResourceUploadControl({
       setStatus('');
       claim.run(
         () =>
-          importFile(gateway, {
+          importFile(resources, {
             requestId,
             kind: contentKind,
             name: source,
@@ -256,13 +255,13 @@ export default function ResourceUploadControl({
         // The import landed with nothing left to hand it to: another file was
         // chosen, or the browser was closed. No field will ever name it, so
         // the host is told to let it go.
-        (descriptor) => discardAbandonedStaging(gateway, descriptor),
+        (descriptor) => discardAbandonedStaging(resources, descriptor),
       );
       // After the call has started, so the draft passes from this flag to
       // `busy` without ever being reported as nothing in between.
       setReading(false);
     },
-    [begin, gateway, kind, onStaged],
+    [begin, kind, onStaged, resources],
   );
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {

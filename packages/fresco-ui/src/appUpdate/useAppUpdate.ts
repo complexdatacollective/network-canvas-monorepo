@@ -85,7 +85,9 @@ export default function useAppUpdate({
 
   // An available update means we just completed an online SW check — fetch the
   // latest notes and cache them so the dialog (and the post-reload "updated"
-  // state) can read them offline.
+  // state) can read them offline. Nothing here is derived from render inputs:
+  // the effect exists to run a network request and to hold what it answered,
+  // and the "loading" marker is that request starting, not a computed value.
   useEffect(() => {
     if (!needRefresh) return undefined;
     let active = true;
@@ -110,7 +112,9 @@ export default function useAppUpdate({
   }, [needRefresh, app]);
 
   // On a "just updated" load, prefer the cached notes for the running version
-  // (written when it was "available"); otherwise fetch them by tag.
+  // (written when it was "available"); otherwise fetch them by tag. Both
+  // branches read a store outside React — the notes cache and the releases
+  // API — so this is synchronisation, not derivation.
   useEffect(() => {
     if (!justUpdated) return undefined;
     const cached = readCachedNotes(app);

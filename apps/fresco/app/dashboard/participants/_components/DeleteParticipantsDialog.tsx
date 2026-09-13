@@ -1,7 +1,7 @@
 'use client';
 
 import { Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
 import { defineMessages } from '@codaco/app-i18n/messages';
@@ -51,6 +51,8 @@ const messages = defineMessages({
   },
 });
 
+const renderStrongChunks = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 type DeleteParticipantsDialog = {
   open: boolean;
   participantCount: number;
@@ -84,7 +86,7 @@ export const DeleteParticipantsDialog = ({
           <AlertDescription>
             {intl.formatMessage(messages.unexported, {
               count: participantCount,
-              strong: (chunks) => <strong>{chunks}</strong>,
+              strong: renderStrongChunks,
             })}
           </AlertDescription>
         </Alert>
@@ -97,7 +99,7 @@ export const DeleteParticipantsDialog = ({
         <AlertDescription>
           {intl.formatMessage(messages.exported, {
             count: participantCount,
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: renderStrongChunks,
           })}
         </AlertDescription>
       </Alert>

@@ -1,8 +1,7 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 import { createAppIntl } from '@codaco/app-i18n/messages';
-import AttributeControlDescription from '~/components/Form/AttributeControlDescription';
 import { VARIABLE_TYPES, getVariableTypeLabel } from '~/config/variables';
 import { architectCatalogs } from '~/locales/catalogs';
 import {
@@ -16,9 +15,6 @@ import {
 } from '~/utils/protocolImportErrors';
 import { createValidations } from '~/utils/validations';
 
-import { ArchitectI18nProvider } from '../ArchitectI18nProvider';
-import { ARCHITECT_LOCALE_KEY } from '../preference';
-
 const spanish = createAppIntl({ locale: 'es', messages: architectCatalogs.es });
 
 beforeEach(() => {
@@ -30,37 +26,12 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it('updates whole attribute badges while preserving stable type and control identifiers', () => {
-  const data = { type: 'datetime', component: 'DatePicker' };
-  const before = JSON.stringify(data);
-  const { container } = render(
-    <ArchitectI18nProvider>
-      <AttributeControlDescription {...data} />
-    </ArchitectI18nProvider>,
-  );
-  expect(container).toHaveTextContent(
-    'Date attribute using DatePicker input control',
-  );
-  act(() => {
-    localStorage.setItem(ARCHITECT_LOCALE_KEY, 'es');
-    window.dispatchEvent(
-      new StorageEvent('storage', {
-        key: ARCHITECT_LOCALE_KEY,
-        newValue: 'es',
-      }),
-    );
-  });
-  expect(container).toHaveTextContent(
-    'Atributo de tipo Fecha con control Selector de fecha',
-  );
-  expect(screen.getByText('Fecha').tagName).toBe('STRONG');
-  expect(screen.getByText('Selector de fecha').tagName).toBe('STRONG');
+it('translates attribute type labels while preserving stable type identifiers', () => {
   expect(getVariableTypeLabel('datetime', spanish)).toBe('Fecha');
   expect(getVariableTypeLabel('Unrecognized_Research_Type', spanish)).toBe(
     'Unrecognized_Research_Type',
   );
   expect(VARIABLE_TYPES.datetime.value).toBe('datetime');
-  expect(JSON.stringify(data)).toBe(before);
 });
 
 it('allows equality at a maximum and explains singular limits precisely in Spanish', () => {

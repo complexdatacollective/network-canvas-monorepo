@@ -188,6 +188,76 @@ describe.skipIf(!reachable)('configured migration admission boundary', () => {
     ).toEqual([{ value: 2 }]);
   });
 
+  it('snapshots and validates complete migration artifacts before waiting for a connection', async () => {
+    const snapshotDatabase = `generic_snapshot_${suffix}`;
+    await administrator.query(
+      `CREATE DATABASE ${escapeIdentifier(snapshotDatabase)} OWNER ${escapeIdentifier(login.owner)} ALLOW_CONNECTIONS false`,
+    );
+    await administrator.query(
+      `REVOKE ALL ON DATABASE ${escapeIdentifier(snapshotDatabase)} FROM PUBLIC;
+       GRANT CONNECT ON DATABASE ${escapeIdentifier(snapshotDatabase)} TO ${allowedLogins.map(escapeIdentifier).join(', ')};
+       ALTER DATABASE ${escapeIdentifier(snapshotDatabase)} ALLOW_CONNECTIONS true`,
+    );
+    const snapshotOwner = fixturePool({
+      ...connection,
+      user: login.owner,
+      password,
+      database: snapshotDatabase,
+    });
+    const snapshotAdmin = fixturePool({
+      ...connection,
+      database: snapshotDatabase,
+    });
+    try {
+      await snapshotAdmin.query(
+        revokeLargeObjectPrivilegesSql([
+          ...Object.values(role),
+          ...Object.values(login),
+        ]),
+      );
+      const blocker = await snapshotOwner.connect();
+      const mutable: Migration[] = [
+        {
+          ...migrations[0]!,
+          manifest: { ...migrations[0]!.manifest },
+          snapshot: { ...migrations[0]!.snapshot },
+        },
+      ];
+      const pending = migrator.migrate(
+        snapshotOwner,
+        mutable,
+        fingerprint,
+        allowedLogins,
+      );
+      mutable[0]!.sql += `; CREATE TABLE ${escapeIdentifier(schemaName)}.sql_mutated (id integer)`;
+      mutable[0]!.sidecars += `; CREATE TABLE ${escapeIdentifier(schemaName)}.sidecar_mutated (id integer)`;
+      blocker.release();
+      await expect(pending).resolves.toEqual(['0001_custom']);
+      expect(
+        (
+          await snapshotOwner.query(
+            'SELECT to_regclass($1) AS sql, to_regclass($2) AS sidecar',
+            [
+              `${escapeIdentifier(schemaName)}.sql_mutated`,
+              `${escapeIdentifier(schemaName)}.sidecar_mutated`,
+            ],
+          )
+        ).rows,
+      ).toEqual([{ sql: null, sidecar: null }]);
+    } finally {
+      await Promise.all([
+        closeFixturePool(snapshotOwner),
+        closeFixturePool(snapshotAdmin),
+      ]);
+      await administrator.query(
+        `ALTER DATABASE ${escapeIdentifier(snapshotDatabase)} ALLOW_CONNECTIONS false`,
+      );
+      await administrator.query(
+        `DROP DATABASE ${escapeIdentifier(snapshotDatabase)}`,
+      );
+    }
+  });
+
   it.each(['app', 'operator', 'backup'] as const)(
     'refuses actual %s column-level evidence writes before trusting history',
     async (identity) => {

@@ -16,13 +16,19 @@ export class DraftStructureError extends Error {}
 
 export type StructuralResult = { manifestSeq: bigint; manifestHash: string };
 
-type HeadState = {
+export type HeadState = {
   headSeq: bigint;
   headManifestHash: string;
   sectionHashes: Record<string, string>;
 };
 
-async function lockHead(
+/**
+ * The draft's head, locked for the rest of the transaction. Every path that
+ * advances the manifest takes this first, so commits cannot fork the chain —
+ * and the protocol-builder host allocates its event cursors under it too, so
+ * one draft's events carry one gapless order.
+ */
+export async function lockDraftHead(
   client: pg.PoolClient,
   teamId: string,
   draftId: string,
@@ -88,7 +94,7 @@ function stageOrderOf(doc: SectionDoc): string[] {
 // Expiry AND an epoch bump: expiring alone would let the holder's queued
 // commits race the expiry check, and a removed-then-re-added section would
 // accept the old owner's stale edits.
-async function fenceLeases(
+export async function fenceDraftLeases(
   client: pg.PoolClient,
   teamId: string,
   draftId: string,
@@ -101,7 +107,12 @@ async function fenceLeases(
   );
 }
 
-async function advanceManifest(
+/**
+ * Writes and removals as one new manifest revision. Also the protocol-builder
+ * host's write path, whose `create` and compound refactors land several
+ * sections at one sequence.
+ */
+export async function advanceDraftManifest(
   client: pg.PoolClient,
   teamId: string,
   draftId: string,
@@ -170,7 +181,7 @@ export async function addStage(
 
   const teamId = db.teamId;
   const add = async (transactionClient: pg.PoolClient) => {
-    const head = await lockHead(transactionClient, teamId, params.draftId);
+    const head = await lockDraftHead(transactionClient, teamId, params.draftId);
     if (head.sectionHashes[id] !== undefined) {
       throw new DraftStructureError(`stage ${stageId} already exists`);
     }
@@ -188,8 +199,11 @@ export async function addStage(
     }
     const newOrder = [...order];
     newOrder.splice(index, 0, stageId);
-    await fenceLeases(transactionClient, teamId, params.draftId, [orderId, id]);
-    return advanceManifest(
+    await fenceDraftLeases(transactionClient, teamId, params.draftId, [
+      orderId,
+      id,
+    ]);
+    return advanceDraftManifest(
       transactionClient,
       teamId,
       params.draftId,
@@ -218,7 +232,7 @@ export async function removeStage(
     db,
     'protocol.removeStage',
     async (client) => {
-      const head = await lockHead(client, teamId, params.draftId);
+      const head = await lockDraftHead(client, teamId, params.draftId);
       if (head.sectionHashes[id] === undefined) {
         throw new DraftStructureError(`no stage ${params.stageId} in draft`);
       }
@@ -229,8 +243,8 @@ export async function removeStage(
       }
       const order = stageOrderOf(await loadDoc(client, teamId, orderHash));
       const newOrder = order.filter((entry) => entry !== params.stageId);
-      await fenceLeases(client, teamId, params.draftId, [orderId, id]);
-      return advanceManifest(
+      await fenceDraftLeases(client, teamId, params.draftId, [orderId, id]);
+      return advanceDraftManifest(
         client,
         teamId,
         params.draftId,
@@ -255,7 +269,7 @@ export async function moveStage(
 ): Promise<StructuralResult> {
   const teamId = db.teamId;
   const move = async (transactionClient: pg.PoolClient) => {
-    const head = await lockHead(transactionClient, teamId, params.draftId);
+    const head = await lockDraftHead(transactionClient, teamId, params.draftId);
     if (head.headSeq !== params.expectedRevision) {
       throw new DraftStructureError(
         `draft changed from revision ${params.expectedRevision} to ${head.headSeq}`,
@@ -290,8 +304,10 @@ export async function moveStage(
       throw new DraftStructureError(`no stage ${params.stageId} in draft`);
     }
     newOrder.splice(params.toIndex, 0, stageId);
-    await fenceLeases(transactionClient, teamId, params.draftId, [orderId]);
-    return advanceManifest(
+    await fenceDraftLeases(transactionClient, teamId, params.draftId, [
+      orderId,
+    ]);
+    return advanceDraftManifest(
       transactionClient,
       teamId,
       params.draftId,
@@ -335,12 +351,12 @@ export async function addCodebookEntity(
     db,
     'protocol.addCodebookEntity',
     async (client) => {
-      const head = await lockHead(client, teamId, params.draftId);
+      const head = await lockDraftHead(client, teamId, params.draftId);
       if (head.sectionHashes[id] !== undefined) {
         throw new DraftStructureError(`codebook section ${id} already exists`);
       }
-      await fenceLeases(client, teamId, params.draftId, [id]);
-      return advanceManifest(
+      await fenceDraftLeases(client, teamId, params.draftId, [id]);
+      return advanceDraftManifest(
         client,
         teamId,
         params.draftId,
@@ -362,12 +378,14 @@ export async function removeCodebookEntity(
     db,
     'protocol.removeCodebookEntity',
     async (client) => {
-      const head = await lockHead(client, teamId, params.draftId);
+      const head = await lockDraftHead(client, teamId, params.draftId);
       if (head.sectionHashes[id] === undefined) {
         throw new DraftStructureError(`no codebook section ${id} in draft`);
       }
-      await fenceLeases(client, teamId, params.draftId, [id]);
-      return advanceManifest(client, teamId, params.draftId, head, {}, [id]);
+      await fenceDraftLeases(client, teamId, params.draftId, [id]);
+      return advanceDraftManifest(client, teamId, params.draftId, head, {}, [
+        id,
+      ]);
     },
   );
 }

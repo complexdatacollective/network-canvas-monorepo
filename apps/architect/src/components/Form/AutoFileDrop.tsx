@@ -23,6 +23,23 @@ import {
 import { documentationLinks } from '~/utils/documentationLinks';
 
 import Dropzone from './Dropzone/Dropzone';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderResourceTypesLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.supportedResourceTypes}>
+    {chunks}
+  </ExternalLink>
+);
+
+const renderCommunityLink = (chunks: ReactNode[]) => (
+  <ExternalLink href="https://community.networkcanvas.com/">
+    {chunks}
+  </ExternalLink>
+);
+
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 const additionalMessages = defineMessages({
   genericFailure: {
     id: 'architect.resource.genericImportFailure',
@@ -144,21 +161,13 @@ const DocumentationMessage = () => {
         {intl.formatMessage(
           additionalMessages.pleaseSeeOurDocumentationPageOn,
           {
-            ExternalLink: (chunks) => (
-              <ExternalLink href={documentationLinks.supportedResourceTypes}>
-                {chunks}
-              </ExternalLink>
-            ),
+            ExternalLink: renderResourceTypesLink,
           },
         )}
       </Paragraph>
       <Paragraph>
         {intl.formatMessage(additionalMessages.ifYouBelieveYouAreSeeing, {
-          ExternalLink: (chunks) => (
-            <ExternalLink href="https://community.networkcanvas.com/">
-              {chunks}
-            </ExternalLink>
-          ),
+          ExternalLink: renderCommunityLink,
         })}
       </Paragraph>
       <Paragraph>
@@ -255,7 +264,7 @@ const AutoFileDrop = ({
       const ids: string[] = [];
       for (const file of files) {
         try {
-          const result = await dispatch(importAssetAsync(file)).unwrap();
+          const result = await dispatch(importAssetAsync({ file })).unwrap();
           ids.push(result.id);
           if (result.duplicateCount > 0) {
             void openDialog({
@@ -320,7 +329,7 @@ const AutoFileDrop = ({
                     message: messages.couldNotBeAddedTo,
                     values: {
                       value1: importError.filename,
-                      strong: (chunks) => <strong>{chunks}</strong>,
+                      strong: renderStrong,
                     },
                   })}
                 </Paragraph>

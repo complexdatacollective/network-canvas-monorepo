@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import InterviewerGuidanceSection from '../../sections/InterviewerGuidanceSection.tsx';
-import StageNameSection from '../../sections/StageNameSection.tsx';
+import InterviewerGuidanceSection from '../../sections/interviewer-guidance/InterviewerGuidanceSection.tsx';
+import StageNameSection from '../../sections/stage-heading/StageNameSection.tsx';
 import { renderStageEditor } from '../renderStageEditor.tsx';
 
 /**

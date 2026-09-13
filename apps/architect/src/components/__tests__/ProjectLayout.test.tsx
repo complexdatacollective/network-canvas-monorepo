@@ -12,7 +12,6 @@ import activeProtocol, {
 import app, { setProtocolLockState } from '~/ducks/modules/app';
 import protocols from '~/ducks/modules/protocols';
 import protocolValidation from '~/ducks/modules/protocolValidation';
-import stageEditorDraft from '~/ducks/modules/stageEditorDraft';
 import { getCanUndo } from '~/selectors/protocol';
 
 import { ActionToolbarProvider } from '../ProjectNav/ActionToolbar';
@@ -53,7 +52,6 @@ const createTestStore = () =>
       app,
       protocols,
       protocolValidation,
-      stageEditorDraft,
       activeProtocol: createTimeline(activeProtocol),
     }),
   });

@@ -344,3 +344,21 @@ export const AllOrientations: Story = {
     </div>
   ),
 };
+
+/**
+ * Nothing to tick — every option comes from somewhere else, and that
+ * somewhere holds none yet. The group stays, so the label above it still
+ * names what is empty.
+ */
+export const NothingToTick: Story = {
+  args: {
+    'name': 'empty',
+    'options': [],
+    'aria-label': 'Edge types',
+    'emptyState': (
+      <p className="w-full py-6 text-center text-sm text-current/70 italic">
+        Nothing to choose from yet.
+      </p>
+    ),
+  },
+};

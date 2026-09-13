@@ -1,9 +1,8 @@
-import { defineStageEditorPart } from '../src/stage-editor-contract.ts';
+import { defineStageEditor } from '../src/editors/defineStageEditor.tsx';
 import {
   type Assert,
   type AwaitingListIsComplete,
 } from '../src/stageEditorRegistry.ts';
-import { InformationEditor } from './fixtures.ts';
 
 /**
  * MUST NOT COMPILE: an interface nothing renders and nothing admits to.
@@ -13,9 +12,7 @@ import { InformationEditor } from './fixtures.ts';
  * The build has to stop, or the interface reaches a researcher as a page that
  * throws.
  */
-const PARTS = [
-  defineStageEditorPart({ Information: InformationEditor }),
-] as const;
+const PARTS = [defineStageEditor('Information', [])] as const;
 
 const AWAITING = ['AlterForm'] as const;
 

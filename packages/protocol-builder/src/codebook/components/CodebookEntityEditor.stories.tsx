@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, within } from 'storybook/test';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 
+import { buttonPaint, TRANSPARENT } from '../../testing/buttonPaint.ts';
+import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import CodebookEntityEditor from './CodebookEntityEditor.tsx';
 
 const PERSON: SectionDoc = {
@@ -20,18 +23,21 @@ function ExistingNodeEditor() {
       <CodebookEntityEditor
         mode="update"
         sessionKey="storybook-person-open-1"
-        createRequestId={() => 'storybook-update-person'}
-        description="Update the Person node type"
         subject={{ entity: 'node', type: 'person' }}
         initialDraft={PERSON}
         authoritativeDocument={PERSON}
         existingEntityNames={['Place']}
-        onSubmit={() => ({
-          status: 'failed',
-          reason: 'unavailable',
-          message:
-            'The Storybook host does not persist changes. The draft remains open so it can be reviewed.',
-        })}
+        // Present so the pair of footer buttons is the pair a researcher meets.
+        onCancel={() => undefined}
+        // Storybook has no host to save to, so every save is refused — which
+        // is also what puts the refusal alert on screen to look at.
+        onSubmit={() =>
+          Promise.resolve({
+            status: 'refused' as const,
+            message: codebookRefusalMessage({ kind: 'unreachable' }),
+            refusal: { kind: 'unreachable' } as const,
+          })
+        }
       />
     </main>
   );
@@ -47,4 +53,29 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const ExistingNode: Story = {};
+export const ExistingNode: Story = {
+  /**
+   * Architect's dialog footer is a filled `color="default"` cancel beside a
+   * filled `color="primary"` submit (`DialogForm.tsx:166,173`). The package
+   * drew cancel as a hollow outline button, which is a style Architect has
+   * nowhere — so the two controls read as different kinds of thing.
+   */
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const cancel = buttonPaint(canvas.getByRole('button', { name: 'Cancel' }));
+    await expect(cancel.colour).toBe(cancel.token('neutral'));
+    await expect(cancel.background).not.toBe(TRANSPARENT);
+    await expect(cancel.borderWidth).toBe('0px');
+
+    const submit = buttonPaint(
+      canvas.getByRole('button', { name: 'Save entity' }),
+    );
+    await expect(submit.colour).toBe(submit.token('primary'));
+    await expect(submit.background).not.toBe(TRANSPARENT);
+    await expect(submit.borderWidth).toBe('0px');
+
+    // The two are told apart by colour, which is the whole convention.
+    await expect(cancel.background).not.toBe(submit.background);
+  },
+};

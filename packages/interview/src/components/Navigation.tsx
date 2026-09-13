@@ -12,9 +12,9 @@ import {
 import { motion, useReducedMotion } from 'motion/react';
 import {
   type ComponentProps,
+  type ReactNode,
   type Ref,
   useCallback,
-  useEffect,
   useId,
   useRef,
   useState,
@@ -148,6 +148,10 @@ const MAX_TEXT_SCALE_PERCENT = Math.round(
 );
 const TEXT_SCALE_PERCENT_STEP = 10;
 
+const renderHiddenChunks = (chunks: ReactNode[]) => (
+  <span className="sr-only">{chunks}</span>
+);
+
 type NavigationProps = {
   moveBackward: () => void;
   moveForward: () => void;
@@ -230,13 +234,18 @@ const Navigation = ({
   const [textScaleInputValue, setTextScaleInputValue] = useState(
     String(textScalePercent),
   );
+  // The field mirrors the authoritative scale, so a change to it re-normalises
+  // what is displayed. Compared during render rather than in an effect: an
+  // effect would commit and paint the stale string for a frame first.
+  const [displayedTextScalePercent, setDisplayedTextScalePercent] =
+    useState(textScalePercent);
+  if (displayedTextScalePercent !== textScalePercent) {
+    setDisplayedTextScalePercent(textScalePercent);
+    setTextScaleInputValue(String(textScalePercent));
+  }
   const textScaleInputPercent = Number(textScaleInputValue);
   const hasTextScaleInputPercent =
     textScaleInputValue !== '' && Number.isFinite(textScaleInputPercent);
-
-  useEffect(() => {
-    setTextScaleInputValue(String(textScalePercent));
-  }, [textScalePercent]);
 
   const { confirm } = useDialog();
   const portalContainer = usePortalContainer();
@@ -408,11 +417,7 @@ const Navigation = ({
                       >
                         <AppMessage
                           message={messages.textSize}
-                          values={{
-                            hidden: (chunks) => (
-                              <span className="sr-only">{chunks}</span>
-                            ),
-                          }}
+                          values={{ hidden: renderHiddenChunks }}
                         />
                       </legend>
                       <div ref={textSizeControlRef} className="w-full">

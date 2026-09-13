@@ -1,5 +1,32 @@
 # fresco
 
+## 4.1.6
+
+### Patch Changes
+
+- 79cabf8: Fresco can be deployed to Vercel again. Since 4.1.0 every Vercel
+  deployment failed during the build with
+  `ENOENT: .next/next-server.js.nft.json`. Next.js 16.3 stopped writing that
+  file-trace manifest when `output: 'standalone'` is set, and Vercel's build
+  adapter needs it to package the app's serverless functions. Fresco sets
+  `output: 'standalone'` only for its Docker image, so it is now switched off
+  when building on Vercel. Container and Netlify deployments are unaffected.
+
+  The consequence reached further than a failed build. Fresco applies its
+  database migrations before the build runs, so an upgrade attempted on Vercel
+  migrated the schema and then failed — leaving the previous deployment, still
+  serving, reading a database whose shape it no longer understood. A Vercel
+  deployment could therefore take itself offline by trying to upgrade, and
+  could not be repaired by redeploying the older version.
+
+  Fixed upstream in Next.js 16.4 (vercel/next.js#96646).
+
+## 4.1.5
+
+### Patch Changes
+
+- 83c17e7: Fix "Must be unique" accepting a duplicate value for a number variable. A number typed into an interview form was compared as text against the numbers already stored on the other alters, so an Alter ID that another alter already held passed the check and the duplicate was added. The same mismatch let a "same as" or "different from" rule misjudge a number answered on an earlier stage. Number values are now compared as numbers wherever a rule reads what the network already holds.
+
 ## 4.1.4
 
 ### Patch Changes

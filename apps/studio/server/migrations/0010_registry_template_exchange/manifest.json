@@ -1,9 +1,0 @@
-{
-  "format": 1,
-  "id": "0010_registry_template_exchange",
-  "previous": "0009_recovery_authorization",
-  "fingerprint": "6cbf38fd1d802cc3a723c65e5d65d53ce568d0f4116d898d23ae8f305e0b439a",
-  "snapshotHash": "4570145c3fb7f5fb40e815e58ea004cf7c00debda93b14b73febf18616399177",
-  "sqlHash": "fc4998b8a4f1bedf1563d2bcebf57d65b66e68ef5003d9104384a77d3093a03f",
-  "sidecarsHash": "004885a39c0f7f8fa2245215ab8122c2f9c279b356238b4bc5ca7f2917cedb93"
-}

@@ -1,0 +1,100 @@
+name: Dead-link check
+description: >-
+  Crawl a deployed site in headed Chrome, reusing a shared cache of external
+  link results, and upload the JSON report.
+inputs:
+  url:
+    description: Root URL to crawl.
+    required: true
+  report-name:
+    description: Artifact name; also names the report file under RUNNER_TEMP.
+    required: true
+  save-cache:
+    description: >-
+      Write the refreshed cache back under a new key. Only runs on the default
+      branch are worth saving, because a cache written on any other ref is
+      visible solely to that ref and would evict nothing useful.
+    default: 'false'
+  restore-cache:
+    description: >-
+      Set 'false' for a second crawl in the same job. The cache file persists
+      between steps, so restoring again would discard what the first crawl
+      just added to it.
+    default: 'true'
+  concurrent:
+    description: Concurrent browser pages.
+    default: '4'
+  allow-refused:
+    description: >-
+      Path to the JSON list of external URLs known to answer 401/403 because
+      they refuse automation rather than because they are broken. A refusal
+      from any URL NOT on that list fails the run — which is why this is a list
+      of URLs and not a count: a count lets a link that starts refusing us hide
+      behind one that stopped.
+    default: .github/dead-link-refusals.json
+runs:
+  using: composite
+  steps:
+    # `chromium.launch({ channel: 'chrome' })` drives the runner image's own
+    # Google Chrome rather than a Playwright build, so there is no browser
+    # download and nothing to cache — but a runner image that ever drops the
+    # preinstall would otherwise fail deep inside the crawl with every link
+    # reported dead. Fail loudly and early instead.
+    - name: Confirm Chrome is available
+      shell: bash
+      run: |
+        if ! command -v google-chrome >/dev/null 2>&1; then
+          echo "::error::google-chrome is not on PATH; the dead-link checker cannot run"
+          exit 1
+        fi
+        google-chrome --version
+
+    # Restore-only, with a prefix fallback so any recent entry will do. The
+    # weekly refresh on main is the writer whose entries every pull request
+    # reads: GitHub only lets a run restore caches from its own ref or the
+    # default branch, so a cache written on a PR branch is visible to that PR
+    # alone.
+    - name: Restore external-link cache
+      if: inputs['restore-cache'] == 'true'
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/dead-link-cache.json
+        key: dead-link-cache-v1-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: dead-link-cache-v1-
+
+    # Headed, because challenge providers reject automated headless Chrome
+    # whatever User-Agent it sends. No --user-agent: Chrome's own identity is
+    # the whole point, and a spoofed one is what publishers fingerprint against.
+    - name: Dead-link check
+      shell: bash
+      env:
+        CHECK_CONCURRENT: ${{ inputs.concurrent }}
+        CHECK_ALLOW_REFUSED: ${{ inputs['allow-refused'] }}
+        CHECK_REPORT: ${{ runner.temp }}/${{ inputs['report-name'] }}.json
+        CHECK_URL: ${{ inputs.url }}
+      run: >-
+        xvfb-run --auto-servernum
+        node scripts/dead-links/dead-link-checker.mjs "$CHECK_URL" --github-actions
+        --concurrent="$CHECK_CONCURRENT"
+        --allow-refused="$CHECK_ALLOW_REFUSED"
+        --cache="$RUNNER_TEMP/dead-link-cache.json"
+        --report="$CHECK_REPORT"
+
+    # Saved even when links failed: only successes are ever cached, so the file
+    # cannot carry a failure forward, and skipping the save would let one dead
+    # third-party link stop the cache refreshing indefinitely.
+    - name: Save external-link cache
+      if: always() && inputs['save-cache'] == 'true'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.temp }}/dead-link-cache.json
+        key: dead-link-cache-v1-${{ github.run_id }}-${{ github.run_attempt }}
+
+    - name: Upload dead-link report
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ inputs['report-name'] }}
+        path: ${{ runner.temp }}/${{ inputs['report-name'] }}.json
+        if-no-files-found: error
+        retention-days: 7

@@ -16,11 +16,11 @@ export function generateMigrationFiles(options: {
   after?: string;
 }): Promise<{ id: string; statements: number }> {
   return generatePostgresMigrationFiles({
+    ...options,
     applicationName: 'Studio',
     schema: SCHEMA,
     sidecarStatements: SIDECARS,
     expectedFingerprint: SCHEMA_FINGERPRINT,
-    ...options,
   });
 }
 

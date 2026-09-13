@@ -12,6 +12,7 @@ import type {
 import { useStageEditorForm } from '../form/stageEditorContext.ts';
 import { useStageValue } from '../form/stageFormHooks.ts';
 import type { ProtocolBuilderProtocolContext } from '../protocol-context.ts';
+import { useProtocolContext } from '../state/protocolContext.ts';
 import { computeAutoNameUpdate } from './computeAutoNameUpdate.ts';
 import { generateStageLabel, STAGE_TYPE_NAMES } from './generateStageLabel.ts';
 import {
@@ -58,17 +59,15 @@ export type AutoStageName = Readonly<{
  * stage order in `protocolContext` — so the same proposal is made in any host.
  *
  * Ownership is tracked in refs rather than in form state because it is not
- * part of the stage: it is this editing session's memory of who last wrote the
- * name. Undo and redo are the reason it can be tracked that simply — both
- * replace the agreed draft, which re-keys the form store and remounts this
- * hook, so a restored name arrives as a name already in the field. The
+ * part of the stage: it is this edit's memory of who last wrote the name. The
  * classifier reads a non-empty name it did not itself generate as the
  * researcher's, which is the safe direction: a proposal is never written over
  * a name a person might have chosen.
  */
 export function useAutoStageName(options: AutoStageNameOptions): AutoStageName {
   const { isNewStage, panels } = options;
-  const { storeApi, identity, protocolContext } = useStageEditorForm();
+  const { storeApi, identity } = useStageEditorForm();
+  const protocolContext = useProtocolContext();
   const draft = useStageNameSources();
   const liveLabel = draft.label;
 

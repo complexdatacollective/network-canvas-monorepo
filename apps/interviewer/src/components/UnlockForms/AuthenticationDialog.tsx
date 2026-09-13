@@ -224,6 +224,12 @@ export function AuthenticationDialog(props: AuthenticationDialogProps) {
     invalidatePendingAuthentication();
   }, [invalidatePendingAuthentication, open]);
 
+  // The open cycle is this dialog's synchronisation boundary with WebAuthn: it
+  // has to retire the in-flight biometric attempt (`autoAttempted`, and the
+  // pending flag the platform prompt owns) in the same commit that resets the
+  // recovery and reset panes, and after the layout effect above has invalidated
+  // any attempt still awaiting the authenticator. None of that is derivable
+  // during render, so the effect is the right tool here.
   useEffect(() => {
     if (!open) {
       autoAttempted.current = false;

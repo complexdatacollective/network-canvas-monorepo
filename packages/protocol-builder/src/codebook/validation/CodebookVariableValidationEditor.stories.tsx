@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 
-import { applyCommands, type SectionDoc } from '@codaco/studio-sync/apply';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import type { CompoundEditResult } from '../../session.ts';
 import CodebookVariableValidationEditor from './CodebookVariableValidationEditor.tsx';
 
 const initialDocument: SectionDoc = {
@@ -43,28 +43,14 @@ function ValidationSurfaceProof() {
         variableId="age"
         authoritativeEntityDocument={authoritative}
         allSubjectVariables={variablesFrom(authoritative)}
-        requestMetadata={{
-          createId: () => 'story-update-age-validation',
-          description: 'Update Age validation',
-        }}
-        onSubmitRequest={(request) => {
-          const edit = request.edits[0];
-          if (edit?.kind === 'update') {
-            globalThis.setTimeout(
-              () =>
-                setAuthoritative((current) =>
-                  applyCommands(current, [...edit.commands]),
-                ),
-              0,
-            );
-          }
-          return {
-            status: 'applied',
-            update: {
-              protocolSections: {},
-              manifestRevision: { sequence: 2n, hash: 'story-revision-2' },
-            },
-          } satisfies CompoundEditResult;
+        onSubmitDocument={(document) => {
+          // The proof host is this story's own state: a save writes the whole
+          // section back, exactly as a host does.
+          globalThis.setTimeout(() => setAuthoritative(document), 0);
+          return Promise.resolve({
+            status: 'applied' as const,
+            sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          });
         }}
       />
     </main>

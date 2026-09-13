@@ -296,6 +296,9 @@ export function ProtocolDeck({
     [slides],
   );
 
+  // `isDragGlobal` is react-dropzone's window-level drag session, not something
+  // this component can observe from a handler it owns, so an effect is the
+  // right tool: it reacts to a drag entering the window from outside the app.
   useEffect(() => {
     // File names are not reliably exposed until drop, so global drag state
     // selects the target card while its dropzone remains the validation boundary.
@@ -328,6 +331,9 @@ export function ProtocolDeck({
       );
       if (idx >= 0) {
         didInitialScroll.current = true;
+        // The index must be moved in lockstep with the carousel's imperative
+        // handle, which can only be driven after commit — so this state update
+        // belongs with it in the effect rather than during render.
         carouselRef.current?.jumpTo(idx);
         setActiveIndexState(idx);
         activeSlotKeyRef.current = slides[idx]?.key ?? null;

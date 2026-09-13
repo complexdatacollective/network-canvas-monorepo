@@ -91,3 +91,26 @@ it('authors a second current-version migration with explicit column addition and
     await rm(root, { recursive: true, force: true });
   }
 });
+
+it('keeps Studio-owned authoring inputs authoritative when caller objects have extra fields', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'studio-authoring-boundary-'));
+  const sidecarStatements = ['SELECT 999;'];
+  const schema = {};
+  const caller = {
+    root,
+    name: 'initial',
+    applicationName: 'Different Application',
+    schema,
+    sidecarStatements,
+    expectedFingerprint: sha256(sidecarStatements.join('\n')),
+  };
+  try {
+    const result = await generateMigrationFiles(caller);
+    const [migration] = await readMigrations(root);
+    expect(result.id).toBe('0001_initial');
+    expect(migration?.manifest.fingerprint).toBe(SCHEMA_FINGERPRINT);
+    expect(migration?.sidecars).toBe(SIDECARS.join('\n').trimEnd() + '\n');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

@@ -1,9 +1,8 @@
-import { defineStageEditorPart } from '../src/stage-editor-contract.ts';
+import { defineStageEditor } from '../src/editors/defineStageEditor.tsx';
 import {
   type Assert,
   type PartsAreDisjoint,
 } from '../src/stageEditorRegistry.ts';
-import { InformationEditor } from './fixtures.ts';
 
 /**
  * MUST NOT COMPILE: two families claiming the same interface.
@@ -13,8 +12,8 @@ import { InformationEditor } from './fixtures.ts';
  * two claimants, so the build refuses first.
  */
 const PARTS = [
-  defineStageEditorPart({ Information: InformationEditor }),
-  defineStageEditorPart({ Information: InformationEditor }),
+  defineStageEditor('Information', []),
+  defineStageEditor('Information', []),
 ] as const;
 
 export type Disjoint = Assert<PartsAreDisjoint<typeof PARTS>>;

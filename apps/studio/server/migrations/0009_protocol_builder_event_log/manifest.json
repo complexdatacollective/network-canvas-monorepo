@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0009_protocol_builder_event_log",
+  "previous": "0008_verified_key_references",
+  "fingerprint": "5301b50b5ac15a843e71ed3f255a1384e2e13e00a92b6bd096b4abe35d939bac",
+  "snapshotHash": "c4d583c56fc0c6c63692f0cc54ebffe4a091add8a5d353df84e3c6f3f567f083",
+  "sqlHash": "1014b81cc7a235cc58a224a7cf101bc68493a261ecd2e164c9da94b20c67e8b4",
+  "sidecarsHash": "59680143460bf2b92ee7dcc3342e707c3f764cb475dd32d48b0ca1633553f4db"
+}

@@ -620,7 +620,14 @@
         "requireGrandparents": "off",
         "requireChildrenContributors": "off"
       },
-      "censusPrompt": "Who is in your family?"
+      "censusPrompt": "Who is in your family?",
+      "nominationPrompts": [
+        {
+          "id": "nomination-1",
+          "text": "Who in your family has been diagnosed with condition X?",
+          "variable": "hasConditionX"
+        }
+      ]
     },
     {
       "id": "narrative-pedigree-1",
