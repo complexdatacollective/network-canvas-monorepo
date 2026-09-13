@@ -2071,9 +2071,6 @@ importers:
       hono:
         specifier: ^4.13.5
         version: 4.13.5
-      ipaddr.js:
-        specifier: ^2.5.0
-        version: 2.5.0
       pg:
         specifier: ^8.22.0
         version: 8.22.0
