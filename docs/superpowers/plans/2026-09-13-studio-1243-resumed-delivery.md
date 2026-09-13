@@ -23,6 +23,16 @@ Main also moved root guard scripts into area directories and converted them to V
 
 The lead remains responsible for verifying findings, integration, current-head reviews, required checks, merge queue and post-merge ancestry. Agent test reports are evidence to assess, not automatic approval. Preserve checkpoint provenance and refresh image evidence against immutable Git archives after final dependency integration.
 
+## Resumed review checkpoint, September 13
+
+- PR #1740 is pushed at `1c7f875d03684e16c8f8140c2033da3c60216539`. All three review findings have code fixes and resolved replies. The additional schema/fingerprint mutation regression is fixed in `3a8818247`. Main integration preserves its 0001–0010 artifacts; 310 Studio PostgreSQL migration/schema tests, 510 shared tests, both package types and full repository Knip pass. Current-head review requested; required checks remain pending.
+- PR #1741 is pushed at `5d27a918dfdcb6bfd1e5b44e17b5fbdc64c60801`. Its latest monitoring-placement finding is fixed in `8fd9fadbc`: validate/report both monitoring provider/region pairs. Six new mutation controls failed before; all 156 estate checks and full Knip pass. Current-head review requested.
+- Independent Knip loader fix `963f5e233785361c5c64d03c6ba64ff7424769eb` is PR #1867. Lead verified the minimal deferred-import change and current-head clean Codex/Copilot reviews. Both integration branches include it through normal merges. Required checks remain pending; it must land separately before final delivery of those PRs.
+- Recovery checkpoint `9343e3d1f75776ab5d54774c8f867f3924fad384` fixes its five review findings. Lead rejected a broad audit-scanner exception introduced by that patch: `49762ccf5` restores detection for real `options.transaction` calls/aliases and renames the quarantine metadata field to `expectedTransaction` across both application callers. The bypass regression failed before; all seven audit policy tests and 15 focused recovery/entrypoint tests pass, as do Studio and Registry types. Checkpoint pushed; parent integration and additive migration regeneration remain pending.
+- Registry specification checkpoint `b4a550fb596bd0f0afcb4c124ebc0378a87e23d6` adds the generated OpenAPI 3.0.3 compatibility artifact, CC0 text and a pinned Python-generator/localhost round-trip CI gate. Agent verification passed 89 contract/spec tests, both types, scoped static checks and the real Python round trip; a deliberate wire mutation failed. Independent adversarial review is underway. Lead is integrating this checkpoint and current migration/main into Registry; only the dependency lock required conflict resolution, with current main peer versions retained and pnpm regeneration.
+
+Active assignments now: lead integration/review/PR delivery; Sol installer gaps; Sol observability gaps; Luna read-only Registry specification adversarial review. No live deployment qualification or epic completion is claimed.
+
 ## Remaining sequence
 
 1. Finish, review and land shared migration fixes; complete inventory's current-head review and checks.
