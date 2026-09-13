@@ -29,6 +29,7 @@
         "scripts/release-test/interviewer-*-walker.mjs",
         // Loaded only by the Studio image build's verified stage.
         "scripts/verify-deployed-lock.mjs",
+        "apps/studio/deployment/managed/generate-subprocessor-inventory.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
         "scripts/build/posthog-cli-upload-stub.mjs",
         // Agent hooks are invoked by Claude Code (.claude/settings.json),
@@ -46,6 +47,9 @@
         // the tests are not entries, and everything reachable only from a test
         // reads as unused.
         "scripts/**/*.test.mjs",
+        // This deployment admission test stays beside its managed manifest and
+        // uses node:test because it exercises nested subtests.
+        "apps/studio/deployment/managed/observability-egress-budget.test.mjs",
         // Run by name from `pnpm check:mapbox-tokens`; its own test spawns it
         // as a process rather than importing it, so nothing imports it at all.
         "scripts/build/check-mapbox-tokens.mjs",

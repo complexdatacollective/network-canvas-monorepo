@@ -98,6 +98,14 @@ selects a Postmark stream and otherwise defaults to `outbound`. Both transports
 validate the sender at startup, preserve uncertain delivery outcomes and close
 on shutdown. External object stores require HTTPS. The explicit
 `REGISTRY_S3_INSECURE_PRIVATE_NETWORK` option is for an isolated private network.
+`REGISTRY_METRICS_TOKEN` optionally exposes `/metrics` to an exact bearer token
+of 32 to 1024 characters. Without it the endpoint returns 404. Request metrics
+and JSON request logs use fixed route classes and never retain raw URLs,
+headers, bodies, account identifiers, template identifiers or credentials.
+`REGISTRY_TRUSTED_PROXIES` optionally lists comma-separated transport peer IPs
+or CIDRs. A valid supplied `X-Request-ID` is accepted only from one of those
+actual peers; forwarded headers cannot establish trust.
+
 `REGISTRY_S3_PROVIDER` defaults to `s3`; set it to `r2` only with a Cloudflare
 HTTPS account endpoint (`<account-id>.r2.cloudflarestorage.com` or its `eu`,
 `us`, or `fedramp` jurisdiction form) and region `auto`. The endpoint must use

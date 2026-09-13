@@ -41,6 +41,12 @@ const app = createRegistryApp({
   accepting: () => true,
   ready: async () => true,
   onDiagnostic: () => undefined,
+  observability: {
+    request: () => undefined,
+    scrape: async () => {
+      throw new Error('REGISTRY_CLIENT_UNEXPECTED_METRICS_REQUEST');
+    },
+  },
 });
 const server = createServer(
   getRequestListener(app.fetch, { overrideGlobalObjects: false }),

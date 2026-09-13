@@ -44,7 +44,9 @@ assets in the composite image. There is no managed product fork.
   every archive client-side using a private key held outside B2 and the primary
   estate.
 
-Provider versions are exact pins. The R2 `us` jurisdiction is supported by
+Provider versions are exact three-part release pins; ranges are rejected. Each
+inventory mapping records the reviewed provider source address, so changing a
+Terraform local name's source also requires reviewing its processor metadata. The R2 `us` jurisdiction is supported by
 Cloudflare provider 5.24.0. The B2 provider supports SSE-B2 and default Object
 Lock retention. The Crunchy provider only provisions the cluster. It does not
 create the four databases or enforce the SQL security contract.
@@ -94,6 +96,65 @@ backend, including `/ws`, while all other GET/HEAD traffic reaches the Netlify
 client origin without cookies or authorization headers. Its checked-in
 configuration is fail-closed and dry-run-only; live domain routing remains a
 separate qualified operator action.
+
+## Managed operational log boundary
+
+`scripts/studio/studio-managed-log-sanitizer.mjs` is the collector-facing privacy
+boundary for application logs. Its byte-oriented API accepts only the four
+service/environment pairs in this estate, parses at most 4 KiB per record, and
+refuses an input batch above 256 records or 256 KiB before decoding any member.
+It imports the application-owned route and diagnostic catalogs. Unknown fields,
+routes, diagnostics, bindings, malformed UTF-8 and over-limit records do not
+produce a forwarded record.
+
+The output is a flat structured log suitable for a bounded New Relic Log API
+batch. It contains only the pinned schema identity, service, environment,
+normalized timestamp, fixed event kind, and either the bounded request fields
+or one approved diagnostic identifier. Studio's authorized team correlation is
+accepted as a known source field and discarded. Raw source messages, URLs,
+headers, bodies, exceptions, provider replies and arbitrary service labels are
+absent from the output schema. The schema identity is a SHA-256 digest of the
+exact services, routes, diagnostics, methods, fields and amount limits; a catalog
+change fails module loading until the reviewed identity and tests are updated.
+
+This seam does not subscribe to Fly logs, frame stream input, persist the shared
+egress budget, construct an HTTP request, hold a New Relic key, retry delivery,
+or prove destination retention. The future collector must preserve private
+subject provenance when it supplies the binding, call this sanitizer before
+queueing any bytes for egress, and treat an empty result as a dropped batch. No
+provider call or account configuration is exercised by its repository tests.
+
+`scripts/studio/studio-managed-fly-log-envelope.mjs` supplies the preceding portable
+Fly-envelope boundary. Fly's official log stream uses the NATS subject
+`logs.<app_name>.<region>.<instance_id>` and sends a structured JSON envelope;
+Fly's maintained Log Shipper first parses the NATS message as JSON, while the
+maintained Fly Telemetry configuration separately parses the resulting inner
+`.message`. The adapter therefore accepts the authenticated NATS subject only
+as caller-owned transport provenance, matches it to one configured exact app
+and the fixed `iad` region, verifies the redundant Fly envelope metadata, then
+passes only the inner application-message bytes to the sanitizer. Envelope
+fields can refuse a record but can never select its service or environment.
+
+The adapter accepts current Fly application envelopes for both stdout and
+stderr (`log.level` is checked and discarded). It validates and discards Fly's
+nanosecond-capable envelope timestamp; the forwarded timestamp remains the
+application logger's strict timestamp. Unknown or duplicate envelope or inner
+application members, platform/non-application events, malformed UTF-8,
+malformed subjects and unconfigured apps are dropped. Outer input is bounded at
+8 KiB per event, 256
+events and 256 KiB per batch before JSON parsing. The concrete subject is capped
+before splitting or byte encoding, and its bytes count with every outer payload
+toward the batch limit even when that event is later dropped. These choices
+follow the
+[Fly Logs API description](https://fly.io/docs/monitoring/logs-api-options/),
+[official Log Shipper transform](https://github.com/superfly/fly-log-shipper/blob/main/vector-configs/vector.toml),
+and [official Fly Telemetry transform](https://github.com/superfly/fly-telemetry/blob/main/vector.yaml).
+The future network collector must still authenticate the read-only Fly NATS
+connection, take the subject from the subscription callback rather than the
+message, configure the four deployed app names, handle reconnect/backpressure,
+measure and alert on bounded drops or Fly schema drift, and preserve the
+egress-budget and delivery guarantees. Repository tests do not qualify that
+network boundary.
 
 ## Required credentials and custody
 
@@ -370,23 +431,217 @@ configuration archive, and their account-recovery paths.
    free ingest limit. No automatic paid upgrade is allowed, and PostHog remains
    the only application error-reporting path.
 
-## Preliminary subprocessor inventory
+## Generated subprocessor inventory
 
-| Provider                             | Candidate data/role                                                    | Location statement                                                | Status                                                                                                        |
-| ------------------------------------ | ---------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Fly.io                               | Backend/Registry request traffic, process logs, runtime secrets        | IAD, United States                                                | Selected candidate; contracts, support, routing, and live qualification pending                               |
-| Crunchy Data / Crunchy Bridge on AWS | Four logical PostgreSQL databases in one cluster                       | AWS `us-east-1`                                                   | Selected candidate; tuning, PITR latest point, stopped-WAL monitoring, capacity, and restore evidence pending |
-| Cloudflare                           | CDN/DNS and four primary R2 asset buckets                              | R2 `us` jurisdiction; edge processing must be separately assessed | Selected candidate; credentials, version inventory, retention, routing, and DPA evidence pending              |
-| Amazon Web Services                  | Two KMS application-root wrapping keys and ciphertext context metadata | `us-east-1`                                                       | Encoded; policy review, principal custody, billing, and recovery drills pending                               |
-| Backblaze                            | Independently encrypted database/object recovery archives              | Independently owned US-region account required                    | Selected candidate; region/account custody, Object Lock, egress, restore, and deletion evidence pending       |
-| New Relic                            | Operational logs, metrics, queries, and operator alerts                | US account/region handling requires contractual verification      | Cost candidate; 30-day retention, hard cap, alert routing, and DPA evidence pending                           |
-| Postmark                             | Transactional Registry/Studio mail                                     | Existing candidate; residency and contracts pending               | No resource in this module                                                                                    |
-| PostHog relay                        | Existing redacted telemetry and error reporting                        | Existing behavior; downstream terms remain separately documented  | Existing integration, not replaced by New Relic                                                               |
+The machine-readable estate sources are `subprocessor-estate.json` and
+`estate-provider-contract.json`. After reviewing an infrastructure change,
+update the affected input hashes in `estate-config-manifest.json`, then run
+`node generate-subprocessor-inventory.mjs`. The generator parses both HCL and
+Terraform JSON, checks provider/resource mappings and the selected US storage
+locations, and formats [`subprocessor-inventory.json`](./subprocessor-inventory.json),
+[`SUBPROCESSORS.md`](./SUBPROCESSORS.md) and `estate-provider-contract.tf.json`.
+Generated provider declarations are outputs, not manually edited manifest inputs.
+Every supported resource and data block is counted by type and name; extra blocks,
+provider aliases and uninspected Terraform modules are refused. Adding support
+requires an explicit extension of the inventory and residency checks, even for an
+already listed provider. The managed-estate test rejects stale
+outputs and missing required providers, including transactional mail. This inventory
+is input to the #1260 subprocessor list and HECVAT Lite handoff. Provider legal
+entities, affiliates, residency, retention/deletion, security reports, breach
+terms, support, and account recovery require separate publication evidence.
 
-This inventory is preliminary input to the #1260 subprocessor list and HECVAT
-Lite handoff. Provider legal names, affiliates, data categories, residency,
-retention/deletion, security reports, breach terms, support, and account recovery
-must be confirmed before publication.
+## Collector egress budget state
+
+`observability-egress-budget.mjs` is the admission primitive for the planned
+private collector. It deliberately has no same-directory rollback marker. Its
+operations require separate `runtimeAnchor` and `operatorAnchor` ports backed by
+one independently durable, monotonic store. The runtime port provides `read` and
+atomic compare-and-set `advance`; the operator port provides `read`, create-once
+`initialize`, and authenticated `advanceMonth`.
+Each format-2 checkpoint exposes the fixed account hash, reviewed policy
+binding, payload and final-signal limits, both attempted-byte counters,
+exhaustion state, last observed time, UTC month, month and reservation
+sequences, and exact local-state digest. The remote state machine enforces the
+visible counters and independently recomputes the digest; it does not treat an
+opaque hash as evidence of spend. `advanceMonth(previous, next,
+authorization)` receives the target UTC month in `next`, so its authorization
+decision can bind the requested transition rather than accept generic freshness.
+The primitive writes and fsyncs local state first, updates the anchor second,
+and reads the anchor back before returning. A missing, stale, corrupt, failed,
+or ambiguous anchor operation refuses forwarding. A failure after the local
+rename can leave local state ahead; this conservatively requires operator
+reconciliation and never refunds an attempted reservation.
+
+An operator awaits `bootstrapMonthlyEgressBudget(options, { operatorAnchor })`
+once in a private mode-0700 directory. Normal collector startup awaits
+`openMonthlyEgressBudget(options, { runtimeAnchor })`; it refuses missing, partial,
+corrupt, differently bound, permissive, linked, concurrently locked,
+clock-regressed, or anchor-mismatched state. Changing the dedicated New Relic
+account, the externally reviewed schema/usage policy digest, the monthly limit,
+or the final-signal reserve is refused by the active remote lineage. A new
+operator-controlled directory does not create another allowance for the same
+account. A future policy transition must conservatively preserve attempted
+bytes; none is implemented here. The primitive refuses a monthly limit
+above the plan's measured 50 GB forecast bound.
+
+Crossing a UTC month never resets capacity from the host clock. Open and reserve
+operations return `EGRESS_BUDGET_MONTH_TRANSITION_REQUIRED` until an operator
+calls `transitionMonthlyEgressBudget` with the next month's canonical observed
+instant and an opaque authorization. The anchor's separately qualified
+`advanceMonth` implementation must authenticate that authorization and atomically
+advance its checkpoint. Arbitrary future-month jumps and locally invented
+freshness booleans are not accepted.
+
+The collector must hold the returned budget open for its complete process
+lifetime and await `close()` during orderly shutdown. Reservations and close are
+serialized on each instance: close drains already admitted operations and
+immediately refuses new ones. Every reservation is asynchronous and returns only
+after the local state is fsynced, the remote compare-and-set is acknowledged, and
+the exact checkpoint is read back. The inherited-descriptor
+`flock` is a kernel lease: a second process is refused, orderly close releases
+it, and process death releases it. Linux uses the native util-linux `flock`;
+the Perl implementation is only a macOS test fallback. Lock acquisition has a
+five-second subprocess timeout and a dedicated contention exit code. The held
+directory and lock descriptors are revalidated against their paths, and regular
+budget files must have exactly one link. Each log or metric request must call
+`reserveEstimatedIngest` with
+its conservative estimated **provider-billed ingest bytes before forwarding**.
+A returned reservation is never refunded after an ambiguous request. Regular
+traffic cannot consume `finalSignalReserveBytes`; after exhaustion, exactly one
+`reserveFinalExhaustionSignal` call may admit the separately estimated closure
+signal. State replacement and its containing directory are fsynced before a
+reservation returns. Creating the private state directory also fsyncs its parent.
+
+This counter deliberately has no `providerUsageFresh` Boolean and does not
+accept raw compressed or uncompressed wire bytes as proof. Before calling it,
+the forwarding layer still has to authenticate fresh New Relic account-usage
+evidence, measure the stored-byte expansion of the exact bounded schemas,
+reserve the maximum traffic outstanding during reporting lag, and bind those
+rules into `configurationIdentity`. Missing or stale provider evidence must
+close forwarding outside this primitive. The counter does not establish New
+Relic qualification, retention, queryability, alerts, or the provider's hard
+account limit.
+
+`observability-monotonic-anchor.mjs` defines bounded JSON POST routes
+`/v1/read`, `/v1/initialize`, `/v1/advance`, and `/v1/advance-month` for one
+fixed account. Authentication resolves a forwarding or operator authority.
+Only the operator initializes the permanent lineage and authorizes an exact
+next-month transition; only the forwarder advances ordinary spend. The durable
+store must make initialization create-once even after active-record loss and
+compare-and-set the complete checkpoint atomically. Its account partition and
+permanent enrollment marker must be outside collector filesystem and deletion
+authority. Handler timeouts are ambiguous failures: a late commit remains
+charged and the next read discovers it.
+
+`observability-dynamodb-anchor-store.mjs` supplies the transactional adapter.
+An operator first creates its permanent `ENROLLMENT` item; initialization then
+atomically creates `STATE` and closes that marker. Reads use
+`TransactGetItems`, and every advance transaction checks the marker plus the
+exact serialized previous checkpoint. The table belongs in the independently
+administered recovery AWS account with point-in-time recovery. Its service role
+is limited to the fixed table and account partition. Collector forwarder and
+operator identities invoke separately authorized HTTP routes and receive no
+DynamoDB permissions; the service role denies `DeleteItem`, `DeleteTable`, and
+marker recreation. Deployment administration is disjoint from all three. The
+adapter and mocked request-shape tests do not provision or qualify the table,
+IAM policy, recovery account, or a live network path.
+
+`observability-anchor-client.mjs` is the server-side HTTPS adapter for that
+boundary. A forwarder client exposes only `read` and `advance`; an operator
+client exposes only `read`, `initialize`, and `advanceMonth`. The fixed account,
+HTTPS origin, and bearer token are snapshotted at construction. The token is
+accepted only as explicit process input and never appears in returned state or
+errors. Requests refuse redirects, cap JSON request and response bodies at 16
+KiB, enforce a 100–30,000 ms deadline with an abort signal, and validate the
+complete returned checkpoint and state digest. The injected request adapter is
+for tests; production still requires an independently authenticated HTTPS
+service and separately held operator and forwarder credentials.
+
+The complete local path can be exercised without cloud calls against an
+explicit loopback DynamoDB Local endpoint:
+
+```sh
+DYNAMODB_LOCAL_ENDPOINT=http://127.0.0.1:58000 node --test apps/studio/deployment/managed/observability-anchor-client.test.mjs
+```
+
+Without that variable the real-service case is skipped; the client never falls
+back to a cloud endpoint.
+
+No production anchor adapter or forwarding integration is qualified here. An
+adapter stored on the same filesystem or administered through the same rollback
+boundary does not satisfy the independent monotonic-store requirement. The
+adapter must separately prove atomic compare-and-set behavior, durable readback,
+month-authorization authentication, bounded calls, and its failure semantics
+before this primitive can admit live forwarding. Descriptor revalidation also
+does not defend against a malicious same-UID process racing filesystem paths;
+the private directory remains an operator-owned custody boundary.
+
+## New Relic log transport
+
+`observability-new-relic-logs.mjs` applies the authenticated Fly envelope and
+strict operational sanitizer before constructing the New Relic detailed-array
+request. It posts only to the fixed US Log API endpoint, with a separate API-key
+header, manual redirects, a 262,144-byte body limit and a bounded deadline.
+Provider response text is discarded. A successful HTTP response records only
+acceptance; it does not prove storage, queryability or retention.
+
+Every attempt has a fresh random identifier and a digest binding that identifier,
+the reviewed policy, exact schema identity, payload hash, wire bytes and record
+count. The supplied `reserveAttempt` authorizer must echo that binding after
+awaiting durable budget admission. Receipts cannot be reused across attempts,
+including a collector restart; the transport also rejects backward month or
+reservation sequences. UTC month is checked again immediately before fetch.
+Retries require a new reservation, and uncertain requests are never refunded.
+
+The transport has no subscription, queue or independent account-usage reader.
+Its authorizer must still authenticate fresh provider usage and measured schema
+expansion before admitting production traffic. Local tests use injected fetch
+and native Request construction; they do not send data to New Relic. Positive
+controls and deliberate mutations cover cached receipts, sequence replay and
+rollover between reservation and fetch.
+
+The request contract follows the [official New Relic Log API](https://docs.newrelic.com/docs/logs/log-api/introduction-log-api/).
+
+## Account usage evidence
+
+`observability-new-relic-usage.mjs` provides a separate read-only NerdGraph
+client using an operator-supplied user key. It queries the exact configured US
+account and UTC month, requires a complete month-to-date data-platform report,
+and rejects absent, stale, malformed, regressed or wrong-month evidence. A
+missing report never means zero usage. Epoch seconds are normalized to
+milliseconds only when the value fits the requested interval unambiguously.
+Both report timestamps and ingest values come from rows containing the required
+attributes, so a partial row cannot refresh an old ingest value's freshness.
+
+The reader bounds response size, request duration and concurrency, rejects
+redirects and GraphQL partial errors, and discards provider error text. It does
+not authorize forwarding, reset a durable budget, cover other accounts or
+provide a billing upper bound. New Relic describes these figures as approximate
+and delayed; the separate forwarding policy still needs measured ingest
+expansion, headroom and the independent monotonic reservation service. Local
+injected-response tests prove the refusal paths and timestamp normalization;
+no live account query or production qualification is claimed.
+
+The query follows the [official usage query guidance](https://docs.newrelic.com/docs/accounts/accounts-billing/new-relic-one-pricing-billing/usage-queries-alerts/)
+and [NrMTDConsumption attribute definitions](https://docs.newrelic.com/attribute-dictionary/).
+
+## Operator alert and migration runbook
+
+Operator-facing alerts route to `info@networkcanvas.com`, the project-owned
+address published in `SECURITY.md`. The monitoring system's own authenticated
+transport sends these alerts independently of Studio's researcher mail
+dispatcher and Postmark configuration; no tenant or participant recipient is
+used. Before enabling the destination, an operator must confirm mailbox
+ownership and prove delivery with a synthetic receiver while Studio's
+dispatcher and mail provider are unavailable. This repository contains no
+provider credential, provisioning step, or live delivery qualification.
+
+The announced managed migration window is Tuesday 15:00–16:00 UTC. Routine
+compatible releases may occur outside that window; schema changes and the
+associated rollback or restore checks use the announced window. The complete
+estate remains bounded by the reviewed $100/month hosting cap, with New Relic
+Free's 30-day retention and hard ingest stop treated as unqualified candidate
+claims until account evidence is captured.
 
 ## Offline review
 
@@ -402,6 +657,21 @@ lock -platform=linux_amd64 -platform=darwin_arm64` to retain the package hashes
 needed by both CI and macOS, then review the registry signatures and lockfile diff.
 Do not run `plan` or `apply` without live-account authorization and a remote-state
 design. Official capability references:
+
+The local observability qualification suite is provider-free:
+
+```sh
+node --test apps/studio/deployment/managed/observability-egress-budget.test.mjs
+pnpm exec vitest run --config scripts/vitest.config.ts \
+  scripts/studio/studio-managed-fly-log-envelope.test.mjs \
+  scripts/studio/studio-managed-log-sanitizer.test.mjs \
+  scripts/studio/studio-managed-new-relic-logs.test.mjs \
+  scripts/studio/studio-managed-new-relic-usage.test.mjs
+```
+
+These tests use injected transports and local custody fixtures. They do not
+send logs, usage queries, alerts, or credentials to a provider and do not
+qualify retention, account limits, mailbox routing, or live operator delivery.
 
 - <https://fly.io/docs/blueprints/infra-automation-without-terraform/>
 - <https://registry.terraform.io/providers/CrunchyData/crunchybridge/0.3.0/docs/resources/cluster>

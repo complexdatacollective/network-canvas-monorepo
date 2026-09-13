@@ -2,55 +2,29 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 import pino, { type DestinationStream } from 'pino';
 
-const DIAGNOSTICS = {
-  STUDIO_AUDIT_ALERT_WORKER_ERROR: 'error',
-  STUDIO_CONFIGURATION_INVALID: 'error',
-  STUDIO_ENCRYPTION_INVALID: 'error',
-  STUDIO_ENCRYPTION_MAINTENANCE_FAILED: 'error',
-  STUDIO_BACKUP_ACCESS_UNSAFE: 'error',
-  STUDIO_RECOVERY_AUTHORIZATION_RECONCILED: 'info',
-  STUDIO_RECOVERY_AUTHORIZATION_FAILED: 'error',
-  STUDIO_RECOVERY_CURRENT_AUTHORIZATION_COMPLETED: 'info',
-  STUDIO_RECOVERY_CURRENT_AUTHORIZATION_FAILED: 'error',
-  STUDIO_PROCESS_FAILED: 'error',
-  STUDIO_CLIENT_ASSETS_UNAVAILABLE: 'warn',
-  STUDIO_DATABASE_IDLE_ERROR: 'error',
-  STUDIO_DATABASE_IDENTITY_UNSAFE: 'error',
-  STUDIO_DATABASE_UNREACHABLE: 'error',
-  STUDIO_SCHEMA_ABSENT: 'error',
-  STUDIO_SCHEMA_STALE: 'error',
-  STUDIO_SCHEMA_CURRENT: 'info',
-  STUDIO_SERVER_STARTED: 'info',
-  STUDIO_WEB_REPLICA_REFUSED: 'error',
-  STUDIO_WEB_LEASE_LOST: 'error',
-  STUDIO_SHUTDOWN_FAILED: 'error',
-  STUDIO_AUDIT_APPEND_FAILED: 'error',
-  STUDIO_AUDIT_DENIAL_EVENT_LOST: 'error',
-  STUDIO_DENIED_AUDIT_SUMMARY_FAILED: 'error',
-  STUDIO_DENIED_AUDIT_FLUSH_TIMEOUT: 'error',
-  STUDIO_AUTH_ERROR: 'error',
-  STUDIO_AUTH_WARNING: 'warn',
-  STUDIO_WEBSOCKET_ERROR: 'error',
-  STUDIO_PROTOCOL_LEASE_RELEASE_FAILED: 'error',
-  STUDIO_RESPONSE_STREAM_FAILED: 'error',
-  STUDIO_INVITATION_WORKER_ERROR: 'error',
-} as const;
+import {
+  REQUEST_ID,
+  requestLogFields,
+  type RequestObservation as SharedRequestObservation,
+} from '@codaco/studio-sync/operational-http';
 
-type DiagnosticCode = keyof typeof DIAGNOSTICS;
+import {
+  STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS,
+  type StudioOperationalDiagnosticCode,
+} from './diagnostic-catalog.ts';
+
 type Correlation = { requestId?: string; teamId?: string };
 
-export type RequestObservation = {
-  requestId: string;
+export type RequestObservation = SharedRequestObservation & {
   teamId?: string;
-  route: string;
-  method: string;
-  status: number;
-  durationMs: number;
 };
 
 export type OperationalLogger = {
   request(observation: RequestObservation): void;
-  diagnostic(code: DiagnosticCode, correlation?: Correlation): void;
+  diagnostic(
+    code: StudioOperationalDiagnosticCode,
+    correlation?: Correlation,
+  ): void;
 };
 
 export type RequestContext = {
@@ -61,8 +35,7 @@ export type RequestContext = {
 
 export const requestContext = new AsyncLocalStorage<RequestContext>();
 
-export const UUID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const UUID = REQUEST_ID;
 
 function correlationFields(correlation?: Correlation) {
   // Callers obtain team ids from authorization or committed audit context,
@@ -91,10 +64,7 @@ export function createOperationalLogger(
         logger.info({
           event: 'http_request',
           ...correlationFields(observation),
-          route: observation.route,
-          method: observation.method,
-          status: observation.status,
-          duration_ms: Math.round(observation.durationMs * 1000) / 1000,
+          ...requestLogFields(observation),
         });
       } catch {
         /* Logging failures cannot alter a request or domain transaction. */
@@ -102,7 +72,7 @@ export function createOperationalLogger(
     },
     diagnostic(code, correlation) {
       try {
-        logger[DIAGNOSTICS[code]]({
+        logger[STUDIO_OPERATIONAL_DIAGNOSTIC_LEVELS[code]]({
           event: 'operational',
           code,
           ...correlationFields(correlation),
@@ -117,7 +87,7 @@ export function createOperationalLogger(
 export const operationalLogger = createOperationalLogger();
 
 export function logOperational(
-  code: DiagnosticCode,
+  code: StudioOperationalDiagnosticCode,
   correlation?: Correlation,
 ): void {
   const context = requestContext.getStore();
