@@ -613,5 +613,10 @@
     "en": "Select a roster data source before configuring sorting.",
     "es": "Selecciona una fuente de datos para la lista antes de configurar el orden.",
     "from": "74a07e626 architect.sections.sortOptionsForExternalData.sortOptionsForExternalData.selectARosterDataSourceBefore"
+  },
+  "protocolBuilder.categoricalBin.otherValidationDescription": {
+    "en": "Enable validation of the other attribute.",
+    "es": "Activa la validación del otro atributo.",
+    "from": "74a07e626 architect.remaining.sections.categoricalBinPrompts.promptFields.enableValidationOfTheOtherAttribute"
   }
 }

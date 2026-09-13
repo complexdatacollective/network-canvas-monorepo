@@ -17,3 +17,7 @@ roster's search settings divide into Search matching and Match tolerance, each
 with its own guidance. A tie-strength prompt's connection, scale and decline
 option sit together under Tie-strength response. The two bin editors no longer
 show a notice above the prompt box.
+
+A form that asks nothing, and a form field pointed at an attribute a sibling
+field already collects, are refused in the released Architect's words again,
+in English and in Spanish.
