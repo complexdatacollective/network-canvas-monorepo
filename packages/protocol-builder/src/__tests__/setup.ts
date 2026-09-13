@@ -15,7 +15,7 @@ if (typeof window !== 'undefined') {
  * are stubbed here rather than guarded for at every call site:
  *
  * - `scrollTo` is what Fresco's failed-submit focus handling reaches for.
- * - `scrollIntoView` is what the section outline uses to bring a section into
+ * - `scrollIntoView` is what `focusStageSection` uses to bring a section into
  *   view after moving focus to it.
  * - `ResizeObserver` is observed by Fresco's scroll areas.
  * - `IntersectionObserver` is reached for by Motion's in-view features, which

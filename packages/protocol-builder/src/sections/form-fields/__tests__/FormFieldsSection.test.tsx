@@ -3089,12 +3089,8 @@ describe('a form whose list is not a list', () => {
  * row they do not touch refused.
  */
 describe('a stored field the schema refuses for its own shape', () => {
-  const outlineEntry = () =>
-    [
-      ...screen
-        .getByRole('navigation', { name: 'Stage sections' })
-        .querySelectorAll('button'),
-    ].map((item) => item.textContent);
+  const outlineEntry = (harness: ReturnType<typeof renderStageEditor>) =>
+    harness.outline().map(({ title, state }) => `${title}${state}`);
 
   const alterFormHolding = (fields: readonly Record<string, unknown>[]) => ({
     id: 'alter-form-1',
@@ -3125,7 +3121,7 @@ describe('a stored field the schema refuses for its own shape', () => {
 
     expect(await harness.submit()).toBeNull();
     await waitFor(() =>
-      expect(outlineEntry()).toEqual([
+      expect(outlineEntry(harness)).toEqual([
         'Form configurationHas a problem. Form fields holds settings this stage does not have.',
       ]),
     );
@@ -3139,7 +3135,7 @@ describe('a stored field the schema refuses for its own shape', () => {
 
     expect(await harness.submit()).toBeNull();
     await waitFor(() =>
-      expect(outlineEntry()).toEqual([
+      expect(outlineEntry(harness)).toEqual([
         'Form configurationHas a problem. Form fields holds the wrong kind of value.',
       ]),
     );
@@ -3180,7 +3176,7 @@ describe('a stored field the schema refuses for its own shape', () => {
 
     expect(fieldsOf(await harness.submit())).toEqual([RELATIONSHIP]);
     await waitFor(() =>
-      expect(outlineEntry()).toEqual(['Form configurationFinished']),
+      expect(outlineEntry(harness)).toEqual(['Form configurationFinished']),
     );
   });
 
@@ -3200,7 +3196,7 @@ describe('a stored field the schema refuses for its own shape', () => {
     // researcher agrees to lose stored data.
     expect(await harness.submit()).toBeNull();
     await waitFor(() =>
-      expect(outlineEntry()).toEqual([
+      expect(outlineEntry(harness)).toEqual([
         'Form configurationHas a problem. Form fields holds settings this stage does not have.',
       ]),
     );

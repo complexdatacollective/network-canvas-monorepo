@@ -23,8 +23,8 @@ import { READ_ONLY_MESSAGE } from '../readOnlyRefusal.ts';
  * stand unchanged. This is the one test that mounts one, and it covers the
  * routes the copy in `src/form` takes:
  *
- * - the shell's own markup, which formats with `useAppIntl()` (the outline's
- *   landmark);
+ * - the shell's own markup, which formats with `useAppIntl()` (the fallback
+ *   save control it fills its action slot with);
  * - a list's markup, which does the same and also splices the researcher's own
  *   row number into it (`Editar opción 1`);
  * - a refusal, which is encoded where it is decided and decoded where it is
@@ -79,7 +79,7 @@ describe('a stage form read in Spanish', () => {
     // entries fails saying so, rather than as an unexplained English string.
     expect(Object.keys(protocolBuilderCatalogs.es ?? {})).toEqual(
       expect.arrayContaining([
-        'protocolBuilder.outline.landmarkLabel',
+        'protocolBuilder.shell.saveStage',
         'protocolBuilder.option.editOption',
         'protocolBuilder.option.emptyState',
         'protocolBuilder.shell.readOnlyRefusal',
@@ -91,7 +91,7 @@ describe('a stage form read in Spanish', () => {
     renderInSpanish();
 
     expect(
-      await screen.findByRole('navigation', { name: 'Secciones de la etapa' }),
+      await screen.findByRole('button', { name: 'Guardar etapa' }),
     ).toBeInTheDocument();
     // The row's own number is spliced into the row's name, so this also fails
     // if the position stops reaching the message.
