@@ -950,6 +950,7 @@ test('release-sensitive app builds run before merge', () => {
   assert.match(supportJob, /pnpm --filter=@codaco\/interviewer build/);
   assert.match(supportJob, /pnpm --filter=@codaco\/studio-client build$/m);
   assert.match(supportJob, /pnpm --filter=@codaco\/studio-server build$/m);
+  assert.match(supportJob, /pnpm --filter=@codaco\/template-registry build$/m);
   assert.match(
     supportJob,
     /pnpm --filter=@codaco\/studio-server build:netlify$/m,
