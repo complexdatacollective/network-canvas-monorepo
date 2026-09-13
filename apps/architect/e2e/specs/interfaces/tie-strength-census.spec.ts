@@ -4,6 +4,10 @@ import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readProtocolJson, readStageJson } from '../../helpers/read-store.js';
 import { selectOrCreateNodeType } from '../../pageobjects/editor-sections/entity-types.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
+import {
+  authorOptions,
+  createAttribute,
+} from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 type TieStrengthPrompt = {
@@ -82,19 +86,20 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   //
   // - "Participant prompt": the family's shared `PromptTextField`
   //   (`label: 'Prompt text'`).
-  // - "Edge creation": the same `CreateEdgeField` the two dyad censuses
-  //   use, so the connection type is invented through the codebook entity
-  //   editor ("Edge type name", committed by "Save entity").
+  // - "Edge creation": the same `EdgeTypeSection` the two dyad censuses
+  //   use, whose picker offers "Create new edge type", so the connection type
+  //   is invented through the codebook entity editor ("Edge type name",
+  //   committed by "Save entity").
   // - "Response attribute": an ordinal attribute OF that connection type. `ScaleField`
   //   renders nothing at all until `createEdge` holds a real type id
   //   (`edgeSubjectOf` answers `undefined` for anything that is not a
   //   non-empty string), so waiting for that section is a genuine check that
   //   the created edge-type id — not a pending Promise, not an object — became
   //   the form value before the attribute is created against it. The
-  //   attribute itself comes from a `CreateVariableButton` labelled "Create a
-  //   new attribute", opening the codebook attribute editor with
-  //   `allowedVariableTypes: ['ordinal']` — its "Attribute type" select is
-  //   already on Ordinal and is never touched here.
+  //   attribute itself comes from the picker's own create row, which escalates
+  //   to the codebook attribute editor — titled "Create a new attribute" and
+  //   opened with `allowedVariableTypes: ['ordinal']`, so its "Attribute type"
+  //   select is already on Ordinal and is never touched here.
   // - "Decline response": a RichText "Decline option".
   //
   // Nothing mirrors the attribute's values onto the prompt any more, so there
@@ -108,12 +113,12 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
     // request is in flight — so the DIALOG going is the signal, not the
     // button, and everything typed into one is scoped to it.
     const edgeTypeEditor = architectPage.getByRole('dialog', {
-      name: 'Create a new connection type',
+      name: 'Create new edge type',
       exact: true,
     });
     await architectPage
       .getByRole('button', {
-        name: 'Create a new connection type',
+        name: 'Create new edge type',
         exact: true,
       })
       .click();
@@ -127,40 +132,17 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
 
     await expect(editor.section('Response attribute')).toBeVisible();
 
-    const attributeEditor = architectPage.getByRole('dialog', {
-      name: 'Create a new attribute',
-      exact: true,
+    // The scale attribute is invented from the picker's own create row, which
+    // escalates to the codebook's editor because a scale IS its list of
+    // values. The edge type above still has a create button of its own — an
+    // edge type is not an attribute — so only the attribute half changed.
+    await createAttribute(editor.field('edgeVariable'), 'strength', {
+      title: 'Create a new attribute',
+      author: authorOptions([
+        { label: 'Low', value: 'low' },
+        { label: 'High', value: 'high' },
+      ]),
     });
-    await architectPage
-      .getByRole('button', { name: 'Create a new attribute', exact: true })
-      .click();
-    await attributeEditor
-      .getByRole('textbox', { name: 'Attribute name', exact: true })
-      .fill('strength');
-    for (const [index, option] of [
-      { label: 'Low', value: 'low' },
-      { label: 'High', value: 'high' },
-    ].entries()) {
-      await attributeEditor
-        .getByRole('button', { name: 'Create new option', exact: true })
-        .click();
-      await attributeEditor
-        .getByRole('textbox', {
-          name: `Option ${index + 1} label`,
-          exact: true,
-        })
-        .fill(option.label);
-      await attributeEditor
-        .getByRole('textbox', {
-          name: `Option ${index + 1} value`,
-          exact: true,
-        })
-        .fill(option.value);
-    }
-    await attributeEditor
-      .getByRole('button', { name: 'Create attribute', exact: true })
-      .click();
-    await attributeEditor.waitFor({ state: 'hidden' });
 
     await editor.fillRichText('Decline option', 'We are not close');
   });

@@ -305,6 +305,7 @@ export default function PedigreeNodeConfigurationSection() {
             variableType="text"
             createLabel={pedigreeMessages.nodeLabelCreateLabel}
             emptyMessage={pedigreeMessages.slotEmptyState}
+            offerValidation
           />
           <SlotVariableField
             name={EGO_SLOT.path}

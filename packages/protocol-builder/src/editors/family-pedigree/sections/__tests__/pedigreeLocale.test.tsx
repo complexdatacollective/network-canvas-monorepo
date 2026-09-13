@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { attributeField } from '../../../../testing/attributePicker.ts';
+import {
+  attributeField,
+  createRowIn,
+} from '../../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
 import { shimMarkdownEditorMeasurement } from '../../__tests__/editorFixtures.ts';
 import BoundaryOptionsSection from '../BoundaryOptionsSection.tsx';
@@ -106,7 +109,7 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
   });
 
   it('names each attribute slot and the control that creates one', async () => {
-    renderStageEditor({
+    const harness = renderStageEditor({
       stageId: 'family-pedigree-1',
       locale: 'es',
       sections: <PedigreeNodeConfigurationSection />,
@@ -130,13 +133,16 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
         name: 'Cambiar atributo',
       }),
     ).toBeInTheDocument();
-    // Awaited: a stage the host has not answered for yet offers no way to
-    // create anything, because nobody may write to it.
+    // Inventing one is offered from inside the window, on the term the
+    // researcher typed, and in their language.
     expect(
-      await screen.findByRole('button', {
-        name: 'Crear un nuevo atributo de sexo biológico',
-      }),
-    ).toBeInTheDocument();
+      await createRowIn(
+        harness.user,
+        attributeField('Sexo biológico'),
+        'Busca o crea un atributo',
+        (term) => `Crear un atributo nuevo llamado “${term}”.`,
+      ),
+    ).not.toBeNull();
   });
 
   it('splices an attribute the researcher chose into the Spanish preview', async () => {

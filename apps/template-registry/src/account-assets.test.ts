@@ -21,6 +21,7 @@ it('serves only compiled inventory bytes with page CSP and preserves API sandbox
   const api = await createRegistryFixture();
   try {
     const app = createRegistryApp({
+      secureSessionCookie: true,
       ...api,
       accountAssets,
       accepting: () => true,
@@ -157,6 +158,7 @@ it('holds a bounded account bundle budget until bytes are consumed or cancelled'
   const responses: Response[] = [];
   try {
     const app = createRegistryApp({
+      secureSessionCookie: true,
       ...api,
       accountAssets,
       accepting: () => true,

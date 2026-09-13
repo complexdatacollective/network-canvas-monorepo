@@ -5,10 +5,6 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 
-import CreateEdgeField, {
-  CREATE_EDGE_FIELD,
-  missingEdgeTypeIssue,
-} from '../../../fields/CreateEdgeField.tsx';
 import {
   PromptTextField,
   PromptTextPreview,
@@ -25,6 +21,10 @@ import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
+import EdgeTypeSection, {
+  CREATE_EDGE_FIELD,
+  missingEdgeTypeIssue,
+} from '../../dyad-census/sections/EdgeTypeSection.tsx';
 import { binMessages } from '../../ordinal-bin/sections/binMessages.ts';
 
 /**
@@ -140,7 +140,7 @@ function OneToManyDyadCensusPromptEditor({ item }: RowEditorProps) {
         title={intl.formatMessage(censusMessages.promptConfigurationTitle)}
         description={intl.formatMessage(messages.promptTextDescription)}
       >
-        <CreateEdgeField
+        <EdgeTypeSection
           label={intl.formatMessage(censusMessages.edgeLabel)}
           requiredMessage={intl.formatMessage(
             censusMessages.affirmativeRequired,
