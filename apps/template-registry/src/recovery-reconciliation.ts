@@ -18,14 +18,22 @@ const userId = z
   .refine((value) => value.isWellFormed() && !value.includes('\0'));
 
 const canonicalUuid = z.uuid().transform((value) => value.toLowerCase());
-const artifactRoot = z.string().regex(/^[0-9a-f]{64}$/);
+const sha256 = z
+  .string()
+  .length(64)
+  .regex(/^[0-9a-f]+$/);
+const artifactRoot = sha256;
 const inventoryCount = z
   .string()
   .regex(/^(0|[1-9][0-9]{0,18})$/)
-  .refine((value) => BigInt(value) <= 9_223_372_036_854_775_807n);
+  .refine(
+    (value) =>
+      BigInt(value).toString() === value &&
+      BigInt(value) <= 9_223_372_036_854_775_807n,
+  );
 const inventory = z.strictObject({
   count: inventoryCount,
-  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  sha256,
 });
 
 const inventoryRows = {
@@ -160,7 +168,8 @@ export async function readRegistryRecoveryReconciliation(
   expectedSha256: string,
 ): Promise<RegistryRecoveryReconciliation> {
   try {
-    if (!/^[0-9a-f]{64}$/.test(expectedSha256)) throw new Error();
+    if (expectedSha256.length !== 64 || !/^[0-9a-f]+$/.test(expectedSha256))
+      throw new Error();
     const info = await lstat(path);
     if (!info.isFile() || info.isSymbolicLink() || (info.mode & 0o077) !== 0)
       throw new Error();

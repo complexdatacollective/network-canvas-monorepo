@@ -82,6 +82,36 @@ it('builds canonical, ordered inventories that bind every authority field', () =
   ).toThrow();
 });
 
+it('rejects trailing bytes in canonical counts, hashes, and artifact roots', () => {
+  expect(() =>
+    copyRegistryRecoveryReconciliation({
+      ...evidence,
+      inventories: {
+        ...evidence.inventories,
+        users: { ...emptyInventory, count: '0\n' },
+      },
+    }),
+  ).toThrow();
+  expect(() =>
+    copyRegistryRecoveryReconciliation({
+      ...evidence,
+      inventories: {
+        ...evidence.inventories,
+        users: { ...emptyInventory, sha256: `${emptyInventory.sha256}\n` },
+      },
+    }),
+  ).toThrow();
+  expect(() =>
+    createRegistryRecoveryInventory('entries', [
+      {
+        id: '00000000-0000-4000-8000-000000000001',
+        publisherId: '00000000-0000-4000-8000-000000000002',
+        artifactRoot: `${'a'.repeat(64)}\n`,
+      },
+    ]),
+  ).toThrow();
+});
+
 it('keeps independently prepared evidence bounded for large populations', () => {
   function* entries() {
     for (let index = 0; index < 200_000; index += 1)
@@ -115,6 +145,9 @@ it('verifies the exact private evidence bytes before parsing', async () => {
         path,
         templateBytesHash(bytes.subarray(0, -1)),
       ),
+    ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
+    await expect(
+      readRegistryRecoveryReconciliation(path, `${templateBytesHash(bytes)}\n`),
     ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
     const legacy = Buffer.from(JSON.stringify({ ...evidence, version: 2 }));
     await writeFile(path, legacy, { mode: 0o600 });
