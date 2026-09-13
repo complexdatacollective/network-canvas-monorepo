@@ -1,3 +1,5 @@
+import { Script } from 'node:vm';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import recoveryFixture from './combined-recovery.fixture.json' with { type: 'json' };
@@ -97,7 +99,7 @@ describe('local distribution recovery boundary', () => {
   });
 
   it('ships a syntactically valid kernel observer', () => {
-    expect(() => new Function(TELEMETRY_KERNEL_OBSERVER_SOURCE)).not.toThrow();
+    expect(() => new Script(TELEMETRY_KERNEL_OBSERVER_SOURCE)).not.toThrow();
   });
 
   it('requires a new kernel flow for the uninstrumented native child', () => {

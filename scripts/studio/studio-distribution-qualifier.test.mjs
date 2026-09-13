@@ -136,7 +136,7 @@ test('stages exact authenticated candidate and historical installers only after 
 test('gates a passed distribution receipt on the exact immutable browser telemetry image', async () => {
   const image = `ghcr.io/networkcanvas/studio@sha256:${'a'.repeat(64)}`;
   const calls = [];
-  qualifyStudioTelemetryRelease(image, {
+  await qualifyStudioTelemetryRelease(image, {
     cwd: '/reviewed/source',
     run: (program, args, options) => calls.push({ program, args, options }),
   });

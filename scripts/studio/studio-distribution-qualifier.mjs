@@ -297,7 +297,7 @@ export async function prepareStudioDistributionQualification(
 
 /** Run the concrete local installation/recovery drill and return only the
  * receipt derived from its completed observations. */
-export function qualifyStudioTelemetryRelease(
+export async function qualifyStudioTelemetryRelease(
   image,
   { run = command, cwd = process.cwd() } = {},
 ) {

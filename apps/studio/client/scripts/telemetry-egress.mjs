@@ -197,7 +197,9 @@ export async function runTelemetryBrowserQualification({
                     done(true);
                 };
                 window.addEventListener('securitypolicyviolation', onViolation);
-                script.onload = () => done(false);
+                script.addEventListener('load', () => done(false), {
+                  once: true,
+                });
                 document.head.append(script);
               });
             } finally {
@@ -330,7 +332,7 @@ export async function runTelemetryBrowserQualification({
             );
             for (const post of posts) {
               const envelope = JSON.parse(post.body);
-              assert.deepEqual(Object.keys(envelope).sort(), [
+              assert.deepEqual(Object.keys(envelope).toSorted(), [
                 'api_key',
                 'batch',
                 'sent_at',
