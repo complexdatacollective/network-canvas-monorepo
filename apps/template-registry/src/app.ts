@@ -83,6 +83,7 @@ export type RegistryAppDependencies = {
   metricsToken?: string;
   trustedProxies?: readonly string[];
   observability: Pick<RegistryObservability, 'request' | 'scrape'>;
+  secureSessionCookie: boolean;
   onDiagnostic: (
     code: 'REGISTRY_REQUEST_FAILED' | 'REGISTRY_READINESS_FAILED',
     requestId: string,
@@ -98,6 +99,7 @@ export function createRegistryApp({
   metricsToken,
   trustedProxies = [],
   observability,
+  secureSessionCookie,
   onDiagnostic,
 }: RegistryAppDependencies) {
   const router = {
@@ -460,7 +462,7 @@ export function createRegistryApp({
     );
   });
   app.get('/api/v1/openapi.json', async (context) => {
-    openapi ??= await generateRegistryOpenApi();
+    openapi ??= await generateRegistryOpenApi({ secureSessionCookie });
     return context.json(openapi);
   });
   app.all('/api/v1/*', async (context) => {

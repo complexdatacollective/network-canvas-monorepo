@@ -12,7 +12,7 @@ await mkdir(new URL('../spec/', import.meta.url), { recursive: true });
 const formatting = JSON.parse(
   await readFile(new URL('../../../.oxfmtrc.json', import.meta.url), 'utf8'),
 ) as FormatConfig;
-const normative = await generateRegistryOpenApi();
+const normative = await generateRegistryOpenApi({ secureSessionCookie: true });
 for (const [filename, document] of [
   ['openapi.json', normative],
   ['openapi-3.0.json', toOpenApi30(normative)],

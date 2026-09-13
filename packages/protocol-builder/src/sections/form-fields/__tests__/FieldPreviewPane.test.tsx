@@ -510,6 +510,41 @@ describe('FieldPreviewPane', () => {
     expect(item).toEqual(original);
   });
 
+  it('previews a composer’s invented attribute from the control it chose', () => {
+    // The composer's row is never asked for a kind of answer: the input
+    // control is the question, so the control alone says what the participant
+    // will meet. Nothing writes `_newVariableType` here, which is exactly what
+    // separates this row from the form family's invention.
+    renderPreview(
+      {
+        variable: CREATE_NEW_ATTRIBUTE,
+        _newVariableName: 'favouriteFood',
+        component: 'Text',
+      },
+      { mode: 'composer' },
+    );
+
+    expect(
+      screen.getByRole('textbox', { name: 'favouriteFood' }),
+    ).toBeVisible();
+    expect(screen.queryByText(EMPTY_STATE)).not.toBeInTheDocument();
+  });
+
+  it('previews nothing for a composer row whose attribute the codebook has lost', () => {
+    // Not an invention: this row names a real attribute that is no longer
+    // there — deleted from under it, or absent from an imported codebook. The
+    // interview refuses such a row outright, so a preview assembled from the
+    // control the row still carries would show a working field the participant
+    // will never meet.
+    renderPreview(
+      { variable: 'favouriteFood', component: 'Text', label: 'Favourite food' },
+      { mode: 'composer' },
+    );
+
+    expect(screen.getByText(EMPTY_STATE)).toBeVisible();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
   it('previews nothing at all when the section cannot say whose codebook it collects into', () => {
     renderPreview({ variable: 'age' }, { subject: undefined });
 

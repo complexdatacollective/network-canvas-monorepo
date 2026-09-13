@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/registry-integration/packages/studio-sync
+
+
+ Test Files  1 passed (1)
+      Tests  57 passed (57)
+   Start at  15:58:41
+   Duration  1.05s (transform 244ms, setup 0ms, import 369ms, tests 586ms, environment 0ms)
+

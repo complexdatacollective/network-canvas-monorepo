@@ -43,7 +43,13 @@ const messages = defineMessages({
     id: 'protocolBuilder.variablePicker.searchLabel',
     defaultMessage: 'Find or create an attribute',
     description:
-      'Accessible name of the search box at the top of the attribute window. Typing in it narrows the list below, and — where this control allows it — offers to create an attribute under whatever was typed.',
+      'Accessible name of the search box at the top of the attribute window, where this control allows a new attribute to be created. Typing in it narrows the list below and offers to create an attribute under whatever was typed.',
+  },
+  searchOnlyLabel: {
+    id: 'protocolBuilder.variablePicker.searchOnlyLabel',
+    defaultMessage: 'Find an attribute',
+    description:
+      'Accessible name of the search box at the top of the attribute window where this control only chooses from attributes that already exist. Typing in it narrows the list below.',
   },
   searchPlaceholder: {
     id: 'protocolBuilder.variablePicker.searchPlaceholder',
@@ -515,7 +521,18 @@ export default function VariableSpotlight({
 
       const busy = creating === row.name;
       return (
-        <div {...itemProps} className={cx(ROW_CLASSES, 'gap-3 font-medium')}>
+        <div
+          {...itemProps}
+          // The name this row is about, the way an attribute row states the id
+          // choosing it would store. The name is inside the row's sentence,
+          // which is translated and says three different things depending on
+          // whether the create is offered, refused or on its way — so it is
+          // the only place a reader can tell WHICH typed name produced this
+          // row. A test waiting for the list to catch up with the search box
+          // has nowhere else to read it.
+          data-create-name={row.name}
+          className={cx(ROW_CLASSES, 'gap-3 font-medium')}
+        >
           {row.kind === 'create' ? (
             <Plus aria-hidden className="size-5 shrink-0" />
           ) : (
@@ -606,7 +623,15 @@ export default function VariableSpotlight({
               disabled={creating !== undefined}
               prefixComponent={<Search aria-hidden className="size-4" />}
               className="w-full"
-              aria-label={intl.formatMessage(messages.searchLabel)}
+              // Both the name and the placeholder say whether this window can
+              // invent an attribute, because a researcher who hears only the
+              // name would be told they may create one where no create row
+              // will ever appear.
+              aria-label={intl.formatMessage(
+                onCreate === undefined
+                  ? messages.searchOnlyLabel
+                  : messages.searchLabel,
+              )}
               placeholder={intl.formatMessage(
                 onCreate === undefined
                   ? messages.searchOnlyPlaceholder

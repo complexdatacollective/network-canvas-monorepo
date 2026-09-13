@@ -1,6 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
 import { attributeField } from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import NameGeneratorPromptsSection from '../NameGeneratorPromptsSection.tsx';
@@ -429,5 +431,57 @@ describe("a name generator's prompts", () => {
         name: 'Select attribute',
       }),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * The other refusal — the host's, not the schema's — reaches the same place.
+   *
+   * A name the codebook would take can still be refused because a colleague is
+   * holding the section it would be written into, and that answer arrives
+   * after the researcher has pressed the create row. It is said in the window,
+   * on the name it is about, and nowhere else: this section is behind a modal
+   * while the window is up, so a sentence left here is one nobody reads until
+   * they have given up on the name it was written about — and it would still
+   * be standing there after they recovered by choosing an attribute that
+   * already exists.
+   */
+  it('says a held section inside the window, and nowhere behind it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: prompts,
+      heldSections: [
+        {
+          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          displayName: 'Priya Raman',
+        },
+      ],
+    });
+
+    const dialog = await openPrompt(harness, 'Edit prompt');
+    await harness.user.click(
+      dialog.getByRole('button', { name: 'Add new attribute to assign' }),
+    );
+    const window = await openPicker(harness, dialog);
+    await harness.user.type(searchBox(window), 'nominatedEarly');
+    await harness.user.click(
+      within(window).getByRole('option', {
+        name: 'Create new attribute called “nominatedEarly”.',
+      }),
+    );
+
+    expect(await within(window).findByRole('alert')).toHaveTextContent(
+      'Priya Raman is currently editing a section needed for this change.',
+    );
+    expect(searchBox(window)).toHaveValue('nominatedEarly');
+
+    // And once the researcher gives up on the name, the sentence goes with the
+    // window rather than being left standing on the section behind it.
+    await harness.user.keyboard('{Escape}');
+    await expectWindowClosed(window);
+    expect(
+      dialog.queryByText(
+        'Priya Raman is currently editing a section needed for this change.',
+      ),
+    ).toBeNull();
   });
 });

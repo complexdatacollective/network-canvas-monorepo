@@ -8,7 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
@@ -32,7 +32,9 @@ import { useProtocolContext } from '../../state/protocolContext.ts';
 import {
   attributeField,
   chooseAttribute,
+  clearAttributeSearch,
   openAttributePicker,
+  searchAttributes,
 } from '../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
@@ -251,24 +253,19 @@ const trigger = (name: 'Select attribute' | 'Change attribute') =>
   within(picker()).getByRole('button', { name });
 
 /**
- * Types a name into the open window's search box.
+ * Types a name into the open window's search box, and comes back once the list
+ * is the one that name produces.
  *
- * `paste` rather than `type`: what is asserted below is the list the term
- * produces, not the keystrokes, and a search box that filters with no debounce
- * answers a paste exactly as it answers the last keystroke of the same word.
+ * The wait is not decoration: a row the term no longer produces stays mounted
+ * until its exit animation finishes a frame later, so a list read in the same
+ * breath as the typing can hold the row the keystroke BEFORE the last one made
+ * — and every assertion below is about which row the list puts first.
  */
 const search = async (
   harness: ReturnType<typeof renderRows>,
   dialog: HTMLElement,
   term: string,
-) => {
-  const box = within(dialog).getByRole('searchbox', {
-    name: 'Find or create an attribute',
-  });
-  await harness.user.clear(box);
-  await harness.user.type(box, term);
-  return box;
-};
+) => searchAttributes(harness.user, dialog, term);
 
 const createRow = (dialog: HTMLElement, name: string) =>
   within(dialog).getByRole('option', {
@@ -325,10 +322,10 @@ describe('the attribute picker', () => {
     const dialog = await openAttributePicker(harness.user, picker());
 
     expect(dialog).toHaveAccessibleName(ROW_PICKER);
+    // Named for what this window can do, which is only to find one: this row
+    // chooses from what the codebook holds and was handed no way to create.
     expect(
-      within(dialog).getByRole('searchbox', {
-        name: 'Find or create an attribute',
-      }),
+      within(dialog).getByRole('searchbox', { name: 'Find an attribute' }),
     ).toHaveFocus();
   });
 
@@ -370,14 +367,14 @@ describe('the attribute picker', () => {
     const dialog = await openAttributePicker(harness.user, picker());
     const all = within(dialog).getAllByRole('option').length;
 
-    const box = await search(harness, dialog, 'AG');
+    await search(harness, dialog, 'AG');
     const narrowed = within(dialog).getAllByRole('option');
     expect(narrowed.length).toBeLessThan(all);
     for (const row of narrowed) {
       expect(row.textContent?.toLowerCase()).toContain('ag');
     }
 
-    await harness.user.clear(box);
+    await clearAttributeSearch(harness.user, dialog);
     expect(within(dialog).getAllByRole('option')).toHaveLength(all);
   });
 
@@ -397,9 +394,7 @@ describe('the attribute picker', () => {
 
     const reopened = await openAttributePicker(harness.user, picker());
     expect(
-      within(reopened).getByRole('searchbox', {
-        name: 'Find or create an attribute',
-      }),
+      within(reopened).getByRole('searchbox', { name: 'Find an attribute' }),
     ).toHaveValue('');
   });
 
@@ -1115,6 +1110,64 @@ describe('the window when the field turns read-only under it', () => {
     );
     await user.click(document.body);
 
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  /**
+   * And what the window still offers follows the field, rather than standing
+   * over it.
+   *
+   * The create row is the one thing in here that writes to the codebook, and a
+   * field that has stopped taking a chosen attribute has stopped taking an
+   * invented one too — the host refuses the write, and what the researcher is
+   * offered should say so before they press it rather than after. The window
+   * keeps its way out either way: the row goes, the search box stays, and
+   * Escape still closes it.
+   */
+  it('stops offering to create once the field turns read-only under it', async () => {
+    const user = userEvent.setup();
+    const onCreateOption = vi.fn();
+    const view = render(
+      <VariablePickerField
+        name="variable"
+        options={OPTIONS}
+        onCreateOption={onCreateOption}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Select attribute' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(
+      within(dialog).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
+      'nominated_early',
+    );
+    expect(
+      within(dialog).getByRole('option', {
+        name: 'Create new attribute called “nominated_early”.',
+      }),
+    ).toBeInTheDocument();
+
+    view.rerender(
+      <VariablePickerField
+        name="variable"
+        options={OPTIONS}
+        onCreateOption={onCreateOption}
+        readOnly
+      />,
+    );
+
+    expect(
+      within(dialog).queryByRole('option', {
+        name: 'Create new attribute called “nominated_early”.',
+      }),
+    ).toBeNull();
+    expect(
+      within(dialog).getByRole('searchbox', { name: 'Find an attribute' }),
+    ).toHaveValue('nominated_early');
+    expect(onCreateOption).not.toHaveBeenCalled();
+
+    await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });

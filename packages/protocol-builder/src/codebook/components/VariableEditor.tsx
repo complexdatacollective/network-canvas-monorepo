@@ -30,8 +30,6 @@ import {
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import {
-  VARIABLE_REFERENCE_VALIDATIONS,
-  VARIABLE_TYPE_VALIDATIONS,
   type VariableOption,
   type VariableType,
   VariableTypes,
@@ -73,6 +71,7 @@ import {
   type ParameterShape,
 } from '../variableParameters.ts';
 import { VARIABLE_TYPE_OPTIONS } from '../variableTypeLabels.ts';
+import { rulesSurvivingTypeChange } from '../variableValidation.ts';
 import type { CodebookWriteOutcome } from '../writes.ts';
 import VariableBooleanAnswerFields from './VariableBooleanAnswerFields.tsx';
 import VariableParameterFields from './VariableParameterFields.tsx';
@@ -1239,22 +1238,15 @@ function draftForType(
   delete next.component;
   delete next.parameters;
 
-  // Keep only target-supported, value-independent rules. Reference rules can
-  // become cross-class comparisons after a type change, so they must be
-  // re-authored against a compatible target in the validation editor.
-  const validation = isRecord(next.validation)
-    ? Object.fromEntries(
-        Object.entries(next.validation).filter(
-          ([rule]) =>
-            Object.hasOwn(VARIABLE_TYPE_VALIDATIONS[nextType], rule) &&
-            !VARIABLE_REFERENCE_VALIDATIONS.some(
-              (referenceRule) => referenceRule === rule,
-            ),
-        ),
-      )
-    : null;
-  if (validation !== null && Object.keys(validation).length > 0) {
-    next.validation = validation;
+  // Keep only target-supported, value-independent rules — the same reading a
+  // form-field row applies to the rules it is holding for an attribute it has
+  // not created yet, which is why it is `rulesSurvivingTypeChange`'s to give.
+  const { kept } = rulesSurvivingTypeChange(
+    isRecord(next.validation) ? next.validation : {},
+    nextType,
+  );
+  if (Object.keys(kept).length > 0) {
+    next.validation = kept;
   } else {
     delete next.validation;
   }

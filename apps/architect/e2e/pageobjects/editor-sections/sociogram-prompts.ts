@@ -1,8 +1,6 @@
-import { expect, type Locator, type Page } from '@playwright/test';
-
 import { type StageEditor } from '../stage-editor.js';
 import { addPrompt } from './prompts.js';
-import { chooseAttributeIfOffered } from './variables.js';
+import { chooseOrCreateAttribute } from './variables.js';
 
 // One sociogram prompt, as `@codaco/protocol-builder`'s `SociogramPromptFields`
 // renders it inside the shared prompt row dialog ("Create prompt", submitted
@@ -12,18 +10,16 @@ import { chooseAttributeIfOffered } from './variables.js';
 // on:
 // - "Participant prompt" holds the rich-text field "Prompt text" (`text`).
 // - "Node layout" holds the picker "Layout attribute"
-//   (`layout.layoutVariable`) and, beside it, the button "Create a new
-//   position attribute", which opens the codebook's own attribute editor
-//   locked to the layout type. The picker is a native `<select>` over the
-//   attributes that exist, so it can only ever CHOOSE; creating is the
-//   button's job, not the picker's.
+//   (`layout.layoutVariable`). There is no create control beside it: the slot
+//   binds a `layout` attribute, which a name finishes, so the picker's own
+//   create row writes it straight to the codebook and no editor opens.
 // - "Node interaction" holds one choice, "Interaction type", between "Nothing",
 //   "Edge creation" and "Attribute toggling" — mutually exclusive, because
 //   the stage schema refuses a prompt that both draws edges and toggles an
 //   attribute. Choosing "Edge creation" reveals the edge-type
 //   radiogroup "Created edge type" (`edges.create`); choosing "Attribute
-//   toggling" reveals the picker "Boolean attribute" (`highlight.variable`)
-//   with its own "Create a new true-or-false attribute" button, and writes
+//   toggling" reveals the picker "Boolean attribute" (`highlight.variable`),
+//   whose create row writes a `boolean` attribute the same way, and writes
 //   `highlight.allowHighlighting: true` for itself.
 // - "Displayed edges" holds the tick list "Edge types"
 //   (`edges.display`). Choosing a connection type to CREATE here ticks that
@@ -38,62 +34,21 @@ export type SociogramPromptSpec = {
   displayEdges?: string[];
 };
 
-/**
- * Chooses a codebook attribute in one of the dialog's pickers, creating it
- * first when the codebook has none by that name.
- *
- * The picker never invents anything: `VariablePickerField` here is handed
- * options and no `onCreateOption`, so its window only chooses (and where the
- * type has nothing of the kind, the field shows a sentence and no trigger at
- * all). The
- * neighbouring `CreateVariableButton` is what adds one, through the codebook's
- * own editor — "Attribute name", submitted with "Create attribute" — under a
- * dialog whose title is the button's own label.
- */
-async function chooseOrCreateAttribute(
-  page: Page,
-  field: Locator,
-  opts: { name: string; createLabel: string; scope: Locator },
-): Promise<void> {
-  if (await chooseAttributeIfOffered(field, opts.name)) return;
-  await opts.scope
-    .getByRole('button', { name: opts.createLabel, exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: opts.createLabel,
-    exact: true,
-  });
-  await editor
-    .getByRole('textbox', { name: 'Attribute name', exact: true })
-    .fill(opts.name);
-  await editor
-    .getByRole('button', { name: 'Create attribute', exact: true })
-    .click();
-  // The write goes to the codebook under its section's own lock and the id
-  // comes back afterwards, so the picker holds the new attribute only once
-  // the editor has closed.
-  await editor.waitFor({ state: 'detached' });
-  // The picker states what it holds as a typed pill, not as a selected
-  // option.
-  await expect(field.locator('[data-attribute-type]')).toHaveText(opts.name);
-}
-
 export async function addSociogramPrompt(
   editor: StageEditor,
-  page: Page,
   spec: SociogramPromptSpec,
 ): Promise<void> {
   await addPrompt(editor.field('prompts'), async () => {
     await editor.fillRichTextMarkdown('Prompt text', spec.text);
-    await chooseOrCreateAttribute(page, editor.field('layout.layoutVariable'), {
-      name: spec.layoutVariable,
-      createLabel: 'Create a new position attribute',
-      scope: editor.section('Node layout'),
-    });
+    // A position attribute is finished by its name, so the create row writes
+    // it and binds it with no editor in between.
+    await chooseOrCreateAttribute(
+      editor.field('layout.layoutVariable'),
+      spec.layoutVariable,
+    );
 
     const interaction = spec.interaction;
     if (interaction) {
-      const tapping = editor.section('Node interaction');
       const behaviour = editor
         .field('tap-behaviour')
         .getByRole('listbox', { name: 'Interaction type', exact: true });
@@ -121,14 +76,10 @@ export async function addSociogramPrompt(
         await behaviour
           .getByRole('option', { name: /^Attribute toggling/ })
           .click();
+        // Boolean, so this create row writes the attribute too.
         await chooseOrCreateAttribute(
-          page,
           editor.field('highlight.variable'),
-          {
-            name: interaction.variableName,
-            createLabel: 'Create a new true-or-false attribute',
-            scope: tapping,
-          },
+          interaction.variableName,
         );
       }
     }
