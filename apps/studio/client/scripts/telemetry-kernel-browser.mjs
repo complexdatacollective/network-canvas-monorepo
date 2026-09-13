@@ -156,6 +156,28 @@ async function waitForObserver(name) {
   );
 }
 
+export async function emitKernelBrowserUdpControl({ address, port }) {
+  const connection = new RTCPeerConnection({
+    // A relay-only TURN probe emits the deliberate UDP control without
+    // gathering host candidates and advertising their mDNS names.
+    iceTransportPolicy: 'relay',
+    iceServers: [
+      {
+        urls: `turn:${address}:${port}?transport=udp`,
+        username: 'qualification-control',
+        credential: 'synthetic-control',
+      },
+    ],
+  });
+  try {
+    connection.createDataChannel('kernel-control');
+    await connection.setLocalDescription(await connection.createOffer());
+    await new Promise((resolve) => setTimeout(resolve, 750));
+  } finally {
+    connection.close();
+  }
+}
+
 export async function launchKernelObservedChromium({
   image,
   observerImage,
@@ -358,21 +380,10 @@ export async function launchKernelObservedChromium({
     await control
       .goto(`http://${detectorIp}:8443/`, { waitUntil: 'commit' })
       .catch(() => {});
-    await control.evaluate(
-      async ({ address, port }) => {
-        const connection = new RTCPeerConnection({
-          iceServers: [{ urls: `stun:${address}:${port}` }],
-        });
-        try {
-          connection.createDataChannel('kernel-control');
-          await connection.setLocalDescription(await connection.createOffer());
-          await new Promise((resolve) => setTimeout(resolve, 750));
-        } finally {
-          connection.close();
-        }
-      },
-      { address: detectorIp, port: 8443 },
-    );
+    await control.evaluate(emitKernelBrowserUdpControl, {
+      address: detectorIp,
+      port: 8443,
+    });
     await control.close();
     await assertBaseline('after controls, before Studio');
     return {
@@ -453,7 +464,16 @@ export async function launchKernelObservedChromium({
         await page.evaluate(
           async ({ address, port }) => {
             const connection = new RTCPeerConnection({
-              iceServers: [{ urls: `stun:${address}:${port}` }],
+              // A relay-only TURN probe emits the deliberate UDP control without
+              // gathering host candidates and advertising their mDNS names.
+              iceTransportPolicy: 'relay',
+              iceServers: [
+                {
+                  urls: `turn:${address}:${port}?transport=udp`,
+                  username: 'qualification-control',
+                  credential: 'synthetic-control',
+                },
+              ],
             });
             try {
               connection.createDataChannel('kernel-egress-control');
