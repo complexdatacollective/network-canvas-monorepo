@@ -35,7 +35,10 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { parseSectionId } from '@codaco/studio-sync/taxonomy';
 
 import CodebookEntityEditor from '../codebook/components/CodebookEntityEditor.tsx';
-import type { CodebookEntityDraft } from '../codebook/editing.ts';
+import {
+  type CodebookEntityDraft,
+  documentWithEntityProperties,
+} from '../codebook/editing.ts';
 import { useCodebookSectionDocument } from '../codebook/useCodebookVariableEdits.ts';
 import {
   useCodebookSectionWrite,
@@ -835,11 +838,29 @@ function EntityTypeCodebookControls({
                 readOnly={readOnly}
                 existingEntityNames={existingEntityNames}
                 onSubmit={async (document) => {
+                  const subject = {
+                    entity: entityType,
+                    type: session.typeId,
+                  } as const;
                   setSubmitting(true);
                   try {
+                    // Laid over the document the LOCK hands back, not over the
+                    // one the editor read: `variables` is the half of a type
+                    // this form does not own, and writing the form's copy of
+                    // it whole would delete an attribute a collaborator added
+                    // while this save was taking the lock. The editor has
+                    // already rebased once, on the document it last rendered;
+                    // this is the same rebase re-asked at the only moment the
+                    // answer is authoritative, and the helper keeps `variables`
+                    // for exactly this reason.
                     return await writeSection(
-                      { entity: entityType, type: session.typeId },
-                      () => document,
+                      subject,
+                      (authoritativeDocument) =>
+                        documentWithEntityProperties({
+                          subject,
+                          authoritativeDocument,
+                          draft: document,
+                        }),
                     );
                   } finally {
                     setSubmitting(false);
