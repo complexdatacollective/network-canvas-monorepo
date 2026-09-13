@@ -328,7 +328,16 @@ Dataset bytes MUST be valid UTF-8, non-empty, and contain no disallowed C0
 controls. The permitted C0 controls are only TAB (U+0009), LF (U+000A),
 and CR (U+000D); U+0000–U+0008, U+000B–U+000C, and U+000E–U+001F are
 forbidden. CSV whose first non-whitespace token begins an HTML, SVG, script, or
-doctype document is invalid. JSON datasets MUST decode to an object or array.
+doctype document is invalid. The CSV check MUST be the ECMAScript regular
+expression `/^\s*<(?:!doctype|html|svg|script)\b/i` applied to the decoded
+JavaScript string, without the Unicode (`u`) flag. Here `^` anchors the input,
+`\s*` consumes zero or more ECMAScript whitespace code points, the alternatives
+are ASCII case-insensitive under `i`, and `\b` is the ECMAScript word-boundary
+assertion using the non-Unicode `\w` set of ASCII letters, decimal digits, and
+underscore; the expression need not consume the remainder of the string. For
+this version, ECMAScript `\s` means exactly U+0009–U+000D, U+0020, U+00A0,
+U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000, and U+FEFF.
+JSON datasets MUST decode to an object or array.
 GeoJSON MUST decode to an object whose `type` is one of `FeatureCollection`,
 `Feature`, `Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`,
 `MultiPolygon`, or `GeometryCollection`.

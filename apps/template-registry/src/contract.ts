@@ -87,6 +87,31 @@ const artifactTarget = z.object({
 });
 const success = z.strictObject({ ok: z.literal(true) });
 
+const requiredRegistryOrigin = {
+  name: 'Origin',
+  in: 'header',
+  required: true,
+  schema: { type: 'string' },
+  description:
+    'The exact registry origin. Required for cookie-authenticated account writes.',
+} as const;
+
+function securedOperation<T extends { parameters?: readonly unknown[] }>(
+  operation: T,
+  security: typeof bearer | typeof cookie,
+) {
+  const secured = { ...operation, security };
+  return security === cookie
+    ? {
+        ...secured,
+        parameters: [
+          ...(operation.parameters ?? []),
+          { ...requiredRegistryOrigin },
+        ],
+      }
+    : secured;
+}
+
 function moderationRoutes(
   prefix: '/moderation' | '/account/moderation',
   security: typeof bearer | typeof cookie,
@@ -99,7 +124,7 @@ function moderationRoutes(
           path: `${prefix}/entries/{id}/takedown`,
           summary: 'Remove access to an entry’s artifact across all locators',
           inputStructure: 'detailed',
-          spec: (operation) => ({ ...operation, security }),
+          spec: (operation) => securedOperation(operation, security),
         }),
       )
       .input(entryTarget)
@@ -111,7 +136,7 @@ function moderationRoutes(
           path: `${prefix}/entries/{id}/restore`,
           summary: 'Restore access after a takedown',
           inputStructure: 'detailed',
-          spec: (operation) => ({ ...operation, security }),
+          spec: (operation) => securedOperation(operation, security),
         }),
       )
       .input(entryTarget)
@@ -124,7 +149,7 @@ function moderationRoutes(
           summary: 'Permanently remove content and queue object cleanup',
           successStatus: 202,
           inputStructure: 'detailed',
-          spec: (operation) => ({ ...operation, security }),
+          spec: (operation) => securedOperation(operation, security),
         }),
       )
       .input(artifactTarget)
@@ -136,7 +161,7 @@ function moderationRoutes(
           path: `${prefix}/publishers/{id}/suspension`,
           summary: 'Suspend or reinstate a publisher',
           inputStructure: 'detailed',
-          spec: (operation) => ({ ...operation, security }),
+          spec: (operation) => securedOperation(operation, security),
         }),
       )
       .input(
@@ -154,7 +179,7 @@ function moderationRoutes(
           path: `${prefix}/entries/{id}/curation`,
           summary: 'Grant or revoke the curated badge',
           inputStructure: 'detailed',
-          spec: (operation) => ({ ...operation, security }),
+          spec: (operation) => securedOperation(operation, security),
         }),
       )
       .input(
@@ -171,7 +196,7 @@ function moderationRoutes(
           method: security === cookie ? 'POST' : 'GET',
           path: `${prefix}/reports`,
           summary: 'Read pending reports',
-          spec: (operation) => ({ ...operation, security }),
+          spec: (operation) => securedOperation(operation, security),
         }),
       )
       .input(
@@ -315,7 +340,7 @@ export const registryContract = {
         method: 'POST',
         path: '/account/publisher',
         summary: 'Claim a named publisher with a verified registry email',
-        spec: (operation) => ({ ...operation, security: cookie }),
+        spec: (operation) => securedOperation(operation, cookie),
       }),
     )
     .input(ClaimPublisherSchema)
@@ -327,7 +352,7 @@ export const registryContract = {
         path: '/account/tokens',
         summary: 'Issue a registry credential',
         successStatus: 201,
-        spec: (operation) => ({ ...operation, security: cookie }),
+        spec: (operation) => securedOperation(operation, cookie),
       }),
     )
     .input(CreateTokenSchema)
@@ -351,7 +376,7 @@ export const registryContract = {
         path: '/account/tokens/{id}',
         summary: 'Revoke a registry credential',
         inputStructure: 'detailed',
-        spec: (operation) => ({ ...operation, security: cookie }),
+        spec: (operation) => securedOperation(operation, cookie),
       }),
     )
     .input(entryTarget)
@@ -405,6 +430,10 @@ export async function generateRegistryOpenApi() {
     for (const method of ['get', 'post', 'put', 'delete'] as const) {
       const operation = path[method];
       if (!operation?.responses) continue;
+      for (const parameter of operation.parameters ?? []) {
+        if ('in' in parameter && parameter.in === 'query')
+          parameter.allowEmptyValue = false;
+      }
       for (const [status, response] of Object.entries(operation.responses)) {
         if (
           Number(status) < 400 ||
