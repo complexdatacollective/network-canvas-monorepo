@@ -1,20 +1,19 @@
-import { createElement, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
+import { commonMessages } from '@codaco/app-i18n/common';
 import {
   createMessageError,
   formatMessageError,
 } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
+import useDialog from '@codaco/fresco-ui/dialogs/useDialog';
 import UnconnectedField from '@codaco/fresco-ui/form/Field/UnconnectedField';
 import CheckboxGroupField from '@codaco/fresco-ui/form/fields/CheckboxGroup';
-import {
-  headingTagBelow,
-  useEnclosingHeadingLevel,
-} from '@codaco/fresco-ui/typography/EnclosingHeadingLevel';
-import Heading from '@codaco/fresco-ui/typography/Heading';
+import Section from '@codaco/fresco-ui/Section';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { VariableTypes } from '@codaco/protocol-validation';
+import type { SectionDoc } from '@codaco/studio-sync/apply';
 
 import { codebookEditingMessages } from '../../../codebook/codebookMessages.ts';
 import { documentWithUpdatedVariable } from '../../../codebook/editing.ts';
@@ -41,43 +40,74 @@ type NodeTypeView = Readonly<{
   name: string;
   options: readonly Readonly<{ value: string; label: string }>[];
   encrypted: readonly string[];
+  /** Whether the type protects anything at all, which is what its switch says. */
+  hasEncrypted: boolean;
 }>;
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 /**
- * One type's text attributes, under a heading naming the type.
+ * Every attribute of one type carrying the flag, read from the AUTHORITATIVE
+ * document rather than from the view the researcher clicked.
  *
- * A component of its own rather than the map body it was, because the level
- * this heading takes is a fact about where it renders: the section around it
- * states what it encloses, and only something rendered INSIDE the section can
- * read that. Written from the section component itself the answer is the
- * heading above the section, which is one rung too high.
+ * The sweep is written against what the codebook holds at the moment the lock
+ * is taken, so an attribute a collaborator encrypted while the confirmation
+ * was on screen is cleared too — the researcher has just said no attribute of
+ * this type should be encrypted, and leaving that one would contradict the
+ * switch they are looking at.
+ */
+const encryptedVariableIds = (document: SectionDoc): readonly string[] => {
+  const variables = document.variables;
+  if (!isRecord(variables)) return [];
+  return Object.entries(variables).flatMap(([id, variable]) =>
+    isRecord(variable) && variable.encrypted === true ? [id] : [],
+  );
+};
+
+/**
+ * One type's text attributes, behind a switch of its own.
+ *
+ * A switch rather than a heading, because "no attribute of this type is
+ * encrypted" is a decision a researcher makes about a whole type and would
+ * otherwise be a study's worth of clicks, one box at a time. Switching it off
+ * is what runs the sweep — see `EncryptedAttributesSection` — and switching it
+ * on only opens the panel: choosing nothing yet is not a change to the
+ * codebook.
+ *
+ * A plain `Section` rather than the package's `BuilderSection`, because
+ * `encrypted` is a property of a CODEBOOK attribute and not a stage field:
+ * there are no form values under this panel for a capability's own discard to
+ * throw away, and the write it makes is immediate and outside the stage's
+ * save.
  */
 function NodeTypeAttributes({
   view,
   disabled,
   onChange,
+  onRequestOpenChange,
 }: Readonly<{
   view: NodeTypeView;
   disabled: boolean;
   onChange: (next: readonly unknown[]) => void;
+  onRequestOpenChange: (open: boolean) => Promise<boolean>;
 }>) {
   const intl = useAppIntl();
-  const enclosingHeadingLevel = useEnclosingHeadingLevel();
-  const headingTag =
-    enclosingHeadingLevel === null
-      ? 'h4'
-      : headingTagBelow(enclosingHeadingLevel);
 
   return (
-    <div>
-      <Heading
-        level="h4"
-        margin="none"
-        // The element only — `level` still carries the type treatment.
-        {...(headingTag === 'h4' ? {} : { render: createElement(headingTag) })}
-      >
-        {view.name}
-      </Heading>
+    <Section
+      title={view.name}
+      description={intl.formatMessage(
+        anonymisationMessages.typeSwitchDescription,
+      )}
+      disabled={disabled}
+      toggleable
+      // Open on a type that already protects something, which is also the one
+      // state where a stranded flag on a retyped attribute is visible: the
+      // switch stands on, and switching it off is what takes the flag away.
+      defaultOpen={view.hasEncrypted}
+      onOpenChange={onRequestOpenChange}
+    >
       {view.options.length === 0 ? (
         <Paragraph margin="none" emphasis="muted">
           {intl.formatMessage(anonymisationMessages.noTextAttributes)}
@@ -86,9 +116,9 @@ function NodeTypeAttributes({
         <UnconnectedField<typeof CheckboxGroupField>
           name={`encrypted-attributes-${view.typeId}`}
           component={CheckboxGroupField}
-          // Named for the type as well, and hidden: the heading above says
-          // the type once for a reader who can see it, and a screen reader
-          // meeting the group on its own has to be told which type's
+          // Named for the type as well, and hidden: the section's own heading
+          // says the type once for a reader who can see it, and a screen
+          // reader meeting the group on its own has to be told which type's
           // attributes these are.
           label={intl.formatMessage(anonymisationMessages.attributeGroupLabel, {
             typeName: view.name,
@@ -100,7 +130,7 @@ function NodeTypeAttributes({
           onChange={(next) => onChange(next ?? [])}
         />
       )}
-    </div>
+    </Section>
   );
 }
 
@@ -119,6 +149,12 @@ function NodeTypeAttributes({
  * are read from the authoritative codebook every render, so a type or an
  * attribute a collaborator changes — including one that stops being text —
  * is reflected here without this section issuing anything of its own.
+ *
+ * Each type is a switch of its own, and switching one off un-encrypts every
+ * attribute of that type at once, as Architect's does: saying "this type is
+ * not protected after all" is otherwise a study's worth of clicks, one box at
+ * a time, each its own codebook write. The loss is real, so it is confirmed
+ * first.
  */
 export default function EncryptedAttributesSection() {
   const intl = useAppIntl();
@@ -142,14 +178,14 @@ export default function EncryptedAttributesSection() {
     Readonly<{ message: string; held: boolean }> | undefined
   >(undefined);
   const [busy, setBusy] = useState(false);
+  const { confirm } = useDialog();
 
   const nodeTypes = useMemo<readonly NodeTypeView[]>(() => {
     const definitions = protocolContext.codebook.node ?? {};
     return Object.entries(definitions)
       .map(([typeId, definition]): NodeTypeView => {
-        const variables = Object.entries(definition.variables ?? {}).filter(
-          ([, variable]) => variable.type === TEXT,
-        );
+        const all = Object.entries(definition.variables ?? {});
+        const variables = all.filter(([, variable]) => variable.type === TEXT);
         return {
           typeId,
           name: definition.name,
@@ -159,6 +195,7 @@ export default function EncryptedAttributesSection() {
           encrypted: variables
             .filter(([, variable]) => variable.encrypted === true)
             .map(([value]) => value),
+          hasEncrypted: all.some(([, variable]) => variable.encrypted === true),
         };
       })
       .toSorted((left, right) => left.name.localeCompare(right.name));
@@ -210,6 +247,81 @@ export default function EncryptedAttributesSection() {
     }
   };
 
+  /**
+   * Un-encrypts every attribute of one type, in ONE write.
+   *
+   * One write rather than one per attribute: the whole sweep is a single
+   * decision, and a lock taken and released per attribute would let a
+   * collaborator's own edit land in the middle of it — leaving a type half
+   * protected, which is neither of the two states the switch can show.
+   */
+  const clearType = async (view: NodeTypeView): Promise<boolean> => {
+    const subject: CodebookSubject = { entity: 'node', type: view.typeId };
+    setFailure(undefined);
+    setBusy(true);
+    try {
+      const outcome = await writeCodebookSection(subject, (authoritative) =>
+        encryptedVariableIds(authoritative).reduce(
+          (document, variableId) =>
+            documentWithUpdatedVariable({
+              subject,
+              authoritativeDocument: document,
+              variableId,
+              draft: {},
+              replaceProperties: ['encrypted'],
+            }),
+          authoritative,
+        ),
+      );
+      if (outcome.status !== 'applied') {
+        setFailure({
+          message: outcome.message,
+          held: outcome.refusal.kind === 'held',
+        });
+        return false;
+      }
+      setAnnouncement(
+        createMessageError(anonymisationMessages.clearedTypeAnnouncement, {
+          typeName: view.name,
+        }),
+      );
+      return true;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * What one type's switch does.
+   *
+   * Switching ON only opens the panel: a type nobody has ticked anything for
+   * has nothing to write. Switching OFF is the sweep, confirmed first because
+   * it un-encrypts attributes the researcher may not be looking at — and
+   * refused writes leave the switch where the researcher left it, over the
+   * attributes that are still protected.
+   */
+  const requestOpenChange = async (
+    view: NodeTypeView,
+    open: boolean,
+  ): Promise<boolean> => {
+    if (open || !view.hasEncrypted) return true;
+    const confirmed = await confirm({
+      title: intl.formatMessage(anonymisationMessages.clearTypeConfirmTitle),
+      description: intl.formatMessage(
+        anonymisationMessages.clearTypeConfirmDescription,
+        { typeName: view.name },
+      ),
+      confirmLabel: intl.formatMessage(
+        anonymisationMessages.clearTypeConfirmLabel,
+      ),
+      cancelLabel: intl.formatMessage(commonMessages.cancel),
+      intent: 'warning',
+      onConfirm: () => undefined,
+    });
+    if (confirmed !== true) return false;
+    return clearType(view);
+  };
+
   const handleChange = (view: NodeTypeView, next: readonly unknown[]) => {
     const chosen = new Set(
       next.filter((value): value is string => typeof value === 'string'),
@@ -257,6 +369,7 @@ export default function EncryptedAttributesSection() {
           view={view}
           disabled={readOnly || busy}
           onChange={(next) => handleChange(view, next)}
+          onRequestOpenChange={(open) => requestOpenChange(view, open)}
         />
       ))}
 

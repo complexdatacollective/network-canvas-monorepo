@@ -30,10 +30,13 @@ const KEY_ASSET = 'mapbox_token';
  */
 function PreviewOn({
   tokenAssetId,
+  style,
   center,
   zoom,
 }: Readonly<{
   tokenAssetId: string | undefined;
+  /** The basemap the stage names, swapped in once the host's map has loaded. */
+  style?: string;
   center: unknown;
   zoom: unknown;
 }>) {
@@ -56,6 +59,7 @@ function PreviewOn({
       {open && (
         <MapPreviewDialog
           tokenAssetId={tokenAssetId}
+          style={style}
           center={center}
           zoom={zoom}
           onSave={(nextCenter, nextZoom) => {
