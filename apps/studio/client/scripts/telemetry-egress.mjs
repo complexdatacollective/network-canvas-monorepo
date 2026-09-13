@@ -22,6 +22,58 @@ const CANARY = 'BrowserPerson@example.test-PrivateProtocol-SecretBrowserToken';
 const relay = 'ph-relay.networkcanvas.com';
 const statusVersion = '99.98.97';
 
+/**
+ * Install the one response skew this qualification needs inside Chromium.
+ * The native fetch must run first: only the browser is in the isolated network
+ * namespace that owns the Studio server's loopback address. The successful
+ * oRPC envelope is then copied byte-for-byte apart from `json.version`, so the
+ * real client proves that telemetry identifies its own build when a separately
+ * deployed server reports a different version.
+ */
+export function installStatusVersionSkew({ origin, version }) {
+  const nativeFetch = globalThis.fetch.bind(globalThis);
+  globalThis.fetch = async (input, init) => {
+    const inputUrl = input instanceof Request ? input.url : String(input);
+    const url = new URL(inputUrl, origin);
+    const response = await nativeFetch(input, init);
+    if (url.origin !== origin || url.pathname !== '/rpc/status')
+      return response;
+    if (!response.ok) return response;
+
+    const body = await response.clone().json();
+    if (
+      body === null ||
+      typeof body !== 'object' ||
+      Array.isArray(body) ||
+      body.json === null ||
+      typeof body.json !== 'object' ||
+      Array.isArray(body.json) ||
+      typeof body.json.version !== 'string'
+    ) {
+      throw new Error('Studio status response envelope changed');
+    }
+    const skewedBody = {
+      ...body,
+      json: { ...body.json, version },
+    };
+    // Qualification-only evidence that the app's real request traversed this
+    // exact branch. It is read after the app has consumed the response.
+    globalThis.__studioStatusVersionSkew = skewedBody;
+    const encoded = JSON.stringify(skewedBody);
+    const headers = new Headers(response.headers);
+    if (headers.has('content-length'))
+      headers.set(
+        'content-length',
+        String(new TextEncoder().encode(encoded).length),
+      );
+    return new Response(encoded, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
+    });
+  };
+}
+
 async function port() {
   const server = createServer();
   server.listen(0, '127.0.0.1');
@@ -103,14 +155,6 @@ export async function runTelemetryBrowserQualification({
           const request = route.request();
           const url = new URL(request.url());
           if (url.origin === origin) {
-            if (url.pathname === '/rpc/status') {
-              const response = await route.fetch();
-              const body = await response.json();
-              // Independent release lanes can deploy different client/server
-              // versions. Keep all real status fields except this deliberate skew.
-              body.json.version = statusVersion;
-              return route.fulfill({ response, json: body });
-            }
             if (url.pathname.includes('module.slim.no-external'))
               sdkChunks.push(url.pathname);
             return route.continue();
@@ -138,6 +182,10 @@ export async function runTelemetryBrowserQualification({
         });
         // The SDK also checks client-hint brands and webdriver. These fixture
         // overrides select its ordinary-browser path; production keeps its bot filter.
+        await context.addInitScript(installStatusVersionSkew, {
+          origin,
+          version: statusVersion,
+        });
         await context.addInitScript(() => {
           Object.defineProperty(Navigator.prototype, 'webdriver', {
             get: () => false,
@@ -165,7 +213,22 @@ export async function runTelemetryBrowserQualification({
           const runtimeStatus = await statusResponse.json();
           assert.equal(runtimeStatus.json.telemetry, enabled);
           assert.equal(runtimeStatus.json.deployment.mode, mode);
-          assert.equal(runtimeStatus.json.version, statusVersion);
+          assert.equal(
+            runtimeStatus.json.version,
+            resolvedClientVersion,
+            'The browser must receive the real server response before the in-context skew',
+          );
+          const skewedStatus = await page.evaluate(
+            () => globalThis.__studioStatusVersionSkew,
+          );
+          assert.deepEqual(
+            skewedStatus,
+            {
+              ...runtimeStatus,
+              json: { ...runtimeStatus.json, version: statusVersion },
+            },
+            'The browser-context skew must preserve the real oRPC envelope and change only the server version',
+          );
           await page.locator('main').first().waitFor({ state: 'visible' });
           if (enabled)
             await page.waitForFunction(() =>

@@ -1,6 +1,8 @@
 import { COMMON_ERROR_STATUS_MAP } from '@orpc/server';
 import { z } from 'zod';
 
+import { StrictUuidSchema } from '@codaco/studio-sync/template-metadata';
+
 export const REGISTRY_PROBLEMS = {
   AUTHENTICATION_REQUIRED: {
     status: 401,
@@ -102,7 +104,7 @@ export const RegistryProblemSchema = z
     title: z.string(),
     status: z.number().int(),
     code: z.enum([firstProblemCode, ...otherProblemCodes]),
-    request_id: z.uuid(),
+    request_id: StrictUuidSchema,
     context: ProblemContextSchema,
   })
   .meta({ id: 'RegistryProblem' });

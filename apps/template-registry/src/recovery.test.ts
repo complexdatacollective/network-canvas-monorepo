@@ -11,12 +11,89 @@ import { createRegistryFixture } from './__tests__/fixtures.ts';
 import { createRegistryInstallation } from './__tests__/installation.ts';
 import { REGISTRY_SCHEMA_FINGERPRINT } from './db/fingerprint.generated.ts';
 import { registryMigrator } from './db/migrate.ts';
+import {
+  createRegistryRecoveryInventory,
+  type RegistryRecoveryReconciliation,
+} from './recovery-reconciliation.ts';
 import { reconcileRegistryRecovery } from './recovery.ts';
 
 type RecoveryQueryEvent = {
   lane: 'owner' | 'backup';
   sql: string;
 };
+
+async function registryRecoveryEvidence(
+  pool: pg.Pool,
+): Promise<RegistryRecoveryReconciliation> {
+  const users = await pool.query<{
+    id: string;
+    email: string;
+    email_verified: boolean;
+  }>(
+    'SELECT id, email, email_verified FROM registry_auth_user ORDER BY id COLLATE "C"',
+  );
+  const publishers = await pool.query<{
+    id: string;
+    user_id: string;
+    suspended: boolean;
+  }>(
+    'SELECT id, user_id, suspended_at IS NOT NULL AS suspended FROM registry_publishers ORDER BY id',
+  );
+  const operators = await pool.query<{ user_id: string }>(
+    'SELECT user_id FROM registry_operators WHERE enabled ORDER BY user_id COLLATE "C"',
+  );
+  const entries = await pool.query<{
+    id: string;
+    publisher_id: string;
+    artifact_root: string;
+    yanked: boolean;
+  }>(
+    'SELECT id, publisher_id, artifact_root, yanked_at IS NOT NULL AS yanked FROM registry_entries ORDER BY id',
+  );
+  const artifacts = await pool.query<{
+    root: string;
+    blocked: boolean;
+    deleted: boolean;
+  }>(
+    'SELECT root,blocked_at IS NOT NULL AS blocked,deleted_at IS NOT NULL AS deleted FROM registry_artifacts ORDER BY root',
+  );
+  return {
+    format: 'template-registry-recovery-reconciliation',
+    version: 3,
+    inventories: {
+      artifacts: createRegistryRecoveryInventory('artifacts', artifacts.rows),
+      users: createRegistryRecoveryInventory(
+        'users',
+        users.rows.map((user) => ({
+          id: user.id,
+          email: user.email,
+          emailVerified: user.email_verified,
+        })),
+      ),
+      publishers: createRegistryRecoveryInventory(
+        'publishers',
+        publishers.rows.map((publisher) => ({
+          id: publisher.id,
+          userId: publisher.user_id,
+          suspended: publisher.suspended,
+        })),
+      ),
+      operators: createRegistryRecoveryInventory(
+        'operators',
+        operators.rows.map((operator) => ({ userId: operator.user_id })),
+      ),
+      entries: createRegistryRecoveryInventory(
+        'entries',
+        entries.rows.map((entry) => ({
+          id: entry.id,
+          publisherId: entry.publisher_id,
+          artifactRoot: entry.artifact_root,
+          yanked: entry.yanked,
+        })),
+      ),
+    },
+  };
+}
 
 function observeRecoveryPool(
   pool: pg.Pool,
@@ -69,27 +146,18 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
       FROM generate_series(1, 65) AS value;
       INSERT INTO registry_publishers(id, user_id, name)
       SELECT gen_random_uuid(), id, name FROM registry_auth_user WHERE id LIKE 'page-user-%'`);
-    const pagedUsers = await fixture.owner.query<{
-      id: string;
-      email: string;
-      publisher_id: string;
-    }>(
-      `SELECT u.id, u.email, p.id AS publisher_id FROM registry_auth_user u
-       JOIN registry_publishers p ON p.user_id = u.id WHERE u.id LIKE 'page-user-%'`,
-    );
     const account = await fixture.account('restored@example.test', true);
-    const recovered = await fixture.published(
-      account.token,
-      'Recovered template',
-    );
+    await fixture.published(account.token, 'Recovered template');
     await fixture.owner.query(
       `INSERT INTO registry_auth_verification(id, identifier, value, expires_at)
        VALUES ('restored-one-time', 'restored@example.test', 'one-time', statement_timestamp() + interval '5 minutes')`,
     );
+    await fixture.owner.query('UPDATE registry_operators SET enabled = false');
     await fixture.owner.query(
       `INSERT INTO registry_auth_user(id, name, email, email_verified, updated_at)
        VALUES ('inactive-unverified', 'Inactive', 'inactive@EXAMPLE.TEST', false, statement_timestamp())`,
     );
+    const reconciliation = await registryRecoveryEvidence(fixture.owner);
     await installation.closeRuntimePools();
     await installation.withAdministrator(async (administrator) => {
       await administrator.query(
@@ -107,58 +175,7 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
       ),
       blobs: fixture.blobs,
       admission: { allowedLogins: installation.allowedLogins },
-      reconciliation: {
-        format: 'template-registry-recovery-reconciliation',
-        version: 2,
-        users: [
-          ...pagedUsers.rows.map((user) => ({
-            id: user.id,
-            email: user.email,
-            emailVerified: true,
-            publisher: 'active' as const,
-            publisherId: user.publisher_id,
-            operator: false,
-          })),
-          {
-            id: 'Zulu',
-            email: 'zulu@example.test',
-            emailVerified: true,
-            publisher: 'active',
-            publisherId: '00000000-0000-4000-8000-000000000001',
-            operator: false,
-          },
-          {
-            id: 'alpha',
-            email: 'alpha@example.test',
-            emailVerified: true,
-            publisher: 'active',
-            publisherId: '00000000-0000-4000-8000-000000000002',
-            operator: false,
-          },
-          {
-            id: account.session.userId,
-            email: 'restored@example.test',
-            emailVerified: true,
-            publisher: 'active',
-            publisherId: account.publisher.id,
-            operator: false,
-          },
-          {
-            id: 'inactive-unverified',
-            email: 'inactive@example.test',
-            emailVerified: false,
-            publisher: 'none',
-            publisherId: null,
-            operator: false,
-          },
-        ],
-        entries: [
-          {
-            id: recovered.entry.id,
-            publisherId: account.publisher.id,
-          },
-        ],
-      },
+      reconciliation,
     });
 
     const inventoryPages = recoveryQueries
@@ -170,10 +187,13 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
             'SELECT id, email, email_verified FROM registry_auth_user',
           ) ||
             event.sql.startsWith(
-              'SELECT id, user_id FROM registry_publishers',
+              'SELECT id, user_id, suspended_at IS NOT NULL AS suspended FROM registry_publishers',
             ) ||
             event.sql.startsWith(
-              'SELECT id, publisher_id FROM registry_entries',
+              'SELECT id, publisher_id, artifact_root, yanked_at IS NOT NULL AS yanked FROM registry_entries',
+            ) ||
+            event.sql.startsWith(
+              'SELECT root, blocked_at IS NOT NULL AS blocked, deleted_at IS NOT NULL AS deleted FROM registry_artifacts',
             )),
       );
     expect(
@@ -189,6 +209,11 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
     expect(
       inventoryPages.filter(({ event }) =>
         event.sql.includes('registry_entries'),
+      ),
+    ).toHaveLength(1);
+    expect(
+      inventoryPages.filter(({ event }) =>
+        event.sql.includes('FROM registry_artifacts'),
       ),
     ).toHaveLength(1);
     for (const { index } of inventoryPages) {
@@ -254,19 +279,7 @@ it('refuses swapped publisher UUID ownership before restoring authority', async 
     );
     const first = await fixture.account('first@example.test');
     const second = await fixture.account('second@example.test');
-    const reconciliation = {
-      format: 'template-registry-recovery-reconciliation' as const,
-      version: 2 as const,
-      users: [first, second].map((account, index) => ({
-        id: account.session.userId,
-        email: index === 0 ? 'first@example.test' : 'second@example.test',
-        emailVerified: true,
-        publisher: 'active' as const,
-        publisherId: account.publisher.id,
-        operator: false,
-      })),
-      entries: [],
-    };
+    const reconciliation = await registryRecoveryEvidence(fixture.owner);
     // Both sets of IDs remain unchanged, but each account would acquire the
     // other publisher's historical entries after issuing a new credential.
     await fixture.owner.query(
@@ -337,22 +350,7 @@ it('refuses restored entries whose publisher ownership was swapped', async () =>
       second.token,
       'Second ownership',
     );
-    const reconciliation = {
-      format: 'template-registry-recovery-reconciliation' as const,
-      version: 2 as const,
-      users: [first, second].map((account) => ({
-        id: account.session.userId,
-        email: account.session.email,
-        emailVerified: true,
-        publisher: 'active' as const,
-        publisherId: account.publisher.id,
-        operator: false,
-      })),
-      entries: [
-        { id: firstEntry.entry.id, publisherId: first.publisher.id },
-        { id: secondEntry.entry.id, publisherId: second.publisher.id },
-      ],
-    };
+    const reconciliation = await registryRecoveryEvidence(fixture.owner);
     await fixture.owner.query(
       'UPDATE registry_entries SET publisher_id = $1 WHERE id = $2',
       [second.publisher.id, firstEntry.entry.id],
@@ -360,6 +358,68 @@ it('refuses restored entries whose publisher ownership was swapped', async () =>
     await fixture.owner.query(
       'UPDATE registry_entries SET publisher_id = $1 WHERE id = $2',
       [first.publisher.id, secondEntry.entry.id],
+    );
+    await installation.closeRuntimePools();
+    await installation.withAdministrator((administrator) =>
+      administrator.query(
+        `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN;
+         ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
+      ),
+    );
+
+    await expect(
+      reconcileRegistryRecovery({
+        pool: fixture.owner,
+        backupPool: installation.backupPool,
+        blobs: fixture.blobs,
+        admission: { allowedLogins: installation.allowedLogins },
+        reconciliation,
+      }),
+    ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    expect(
+      (
+        await fixture.owner.query(
+          'SELECT count(*)::int AS count FROM registry_credentials WHERE revoked_at IS NULL',
+        )
+      ).rows,
+    ).toEqual([{ count: 2 }]);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+it('refuses restored entries whose artifact roots were swapped within one publisher', async () => {
+  const installation = await createRegistryInstallation();
+  const fixture = await createRegistryFixture({}, installation);
+  try {
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../migrations', import.meta.url)),
+      'Template Registry',
+    );
+    await registryMigrator.migrate(
+      fixture.owner,
+      migrations,
+      REGISTRY_SCHEMA_FINGERPRINT,
+      installation.allowedLogins,
+    );
+    const account = await fixture.account('entry-root-swap@example.test');
+    const temporary = await fixture.account(
+      'entry-root-swap-temp@example.test',
+    );
+    const first = await fixture.published(account.token, 'First root');
+    const second = await fixture.published(account.token, 'Second root');
+    const reconciliation = await registryRecoveryEvidence(fixture.owner);
+    await fixture.owner.query(
+      'UPDATE registry_entries SET publisher_id = $1 WHERE id = $2',
+      [temporary.publisher.id, first.entry.id],
+    );
+    await fixture.owner.query(
+      'UPDATE registry_entries SET artifact_root = $1 WHERE id = $2',
+      [first.entry.root, second.entry.id],
+    );
+    await fixture.owner.query(
+      'UPDATE registry_entries SET publisher_id = $1, artifact_root = $2 WHERE id = $3',
+      [account.publisher.id, second.entry.root, first.entry.id],
     );
     await installation.closeRuntimePools();
     await installation.withAdministrator((administrator) =>
@@ -404,6 +464,7 @@ it('requires object-store readiness even when the restored registry has no artif
       REGISTRY_SCHEMA_FINGERPRINT,
       installation.allowedLogins,
     );
+    const reconciliation = await registryRecoveryEvidence(fixture.owner);
     await installation.closeRuntimePools();
     await installation.withAdministrator((administrator) =>
       administrator.query(
@@ -421,12 +482,7 @@ it('requires object-store readiness even when the restored registry has no artif
         backupPool: installation.backupPool,
         blobs: fixture.blobs,
         admission: { allowedLogins: installation.allowedLogins },
-        reconciliation: {
-          format: 'template-registry-recovery-reconciliation',
-          version: 2,
-          users: [],
-          entries: [],
-        },
+        reconciliation,
       }),
     ).rejects.toThrow('object store unavailable');
     expect(fixture.blobs.get).not.toHaveBeenCalled();
@@ -452,10 +508,8 @@ it.each(['email', 'verification'] as const)(
         installation.allowedLogins,
       );
       const account = await fixture.account('approved@example.test');
-      const published = await fixture.published(
-        account.token,
-        'Authority binding',
-      );
+      await fixture.published(account.token, 'Authority binding');
+      const reconciliation = await registryRecoveryEvidence(fixture.owner);
       await fixture.owner.query(
         kind === 'email'
           ? 'UPDATE registry_auth_user SET email = $2 WHERE id = $1'
@@ -478,26 +532,68 @@ it.each(['email', 'verification'] as const)(
           backupPool: installation.backupPool,
           blobs: fixture.blobs,
           admission: { allowedLogins: installation.allowedLogins },
-          reconciliation: {
-            format: 'template-registry-recovery-reconciliation',
-            version: 2,
-            users: [
-              {
-                id: account.session.userId,
-                email: 'approved@EXAMPLE.TEST',
-                emailVerified: true,
-                publisher: 'active',
-                publisherId: account.publisher.id,
-                operator: false,
-              },
-            ],
-            entries: [
-              {
-                id: published.entry.id,
-                publisherId: account.publisher.id,
-              },
-            ],
-          },
+          reconciliation,
+        }),
+      ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT count(*)::int AS count FROM registry_credentials WHERE revoked_at IS NULL',
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    } finally {
+      await fixture.dispose();
+    }
+  },
+);
+
+it.each(['unverified publisher', 'suspended operator'] as const)(
+  'rejects an independently inventoried %s authority violation',
+  async (kind) => {
+    const installation = await createRegistryInstallation();
+    const fixture = await createRegistryFixture({}, installation);
+    try {
+      const migrations = await readMigrations(
+        fileURLToPath(new URL('../migrations', import.meta.url)),
+        'Template Registry',
+      );
+      await registryMigrator.migrate(
+        fixture.owner,
+        migrations,
+        REGISTRY_SCHEMA_FINGERPRINT,
+        installation.allowedLogins,
+      );
+      const account = await fixture.account(
+        'invalid-authority@example.test',
+        true,
+      );
+      await fixture.owner.query(
+        kind === 'unverified publisher'
+          ? 'UPDATE registry_auth_user SET email_verified = false WHERE id = $1'
+          : 'UPDATE registry_publishers SET suspended_at = now() WHERE id = $1',
+        [
+          kind === 'unverified publisher'
+            ? account.session.userId
+            : account.publisher.id,
+        ],
+      );
+      const reconciliation = await registryRecoveryEvidence(fixture.owner);
+      await installation.closeRuntimePools();
+      await installation.withAdministrator((administrator) =>
+        administrator.query(
+          `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN;
+           ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
+        ),
+      );
+
+      await expect(
+        reconcileRegistryRecovery({
+          pool: fixture.owner,
+          backupPool: installation.backupPool,
+          blobs: fixture.blobs,
+          admission: { allowedLogins: installation.allowedLogins },
+          reconciliation,
         }),
       ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
       expect(
@@ -535,10 +631,8 @@ it.each([
       installation.allowedLogins,
     );
     const account = await fixture.account('quarantine@example.test', true);
-    const published = await fixture.published(
-      account.token,
-      'Quarantined template',
-    );
+    await fixture.published(account.token, 'Quarantined template');
+    const reconciliation = await registryRecoveryEvidence(fixture.owner);
     await installation.closeRuntimePools();
     await installation.withAdministrator((administrator) =>
       administrator.query(
@@ -569,26 +663,7 @@ it.each([
         backupPool: installation.backupPool,
         blobs: fixture.blobs,
         admission: { allowedLogins: installation.allowedLogins },
-        reconciliation: {
-          format: 'template-registry-recovery-reconciliation',
-          version: 2,
-          users: [
-            {
-              id: account.session.userId,
-              email: 'quarantine@example.test',
-              emailVerified: true,
-              publisher: 'active',
-              publisherId: account.publisher.id,
-              operator: false,
-            },
-          ],
-          entries: [
-            {
-              id: published.entry.id,
-              publisherId: account.publisher.id,
-            },
-          ],
-        },
+        reconciliation,
       }),
     ).rejects.toThrow('REGISTRY_RECOVERY_QUARANTINE_REQUIRED');
     expect(
@@ -627,6 +702,7 @@ it('rolls back credential invalidation when restored artifact bytes fail verific
       account.token,
       'Tampered template',
     );
+    const reconciliation = await registryRecoveryEvidence(fixture.owner);
     fixture.objects.set(
       templateBytesHash(published.bytes),
       new Uint8Array([1]),
@@ -645,26 +721,7 @@ it('rolls back credential invalidation when restored artifact bytes fail verific
         backupPool: installation.backupPool,
         blobs: fixture.blobs,
         admission: { allowedLogins: installation.allowedLogins },
-        reconciliation: {
-          format: 'template-registry-recovery-reconciliation',
-          version: 2,
-          users: [
-            {
-              id: account.session.userId,
-              email: 'tampered@example.test',
-              emailVerified: true,
-              publisher: 'active',
-              publisherId: account.publisher.id,
-              operator: false,
-            },
-          ],
-          entries: [
-            {
-              id: published.entry.id,
-              publisherId: account.publisher.id,
-            },
-          ],
-        },
+        reconciliation,
       }),
     ).rejects.toThrow('REGISTRY_RECOVERY_ARTIFACT_INVALID');
     expect(
@@ -693,7 +750,8 @@ it('refuses recovery while an enrolled runtime can still reconnect', async () =>
       REGISTRY_SCHEMA_FINGERPRINT,
       installation.allowedLogins,
     );
-    const account = await fixture.account('still-serving@example.test', true);
+    await fixture.account('still-serving@example.test', true);
+    const reconciliation = await registryRecoveryEvidence(fixture.owner);
     await installation.closeRuntimePools();
     await expect(
       reconcileRegistryRecovery({
@@ -701,21 +759,7 @@ it('refuses recovery while an enrolled runtime can still reconnect', async () =>
         backupPool: installation.backupPool,
         blobs: fixture.blobs,
         admission: { allowedLogins: installation.allowedLogins },
-        reconciliation: {
-          format: 'template-registry-recovery-reconciliation',
-          version: 2,
-          users: [
-            {
-              id: account.session.userId,
-              email: 'still-serving@example.test',
-              emailVerified: true,
-              publisher: 'active',
-              publisherId: account.publisher.id,
-              operator: false,
-            },
-          ],
-          entries: [],
-        },
+        reconciliation,
       }),
     ).rejects.toThrow('REGISTRY_RECOVERY_QUARANTINE_REQUIRED');
     expect(
@@ -729,3 +773,86 @@ it('refuses recovery while an enrolled runtime can still reconnect', async () =>
     await fixture.dispose();
   }
 });
+
+it.each([
+  ['blocked', true],
+  ['deleted', true],
+  ['withdrawn', true],
+  ['blocked', false],
+  ['deleted', false],
+  ['withdrawn', false],
+] as const)(
+  'requires current %s moderation state during recovery (older backup: %s)',
+  async (state, olderBackup) => {
+    const installation = await createRegistryInstallation();
+    const fixture = await createRegistryFixture({}, installation);
+    try {
+      const migrations = await readMigrations(
+        fileURLToPath(new URL('../migrations', import.meta.url)),
+        'Template Registry',
+      );
+      await registryMigrator.migrate(
+        fixture.owner,
+        migrations,
+        REGISTRY_SCHEMA_FINGERPRINT,
+        installation.allowedLogins,
+      );
+      const account = await fixture.account('safety@example.test');
+      const published = await fixture.published(
+        account.token,
+        'Safety transition',
+      );
+      const root = published.artifact.manifest.merkle_root;
+      if (state === 'withdrawn') {
+        await fixture.owner.query(
+          'UPDATE registry_entries SET yanked_at=now() WHERE id=$1',
+          [published.entry.id],
+        );
+      } else {
+        await fixture.owner.query(
+          'UPDATE registry_artifacts SET blocked_at=now(),deleted_at=CASE WHEN $2 THEN now() ELSE NULL END WHERE root=$1',
+          [root, state === 'deleted'],
+        );
+      }
+      // Capture reviewed current facts, then simulate an older intact DB+object backup.
+      const reconciliation = await registryRecoveryEvidence(fixture.owner);
+      if (olderBackup) {
+        await fixture.owner.query(
+          'UPDATE registry_entries SET yanked_at=NULL WHERE id=$1',
+          [published.entry.id],
+        );
+        await fixture.owner.query(
+          'UPDATE registry_artifacts SET blocked_at=NULL,deleted_at=NULL WHERE root=$1',
+          [root],
+        );
+      }
+      await installation.closeRuntimePools();
+      await installation.withAdministrator((administrator) =>
+        administrator.query(
+          `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN; ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
+        ),
+      );
+      const recovery = reconcileRegistryRecovery({
+        pool: fixture.owner,
+        backupPool: installation.backupPool,
+        blobs: fixture.blobs,
+        admission: { allowedLogins: installation.allowedLogins },
+        reconciliation,
+      });
+      if (olderBackup)
+        await expect(recovery).rejects.toThrow(
+          'REGISTRY_RECOVERY_RECONCILIATION_MISMATCH',
+        );
+      else await expect(recovery).resolves.toBeUndefined();
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT count(*)::int AS count FROM registry_credentials WHERE revoked_at IS NULL',
+          )
+        ).rows,
+      ).toEqual([{ count: olderBackup ? 1 : 0 }]);
+    } finally {
+      await fixture.dispose();
+    }
+  },
+);

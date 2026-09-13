@@ -1,25 +1,43 @@
 import { z } from 'zod';
 
-import { OrcidSchema } from '@codaco/studio-sync/template-metadata';
-import { RegistryPublisherSchema } from '@codaco/studio-sync/template-registry-contract';
+import {
+  OrcidSchema,
+  StrictUuidSchema,
+} from '@codaco/studio-sync/template-metadata';
+import {
+  RegistryPublisherNameSchema,
+  RegistryPublisherSchema,
+} from '@codaco/studio-sync/template-registry-contract';
 
-const nonblank = z
-  .string()
-  .min(1)
-  .max(200)
-  .refine(
-    (value) =>
-      value.trim().length > 0 && value.isWellFormed() && !value.includes('\0'),
-  );
+import { paginatedPageSchema } from './pagination.ts';
+
+const boundedNonblank = (maximum: number) =>
+  z
+    .string()
+    .min(1)
+    .refine(
+      (value) =>
+        Array.from(value).length <= maximum &&
+        value.trim().length > 0 &&
+        value.isWellFormed() &&
+        !value.includes('\0'),
+      {
+        message: `Must be a nonblank string of at most ${maximum} Unicode code points`,
+      },
+    )
+    .meta({
+      maxLength: maximum,
+      pattern: '^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])',
+    });
 const stamp = z.iso.datetime();
 export const PublisherSchema = RegistryPublisherSchema;
 export const ClaimPublisherSchema = z.strictObject({
-  name: nonblank,
+  name: RegistryPublisherNameSchema,
   orcid: OrcidSchema.optional(),
 });
 const TokenScopeSchema = z.enum(['publish', 'moderate']);
 export const CreateTokenSchema = z.strictObject({
-  name: z.string().min(1).max(100),
+  name: boundedNonblank(100),
   scopes: z
     .array(TokenScopeSchema)
     .min(1)
@@ -28,12 +46,12 @@ export const CreateTokenSchema = z.strictObject({
   lifetime_days: z.number().int().min(1).max(365).default(90),
 });
 export const TokenDescriptionSchema = z.strictObject({
-  id: z.uuid(),
-  name: z.string(),
-  scopes: z.array(TokenScopeSchema),
+  id: StrictUuidSchema,
+  name: CreateTokenSchema.shape.name,
+  scopes: z.array(TokenScopeSchema).min(1).max(2),
   created_at: stamp,
   expires_at: stamp,
-  revoked_at: stamp.nullable(),
+  revoked_at: z.null(),
 });
 export const ReportSchema = z.strictObject({
   category: z.enum([
@@ -43,16 +61,7 @@ export const ReportSchema = z.strictObject({
     'spam',
     'other',
   ]),
-  details: z
-    .string()
-    .min(1)
-    .max(2000)
-    .refine(
-      (value) =>
-        value.trim().length > 0 &&
-        value.isWellFormed() &&
-        !value.includes('\0'),
-    ),
+  details: boundedNonblank(2000),
 });
 export type RegistryReport = z.infer<typeof ReportSchema>;
 
@@ -85,16 +94,13 @@ export const AccountSchema = z.strictObject({
   operator: z.boolean(),
 });
 
-export const ReportsPageSchema = z.strictObject({
-  data: z.array(
-    z.strictObject({
-      id: z.uuid(),
-      entry_id: z.uuid(),
-      category: ReportSchema.shape.category,
-      details: z.string().nullable(),
-      created_at: stamp,
-    }),
-  ),
-  next_cursor: ReportCursorSchema.nullable(),
-  has_more: z.boolean(),
-});
+export const ReportsPageSchema = paginatedPageSchema(
+  z.strictObject({
+    id: StrictUuidSchema,
+    entry_id: StrictUuidSchema,
+    category: ReportSchema.shape.category,
+    details: ReportSchema.shape.details.nullable(),
+    created_at: stamp,
+  }),
+  ReportCursorSchema,
+);

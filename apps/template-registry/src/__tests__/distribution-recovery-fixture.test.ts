@@ -4,10 +4,13 @@ import recoveryFixture from '../../../studio/server/qualification/combined-recov
 import {
   createRegistryRecoveryArtifact,
   emptyRegistryRecoveryReconciliation,
-  registryRecoveryReconciliation,
+  createRegistryRecoveryReconciliation,
   seedRegistryRecoveryFixture,
 } from '../../../studio/server/qualification/registry-recovery-fixture.ts';
-import { copyRegistryRecoveryReconciliation } from '../recovery-reconciliation.ts';
+import {
+  copyRegistryRecoveryReconciliation,
+  createRegistryRecoveryInventory,
+} from '../recovery-reconciliation.ts';
 import { createRegistryFixture, type RegistryFixture } from './fixtures.ts';
 
 it('builds the actual populated recovery artifact through the exchange admission checks', async () => {
@@ -33,22 +36,75 @@ describe('Registry distribution recovery fixture', () => {
   });
 
   it('seeds the real migrated database with independently approved user and entry ownership', async () => {
-    await seedRegistryRecoveryFixture(
-      fixture.owner,
-      await createRegistryRecoveryArtifact(),
+    const artifact = await createRegistryRecoveryArtifact();
+    const approved = createRegistryRecoveryReconciliation(
+      artifact.artifact.manifest.merkle_root,
     );
-    const users = await fixture.owner
-      .query(`SELECT u.id,u.email,u.email_verified AS "emailVerified",
-      p.id AS "publisherId", 'active' AS publisher, false AS operator
-      FROM registry_auth_user u JOIN registry_publishers p ON p.user_id=u.id`);
+    await seedRegistryRecoveryFixture(fixture.owner, artifact);
+    const users = await fixture.owner.query(
+      `SELECT id,email,email_verified AS "emailVerified" FROM registry_auth_user ORDER BY id COLLATE "C"`,
+    );
+    const publishers = await fixture.owner.query(
+      `SELECT id,user_id AS "userId",suspended_at IS NOT NULL AS suspended FROM registry_publishers ORDER BY id`,
+    );
     const entries = await fixture.owner.query(
-      `SELECT id,publisher_id AS "publisherId" FROM registry_entries`,
+      `SELECT id,publisher_id AS "publisherId",artifact_root AS "artifactRoot",yanked_at IS NOT NULL AS yanked FROM registry_entries ORDER BY id`,
     );
-    expect(users.rows).toEqual(registryRecoveryReconciliation.users);
-    expect(entries.rows).toEqual(registryRecoveryReconciliation.entries);
+    expect(users.rows).toEqual([
+      {
+        id: recoveryFixture.registry.userId,
+        email: recoveryFixture.registry.email,
+        emailVerified: true,
+      },
+    ]);
+    expect(publishers.rows).toEqual([
+      {
+        id: recoveryFixture.registry.publisherId,
+        userId: recoveryFixture.registry.userId,
+        suspended: false,
+      },
+    ]);
+    expect(entries.rows).toEqual([
+      {
+        id: recoveryFixture.registry.entryId,
+        publisherId: recoveryFixture.registry.publisherId,
+        artifactRoot: artifact.artifact.manifest.merkle_root,
+        yanked: false,
+      },
+    ]);
+    const operators = await fixture.owner.query(
+      `SELECT user_id AS "userId" FROM registry_operators WHERE enabled ORDER BY user_id COLLATE "C"`,
+    );
+    expect(operators.rows).toEqual([]);
+    const artifacts = await fixture.owner.query<{
+      root: string;
+      blocked: boolean;
+      deleted: boolean;
+    }>(
+      'SELECT root,blocked_at IS NOT NULL AS blocked,deleted_at IS NOT NULL AS deleted FROM registry_artifacts ORDER BY root',
+    );
+    expect(artifacts.rows).toEqual([
+      {
+        root: artifact.artifact.manifest.merkle_root,
+        blocked: false,
+        deleted: false,
+      },
+    ]);
+    expect(approved.inventories).toEqual({
+      users: createRegistryRecoveryInventory('users', users.rows),
+      publishers: createRegistryRecoveryInventory(
+        'publishers',
+        publishers.rows,
+      ),
+      operators: createRegistryRecoveryInventory('operators', operators.rows),
+      artifacts: createRegistryRecoveryInventory('artifacts', artifacts.rows),
+      entries: createRegistryRecoveryInventory('entries', entries.rows),
+    });
+    expect(copyRegistryRecoveryReconciliation(approved)).toEqual(approved);
     expect(
-      copyRegistryRecoveryReconciliation(registryRecoveryReconciliation),
-    ).toEqual(registryRecoveryReconciliation);
+      createRegistryRecoveryReconciliation('f'.repeat(64)).inventories.entries
+        .sha256,
+    ).not.toEqual(approved.inventories.entries.sha256);
     expect(
       copyRegistryRecoveryReconciliation(emptyRegistryRecoveryReconciliation),
     ).toEqual(emptyRegistryRecoveryReconciliation);

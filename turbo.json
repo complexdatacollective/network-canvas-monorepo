@@ -661,11 +661,28 @@
       ],
       "outputs": []
     },
+    "@codaco/template-registry#test": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "migrations/**",
+        "spec/**",
+        "vitest*.config.*",
+        "vitest.setup.*",
+        "package.json",
+        ".env",
+        ".env.development",
+        "$TURBO_ROOT$/apps/studio/server/qualification/**"
+      ],
+      "outputs": []
+    },
     "@codaco/studio-server#test": {
       "dependsOn": ["^topo"],
       "inputs": [
         "src/**",
         "scripts/**",
+        "migrations/**",
         "vitest.config.*",
         "package.json",
         ".env",

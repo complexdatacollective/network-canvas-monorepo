@@ -5,5 +5,5 @@ ARG STUDIO_CANDIDATE_IMAGE
 FROM ${STUDIO_CANDIDATE_IMAGE}
 USER root
 RUN apt-get update \
-  && apt-get install --yes --no-install-recommends conntrack \
+  && apt-get install --yes --no-install-recommends conntrack tcpdump \
   && rm -rf /var/lib/apt/lists/*

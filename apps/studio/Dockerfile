@@ -38,6 +38,7 @@ COPY --from=pruner /repo/out/full/ .
 # stage so the client and server Vite configurations resolve the same plugins.
 COPY --from=pruner /repo/apps/studio/scripts/telemetry-plugins.ts ./apps/studio/scripts/telemetry-plugins.ts
 COPY --from=pruner /repo/scripts/build/posthog-source-maps-plugin.ts ./scripts/build/posthog-source-maps-plugin.ts
+COPY --from=pruner /repo/scripts/build/posthog-source-maps-offline.ts ./scripts/build/posthog-source-maps-offline.ts
 # The configure entrypoint embeds this installer contract, also outside the
 # package roots selected by prune.
 COPY --from=pruner /repo/apps/studio/deployment/installer/configuration-files.json ./apps/studio/deployment/installer/configuration-files.json

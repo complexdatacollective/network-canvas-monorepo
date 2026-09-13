@@ -1,0 +1,50 @@
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { join } from 'node:path';
+
+import {
+  createChunkId,
+  createChunkIdComment,
+  createChunkIdSnippet,
+} from '@posthog/plugin-utils';
+
+/** Register provider-compatible compiled identities locally and remove private maps. */
+const collectSourceMaps = (directory: string): string[] =>
+  readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) return collectSourceMaps(path);
+    // Node/Netlify entrypoints may emit .mjs or .cjs alongside browser .js.
+    return /\.[cm]?js\.map$/.test(entry.name) ? [path] : [];
+  });
+export function processPostHogSourceMapsOffline(
+  outputDirectory: string,
+): number {
+  const sourceMapPaths = collectSourceMaps(outputDirectory);
+
+  if (sourceMapPaths.length === 0) {
+    throw new Error(`Expected at least one source map in ${outputDirectory}.`);
+  }
+
+  for (const sourceMapPath of sourceMapPaths) {
+    const chunkPath = sourceMapPath.slice(0, -'.map'.length);
+    if (!existsSync(chunkPath)) {
+      throw new Error(`Expected JavaScript chunk ${chunkPath} to exist.`);
+    }
+    // Use the installed provider utility, whose runtime snippet is byte-for-byte
+    // compatible with the CLI. No binary download, credentials or upload occur.
+    // Appending preserves shebangs and directive prologues in worker/CJS output.
+    const chunkId = createChunkId();
+    writeFileSync(
+      chunkPath,
+      `${readFileSync(chunkPath, 'utf8')}\n${createChunkIdSnippet(chunkId)}${createChunkIdComment(chunkId)}\n`,
+    );
+    rmSync(sourceMapPath);
+  }
+
+  return sourceMapPaths.length;
+}
