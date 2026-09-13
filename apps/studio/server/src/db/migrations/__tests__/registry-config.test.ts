@@ -125,6 +125,7 @@ async function createDeployment(db: DbEnv, roles: RegistryRoles) {
   };
   const allowedLogins = Object.values(logins);
   const pools: Pool[] = [];
+  const disconnected: Promise<void>[] = [];
   const connect = (login: string, options?: string) => {
     const target = new URL(url);
     target.username = login;
@@ -134,6 +135,11 @@ async function createDeployment(db: DbEnv, roles: RegistryRoles) {
       connectionString: target.href,
       connectionTimeoutMillis: 1500,
     });
+    pool.on('connect', (client) => {
+      disconnected.push(
+        new Promise<void>((resolve) => client.once('end', resolve)),
+      );
+    });
     pools.push(pool);
     return pool;
   };
@@ -141,6 +147,10 @@ async function createDeployment(db: DbEnv, roles: RegistryRoles) {
     await Promise.all(
       pools.filter((pool) => !pool.ended).map((pool) => pool.end()),
     );
+    // pg-pool removes a client from its bookkeeping before its socket has
+    // closed. Pool.end() can therefore resolve before PostgreSQL sees the
+    // disconnect; forcing the database drop then emits an unhandled 57P01.
+    await Promise.all(disconnected);
     await scratch.dispose();
     await administrator.query(
       `DROP ROLE IF EXISTS ${allowedLogins.map(escapeIdentifier).join(', ')}`,

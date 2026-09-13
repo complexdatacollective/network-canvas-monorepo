@@ -3,6 +3,7 @@ import { execFile, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
 import { chmod, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { isAbsolute, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
@@ -20,6 +21,24 @@ import {
 
 const execute = promisify(execFile);
 const DEADLINE = 30_000;
+
+// Match Playwright's default headless executable. chromium.executablePath()
+// selects full Chrome for Testing, whose browser-owned time/component services
+// emit network requests even with Playwright's default background flags.
+// Resolve through our installed Playwright dependency and its pinned registry;
+// never guess a cache layout or silently fall back to a different browser.
+const playwrightRequire = createRequire(import.meta.resolve('playwright'));
+const {
+  registry: { registry: browserRegistry },
+} = playwrightRequire('playwright-core/lib/coreBundle');
+export function kernelHeadlessExecutablePath() {
+  const executable = browserRegistry.findExecutable('chromium-headless-shell');
+  assert(
+    executable,
+    'Installed Playwright does not expose Chromium Headless Shell.',
+  );
+  return executable.executablePathOrDie('javascript');
+}
 
 function environmentAssignment(name, value) {
   assert(value && !value.includes('\0'), `${name} is required.`);
@@ -137,6 +156,28 @@ async function waitForObserver(name) {
   );
 }
 
+export async function emitKernelBrowserUdpControl({ address, port }) {
+  const connection = new RTCPeerConnection({
+    // A relay-only TURN probe emits the deliberate UDP control without
+    // gathering host candidates and advertising their mDNS names.
+    iceTransportPolicy: 'relay',
+    iceServers: [
+      {
+        urls: `turn:${address}:${port}?transport=udp`,
+        username: 'qualification-control',
+        credential: 'synthetic-control',
+      },
+    ],
+  });
+  try {
+    connection.createDataChannel('kernel-control');
+    await connection.setLocalDescription(await connection.createOffer());
+    await new Promise((resolve) => setTimeout(resolve, 750));
+  } finally {
+    connection.close();
+  }
+}
+
 export async function launchKernelObservedChromium({
   image,
   observerImage,
@@ -247,6 +288,10 @@ export async function launchKernelObservedChromium({
       'NET_ADMIN',
       '--cap-add',
       'NET_RAW',
+      '--cap-add',
+      'SETUID',
+      '--cap-add',
+      'SETGID',
       '--env',
       `STUDIO_QUALIFICATION_KERNEL_ENDPOINTS=${endpoints}`,
       '--entrypoint',
@@ -278,7 +323,7 @@ export async function launchKernelObservedChromium({
         namespacePid,
         browserUid,
         browserGid,
-        executablePath: chromium.executablePath(),
+        executablePath: kernelHeadlessExecutablePath(),
       }),
       { mode: 0o700 },
     );
@@ -292,7 +337,7 @@ export async function launchKernelObservedChromium({
       observer,
       'sh',
       '-c',
-      'timeout 30 tcpdump -Z root -i lo -nn -l -s 256 -c 32 port 53 > /tmp/browser-dns.log 2>&1',
+      'timeout 30 tcpdump -i lo -nn -l -s 256 -c 32 port 53 > /tmp/browser-dns.log 2>&1',
     ]);
     for (let attempt = 0; attempt < 50; attempt++) {
       const diagnostic = await docker([
@@ -335,21 +380,10 @@ export async function launchKernelObservedChromium({
     await control
       .goto(`http://${detectorIp}:8443/`, { waitUntil: 'commit' })
       .catch(() => {});
-    await control.evaluate(
-      async ({ address, port }) => {
-        const connection = new RTCPeerConnection({
-          iceServers: [{ urls: `stun:${address}:${port}` }],
-        });
-        try {
-          connection.createDataChannel('kernel-control');
-          await connection.setLocalDescription(await connection.createOffer());
-          await new Promise((resolve) => setTimeout(resolve, 750));
-        } finally {
-          connection.close();
-        }
-      },
-      { address: detectorIp, port: 8443 },
-    );
+    await control.evaluate(emitKernelBrowserUdpControl, {
+      address: detectorIp,
+      port: 8443,
+    });
     await control.close();
     await assertBaseline('after controls, before Studio');
     return {
@@ -430,7 +464,16 @@ export async function launchKernelObservedChromium({
         await page.evaluate(
           async ({ address, port }) => {
             const connection = new RTCPeerConnection({
-              iceServers: [{ urls: `stun:${address}:${port}` }],
+              // A relay-only TURN probe emits the deliberate UDP control without
+              // gathering host candidates and advertising their mDNS names.
+              iceTransportPolicy: 'relay',
+              iceServers: [
+                {
+                  urls: `turn:${address}:${port}?transport=udp`,
+                  username: 'qualification-control',
+                  credential: 'synthetic-control',
+                },
+              ],
             });
             try {
               connection.createDataChannel('kernel-egress-control');
