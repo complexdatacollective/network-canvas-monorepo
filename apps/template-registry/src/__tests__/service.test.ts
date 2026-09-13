@@ -1217,27 +1217,33 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     ).toBe(200);
   });
 
-  it('prevents an operator from suspending their own publisher', async () => {
-    const operator = await fixture.account('operator-self@example.test', true);
-    await problem(
-      await fixture.request(
-        'PUT',
-        `/moderation/publishers/${operator.publisher.id}/suspension`,
-        { suspended: true },
-        operator.bearer,
-      ),
-      409,
-      'CONFLICT',
-    );
-    expect(
-      (
-        await fixture.owner.query(
-          'SELECT suspended_at FROM registry_publishers WHERE id = $1',
-          [operator.publisher.id],
-        )
-      ).rows,
-    ).toEqual([{ suspended_at: null }]);
-  });
+  it.each(['canonical', 'uppercase'])(
+    'prevents an operator from suspending their own publisher (%s)',
+    async (spelling) => {
+      const operator = await fixture.account(
+        'operator-self@example.test',
+        true,
+      );
+      await problem(
+        await fixture.request(
+          'PUT',
+          `/moderation/publishers/${spelling === 'uppercase' ? operator.publisher.id.toUpperCase() : operator.publisher.id}/suspension`,
+          { suspended: true },
+          operator.bearer,
+        ),
+        409,
+        'CONFLICT',
+      );
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT suspended_at FROM registry_publishers WHERE id = $1',
+            [operator.publisher.id],
+          )
+        ).rows,
+      ).toEqual([{ suspended_at: null }]);
+    },
+  );
 
   it('caps auth bodies before calling the mail provider even when Content-Length is omitted', async () => {
     let canceled = false;

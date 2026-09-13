@@ -825,14 +825,16 @@ export class RegistryStore {
     requestId: string,
   ): Promise<void> {
     await this.#moderate(credential, async (client, actor) => {
-      const current = await client.query<{ suspended_at: Date | null }>(
-        'SELECT suspended_at FROM registry_publishers WHERE id = $1',
-        [id],
-      );
+      const current = await client.query<{
+        id: string;
+        suspended_at: Date | null;
+      }>('SELECT id, suspended_at FROM registry_publishers WHERE id = $1', [
+        id,
+      ]);
       const publisher = current.rows[0];
       if (!publisher) throw new RegistryError('NOT_FOUND');
       if ((publisher.suspended_at !== null) === suspended) return;
-      if (suspended && actor.kind === 'operator' && actor.id === id)
+      if (suspended && actor.kind === 'operator' && actor.id === publisher.id)
         throw new RegistryError('CONFLICT');
       const result = await client.query(
         `UPDATE registry_publishers SET suspended_at = ${suspended ? 'statement_timestamp()' : 'NULL'} WHERE id = $1 RETURNING id`,
