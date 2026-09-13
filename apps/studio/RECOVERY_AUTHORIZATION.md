@@ -10,6 +10,38 @@ separate owner and backup connections in `STUDIO_RECOVERY_DATABASE_URL` and
 artifact through `STUDIO_RECOVERY_RECONCILIATION_PATH` and its independently
 recorded SHA-256 through `STUDIO_RECOVERY_RECONCILIATION_SHA256`.
 
+For a production image, keep the restored database under the quarantine
+overlay and run the bundled commands through the normal image entrypoint. Put
+the command environment in an operator-owned mode-0600 file outside the Studio
+checkout. It must contain the two recovery database URLs, the explicit allowed
+and administrative login lists, the digest, and this container path:
+
+```dotenv
+STUDIO_RECOVERY_DATABASE_URL=postgresql://studio_migrator:...@postgres:5432/studio
+STUDIO_RECOVERY_BACKUP_DATABASE_URL=postgresql://studio_backup_login:...@postgres:5432/studio
+STUDIO_DATABASE_ALLOWED_LOGINS=["studio_migrator","studio_runtime","studio_maintenance_runtime","studio_backup_login"]
+STUDIO_DATABASE_ADMINISTRATIVE_LOGINS=["studio_migrator"]
+STUDIO_RECOVERY_RECONCILIATION_PATH=/recovery-evidence/reconciliation.json
+STUDIO_RECOVERY_RECONCILIATION_SHA256=<independently-recorded-lowercase-sha256>
+```
+
+Mount the private evidence directory read-only. From `apps/studio`, with the
+quarantined PostgreSQL service already running, invoke the exact image digest
+recorded by `STUDIO_IMAGE`:
+
+```sh
+RECOVERY_ENV=/absolute/private/recovery-command.env
+RECOVERY_EVIDENCE_DIR=/absolute/private/recovery-evidence
+docker compose -f docker-compose.yml -f deployment/quarantine.yml run \
+  --rm --no-deps --env-from-file "$RECOVERY_ENV" \
+  -v "$RECOVERY_EVIDENCE_DIR:/recovery-evidence:ro" \
+  studio recovery:reconcile-authorization \
+  > "$RECOVERY_EVIDENCE_DIR/reconciliation-receipt.json"
+```
+
+The receipt is the command's only stdout record; bounded operational
+diagnostics remain on stderr. Preserve the receipt before continuing.
+
 The strict version 1 artifact has a validity window no longer than 24 hours. It
 binds the immutable initial Studio instance tuple and exhaustively inventories
 current users, login accounts, teams, memberships, study grants, active
@@ -41,6 +73,18 @@ connections, artifact, and digest plus:
 - `STUDIO_RECOVERY_AUTHORITY_KEY_ID`
 - `STUDIO_RECOVERY_AUTHORITY_PUBLIC_KEY`
 - `STUDIO_RECOVERY_RECONCILIATION_SIGNATURE`
+
+Add those three values to the same private command environment file, replace
+`reconciliation.json` with the newly signed current-authority artifact, update
+its independently recorded digest, and run the second bundled entrypoint:
+
+```sh
+docker compose -f docker-compose.yml -f deployment/quarantine.yml run \
+  --rm --no-deps --env-from-file "$RECOVERY_ENV" \
+  -v "$RECOVERY_EVIDENCE_DIR:/recovery-evidence:ro" \
+  studio recovery:authorize-current \
+  > "$RECOVERY_EVIDENCE_DIR/current-authorization-receipt.json"
+```
 
 Signature verification happens before any database connection. The transaction
 then requires the exact current inventory, prior credential and delivery

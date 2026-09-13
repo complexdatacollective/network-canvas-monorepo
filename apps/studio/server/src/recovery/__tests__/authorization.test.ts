@@ -427,6 +427,149 @@ afterAll(async () => {
 });
 
 describe.skipIf(!database)('Studio recovery authorization', () => {
+  it.each(['reconcile', 'authorize'] as const)(
+    'rechecks recovery evidence freshness directly before %s commit',
+    async (operation) => {
+      const f = requireFixture();
+      const evidence = await currentEvidence();
+      if (operation === 'authorize') await run(evidence);
+      const verified = signEvidence(evidence);
+      await f.administrator.query(
+        `ALTER ROLE ${pg.escapeIdentifier(f.ownerLogin)} LOGIN`,
+      );
+      const owner = createOwnerPool(f.target);
+      let freshnessChecks = 0;
+      const interceptedPool = {
+        connect: async () => {
+          const client = await owner.connect();
+          const query = client.query.bind(client) as (
+            text: string,
+            values?: unknown[],
+          ) => Promise<pg.QueryResult>;
+          return new Proxy(client, {
+            get(target, property) {
+              if (property === 'query')
+                return async (text: string, values?: unknown[]) => {
+                  const result = await query(text, values);
+                  if (text.includes('statement_timestamp() >= $1')) {
+                    freshnessChecks += 1;
+                    if (freshnessChecks === 3)
+                      return {
+                        ...result,
+                        rowCount: 1,
+                        rows: [{ current: false }],
+                      };
+                  }
+                  return result;
+                };
+              const value = Reflect.get(target, property);
+              return typeof value === 'function' ? value.bind(target) : value;
+            },
+          });
+        },
+      } as unknown as pg.Pool;
+      try {
+        const result =
+          operation === 'reconcile'
+            ? reconcileStudioRecoveryAuthorization({
+                pool: interceptedPool,
+                backupPool: f.backup,
+                policy: {
+                  allowedLogins: f.allowedLogins,
+                  administrativeLogins: [f.ownerLogin],
+                },
+                reconciliation: evidence,
+                reconciliationSha256: 'a'.repeat(64),
+              })
+            : authorizeCurrentStudioRecovery({
+                pool: interceptedPool,
+                backupPool: f.backup,
+                policy: {
+                  allowedLogins: f.allowedLogins,
+                  administrativeLogins: [f.ownerLogin],
+                },
+                evidence: verified,
+              });
+        await expect(result).rejects.toThrow(FAILURE);
+        expect(freshnessChecks).toBe(3);
+      } finally {
+        await owner.end();
+        await closeWriters();
+      }
+    },
+  );
+
+  it('invalidates a writer commit completed before the first locked snapshot', async () => {
+    const f = requireFixture();
+    const evidence = await currentEvidence();
+    await f.administrator.query(
+      `ALTER ROLE ${pg.escapeIdentifier(f.ownerLogin)} LOGIN`,
+    );
+    const owner = createOwnerPool(f.target);
+    let committedWriter = false;
+    const interceptedPool = {
+      connect: async () => {
+        const client = await owner.connect();
+        const query = client.query.bind(client) as (
+          text: string,
+          values?: unknown[],
+        ) => Promise<pg.QueryResult>;
+        return new Proxy(client, {
+          get(target, property) {
+            if (property === 'query')
+              return async (text: string, values?: unknown[]) => {
+                const result = await query(text, values);
+                if (
+                  !committedWriter &&
+                  text.includes('pg_catalog.pg_database')
+                ) {
+                  committedWriter = true;
+                  await withTargetAdministrator((writer) =>
+                    writer.query(
+                      `INSERT INTO verification
+                         (id, identifier, value, "expiresAt")
+                       VALUES ('transient-writer-proof', 'current@example.com',
+                         'late-secret', now() + interval '5 minutes')`,
+                    ),
+                  );
+                }
+                return result;
+              };
+            const value = Reflect.get(target, property);
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        });
+      },
+    } as unknown as pg.Pool;
+    try {
+      await expect(
+        reconcileStudioRecoveryAuthorization({
+          pool: interceptedPool,
+          backupPool: f.backup,
+          policy: {
+            allowedLogins: f.allowedLogins,
+            administrativeLogins: [f.ownerLogin],
+          },
+          reconciliation: evidence,
+          reconciliationSha256: 'a'.repeat(64),
+        }),
+      ).resolves.toMatchObject({
+        format: 'studio-recovery-authorization-receipt',
+      });
+      expect(committedWriter).toBe(true);
+    } finally {
+      await owner.end();
+      await closeWriters();
+    }
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          "SELECT count(*)::int AS count FROM verification WHERE id = 'transient-writer-proof'",
+        ),
+      ).resolves.toHaveProperty('rows', [{ count: 0 }]);
+    });
+  });
+
   it('enables only signed current identities and is idempotent under quarantine', async () => {
     const evidence = await currentEvidence();
     await run(evidence);

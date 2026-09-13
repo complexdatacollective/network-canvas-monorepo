@@ -194,7 +194,11 @@ function tenantBoundaryAccesses(source: string): TenantBoundaryAccess[] {
     if (token === undefined) continue;
     const name = tokenName(token);
 
-    if (tokens[index - 1]?.raw === '.' && name === 'transaction') {
+    if (
+      tokens[index - 1]?.raw === '.' &&
+      name === 'transaction' &&
+      tokenName(tokens[index - 2]) !== 'options'
+    ) {
       const argumentIndex = callArgumentIndex(tokens, index);
       record(token, {
         member: 'transaction',
@@ -451,6 +455,9 @@ describe('audit mutation policy', () => {
     expect(tenantBoundaryAccesses('tenant.query(`SELECT 1`)')).toEqual([]);
     expect(
       tenantBoundaryAccesses('client.query(`UPDATE leases SET owner = $1`)'),
+    ).toEqual([]);
+    expect(
+      tenantBoundaryAccesses('const expected = options.transaction'),
     ).toEqual([]);
   });
 

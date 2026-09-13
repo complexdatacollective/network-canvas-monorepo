@@ -8,12 +8,13 @@ import {
   readMigrationAllowedLogins,
   readRecoveryAuthorizationEnv,
 } from './env.ts';
-import { logOperational } from './observability/logger.ts';
+import { createOperationalLogger } from './observability/logger.ts';
 import { readStudioRecoveryAuthorizationReconciliation } from './recovery/authorization-reconciliation.ts';
 import { reconcileStudioRecoveryAuthorization } from './recovery/authorization.ts';
 
 let pool: pg.Pool | undefined;
 let backupPool: pg.Pool | undefined;
+const logger = createOperationalLogger(process.stderr);
 try {
   if (process.argv.length !== 2) throw new Error();
   const configuration = readRecoveryAuthorizationEnv();
@@ -26,14 +27,16 @@ try {
   pool = createPostgresPool({
     connectionString: configuration.database.url,
     max: 1,
-    onIdleError: () => logOperational('STUDIO_RECOVERY_AUTHORIZATION_FAILED'),
+    onIdleError: () =>
+      logger.diagnostic('STUDIO_RECOVERY_AUTHORIZATION_FAILED'),
     roleMismatchCode: 'STUDIO_DATABASE_ROLE_MISMATCH',
   });
   backupPool = createPostgresPool({
     connectionString: configuration.backupDatabase.url,
     role: BACKUP_ROLE,
     max: 1,
-    onIdleError: () => logOperational('STUDIO_RECOVERY_AUTHORIZATION_FAILED'),
+    onIdleError: () =>
+      logger.diagnostic('STUDIO_RECOVERY_AUTHORIZATION_FAILED'),
     roleMismatchCode: 'STUDIO_DATABASE_ROLE_MISMATCH',
   });
   const receipt = await reconcileStudioRecoveryAuthorization({
@@ -44,9 +47,9 @@ try {
     reconciliationSha256: evidence.sha256,
   });
   process.stdout.write(`${JSON.stringify(receipt)}\n`);
-  logOperational('STUDIO_RECOVERY_AUTHORIZATION_RECONCILED');
+  logger.diagnostic('STUDIO_RECOVERY_AUTHORIZATION_RECONCILED');
 } catch {
-  logOperational('STUDIO_RECOVERY_AUTHORIZATION_FAILED');
+  logger.diagnostic('STUDIO_RECOVERY_AUTHORIZATION_FAILED');
   process.exitCode = 1;
 } finally {
   await Promise.all([
