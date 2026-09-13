@@ -245,6 +245,8 @@ export async function launchKernelObservedChromium({
       'ALL',
       '--cap-add',
       'NET_ADMIN',
+      '--cap-add',
+      'NET_RAW',
       '--env',
       `STUDIO_QUALIFICATION_KERNEL_ENDPOINTS=${endpoints}`,
       '--entrypoint',
@@ -281,10 +283,54 @@ export async function launchKernelObservedChromium({
       { mode: 0o700 },
     );
     await chmod(wrapper, 0o700);
+    // Capture only this disposable namespace's synthetic DNS traffic. Keep the
+    // ordinary conntrack verdict authoritative; these bounded diagnostics do
+    // not exempt a resolver or change any browser networking behavior.
+    await docker([
+      'exec',
+      '--detach',
+      observer,
+      'sh',
+      '-c',
+      'timeout 30 tcpdump -i lo -nn -l -s 256 -c 32 port 53 > /tmp/browser-dns.log 2>&1',
+    ]);
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const diagnostic = await docker([
+        'exec',
+        observer,
+        'cat',
+        '/tmp/browser-dns.log',
+      ]);
+      if (diagnostic.includes('listening on lo')) break;
+      if (attempt === 49)
+        throw new Error(
+          `Browser DNS diagnostic did not start: ${diagnostic.slice(-4096)}`,
+        );
+      await delay(100);
+    }
+    const assertBaseline = async (phase) => {
+      const logs = await waitForObserver(observer);
+      try {
+        assertNoKernelTelemetryEgress(logs);
+      } catch (error) {
+        const diagnostic = await docker([
+          'exec',
+          observer,
+          'cat',
+          '/tmp/browser-dns.log',
+        ]);
+        throw new Error(
+          `Kernel browser baseline emitted unexpected traffic ${phase}. DNS diagnostic: ${diagnostic.slice(-4096)}`,
+          { cause: error },
+        );
+      }
+    };
     const browser = await chromium.launch({
       executablePath: wrapper,
       headless: true,
     });
+    await delay(500);
+    await assertBaseline('after Chromium launch, before controls or Studio');
     const control = await browser.newPage();
     await control
       .goto(`http://${detectorIp}:8443/`, { waitUntil: 'commit' })
@@ -305,15 +351,7 @@ export async function launchKernelObservedChromium({
       { address: detectorIp, port: 8443 },
     );
     await control.close();
-    const baselineLogs = await waitForObserver(observer);
-    try {
-      assertNoKernelTelemetryEgress(baselineLogs);
-    } catch (error) {
-      throw new Error(
-        'Kernel browser baseline emitted unexpected traffic before Studio started.',
-        { cause: error },
-      );
-    }
+    await assertBaseline('after controls, before Studio');
     return {
       browser,
       origin: (port) => `http://127.0.0.1:${port}`,
