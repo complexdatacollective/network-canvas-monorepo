@@ -38,11 +38,15 @@ export function createRegistryRecoveryReconciliation(
         },
       ]),
       operators: createRegistryRecoveryInventory('operators', []),
+      artifacts: createRegistryRecoveryInventory('artifacts', [
+        { root: artifactRoot, blocked: false, deleted: false },
+      ]),
       entries: createRegistryRecoveryInventory('entries', [
         {
           id: recoveryFixture.registry.entryId,
           publisherId: recoveryFixture.registry.publisherId,
           artifactRoot,
+          yanked: false,
         },
       ]),
     },
@@ -56,6 +60,7 @@ export const emptyRegistryRecoveryReconciliation = {
     users: createRegistryRecoveryInventory('users', []),
     publishers: createRegistryRecoveryInventory('publishers', []),
     operators: createRegistryRecoveryInventory('operators', []),
+    artifacts: createRegistryRecoveryInventory('artifacts', []),
     entries: createRegistryRecoveryInventory('entries', []),
   },
 } satisfies RegistryRecoveryReconciliation;

@@ -48,7 +48,7 @@ describe('Registry distribution recovery fixture', () => {
       `SELECT id,user_id AS "userId",suspended_at IS NOT NULL AS suspended FROM registry_publishers ORDER BY id`,
     );
     const entries = await fixture.owner.query(
-      `SELECT id,publisher_id AS "publisherId",artifact_root AS "artifactRoot" FROM registry_entries ORDER BY id`,
+      `SELECT id,publisher_id AS "publisherId",artifact_root AS "artifactRoot",yanked_at IS NOT NULL AS yanked FROM registry_entries ORDER BY id`,
     );
     expect(users.rows).toEqual([
       {
@@ -69,12 +69,27 @@ describe('Registry distribution recovery fixture', () => {
         id: recoveryFixture.registry.entryId,
         publisherId: recoveryFixture.registry.publisherId,
         artifactRoot: artifact.artifact.manifest.merkle_root,
+        yanked: false,
       },
     ]);
     const operators = await fixture.owner.query(
       `SELECT user_id AS "userId" FROM registry_operators WHERE enabled ORDER BY user_id COLLATE "C"`,
     );
     expect(operators.rows).toEqual([]);
+    const artifacts = await fixture.owner.query<{
+      root: string;
+      blocked: boolean;
+      deleted: boolean;
+    }>(
+      'SELECT root,blocked_at IS NOT NULL AS blocked,deleted_at IS NOT NULL AS deleted FROM registry_artifacts ORDER BY root',
+    );
+    expect(artifacts.rows).toEqual([
+      {
+        root: artifact.artifact.manifest.merkle_root,
+        blocked: false,
+        deleted: false,
+      },
+    ]);
     expect(approved.inventories).toEqual({
       users: createRegistryRecoveryInventory('users', users.rows),
       publishers: createRegistryRecoveryInventory(
@@ -82,6 +97,7 @@ describe('Registry distribution recovery fixture', () => {
         publishers.rows,
       ),
       operators: createRegistryRecoveryInventory('operators', operators.rows),
+      artifacts: createRegistryRecoveryInventory('artifacts', artifacts.rows),
       entries: createRegistryRecoveryInventory('entries', entries.rows),
     });
     expect(copyRegistryRecoveryReconciliation(approved)).toEqual(approved);
