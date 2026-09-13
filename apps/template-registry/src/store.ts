@@ -584,7 +584,18 @@ export class RegistryStore {
           [principal.publisherId, root],
         )
       ).rows[0];
-      if (existing) return this.#readEntry(client, existing.id);
+      if (existing) {
+        if (!artifact) throw new RegistryError('SERVICE_UNAVAILABLE');
+        let stored: Uint8Array | null;
+        try {
+          stored = await this.#blobs.get(artifact.raw_hash);
+        } catch {
+          throw new RegistryError('SERVICE_UNAVAILABLE');
+        }
+        if (!stored || templateBytesHash(stored) !== artifact.raw_hash)
+          throw new RegistryError('SERVICE_UNAVAILABLE');
+        return this.#readEntry(client, existing.id);
+      }
       // Visibility changes cannot release stored bytes. Charge pending erasure
       // until its durable, audited deletion job has completed successfully.
       const publisherBytes =
@@ -631,8 +642,16 @@ export class RegistryStore {
           ],
         );
         await this.#blobs.put(rawHash, bytes);
-      } else if (!(await this.#blobs.get(artifact.raw_hash)))
-        throw new RegistryError('SERVICE_UNAVAILABLE');
+      } else {
+        let stored: Uint8Array | null;
+        try {
+          stored = await this.#blobs.get(artifact.raw_hash);
+        } catch {
+          throw new RegistryError('SERVICE_UNAVAILABLE');
+        }
+        if (!stored || templateBytesHash(stored) !== artifact.raw_hash)
+          throw new RegistryError('SERVICE_UNAVAILABLE');
+      }
       const id = randomUUID();
       await client.query(
         'INSERT INTO registry_entries(id, publisher_id, artifact_root) VALUES ($1, $2, $3)',
@@ -706,6 +725,14 @@ export class RegistryStore {
 
   async report(id: string, value: RegistryReport) {
     const input = ReportSchema.parse(value);
+    // Invalid locators do not consume the deployment-wide public reporting
+    // allowance. Entries are retained for their installation's lifetime, so
+    // this existence proof cannot be invalidated by an ordinary request.
+    const target = await this.#pool.query(
+      'SELECT id FROM registry_entries WHERE id = $1',
+      [id],
+    );
+    if (!target.rowCount) throw new RegistryError('NOT_FOUND');
     await admitRegistryRate(
       this.#pool,
       'report:global',
@@ -805,6 +832,8 @@ export class RegistryStore {
       const publisher = current.rows[0];
       if (!publisher) throw new RegistryError('NOT_FOUND');
       if ((publisher.suspended_at !== null) === suspended) return;
+      if (suspended && actor.kind === 'operator' && actor.id === id)
+        throw new RegistryError('CONFLICT');
       const result = await client.query(
         `UPDATE registry_publishers SET suspended_at = ${suspended ? 'statement_timestamp()' : 'NULL'} WHERE id = $1 RETURNING id`,
         [id],

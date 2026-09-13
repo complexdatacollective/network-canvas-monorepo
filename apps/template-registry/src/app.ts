@@ -379,7 +379,7 @@ export function createRegistryApp({
         : 'public, max-age=31536000, immutable',
       'ETag': asset.etag,
       'Content-Security-Policy':
-        "default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+        "default-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; img-src data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
     };
     if (context.req.method === 'HEAD') return new Response(null, { headers });
     // Page downloads share a fixed 8 MiB body budget alongside the artifact
