@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 import { escapeIdentifier, escapeLiteral } from 'pg';
 import type pg from 'pg';
@@ -15,6 +15,7 @@ const LOCK_KEY = 4021775688147136;
 const MINIMUM_SHARED_BUFFERS_BYTES = 1_073_741_824;
 const REQUIRED_WORK_MEM_BYTES = 268_435_456;
 const FINAL_CONNECTION_LIMIT = 100;
+const DRAIN_ATTEMPTS = 3;
 const MARKER_VERSION = 'network-canvas-managed-postgres-estate.v1';
 
 export type ManagedPostgresDatabase = Readonly<{
@@ -81,14 +82,21 @@ export type ManagedPostgresEstatePlan = Readonly<{
   missingRoles: readonly string[];
 }>;
 
+export type ManagedPostgresCredential = Readonly<{
+  loginName: string;
+  password: string;
+}>;
+
 export type ManagedPostgresCredentialBoundary = Readonly<{
-  /** Install credentials without returning or logging their values. */
-  install: (loginNames: readonly string[]) => Promise<void>;
-  /** Return a brand-new connection authenticated as the requested login. */
+  /** Withhold operator-generated fresh credentials from every workload. */
+  stage: (credentials: readonly ManagedPostgresCredential[]) => Promise<void>;
+  /** Return a brand-new connection authenticated with a staged credential. */
   connect: (
     database: ManagedPostgresDatabase,
-    loginName: string,
+    credential: ManagedPostgresCredential,
   ) => Promise<pg.PoolClient>;
+  /** Publish the already-proved staged credentials to their workloads. */
+  activate: (loginNames: readonly string[]) => Promise<void>;
 }>;
 
 export type ManagedPostgresDatabaseConnector = (
@@ -103,7 +111,8 @@ export class UnsafeManagedPostgresEstateError extends Error {
     | 'tuning'
     | 'credentials'
     | 'apply'
-    | 'readback';
+    | 'readback'
+    | 'quarantine';
 
   constructor(reason: UnsafeManagedPostgresEstateError['reason']) {
     super('MANAGED_POSTGRES_ESTATE_UNSAFE');
@@ -119,6 +128,24 @@ const allDomainRoles = () => [
 ];
 const allLogins = () =>
   MANAGED_POSTGRES_DATABASES.flatMap(({ logins }) => Object.values(logins));
+
+function freshCredentials(): readonly ManagedPostgresCredential[] {
+  return allLogins().map((loginName) => ({
+    loginName,
+    password: randomBytes(32).toString('base64url'),
+  }));
+}
+
+function credentialFor(
+  credentials: readonly ManagedPostgresCredential[],
+  loginName: string,
+): ManagedPostgresCredential {
+  const credential = credentials.find(
+    ({ loginName: candidate }) => candidate === loginName,
+  );
+  if (!credential) throw new UnsafeManagedPostgresEstateError('credentials');
+  return credential;
+}
 
 function marker(kind: 'database' | 'role', name: string): string {
   return `${MARKER_VERSION}:${kind}:${name}`;
@@ -503,8 +530,26 @@ async function configureDatabase(
   }
 }
 
+async function installPostgresCredentials(
+  client: pg.PoolClient,
+  credentials: readonly ManagedPostgresCredential[],
+): Promise<void> {
+  await client.query('BEGIN');
+  try {
+    for (const credential of credentials)
+      await client.query(
+        `ALTER ROLE ${escapeIdentifier(credential.loginName)} PASSWORD ${escapeLiteral(credential.password)}`,
+      );
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  }
+}
+
 async function disableAndDrain(client: pg.PoolClient): Promise<void> {
   const logins = allLogins();
+  let ownedLogins: string[] = [];
   await client.query('BEGIN');
   try {
     const existing = await client.query<{
@@ -516,7 +561,7 @@ async function disableAndDrain(client: pg.PoolClient): Promise<void> {
        FROM pg_catalog.pg_roles WHERE rolname = ANY($1::pg_catalog.text[])`,
       [logins],
     );
-    const ownedLogins = existing.rows
+    ownedLogins = existing.rows
       .filter(
         ({ oid, rolname, description }) =>
           description === marker('role', rolname) ||
@@ -548,12 +593,46 @@ async function disableAndDrain(client: pg.PoolClient): Promise<void> {
         `ALTER DATABASE ${escapeIdentifier(datname)} CONNECTION LIMIT 0`,
       );
     await client.query('COMMIT');
-    await client.query(
-      `SELECT pg_catalog.pg_terminate_backend(activity.pid, 5000)
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  }
+  for (let attempt = 0; attempt < DRAIN_ATTEMPTS; attempt += 1) {
+    const terminated = await client.query<{
+      pid: number;
+      terminated: boolean;
+    }>(
+      `SELECT activity.pid,
+        pg_catalog.pg_terminate_backend(activity.pid, 5000) AS terminated
        FROM pg_catalog.pg_stat_activity activity JOIN pg_catalog.pg_roles role ON role.oid = activity.usesysid
        WHERE role.rolname = ANY($1::pg_catalog.text[]) AND activity.pid <> pg_catalog.pg_backend_pid()`,
       [ownedLogins],
     );
+    const remaining = await client.query<{ count: number }>(
+      `SELECT pg_catalog.count(*)::int AS count
+       FROM pg_catalog.pg_stat_activity activity JOIN pg_catalog.pg_roles role ON role.oid = activity.usesysid
+       WHERE role.rolname = ANY($1::pg_catalog.text[]) AND activity.pid <> pg_catalog.pg_backend_pid()`,
+      [ownedLogins],
+    );
+    if (
+      remaining.rows[0]?.count === 0 &&
+      terminated.rows.every(({ terminated: ended }) => ended)
+    )
+      return;
+  }
+  throw new UnsafeManagedPostgresEstateError('quarantine');
+}
+
+async function enableForReadback(client: pg.PoolClient): Promise<void> {
+  await client.query('BEGIN');
+  try {
+    for (const login of allLogins())
+      await client.query(`ALTER ROLE ${escapeIdentifier(login)} LOGIN`);
+    for (const database of MANAGED_POSTGRES_DATABASES)
+      await client.query(
+        `ALTER DATABASE ${escapeIdentifier(database.database)} CONNECTION LIMIT ${FINAL_CONNECTION_LIMIT}`,
+      );
+    await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -563,7 +642,8 @@ async function disableAndDrain(client: pg.PoolClient): Promise<void> {
 async function readbackDatabase(
   admin: pg.PoolClient,
   database: ManagedPostgresDatabase,
-  credentials: ManagedPostgresCredentialBoundary,
+  boundary: ManagedPostgresCredentialBoundary,
+  credentials: readonly ManagedPostgresCredential[],
 ): Promise<void> {
   const allowedLogins = Object.values(database.logins);
   await admin.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
@@ -580,29 +660,42 @@ async function readbackDatabase(
     await admin.query('ROLLBACK');
     throw error;
   }
-  for (const [login, role] of [
-    [database.logins.runtime, database.roles.app],
-    [database.logins.maintenance, database.roles.maintenance],
-    [database.logins.backup, database.roles.backup],
+  for (const [login, roles] of [
+    [
+      database.logins.ownerMigrator,
+      [database.roles.app, database.roles.maintenance],
+    ],
+    [database.logins.runtime, [database.roles.app]],
+    [database.logins.maintenance, [database.roles.maintenance]],
+    [database.logins.backup, [database.roles.backup]],
   ] as const) {
-    const connection = await credentials.connect(database, login);
+    const connection = await boundary.connect(
+      database,
+      credentialFor(credentials, login),
+    );
     try {
       const before = await connection.query<{ login: string; bytes: string }>(
         `SELECT session_user AS login,
           pg_catalog.pg_size_bytes(pg_catalog.current_setting('work_mem'))::text AS bytes`,
       );
-      await connection.query(`SET ROLE ${escapeIdentifier(role)}`);
-      const after = await connection.query<{ role: string; bytes: string }>(
-        `SELECT current_user AS role,
-          pg_catalog.pg_size_bytes(pg_catalog.current_setting('work_mem'))::text AS bytes`,
-      );
       if (
         before.rows[0]?.login !== login ||
-        BigInt(before.rows[0].bytes) !== BigInt(REQUIRED_WORK_MEM_BYTES) ||
-        after.rows[0]?.role !== role ||
-        BigInt(after.rows[0].bytes) !== BigInt(REQUIRED_WORK_MEM_BYTES)
+        BigInt(before.rows[0].bytes) !== BigInt(REQUIRED_WORK_MEM_BYTES)
       )
         throw new UnsafeManagedPostgresEstateError('tuning');
+      for (const role of roles) {
+        await connection.query(`SET ROLE ${escapeIdentifier(role)}`);
+        const after = await connection.query<{ role: string; bytes: string }>(
+          `SELECT current_user AS role,
+            pg_catalog.pg_size_bytes(pg_catalog.current_setting('work_mem'))::text AS bytes`,
+        );
+        if (
+          after.rows[0]?.role !== role ||
+          BigInt(after.rows[0].bytes) !== BigInt(REQUIRED_WORK_MEM_BYTES)
+        )
+          throw new UnsafeManagedPostgresEstateError('tuning');
+        await connection.query('RESET ROLE');
+      }
     } finally {
       connection.release();
     }
@@ -610,8 +703,9 @@ async function readbackDatabase(
 }
 
 /** Apply only a previously inspectable estate shape. Databases remain at
- * connection_limit=0 and every managed identity remains NOLOGIN until the
- * credential boundary completes and all effective readback checks pass. */
+ * credential boundary withholds staged secrets while PostgreSQL admission is
+ * enabled for fresh authentication. Workloads receive credentials only after
+ * all effective readback checks pass. */
 export async function applyManagedPostgresEstate(
   pool: pg.Pool,
   connectDatabase: ManagedPostgresDatabaseConnector,
@@ -641,8 +735,11 @@ export async function applyManagedPostgresEstate(
         databaseAdmin.release();
       }
     }
+    await disableAndDrain(client);
     phase = 'credentials';
-    await credentials.install(allLogins());
+    const stagedCredentials = freshCredentials();
+    await credentials.stage(stagedCredentials);
+    await installPostgresCredentials(client, stagedCredentials);
     const passwords = await client.query<{ complete: boolean }>(
       `SELECT pg_catalog.count(*) = pg_catalog.cardinality($1::pg_catalog.text[]) AS complete
        FROM pg_catalog.pg_authid WHERE rolname = ANY($1::pg_catalog.text[]) AND rolpassword IS NOT NULL`,
@@ -650,31 +747,38 @@ export async function applyManagedPostgresEstate(
     );
     if (passwords.rows[0]?.complete !== true)
       throw new UnsafeManagedPostgresEstateError('credentials');
-    await client.query('BEGIN');
-    try {
-      for (const login of allLogins())
-        await client.query(`ALTER ROLE ${escapeIdentifier(login)} LOGIN`);
-      for (const database of MANAGED_POSTGRES_DATABASES)
-        await client.query(
-          `ALTER DATABASE ${escapeIdentifier(database.database)} CONNECTION LIMIT ${FINAL_CONNECTION_LIMIT}`,
-        );
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    }
+    await enableForReadback(client);
     phase = 'readback';
     for (const database of MANAGED_POSTGRES_DATABASES) {
       const databaseAdmin = await connectDatabase(database);
       try {
-        await readbackDatabase(databaseAdmin, database, credentials);
+        await readbackDatabase(
+          databaseAdmin,
+          database,
+          credentials,
+          stagedCredentials,
+        );
       } finally {
         databaseAdmin.release();
       }
     }
-    return await inspectEstate(client);
+    const active = await inspectEstate(client);
+    phase = 'credentials';
+    await credentials.activate(allLogins());
+    return active;
   } catch (error) {
-    if (mutationStarted) await disableAndDrain(client).catch(() => undefined);
+    if (
+      error instanceof UnsafeManagedPostgresEstateError &&
+      error.reason === 'quarantine'
+    )
+      throw error;
+    if (mutationStarted) {
+      try {
+        await disableAndDrain(client);
+      } catch {
+        throw new UnsafeManagedPostgresEstateError('quarantine');
+      }
+    }
     if (error instanceof UnsafeManagedPostgresEstateError) throw error;
     throw new UnsafeManagedPostgresEstateError(phase);
   } finally {

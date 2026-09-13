@@ -13,6 +13,10 @@ const workflow = readFileSync(
   new URL('../../.github/workflows/ci-and-release.yml', import.meta.url),
   'utf8',
 );
+const turboConfig = readFileSync(
+  new URL('../../turbo.json', import.meta.url),
+  'utf8',
+);
 const deadLinkChecker = readFileSync(
   new URL('../dead-links/dead-link-checker.mjs', import.meta.url),
   'utf8',
@@ -792,9 +796,44 @@ test('the test matrix runs exactly the shards scripts/ci/test-shards.mjs defines
   );
   assert.match(
     testJob,
-    /The Postgres container stopped before accepting connections/,
+    /::error::\$container stopped before accepting connections/,
     'a stopped container is reported at once rather than waited out',
   );
+  for (const fixture of [
+    'studio-sync-postgres',
+    'studio-sync-managed-postgres-tuned',
+    'studio-sync-managed-postgres-low-tuning',
+  ])
+    assert.match(testJob, new RegExp(`docker (?:run|exec)[^\n]*${fixture}`));
+  assert.match(testJob, /POSTGRES_INITDB_ARGS=--set=shared_buffers=1GB/);
+  assert.match(testJob, /--shm-size 1536m/);
+  assert.match(
+    testJob,
+    /MANAGED_POSTGRES_ESTATE_TEST: \$\{\{ matrix\.postgres && 'true' \|\| 'false' \}\}/,
+    'the managed estate suite is enabled only on its Postgres shard',
+  );
+  const studioSyncTestTask = turboConfig.match(
+    /"@codaco\/studio-sync#test": \{(?<body>[\s\S]*?)\n    \},/,
+  )?.groups?.body;
+  assert.ok(studioSyncTestTask, 'Studio Sync has an explicit Turbo test task');
+  for (const variable of [
+    'MANAGED_POSTGRES_ESTATE_TEST',
+    'MANAGED_POSTGRES_TEST_PORT',
+    'MANAGED_POSTGRES_LOW_TUNING_TEST_PORT',
+  ])
+    assert.match(
+      studioSyncTestTask,
+      new RegExp(`"${variable}"`),
+      `${variable} passes Turbo strict-env admission`,
+    );
+
+  const seedJob = job('seed-turbo-cache');
+  for (const service of [
+    'managed-postgres-tuned',
+    'managed-postgres-low-tuning',
+  ])
+    assert.match(seedJob, new RegExp(`^ {6}${service}:`, 'm'));
+  assert.match(seedJob, /MANAGED_POSTGRES_ESTATE_TEST: 'true'/);
 });
 
 test('workspace test suites run one at a time', () => {

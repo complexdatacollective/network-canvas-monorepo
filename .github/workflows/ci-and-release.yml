@@ -540,6 +540,30 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      managed-postgres-tuned:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: managed-estate-test-only
+          POSTGRES_INITDB_ARGS: --set=shared_buffers=1GB
+        ports:
+          - 55443:5432
+        options: >-
+          --shm-size 1536m
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      managed-postgres-low-tuning:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: managed-estate-test-only
+        ports:
+          - 55444:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
         with:
@@ -614,6 +638,9 @@ jobs:
         run: pnpm exec turbo run test --concurrency=1 --continue=dependencies-successful
         env:
           SKIP_ENV_VALIDATION: 'true'
+          MANAGED_POSTGRES_ESTATE_TEST: 'true'
+          MANAGED_POSTGRES_TEST_PORT: '55443'
+          MANAGED_POSTGRES_LOW_TUNING_TEST_PORT: '55444'
       # Surfaces a broken seed instead of letting it fail silently, and then
       # FAILS, which is the part that matters.
       #
@@ -1067,6 +1094,16 @@ jobs:
             --env POSTGRES_INITDB_ARGS=--set=max_prepared_transactions=10 \
             --publish 54318:5432 \
             postgres:18
+          docker run --detach --name studio-sync-managed-postgres-tuned \
+            --env POSTGRES_PASSWORD=managed-estate-test-only \
+            --env POSTGRES_INITDB_ARGS=--set=shared_buffers=1GB \
+            --shm-size 1536m \
+            --publish 55443:5432 \
+            postgres:18
+          docker run --detach --name studio-sync-managed-postgres-low-tuning \
+            --env POSTGRES_PASSWORD=managed-estate-test-only \
+            --publish 55444:5432 \
+            postgres:18
       # `-h 127.0.0.1` on purpose: during initdb the official image runs a
       # temporary server bound to the unix socket only, so a socket-based
       # pg_isready (what the old service's health-cmd ran) can report ready
@@ -1078,21 +1115,30 @@ jobs:
         if: matrix.postgres
         run: |
           set -euo pipefail
-          for _ in $(seq 1 60); do
-            if docker exec studio-sync-postgres pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
-              echo "Postgres is accepting TCP connections"
-              exit 0
-            fi
-            if [[ "$(docker inspect --format '{{.State.Running}}' studio-sync-postgres 2>/dev/null)" != "true" ]]; then
-              docker logs studio-sync-postgres || true
-              echo "::error::The Postgres container stopped before accepting connections"
+          for container in \
+            studio-sync-postgres \
+            studio-sync-managed-postgres-tuned \
+            studio-sync-managed-postgres-low-tuning; do
+            ready=false
+            for _ in $(seq 1 60); do
+              if docker exec "$container" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
+                echo "$container is accepting TCP connections"
+                ready=true
+                break
+              fi
+              if [[ "$(docker inspect --format '{{.State.Running}}' "$container" 2>/dev/null)" != "true" ]]; then
+                docker logs "$container" || true
+                echo "::error::$container stopped before accepting connections"
+                exit 1
+              fi
+              sleep 2
+            done
+            if [[ "$ready" != "true" ]]; then
+              docker logs "$container" || true
+              echo "::error::$container did not accept connections within 120s"
               exit 1
             fi
-            sleep 2
           done
-          docker logs studio-sync-postgres || true
-          echo "::error::Postgres did not accept connections within 120s"
-          exit 1
       - uses: ./.github/actions/turbo-ci-setup
       - name: Write protocol-validation .env (test fixture)
         # Only the shard whose bucket holds @codaco/protocol-validation. The
@@ -1121,6 +1167,9 @@ jobs:
         env:
           DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           SHARD: ${{ matrix.shard }}
+          MANAGED_POSTGRES_ESTATE_TEST: ${{ matrix.postgres && 'true' || 'false' }}
+          MANAGED_POSTGRES_TEST_PORT: '55443'
+          MANAGED_POSTGRES_LOW_TUNING_TEST_PORT: '55444'
         run: |
           # Restrict this runner to its bucket. scripts/ci/test-shards.mjs emits
           # one `--filter=!<pkg>` for every test-carrying workspace package

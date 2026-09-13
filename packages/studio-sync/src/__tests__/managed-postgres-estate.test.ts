@@ -39,6 +39,8 @@ lowTuningAdmin.on('error', () => undefined);
 let available = false;
 let lowTuningAvailable = false;
 const pools: Pool[] = [];
+const stagedPasswords = new Map<string, string>();
+const activePasswords = new Map<string, string>();
 
 beforeAll(async () => {
   if (!enabled) return;
@@ -58,12 +60,16 @@ beforeAll(async () => {
   }
 });
 
-function poolFor(database: string, user = 'postgres') {
+function poolFor(
+  database: string,
+  user = 'postgres',
+  credential = activePasswords.get(user) ?? password,
+) {
   const pool = new Pool({
     host: '127.0.0.1',
     port,
     user,
-    password,
+    password: credential,
     database,
     max: 1,
   });
@@ -76,14 +82,26 @@ const connectDatabase = async (database: ManagedPostgresDatabase) =>
   poolFor(database.database).connect();
 
 const credentials: ManagedPostgresCredentialBoundary = {
-  install: async (logins) => {
-    for (const login of logins)
-      await admin.query(
-        `ALTER ROLE ${escapeIdentifier(login)} PASSWORD ${escapeLiteral(password)}`,
-      );
+  stage: async (staged) => {
+    stagedPasswords.clear();
+    for (const { loginName, password: stagedPassword } of staged)
+      stagedPasswords.set(loginName, stagedPassword);
   },
-  connect: async (database, login) =>
-    poolFor(database.database, login).connect(),
+  connect: async (database, credential) => {
+    expect(stagedPasswords.get(credential.loginName)).toBe(credential.password);
+    return poolFor(
+      database.database,
+      credential.loginName,
+      credential.password,
+    ).connect();
+  },
+  activate: async (logins) => {
+    for (const login of logins) {
+      const stagedPassword = stagedPasswords.get(login);
+      if (!stagedPassword) throw new Error('missing staged test credential');
+      activePasswords.set(login, stagedPassword);
+    }
+  },
 };
 
 function failFirstAdminQuery(matcher: RegExp): Pool {
@@ -116,8 +134,43 @@ function failFirstAdminQuery(matcher: RegExp): Pool {
   } as unknown as Pool;
 }
 
+function falseFirstTerminationAdmin(onAttempt: () => void): Pool {
+  let pendingFalse = true;
+  return {
+    connect: async () => {
+      const client = await admin.connect();
+      const wrapped = Object.create(client) as PoolClient;
+      const query = client.query.bind(client);
+      wrapped.query = ((...args: unknown[]) => {
+        const statement = args[0];
+        const text = typeof statement === 'string' ? statement : '';
+        if (
+          text.includes('pg_catalog.pg_terminate_backend(activity.pid, 5000)')
+        ) {
+          onAttempt();
+          if (pendingFalse) {
+            pendingFalse = false;
+            return Reflect.apply(query, client, [
+              text.replace(
+                'pg_catalog.pg_terminate_backend(activity.pid, 5000)',
+                'false',
+              ),
+              ...args.slice(1),
+            ]);
+          }
+        }
+        return Reflect.apply(query, client, args);
+      }) as PoolClient['query'];
+      wrapped.release = client.release.bind(client);
+      return wrapped;
+    },
+  } as unknown as Pool;
+}
+
 async function cleanup() {
   await Promise.all(pools.splice(0).map((pool) => pool.end()));
+  stagedPasswords.clear();
+  activePasswords.clear();
   if (!available) return;
   const logins = MANAGED_POSTGRES_DATABASES.flatMap(
     ({ logins: configuredLogins }) => Object.values(configuredLogins),
@@ -177,7 +230,7 @@ describe('managed PostgreSQL estate enrollment', () => {
     await expect(
       applyManagedPostgresEstate(admin, connectDatabase, {
         ...credentials,
-        install: async () => {
+        stage: async () => {
           throw new Error('synthetic credential boundary failure');
         },
       }),
@@ -201,11 +254,37 @@ describe('managed PostgreSQL estate enrollment', () => {
       ).rows,
     ).toEqual([{ count: 0 }]);
 
+    const authenticated: string[] = [];
+    let activated = false;
+    const auditedCredentials: ManagedPostgresCredentialBoundary = {
+      stage: async (staged) => {
+        expect(
+          new Set(staged.map(({ password: stagedPassword }) => stagedPassword))
+            .size,
+        ).toBe(staged.length);
+        expect(staged.every(({ password: fresh }) => fresh !== password)).toBe(
+          true,
+        );
+        await credentials.stage(staged);
+      },
+      connect: async (database, credential) => {
+        expect(activated).toBe(false);
+        authenticated.push(credential.loginName);
+        return credentials.connect(database, credential);
+      },
+      activate: async (logins) => {
+        expect(new Set(authenticated)).toEqual(new Set(logins));
+        expect(authenticated).toHaveLength(logins.length);
+        activated = true;
+        await credentials.activate(logins);
+      },
+    };
     const applied = await applyManagedPostgresEstate(
       admin,
       connectDatabase,
-      credentials,
+      auditedCredentials,
     );
+    expect(activated).toBe(true);
     expect(applied.databases.every(({ state }) => state === 'active')).toBe(
       true,
     );
@@ -234,6 +313,100 @@ describe('managed PostgreSQL estate enrollment', () => {
     await expect(
       backup.query('INSERT INTO boundary_probe VALUES (2)'),
     ).rejects.toMatchObject({ code: '42501' });
+  });
+
+  it('never publishes staged credentials when database-local readback fails', async () => {
+    if (!available) return;
+    await cleanup();
+    let connections = 0;
+    let activated = false;
+    const unsafeConnector = async (database: ManagedPostgresDatabase) => {
+      const connection = await connectDatabase(database);
+      connections += 1;
+      if (connections === MANAGED_POSTGRES_DATABASES.length + 1)
+        await connection.query(
+          `GRANT CONNECT ON DATABASE ${escapeIdentifier(database.database)} TO PUBLIC`,
+        );
+      return connection;
+    };
+    await expect(
+      applyManagedPostgresEstate(admin, unsafeConnector, {
+        ...credentials,
+        activate: async () => {
+          activated = true;
+        },
+      }),
+    ).rejects.toEqual(new UnsafeManagedPostgresEstateError('readback'));
+    expect(activated).toBe(false);
+    expect(
+      (
+        await admin.query<{ count: number }>(
+          `SELECT count(*)::int AS count FROM pg_roles
+           WHERE rolname = ANY($1::text[]) AND rolcanlogin`,
+          [
+            MANAGED_POSTGRES_DATABASES.flatMap(({ logins }) =>
+              Object.values(logins),
+            ),
+          ],
+        )
+      ).rows,
+    ).toEqual([{ count: 0 }]);
+    expect(
+      (
+        await admin.query<{ count: number }>(
+          `SELECT count(*)::int AS count FROM pg_database
+           WHERE datname = ANY($1::text[]) AND datconnlimit = 0`,
+          [MANAGED_POSTGRES_DATABASES.map(({ database }) => database)],
+        )
+      ).rows,
+    ).toEqual([{ count: MANAGED_POSTGRES_DATABASES.length }]);
+  });
+
+  it('authenticates the freshly staged owner and migrator credential', async () => {
+    if (!available) return;
+    await cleanup();
+    const owner = MANAGED_POSTGRES_DATABASES[0]!.logins.ownerMigrator;
+    let attempted = false;
+    await expect(
+      applyManagedPostgresEstate(admin, connectDatabase, {
+        ...credentials,
+        connect: async (database, credential) => {
+          if (credential.loginName === owner) {
+            attempted = true;
+            throw new Error('synthetic owner credential refusal');
+          }
+          return credentials.connect(database, credential);
+        },
+      }),
+    ).rejects.toEqual(new UnsafeManagedPostgresEstateError('readback'));
+    expect(attempted).toBe(true);
+  });
+
+  it('retries a timed-out managed-session termination and verifies the drain', async () => {
+    if (!available) return;
+    await cleanup();
+    await applyManagedPostgresEstate(admin, connectDatabase, credentials);
+    const database = MANAGED_POSTGRES_DATABASES[0]!;
+    const session = poolFor(database.database, database.logins.runtime);
+    await session.query('SELECT 1');
+    let terminationAttempts = 0;
+    await expect(
+      applyManagedPostgresEstate(
+        falseFirstTerminationAdmin(() => {
+          terminationAttempts += 1;
+        }),
+        connectDatabase,
+        credentials,
+      ),
+    ).resolves.toMatchObject({
+      databases: MANAGED_POSTGRES_DATABASES.map(({ key, database: name }) => ({
+        key,
+        database: name,
+        state: 'active',
+      })),
+    });
+    expect(terminationAttempts).toBeGreaterThanOrEqual(2);
+    await expect(session.query('SELECT 1')).rejects.toThrow();
   });
 
   it('resumes after the first database connector fails', async () => {

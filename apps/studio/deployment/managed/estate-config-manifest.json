@@ -5,7 +5,7 @@
     "cost-input.example.json": "8bdce8545ed0338c72799963ddf8d60048b54789541cb0498a5793b97ec83fd8",
     "estate-provider-contract.json": "89e85ac392eba3b70a120bebc8329d56c1a44b298ca584075ac80b310e518adf",
     "main.tf": "95d023ea582ab11242437f5dbd7ce0ec84f3ac06931f1e2c58fde61690db96b4",
-    "outputs.tf": "497807a58f76a65b77583dc4369e8df0c1c340ae763570f56c43647bbde9a2c6",
+    "outputs.tf": "e60cc350e937895d02e723d614069b304c72c44e00ea74c40237918d6710d958",
     "terraform.tfvars.example": "22fed75ea27aab7002152d7dac236e01c2f49972df9ba27e42d462b2ac3d314a",
     "variables.tf": "db080a017079d95952ec1025acc9303f655fbd0d15d03b4d6b4e1af182469595",
     "versions.tf": "a868ca34b612eeb4cb5caf8aebcfedd8e8aee0c42e0139bc2620b86a93f68678"

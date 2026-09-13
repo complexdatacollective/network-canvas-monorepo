@@ -461,6 +461,25 @@
       ],
       "outputs": []
     },
+    "@codaco/studio-sync#test": {
+      "dependsOn": ["^topo"],
+      "inputs": [
+        "src/**",
+        "__tests__/**",
+        "vitest.config.*",
+        "vitest.setup.*",
+        "config/vitest/**",
+        "package.json",
+        ".env",
+        ".env.development"
+      ],
+      "env": [
+        "MANAGED_POSTGRES_ESTATE_TEST",
+        "MANAGED_POSTGRES_TEST_PORT",
+        "MANAGED_POSTGRES_LOW_TUNING_TEST_PORT"
+      ],
+      "outputs": []
+    },
     "test:storybook": {
       "dependsOn": ["^topo"],
       "inputs": [
