@@ -597,15 +597,22 @@ ${telemetryKernelComposeServices(
     }
   }
   async function prepareKernelObserversBeforeStartup(services: string[]) {
+    const namespaces = TELEMETRY_KERNEL_SERVICES.map(
+      (service) => `telemetry-namespace-${service}`,
+    );
     const observers = TELEMETRY_KERNEL_SERVICES.map(
       (service) => `telemetry-kernel-${service}`,
     );
     await compose([
       'create',
-      '--no-start',
-      ...new Set([...services, 'telemetry-detector', ...observers]),
+      ...new Set([
+        ...services,
+        ...namespaces,
+        'telemetry-detector',
+        ...observers,
+      ]),
     ]);
-    await compose(['start', 'telemetry-detector', ...observers]);
+    await compose(['start', ...namespaces, 'telemetry-detector', ...observers]);
     for (const service of TELEMETRY_KERNEL_SERVICES) {
       for (let attempt = 0; attempt < 100; attempt++) {
         try {

@@ -329,7 +329,7 @@ async function scenario(label: string, cosign: string) {
     overlay,
     `services:
   studio:
-    ports: !override ["127.0.0.1:${webPort}:3000"]
+    ports: !reset []
     environment:
       PUBLIC_URL: ${origin}
       STUDIO_TELEMETRY: 'off'
@@ -342,6 +342,8 @@ async function scenario(label: string, cosign: string) {
     depends_on:
       telemetry-detector:
         condition: service_started
+  telemetry-namespace-studio:
+    ports: !override ["127.0.0.1:${webPort}:3000"]
   worker:
     environment:
       STUDIO_TELEMETRY: 'off'

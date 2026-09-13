@@ -197,15 +197,54 @@ main().catch(() => { process.stderr.write('Kernel qualification observer failed.
 `;
 
 export function telemetryKernelComposeServices(image: string) {
-  return TELEMETRY_KERNEL_SERVICES.map(
-    (service) => `  telemetry-kernel-${service}:
+  const namespaceServices = `  telemetry-namespace-studio:
+    image: ${image}
+    entrypoint: [node, -e]
+    command: ["setInterval(() => {}, 60000)"]
+    networks:
+      edge:
+        aliases: [studio]
+      data:
+        aliases: [studio]
+  telemetry-namespace-worker:
+    image: ${image}
+    entrypoint: [node, -e]
+    command: ["setInterval(() => {}, 60000)"]
+    networks:
+      edge:
+        aliases: [worker]
+      data:
+        aliases: [worker]
+  telemetry-namespace-registry:
+    image: ${image}
+    entrypoint: [node, -e]
+    command: ["setInterval(() => {}, 60000)"]
+    networks:
+      edge:
+        aliases: [registry]
+      registry-data:
+        aliases: [registry]
+  studio:
+    network_mode: service:telemetry-namespace-studio
+    networks: !reset []
+  worker:
+    network_mode: service:telemetry-namespace-worker
+    networks: !reset []
+  registry:
+    network_mode: service:telemetry-namespace-registry
+    networks: !reset []
+`;
+  return (
+    namespaceServices +
+    TELEMETRY_KERNEL_SERVICES.map(
+      (service) => `  telemetry-kernel-${service}:
     image: ${image}
     user: '0:0'
     entrypoint: [node, -e]
     command: [${JSON.stringify(TELEMETRY_KERNEL_OBSERVER_SOURCE)}]
     environment:
       STUDIO_QUALIFICATION_KERNEL_ENDPOINTS: '${telemetryKernelEndpoints(service)}'
-    network_mode: service:${service}
+    network_mode: service:telemetry-namespace-${service}
     restart: unless-stopped
     read_only: true
     tmpfs: ["/tmp:size=1m,mode=1777"]
@@ -218,7 +257,8 @@ export function telemetryKernelComposeServices(image: string) {
       timeout: 1s
       retries: 100
 `,
-  ).join('');
+    ).join('')
+  );
 }
 
 export const TELEMETRY_CANARY_SOURCE = `
