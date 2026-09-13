@@ -1,5 +1,7 @@
 import { type Locator } from '@playwright/test';
 
+import { chooseAttribute } from './variables.js';
+
 // The rule builder `@codaco/protocol-builder` ships (`fields/RuleSetField.tsx`,
 // `rules/RuleEditorDialog.tsx`), mounted by the Skip logic section (ego rules
 // available) and by the Stage filter section (no ego rules). Facts read off
@@ -84,13 +86,13 @@ async function selectAttribute(
   dialog: Locator,
   attributeName: string,
 ): Promise<void> {
-  // Scoped to the field rather than named: the select's own label is the
+  // Scoped to the field rather than named: the picker's own label is the
   // entity it is about ('Node attribute', 'Ego attribute'), and this helper
-  // serves both.
-  await dialog
-    .locator('[data-field-name="options.attribute"]')
-    .getByRole('combobox')
-    .selectOption({ label: attributeName });
+  // serves both. A rule builder offers no creation, so this only ever chooses.
+  await chooseAttribute(
+    dialog.locator('[data-field-name="options.attribute"]'),
+    attributeName,
+  );
 }
 
 /** Authors one rule in the Stage filter section's builder. */

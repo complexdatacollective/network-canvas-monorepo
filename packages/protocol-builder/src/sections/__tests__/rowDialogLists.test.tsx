@@ -7,6 +7,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { familyPedigreeStageWith } from '../../editors/family-pedigree/sections/__tests__/pedigreeFixtures.tsx';
 import NominationPromptsSection from '../../editors/family-pedigree/sections/NominationPromptsSection.tsx';
 import type { RowValues } from '../../form/rowDialog.tsx';
+import { attributeField } from '../../testing/attributePicker.ts';
 import {
   renderStageEditor,
   type RenderStageEditorOptions,
@@ -34,6 +35,56 @@ import {
  * What each case supplies is only what makes its rows different: where the
  * list lives, what its rows are called, and which control names a row.
  */
+/**
+ * A row's open dialog, with the element it was found as.
+ *
+ * The element is carried because the attribute picker opens a SECOND dialog on
+ * top of a row editor, so "the dialog" is ambiguous while its window is up:
+ * the window is the one that is not this element.
+ */
+type OpenDialog = ReturnType<typeof within> & { element: HTMLElement };
+
+/** The two names the attribute picker's trigger goes by, before and after. */
+const isPickerTrigger = (name: string) =>
+  name === 'Select attribute' || name === 'Change attribute';
+
+/**
+ * Points a row's attribute picker at the attribute stored under this id, the
+ * way a researcher does: open the window, take the row that names it.
+ */
+const choosePickerOption = async (
+  harness: StageEditorHarness,
+  dialog: OpenDialog,
+  attributeId: string,
+) => {
+  await harness.user.click(
+    within(attributeField('Attribute', dialog.element)).getByRole('button', {
+      name: isPickerTrigger,
+    }),
+  );
+  const window = await waitFor(() => {
+    const found = screen
+      .getAllByRole('dialog')
+      .find((element) => element !== dialog.element);
+    if (found === undefined) {
+      throw new Error('the attribute window did not open');
+    }
+    return found;
+  });
+  const row = window.querySelector<HTMLElement>(
+    `[role="option"][data-attribute-id="${attributeId}"]`,
+  );
+  if (row === null) {
+    throw new Error(`The window is not offering "${attributeId}".`);
+  }
+  await harness.user.click(row);
+  // The pick is written as the window closes, so nothing may carry on while it
+  // is still covering the row.
+  await waitFor(() => {
+    if (window.isConnected) throw new Error('the attribute window is open');
+  });
+};
+
 type ListCase = Readonly<{
   list: string;
   noun: string;
@@ -46,16 +97,13 @@ type ListCase = Readonly<{
   /** Writes the text that names a row into an open dialog. */
   write: (
     harness: StageEditorHarness,
-    dialog: ReturnType<typeof within>,
+    dialog: OpenDialog,
     text: string,
   ) => Promise<void>;
   /** What the list shows for a saved row when its dialog is closed. */
   label: (row: RowValues) => unknown;
   /** Everything a NEW row needs beyond its text before it can be saved. */
-  complete?: (
-    harness: StageEditorHarness,
-    dialog: ReturnType<typeof within>,
-  ) => Promise<void>;
+  complete?: (harness: StageEditorHarness, dialog: OpenDialog) => Promise<void>;
 }>;
 
 const rowsAt = (key: string) => (stage: SectionDoc) => {
@@ -173,10 +221,7 @@ const lists: readonly ListCase[] = [
     // The attribute is picked rather than typed, and a field that names none
     // cannot be saved at all.
     complete: async (harness, dialog) => {
-      await harness.user.selectOptions(
-        dialog.getByRole('combobox', { name: 'Attribute' }),
-        'age',
-      );
+      await choosePickerOption(harness, dialog, 'age');
     },
     open: (rows) => ({
       stage: {
@@ -206,10 +251,7 @@ const lists: readonly ListCase[] = [
     // Every nomination prompt writes one attribute, and the picker is where it
     // comes from.
     complete: async (harness, dialog) => {
-      await harness.user.selectOptions(
-        dialog.getByRole('combobox', { name: 'Attribute' }),
-        'hasConditionX',
-      );
+      await choosePickerOption(harness, dialog, 'hasConditionX');
     },
     open: (rows) => ({
       stage: familyPedigreeStageWith({ nominationPrompts: rows }),
@@ -228,11 +270,12 @@ const openDialog = async (
   harness: StageEditorHarness,
   name: string,
   index = 0,
-) => {
+): Promise<OpenDialog> => {
   const trigger = screen.getAllByRole('button', { name })[index];
   if (trigger === undefined) throw new Error(`There is no "${name}" ${index}.`);
   await harness.user.click(trigger);
-  return within(await screen.findByRole('dialog'));
+  const element = await screen.findByRole('dialog');
+  return Object.assign(within(element), { element });
 };
 
 const closesDialog = async () =>

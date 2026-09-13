@@ -4,21 +4,35 @@ import { describe, expect, it } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
+  attributeField,
+  chooseAttributeById,
+  offeredAttributes,
+  openAttributePicker,
+} from '../../../../testing/attributePicker.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../../testing/renderStageEditor.tsx';
-import { writeInto } from '../../../__tests__/writeInto.ts';
 import QuickAddSection from '../QuickAddSection.tsx';
 
 const quickAdd = <QuickAddSection />;
 
-const picker = (): HTMLElement =>
-  screen.getByRole('combobox', { name: 'Select an attribute' });
+/** The label of the field the quick-add attribute is chosen in. */
+const LABEL = 'Select an attribute';
 
-const offered = () =>
-  within(picker())
-    .getAllByRole('option')
-    .map((option) => (option as HTMLOptionElement).value);
+/**
+ * The field the attribute is chosen in.
+ *
+ * A scope rather than a control: the choice is made in a window the field's
+ * trigger opens, so everything a test does to the picker it does through here.
+ */
+const picker = (): HTMLElement => attributeField(LABEL);
+
+/** The same, once the section has drawn it. */
+const findPicker = async (): Promise<HTMLElement> => {
+  await screen.findByText(LABEL, { selector: 'label' });
+  return picker();
+};
 
 /** The rules the protocol records for one of the person type's attributes. */
 const personValidation = (
@@ -40,9 +54,10 @@ describe('what a quick-add name generator records', () => {
       sections: quickAdd,
     });
 
-    expect(
-      await screen.findByRole('combobox', { name: 'Select an attribute' }),
-    ).toHaveValue('name');
+    // Waited for: the field is drawn before the stage's own value reaches it,
+    // so a synchronous read can catch the picker holding nothing.
+    const field = await findPicker();
+    await waitFor(() => expect(within(field).getByText('name')).toBeVisible());
     // The stage's name, the type it nominates and what it asks belong to
     // sections this mount does not include.
     await harness.roundTrip({ unowned: ['label', 'subject', 'prompts'] });
@@ -54,16 +69,16 @@ describe('what a quick-add name generator records', () => {
    * control quick add does not have.
    */
   it('offers only attributes a single box could fill in', async () => {
-    renderStageEditor({
+    const harness = renderStageEditor({
       stageId: 'name-generator-quick-add-1',
       sections: quickAdd,
     });
 
-    await screen.findByRole('combobox', { name: 'Select an attribute' });
-    expect(offered()).toContain('name');
-    expect(offered()).not.toContain('age');
-    expect(offered()).not.toContain('contactType');
-    expect(offered()).not.toContain('layout');
+    const offered = await offeredAttributes(harness.user, await findPicker());
+    expect(offered).toContain('name');
+    expect(offered).not.toContain('age');
+    expect(offered).not.toContain('contactType');
+    expect(offered).not.toContain('layout');
   });
 
   /**
@@ -72,7 +87,7 @@ describe('what a quick-add name generator records', () => {
    * onto would mix checked and unchecked answers under one name in the export.
    */
   it('does not offer an attribute another stage writes unvalidated', async () => {
-    renderStageEditor({
+    const harness = renderStageEditor({
       stage: {
         id: 'quick-add-without-a-choice',
         // The family type rather than the person one, because the exclusion
@@ -92,13 +107,13 @@ describe('what a quick-add name generator records', () => {
       sections: quickAdd,
     });
 
-    await screen.findByRole('combobox', { name: 'Select an attribute' });
+    const offered = await offeredAttributes(harness.user, await findPicker());
     // `fm_name` is collected by a form elsewhere in the protocol, which is a
     // validated use and therefore allowed; `fm_relationship_to_ego` is text as
     // well, and is stamped by the family pedigree — so the same list must not
     // hold it.
-    expect(offered()).toContain('fm_name');
-    expect(offered()).not.toContain('fm_relationship_to_ego');
+    expect(offered).toContain('fm_name');
+    expect(offered).not.toContain('fm_relationship_to_ego');
   });
 
   /**
@@ -132,8 +147,9 @@ describe('what a quick-add name generator records', () => {
       sections: quickAdd,
     });
 
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Select an attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await findPicker(),
       'relationship_to_ego',
     );
 
@@ -153,13 +169,17 @@ describe('what a quick-add name generator records', () => {
       sections: quickAdd,
     });
 
-    await writeInto(
-      harness,
-      await screen.findByRole('textbox', { name: /Create a new attribute/ }),
+    const dialog = await openAttributePicker(harness.user, await findPicker());
+    await harness.user.type(
+      within(dialog).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
       'nickname',
     );
     await harness.user.click(
-      screen.getByRole('button', { name: 'Create the attribute' }),
+      within(dialog).getByRole('option', {
+        name: 'Create new attribute called “nickname”.',
+      }),
     );
 
     const created = await waitFor(() => {
@@ -175,7 +195,12 @@ describe('what a quick-add name generator records', () => {
     // codebook and is read by every other stage that uses it.
     expect(created[1]).toEqual({ name: 'nickname', type: 'text' });
 
-    await waitFor(() => expect(picker()).toHaveValue(created[0]));
+    // What the field shows is the researcher's NAME for the attribute; that it
+    // is the one just created — rather than another attribute of that name —
+    // is what the id the save records below says.
+    await waitFor(() =>
+      expect(within(picker()).getByText('nickname')).toBeVisible(),
+    );
     const request = await harness.submit();
     expect(request?.stageDocument.quickAdd).toBe(created[0]);
   });
@@ -228,7 +253,7 @@ describe('what a quick-add name generator records', () => {
       sections: quickAdd,
     });
 
-    await screen.findByRole('combobox', { name: 'Select an attribute' });
+    const field = await findPicker();
     harness.receiveCodebookUpdate({
       node: {
         person: {
@@ -244,7 +269,9 @@ describe('what a quick-add name generator records', () => {
       },
     });
 
-    await waitFor(() => expect(offered()).toContain('alias'));
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, field)).toContain('alias'),
+    );
   });
 });
 
@@ -296,6 +323,55 @@ describe('a quick-add attribute that need not be answered', () => {
    * with the warning the moment the attribute changed, leaving whoever pressed
    * the button with no account of what happened.
    */
+  /**
+   * The same refusal, on the other codebook write this section makes — and the
+   * name it is about was typed in the picker's window, which stays open on it.
+   * A sentence left on this section would be under a modal, which is where the
+   * researcher cannot read it, and would still be there after they recovered
+   * by choosing an attribute that already exists.
+   */
+  it('says inside the window why the codebook refused the name', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-quick-add-1',
+      sections: quickAdd,
+      heldSections: [
+        {
+          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          displayName: 'Robin',
+        },
+      ],
+    });
+
+    const dialog = await openAttributePicker(harness.user, await findPicker());
+    await harness.user.type(
+      within(dialog).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
+      'nickname',
+    );
+    await harness.user.click(
+      within(dialog).getByRole('option', {
+        name: 'Create new attribute called “nickname”.',
+      }),
+    );
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'Robin is currently editing a section needed for this change.',
+    );
+    // Still open on the name that was refused, which is what the sentence is
+    // about and what the researcher has to correct.
+    expect(
+      within(dialog).getByRole('searchbox', {
+        name: 'Find or create an attribute',
+      }),
+    ).toHaveValue('nickname');
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).map(
+        (variable) => variable.name,
+      ),
+    ).not.toContain('nickname');
+  });
+
   it('names the colleague who refused the rule, and leaves the offer standing', async () => {
     const harness = renderStageEditor({
       stageId: 'name-generator-quick-add-1',
@@ -349,7 +425,14 @@ describe('a quick-add attribute that need not be answered', () => {
         screen.queryByText('This attribute can be left empty'),
       ).not.toBeInTheDocument(),
     );
-    expect(picker()).toBe(document.activeElement);
+    // The trigger, which is the control that opens the choice: it carries the
+    // field's `data-field-focus-target`, so it is where a refused save sends
+    // focus for this field too.
+    await waitFor(() =>
+      expect(
+        within(picker()).getByRole('button', { name: 'Change attribute' }),
+      ).toBe(document.activeElement),
+    );
     // Reached through the sentence rather than through the region, because the
     // picker beside this one keeps a live region of its own mounted whether it
     // is saying anything or not. Still a claim about the region: this is what
@@ -369,7 +452,7 @@ describe('a quick-add attribute that need not be answered', () => {
       sections: quickAdd,
     });
 
-    await screen.findByRole('combobox', { name: 'Select an attribute' });
+    await findPicker();
     harness.receiveCodebookUpdate({
       node: {
         person: {
@@ -416,7 +499,7 @@ describe('a quick-add attribute that need not be answered', () => {
       'This attribute now has to be answered, everywhere the protocol uses it.',
     );
 
-    await harness.user.selectOptions(picker(), 'relationship_to_ego');
+    await chooseAttributeById(harness.user, picker(), 'relationship_to_ego');
 
     // The sentence about the attribute the picker still held is no longer
     // true of it, and nothing is said about a choice the researcher has since

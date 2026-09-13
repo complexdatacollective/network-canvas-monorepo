@@ -43,10 +43,24 @@ export const ChoosingTheAttribute: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    await userEvent.selectOptions(
-      await canvas.findByRole('combobox', { name: /Select an attribute/ }),
+    // Through the window, as a researcher answers it: the trigger opens it,
+    // the search box narrows it, and the row is what carries the choice.
+    await userEvent.click(
+      await canvas.findByRole('button', {
+        name: /^(Select|Change) attribute$/u,
+      }),
+    );
+    const picker = within(await within(document.body).findByRole('dialog'));
+    await userEvent.type(
+      picker.getByRole('searchbox', { name: 'Find or create an attribute' }),
       'relationship_to_ego',
     );
+    await userEvent.click(
+      picker.getByRole('option', { name: 'relationship_to_ego' }),
+    );
+    await expect(
+      await canvas.findByRole('button', { name: 'Change attribute' }),
+    ).toBeInTheDocument();
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
 
     await waitFor(async () => {

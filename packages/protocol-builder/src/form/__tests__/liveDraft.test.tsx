@@ -6,6 +6,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 
 import {
+  collectAttribute,
   fieldsOf,
   openField,
 } from '../../editors/__tests__/formEditorHarness.tsx';
@@ -158,10 +159,7 @@ it('follows a row a list section has added beneath a top-level key', async () =>
   expect(fieldsOf(read().draft)).toHaveLength(1);
 
   const dialog = await openField(harness, 'Create new form field');
-  await harness.user.selectOptions(
-    dialog.getByRole('combobox', { name: 'Attribute' }),
-    'relationship_to_ego',
-  );
+  await collectAttribute(harness, dialog, 'relationship_to_ego');
   await writeInto(
     harness,
     dialog.getByRole('textbox', { name: 'Question text' }),

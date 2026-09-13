@@ -51,10 +51,12 @@ export const AddingTheBinForEverythingElse: Story = {
     const panel = await screen.findByRole('dialog');
     const dialog = within(panel);
     await storyDialogVisible(panel);
+    // The picker states what it holds as a typed pill, not as a selected
+    // option: the closed control names the attribute, not its id.
     await waitFor(async () => {
       await expect(
-        dialog.getByRole('combobox', { name: 'Attribute' }),
-      ).toHaveValue('contactType');
+        panel.querySelector('[data-attribute-type]'),
+      ).toHaveTextContent('contactType');
     });
 
     // Offered only once the bins themselves are chosen, and off until the

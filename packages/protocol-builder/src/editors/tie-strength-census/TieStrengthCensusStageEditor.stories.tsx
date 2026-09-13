@@ -56,8 +56,8 @@ export const EditingAPrompt: Story = {
     });
     // The scale is the CONNECTION's attribute, not the person's.
     await expect(
-      dialog.getByRole('combobox', { name: 'Ordinal attribute' }),
-    ).toHaveValue('closeness');
+      panel.querySelector('[data-attribute-type]'),
+    ).toHaveTextContent('closeness');
   },
 };
 

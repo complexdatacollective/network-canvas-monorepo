@@ -1,8 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { BIOLOGICAL_SEX_OPTIONS } from '@codaco/protocol-validation';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
+import { attributeField } from '../../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../../testing/renderStageEditor.tsx';
 import { shimMarkdownEditorMeasurement } from '../../__tests__/editorFixtures.ts';
 import BoundaryOptionsSection from '../BoundaryOptionsSection.tsx';
@@ -110,12 +112,24 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
       sections: <PedigreeNodeConfigurationSection />,
     });
 
+    // The slot's own label is what names it, and the attribute it holds is
+    // shown beside the control rather than selected inside it — the codebook
+    // name is the researcher's word and stays as they wrote it.
     expect(
-      screen.getByRole('combobox', { name: 'Etiqueta visible' }),
-    ).toHaveValue('fm_name');
+      within(attributeField('Etiqueta visible')).getByText('fm_name'),
+    ).toBeVisible();
     expect(
-      screen.getByRole('combobox', { name: 'Identificador del participante' }),
-    ).toHaveValue('is_ego');
+      within(attributeField('Identificador del participante')).getByText(
+        'is_ego',
+      ),
+    ).toBeVisible();
+    // The control that opens the attribute window says what pressing it does,
+    // in Spanish, and says it differently once something has been chosen.
+    expect(
+      within(attributeField('Etiqueta visible')).getByRole('button', {
+        name: 'Cambiar atributo',
+      }),
+    ).toBeInTheDocument();
     // Awaited: a stage the host has not answered for yet offers no way to
     // create anything, because nobody may write to it.
     expect(
@@ -189,28 +203,51 @@ describe('the pedigree’s own configuration, read in Spanish', () => {
                 { value: 'male', label: 'Male' },
               ],
             },
+            // A replacement carrying the values the interface owns, so this
+            // slot has something left to offer. Without one the picker has
+            // nothing to choose and nothing to create, and stands the whole
+            // control down behind its empty-state sentence — taking the note
+            // about the held attribute with it. Never chosen here: what is
+            // read below is the attribute the slot is still bound to.
+            recordedSex: {
+              name: 'recordedSex',
+              type: 'categorical',
+              options: BIOLOGICAL_SEX_OPTIONS,
+            },
           },
         },
       },
     });
 
+    const control = attributeField('Sexo biológico');
     // The collaborator's revision reaches this control over the protocol
     // channel, which is a microtask: read after it has arrived, not before.
-    await screen.findByRole('option', {
-      name: 'biologicalSex — ya no ofrece los valores que necesita este control',
-    });
-    const control = screen.getByRole('combobox', { name: 'Sexo biológico' });
-    expect(control).toHaveValue('biologicalSex');
+    await within(control).findByText(
+      'biologicalSex — ya no ofrece los valores que necesita este control',
+    );
+    // Still the researcher's stored choice, and the control says so: the
+    // button offers to CHANGE an attribute rather than to choose a first one.
     expect(
-      within(control).getByRole('option', {
-        name: 'biologicalSex — ya no ofrece los valores que necesita este control',
-      }),
-    ).toHaveValue('biologicalSex');
+      within(control).getByRole('button', { name: 'Cambiar atributo' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         'Este atributo ya no ofrece exactamente los valores que necesita este control, porque se cambiaron en otro sitio. Elige otro.',
       ),
     ).toBeInTheDocument();
+    // And never listed as one that can be picked. Opened by clicking the
+    // Spanish trigger rather than through `openAttributePicker`, which knows
+    // the English one: this file is the only place the window is opened in
+    // another language.
+    await harness.user.click(
+      within(control).getByRole('button', { name: 'Cambiar atributo' }),
+    );
+    const picker = await screen.findByRole('dialog');
+    expect(
+      [...picker.querySelectorAll('[role="option"]')].map((row) =>
+        row.getAttribute('data-attribute-id'),
+      ),
+    ).toEqual(['recordedSex']);
   });
 
   /**

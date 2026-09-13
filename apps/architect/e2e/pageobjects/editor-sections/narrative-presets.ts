@@ -2,6 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 import { type StageEditor } from '../stage-editor.js';
 import { addPrompt } from './prompts.js';
+import { chooseAttributeIfOffered } from './variables.js';
 
 // A narrative stage's presets and the permissions beneath them, as
 // `@codaco/protocol-builder` renders them.
@@ -36,9 +37,10 @@ import { addPrompt } from './prompts.js';
 /**
  * Chooses a codebook attribute in one of the preset dialog's pickers.
  *
- * `VariablePickerField` is handed options and no `onCreateOption` here, so it
- * is a native `<select>` over the attributes that exist (or a sentence, and no
- * `<select>` at all, when the type has none of the kind). Where the group
+ * `VariablePickerField` is handed options and no `onCreateOption` here, so
+ * its window only chooses from the attributes that exist (and where the type
+ * has none of the kind the field shows a sentence and no trigger). Where the
+ * group
  * offers a `CreateVariableButton`, `createLabel` names it: it opens the
  * codebook's own attribute editor — "Attribute name", submitted with "Create
  * attribute" — in a dialog titled with the button's own label.
@@ -48,17 +50,7 @@ async function chooseAttribute(
   field: Locator,
   opts: { name: string; createLabel?: string; scope: Locator },
 ): Promise<void> {
-  const select = field.locator('select');
-  if (await select.count()) {
-    // Compared whole rather than by substring: an attribute called "group"
-    // must not be answered by an existing "group_size".
-    const offered = await select.locator('option').allInnerTexts();
-    if (offered.includes(opts.name)) {
-      await select.selectOption({ label: opts.name });
-      await expect(field.locator('option:checked')).toHaveText(opts.name);
-      return;
-    }
-  }
+  if (await chooseAttributeIfOffered(field, opts.name)) return;
   if (opts.createLabel === undefined) {
     throw new Error(
       `The attribute "${opts.name}" is not offered here and this control cannot create one. Add it to the codebook first.`,
@@ -81,7 +73,9 @@ async function chooseAttribute(
   // comes back afterwards, so the picker holds the new attribute only once the
   // editor has closed.
   await editor.waitFor({ state: 'detached' });
-  await expect(field.locator('option:checked')).toHaveText(opts.name);
+  // The picker states what it holds as a typed pill, not as a selected
+  // option.
+  await expect(field.locator('[data-attribute-type]')).toHaveText(opts.name);
 }
 
 export async function addNarrativePreset(

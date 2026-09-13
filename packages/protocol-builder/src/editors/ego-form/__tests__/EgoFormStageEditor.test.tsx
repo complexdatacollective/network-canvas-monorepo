@@ -10,6 +10,7 @@ import {
   mountedAs,
   authorsDateSettingsFromField,
   authorsValuesFromField,
+  collectAttribute,
   openField,
   removeRow,
   stageNameInput,
@@ -105,10 +106,7 @@ describe('the editor for a form about the participant', () => {
     );
 
     const dialog = await openField(harness, 'Create new form field');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'ego_name',
-    );
+    await collectAttribute(harness, dialog, 'ego_name');
     await writeInto(
       harness,
       dialog.getByRole('textbox', { name: 'Question text' }),

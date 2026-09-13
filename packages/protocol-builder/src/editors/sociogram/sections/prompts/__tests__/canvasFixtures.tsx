@@ -1,10 +1,11 @@
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { background } from '../../../../../sections/background/background.tsx';
 import { nodeLayout } from '../../../../../sections/canvas-behaviours/nodeLayout.tsx';
+import { attributeField } from '../../../../../testing/attributePicker.ts';
 import type { StageEditorHarness } from '../../../../../testing/renderStageEditor.tsx';
 import { sociogramPrompts } from '../sociogramPrompts.tsx';
 
@@ -72,6 +73,18 @@ export const openPrompt = async (
   await harness.user.click(editButtons[index] as HTMLElement);
   return within(await screen.findByRole('dialog'));
 };
+
+/**
+ * One of the open prompt dialog's attribute pickers, waited for.
+ *
+ * `attributeField` is synchronous, and the picker a prompt marks nodes with is
+ * drawn only once tapping has been told to mark them — so it is not on screen
+ * at the moment that answer is given. Waiting here keeps that wait covering ONE
+ * thing: the picker arriving.
+ */
+export const promptAttributeField = async (
+  label: string,
+): Promise<HTMLElement> => await waitFor(() => attributeField(label));
 
 /** Every attribute of the type this sociogram collects, as the protocol holds it. */
 export const personVariables = (

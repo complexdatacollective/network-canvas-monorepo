@@ -37,11 +37,12 @@ async function createAttribute(
   await attributeEditor
     .getByRole('button', { name: 'Create attribute', exact: true })
     .click();
+  await attributeEditor.waitFor({ state: 'detached' });
   // The write goes to the codebook under its section's own lock and the id
   // comes back afterwards, so the picker holds the new attribute only once the
-  // editor has closed.
-  await attributeEditor.waitFor({ state: 'detached' });
-  await expect(field.locator('option:checked')).toHaveText(opts.name);
+  // editor has closed — and the picker states what it holds as a typed pill,
+  // not as a selected option.
+  await expect(field.locator('[data-attribute-type]')).toHaveText(opts.name);
 }
 
 test('creates a valid NetworkComposer stage from scratch', async ({

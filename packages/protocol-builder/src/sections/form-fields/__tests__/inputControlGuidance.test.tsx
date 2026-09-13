@@ -2,6 +2,10 @@ import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { protocolAuthoringLinks } from '../../../interfaces/documentation.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { exactlyText } from '../../../testing/text.ts';
 import FormFieldsSection from '../FormFieldsSection.tsx';
@@ -32,7 +36,11 @@ const openField = async (
   name: string,
 ) => {
   await harness.user.click(screen.getAllByRole('button', { name })[0]!);
-  return within(await screen.findByRole('dialog'));
+  // The element as well as its queries: the attribute picker's window opens
+  // over this dialog, and a helper reaching into the row has to say which of
+  // the two it means.
+  const element = await screen.findByRole('dialog');
+  return { ...within(element), element };
 };
 
 /**
@@ -107,8 +115,9 @@ describe('the guidance under the input control', () => {
     const harness = renderStageEditor(openAlterForm());
     const dialog = await openField(harness, 'Create new form field');
 
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Attribute', dialog.element),
       CREATE_NEW_ATTRIBUTE,
     );
     await harness.user.type(

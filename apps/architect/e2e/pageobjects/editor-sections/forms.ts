@@ -1,5 +1,7 @@
 import { type Locator } from '@playwright/test';
 
+import { chooseAttribute } from './variables.js';
+
 // AlterForm/AlterEdgeForm/EgoForm's `form.fields` array is authored by
 // `@codaco/protocol-builder`'s `FormFieldsSection`
 // (`sections/form-fields/FormFieldsSection.tsx`). The section is titled "Form
@@ -138,13 +140,12 @@ export type InventAttributeOptions = {
  * Fill in the codebook half of an open form-field dialog: an attribute that
  * does not exist yet, and the control the participant answers it with.
  *
- * There is no attribute search here. `FormFieldEditor`
- * (`sections/form-fields/FormFieldsSection.tsx`) asks which attribute the
- * answer is recorded under through a native `<select>`
- * (`fields/VariablePickerField.tsx` -> fresco-ui's `NativeSelectField`, so
- * `selectOption` drives it directly) listing the subject's collectable
- * codebook attributes plus one sentinel option, "Create a new attribute…".
- * Choosing that option IS the request to invent one, and it reveals:
+ * `FormFieldEditor` (`sections/form-fields/FormFieldsSection.tsx`) asks which
+ * attribute the answer is recorded under through the attribute picker
+ * (`fields/VariablePickerField.tsx`), whose window lists the subject's
+ * collectable codebook attributes plus one sentinel row, "Create a new
+ * attribute…". This section passes no `onCreateOption`, so that sentinel is
+ * the whole of what inventing one is here: choosing it reveals:
  *
  * - "Kind of answer" — the codebook type, asked first because it decides what
  *   else the attribute needs; and then either
@@ -175,12 +176,13 @@ export async function inventAttributeInFieldDialog(
     );
   }
 
-  // `exact: true` on every name: "Attribute" is also the heading of the
-  // dialog's first Section and the prefix of "Attribute name", and a
-  // substring match would resolve to more than one control.
-  await dialog
-    .getByRole('combobox', { name: 'Attribute', exact: true })
-    .selectOption({ label: 'Create a new attribute…' });
+  // Addressed by the field's own name rather than by its label: "Attribute" is
+  // also the heading of the dialog's first Section and the prefix of
+  // "Attribute name".
+  await chooseAttribute(
+    dialog.locator('[data-field-name="variable"]'),
+    'Create a new attribute…',
+  );
   await dialog
     .getByRole('combobox', { name: 'Kind of answer', exact: true })
     .selectOption({ label: variableType });

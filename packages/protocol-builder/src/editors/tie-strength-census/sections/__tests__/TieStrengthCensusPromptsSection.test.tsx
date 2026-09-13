@@ -5,11 +5,31 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
+  attributeField,
+  chooseAttributeById,
+  offeredAttributes,
+  openAttributePicker,
+} from '../../../../testing/attributePicker.ts';
+import {
   renderStageEditor,
   type StageEditorHarness,
 } from '../../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../../__tests__/writeInto.ts';
 import TieStrengthCensusPromptsSection from '../TieStrengthCensusPromptsSection.tsx';
+
+/** The label of the field a prompt's scale is chosen in. */
+const SCALE_LABEL = 'Ordinal attribute';
+
+/**
+ * The field the scale is chosen in, once the prompt has drawn it.
+ *
+ * A scope rather than a control: the scale is picked in a window the field's
+ * trigger opens, so everything a test does to it, it does through here.
+ */
+const findScaleField = async (): Promise<HTMLElement> => {
+  await screen.findByText(SCALE_LABEL, { selector: 'label' });
+  return attributeField(SCALE_LABEL);
+};
 
 const openSection = () => ({
   stageId: 'tie-strength-census-1' as const,
@@ -64,13 +84,13 @@ describe('the questions a tie-strength census asks about a pair', () => {
 
     expect(await screen.findByRole('radio', { name: 'knows' })).toBeChecked();
     // The scale is the CONNECTION's attribute, not the person's.
-    const picker = screen.getByRole('combobox', { name: 'Ordinal attribute' });
-    expect(
-      [...picker.querySelectorAll('option')]
-        .map((option) => option.value)
-        .filter((value) => value !== ''),
-    ).toEqual(['closeness']);
-    expect(picker).toHaveValue('closeness');
+    const picker = await findScaleField();
+    expect(await offeredAttributes(harness.user, picker)).toEqual([
+      'closeness',
+    ]);
+    await waitFor(() =>
+      expect(within(picker).getByText('closeness')).toBeVisible(),
+    );
     expect(
       screen.getByRole('textbox', { name: 'Decline option' }),
     ).toHaveTextContent("Don't know each other");
@@ -145,7 +165,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     );
     await screen.findByRole('radio', { name: 'knows' });
     expect(
-      screen.queryByRole('combobox', { name: 'Ordinal attribute' }),
+      screen.queryByText(SCALE_LABEL, { selector: 'label' }),
     ).not.toBeInTheDocument();
 
     await harness.user.click(
@@ -179,21 +199,28 @@ describe('the questions a tie-strength census asks about a pair', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    expect(
-      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
-    ).toHaveValue('closeness');
+    const scale = await findScaleField();
+    await waitFor(() =>
+      expect(within(scale).getByText('closeness')).toBeVisible(),
+    );
 
     await harness.user.click(
       screen.getByRole('radio', { name: 'family_edge' }),
     );
 
     // The new connection type has no ordinal attributes at all, so the picker
-    // has nothing to offer and nothing left over from the old one.
+    // has nothing to offer and nothing left over from the old one — it says so
+    // in place of the control, rather than holding the scale it was opened on.
     await waitFor(() =>
       expect(
-        screen.queryByRole('option', { name: /closeness/ }),
+        within(attributeField(SCALE_LABEL)).queryByText('closeness'),
       ).not.toBeInTheDocument(),
     );
+    expect(
+      within(attributeField(SCALE_LABEL)).getByText(
+        'This connection type has no ordinal attributes yet. Create one to say what the scale is.',
+      ),
+    ).toBeVisible();
 
     // And the prompt refuses here, naming the pick it is missing, rather than
     // being accepted and refused by the stage save.
@@ -216,7 +243,7 @@ describe('the questions a tie-strength census asks about a pair', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Ordinal attribute' });
+    await findScaleField();
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -241,8 +268,9 @@ describe('the questions a tie-strength census asks about a pair', () => {
       'How much trust?',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await findScaleField(),
       'closeness',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -267,8 +295,9 @@ describe('the questions a tie-strength census asks about a pair', () => {
       'How much trust?',
     );
     await harness.user.click(screen.getByRole('radio', { name: 'knows' }));
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await findScaleField(),
       'closeness',
     );
     await writeInto(
@@ -339,7 +368,7 @@ describe('creating a scale from inside a tie-strength prompt', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Ordinal attribute' });
+    await findScaleField();
     expect(screen.queryAllByRole('dialog')).toHaveLength(1);
 
     await harness.user.click(
@@ -355,20 +384,19 @@ describe('creating a scale from inside a tie-strength prompt', () => {
       screen.getByRole('button', { name: 'Create attribute' }),
     );
 
-    const picker = await screen.findByRole('combobox', {
-      name: 'Ordinal attribute',
-    });
-    await waitFor(() =>
-      expect(
-        within(picker).getByRole('option', { name: 'trust' }),
-      ).toBeInTheDocument(),
-    );
+    const picker = await findScaleField();
     // The prompt is pointing at it rather than at the scale it opened on, and
     // the row dialog it was created from is still the only dialog on screen.
-    expect(
-      within(picker).getByRole('option', { selected: true }),
-    ).toHaveTextContent('trust');
+    await waitFor(() =>
+      expect(within(picker).getByText('trust')).toBeVisible(),
+    );
     expect(screen.queryAllByRole('dialog')).toHaveLength(1);
+    // And it is on OFFER, not merely held: the attribute reached the list the
+    // picker builds out of the codebook.
+    const spotlight = await openAttributePicker(harness.user, picker);
+    expect(
+      within(spotlight).getByRole('option', { name: 'trust' }),
+    ).toBeVisible();
 
     // The connection type is where it landed, not the person and not the stage.
     expect(
@@ -398,7 +426,7 @@ describe('a tie-strength prompt whose scale has gone', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await screen.findByRole('combobox', { name: 'Ordinal attribute' });
+    await findScaleField();
 
     harness.receiveCodebookUpdate({
       edge: {
@@ -524,11 +552,12 @@ describe('a tie-strength prompt whose scale a pedigree sets', () => {
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
 
-    // Still the prompt's own pick, and still on offer: blanking it would hide
-    // the reference the researcher has to repair.
-    expect(
-      await screen.findByRole('combobox', { name: 'Ordinal attribute' }),
-    ).toHaveValue(SCALE_VARIABLE);
+    // Still the prompt's own pick, and still shown: blanking it would hide the
+    // reference the researcher has to repair.
+    const scale = await findScaleField();
+    await waitFor(() =>
+      expect(within(scale).getByText(SCALE_VARIABLE)).toBeVisible(),
+    );
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
 
