@@ -110,7 +110,7 @@ function messageEvent(
     | 'message.occurrence.dispatched'
     | 'message.occurrence.blocked'
     | 'message.occurrence.expired'
-    | 'message.delivery.delivered'
+    | 'message.delivery.accepted'
     | 'message.delivery.failed'
     | 'message.delivery.uncertain'
     | 'message.delivery.suppressed',
@@ -414,6 +414,7 @@ export async function produceDueOccurrenceMessage(options: {
     `SELECT o.id AS occurrence_id,o.team_id,l.id AS link_id
      FROM schedule_occurrences o
      JOIN study_schedules sc ON sc.id=o.schedule_id AND sc.study_id=o.study_id AND sc.team_id=o.team_id
+     JOIN study_waves w ON w.id=sc.wave_id AND w.study_id=o.study_id AND w.team_id=o.team_id
      JOIN studies s ON s.id=o.study_id AND s.team_id=o.team_id
      JOIN participants p ON p.id=o.participant_id AND p.study_id=o.study_id AND p.team_id=o.team_id
      JOIN interview_links l ON l.wave_id=sc.wave_id AND l.participant_id=o.participant_id
@@ -422,6 +423,8 @@ export async function produceDueOccurrenceMessage(options: {
        AND l.token_ciphertext IS NOT NULL
      WHERE o.state='scheduled' AND o.scheduled_for<=statement_timestamp()
        AND o.expires_at>statement_timestamp() AND sc.state='active' AND sc.wave_id IS NOT NULL
+       AND (w.opens_at IS NULL OR w.opens_at<=statement_timestamp())
+       AND (w.closes_at IS NULL OR w.closes_at>statement_timestamp())
        AND s.participation_mode='managed' AND s.state='live'
        AND p.enrolled_at IS NOT NULL
        AND NOT EXISTS (SELECT 1 FROM participant_consents c WHERE c.team_id=o.team_id
@@ -721,6 +724,17 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
         const scheduleRow = schedule.rows[0];
         if (!scheduleRow || scheduleRow.state !== 'active') return 'suppressed';
         scheduleWaveId = scheduleRow.wave_id;
+        if (scheduleWaveId) {
+          const wave = await client.query(
+            `SELECT 1 FROM study_waves
+             WHERE id=$1 AND study_id=$2 AND team_id=$3
+               AND (opens_at IS NULL OR opens_at<=statement_timestamp())
+               AND (closes_at IS NULL OR closes_at>statement_timestamp())
+             FOR UPDATE`,
+            [scheduleWaveId, claim.studyId, claim.teamId],
+          );
+          if (wave.rowCount !== 1) return 'suppressed';
+        }
         const occurrence = await client.query(
           `SELECT 1 FROM schedule_occurrences
            WHERE id=$1 AND schedule_id=$2 AND participant_id=$3 AND study_id=$4 AND team_id=$5
@@ -935,7 +949,9 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
                 context,
                 claim.id,
                 'message_delivery',
-                `message.delivery.${outcome}`,
+                outcome === 'delivered'
+                  ? 'message.delivery.accepted'
+                  : `message.delivery.${outcome}`,
                 claim.channel,
               ),
             ],

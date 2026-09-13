@@ -671,6 +671,7 @@ const MessageDeliveryV1EventSchema = z
       'message.payload.read',
       'message.link.read',
       'message.contact.read',
+      'message.delivery.accepted',
       'message.delivery.delivered',
       'message.delivery.failed',
       'message.delivery.uncertain',
@@ -1510,6 +1511,17 @@ export const AUDIT_EVENT_REGISTRY = {
     fixture: {
       ...FIXTURE_MESSAGE_DELIVERY_COMMON,
       eventType: 'message.contact.read',
+    },
+  },
+  'message.delivery.accepted@1': {
+    inputSchema: MessageDeliveryV1EventSchema,
+    title: 'Participant message accepted by provider',
+    detailFields: ['channel'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_MESSAGE_DELIVERY_COMMON,
+      eventType: 'message.delivery.accepted',
     },
   },
   'message.delivery.delivered@1': {

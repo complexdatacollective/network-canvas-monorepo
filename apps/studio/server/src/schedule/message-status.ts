@@ -70,6 +70,27 @@ function statusEvent(
   };
 }
 
+function deliveredEvent(
+  context: SystemAuditEventContext<'Message delivery'>,
+  deliveryId: string,
+  channel: 'email' | 'sms',
+): AuditEventInput {
+  return {
+    ...context,
+    eventVersion: 1,
+    eventType: 'message.delivery.delivered',
+    category: 'participant_data',
+    outcome: 'succeeded',
+    subjectType: null,
+    subjectId: null,
+    subjectLabel: null,
+    resourceType: 'message_delivery',
+    resourceId: deliveryId,
+    resourceLabel: null,
+    details: { channel },
+  };
+}
+
 async function store(
   pool: pg.Pool,
   input: {
@@ -167,7 +188,12 @@ async function store(
         }
         return {
           result: true,
-          events: [statusEvent(context, row.id, row.channel)],
+          events: [
+            statusEvent(context, row.id, row.channel),
+            ...(input.kind === 'delivered'
+              ? [deliveredEvent(context, row.id, row.channel)]
+              : []),
+          ],
         };
       },
     );
@@ -201,9 +227,9 @@ export async function receivePostmarkStatus(
   const timestamp =
     parsed.RecordType === 'Delivery'
       ? parsed.DeliveredAt
-      : parsed.RecordType === 'Bounce'
+      : parsed.RecordType === 'Bounce' || parsed.RecordType === 'SpamComplaint'
         ? parsed.BouncedAt
-        : parsed.ReceivedAt;
+        : undefined;
   if (!timestamp) throw new Error('MESSAGE_STATUS_INVALID');
   const occurredAt = new Date(timestamp);
   if (!Number.isFinite(occurredAt.getTime()))

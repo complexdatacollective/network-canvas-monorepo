@@ -44,7 +44,7 @@ const STORED_KEY_REFERENCES_SQL = `
     FROM participants WHERE pii_key_id IS NOT NULL
   UNION SELECT 'pii-index', blind_index_key_id FROM participants WHERE blind_index_key_id IS NOT NULL
   UNION SELECT 'pii-index', blind_index_key_id FROM message_deliveries
-  UNION SELECT 'integration-enc', rendered_key_id FROM message_deliveries
+  UNION SELECT 'integration-enc', rendered_key_id FROM message_deliveries WHERE rendered_key_id IS NOT NULL
   UNION SELECT 'pii-index', blind_index_key_id FROM participant_contact_optouts
   UNION SELECT 'integration-enc', secret_key_id FROM webhook_subscriptions
   UNION SELECT 'integration-enc', token_key_id FROM interview_links WHERE token_key_id IS NOT NULL
@@ -152,7 +152,7 @@ export async function readUnverifiedLegacyKeyReferences(
      UNION
      SELECT DISTINCT 'integration-enc', delivery.rendered_key_id
        FROM message_deliveries delivery
-       WHERE NOT EXISTS (
+       WHERE delivery.rendered_key_id IS NOT NULL AND NOT EXISTS (
          SELECT 1 FROM encryption_key_verifications proof
          WHERE proof.purpose = 'integration-enc'
            AND proof.key_id = delivery.rendered_key_id

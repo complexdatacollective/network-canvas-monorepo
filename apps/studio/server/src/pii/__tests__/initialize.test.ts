@@ -236,6 +236,32 @@ describe('durable encryption startup verification', () => {
     });
   });
 
+  it('ignores a legacy delivery whose rendered key envelope is entirely absent', async () => {
+    await withDatabase(async ({ pool, maintenance }) => {
+      await initializeEncryption(input(maintenance));
+      await insertRestoredRow(
+        pool,
+        `INSERT INTO message_deliveries
+          (id,team_id,study_id,participant_id,template_id,kind,channel,
+           recipient_blind_index,blind_index_key_id,rendered_body_hash)
+         VALUES($1,$2,$3,$4,$5,'prompt','email',$6,'index-1',$7)`,
+        [
+          randomUUID(),
+          randomUUID(),
+          randomUUID(),
+          randomUUID(),
+          randomUUID(),
+          Buffer.alloc(32, 7),
+          'a'.repeat(64),
+        ],
+      );
+
+      await expect(
+        initializeEncryption(input(maintenance)),
+      ).resolves.toBeDefined();
+    });
+  });
+
   it('refuses an application pool even when all tenant tables are empty', async () => {
     await withDatabase(async ({ app }) => {
       await expect(initializeEncryption(input(app))).rejects.toThrow(

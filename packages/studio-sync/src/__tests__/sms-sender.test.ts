@@ -114,4 +114,34 @@ describe('Twilio SMS sender', () => {
     ).rejects.toBeInstanceOf(SmsDeliveryError);
     expect(routing.requested).toBe('');
   });
+
+  it('treats a Twilio 5xx response after connection as uncertain', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(503, { 'content-type': 'application/json' });
+      response.end('{"message":"upstream failure"}');
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    const address = server.address() as AddressInfo;
+    routing.url = `http://127.0.0.1:${address.port}/`;
+    close = () =>
+      new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      );
+    const sender = createTwilioSmsSender({
+      accountSid: `AC${'1'.repeat(32)}`,
+      authToken: 'private-token',
+      from: '+13125550100',
+      callbackBaseUrl: 'https://studio.example',
+    });
+
+    await expect(
+      sender.send({
+        to: '+13125550101',
+        body: 'Private message',
+        deliveryId: '00000000-0000-4000-8000-000000000009',
+      }),
+    ).rejects.toMatchObject({ disposition: 'uncertain' });
+  });
 });

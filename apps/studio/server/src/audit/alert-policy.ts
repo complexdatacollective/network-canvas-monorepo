@@ -92,6 +92,7 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
     case 'message.payload.rotation_read':
     case 'message.payload.rotated':
     case 'message.link.read':
+    case 'message.delivery.accepted':
     case 'message.delivery.delivered':
     case 'message.delivery.failed':
     case 'message.delivery.uncertain':

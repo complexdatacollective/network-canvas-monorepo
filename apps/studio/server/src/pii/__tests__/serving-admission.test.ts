@@ -21,6 +21,7 @@ import {
   classifyLegacyContactIndexBatch,
   RAW_LEGACY_CONTACT_INDEX_ID,
 } from '../legacy-indexes.ts';
+import { sealRenderedMessage } from '../message-deliveries.ts';
 import { initializeServingEncryption } from '../serving-admission.ts';
 import { configuration, rootOne } from './fixtures.ts';
 
@@ -258,6 +259,11 @@ describe.skipIf(!database)('serving encryption database admission', () => {
       'INSERT INTO studies (id, team_id, protocol_id, name) VALUES ($1, $2, $3, $4)',
       [studyId, teamId, protocolId, 'Reference guard study'],
     );
+    const deliveryId = randomUUID();
+    const rendered = sealRenderedMessage(keys, teamId, deliveryId, {
+      subject: 'Reference guard',
+      body: 'Encrypted fixture body',
+    });
     const guardedWrites: ReadonlyArray<
       readonly [string, () => Promise<unknown>]
     > = [
@@ -293,16 +299,21 @@ describe.skipIf(!database)('serving encryption database admission', () => {
           first!.pool.query(
             `INSERT INTO message_deliveries
               (id, team_id, study_id, participant_id, template_id, kind, channel,
-               recipient_blind_index, blind_index_key_id, rendered_body_hash)
-             VALUES ($1, $2, $3, $4, $5, 'reminder', 'email', $6, 'not-proved', $7)`,
+               recipient_blind_index, blind_index_key_id, rendered_body_hash,
+               rendered_ciphertext, rendered_key_id, rendered_algorithm)
+             VALUES ($1, $2, $3, $4, $5, 'reminder', 'email', $6, 'not-proved', $7,
+               $8, $9, $10)`,
             [
-              randomUUID(),
+              deliveryId,
               teamId,
               studyId,
               randomUUID(),
               randomUUID(),
               Buffer.alloc(32, 76),
               'a'.repeat(64),
+              rendered.envelope,
+              rendered.keyId,
+              rendered.algorithm,
             ],
           ),
       ],

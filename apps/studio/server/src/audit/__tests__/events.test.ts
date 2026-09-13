@@ -30,6 +30,7 @@ describe('audit event registry', () => {
       'interview.link.rotated@1',
       'interview.link.rotation_read@1',
       'message.contact.read@1',
+      'message.delivery.accepted@1',
       'message.delivery.delivered@1',
       'message.delivery.failed@1',
       'message.delivery.status_received@1',

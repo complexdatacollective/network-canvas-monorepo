@@ -451,7 +451,7 @@ describe('message delivery runtime', () => {
         'message.occurrence.dispatched',
         'message.payload.read',
         'message.contact.read',
-        'message.delivery.delivered',
+        'message.delivery.accepted',
       ]);
     });
   });
@@ -1112,6 +1112,38 @@ describe('message delivery runtime', () => {
           })
         ).status,
       ).toBe(401);
+      const unavailableApp = createHttpTestApp(readEnv(), {
+        auth: stubAuthService(),
+        pool: fixture.scratch.app,
+        messageStatus: {
+          maintenancePool: {
+            query: async () => {
+              throw new Error('synthetic database outage');
+            },
+          } as never,
+          postmarkToken: 'x'.repeat(32),
+          twilioAuthToken: 'twilio-secret',
+          publicBaseUrl: 'https://studio.example',
+        },
+      });
+      expect(
+        (
+          await unavailableApp.request('/api/v1/message-status/postmark', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${'x'.repeat(32)}` },
+            body: postmarkBody,
+          })
+        ).status,
+      ).toBe(503);
+      expect(
+        (
+          await app.request('/api/v1/message-status/postmark', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${'x'.repeat(32)}` },
+            body: '{}',
+          })
+        ).status,
+      ).toBe(400);
       expect(
         (
           await app.request('/api/v1/message-status/postmark', {
@@ -1192,6 +1224,49 @@ describe('message delivery runtime', () => {
           )
         ).rows[0],
       ).toEqual({ n: 0 });
+      expect(
+        (
+          await app.request('/api/v1/message-status/postmark', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${'x'.repeat(32)}` },
+            body: JSON.stringify({
+              MessageID: postmarkId,
+              RecordType: 'SpamComplaint',
+              BouncedAt: '2026-09-13T12:02:00.000Z',
+              Metadata: { deliveryId: emailDelivery.rows[0]!.id },
+            }),
+          })
+        ).status,
+      ).toBe(204);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            'SELECT count(*)::int AS n FROM participant_contact_optouts',
+          )
+        ).rows[0],
+      ).toEqual({ n: 1 });
+      expect(
+        (
+          await app.request('/api/v1/message-status/postmark', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${'x'.repeat(32)}` },
+            body: JSON.stringify({
+              MessageID: postmarkId,
+              RecordType: 'Delivery',
+              DeliveredAt: '2026-09-13T12:03:00.000Z',
+              Metadata: { deliveryId: emailDelivery.rows[0]!.id },
+            }),
+          })
+        ).status,
+      ).toBe(204);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            "SELECT count(*)::int AS n FROM audit_events WHERE event_type='message.delivery.delivered' AND resource_id=$1",
+            [emailDelivery.rows[0]!.id],
+          )
+        ).rows[0],
+      ).toEqual({ n: 1 });
 
       const sms = await occurrence(fixture, false, 'sms');
       await enqueueOccurrenceMessages(
@@ -1223,6 +1298,21 @@ describe('message delivery runtime', () => {
       const signature = createHmac('sha1', 'twilio-secret')
         .update(signed)
         .digest('base64');
+      expect(
+        (
+          await unavailableApp.request(
+            `/api/v1/message-status/twilio/${deliveryId}`,
+            {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/x-www-form-urlencoded',
+                'x-twilio-signature': signature,
+              },
+              body,
+            },
+          )
+        ).status,
+      ).toBe(503);
       await expect(
         receiveTwilioStatus(fixture.scratch.maintenance, {
           authToken: 'twilio-secret',
@@ -1259,11 +1349,11 @@ describe('message delivery runtime', () => {
             'SELECT count(*)::int AS n FROM message_delivery_events',
           )
         ).rows[0],
-      ).toEqual({ n: 3 });
+      ).toEqual({ n: 5 });
       expect(
         (
           await fixture.scratch.pool.query(
-            'SELECT count(*)::int AS n FROM participant_contact_optouts',
+            "SELECT count(*)::int AS n FROM participant_contact_optouts WHERE channel='sms'",
           )
         ).rows[0],
       ).toEqual({ n: 0 });
@@ -1290,7 +1380,7 @@ describe('message delivery runtime', () => {
       expect(
         (
           await fixture.scratch.pool.query(
-            'SELECT count(*)::int AS n FROM participant_contact_optouts',
+            "SELECT count(*)::int AS n FROM participant_contact_optouts WHERE channel='sms'",
           )
         ).rows[0],
       ).toEqual({ n: 1 });
@@ -1305,6 +1395,74 @@ describe('message delivery runtime', () => {
         provider_message_id: 'SM00000000000000000000000000000000',
         status_events: 2,
       });
+    });
+  });
+
+  it('rechecks the current wave window before producing and handing off a prompt', async () => {
+    await participantFixture(async (fixture) => {
+      await fixture.scratch.pool.query(
+        "UPDATE studies SET state='live',went_live_at=statement_timestamp() WHERE id=$1",
+        [fixture.target.studyId],
+      );
+      await fixture.scratch.pool.query(
+        'UPDATE participants SET enrolled_at=statement_timestamp() WHERE id=$1',
+        [fixture.target.participantId],
+      );
+      const waveId = randomUUID();
+      await fixture.scratch.pool.query(
+        `INSERT INTO study_waves(id,study_id,team_id,wave_number)
+         VALUES($1,$2,$3,1)`,
+        [waveId, fixture.target.studyId, fixture.context.tenantDb.teamId],
+      );
+      await issueParticipantInterviewLink(fixture.keys, fixture.context, {
+        ...fixture.target,
+        waveId,
+      });
+      await occurrence(fixture, false, 'email', waveId);
+      await fixture.scratch.pool.query(
+        "UPDATE study_waves SET opens_at=statement_timestamp()+interval '1 hour' WHERE id=$1",
+        [waveId],
+      );
+      const produce = () =>
+        produceDueOccurrenceMessage({
+          pool: fixture.scratch.maintenance,
+          encryptionKeys: fixture.keys,
+          publicBaseUrl: 'https://studio.example',
+        });
+      await expect(produce()).resolves.toBe(false);
+
+      await fixture.scratch.pool.query(
+        'UPDATE study_waves SET opens_at=NULL WHERE id=$1',
+        [waveId],
+      );
+      await expect(produce()).resolves.toBe(true);
+      await fixture.scratch.pool.query(
+        "UPDATE study_waves SET closes_at=statement_timestamp()-interval '1 second' WHERE id=$1",
+        [waveId],
+      );
+      await fixture.scratch.pool.query(
+        'UPDATE message_deliveries SET available_at=clock_timestamp()',
+      );
+      let sends = 0;
+      const dispatcher = createMessageDeliveryDispatcher({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        email: {
+          provider: 'smtp',
+          from: 'studio@example.org',
+          sender: {
+            async send() {
+              sends += 1;
+              return { status: 'accepted' as const, messageId: 'sent' };
+            },
+            close() {},
+          },
+        },
+      });
+      await expect(dispatcher.runOnce()).resolves.toMatchObject({
+        suppressed: 1,
+      });
+      expect(sends).toBe(0);
     });
   });
 

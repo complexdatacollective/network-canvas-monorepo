@@ -52,7 +52,8 @@ const acceptance = z.object({ sid: z.string().regex(/^SM[0-9a-f]{32}$/i) });
 const RESPONSE_LIMIT = 16 * 1024;
 
 function httpDisposition(status = 0): SmsFailureDisposition | undefined {
-  if (status === 429 || status >= 500) return 'retryable';
+  if (status === 429) return 'retryable';
+  if (status >= 500) return 'uncertain';
   if (status >= 400 && status < 500) return 'permanent';
   return undefined;
 }
