@@ -1,5 +1,5 @@
 import { safe } from '@orpc/client';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createBetterAuthService } from '../auth/better-auth.ts';
 import type { AuthService, SessionPrincipal } from '../auth/service.ts';
@@ -56,9 +56,14 @@ describe('principal resolution', () => {
 
   it('refuses protected procedures without a session', async () => {
     const auth = stubAuthService();
-    const client = createRpcClient(createApp(readEnv(), { auth }));
+    const app = createApp(readEnv(), { auth });
+    const request = vi.spyOn(app, 'request');
+    const client = createRpcClient(app);
     const { error } = await safe(client.me());
     expect(error).toMatchObject({ code: 'UNAUTHORIZED' });
+    const response = await request.mock.results[0]?.value;
+    expect(response?.status).toBe(401);
+    expect(response?.headers.get('Cache-Control')).toBe('no-store');
   });
 
   it('never falls back to the cookie when an Authorization header is present', async () => {
