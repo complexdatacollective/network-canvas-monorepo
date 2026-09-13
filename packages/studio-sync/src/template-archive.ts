@@ -283,27 +283,80 @@ export function canonicalJsonBytes(value: unknown): Uint8Array<ArrayBuffer> {
   return encoder.encode(canonicalize(value));
 }
 
+/** Detect decoded duplicate members before JSON.parse can overwrite either value. */
+function hasDuplicateJsonObjectKeys(source: string): boolean {
+  const stack: ({ kind: 'array' } | { kind: 'object'; keys: Set<string> })[] =
+    [];
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === '{') {
+      stack.push({ kind: 'object', keys: new Set() });
+      continue;
+    }
+    if (character === '[') {
+      stack.push({ kind: 'array' });
+      continue;
+    }
+    if (character === '}' || character === ']') {
+      stack.pop();
+      continue;
+    }
+    if (character !== '"') continue;
+    const start = index;
+    for (index += 1; index < source.length; index += 1) {
+      if (source[index] === '\\') {
+        index += 1;
+        continue;
+      }
+      if (source[index] === '"') break;
+    }
+    if (index >= source.length) return false;
+    let after = index + 1;
+    while (/\s/.test(source[after] ?? '')) after += 1;
+    if (source[after] !== ':') continue;
+    const frame = stack.at(-1);
+    if (frame?.kind !== 'object') continue;
+    let key: unknown;
+    try {
+      key = JSON.parse(source.slice(start, index + 1));
+    } catch {
+      return false;
+    }
+    if (typeof key !== 'string') return false;
+    if (frame.keys.has(key)) return true;
+    frame.keys.add(key);
+  }
+  return false;
+}
+
+/** Reject duplicate keys, malformed text, and nesting that could exhaust validation. */
+export function parseBoundedJson(text: string): unknown {
+  if (hasDuplicateJsonObjectKeys(text)) fail();
+  const value: unknown = JSON.parse(text);
+  const pending: { value: unknown; depth: number }[] = [{ value, depth: 0 }];
+  while (pending.length > 0) {
+    const item = pending.pop()!;
+    if (item.depth > 64) fail();
+    if (
+      typeof item.value === 'string' &&
+      (item.value.includes('\0') || !item.value.isWellFormed())
+    )
+      fail();
+    if (item.value !== null && typeof item.value === 'object') {
+      for (const [key, child] of Object.entries(item.value)) {
+        if (key.includes('\0') || !key.isWellFormed()) fail();
+        pending.push({ value: child, depth: item.depth + 1 });
+      }
+    }
+  }
+  return value;
+}
+
 /** Reject duplicate-key/non-canonical JSON and nesting that could exhaust validation. */
 export function readCanonicalJson(bytes: Uint8Array): unknown {
   try {
     const text = decoder.decode(bytes);
-    const value: unknown = JSON.parse(text);
-    const pending: { value: unknown; depth: number }[] = [{ value, depth: 0 }];
-    while (pending.length > 0) {
-      const item = pending.pop()!;
-      if (item.depth > 64) fail();
-      if (
-        typeof item.value === 'string' &&
-        (item.value.includes('\0') || !item.value.isWellFormed())
-      )
-        fail();
-      if (item.value !== null && typeof item.value === 'object') {
-        for (const [key, child] of Object.entries(item.value)) {
-          if (key.includes('\0') || !key.isWellFormed()) fail();
-          pending.push({ value: child, depth: item.depth + 1 });
-        }
-      }
-    }
+    const value = parseBoundedJson(text);
     if (canonicalize(value) !== text) fail();
     return value;
   } catch (error) {
