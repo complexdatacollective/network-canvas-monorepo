@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   expect,
   fireEvent,
@@ -65,9 +65,13 @@ function ControlledVAS({
 }) {
   const [value, setValue] = useState<number | undefined>(initialValue);
 
-  useEffect(() => {
+  // Adopt a new control value during render rather than after a commit, so the
+  // field never paints one frame of the previous story arg.
+  const [appliedInitialValue, setAppliedInitialValue] = useState(initialValue);
+  if (appliedInitialValue !== initialValue) {
+    setAppliedInitialValue(initialValue);
     setValue(initialValue);
-  }, [initialValue]);
+  }
 
   return (
     <VisualAnalogScaleField

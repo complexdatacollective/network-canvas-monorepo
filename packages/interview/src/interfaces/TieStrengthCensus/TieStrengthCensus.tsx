@@ -208,11 +208,17 @@ export default function TieStrengthCensus(props: TieStrengthCensusProps) {
   const [isTouched, setIsTouched] = useState(false);
   const [isChanged, setIsChanged] = useState(false);
 
-  // Reset touch state when pair or prompt changes
-  useEffect(() => {
+  // Reset touch state when pair or prompt changes. Done during render rather
+  // than in an effect: an effect would leave one committed render in which the
+  // new pair is on screen while the previous pair's touch state still stands,
+  // and the auto-advance effect below reads exactly that pair of values.
+  const touchScope = `${pairIndex}:${promptIndex}`;
+  const [touchedScope, setTouchedScope] = useState(touchScope);
+  if (touchedScope !== touchScope) {
+    setTouchedScope(touchScope);
     setIsTouched(false);
     setIsChanged(false);
-  }, [pairIndex, promptIndex]);
+  }
 
   // Validation
   useStageValidation({

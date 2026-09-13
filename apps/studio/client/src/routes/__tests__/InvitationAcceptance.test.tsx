@@ -10,6 +10,7 @@ import {
 } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { registerStudioEditorSession } from '../../editor/sessionLifecycle.ts';
 import { createAppRouter } from '../../router.tsx';
 
 const mocks = vi.hoisted(() => ({
@@ -301,6 +302,50 @@ describe('invitation acceptance', () => {
       await screen.findByRole('heading', { level: 1, name: 'Studies' }),
     ).toBeInTheDocument();
     expect(router.state.resolvedLocation?.pathname).toBe('/team/team-a');
+  });
+
+  /**
+   * And this tab's editor session ends with the account.
+   *
+   * Switching accounts here is a sign-out, and the socket the protocol editor
+   * talks its host over is upgraded once, under the account signing out: left
+   * open, the account signing in next would edit, and be audited, through it.
+   * Not said at this call site, though — `lib/session.ts` ends the session
+   * wherever the session query answers that nobody is signed in, which is the
+   * one channel every reader of the session shares, this route's own
+   * destination included.
+   */
+  it('ends this tab’s editor session when the visitor signs out of it', async () => {
+    mocks.getSession.mockResolvedValue({ data: SESSION, error: null });
+    mocks.useSession.mockReturnValue({
+      data: SESSION,
+      isPending: false,
+      error: null,
+    });
+    mocks.signOut.mockImplementationOnce(async () => {
+      mocks.getSession.mockResolvedValue({ data: null, error: null });
+      mocks.useSession.mockReturnValue({
+        data: null,
+        isPending: false,
+        error: null,
+      });
+      return { data: { success: true }, error: null };
+    });
+    const close = vi.fn(async () => undefined);
+    const unregister = registerStudioEditorSession(close);
+    try {
+      const router = renderAt(`/invitations/${INVITATION_ID}`);
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Use a different account' }),
+      );
+      await waitFor(() =>
+        expect(router.state.location.pathname).toBe('/sign-in'),
+      );
+      await waitFor(() => expect(close).toHaveBeenCalled());
+    } finally {
+      unregister();
+    }
   });
 
   it('lets a signed-in visitor switch accounts without losing the invitation', async () => {

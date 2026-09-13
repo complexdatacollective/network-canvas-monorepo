@@ -5,25 +5,27 @@ import { describe, expect, it } from 'vitest';
 
 import { ecosystemLocales } from '@codaco/app-i18n/locales';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
-import DialogProvider from '@codaco/fresco-ui/dialogs/DialogProvider';
 
+import AssetPickerField from '../../../fields/AssetPickerField.tsx';
 import { protocolBuilderCatalogs } from '../../../locales/catalogs.ts';
 import { esIntl } from '../../../testing/i18n.ts';
-import { ResourceGatewayProvider } from '../../context.tsx';
-import {
-  resourceFailure,
-  type ResourceGatewayFailure,
-  type ResourceInspection,
-  type ResourceResult,
-} from '../../gateway.ts';
-import {
-  InMemoryResourceGateway,
-  type InMemoryResourceSeed,
-} from '../../InMemoryResourceGateway.ts';
+import type {
+  ResourceGatewayFailure,
+  ResourceInspection,
+  ResourceResult,
+} from '../../types.ts';
 import ResourceFailureNotice from '../ResourceFailureNotice.tsx';
-import ResourcePickerControl from '../ResourcePickerControl.tsx';
 import ResourceSummary from '../ResourceSummary.tsx';
 import ResourceUploadControl from '../ResourceUploadControl.tsx';
+import {
+  renderResourceClient,
+  ResourceContextFrame,
+} from './resourceContext.tsx';
+import {
+  createResourceHost,
+  withResourceProcedures,
+  type CommittedResource,
+} from './resourceHost.ts';
 
 /**
  * Every other test in this directory renders without a provider, which is what
@@ -57,11 +59,35 @@ const IMAGE_INSPECTION: ResourceInspection = Object.freeze({
   durationSeconds: 1,
 });
 
+const IMAGE_SEED: CommittedResource = {
+  kind: 'image',
+  id: 'image-1',
+  name: 'Neighbourhood photo',
+  source: 'neighbourhood.png',
+  bytes: 'png-bytes',
+};
+
 function expectFailure<T>(result: ResourceResult<T>): ResourceGatewayFailure {
   if (result.status !== 'failed') {
     throw new Error('expected a failed resource result');
   }
   return result.failure;
+}
+
+/**
+ * The picker as a field really holds it: the choice is written back, so the
+ * announcement is made about a selection the control went on to show.
+ */
+function ImagePicker() {
+  const [value, setValue] = useState<string | undefined>(undefined);
+  return (
+    <AssetPickerField
+      name="backgroundImage"
+      kind="image"
+      value={value}
+      onChange={setValue}
+    />
+  );
 }
 
 describe('resource surfaces in a reader’s own language', () => {
@@ -95,11 +121,12 @@ describe('resource surfaces in a reader’s own language', () => {
 
   it('renders an import control and its refusal in Spanish', async () => {
     const user = userEvent.setup({ applyAccept: false });
+    const host = createResourceHost();
     render(
       inSpanish(
-        <ResourceGatewayProvider gateway={new InMemoryResourceGateway()}>
+        <ResourceContextFrame client={host.client} protocolId={host.protocolId}>
           <ResourceUploadControl kind="image" onStaged={() => undefined} />
-        </ResourceGatewayProvider>,
+        </ResourceContextFrame>,
       ),
     );
 
@@ -127,15 +154,12 @@ describe('resource surfaces in a reader’s own language', () => {
     // choice, so it is the one sentence the picker MUST say in their language:
     // the summary beside it is already there for everybody else.
     const user = userEvent.setup();
+    const host = createResourceHost({ resources: [IMAGE_SEED] });
     render(
       inSpanish(
-        <DialogProvider>
-          <ResourceGatewayProvider
-            gateway={new InMemoryResourceGateway({ committed: [IMAGE_SEED] })}
-          >
-            <ImagePicker />
-          </ResourceGatewayProvider>
-        </DialogProvider>,
+        <ResourceContextFrame client={host.client} protocolId={host.protocolId}>
+          <ImagePicker />
+        </ResourceContextFrame>,
       ),
     );
 
@@ -167,14 +191,11 @@ describe('resource surfaces in a reader’s own language', () => {
    */
   it('re-reads the announcement it is holding when the language changes', async () => {
     const user = userEvent.setup();
+    const host = createResourceHost({ resources: [IMAGE_SEED] });
     const picker = (
-      <DialogProvider>
-        <ResourceGatewayProvider
-          gateway={new InMemoryResourceGateway({ committed: [IMAGE_SEED] })}
-        >
-          <ImagePicker />
-        </ResourceGatewayProvider>
-      </DialogProvider>
+      <ResourceContextFrame client={host.client} protocolId={host.protocolId}>
+        <ImagePicker />
+      </ResourceContextFrame>
     );
     const { rerender } = render(
       <AppI18nProvider locale="en" locales={ecosystemLocales}>
@@ -213,31 +234,6 @@ describe('resource surfaces in a reader’s own language', () => {
   });
 });
 
-const IMAGE_SEED: InMemoryResourceSeed = {
-  kind: 'image',
-  id: 'image-1',
-  name: 'Neighbourhood photo',
-  source: 'neighbourhood.png',
-  contentType: 'image/png',
-  bytes: new TextEncoder().encode('png-bytes'),
-};
-
-/**
- * The picker as a field really holds it: the choice is written back, so the
- * announcement is made about a selection the control went on to show.
- */
-function ImagePicker() {
-  const [value, setValue] = useState<string | undefined>(undefined);
-  return (
-    <ResourcePickerControl
-      name="backgroundImage"
-      kind="image"
-      value={value}
-      onChange={setValue}
-    />
-  );
-}
-
 /**
  * The one place the English wording genuinely moved. The template read
  * `${Math.round(durationSeconds)} seconds` and so said "1 seconds"; ICU picks
@@ -268,45 +264,45 @@ describe('a duration in English', () => {
   });
 });
 
-describe('a failure crossing the gateway’s string-only message', () => {
+describe('a failure crossing the contract’s string-only message', () => {
   it('renders a refusal this package produced in the reader’s language', async () => {
-    const gateway = new InMemoryResourceGateway();
-    const staged = await gateway.stageUpload({
-      requestId: 'request-holed-roster',
-      kind: 'network',
-      name: 'Community roster',
-      source: 'community.json',
-      contentType: 'application/json',
-      bytes: new TextEncoder().encode(
-        JSON.stringify({ nodes: [null], edges: [] }),
-      ),
-    });
-    if (staged.status !== 'ok') throw new Error('the roster was not staged');
-    const failure = expectFailure(await gateway.inspect(staged.data.id));
+    // A host that throws rather than answering is the one refusal this package
+    // still writes the words for: the resource client turns it into
+    // `unreachable`, which travels as an encoded descriptor on a field the
+    // contract types as a plain `string`.
+    const host = createResourceHost();
+    const resources = renderResourceClient(
+      withResourceProcedures(host.client, {
+        inspect: () => {
+          throw new Error('the host threw');
+        },
+      }),
+      host.protocolId,
+    );
+    const failure = expectFailure(await resources().inspect('image-1'));
+    // Encoded rather than formatted where it was produced, which is what lets
+    // it be read in a language nothing had chosen at the time.
+    expect(failure.message).not.toContain('acceder');
 
-    // Two descriptors deep: the refusal names the fault, and the fault is
-    // itself a message with a value in it. Both are resolved here, in one
-    // language, rather than assembled out of fragments at the host.
     render(inSpanish(<ResourceFailureNotice failure={failure} />));
 
     expect(
       screen.getByText(
-        'el archivo seleccionado no es una red legible: el nodo 1 no es un objeto',
+        'No se pudo acceder al recurso. Inténtalo de nuevo en un momento.',
       ),
     ).toBeVisible();
   });
 
   it('leaves a host’s own plain-string failure exactly as the host wrote it', () => {
-    // The port's `message` is a `string` and stays one: a host supplies its
-    // own adapter and its own already-localized copy, which decodes to
+    // The contract's `message` is a `string` and stays one: a host serves the
+    // procedures itself, in its own already-localized copy, which decodes to
     // nothing and must therefore fall through untouched. Without the `??`
     // fallback at the render site this sentence would vanish.
-    const hostFailure = expectFailure(
-      resourceFailure<never>(
-        'unavailable',
-        'El almacén de la universidad no responde. Vuelve a intentarlo.',
-      ),
-    );
+    const hostFailure: ResourceGatewayFailure = {
+      reason: 'unavailable',
+      message: 'El almacén de la universidad no responde. Vuelve a intentarlo.',
+      retryable: true,
+    };
 
     render(inSpanish(<ResourceFailureNotice failure={hostFailure} />));
 

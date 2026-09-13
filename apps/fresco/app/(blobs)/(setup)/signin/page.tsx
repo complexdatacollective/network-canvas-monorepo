@@ -9,6 +9,8 @@ import { cx } from '@codaco/fresco-ui/utils/cva';
 import { containerClasses } from '~/components/ContainerClasses';
 import { getServerIntl } from '~/i18n/server';
 import { getServerSession } from '~/lib/auth/guards';
+import { TWO_FACTOR_SETUP_PATH } from '~/lib/auth/paths';
+import { requiresTwoFactorSetup } from '~/lib/auth/twoFactorPolicy';
 
 import SandboxCredentials from '../_components/SandboxCredentials';
 import { SignInForm } from '../_components/SignInForm';
@@ -46,7 +48,13 @@ export default async function Page() {
 
   await connection();
   const session = await getServerSession();
-  if (session) redirect('/dashboard');
+  if (session) {
+    redirect(
+      (await requiresTwoFactorSetup(session.user.userId))
+        ? TWO_FACTOR_SETUP_PATH
+        : '/dashboard',
+    );
+  }
   return (
     <MotionSurface
       noContainer

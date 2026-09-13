@@ -13,7 +13,6 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 
 import DialogForm, {
   type DialogFormErrors,
-  DialogFormField,
   type DialogFormProps,
 } from '../DialogForm.tsx';
 
@@ -66,11 +65,7 @@ function Editor({ onClose, children, onSubmit, ...props }: EditorOptions) {
       {...props}
     >
       {children ?? (
-        <DialogFormField
-          name="label"
-          label="Rule label"
-          component={InputField}
-        />
+        <Field name="label" label="Rule label" component={InputField} />
       )}
     </DialogForm>
   );
@@ -88,27 +83,23 @@ const ruleLabel = () => screen.getByRole('textbox', { name: 'Rule label' });
 
 describe('DialogForm', () => {
   it('opens holding the values it was given', async () => {
-    renderEditor({ initialValues: { label: 'Older than 65' } });
+    renderEditor({ document: { label: 'Older than 65' } });
 
     await waitFor(() => expect(ruleLabel()).toHaveValue('Older than 65'));
   });
 
   it("prefers a field's own initial value to the dialog's", async () => {
     renderEditor({
-      initialValues: { label: 'From the dialog', variable: 'age' },
+      document: { label: 'From the dialog', variable: 'age' },
       children: (
         <>
-          <DialogFormField
+          <Field
             name="label"
             label="Rule label"
             component={InputField}
             initialValue="From the field"
           />
-          <DialogFormField
-            name="variable"
-            label="Attribute"
-            component={InputField}
-          />
+          <Field name="variable" label="Attribute" component={InputField} />
         </>
       ),
     });
@@ -184,7 +175,7 @@ describe('DialogForm', () => {
     const onSubmit = vi.fn();
     const onClose = vi.fn();
     renderEditor({
-      initialValues: { label: 'Older than' },
+      document: { label: 'Older than' },
       onSubmit,
       onClose,
     });
@@ -194,7 +185,10 @@ describe('DialogForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    expect(onSubmit).toHaveBeenCalledWith({ label: 'Older than 65' });
+    expect(onSubmit).toHaveBeenCalledWith(
+      { label: 'Older than 65' },
+      { label: 'Older than 65' },
+    );
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -208,7 +202,7 @@ describe('DialogForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    expect(onSubmit).toHaveBeenCalledWith({ label: 'Age' });
+    expect(onSubmit).toHaveBeenCalledWith({ label: 'Age' }, { label: 'Age' });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -226,7 +220,7 @@ describe('DialogForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    expect(onSubmit).toHaveBeenCalledWith({ label: 'Age' });
+    expect(onSubmit).toHaveBeenCalledWith({ label: 'Age' }, { label: 'Age' });
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -252,7 +246,10 @@ describe('DialogForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
-    expect(onSubmit).toHaveBeenLastCalledWith({ label: 'Age band' });
+    expect(onSubmit).toHaveBeenLastCalledWith(
+      { label: 'Age band' },
+      { label: 'Age band' },
+    );
   });
 
   it('keeps a refused save on screen, says why, and takes a corrected retry', async () => {
@@ -283,7 +280,10 @@ describe('DialogForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
-    expect(onSubmit).toHaveBeenLastCalledWith({ label: 'Age band' });
+    expect(onSubmit).toHaveBeenLastCalledWith(
+      { label: 'Age band' },
+      { label: 'Age band' },
+    );
   });
 
   it('attaches a refused save to the field it names, and focuses it', async () => {
@@ -300,16 +300,8 @@ describe('DialogForm', () => {
       onClose,
       children: (
         <>
-          <DialogFormField
-            name="label"
-            label="Rule label"
-            component={InputField}
-          />
-          <DialogFormField
-            name="variable"
-            label="Attribute"
-            component={InputField}
-          />
+          <Field name="label" label="Rule label" component={InputField} />
+          <Field name="variable" label="Attribute" component={InputField} />
         </>
       ),
     });
@@ -336,7 +328,7 @@ describe('DialogForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
-    expect(onSubmit).toHaveBeenCalledWith({ label: 'Age' });
+    expect(onSubmit).toHaveBeenCalledWith({ label: 'Age' }, { label: 'Age' });
   });
 
   it('closes when a save answers with empty error lists', async () => {
@@ -352,7 +344,7 @@ describe('DialogForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
-    expect(onSubmit).toHaveBeenCalledWith({ label: 'Age' });
+    expect(onSubmit).toHaveBeenCalledWith({ label: 'Age' }, { label: 'Age' });
   });
 
   it('falls back to a generic message when a failed save carries none', async () => {
@@ -455,7 +447,7 @@ describe('DialogForm', () => {
   it('closes without asking when nothing has been typed', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    renderEditor({ onClose, initialValues: { label: 'Older than 65' } });
+    renderEditor({ onClose, document: { label: 'Older than 65' } });
 
     await waitFor(() => expect(ruleLabel()).toHaveValue('Older than 65'));
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
@@ -469,7 +461,7 @@ describe('DialogForm', () => {
   it('closes without asking about a draft the researcher has put back by hand', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    renderEditor({ onClose, initialValues: { label: 'Older than 65' } });
+    renderEditor({ onClose, document: { label: 'Older than 65' } });
 
     await waitFor(() => expect(ruleLabel()).toHaveValue('Older than 65'));
     await user.type(ruleLabel(), ' or so');
@@ -573,7 +565,10 @@ describe('DialogForm', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(dialogSubmit).toHaveBeenCalledTimes(1));
-    expect(dialogSubmit).toHaveBeenCalledWith({ label: 'Rule one' });
+    expect(dialogSubmit).toHaveBeenCalledWith(
+      { label: 'Rule one' },
+      { label: 'Rule one' },
+    );
 
     // The enclosing form still holds — and still submits — its own value. It
     // is only reachable once the dialog has gone: an open modal makes the page
@@ -599,14 +594,8 @@ describe('DialogForm', () => {
     // FIRST form in document order for both dialogs.
     render(
       <DialogProvider>
-        <Editor
-          initialValues={{ label: 'First rule' }}
-          onSubmit={firstSubmit}
-        />
-        <Editor
-          initialValues={{ label: 'Second rule' }}
-          onSubmit={secondSubmit}
-        />
+        <Editor document={{ label: 'First rule' }} onSubmit={firstSubmit} />
+        <Editor document={{ label: 'Second rule' }} onSubmit={secondSubmit} />
       </DialogProvider>,
     );
 
@@ -626,7 +615,10 @@ describe('DialogForm', () => {
     );
 
     await waitFor(() => expect(secondSubmit).toHaveBeenCalledTimes(1));
-    expect(secondSubmit).toHaveBeenCalledWith({ label: 'Second rule' });
+    expect(secondSubmit).toHaveBeenCalledWith(
+      { label: 'Second rule' },
+      { label: 'Second rule' },
+    );
     expect(firstSubmit).not.toHaveBeenCalled();
   });
 });

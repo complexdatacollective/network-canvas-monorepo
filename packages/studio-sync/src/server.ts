@@ -145,10 +145,14 @@ export class SyncServer {
     draftId: string,
     sectionId: string,
     owner: string,
+    client?: pg.PoolClient,
   ): Promise<Lease | null> {
-    const res = await this.lockedOnHead('acquire', draftId, (client) =>
-      client.query(
-        `INSERT INTO leases (draft_id, team_id, section_id, owner, epoch, expires_at)
+    const res = await this.lockedOnHead(
+      'acquire',
+      draftId,
+      (transactionClient) =>
+        transactionClient.query(
+          `INSERT INTO leases (draft_id, team_id, section_id, owner, epoch, expires_at)
          SELECT $1, $3, $2, $4, 1,
                 clock_timestamp() + make_interval(secs => $5::float / 1000)
          WHERE EXISTS (${SECTION_EXISTS})
@@ -164,37 +168,58 @@ export class SyncServer {
            WHERE leases.expires_at < clock_timestamp()
               OR leases.owner = excluded.owner
          RETURNING epoch, expires_at`,
-        [draftId, sectionId, this.db.teamId, owner, this.ttlMs],
-      ),
+          [draftId, sectionId, this.db.teamId, owner, this.ttlMs],
+        ),
+      client,
     );
     const row = res.rows[0] as { epoch: string; expires_at: Date } | undefined;
     if (row) return { epoch: BigInt(row.epoch), expiresAt: row.expires_at };
     // No row means either "another owner holds it" or "no such section" —
     // only the failure path pays for the distinction.
-    await this.assertSectionExists(draftId, sectionId);
+    await this.assertSectionExists(draftId, sectionId, client);
     return null;
   }
 
+  /**
+   * Runs the statement under the draft-head row lock. A caller that already
+   * owns a transaction — a host that has to land the lease change and its own
+   * rows together — passes its client and keeps that transaction; everyone
+   * else gets one of their own.
+   */
   private async lockedOnHead(
     operation: 'acquire' | 'takeover',
     draftId: string,
     work: (client: pg.PoolClient) => Promise<pg.QueryResult>,
+    client?: pg.PoolClient,
   ): Promise<pg.QueryResult> {
-    return this.executeTransaction(operation, async (client) => {
-      await client.query(
+    const locked = async (transactionClient: pg.PoolClient) => {
+      await transactionClient.query(
         `SELECT 1 FROM drafts WHERE id = $1 AND team_id = $2 FOR SHARE`,
         [draftId, this.db.teamId],
       );
-      return work(client);
-    });
+      return work(transactionClient);
+    };
+    if (client !== undefined) return locked(client);
+    return this.executeTransaction(operation, locked);
   }
 
-  private async assertSectionExists(draftId: string, sectionId: string) {
-    const known = await this.db.query(SECTION_EXISTS, [
-      draftId,
-      sectionId,
-      this.db.teamId,
-    ]);
+  private async assertSectionExists(
+    draftId: string,
+    sectionId: string,
+    client?: pg.PoolClient,
+  ) {
+    const known =
+      client === undefined
+        ? await this.db.query(SECTION_EXISTS, [
+            draftId,
+            sectionId,
+            this.db.teamId,
+          ])
+        : await client.query(SECTION_EXISTS, [
+            draftId,
+            sectionId,
+            this.db.teamId,
+          ]);
     if (known.rowCount === 0) {
       throw new UnknownSectionError(draftId, sectionId);
     }
@@ -260,16 +285,21 @@ export class SyncServer {
     sectionId: string,
     owner: string,
     epoch: bigint,
+    client?: pg.PoolClient,
   ): Promise<void> {
-    await this.executeTransaction('release', (client) =>
-      client.query(
+    const release = (transactionClient: pg.PoolClient) =>
+      transactionClient.query(
         `UPDATE leases SET expires_at = clock_timestamp()
          WHERE draft_id = $1 AND section_id = $2 AND owner = $3 AND epoch = $4
            AND team_id = $5
            AND expires_at > clock_timestamp()`,
         [draftId, sectionId, owner, String(epoch), this.db.teamId],
-      ),
-    );
+      );
+    if (client !== undefined) {
+      await release(client);
+      return;
+    }
+    await this.executeTransaction('release', release);
   }
 
   /**

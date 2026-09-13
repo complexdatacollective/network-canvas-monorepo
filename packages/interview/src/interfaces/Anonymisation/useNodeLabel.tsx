@@ -69,6 +69,24 @@ export function useNodeLabel(node: NcNode | undefined) {
   const getById = useNodeAttributes(node);
   const [label, setLabel] = useState<string | undefined>(undefined);
 
+  // A label already decrypted for this exact node is a synchronous read from
+  // the module cache, so it is taken during render rather than assigned by the
+  // effect below. The cache is keyed on a hash of the whole node, so an entry
+  // can only ever be this node's own plaintext.
+  //
+  // Gated on the same condition the effect uses to consult the cache. A
+  // changed passphrase means the entry has not been checked against the key
+  // now in force: reading it anyway would keep a name on screen that this
+  // participant may no longer be allowed to see, and would mask the 🔒 the
+  // revalidation below sets when the decrypt is refused.
+  const cachedLabel =
+    needsAsyncDecrypt &&
+    labelAttributeId &&
+    prevPassphrase === passphrase &&
+    prevNode === node
+      ? labelCache.get(cacheKey)
+      : undefined;
+
   useEffect(() => {
     if (!node) return;
     if (!needsAsyncDecrypt || !labelAttributeId) return;
@@ -77,7 +95,6 @@ export function useNodeLabel(node: NcNode | undefined) {
     // Also skip the cache if the node attributes changed
     if (prevPassphrase === passphrase && prevNode === node) {
       if (labelCache.has(cacheKey)) {
-        setLabel(labelCache.get(cacheKey));
         return;
       }
     }
@@ -109,5 +126,5 @@ export function useNodeLabel(node: NcNode | undefined) {
     prevNode,
   ]);
 
-  return syncLabel ?? label;
+  return syncLabel ?? cachedLabel ?? label;
 }

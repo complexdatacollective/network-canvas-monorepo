@@ -12,7 +12,7 @@
 // This literal MUST stay identical to the `value` of the token asset in the
 // templates' `assetManifest`; `__tests__/testing-token.test.ts` guards drift.
 // It is also the ONLY Mapbox token allowed anywhere in the repository:
-// `scripts/check-mapbox-tokens.mjs` (run as `pnpm check:mapbox-tokens` in CI's
+// `scripts/build/check-mapbox-tokens.mjs` (run as `pnpm check:mapbox-tokens` in CI's
 // quality-support job, on every change) scans every tracked file and every
 // text entry inside every tracked archive and fails on any other.
 export const TESTING_MAPBOX_TOKEN =
@@ -65,7 +65,7 @@ export const getMapboxTokenId = (value: string): string | null => {
 // revoked on 2026-09-02 after third-party abuse ran up millions of raster-tile
 // requests against it. Listed by id rather than by value so the revoked token
 // itself appears nowhere in the repository: GitHub push protection blocks
-// Mapbox-shaped literals, and `scripts/check-mapbox-tokens.mjs` allows only
+// Mapbox-shaped literals, and `scripts/build/check-mapbox-tokens.mjs` allows only
 // TESTING_MAPBOX_TOKEN. Kept only so Architect can warn about protocols
 // that still carry one — `getUsesRetiredMapboxToken` drives the revoked-token
 // banner — because Mapbox answers those tokens with 401 and every Geospatial

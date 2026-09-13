@@ -26,6 +26,7 @@ import { type StageMetadata, StageMetadataSchema } from '@codaco/shared-consts';
 import { architectCatalogs } from '~/locales/catalogs';
 import { assetKey } from '~/utils/assetDB';
 import { hydrateMemoryAsset } from '~/utils/inMemoryAssetStore';
+import { reportError } from '~/utils/reportError';
 
 import { currentProtocolToPayload } from './currentProtocolToPayload';
 import { isPreviewMessage, type PreviewPayload } from './messages';
@@ -271,7 +272,7 @@ export function PreviewHost() {
         if (error instanceof SyntheticDataConstraintError) {
           setFailure({ kind: 'constraints', conflicts: error.conflicts });
         } else {
-          console.error('Failed to build preview payload', error);
+          reportError(error, { operation: 'previewBuild' });
           setFailure({ kind: 'processing' });
         }
         return;

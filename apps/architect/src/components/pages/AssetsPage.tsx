@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import AssetBrowser from '~/components/AssetBrowser';
@@ -5,6 +7,13 @@ import UnusedAssetsAlert from '~/components/AssetBrowser/UnusedAssetsAlert';
 import ExternalLink from '~/components/ExternalLink';
 import PageHeading from '~/components/ProjectNav/PageHeading';
 import { documentationLinks } from '~/utils/documentationLinks';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderResourcesLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.resources}>{chunks}</ExternalLink>
+);
+
 const additionalMessages = defineMessages({
   importExternalDataResourcesToUse: {
     id: 'architect.additional.pages.assetsPage.importExternalDataResourcesToUse',
@@ -32,11 +41,7 @@ const AssetsPage = () => {
             {intl.formatMessage(
               additionalMessages.importExternalDataResourcesToUse,
               {
-                ExternalLink: (chunks) => (
-                  <ExternalLink href={documentationLinks.resources}>
-                    {chunks}
-                  </ExternalLink>
-                ),
+                ExternalLink: renderResourcesLink,
               },
             )}
           </>

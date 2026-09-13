@@ -3,7 +3,14 @@
 import { useSearchBoxCore } from '@mapbox/search-js-react';
 import { debounce } from 'es-toolkit';
 import type { Map as MapboxMap } from 'mapbox-gl/esm';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 // Zoom level when flying to a selected location
 const FLY_TO_ZOOM = 14;
@@ -156,20 +163,49 @@ export const useGeospatialSearch = ({
   const fetchSuggestionsRef = useRef(fetchSuggestions);
   fetchSuggestionsRef.current = fetchSuggestions;
 
-  const reset = useCallback(() => {
+  /**
+   * The imperative half of a reset: cancel a debounce that has not fired,
+   * retire any response still on its way, and start a new Mapbox billing
+   * session. None of it touches React state.
+   */
+  const retireSearch = useCallback(() => {
     fetchSuggestionsRef.current?.cancel();
     searchGenerationRef.current += 1;
     sessionTokenRef.current = crypto.randomUUID();
+  }, []);
+
+  const reset = useCallback(() => {
+    retireSearch();
     setQuery('');
     setSuggestions([]);
     setSearchFailed(false);
     setIsLoading(false);
-  }, []);
+  }, [retireSearch]);
 
-  // Clear state when resetKey changes
-  useEffect(() => {
-    reset();
-  }, [resetKey, reset]);
+  // Clear state when resetKey changes. The state half is compared during
+  // render, so the new node is never painted with the previous node's query
+  // and suggestion list still in the field; the side effects stay in the
+  // effect below, which — like the `reset()` call it replaces — also runs on
+  // mount.
+  const [appliedResetKey, setAppliedResetKey] = useState(resetKey);
+  if (appliedResetKey !== resetKey) {
+    setAppliedResetKey(resetKey);
+    setQuery('');
+    setSuggestions([]);
+    setSearchFailed(false);
+    setIsLoading(false);
+  }
+
+  // A layout effect, not a passive one. React flushes layout effects in the
+  // same synchronous block as the commit, so no microtask can run between the
+  // render that clears the state and the bump that retires the request. A
+  // passive effect is scheduled on a later task, and a `suggest()` resolving
+  // in that gap would still read the old generation as current and repopulate
+  // the new node's panel with the previous node's results — the exact race
+  // the generation counter exists to close.
+  useLayoutEffect(() => {
+    retireSearch();
+  }, [resetKey, retireSearch]);
 
   // Cancel pending debounced fetch when fetchSuggestions changes (new instance
   // created because accessToken/proximityOption changed) or on unmount.

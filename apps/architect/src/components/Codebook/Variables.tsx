@@ -1,7 +1,9 @@
 import {
   getCoreRowModel,
   getSortedRowModel,
+  type CellContext,
   type ColumnDef,
+  type HeaderContext,
   type SortingFn,
   type SortingState,
   useReactTable,
@@ -87,6 +89,68 @@ type VariablesProps = {
   variables?: Variable[];
 };
 
+/**
+ * TanStack instantiates a column's `header`/`cell` as a React component
+ * (`flexRender` calls `createElement` with the header/cell context as props),
+ * so these live at module scope rather than inside `Variables`' render body —
+ * a renderer redefined during render is a new component type on every render
+ * and remounts the cell's whole subtree.
+ */
+const NameHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {
+  const intl = useAppIntl();
+  return (
+    <DataTableColumnHeader
+      column={column}
+      table={table}
+      title={intl.formatMessage(messages.name)}
+    />
+  );
+};
+
+const NameCell = ({ row }: CellContext<Variable, unknown>) => (
+  <ConnectedVariablePill animated editable uuid={row.original.id} />
+);
+
+const UsedInHeader = ({ column, table }: HeaderContext<Variable, unknown>) => {
+  const intl = useAppIntl();
+  return (
+    <DataTableColumnHeader
+      column={column}
+      table={table}
+      title={intl.formatMessage(messages.usedIn)}
+    />
+  );
+};
+
+const UsageCell = ({ row }: CellContext<Variable, unknown>) => (
+  <UsageColumn inUse={row.original.inUse} usage={row.original.usage} />
+);
+
+const ActionsHeader = () => {
+  const intl = useAppIntl();
+  return (
+    <span className="sr-only">{intl.formatMessage(messages.actions)}</span>
+  );
+};
+
+/**
+ * The actions cell is the one renderer that has to close over a value the
+ * parent owns (`handleDelete`), so it is built by a module-scope factory the
+ * parent's `columns` memo calls: the component type then changes only when
+ * that callback does, instead of on every render.
+ */
+const createActionsCell =
+  (onDelete: (id: string) => void) =>
+  ({ row }: CellContext<Variable, unknown>) => (
+    <div className="flex justify-end">
+      <ControlsColumn
+        onDelete={onDelete}
+        inUse={row.original.inUse}
+        id={row.original.id}
+      />
+    </div>
+  );
+
 const Variables = ({ variables = [], entity, type }: VariablesProps) => {
   const intl = useAppIntl();
   const dispatch = useAppDispatch();
@@ -163,52 +227,24 @@ const Variables = ({ variables = [], entity, type }: VariablesProps) => {
     () => [
       {
         accessorKey: 'name',
-        header: ({ column, table }) => (
-          <DataTableColumnHeader
-            column={column}
-            table={table}
-            title={intl.formatMessage(messages.name)}
-          />
-        ),
+        header: NameHeader,
         sortingFn: caseInsensitiveSort,
-        cell: ({ row }) => (
-          <ConnectedVariablePill animated editable uuid={row.original.id} />
-        ),
+        cell: NameCell,
       },
       {
         accessorKey: 'usageString',
-        header: ({ column, table }) => (
-          <DataTableColumnHeader
-            column={column}
-            table={table}
-            title={intl.formatMessage(messages.usedIn)}
-          />
-        ),
+        header: UsedInHeader,
         sortingFn: caseInsensitiveSort,
-        cell: ({ row }) => (
-          <UsageColumn inUse={row.original.inUse} usage={row.original.usage} />
-        ),
+        cell: UsageCell,
       },
       {
         id: 'actions',
-        header: () => (
-          <span className="sr-only">
-            {intl.formatMessage(messages.actions)}
-          </span>
-        ),
+        header: ActionsHeader,
         enableSorting: false,
-        cell: ({ row }) => (
-          <div className="flex justify-end">
-            <ControlsColumn
-              onDelete={handleDelete}
-              inUse={row.original.inUse}
-              id={row.original.id}
-            />
-          </div>
-        ),
+        cell: createActionsCell(handleDelete),
       },
     ],
-    [caseInsensitiveSort, handleDelete, intl],
+    [caseInsensitiveSort, handleDelete],
   );
 
   const table = useReactTable({

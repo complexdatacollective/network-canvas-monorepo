@@ -187,10 +187,13 @@ const CategoricalBin = (_props: CategoricalBinStageProps) => {
     updateReady(uncategorisedNodes.length === 0);
   }, [uncategorisedNodes.length, updateReady]);
 
-  // Reset expanded bin when prompt changes
-  useEffect(() => {
+  // Reset expanded bin when prompt changes. Compared during render so the new
+  // prompt is never painted with the previous prompt's bin still expanded.
+  const [expandedPromptId, setExpandedPromptId] = useState(id);
+  if (expandedPromptId !== id) {
+    setExpandedPromptId(id);
     setExpandedBinIndex(null);
-  }, [id]);
+  }
 
   const hasExpanded = expandedBinIndex !== null;
 

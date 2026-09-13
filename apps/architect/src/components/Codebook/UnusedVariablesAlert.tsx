@@ -1,9 +1,15 @@
+import type { ReactNode } from 'react';
 import { useSelector } from 'react-redux';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import { getUnusedVariables } from '~/selectors/issues';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 const messages = defineMessages({
   unused: {
     id: 'architect.codebook.unusedVariablesAlert.unused',
@@ -44,8 +50,8 @@ const UnusedVariablesAlert = () => {
       <AlertDescription>
         {intl.formatMessage(messages.notReferencedAnywhereInYour, {
           count,
-          strong: (chunks) => <strong>{chunks}</strong>,
-          strong2: (chunks) => <strong>{chunks}</strong>,
+          strong: renderStrong,
+          strong2: renderStrong,
         })}
       </AlertDescription>
     </Alert>

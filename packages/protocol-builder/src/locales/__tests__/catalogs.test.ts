@@ -51,6 +51,28 @@ describe('the package’s own protocolBuilder.* catalogs', () => {
     }
   });
 
+  it('names no section-list copy, in any language', () => {
+    // The words a list of the stage's sections is read out with — the five
+    // states, the landmark's name and the punctuation between a state and what
+    // is wrong — belong to whichever host draws that list. The package
+    // publishes the sections and draws nothing, so it translates nothing about
+    // them; every catalog is asked, because a stale translation of copy no
+    // component reads is invisible to the freshness check.
+    const offenders = Object.entries(protocolBuilderCatalogs).flatMap(
+      ([locale, catalog]) =>
+        Object.keys(catalog)
+          .filter((id) => id.startsWith('protocolBuilder.outline.'))
+          .map((id) => `${locale}: ${id}`),
+    );
+
+    expect([
+      ...offenders,
+      ...Object.keys(committedEn).filter((id) =>
+        id.startsWith('protocolBuilder.outline.'),
+      ),
+    ]).toEqual([]);
+  });
+
   it('leaves the shared common.* messages to @codaco/app-i18n', () => {
     // Components import `commonMessages` rather than redefining those verbs,
     // so no `common.*` id may be declared — or translated — here.
@@ -98,5 +120,171 @@ describe('the package’s own protocolBuilder.* catalogs', () => {
         [],
       );
     }
+  });
+});
+
+/**
+ * The word families this package's copy spells differently on each side of the
+ * Atlantic, American form first.
+ *
+ * The source locale is American English — a `defaultMessage` is what a
+ * researcher reads wherever no catalog overrides it — and `en-GB.json` carries
+ * the British forms, which is the same split `@codaco/fresco-ui` uses.
+ *
+ * Only families this package's copy actually contains are listed. A new one is
+ * added when a new word arrives; the guards below are what make adding it
+ * necessary rather than optional, because a British `defaultMessage` fails the
+ * first and an un-overridden American one fails the third.
+ *
+ * `Anonymisation` is deliberately absent. It is not a spelling choice: the
+ * researcher-facing name of that interface matches `StageType`'s own
+ * `'Anonymisation'` literal, so the two are read together and neither moves.
+ */
+const AMERICAN_TO_BRITISH: ReadonlyMap<string, string> = new Map([
+  ['color', 'colour'],
+  ['colors', 'colours'],
+  ['colored', 'coloured'],
+  ['customize', 'customise'],
+  ['customizes', 'customises'],
+  ['customized', 'customised'],
+  ['visualize', 'visualise'],
+  ['visualizes', 'visualises'],
+  ['visualized', 'visualised'],
+  ['visualization', 'visualisation'],
+  ['visualizations', 'visualisations'],
+  ['behavior', 'behaviour'],
+  ['behaviors', 'behaviours'],
+  ['center', 'centre'],
+  ['centers', 'centres'],
+  ['centered', 'centred'],
+  ['labeled', 'labelled'],
+  ['labeling', 'labelling'],
+  ['neighborhood', 'neighbourhood'],
+  ['neighborhoods', 'neighbourhoods'],
+  ['recognize', 'recognise'],
+  ['recognizes', 'recognises'],
+  ['recognized', 'recognised'],
+  ['recognizable', 'recognisable'],
+]);
+
+const BRITISH_TO_AMERICAN: ReadonlyMap<string, string> = new Map(
+  [...AMERICAN_TO_BRITISH].map(([american, british]) => [british, american]),
+);
+
+/**
+ * Rewrites whole words through one of the tables above, keeping the case of
+ * the first letter so a sentence-initial "Colour" survives the round trip.
+ *
+ * Whole words rather than substrings: "discolor" is not "color" with a prefix
+ * a translator would want respelled, and matching inside words would rewrite
+ * identifiers that happen to appear in copy.
+ */
+function respell(text: string, table: ReadonlyMap<string, string>): string {
+  const alternatives = [...table.keys()].sort((a, b) => b.length - a.length);
+  return text.replace(
+    new RegExp(`\\b(?:${alternatives.join('|')})\\b`, 'gi'),
+    (word) => {
+      const replacement = table.get(word.toLowerCase()) ?? word;
+      const head = word.charAt(0);
+      return head === head.toUpperCase()
+        ? `${replacement.charAt(0).toUpperCase()}${replacement.slice(1)}`
+        : replacement;
+    },
+  );
+}
+
+/**
+ * An ICU argument name, and only an argument name: the identifier a `{` opens
+ * when the next thing after it closes or continues the argument. A message's
+ * own text is left alone, including the text inside a `select` branch.
+ */
+const ARGUMENT_NAME = /(\{\s*[A-Za-z0-9_]+\s*(?=[,}]))/;
+
+/**
+ * Respells everything a researcher reads and nothing a formatter does.
+ *
+ * `Current color ({color})` is the case: the sentence is respelled and the
+ * argument is not, because `{colour}` names a value no caller passes — the
+ * message would render the placeholder instead of the colour.
+ */
+function respellCopy(text: string, table: ReadonlyMap<string, string>): string {
+  return text
+    .split(ARGUMENT_NAME)
+    .map((part, index) => (index % 2 === 1 ? part : respell(part, table)))
+    .join('');
+}
+
+/**
+ * Read from the committed file rather than through `protocolBuilderCatalogs`,
+ * whose values are typed as pre-parsed ICU as well as source strings. An
+ * override is compared against a `defaultMessage` here, so it has to be the
+ * string a translator wrote.
+ */
+const enGb = JSON.parse(
+  readFileSync(join(localesDir, 'en-GB.json'), 'utf8'),
+) as Record<string, string>;
+
+describe('the en-GB overrides and the American source they come from', () => {
+  it('writes every defaultMessage in American English', () => {
+    // The first half of the convention. A British default would be what a
+    // researcher on en-US reads, and en-GB has no way to correct it back.
+    const offenders = Object.entries(committedEn).flatMap(([id, message]) =>
+      respellCopy(message.defaultMessage, BRITISH_TO_AMERICAN) ===
+      message.defaultMessage
+        ? []
+        : [`${id} — ${message.defaultMessage}`],
+    );
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('overrides in en-GB only what the spelling changes, and changes nothing else', () => {
+    // The second half. An override is the SAME sentence spelled British — so
+    // respelling it back has to land exactly on the American default. That is
+    // what stops en-GB drifting into a second, quietly different wording, and
+    // it fails if either side is edited without the other.
+    const offenders = Object.entries(enGb).flatMap(([id, british]) => {
+      const american = committedEn[id]?.defaultMessage;
+      if (american === undefined) return [`${id} — overrides no known id`];
+      if (british === american) return [`${id} — override says nothing new`];
+      return respellCopy(british, BRITISH_TO_AMERICAN) === american
+        ? []
+        : [`${id} — override is not ${american}, respelled`];
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('respells every word of an override, not some of them', () => {
+    // The round trip above cannot see a half-respelled sentence: rewriting
+    // "Customize the colours" back to American lands on the American default,
+    // because only the word that WAS respelled has to travel. Read forwards,
+    // the override has to be what respelling the default produces — so a
+    // sentence carrying one American word a British researcher still reads is
+    // an offender rather than a passing round trip.
+    const offenders = Object.entries(enGb).flatMap(([id, british]) => {
+      const american = committedEn[id]?.defaultMessage;
+      if (american === undefined) return [];
+      const respelled = respellCopy(american, AMERICAN_TO_BRITISH);
+      return respelled === british
+        ? []
+        : [`${id}\n  is: ${british}\n  want: ${respelled}`];
+    });
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('leaves no American spelling without its British override', () => {
+    // Completeness, and the assertion that actually catches the common
+    // mistake: Americanising a default and forgetting the en-GB half, which
+    // silently ships American copy to British researchers.
+    const offenders = Object.entries(committedEn).flatMap(([id, message]) =>
+      respellCopy(message.defaultMessage, AMERICAN_TO_BRITISH) !==
+        message.defaultMessage && !(id in enGb)
+        ? [`${id} — ${message.defaultMessage}`]
+        : [],
+    );
+
+    expect(offenders).toEqual([]);
   });
 });

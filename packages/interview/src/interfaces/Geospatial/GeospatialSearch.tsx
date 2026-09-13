@@ -333,10 +333,27 @@ export default function GeospatialSearch({
       ? SEARCH_FAILED_MESSAGE
       : NO_RESULTS_MESSAGE;
 
-  useEffect(() => {
-    if (!settledMessage) return;
-    setStatusMessage({ message: settledMessage });
-  }, [settledMessage]);
+  // A settled outcome joins the live region as soon as the search settles.
+  // Adopted during render rather than copied in by an effect, so it is
+  // announced in the same commit that stops showing suggestions.
+  //
+  // It is adopted INTO `statusMessage` rather than read ahead of it: the
+  // region is forward-only. Rendering `settledMessage ?? statusMessage`
+  // instead would make a query that starts matching again revert the region to
+  // whatever the last selection said — and a polite region announces on
+  // change, so the participant would hear a place they moved to minutes ago
+  // read back at them mid-typing.
+  //
+  // Seeded `null` so a first render that has already settled still announces,
+  // which is what the effect's mount run did.
+  const [lastSettledMessage, setLastSettledMessage] =
+    useState<typeof settledMessage>(null);
+  if (lastSettledMessage !== settledMessage) {
+    setLastSettledMessage(settledMessage);
+    if (settledMessage) {
+      setStatusMessage({ message: settledMessage });
+    }
+  }
 
   const showSuggestions =
     suggestions.length > 0 || isLoading || hasSettledEmpty;
