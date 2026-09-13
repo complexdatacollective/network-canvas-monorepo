@@ -50,7 +50,6 @@ CREATE TABLE "template_registry_publication_intents" (
 	"completed_at" timestamp with time zone,
 	"quarantined_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "template_registry_publication_intents_target_unique" UNIQUE("team_id","template_version_id","registry_url"),
 	CONSTRAINT "template_registry_publication_intents_url_check" CHECK ("registry_url" ~ '^https://[^@/?#]+$'),
 	CONSTRAINT "template_registry_publication_intents_root_check" CHECK ("registry_root" ~ '^[0-9a-f]{64}$'),
 	CONSTRAINT "template_registry_publication_intents_lengths_check" CHECK (char_length("team_id") BETWEEN 1 AND 255
@@ -88,7 +87,6 @@ CREATE TABLE "template_registry_import_intents" (
 	"completed_at" timestamp with time zone,
 	"quarantined_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "template_registry_import_intents_source_unique" UNIQUE("team_id","registry_url","registry_entry_id"),
 	CONSTRAINT "template_registry_import_intents_url_check" CHECK ("registry_url" ~ '^https://[^@/?#]+$'),
 	CONSTRAINT "template_registry_import_intents_root_check" CHECK ("registry_root" ~ '^[0-9a-f]{64}$'),
 	CONSTRAINT "template_registry_import_intents_json_check" CHECK (jsonb_typeof("entry_snapshot") = 'object'
@@ -108,7 +106,9 @@ ALTER TABLE "template_versions" ADD COLUMN "registry_origin" jsonb;
 CREATE UNIQUE INDEX "template_versions_registry_entry_idx" ON "template_versions" ("team_id",("registry_origin"->>'registry_url'),("registry_origin"->>'entry_id')) WHERE "registry_origin" IS NOT NULL;
 CREATE INDEX "template_registry_publications_registry_entry_idx" ON "template_registry_publications" ("registry_url","registry_entry_id");
 CREATE INDEX "template_registry_publications_team_version_idx" ON "template_registry_publications" ("team_id","template_version_id");
+CREATE UNIQUE INDEX "template_registry_publication_intents_target_unique" ON "template_registry_publication_intents" ("team_id","template_version_id","registry_url") WHERE quarantined_at IS NULL;
 CREATE INDEX "template_registry_publication_intents_dispatch_idx" ON "template_registry_publication_intents" ("available_at","lease_expires_at") WHERE completed_at IS NULL AND quarantined_at IS NULL;
+CREATE UNIQUE INDEX "template_registry_import_intents_source_unique" ON "template_registry_import_intents" ("team_id","registry_url","registry_entry_id") WHERE quarantined_at IS NULL;
 CREATE UNIQUE INDEX "template_registry_import_intents_template_idx" ON "template_registry_import_intents" ("target_template_id");
 CREATE UNIQUE INDEX "template_registry_import_intents_version_idx" ON "template_registry_import_intents" ("target_version_id");
 CREATE INDEX "template_registry_import_intents_dispatch_idx" ON "template_registry_import_intents" ("available_at","lease_expires_at") WHERE completed_at IS NULL AND quarantined_at IS NULL;

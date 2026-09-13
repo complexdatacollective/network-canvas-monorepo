@@ -270,11 +270,9 @@ const templateRegistryPublicationIntents = pgTable(
       columns: [table.templateVersionId, table.teamId],
       foreignColumns: [templateVersions.id, templateVersions.teamId],
     }),
-    unique('template_registry_publication_intents_target_unique').on(
-      table.teamId,
-      table.templateVersionId,
-      table.registryUrl,
-    ),
+    uniqueIndex('template_registry_publication_intents_target_unique')
+      .on(table.teamId, table.templateVersionId, table.registryUrl)
+      .where(sql`quarantined_at IS NULL`),
     index('template_registry_publication_intents_dispatch_idx')
       .on(table.availableAt, table.leaseExpiresAt)
       .where(sql`completed_at IS NULL AND quarantined_at IS NULL`),
@@ -345,11 +343,9 @@ const templateRegistryImportIntents = pgTable(
       .defaultNow(),
   },
   (table) => [
-    unique('template_registry_import_intents_source_unique').on(
-      table.teamId,
-      table.registryUrl,
-      table.registryEntryId,
-    ),
+    uniqueIndex('template_registry_import_intents_source_unique')
+      .on(table.teamId, table.registryUrl, table.registryEntryId)
+      .where(sql`quarantined_at IS NULL`),
     uniqueIndex('template_registry_import_intents_template_idx').on(
       table.targetTemplateId,
     ),

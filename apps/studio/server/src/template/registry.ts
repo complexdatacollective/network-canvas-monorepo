@@ -62,6 +62,10 @@ export type RegistryConfig = {
 };
 
 type Publisher = { id: string; name: string; orcid: string | null };
+type RegistryEntryIdentity = Pick<
+  RegistryEntry,
+  'id' | 'root' | 'template' | 'metadata' | 'license' | 'published_at'
+> & { publisher: Pick<RegistryEntry['publisher'], 'id'> };
 type Publication = {
   entryId: string;
   registryUrl: string;
@@ -71,6 +75,18 @@ type Publication = {
 };
 
 const teamStore = new TeamStore();
+
+function registryEntryIdentity(entry: RegistryEntry): RegistryEntryIdentity {
+  return {
+    id: entry.id,
+    root: entry.root,
+    publisher: { id: entry.publisher.id },
+    template: entry.template,
+    metadata: entry.metadata,
+    license: entry.license,
+    published_at: entry.published_at,
+  };
+}
 
 function clientFor(config: RegistryConfig): TemplateRegistryClient {
   return config.client ?? new TemplateRegistryClient({ origin: config.origin });
@@ -794,7 +810,10 @@ async function finalizeImportIntent(
       if (
         row.registry_entry_id !== entry.id ||
         row.registry_root !== entry.root ||
-        !isDeepStrictEqual(row.entry_snapshot, entry) ||
+        !isDeepStrictEqual(
+          registryEntryIdentity(row.entry_snapshot),
+          registryEntryIdentity(entry),
+        ) ||
         !isDeepStrictEqual(row.asset_manifest, assetManifest(fetched.artifact))
       )
         throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');
@@ -1112,7 +1131,10 @@ export async function reconcileClaimedTemplateRegistryIntent(
   const fetched = await registry.fetchArtifact(intent.registry_root);
   assertRegistryEntryArtifact(entry, fetched.artifact);
   if (
-    !isDeepStrictEqual(entry, intent.entry_snapshot) ||
+    !isDeepStrictEqual(
+      registryEntryIdentity(entry),
+      registryEntryIdentity(intent.entry_snapshot),
+    ) ||
     fetched.root !== intent.registry_root
   )
     throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');

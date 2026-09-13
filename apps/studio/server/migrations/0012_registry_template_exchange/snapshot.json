@@ -1,6 +1,6 @@
 {
   "dialect": "postgres",
-  "id": "3e4ffb92-dcd1-4924-be57-b27af6d5a10a",
+  "id": "3b55c83b-3d20-4e2f-a6d8-51e52c1d3ec1",
   "prevIds": ["3b8eddc9-acf2-4c96-8e40-884135ce541c"],
   "version": "8",
   "ddl": [
@@ -11968,6 +11968,41 @@
       "nameExplicit": true,
       "columns": [
         {
+          "value": "team_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "template_version_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "registry_url",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "quarantined_at IS NULL",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "template_registry_publication_intents_target_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "template_registry_publication_intents"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
           "value": "available_at",
           "isExpression": false,
           "asc": true,
@@ -11991,6 +12026,41 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "template_registry_publication_intents"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "team_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "registry_url",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "registry_entry_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "quarantined_at IS NULL",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "template_registry_import_intents_source_unique",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "template_registry_import_intents"
     },
     {
       "nameExplicit": true,
@@ -14667,24 +14737,6 @@
       "entityType": "uniques",
       "schema": "public",
       "table": "template_registry_publications"
-    },
-    {
-      "nameExplicit": true,
-      "columns": ["team_id", "template_version_id", "registry_url"],
-      "nullsNotDistinct": false,
-      "name": "template_registry_publication_intents_target_unique",
-      "entityType": "uniques",
-      "schema": "public",
-      "table": "template_registry_publication_intents"
-    },
-    {
-      "nameExplicit": true,
-      "columns": ["team_id", "registry_url", "registry_entry_id"],
-      "nullsNotDistinct": false,
-      "name": "template_registry_import_intents_source_unique",
-      "entityType": "uniques",
-      "schema": "public",
-      "table": "template_registry_import_intents"
     },
     {
       "nameExplicit": false,

@@ -247,6 +247,28 @@ function registryClient(options: {
   });
 }
 
+function unavailableRegistryClient() {
+  return new TemplateRegistryClient({
+    origin: ORIGIN,
+    fetch: async (input, init) => {
+      const url = requestUrl(input);
+      if (url.pathname === '/publisher')
+        return Response.json({
+          id: PUBLISHER_ID,
+          name: 'Original Publisher',
+          orcid: null,
+        });
+      if (url.pathname === '/api/v1/entries' && init?.method === 'GET')
+        return Response.json({
+          data: [],
+          next_cursor: null,
+          has_more: false,
+        });
+      throw new Error('simulated Registry handoff failure');
+    },
+  });
+}
+
 describe.skipIf(!db)('Studio Registry publication command', () => {
   let pool: pg.Pool;
   let app: pg.Pool;
@@ -779,6 +801,57 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     ]);
   });
 
+  it('allows a fresh publication intent after a quarantined attempt', async () => {
+    const seeded = await seedPublication('registry-publication-quarantine');
+    const publish = (client: TemplateRegistryClient) =>
+      publishTemplateVersion(
+        { ...seeded.context, requestId: randomUUID() },
+        {
+          origin: ORIGIN,
+          assetStore,
+          maintenancePool: maintenance,
+          client,
+        },
+        { versionId: seeded.versionId, credential: CREDENTIAL },
+      );
+
+    await expect(publish(unavailableRegistryClient())).resolves.toMatchObject({
+      status: 'pending',
+    });
+    const first = await pool.query<{ id: string }>(
+      `SELECT id FROM template_registry_publication_intents
+       WHERE team_id = $1`,
+      ['registry-publication-quarantine'],
+    );
+    const firstId = first.rows[0]?.id;
+    if (!firstId) throw new Error('publication intent was not persisted');
+    await pool.query(
+      `UPDATE template_registry_publication_intents
+       SET quarantined_at=clock_timestamp(), lease_owner=NULL,
+           lease_expires_at=NULL
+       WHERE id=$1`,
+      [firstId],
+    );
+
+    const publishedRoots: string[] = [];
+    await expect(
+      publish(registryClient({ publishedRoots })),
+    ).resolves.toMatchObject({ status: 'completed', replayed: false });
+    expect(publishedRoots).toHaveLength(1);
+    await expect(
+      pool.query(
+        `SELECT quarantined_at IS NOT NULL AS quarantined,
+                completed_at IS NOT NULL AS completed
+         FROM template_registry_publication_intents
+         WHERE team_id=$1 ORDER BY created_at`,
+        ['registry-publication-quarantine'],
+      ),
+    ).resolves.toHaveProperty('rows', [
+      { quarantined: true, completed: false },
+      { quarantined: false, completed: true },
+    ]);
+  });
+
   it('imports verified Registry bytes with asset and machine origin stamps', async () => {
     const teamId = 'registry-import';
     const userId = `${teamId}-admin`;
@@ -920,6 +993,77 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       maintenancePool: maintenance,
       client: registry,
     };
+
+    entryResponse = {
+      ...entry,
+      publisher: {
+        ...entry.publisher,
+        name: 'Updated Publisher',
+        orcid: '0000-0000-0000-0000',
+      },
+      curated: true,
+      yanked: true,
+    };
+    await pool.query(`CREATE FUNCTION registry_import_mutable_entry_probe()
+      RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'simulated mutable entry probe';
+      END; $$ LANGUAGE plpgsql;
+      CREATE TRIGGER registry_import_mutable_entry_probe
+        BEFORE INSERT ON templates
+        FOR EACH ROW EXECUTE FUNCTION registry_import_mutable_entry_probe();`);
+    await pool.query(
+      `UPDATE template_registry_import_intents SET available_at=now()
+       WHERE id=$1`,
+      [intent.id],
+    );
+    const mutableClaim = await claimSpecificTemplateRegistryIntent(
+      maintenance,
+      'import',
+      intent.id,
+    );
+    if (!mutableClaim) throw new Error('mutable entry probe was not claimed');
+    await expect(
+      reconcileClaimedTemplateRegistryIntent(runtime, mutableClaim),
+    ).rejects.toThrow('simulated mutable entry probe');
+    await pool.query(
+      `DROP TRIGGER registry_import_mutable_entry_probe ON templates`,
+    );
+    await pool.query(`DROP FUNCTION registry_import_mutable_entry_probe()`);
+    await pool.query(
+      `UPDATE template_registry_import_intents
+       SET lease_owner=NULL,lease_expires_at=NULL,available_at=now()
+       WHERE id=$1`,
+      [intent.id],
+    );
+
+    entryResponse = {
+      ...entry,
+      publisher: { ...entry.publisher, id: randomUUID() },
+    };
+    const publisherMismatchClaim = await claimSpecificTemplateRegistryIntent(
+      maintenance,
+      'import',
+      intent.id,
+    );
+    if (!publisherMismatchClaim)
+      throw new Error('publisher mismatch probe was not claimed');
+    await expect(
+      reconcileClaimedTemplateRegistryIntent(runtime, publisherMismatchClaim),
+    ).rejects.toMatchObject({ code: 'REGISTRY_UNAVAILABLE' });
+    await pool.query(
+      `UPDATE template_registry_import_intents
+       SET lease_owner=NULL,lease_expires_at=NULL,available_at=now()
+       WHERE id=$1`,
+      [intent.id],
+    );
+    entryResponse = entry;
+
+    // The two comparison controls intentionally upload before finalization;
+    // reset this store so the following lease-loss oracle counts only its own
+    // partial upload.
+    stored.clear();
+
     invalidateLeaseAfterNextPut = true;
     await pool.query(
       `UPDATE template_registry_import_intents SET available_at=now()
@@ -999,5 +1143,126 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     expect(
       assets.rows.every(({ origin }) => origin === 'registry_import'),
     ).toBe(true);
+  });
+
+  it('allows a fresh import intent after a quarantined attempt', async () => {
+    const teamId = 'registry-import-quarantine';
+    const userId = `${teamId}-admin`;
+    await seedTeam(pool, teamId);
+    await pool.query(
+      `INSERT INTO "user" (id,name,email,"emailVerified")
+       VALUES ($1,$2,$3,true)`,
+      [userId, 'Registry Admin', `${userId}@example.com`],
+    );
+    await pool.query(
+      `INSERT INTO team_members (id,team_id,user_id,role)
+       VALUES ($1,$2,$3,'admin')`,
+      [randomUUID(), teamId, userId],
+    );
+    const built = await createTemplateArtifact(importFixture());
+    const root = built.artifact.manifest.merkle_root;
+    const entryId = randomUUID();
+    const entry = {
+      id: entryId,
+      publisher: { id: PUBLISHER_ID, name: 'Original Publisher', orcid: null },
+      root,
+      template: built.artifact.manifest.template,
+      license: built.artifact.license,
+      curated: false,
+      yanked: false,
+      published_at: '2026-09-08T00:00:00.000Z',
+      metadata: built.artifact.metadata,
+      artifact_url: `${ORIGIN}/api/v1/artifacts/${root}`,
+      report_url: `${ORIGIN}/api/v1/entries/${entryId}/reports`,
+    };
+    const registry = new TemplateRegistryClient({
+      origin: ORIGIN,
+      fetch: async (input) => {
+        const path = requestUrl(input).pathname;
+        if (path === `/api/v1/entries/${entryId}`) return Response.json(entry);
+        if (path !== `/api/v1/artifacts/${root}`)
+          throw new Error('unexpected Registry request');
+        return new Response(built.bytes, {
+          headers: {
+            'Content-Type': TEMPLATE_ARTIFACT_MEDIA_TYPE,
+            'ETag': `"${templateBytesHash(built.bytes)}"`,
+            'X-Template-Root': root,
+            'X-Registry-Yanked': 'false',
+          },
+        });
+      },
+    });
+    const failingStore: AssetStore = {
+      checkHealth: async () => undefined,
+      get: async () => null,
+      put: async () => {
+        throw new Error('simulated first import interruption');
+      },
+    };
+    const context = () => ({
+      tenantDb: createTenantDb(app, teamId),
+      principal: principal(userId),
+      requestId: randomUUID(),
+    });
+    await expect(
+      importRegistryTemplate(
+        context(),
+        {
+          origin: ORIGIN,
+          assetStore: failingStore,
+          maintenancePool: maintenance,
+          client: registry,
+        },
+        entryId,
+      ),
+    ).resolves.toMatchObject({ status: 'pending' });
+    const first = await pool.query<{ id: string }>(
+      `SELECT id FROM template_registry_import_intents WHERE team_id=$1`,
+      [teamId],
+    );
+    const firstId = first.rows[0]?.id;
+    if (!firstId) throw new Error('import intent was not persisted');
+    await pool.query(
+      `UPDATE template_registry_import_intents
+       SET quarantined_at=clock_timestamp(),lease_owner=NULL,
+           lease_expires_at=NULL
+       WHERE id=$1`,
+      [firstId],
+    );
+    const imported = new Map<string, Uint8Array>();
+    const workingStore: AssetStore = {
+      checkHealth: async () => undefined,
+      get: async () => null,
+      put: async (bytes, mediaType) => {
+        const hash = createHash('sha256').update(bytes).digest('hex');
+        imported.set(hash, bytes);
+        return { hash, size: bytes.byteLength, mediaType };
+      },
+    };
+    await expect(
+      importRegistryTemplate(
+        context(),
+        {
+          origin: ORIGIN,
+          assetStore: workingStore,
+          maintenancePool: maintenance,
+          client: registry,
+        },
+        entryId,
+      ),
+    ).resolves.toMatchObject({ status: 'completed', replayed: false });
+    expect(imported.size).toBe(1);
+    await expect(
+      pool.query(
+        `SELECT quarantined_at IS NOT NULL AS quarantined,
+                completed_at IS NOT NULL AS completed
+         FROM template_registry_import_intents
+         WHERE team_id=$1 ORDER BY created_at`,
+        [teamId],
+      ),
+    ).resolves.toHaveProperty('rows', [
+      { quarantined: true, completed: false },
+      { quarantined: false, completed: true },
+    ]);
   });
 });
