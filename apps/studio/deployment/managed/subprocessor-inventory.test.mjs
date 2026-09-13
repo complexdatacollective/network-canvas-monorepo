@@ -81,6 +81,7 @@ test('regenerates an approved provider-source change without editing generated o
     status: 'candidate',
     sourcePaths: ['README.md'],
     estateProvider: 'random',
+    estateProviderSource: 'hashicorp/random',
   });
   await writeFile(metadataPath, JSON.stringify(metadata));
   const generated = generateAt(temp);
@@ -95,6 +96,13 @@ test('regenerates an approved provider-source change without editing generated o
   contract.providers.random.source = 'example/random';
   await writeFile(contractPath, JSON.stringify(contract));
   await approveManifestFile(temp, 'estate-provider-contract.json');
+  const unmapped = generateAt(temp);
+  assert.notEqual(unmapped.status, 0);
+  assert.match(unmapped.stderr, /inventory provider source/);
+  metadata.providers.find(
+    (provider) => provider.estateProvider === 'random',
+  ).estateProviderSource = 'example/random';
+  await writeFile(metadataPath, JSON.stringify(metadata));
   const changed = generateAt(temp);
   assert.equal(changed.status, 0, changed.stderr);
   assert.equal(
@@ -105,6 +113,27 @@ test('regenerates an approved provider-source change without editing generated o
   );
   assert.equal(generateAt(temp, true).status, 0);
 });
+
+for (const [name, version] of [
+  ['minimum', '>= 6.62.0'],
+  ['pessimistic', '~> 6.62.0'],
+  ['bounded', '>= 6.62.0, < 7.0.0'],
+  ['missing', undefined],
+  ['non-string', 6],
+])
+  test(`refuses an approved non-exact provider version: ${name}`, async (context) => {
+    const temp = await mkdtemp(join(tmpdir(), 'studio-provider-version-'));
+    context.after(() => rm(temp, { recursive: true, force: true }));
+    await copyReviewedEstate(temp);
+    const path = join(temp, 'estate-provider-contract.json');
+    const contract = JSON.parse(await readFile(path, 'utf8'));
+    contract.providers.aws.version = version;
+    await writeFile(path, JSON.stringify(contract));
+    await approveManifestFile(temp, 'estate-provider-contract.json');
+    const result = generateAt(temp);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /exact provider version/);
+  });
 
 for (const [file, extra] of [
   ['versions.tf', '\nprovider "google" {}\n'],

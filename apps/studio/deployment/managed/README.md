@@ -44,7 +44,9 @@ assets in the composite image. There is no managed product fork.
   every archive client-side using a private key held outside B2 and the primary
   estate.
 
-Provider versions are exact pins. The R2 `us` jurisdiction is supported by
+Provider versions are exact three-part release pins; ranges are rejected. Each
+inventory mapping records the reviewed provider source address, so changing a
+Terraform local name's source also requires reviewing its processor metadata. The R2 `us` jurisdiction is supported by
 Cloudflare provider 5.24.0. The B2 provider supports SSE-B2 and default Object
 Lock retention. The Crunchy provider only provisions the cluster. It does not
 create the four databases or enforce the SQL security contract.

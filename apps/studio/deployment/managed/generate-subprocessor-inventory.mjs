@@ -70,6 +70,16 @@ for (const file of manifestFiles) {
 }
 const tfvars = await readFile(join(root, 'terraform.tfvars.example'), 'utf8');
 
+// Only canonical release versions are accepted; matching a generated range
+// against its source does not pin the executable provider implementation.
+for (const provider of Object.values(providerContract.providers)) {
+  if (
+    typeof provider.version !== 'string' ||
+    !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(provider.version)
+  )
+    throw new Error('Managed estate requires an exact provider version.');
+}
+
 const expectedProviderSources = Object.fromEntries(
   Object.entries(providerContract.providers).map(([name, provider]) => [
     name,
@@ -91,6 +101,18 @@ if (
   throw new Error(
     'Every Terraform provider must have exactly one inventory mapping.',
   );
+for (const provider of source.providers.filter(
+  (entry) => entry.estateProvider,
+)) {
+  if (
+    typeof provider.estateProviderSource !== 'string' ||
+    provider.estateProviderSource !==
+      expectedProviderSources[provider.estateProvider]
+  )
+    throw new Error(
+      'Managed inventory provider source differs from the reviewed mapping.',
+    );
+}
 // Parse HCL as well as Terraform JSON. A refreshed review manifest does not
 // make an unmapped provider/resource or an inconsistent residency claim safe.
 const configurations = await Promise.all(

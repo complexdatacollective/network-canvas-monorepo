@@ -43,7 +43,8 @@
         "versions.tf",
         "README.md"
       ],
-      "estateProvider": "crunchybridge"
+      "estateProvider": "crunchybridge",
+      "estateProviderSource": "CrunchyData/crunchybridge"
     },
     {
       "name": "Cloudflare",
@@ -57,7 +58,8 @@
       ],
       "status": "selected-candidate",
       "sourcePaths": ["main.tf", "versions.tf", "README.md"],
-      "estateProvider": "cloudflare"
+      "estateProvider": "cloudflare",
+      "estateProviderSource": "cloudflare/cloudflare"
     },
     {
       "name": "Amazon Web Services",
@@ -73,7 +75,8 @@
         "versions.tf",
         "README.md"
       ],
-      "estateProvider": "aws"
+      "estateProvider": "aws",
+      "estateProviderSource": "hashicorp/aws"
     },
     {
       "name": "Backblaze",
@@ -89,7 +92,8 @@
         "versions.tf",
         "README.md"
       ],
-      "estateProvider": "b2"
+      "estateProvider": "b2",
+      "estateProviderSource": "Backblaze/b2"
     },
     {
       "name": "New Relic",
