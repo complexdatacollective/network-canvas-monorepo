@@ -81,12 +81,14 @@ export const EveryKindOfAnswer: Story = {
 };
 
 /**
- * A row that stands for something other than a codebook attribute — a list's
- * own "create a new one" entry — takes Architect's fallback mark: charcoal and
- * a question mark, neither of which claims one of the nine kinds.
+ * A pill for something whose kind of answer is not known — an attribute a row
+ * is still inventing, before the researcher has said what it holds, or a
+ * stored reference no definition reached the control for — takes Architect's
+ * fallback mark: charcoal and a question mark, neither of which claims one of
+ * the nine kinds.
  */
-export const SomethingThatIsNotAnAttribute: Story = {
-  args: { name: 'Create a new attribute…', type: undefined },
+export const SomethingWithNoKindOfAnswerYet: Story = {
+  args: { name: 'nickname', type: undefined },
 };
 
 /** The pill is exactly as wide as its name and icon need. */

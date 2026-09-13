@@ -18,6 +18,7 @@ import {
   attributeField,
   chooseAttributeById,
   closeAttributePicker,
+  inventAttribute,
   offeredAttributes,
   openAttributePicker,
 } from '../../../../testing/attributePicker.ts';
@@ -36,9 +37,6 @@ import {
   familyPedigreeStageWith,
   familyPedigreeStageWithout,
 } from './pedigreeFixtures.tsx';
-
-/** See `FormFieldsSection`'s own `NEW_VARIABLE` sentinel. */
-const CREATE_NEW_ATTRIBUTE = '#create-new-attribute';
 
 const pedigreeSections = (
   <>
@@ -1082,6 +1080,58 @@ describe('the pedigree’s nomination prompts', () => {
     ]);
   });
 
+  /**
+   * The flag a nomination prompt sets, invented from the prompt's own picker.
+   *
+   * A nomination answer is a yes or a no, which a name finishes, so this is
+   * written straight to the codebook and the row is left holding it — and it
+   * is written as a boolean, which is the one thing about the attribute the
+   * slot decides for the researcher.
+   */
+  it('invents the flag a nomination prompt sets', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Edit nomination prompt' }),
+    );
+    const prompt = await screen.findByRole('dialog');
+    await inventAttribute(
+      harness.user,
+      attributeField('Attribute', prompt),
+      'wasNominated',
+    );
+
+    const created = await waitFor(() => {
+      const entry = Object.entries(familyMemberVariables(harness)).find(
+        ([, variable]) =>
+          isRecord(variable) && variable.name === 'wasNominated',
+      );
+      if (entry === undefined) throw new Error('the flag was not created');
+      return entry;
+    });
+    expect(created[1]).toMatchObject({ type: 'boolean' });
+    await waitFor(() =>
+      expect(
+        within(attributeField('Attribute', prompt)).getByText('wasNominated'),
+      ).toBeVisible(),
+    );
+
+    await harness.user.click(
+      within(prompt).getByRole('button', { name: 'Save' }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const request = await harness.submit();
+    expect(request?.stageDocument.nominationPrompts).toEqual([
+      {
+        id: 'nomination-1',
+        text: 'Who has been unwell?',
+        variable: created[0],
+      },
+    ]);
+  });
+
   it('is switched off entirely when the pedigree asks nothing', async () => {
     const harness = renderStageEditor({
       stage: familyPedigreeStageWithout(['nominationPrompts']),
@@ -1357,22 +1407,14 @@ describe('a codebook that changes while the pedigree is open', () => {
 describe('creating an attribute a slot needs without leaving the stage', () => {
   it('puts the attribute in the codebook, and binds it here', async () => {
     const harness = renderStageEditor(openFixture());
+    await harness.opened();
 
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new display label attribute',
-      }),
-    );
-    // Scoped to the dialog: `screen` would compute an accessible name for
-    // every control in the editor behind it to answer a question about one
-    // inside it.
-    const creator = within(await screen.findByRole('dialog'));
-    await harness.user.type(
-      creator.getByRole('textbox', { name: 'Attribute name' }),
+    // A display label is a box someone types into, so it is finished the
+    // moment it is named: the create row writes it and the window closes.
+    await inventAttribute(
+      harness.user,
+      attributeField('Display label'),
       'nickname',
-    );
-    await harness.user.click(
-      creator.getByRole('button', { name: 'Create attribute' }),
     );
 
     await waitFor(() =>
@@ -1396,13 +1438,18 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
   it('locks a slot’s canonical values so a researcher cannot edit them', async () => {
     const harness = renderStageEditor(openFixture());
 
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new relationship type attribute',
-      }),
+    await harness.opened();
+    // A relationship type is a list of values the interface owns, so the
+    // create row escalates to the codebook's own editor on the typed name.
+    await inventAttribute(
+      harness.user,
+      attributeField('Relationship type'),
+      'kinship',
     );
 
-    await screen.findByRole('textbox', { name: 'Attribute name' });
+    expect(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    ).toHaveValue('kinship');
     // EXACTLY the schema's own set, in its own order: the protocol refuses an
     // attribute bound to this slot whose values differ, so seeding anything
     // else would create an attribute the picker then hides and the schema then
@@ -1464,18 +1511,15 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
    */
   it('withholds every way out until the codebook answers', async () => {
     const harness = renderStageEditor(openFixture());
+    await harness.opened();
     const release = holdTheCodebookWrite(harness);
 
-    await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new display label attribute',
-      }),
+    await inventAttribute(
+      harness.user,
+      attributeField('Biological sex'),
+      'sexAtBirth',
     );
     const creator = within(await screen.findByRole('dialog'));
-    await harness.user.type(
-      creator.getByRole('textbox', { name: 'Attribute name' }),
-      'nickname',
-    );
     await harness.user.click(
       creator.getByRole('button', { name: 'Create attribute' }),
     );
@@ -1485,7 +1529,7 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     await harness.user.keyboard('{Escape}');
     await harness.user.click(document.body);
     expect(screen.getByRole('textbox', { name: 'Attribute name' })).toHaveValue(
-      'nickname',
+      'sexAtBirth',
     );
     expect(screen.queryAllByRole('button', { name: 'Close' })).toHaveLength(0);
 
@@ -1493,14 +1537,16 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
     // And the answer lands on the surface that asked for it: the slot now
     // holds the attribute the codebook holds.
     await waitFor(() =>
-      expect(variableIdByName(harness, 'nickname')).toEqual(expect.any(String)),
+      expect(variableIdByName(harness, 'sexAtBirth')).toEqual(
+        expect.any(String),
+      ),
     );
     // Awaited: the attribute reaches this picker over the protocol's own
     // channel, so the slot is pointed at it a microtask before the control can
     // name it.
     await waitFor(() =>
       expect(
-        within(attributeField('Display label')).getByText('nickname'),
+        within(attributeField('Biological sex')).getByText('sexAtBirth'),
       ).toBeVisible(),
     );
   });
@@ -1508,15 +1554,20 @@ describe('creating an attribute a slot needs without leaving the stage', () => {
   it('is not offered to a spectator', async () => {
     renderStageEditor({ ...openFixture(), readOnly: true });
 
+    // The create row lives inside the window, and a spectator cannot open one:
+    // the trigger is disabled rather than absent, so what the stage already
+    // holds is still on screen to read.
+    //
     // Awaited, because nothing tells the editor the stage is somebody else's
     // until the host answers its acquire.
-    await waitFor(() =>
-      expect(
-        screen.queryByRole('button', {
-          name: 'Create a new display label attribute',
-        }),
-      ).not.toBeInTheDocument(),
-    );
+    await waitFor(() => {
+      const triggers = within(attributeField('Display label')).getAllByRole(
+        'button',
+        { name: /attribute/iu },
+      );
+      expect(triggers).not.toHaveLength(0);
+      for (const trigger of triggers) expect(trigger).toBeDisabled();
+    });
   });
 });
 
@@ -1645,13 +1696,16 @@ describe('what a family member form field’s attribute holds', () => {
     );
     const dialog = await screen.findByRole('dialog');
     const field = within(dialog);
-    await chooseAttributeById(
+    await inventAttribute(
       harness.user,
       attributeField('Attribute', dialog),
-      CREATE_NEW_ATTRIBUTE,
+      'household_role',
     );
-    // An attribute participants choose from IS its values, so the name box
-    // gives way to the editor that authors both.
+    await within(attributeField('Attribute', dialog)).findByText(
+      'household_role',
+    );
+    // An attribute participants choose from IS its values, so a name is not
+    // enough: the row sends the researcher to the editor that authors both.
     await harness.user.selectOptions(
       await field.findByRole('combobox', { name: 'Kind of answer' }),
       'categorical',
@@ -1661,10 +1715,9 @@ describe('what a family member form field’s attribute holds', () => {
         name: 'Create this attribute and its values',
       }),
     );
-    await harness.user.type(
+    expect(
       await screen.findByRole('textbox', { name: 'Attribute name' }),
-      'household_role',
-    );
+    ).toHaveValue('household_role');
     await addOption(harness, 1, 'Parent', 'parent');
     await addOption(harness, 2, 'Sibling', 'sibling');
     await harness.user.click(
@@ -2116,10 +2169,9 @@ describe('a pedigree whose node type changes', () => {
     // relationship type, whether a relationship is current, who carried each
     // pregnancy and each parent's gamete.
     //
-    // Read as the slot having nothing to open at all: the new type carries no
-    // attributes, so each picker stands its field down behind its empty-state
-    // sentence — and a slot still holding one would go on offering the window
-    // in which the researcher could see the choice it can no longer offer.
+    // Read as each slot having nothing left to choose: the new type carries no
+    // attributes, so every window is empty of them — a slot still offering the
+    // old type's would be offering a choice it can no longer make.
     for (const slot of [
       'Relationship type',
       'Active status',
@@ -2127,10 +2179,8 @@ describe('a pedigree whose node type changes', () => {
       'Gamete role',
     ]) {
       expect(
-        within(attributeField(slot)).queryByRole('button', {
-          name: /attribute$/u,
-        }),
-      ).not.toBeInTheDocument();
+        await offeredAttributes(harness.user, attributeField(slot)),
+      ).toEqual([]);
     }
   });
 
