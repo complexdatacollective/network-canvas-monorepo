@@ -28,11 +28,16 @@ export async function changeRegistryOperator(
     if (!role?.authorized)
       throw new Error('REGISTRY_OPERATOR_NOT_DATABASE_OWNER');
     const account = await client.query<{ id: string }>(
-      'SELECT id FROM registry_auth_user WHERE id = $1 AND email_verified = true',
+      'SELECT id FROM registry_auth_user WHERE id = $1 AND email_verified = true FOR UPDATE',
       [userId],
     );
     if (account.rows.length !== 1)
       throw new Error('REGISTRY_OPERATOR_ACCOUNT_NOT_VERIFIED');
+    const existing = await client.query<{ enabled: boolean }>(
+      'SELECT enabled FROM registry_operators WHERE user_id = $1',
+      [userId],
+    );
+    if ((existing.rows[0]?.enabled ?? false) === enabled) return;
     await client.query(
       `INSERT INTO registry_operators(user_id, enabled) VALUES ($1, $2)
        ON CONFLICT (user_id) DO UPDATE SET enabled = excluded.enabled`,

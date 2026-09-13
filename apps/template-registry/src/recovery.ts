@@ -30,9 +30,10 @@ type Artifact = {
 };
 
 function sameUserIds(actual: readonly string[], expected: readonly string[]) {
+  const expectedIds = new Set(expected);
   return (
-    actual.length === expected.length &&
-    actual.every((id, index) => id === expected[index])
+    actual.length === expectedIds.size &&
+    actual.every((id) => expectedIds.has(id))
   );
 }
 
@@ -182,7 +183,7 @@ export async function reconcileRegistryRecovery({
     if (
       !sameUserIds(
         actualPublishers.rows.map((publisher) => publisher.user_id),
-        publisherIds.toSorted(),
+        publisherIds,
       )
     )
       throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');

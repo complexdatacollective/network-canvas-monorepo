@@ -27,6 +27,14 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
       REGISTRY_SCHEMA_FINGERPRINT,
       installation.allowedLogins,
     );
+    // Exercise locale-aware ordering independently of JavaScript's UTF-16 sort.
+    await fixture.owner
+      .query(`CREATE COLLATION recovery_locale (provider = icu, locale = 'und');
+      ALTER TABLE registry_publishers ALTER COLUMN user_id TYPE text COLLATE recovery_locale;
+      INSERT INTO registry_auth_user(id, name, email, email_verified, updated_at)
+      VALUES ('Zulu', 'Zulu', 'zulu@example.test', true, now()),
+        ('alpha', 'Alpha', 'alpha@example.test', true, now());
+      INSERT INTO registry_publishers(id, user_id, name) VALUES (gen_random_uuid(), 'Zulu', 'Zulu'), (gen_random_uuid(), 'alpha', 'Alpha')`);
     const account = await fixture.account('restored@example.test', true);
     await fixture.published(account.token, 'Recovered template');
     await fixture.owner.query(
@@ -53,6 +61,20 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
         format: 'template-registry-recovery-reconciliation',
         version: 1,
         users: [
+          {
+            id: 'Zulu',
+            email: 'zulu@example.test',
+            emailVerified: true,
+            publisher: 'active',
+            operator: false,
+          },
+          {
+            id: 'alpha',
+            email: 'alpha@example.test',
+            emailVerified: true,
+            publisher: 'active',
+            operator: false,
+          },
           {
             id: account.session.userId,
             email: 'restored@example.test',
@@ -95,7 +117,7 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
         verifications: 0,
         credentials: 0,
         operators: 0,
-        publishers: 1,
+        publishers: 3,
       },
     ]);
   } finally {
