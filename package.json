@@ -29,6 +29,7 @@
     "ci:metrics": "node scripts/ci/ci-metrics.mjs"
   },
   "devDependencies": {
+    "@aws-sdk/client-dynamodb": "3.1102.0",
     "@cdktn/hcl2json": "0.24.0",
     "@changesets/cli": "^3.0.1",
     "@posthog/cli": "catalog:",
