@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import {
   useCallback,
   useContext,
@@ -720,8 +721,9 @@ export default function AttributeCodebookControls({
           <Button
             ref={createTrigger}
             type="button"
-            variant="outline"
+            color="primary"
             size="sm"
+            icon={<Plus aria-hidden="true" />}
             onClick={() => open('create', createLabel)}
           >
             {intl.formatMessage(createLabel)}
@@ -732,7 +734,7 @@ export default function AttributeCodebookControls({
             <Button
               ref={definesTrigger}
               type="button"
-              variant="outline"
+              color="primary"
               size="sm"
               onClick={() => open('defines', definesLabel)}
             >
@@ -743,7 +745,7 @@ export default function AttributeCodebookControls({
           <Button
             ref={rulesTrigger}
             type="button"
-            variant="outline"
+            color="primary"
             size="sm"
             onClick={() => open('rules', messages.editRules)}
           >

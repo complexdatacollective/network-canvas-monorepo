@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useState, type ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 
@@ -172,7 +173,14 @@ describe('the fields in this directory, read in Spanish', () => {
         'protocolBuilder.entitySelect.nodeGroupLabel',
         'protocolBuilder.entitySelect.missingOptionLabel',
         'protocolBuilder.entitySelect.missingType',
-        'protocolBuilder.variablePicker.placeholder',
+        'protocolBuilder.variablePicker.selectAttribute',
+        'protocolBuilder.variablePicker.changeAttribute',
+        'protocolBuilder.variablePicker.noneSelected',
+        'protocolBuilder.variablePicker.dialogName',
+        'protocolBuilder.variablePicker.searchLabel',
+        'protocolBuilder.variablePicker.resultsLabel',
+        'protocolBuilder.variablePicker.createRow',
+        'protocolBuilder.variablePicker.createRowRefused',
         'protocolBuilder.variablePicker.emptyState',
         'protocolBuilder.variablePicker.missingOptionLabel',
         'protocolBuilder.variablePicker.missingAttribute',
@@ -221,7 +229,9 @@ describe('the fields in this directory, read in Spanish', () => {
     ).toBeInTheDocument();
   });
 
-  it('reads the attribute picker in Spanish', () => {
+  it('reads the attribute picker in Spanish', async () => {
+    const user = userEvent.setup();
+
     render(
       standalone(
         <VariablePickerField
@@ -232,17 +242,28 @@ describe('the fields in this directory, read in Spanish', () => {
       ),
     );
 
+    // The stored choice nothing offers is kept and named on the field itself,
+    // beside the sentence saying what the researcher has to do about it.
     expect(
-      screen.getByRole('option', {
-        name: 'gone — este atributo no está disponible aquí',
-      }),
+      screen.getByText('gone — este atributo no está disponible aquí'),
     ).toBeInTheDocument();
     expect(
       screen.getByText('Este atributo no está disponible aquí. Elige otro.'),
     ).toBeInTheDocument();
-    // The placeholder is still offered while a dangling choice is showing.
+    // A real attribute is still there to be chosen while a dangling choice is
+    // showing. It is chosen in the window the trigger opens: this picker has
+    // no label of its own, so the window falls back to its own name.
+    await user.click(screen.getByRole('button', { name: 'Cambiar atributo' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Selecciona un atributo',
+    });
     expect(
-      screen.getByRole('option', { name: 'Selecciona un atributo…' }),
+      within(dialog).getByRole('searchbox', {
+        name: 'Busca o crea un atributo',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('option', { name: 'Age' }),
     ).toBeInTheDocument();
     expectNoLocaleLeaks(
       'the attribute picker',
@@ -261,10 +282,9 @@ describe('the fields in this directory, read in Spanish', () => {
       ),
     );
 
-    // The type token itself is a protocol schema value and stays as it is.
-    expect(
-      screen.getByLabelText('Tipo de atributo: number'),
-    ).toBeInTheDocument();
+    // Stated beside the pill for anyone who cannot read its colour, and the
+    // type token itself is a protocol schema value that stays as it is.
+    expect(screen.getByText('Tipo de atributo: number')).toBeInTheDocument();
   });
 
   it('says there is nothing to choose from in Spanish', () => {

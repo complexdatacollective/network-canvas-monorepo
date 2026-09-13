@@ -16,6 +16,12 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx'];
 /** Fixtures render throwaway copy on purpose, and nobody translates a fixture. */
 const FIXTURE = /(\.test\.|\.stories\.|__tests__|__mocks__)/;
 
+/** A story file, which is a fixture for the copy guards and real UI for the
+ * guards that read how a component is CONFIGURED: a story is what Chromatic
+ * photographs and what a reviewer looks at, so a button style wrong there is
+ * wrong on a page somebody reads. */
+const STORY = /\.stories\./;
+
 /**
  * Test-support code, which is a fixture in every sense but its path: the story
  * host and the render harness exist to be rendered BY tests and stories.
@@ -63,18 +69,29 @@ const isUnder = (path: string, directories: readonly string[]) => {
  */
 export function sourceFiles(
   directory: string = packageSource,
-  { excluding = NOT_CONVERTED_YET }: { excluding?: readonly string[] } = {},
+  {
+    excluding = NOT_CONVERTED_YET,
+    withStories = false,
+  }: { excluding?: readonly string[]; withStories?: boolean } = {},
 ): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
-    if (entry.isDirectory()) return sourceFiles(path, { excluding });
+    if (entry.isDirectory())
+      return sourceFiles(path, { excluding, withStories });
     if (
       !SOURCE_EXTENSIONS.some((extension) => entry.name.endsWith(extension))
     ) {
       return [];
     }
-    if (FIXTURE.test(path)) return [];
-    return isUnder(path, [...excluding, ...FIXTURE_DIRECTORIES]) ? [] : [path];
+    const isStory = withStories && STORY.test(path);
+    if (FIXTURE.test(path) && !isStory) return [];
+    // `testing/` holds the story host and the render harness, which are
+    // fixtures wherever they are read as COPY — but a story in there is a
+    // story like any other: Chromatic photographs it and a reviewer looks at
+    // it, so a button styled wrongly there is wrong on a page somebody reads.
+    // The directory is excluded for everything else it holds.
+    const fixtureDirectories = isStory ? [] : FIXTURE_DIRECTORIES;
+    return isUnder(path, [...excluding, ...fixtureDirectories]) ? [] : [path];
   });
 }
 

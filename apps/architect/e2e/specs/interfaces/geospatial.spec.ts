@@ -161,9 +161,9 @@ test('creates a valid Geospatial stage from scratch', async ({
     // comes back afterwards, so the prompt holds it only once the editor has
     // closed.
     await attributeEditor.waitFor({ state: 'detached' });
-    await expect(editor.field('variable').locator('option:checked')).toHaveText(
-      'location',
-    );
+    await expect(
+      editor.field('variable').locator('[data-attribute-type]'),
+    ).toHaveText('location');
   });
 
   // "Map appearance": the basemap is a native select over Mapbox's own style

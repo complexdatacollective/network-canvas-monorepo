@@ -51,10 +51,12 @@ export const EditingAPrompt: Story = {
     const panel = await screen.findByRole('dialog');
     const dialog = within(panel);
     await storyDialogVisible(panel);
+    // The picker states what it holds as a typed pill, not as a selected
+    // option: the closed control names the attribute, not its id.
     await waitFor(async () => {
       await expect(
-        dialog.getByRole('combobox', { name: 'Attribute' }),
-      ).toHaveValue('contactFreq');
+        panel.querySelector('[data-attribute-type]'),
+      ).toHaveTextContent('contactFreq');
     });
     // `ord-color-seq-1` is the first swatch of the schema's own sequence.
     await expect(

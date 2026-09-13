@@ -12,6 +12,10 @@ import { RuleEditorHost } from '../../rules/__tests__/ruleEditorHost.tsx';
 import type { RuleDraft } from '../../rules/rule.ts';
 import type { RuleSetValue } from '../../rules/ruleSet.ts';
 import BuilderSection from '../../sections/BuilderSection.tsx';
+import {
+  attributeField,
+  openAttributePicker,
+} from '../../testing/attributePicker.ts';
 import type { InMemoryProtocolStore } from '../../testing/host/protocolStore.ts';
 import { QueryRuleSetField } from '../RuleSetField.tsx';
 
@@ -216,11 +220,12 @@ describe('the rule set field', () => {
       }),
     );
 
-    const attribute = await screen.findByRole('combobox', {
-      name: /Ego attribute/,
-    });
+    const picker = await openAttributePicker(
+      user,
+      await waitFor(() => attributeField('Ego attribute')),
+    );
     expect(
-      within(attribute).getByRole('option', { name: 'EgoName' }),
+      within(picker).getByRole('option', { name: 'EgoName' }),
     ).toBeInTheDocument();
   });
 

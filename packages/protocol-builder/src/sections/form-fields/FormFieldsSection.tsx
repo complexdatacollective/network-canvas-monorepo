@@ -57,6 +57,7 @@ import {
   rowId,
   rowsOf,
   rowTemplate,
+  type RowAsideProps,
   type RowEditorProps,
   type RowListConfig,
   type RowPreviewProps,
@@ -83,6 +84,7 @@ import {
 } from '../collectableTypes.ts';
 import { type SubjectEntity, useStageSubject } from '../useStageSubject.ts';
 import AttributeControlBadge from './AttributeControlBadge.tsx';
+import FieldPreviewPane from './FieldPreviewPane.tsx';
 
 /**
  * Where an interface that holds a whole form keeps it.
@@ -902,6 +904,7 @@ export default function FormFieldsSection({
     () => ({
       Preview: FormFieldPreview,
       Editor: FormFieldEditor,
+      Aside: FormFieldPreviewPane,
       addTitle: messages.addTitle,
       editTitle: messages.editTitle,
       formId: 'form-field-editor',
@@ -1498,6 +1501,18 @@ function FormFieldEditor({ item, editIndex }: RowEditorProps) {
       </Section>
     </>
   );
+}
+
+/**
+ * The preview beside this family's fields.
+ *
+ * Here rather than in the pane because whose codebook the form collects into
+ * is the SECTION's answer — a Family Pedigree names its node type somewhere a
+ * row could not find — and the shared list threads no props of its own.
+ */
+function FormFieldPreviewPane({ item }: RowAsideProps) {
+  const { subject } = useFormFieldsScope();
+  return <FieldPreviewPane subject={subject} item={item} />;
 }
 
 /**
