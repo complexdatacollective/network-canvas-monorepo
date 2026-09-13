@@ -1,11 +1,11 @@
 # Studio release tools
 
 Studio distribution jobs install their release tools with
-`node scripts/studio-release-tools.mjs <private-parent-directory>`. The command
+`node scripts/studio/studio-release-tools.mjs <private-parent-directory>`. The command
 creates a new mode `0700` directory and prints its path. The caller adds that
 directory to `PATH` for the release job and removes it when the job finishes.
 
-The committed `scripts/studio-release-tools.json` allowlist pins Ubuntu x64 and
+The committed `scripts/studio/studio-release-tools.json` allowlist pins Ubuntu x64 and
 macOS arm64 artifacts from versioned official GitHub releases:
 
 - Cosign 3.1.3 from `sigstore/cosign`
@@ -23,10 +23,12 @@ The workflow must use the returned absolute paths for image preparation and
 signing. It must keep its existing non-cancelling distribution lock; installing
 these tools does not reserve image tags or authenticate a release candidate.
 
-The manually dispatched `Studio distribution release` workflow accepts only
-the workflow file from `main` and always checks out its exact dispatch commit.
-Under its non-cancelling lock, every publication admission fetches `origin/main`
-again and refuses if that commit is no longer the current tip. The optional
+The Studio version lane invokes `Studio distribution release` only when one of
+the five Studio product package versions changes. A manual dispatch remains
+available for an exact retry. Both entry points accept only the workflow file
+from `main` and check out the exact triggering commit. Under their shared
+non-cancelling lock, every publication admission fetches `origin/main` again
+and refuses if that commit is no longer the current tip. The optional
 oldest-supported-source input is needed only when the authenticated history has
 grown beyond the default 20-release bound or support is intentionally narrowed;
 it must name an already published, authenticated distribution in the current

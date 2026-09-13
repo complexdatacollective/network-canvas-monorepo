@@ -31,7 +31,7 @@ import { executeOperation } from '../../deployment/installer/operation.mjs';
 import { sha256 } from '../../deployment/installer/release.mjs';
 import { createMaintenancePool, createPool } from '../src/db/pool.ts';
 import recoveryFixture from './combined-recovery.fixture.json' with { type: 'json' };
-import { owner, populate, rpc } from './data.ts';
+import { owner, populate, rpc, signIn } from './data.ts';
 
 const DEADLINE = 300_000;
 
@@ -69,6 +69,8 @@ export function assertRecoveredDistributionEvidence({
     numericProperty(registry, 'sessions') !== 0 ||
     numericProperty(registry, 'verifications') !== 0 ||
     numericProperty(registry, 'activeCredentials') !== 0 ||
+    numericProperty(registry, 'activePublishers') !== 1 ||
+    numericProperty(registry, 'operators') !== 0 ||
     studioWriterLoginsClosed !== 't' ||
     registryWriterLoginsClosed !== 't' ||
     runningServices.toSorted().join(',') !==
@@ -97,6 +99,23 @@ export function assertDistributionUpgradeCanaries(
     )
   )
     throw new Error('Distribution upgrade lost a populated canary.');
+}
+
+export function assertRecoveredAuthenticatedServices(
+  recoveredOwner: { email: string; teams: unknown[] },
+  registrySmoke: unknown,
+) {
+  if (recoveredOwner.email !== owner.email || !recoveredOwner.teams.length)
+    throw new Error('Recovered Studio authentication is unavailable.');
+  if (
+    !registrySmoke ||
+    typeof registrySmoke !== 'object' ||
+    Reflect.get(registrySmoke, 'ready') !== true ||
+    Reflect.get(registrySmoke, 'authenticated') !== true ||
+    Reflect.get(registrySmoke, 'publisherId') !==
+      recoveryFixture.registry.publisherId
+  )
+    throw new Error('Recovered Registry authentication is unavailable.');
 }
 
 export function executeDistributionRestore(
@@ -223,7 +242,7 @@ function dockerEnvironment(root: string, overlay: string) {
   symlinkSync(
     fileURLToPath(
       new URL(
-        '../../../../scripts/studio-local-docker-wrapper.mjs',
+        '../../../../scripts/studio/studio-local-docker-wrapper.mjs',
         import.meta.url,
       ),
     ),
@@ -874,7 +893,9 @@ async function exerciseCombinedRecovery(
       'entries', (SELECT count(*) FROM registry_entries WHERE artifact_root = '${artifactRoot}'),
       'sessions', (SELECT count(*) FROM registry_auth_session),
       'verifications', (SELECT count(*) FROM registry_auth_verification),
-      'activeCredentials', (SELECT count(*) FROM registry_credentials WHERE revoked_at IS NULL))`,
+      'activeCredentials', (SELECT count(*) FROM registry_credentials WHERE revoked_at IS NULL),
+      'activePublishers', (SELECT count(*) FROM registry_publishers WHERE suspended_at IS NULL),
+      'operators', (SELECT count(*) FROM registry_operators WHERE enabled))`,
   ]).trim();
   const quarantine = restoredCompose([
     'exec',
@@ -923,6 +944,84 @@ async function exerciseCombinedRecovery(
     registryWriterLoginsClosed: registryQuarantine,
     runningServices: running,
   });
+  // Recovery deliberately ends with every writer and HTTP service closed.
+  // Only after the reconciliation/canary proof above may qualification reopen
+  // the recovered identities and exercise the actual authenticated surfaces.
+  restoredCompose([
+    'exec',
+    '-T',
+    'postgres',
+    'psql',
+    '-X',
+    '-v',
+    'ON_ERROR_STOP=1',
+    '-U',
+    'postgres',
+    '-d',
+    'postgres',
+    '-c',
+    'ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; ALTER ROLE studio_migrator LOGIN',
+  ]);
+  restoredCompose([
+    'exec',
+    '-T',
+    'registry-postgres',
+    'psql',
+    '-X',
+    '-v',
+    'ON_ERROR_STOP=1',
+    '-U',
+    'postgres',
+    '-d',
+    'postgres',
+    '-c',
+    'ALTER ROLE registry_runtime LOGIN; ALTER ROLE registry_operations LOGIN; ALTER ROLE registry_migrator LOGIN',
+  ]);
+  const registryToken = `ncr1_${randomBytes(32).toString('base64url')}`;
+  const recoveredRegistry = new Pool({
+    connectionString: `postgresql://postgres:${registryEnv.REGISTRY_POSTGRES_PASSWORD}@127.0.0.1:${fixture.registryDatabasePort}/registry`,
+    connectionTimeoutMillis: 10_000,
+  });
+  try {
+    await recoveredRegistry.query(
+      `INSERT INTO registry_credentials(id, publisher_id, token_hash, name, scopes, expires_at)
+       VALUES ('77777777-7777-4777-8777-777777777777', $1, $2,
+         'Post-recovery qualification', ARRAY['publish'],
+         statement_timestamp() + interval '1 hour')`,
+      [recoveryFixture.registry.publisherId, sha256(registryToken)],
+    );
+  } finally {
+    await recoveredRegistry.end();
+  }
+  restoredCompose(['up', '-d', '--no-deps', '--wait', 'studio', 'registry']);
+  await waitForReady(fixture.origin);
+  const recoveredCookie = await signIn(fixture.origin);
+  const recoveredOwner = await rpc(fixture.origin, recoveredCookie).me();
+  const registrySmoke = JSON.parse(
+    restoredCompose(
+      [
+        'exec',
+        '-T',
+        'registry',
+        'node',
+        '--input-type=module',
+        '-e',
+        readFileSync(
+          new URL('../../deployment/installer/smoke.mjs', import.meta.url),
+          'utf8',
+        ),
+        '--',
+        '--registry-installer-smoke',
+      ],
+      {
+        input: JSON.stringify({
+          token: registryToken,
+          publisherId: recoveryFixture.registry.publisherId,
+        }),
+      },
+    ),
+  );
+  assertRecoveredAuthenticatedServices(recoveredOwner, registrySmoke);
   restoredCompose(['down', '--volumes', '--remove-orphans']);
 }
 

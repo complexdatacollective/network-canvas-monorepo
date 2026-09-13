@@ -9,6 +9,10 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import {
+  recordStudioSourceBaseline,
+  STUDIO_SOURCE_BASELINE,
+} from '../studio/studio-release-policy.mjs';
+import {
   GATED_PRODUCT_DIRS,
   GATED_PRODUCT_PACKAGES,
   GATED_PRODUCT_RELEASE_LANES,
@@ -17,10 +21,6 @@ import {
   releaseLaneForProduct,
   renderChangelogSection,
 } from './changeset-app-utils.mjs';
-import {
-  recordStudioSourceBaseline,
-  STUDIO_SOURCE_BASELINE,
-} from './studio-release-policy.mjs';
 
 export function planProductReleases(
   cwd,
@@ -90,16 +90,15 @@ export function applyProductReleases(cwd, plans, consumed) {
 }
 
 // What merging each lane's release PR actually does. Documentation and
-// Website deploy to production from their release jobs; Studio has no
-// automated deploy lane yet, so its release PR only records versions and
-// changelogs.
+// Website deploy to production from their release jobs; Studio's version
+// change invokes the separately locked distribution qualification workflow.
 const LANE_MERGE_EFFECTS = {
   documentation: (products) =>
     `Merging this PR releases ${products} to Netlify **production**.`,
   website: (products) =>
     `Merging this PR releases ${products} to Netlify **production**.`,
   studio: (products) =>
-    `Merging this PR versions ${products} and records the changelog entries below. Studio has no automated production deploy lane yet.`,
+    `Merging this PR versions ${products}, records the changelog entries below, and starts the qualified Studio distribution release.`,
 };
 
 export function renderPrBody(plans) {

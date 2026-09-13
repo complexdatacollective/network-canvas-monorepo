@@ -1,4 +1,4 @@
-import { GitHubRequestError } from '../studio-github-distribution-store.mjs';
+import { GitHubRequestError } from '../studio/studio-github-distribution-store.mjs';
 
 const api = 'repos/complexdatacollective/network-canvas-monorepo';
 

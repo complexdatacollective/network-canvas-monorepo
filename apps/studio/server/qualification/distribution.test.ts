@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import recoveryFixture from './combined-recovery.fixture.json' with { type: 'json' };
 import {
   assertDistributionUpgradeCanaries,
+  assertRecoveredAuthenticatedServices,
   assertRecoveredDistributionEvidence,
   executeDistributionRestore,
 } from './distribution.ts';
@@ -12,6 +13,8 @@ const registryEvidence = {
   sessions: 0,
   verifications: 0,
   activeCredentials: 0,
+  activePublishers: 1,
+  operators: 0,
 };
 const recovered = {
   studioCanary: recoveryFixture.studio.participantCode,
@@ -122,6 +125,21 @@ describe('local distribution recovery boundary', () => {
         registryCanary: JSON.stringify({ ...registryEvidence, sessions: 1 }),
       },
     ],
+    [
+      'publisher reconciliation',
+      {
+        registryCanary: JSON.stringify({
+          ...registryEvidence,
+          activePublishers: 0,
+        }),
+      },
+    ],
+    [
+      'operator reconciliation',
+      {
+        registryCanary: JSON.stringify({ ...registryEvidence, operators: 1 }),
+      },
+    ],
   ])('refuses surviving %s evidence', (_name, mutation) => {
     expect(() =>
       assertRecoveredDistributionEvidence({ ...recovered, ...mutation }),
@@ -130,5 +148,38 @@ describe('local distribution recovery boundary', () => {
 
   it('accepts only the complete closed-admission evidence shape', () => {
     expect(() => assertRecoveredDistributionEvidence(recovered)).not.toThrow();
+  });
+
+  it('requires both recovered authenticated services after reopening', () => {
+    const recoveredOwner = {
+      email: 'owner@example.test',
+      teams: [{ id: 'recovered-team' }],
+    };
+    const registrySmoke = {
+      ready: true,
+      authenticated: true,
+      publisherId: recoveryFixture.registry.publisherId,
+    };
+    expect(() =>
+      assertRecoveredAuthenticatedServices(recoveredOwner, registrySmoke),
+    ).not.toThrow();
+    expect(() =>
+      assertRecoveredAuthenticatedServices(
+        { ...recoveredOwner, teams: [] },
+        registrySmoke,
+      ),
+    ).toThrow('Studio authentication is unavailable');
+    expect(() =>
+      assertRecoveredAuthenticatedServices(recoveredOwner, {
+        ...registrySmoke,
+        authenticated: false,
+      }),
+    ).toThrow('Registry authentication is unavailable');
+    expect(() =>
+      assertRecoveredAuthenticatedServices(recoveredOwner, {
+        ...registrySmoke,
+        publisherId: 'substituted-publisher',
+      }),
+    ).toThrow('Registry authentication is unavailable');
   });
 });

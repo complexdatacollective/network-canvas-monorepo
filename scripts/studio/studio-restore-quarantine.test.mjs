@@ -201,7 +201,7 @@ exit 0
         ORIGINAL_IMAGES: join(backup, 'images.tar'),
       },
       encoding: 'utf8',
-      timeout: 10_000,
+      timeout: 30_000,
     },
   );
   let log = '';

@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 
 import configurationFiles from '../../apps/studio/deployment/installer/configuration-files.json' with { type: 'json' };
 import registryConfigurationFiles from '../../apps/studio/deployment/installer/registry-configuration-files.json' with { type: 'json' };
-import { buildInstallerArchive } from '../studio-installer-archive.mjs';
+import { buildInstallerArchive } from '../studio/studio-installer-archive.mjs';
 import { releasedDistribution } from './studio-release.mjs';
 
 export function installerFixture(
@@ -19,7 +19,7 @@ export function installerFixture(
   release = releasedDistribution(),
 ) {
   const root = mkdtempSync(join(tmpdir(), 'studio-installer-archive-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.onTestFinished(() => rmSync(root, { recursive: true, force: true }));
   const directory = join(root, 'bundle');
   mkdirSync(directory);
   const contents = new Map();
@@ -70,7 +70,7 @@ export function installerFixture(
   }
   contents.set('Z-order', Buffer.from('last uppercase'));
   contents.set('a-order', Buffer.from('first lowercase'));
-  for (const [name, bytes] of reverse ? [...contents].reverse() : contents) {
+  for (const [name, bytes] of reverse ? [...contents].toReversed() : contents) {
     mkdirSync(dirname(join(directory, name)), { recursive: true });
     writeFileSync(join(directory, name), bytes);
   }

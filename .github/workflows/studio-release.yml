@@ -1,6 +1,11 @@
 name: Studio distribution release
 
 on:
+  workflow_call:
+    inputs:
+      oldest_supported_source:
+        required: false
+        type: string
   workflow_dispatch:
     inputs:
       oldest_supported_source:
@@ -59,7 +64,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           STUDIO_OLDEST_SUPPORTED_SOURCE: ${{ inputs.oldest_supported_source }}
-        run: node scripts/studio-distribution-release.mjs
+        run: node scripts/studio/studio-distribution-release.mjs
       - name: Remove registry credentials
         if: always()
         run: docker logout ghcr.io

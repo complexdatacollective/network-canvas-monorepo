@@ -82,14 +82,31 @@ export async function smoke(input, request = fetch) {
   return { ready: true, setup: 'completed', authenticated: true };
 }
 
-async function registrySmoke(request = fetch) {
+export async function registrySmoke(input, request = fetch) {
   const response = await request('http://127.0.0.1:3000/readyz', {
     redirect: 'error',
     signal: AbortSignal.timeout(5000),
   });
   if (!response.ok || (await response.json()).status !== 'ready')
     throw new Error('Private Registry readiness failed.');
-  return { ready: true };
+  if (input === undefined) return { ready: true, authenticated: false };
+  if (
+    !input ||
+    typeof input.token !== 'string' ||
+    !/^ncr1_[A-Za-z0-9_-]{43}$/.test(input.token) ||
+    typeof input.publisherId !== 'string' ||
+    !/^[a-f0-9-]{36}$/.test(input.publisherId)
+  )
+    throw new Error('Invalid private Registry smoke input.');
+  const publisher = await request('http://127.0.0.1:3000/api/v1/publisher', {
+    redirect: 'error',
+    signal: AbortSignal.timeout(5000),
+    headers: { authorization: `Bearer ${input.token}` },
+  });
+  const identity = publisher.ok ? await publisher.json() : null;
+  if (identity?.id !== input.publisherId)
+    throw new Error('The recovered Registry publisher is unavailable.');
+  return { ready: true, authenticated: true, publisherId: identity.id };
 }
 
 async function runSmoke() {
@@ -110,7 +127,13 @@ if (process.argv.length === 2) {
   if (process.argv[1] === '--studio-installer-smoke') await runSmoke();
   if (process.argv[1] === '--registry-installer-smoke') {
     try {
-      process.stdout.write(`${JSON.stringify(await registrySmoke())}\n`);
+      const bytes = readFileSync(0);
+      if (bytes.length > 16_384)
+        throw new Error('Private Registry smoke input is too large.');
+      const input = bytes.length
+        ? JSON.parse(bytes.toString('utf8'))
+        : undefined;
+      process.stdout.write(`${JSON.stringify(await registrySmoke(input))}\n`);
     } catch {
       process.stderr.write(
         'Private Registry smoke failed; admission must remain closed.\n',

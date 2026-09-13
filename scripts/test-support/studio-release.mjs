@@ -3,7 +3,7 @@ import {
   readRelease,
   sha256,
 } from '../../apps/studio/deployment/installer/release.mjs';
-import { buildMultiPlatformCycloneDx } from '../studio-image-evidence.mjs';
+import { buildMultiPlatformCycloneDx } from '../studio/studio-image-evidence.mjs';
 
 export function studioSbom(image) {
   const reports = new Map(

@@ -11,17 +11,17 @@ import { dirname, join, posix } from 'node:path';
 
 import { stringify } from 'yaml';
 
-import { GATED_PRODUCT_DIRS } from '../changeset-app-utils.mjs';
+import { GATED_PRODUCT_DIRS } from '../release/changeset-app-utils.mjs';
+import {
+  applyProductReleases,
+  planProductReleases,
+} from '../release/version-gated-products.mjs';
 import {
   recordStudioSourceBaseline,
   STUDIO_RELEASE_PACKAGES,
   studioReleaseEligibility,
   readStudioCandidate,
-} from '../studio-release-policy.mjs';
-import {
-  applyProductReleases,
-  planProductReleases,
-} from '../version-gated-products.mjs';
+} from '../studio/studio-release-policy.mjs';
 
 const SHARED = '@codaco/shared-consts';
 const CLIENT = '@codaco/studio-client';
@@ -32,7 +32,7 @@ const SYNC = '@codaco/studio-sync';
 
 export function fixture(t) {
   const cwd = mkdtempSync(join(tmpdir(), 'studio-release-policy-'));
-  t.after(() => rmSync(cwd, { recursive: true, force: true }));
+  t.onTestFinished(() => rmSync(cwd, { recursive: true, force: true }));
   function git(...args) {
     return execFileSync('git', args, {
       cwd,
@@ -127,7 +127,7 @@ export function fixture(t) {
   write('apps/template-registry/Dockerfile', 'FROM node:24-slim\n');
   write('.dockerignore', '.git\n**/node_modules\n');
   write('apps/studio/docker-compose.yml', 'services: {}\n');
-  write('scripts/studio-install.mjs', 'export const version = 1;\n');
+  write('scripts/studio/studio-install.mjs', 'export const version = 1;\n');
   write(
     '.changeset/studio.md',
     `---\n${STUDIO_RELEASE_PACKAGES.map((name) => `"${name}": minor`).join('\n')}\n---\nInitial Studio release.\n`,

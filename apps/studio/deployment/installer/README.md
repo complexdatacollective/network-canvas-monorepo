@@ -16,10 +16,10 @@ installation to verify the **whole archive**, including every executable script:
 
 ```sh
 cosign verify-blob \
-  --bundle studio-installer.sigstore.json \
+  --bundle installer.sigstore.json \
   --certificate-identity 'https://github.com/complexdatacollective/network-canvas-monorepo/.github/workflows/studio-release.yml@refs/heads/main' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  studio-installer.tar
+  installer.tar
 ```
 
 Using trusted host tools, read `release.json` from that verified archive and
@@ -101,21 +101,20 @@ implemented in this checkpoint; do not manually rewrite protected state to
 simulate a downgrade.
 
 The source qualification exercises these commands against real local Compose
-services, including a post-migration interruption, quiesced backup, retry and
-authenticated smoke. It uses two manifests of the same retained backend image;
-actual adjacent/oldest-supported image compatibility and GitHub OIDC signature
-qualification remain separate release requirements. Populated recovery also
-requires independently obtained current Registry owner/operator/publisher
-reconciliation evidence and its SHA-256. The restore keeps both HTTP services
-and all workers closed while the Registry recovery executable invalidates
-restored sessions, magic links and active personal access tokens and verifies
-every referenced object.
+services, including fresh installation, every advertised predecessor upgrade,
+quiesced backup, populated recovery, service reopening and authenticated Studio
+and Registry smoke. GitHub OIDC signatures still require the release workflow's
+live identity. Populated recovery also requires independently obtained current
+Registry owner/operator/publisher reconciliation evidence and its SHA-256. The
+restore keeps both HTTP services and all workers closed while the Registry
+recovery executable invalidates restored sessions, magic links and active
+personal access tokens and verifies every referenced object.
 
 ## Building the authenticated archive
 
 The release publisher stages every installer module, the raw templates, generated
 configuration, `release.json`, and its Sigstore bundle in a dedicated directory.
-Run `node scripts/studio-installer-archive.mjs <bundle-directory> <source-commit>
+Run `node scripts/studio/studio-installer-archive.mjs <bundle-directory> <source-commit>
 <output.tar>` from the repository to generate a deterministic USTAR archive and
 its SHA-256/source/manifest metadata. The command validates the same complete
 inventory as the installed loader, writes through a private temporary file, and
