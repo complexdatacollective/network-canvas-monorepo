@@ -174,6 +174,11 @@ async function currentEvidence(): Promise<StudioRecoveryAuthorizationReconciliat
           id_token_algorithm AS id_algorithm, scope FROM account WHERE id = 'current-account'`,
       )
     ).rows[0]!;
+    const activeScheduleIds = (
+      await pool.query<{ id: string }>(
+        "SELECT id FROM study_schedules WHERE state = 'active' ORDER BY id",
+      )
+    ).rows.map(({ id }) => id);
     return {
       format: 'studio-recovery-authorization-reconciliation',
       version: 1,
@@ -214,7 +219,7 @@ async function currentEvidence(): Promise<StudioRecoveryAuthorizationReconciliat
       ],
       studyGrants: [],
       activeWebhookSubscriptions: [],
-      activeScheduleIds: [],
+      activeScheduleIds,
       publishedMessageTemplateIds: [],
     };
   });
@@ -315,6 +320,73 @@ async function seedRestoredState() {
   });
 }
 
+async function seedActiveScheduleWithPendingOccurrence() {
+  return await withTargetAdministrator(async (pool) => {
+    const studyId = randomUUID();
+    const waveId = randomUUID();
+    const participantId = randomUUID();
+    const scheduleId = randomUUID();
+    const occurrenceId = randomUUID();
+    await pool.query(
+      `INSERT INTO studies
+        (id, team_id, name, state, participation_mode, wave_progression)
+       VALUES ($1, 'current-team', 'Recovery schedule study', 'draft', 'managed', 'window')`,
+      [studyId],
+    );
+    await pool.query(
+      `INSERT INTO study_waves (id, study_id, team_id, wave_number)
+       VALUES ($1, $2, 'current-team', 1)`,
+      [waveId, studyId],
+    );
+    await pool.query(
+      `INSERT INTO participants (id, study_id, team_id, participant_code, timezone)
+       VALUES ($1, $2, 'current-team', $3, 'UTC')`,
+      [participantId, studyId, 'recovery-person'],
+    );
+    await pool.query(
+      `INSERT INTO study_schedules (
+         id, team_id, study_id, wave_id, name, state, anchor_kind,
+         anchor_date, anchor_offset_minutes, recurrence_kind, window_start_minute,
+         window_end_minute, days_of_week_mask, max_prompts_per_day,
+         prompt_expiry_hours, catch_up_policy, fallback_time_zone, channels, settings)
+       VALUES ($1, 'current-team', $2, $3, 'Recovery schedule', 'active',
+         'fixed_date', '2026-09-10T00:00:00Z', 0, 'one_off', 0, 1439, 127, 1,
+         24, 'skip', 'UTC', ARRAY['email'], '{}'::jsonb)`,
+      [scheduleId, studyId, waveId],
+    );
+    await pool.query(
+      `INSERT INTO schedule_occurrences (
+         id, team_id, study_id, schedule_id, participant_id, occurrence_index,
+         scheduled_for, scheduled_local_date, scheduled_local_minute,
+         resolved_time_zone, expires_at, state)
+       VALUES ($1, 'current-team', $2, $3, $4, 1,
+         now(), CURRENT_DATE, 600, 'UTC', now() + interval '1 hour', 'scheduled')`,
+      [occurrenceId, studyId, scheduleId, participantId],
+    );
+    return { studyId, participantId, scheduleId, occurrenceId };
+  });
+}
+
+async function seedPendingOccurrenceForPausedSchedule(input: {
+  studyId: string;
+  participantId: string;
+  scheduleId: string;
+}) {
+  const occurrenceId = randomUUID();
+  await withTargetAdministrator(async (pool) => {
+    await pool.query(
+      `INSERT INTO schedule_occurrences (
+         id, team_id, study_id, schedule_id, participant_id, occurrence_index,
+         scheduled_for, scheduled_local_date, scheduled_local_minute,
+         resolved_time_zone, expires_at, state)
+       VALUES ($1, 'current-team', $2, $3, $4, 2,
+         now(), CURRENT_DATE, 600, 'UTC', now() + interval '1 hour', 'scheduled')`,
+      [occurrenceId, input.studyId, input.scheduleId, input.participantId],
+    );
+  });
+  return occurrenceId;
+}
+
 beforeAll(async () => {
   if (!database) return;
   const suffix = randomUUID().replaceAll('-', '');
@@ -394,6 +466,21 @@ beforeAll(async () => {
 beforeEach(async () => {
   if (!fixture) return;
   await withTargetAdministrator(async (pool) => {
+    await pool.query('BEGIN');
+    try {
+      await pool.query(
+        `SET LOCAL ROLE ${pg.escapeIdentifier(TENANT_ROLES.maintenance)}`,
+      );
+      await pool.query('DELETE FROM schedule_occurrences');
+      await pool.query('DELETE FROM study_schedules');
+      await pool.query('DELETE FROM participants');
+      await pool.query('DELETE FROM study_waves');
+      await pool.query('DELETE FROM studies');
+      await pool.query('COMMIT');
+    } catch (error) {
+      await pool.query('ROLLBACK');
+      throw error;
+    }
     await pool.query(`
       DELETE FROM team_invitation_deliveries;
       DELETE FROM team_invitations;
@@ -628,6 +715,56 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
           "SELECT count(*)::int AS count FROM teams WHERE id = 'stale-team'",
         ),
       ).resolves.toHaveProperty('rows', [{ count: 1 }]);
+    });
+  });
+
+  it('reconciles an evidence-listed schedule before replaying authorization', async () => {
+    const seeded = await seedActiveScheduleWithPendingOccurrence();
+    const evidence = await currentEvidence();
+    expect(evidence.activeScheduleIds).toEqual([seeded.scheduleId]);
+
+    await expect(run(evidence)).resolves.toMatchObject({
+      format: 'studio-recovery-authorization-receipt',
+    });
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          `SELECT state FROM study_schedules
+           WHERE id = $1`,
+          [seeded.scheduleId],
+        ),
+      ).resolves.toHaveProperty('rows', [{ state: 'paused' }]);
+      await expect(
+        pool.query(
+          `SELECT state FROM schedule_occurrences
+           WHERE id = $1`,
+          [seeded.occurrenceId],
+        ),
+      ).resolves.toHaveProperty('rows', [{ state: 'cancelled' }]);
+    });
+
+    const reviewed = await currentEvidence();
+    expect(reviewed.activeScheduleIds).toEqual([]);
+    await expect(run(evidence)).resolves.toMatchObject({
+      format: 'studio-recovery-authorization-receipt',
+    });
+
+    const lateOccurrenceId =
+      await seedPendingOccurrenceForPausedSchedule(seeded);
+    await expect(authorize(reviewed)).resolves.toMatchObject({
+      format: 'studio-recovery-current-authorization-receipt',
+    });
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          `SELECT state FROM schedule_occurrences
+           WHERE id = $1`,
+          [lateOccurrenceId],
+        ),
+      ).resolves.toHaveProperty('rows', [{ state: 'cancelled' }]);
+    });
+    await expect(authorize(reviewed)).resolves.toMatchObject({
+      format: 'studio-recovery-current-authorization-receipt',
     });
   });
 
