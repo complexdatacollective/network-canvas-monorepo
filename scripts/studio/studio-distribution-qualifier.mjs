@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import {
   chmodSync,
   mkdirSync,
@@ -299,6 +300,7 @@ export async function prepareStudioDistributionQualification(
  * receipt derived from its completed observations. */
 export async function qualifyStudioTelemetryRelease(
   image,
+  observerImage,
   { run = command, cwd = process.cwd() } = {},
 ) {
   if (
@@ -308,6 +310,11 @@ export async function qualifyStudioTelemetryRelease(
     )
   )
     throw new Error('Studio telemetry release image is invalid.');
+  if (
+    typeof observerImage !== 'string' ||
+    !/^studio-telemetry-observer:[a-f0-9]{16}$/.test(observerImage)
+  )
+    throw new Error('Studio telemetry observer image is invalid.');
   return run(
     'pnpm',
     [
@@ -319,11 +326,45 @@ export async function qualifyStudioTelemetryRelease(
     ],
     {
       cwd,
-      env: { ...process.env, STUDIO_TELEMETRY_RELEASE_IMAGE: image },
+      env: {
+        ...process.env,
+        STUDIO_TELEMETRY_RELEASE_IMAGE: image,
+        STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE: observerImage,
+      },
       timeout: 1_200_000,
       killSignal: 'SIGKILL',
     },
   );
+}
+
+export function prepareStudioTelemetryObserver(
+  candidateImage,
+  { run = command, cwd = process.cwd() } = {},
+) {
+  const observerImage = `studio-telemetry-observer:${randomBytes(8).toString('hex')}`;
+  run(
+    'docker',
+    [
+      'build',
+      '--file',
+      'apps/studio/telemetry-observer.Dockerfile',
+      '--build-arg',
+      `STUDIO_CANDIDATE_IMAGE=${candidateImage}`,
+      '--tag',
+      observerImage,
+      '.',
+    ],
+    { cwd, timeout: 300_000, killSignal: 'SIGKILL' },
+  );
+  return {
+    image: observerImage,
+    cleanup: () =>
+      run('docker', ['image', 'rm', '--force', observerImage], {
+        cwd,
+        timeout: 30_000,
+        killSignal: 'SIGKILL',
+      }),
+  };
 }
 
 async function qualifyLocalDistribution(input) {
@@ -336,18 +377,27 @@ export async function qualifyStudioDistribution(
   input,
   {
     prepare = prepareStudioDistributionQualification,
+    prepareObserver = prepareStudioTelemetryObserver,
     qualifyLocal = qualifyLocalDistribution,
     qualifyTelemetry = qualifyStudioTelemetryRelease,
   } = {},
 ) {
   const prepared = await prepare(input);
+  let observer;
   try {
+    observer = await prepareObserver(
+      prepared.candidate.release.images.studio.reference,
+    );
     await qualifyLocal({
       candidate: prepared.candidate,
       sources: prepared.sources,
       cosign: input.executables.cosign,
+      observerImage: observer.image,
     });
-    await qualifyTelemetry(prepared.candidate.release.images.studio.reference);
+    await qualifyTelemetry(
+      prepared.candidate.release.images.studio.reference,
+      observer.image,
+    );
     return {
       verdict: 'passed',
       source: prepared.candidate.current.source,
@@ -360,6 +410,10 @@ export async function qualifyStudioDistribution(
       })),
     };
   } finally {
-    prepared.cleanup();
+    try {
+      observer?.cleanup();
+    } finally {
+      prepared.cleanup();
+    }
   }
 }

@@ -740,6 +740,7 @@ it('runs recovery commands without inherited primary-account credentials or Dock
       'STUDIO_IMAGE',
       'STUDIO_PROXY_IP',
       'STUDIO_PROXY_SUBNET',
+      'STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE',
     ]);
     expect(
       JSON.parse(

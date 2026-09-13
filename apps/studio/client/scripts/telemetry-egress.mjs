@@ -31,6 +31,7 @@ async function port() {
 
 export async function runTelemetryBrowserQualification({
   image,
+  observerImage,
   clientDist,
   clientVersion,
 } = {}) {
@@ -38,9 +39,15 @@ export async function runTelemetryBrowserQualification({
   const results = [];
   const resolvedClientDist = clientDist ?? join(root, 'dist');
   const resolvedImage = image ?? process.env.STUDIO_TELEMETRY_KERNEL_IMAGE;
+  const resolvedObserverImage =
+    observerImage ?? process.env.STUDIO_TELEMETRY_KERNEL_OBSERVER_IMAGE;
   assert(
     resolvedImage,
     'Kernel browser qualification requires the built Studio image.',
+  );
+  assert(
+    resolvedObserverImage,
+    'Kernel browser qualification requires the observer image.',
   );
   const resolvedClientVersion =
     clientVersion ??
@@ -54,6 +61,7 @@ export async function runTelemetryBrowserQualification({
   );
   const kernel = await launchKernelObservedChromium({
     image: resolvedImage,
+    observerImage: resolvedObserverImage,
     serverPorts,
     scratch,
   });
