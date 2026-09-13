@@ -119,6 +119,7 @@ function tokenOperation<T>(operation: T, scope: TokenScope) {
     ...operation,
     'security': bearer,
     'x-registry-token-scopes': [scope],
+    ...(scope === 'moderate' ? { 'x-registry-operator-required': true } : {}),
   };
 }
 
@@ -374,7 +375,12 @@ export const registryContract = {
         path: '/account/tokens',
         summary: 'Issue a registry credential',
         successStatus: 201,
-        spec: (operation) => securedOperation(operation, cookie),
+        spec: (operation) => ({
+          ...securedOperation(operation, cookie),
+          'description':
+            'Requires a verified registry session with a claimed publisher. If requested scopes contain moderate, the account must be a current operator; otherwise the request returns 403. A moderate credential also requires its owner to remain a current operator when it is used.',
+          'x-registry-operator-required-for-scopes': ['moderate'],
+        }),
       }),
     )
     .input(CreateTokenSchema)
@@ -434,7 +440,7 @@ export async function generateRegistryOpenApi(options: {
             scheme: 'bearer',
             bearerFormat: 'ncr1_<256-bit secret>',
             description:
-              'Registry-issued credentials. Operations declare their required publish or moderate scope with x-registry-token-scopes. Studio instance API tokens do not authenticate here.',
+              'Registry-issued credentials. Operations declare their required publish or moderate scope with x-registry-token-scopes. x-registry-operator-required requires the credential owner to be a current operator. Studio instance API tokens do not authenticate here.',
           },
           registrySession: {
             type: 'apiKey',

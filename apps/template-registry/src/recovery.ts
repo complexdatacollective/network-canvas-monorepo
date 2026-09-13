@@ -172,7 +172,8 @@ export async function reconcileRegistryRecovery({
     );
     await client.query(`LOCK TABLE registry_auth_user, registry_auth_session,
       registry_auth_verification, registry_publishers, registry_operators,
-      registry_credentials, registry_artifacts, registry_artifact_content
+      registry_credentials, registry_artifacts, registry_artifact_content,
+      registry_entries
       IN SHARE ROW EXCLUSIVE MODE`);
     const expectedUsers = new Map(
       evidence.users.map((user) => [user.id, user]),
@@ -221,6 +222,27 @@ export async function reconcileRegistryRecovery({
       }
     }
     if (publisherCount !== expectedPublishers.size)
+      throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    const expectedEntries = new Map(
+      evidence.entries.map((entry) => [entry.id, entry.publisherId]),
+    );
+    let entryCount = 0;
+    for await (const entries of recoveryPages<{
+      id: string;
+      publisher_id: string;
+    }>(
+      client,
+      backup,
+      'SELECT id, publisher_id FROM registry_entries WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
+      'id',
+    )) {
+      for (const entry of entries) {
+        if (expectedEntries.get(entry.id) !== entry.publisher_id)
+          throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+        entryCount += 1;
+      }
+    }
+    if (entryCount !== expectedEntries.size)
       throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
     await client.query('DELETE FROM registry_auth_session');
     await client.query('DELETE FROM registry_auth_verification');

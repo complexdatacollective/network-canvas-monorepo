@@ -9,6 +9,7 @@ import {
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
 } from '@codaco/studio-sync/template-exchange';
 
+import { RegistrySequenceSchema } from './account-contract.ts';
 import {
   EntrySchema,
   generateRegistryOpenApi,
@@ -25,6 +26,47 @@ const ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_ID = '22222222-2222-4222-8222-222222222222';
 const ROOT = 'a'.repeat(64);
 const OTHER_ROOT = 'b'.repeat(64);
+function expectSequenceRange(schema: Record<string, unknown>) {
+  expect(schema.type).toBe('string');
+  if (typeof schema.pattern !== 'string')
+    throw new Error('Missing sequence pattern');
+  const pattern = new RegExp(schema.pattern);
+  const values = [
+    '0',
+    '1',
+    '01',
+    '-1',
+    '1e3',
+    '1\n',
+    '\n1',
+    '9223372036854775806',
+    '9223372036854775807',
+    '9223372036854775808',
+    '9999999999999999999',
+  ];
+  let sample = 17n;
+  for (let index = 0; index < 256; index++) {
+    sample =
+      (sample * 6364136223846793005n + 1442695040888963407n) &
+      ((1n << 64n) - 1n);
+    values.push(sample.toString());
+  }
+  for (const value of values) {
+    const expected =
+      value.length > 0 &&
+      value[0] !== '0' &&
+      !/[^0-9]/.test(value) &&
+      BigInt(value) <= 9223372036854775807n;
+    expect(
+      pattern.test(value),
+      `OpenAPI sequence ${JSON.stringify(value)}`,
+    ).toBe(expected);
+    expect(
+      RegistrySequenceSchema.safeParse(value).success,
+      `runtime sequence ${JSON.stringify(value)}`,
+    ).toBe(expected);
+  }
+}
 const ARTIFACT_BYTES = new Uint8Array([80, 75, 3, 4]);
 const entry = EntrySchema.parse({
   id: ID,
@@ -794,10 +836,7 @@ describe('generated registry OpenAPI', () => {
             ).after,
           );
         }
-        expect(after).toMatchObject({
-          type: 'string',
-          pattern: '^[1-9][0-9]{0,18}$',
-        });
+        expectSequenceRange(after);
         const responseSchema = record(
           record(
             record(record(record(reports.responses)['200']).content)[
@@ -813,10 +852,7 @@ describe('generated registry OpenAPI', () => {
               .map(record)
               .find((schema) => schema.type === 'string')
           : reportNextCursor;
-        expect(outputString).toMatchObject({
-          type: 'string',
-          pattern: '^[1-9][0-9]{0,18}$',
-        });
+        expectSequenceRange(record(outputString));
       }
 
       for (const [path, method, scope] of [
@@ -833,7 +869,16 @@ describe('generated registry OpenAPI', () => {
         const operation = record(record(record(candidate.paths)[path])[method]);
         expect(operation['x-registry-token-scopes']).toEqual([scope]);
         expect(operation.security).toEqual([{ registryToken: [] }]);
+        if (scope === 'moderate')
+          expect(operation['x-registry-operator-required']).toBe(true);
       }
+      const issuance = record(
+        record(record(candidate.paths)['/account/tokens']).post,
+      );
+      expect(issuance['x-registry-operator-required-for-scopes']).toEqual([
+        'moderate',
+      ]);
+      expect(issuance.description).toContain('current operator');
       for (const [path, method] of [
         ['/account/moderation/entries/{id}/takedown', 'post'],
         ['/account/moderation/entries/{id}/restore', 'post'],

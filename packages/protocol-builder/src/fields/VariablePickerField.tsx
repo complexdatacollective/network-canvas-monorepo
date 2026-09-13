@@ -346,6 +346,21 @@ export default function VariablePickerField({
     !held && offerable.length === 0 && onCreateOption === undefined;
 
   /**
+   * Whether the window may offer to invent an attribute right now.
+   *
+   * The caller's `onCreateOption` says the act belongs here at all; the
+   * field's own state says whether it may be taken. Both are asked, because
+   * the field can turn read-only underneath its own OPEN window — a save
+   * answered `notLockHolder` leaves the form mounted and closes
+   * `FieldsDisabled` over every field in it — and the create row would then
+   * stand in a window over a field that refuses every answer, offering an act
+   * the host will only refuse. The same question `handleSelect` asks before
+   * writing a choice; a control that refuses a pick has nothing to gain from
+   * offering a create beside it.
+   */
+  const canCreate = onCreateOption !== undefined && !disabled && !readOnly;
+
+  /**
    * Whether the act now closing the window was made with the KEYBOARD.
    *
    * Read while the window closes, so it is a ref; written from the wrapper
@@ -641,9 +656,7 @@ export default function VariablePickerField({
             }}
             options={offerable}
             onSelect={handleSelect}
-            {...(onCreateOption === undefined
-              ? {}
-              : { onCreate: handleCreate, namesInUse })}
+            {...(canCreate ? { onCreate: handleCreate, namesInUse } : {})}
             {...(ariaLabelledBy === undefined
               ? {}
               : { 'aria-labelledby': ariaLabelledBy })}

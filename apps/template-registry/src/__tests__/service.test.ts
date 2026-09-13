@@ -280,6 +280,121 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     }
   });
 
+  it.each([
+    {
+      name: 'curation',
+      method: 'PUT',
+      path: (entryId: string, _publisherId: string) =>
+        `/moderation/entries/${entryId}/curation`,
+      body: { curated: true },
+      action: 'entry.curated',
+    },
+    {
+      name: 'takedown',
+      method: 'POST',
+      path: (entryId: string, _publisherId: string) =>
+        `/moderation/entries/${entryId}/takedown`,
+      body: undefined,
+      action: 'artifact.taken_down',
+    },
+    {
+      name: 'suspension',
+      method: 'PUT',
+      path: (_entryId: string, publisherId: string) =>
+        `/moderation/publishers/${publisherId}/suspension`,
+      body: { suspended: true },
+      action: 'publisher.suspended',
+    },
+  ])(
+    'preserves reports submitted after completed $name transitions',
+    async (item) => {
+      const operator = await fixture.account(
+        `operator-${item.name}-report-retry@example.test`,
+        true,
+      );
+      const account = await fixture.account(
+        `${item.name}-report-retry@example.test`,
+      );
+      const created = await fixture.published(account.token);
+      const path = item.path(created.entry.id, account.publisher.id);
+      expect(
+        (await fixture.request(item.method, path, item.body, operator.bearer))
+          .status,
+      ).toBe(200);
+      const details = `Report submitted after ${item.action}`;
+      const reported = z
+        .strictObject({ id: z.uuid() })
+        .parse(
+          await (
+            await fixture.request(
+              'POST',
+              `/entries/${created.entry.id}/reports`,
+              { category: 'privacy', details },
+            )
+          ).json(),
+        );
+      expect(
+        (await fixture.request(item.method, path, item.body, operator.bearer))
+          .status,
+      ).toBe(200);
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT details FROM registry_reports WHERE id = $1',
+            [reported.id],
+          )
+        ).rows,
+      ).toEqual([{ details }]);
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT count(*)::int AS count FROM registry_audit WHERE action = $1 AND subject_id = $2',
+            [
+              item.action,
+              item.action === 'artifact.taken_down'
+                ? created.entry.root
+                : item.action === 'publisher.suspended'
+                  ? account.publisher.id
+                  : created.entry.id,
+            ],
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    },
+  );
+
+  it('distinguishes the initial publisher claim from profile updates', async () => {
+    const account = await fixture.account('publisher-audit@example.test');
+    const updated = await fixture.request(
+      'POST',
+      '/account/publisher',
+      { name: 'Updated publisher', orcid: '0000-0002-1825-0097' },
+      account.headers,
+    );
+    expect(updated.status).toBe(200);
+    expect(
+      (
+        await fixture.request(
+          'POST',
+          '/account/publisher',
+          { name: 'Updated publisher', orcid: '0000-0002-1825-0097' },
+          account.headers,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await fixture.owner.query(
+          "SELECT action, count(*)::int AS count FROM registry_audit WHERE subject_id = $1 AND action LIKE 'publisher.%' GROUP BY action ORDER BY action",
+          [account.publisher.id],
+        )
+      ).rows,
+    ).toEqual([
+      { action: 'publisher.claimed', count: 1 },
+      { action: 'publisher.updated', count: 1 },
+    ]);
+  });
+
   it('keeps person-owned locators separate from content identity across registry accounts', async () => {
     const first = await fixture.account('first@example.test');
     const second = await fixture.account('second@example.test');

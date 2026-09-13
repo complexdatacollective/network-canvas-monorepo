@@ -42,6 +42,7 @@ import {
   isCollectableType,
   isOptionType,
 } from '../collectableTypes.ts';
+import { NEW_VARIABLE } from './inventedAttribute.ts';
 
 const messages = defineMessages({
   title: {
@@ -253,23 +254,28 @@ export default function FieldPreviewPane({
 
   // An attribute nobody has created yet has no type of its own, so the kind of
   // answer the researcher has said they want stands in — and failing that, the
-  // one the chosen control implies, which is unambiguous.
+  // one the chosen control implies, which is unambiguous. The network
+  // composer's row only ever says the second: its input control is the
+  // question, and nothing asks it for a kind of answer.
   //
-  // Only where an attribute is being INVENTED, which is the form family alone.
-  // A network composer's row picks an attribute the codebook already holds, so
-  // a row naming one it no longer holds — deleted from under it, or absent from
-  // an imported codebook — has no attribute to preview: the interview would
-  // refuse that row outright (`createFieldMetadata` throws on a missing
-  // codebook entry), so inferring a kind from the control the row still
-  // carries would preview a field the participant can never meet.
-  const invents = mode !== 'composer';
-  const variableType: string | undefined = invents
-    ? (codebookVariable?.type ??
-      asText(draft._newVariableType) ??
-      (draftControl === undefined
-        ? undefined
-        : variableTypeForComponent(draftControl)))
-    : codebookVariable?.type;
+  // Both readings belong to a row that is INVENTING, and a row that is not
+  // gets neither. A row naming an attribute the codebook does not hold —
+  // deleted from under it, or absent from an imported codebook — is not a
+  // field the interview would render at all (`createFieldMetadata` throws on
+  // it), so it previews nothing rather than a working field assembled from the
+  // control the row happens to still carry. That is the composer's own case
+  // (its picker offers only attributes the codebook holds, so a row naming a
+  // missing one is a row pointing at nothing) reached by the question that
+  // also answers the composer row which IS inventing one.
+  const inventing = variableId === NEW_VARIABLE;
+  const variableType: string | undefined =
+    codebookVariable?.type ??
+    (inventing
+      ? (asText(draft._newVariableType) ??
+        (draftControl === undefined
+          ? undefined
+          : variableTypeForComponent(draftControl)))
+      : undefined);
 
   // The control has to be one this kind of answer allows. A row being rebound
   // still holds the control it was given for the attribute it USED to collect
@@ -293,7 +299,9 @@ export default function FieldPreviewPane({
       ? (authoredLabel ??
         codebookVariable?.name ??
         inventedName ??
-        variableId ??
+        // The sentinel is not a name: a composer row that is inventing and has
+        // been given no name yet borrows the stand-in, as an unnamed row does.
+        (inventing ? undefined : variableId) ??
         intl.formatMessage(messages.placeholderLabel))
       : (prompt ?? intl.formatMessage(messages.placeholderQuestion));
 

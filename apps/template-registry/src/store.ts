@@ -28,6 +28,7 @@ import {
   CreateTokenSchema,
   PublisherSchema,
   ReportSchema,
+  RegistrySequenceSchema,
   TokenDescriptionSchema,
   type RegistryReport,
 } from './account-contract.ts';
@@ -90,13 +91,9 @@ const ENTRY_SUMMARY_QUERY = `SELECT e.id, e.sequence::text AS sequence, e.publis
   LEFT JOIN registry_artifact_content c ON c.root = a.root`;
 const hash = (value: string) =>
   createHash('sha256').update(value).digest('hex');
-const SequenceSchema = z
-  .string()
-  .regex(/^[1-9][0-9]{0,18}$/)
-  .refine((value) => BigInt(value) <= 9_223_372_036_854_775_807n);
 const CursorSchema = z.strictObject({
   version: z.literal(1),
-  after: SequenceSchema,
+  after: RegistrySequenceSchema,
   filter: z.string().regex(/^[0-9a-f]{64}$/),
 });
 
@@ -274,7 +271,7 @@ export class RegistryStore {
       await appendRegistryAudit(
         client,
         { kind: 'publisher', id },
-        'publisher.claimed',
+        row ? 'publisher.updated' : 'publisher.claimed',
         id,
         requestId,
       );
@@ -833,14 +830,14 @@ export class RegistryStore {
       const row = result.rows[0];
       if (!row) throw new RegistryError('NOT_FOUND');
       if (row.deleted_at) throw new RegistryError('CONTENT_REMOVED');
-      await client.query(
-        `UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL
-         AND entry_id IN (SELECT id FROM registry_entries WHERE artifact_root=$1)`,
-        [row.artifact_root],
-      );
       if ((row.blocked_at !== null) === removed) return;
       await client.query(
         `UPDATE registry_artifacts SET blocked_at = ${removed ? 'statement_timestamp()' : 'NULL'} WHERE root = $1`,
+        [row.artifact_root],
+      );
+      await client.query(
+        `UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL
+         AND entry_id IN (SELECT id FROM registry_entries WHERE artifact_root=$1)`,
         [row.artifact_root],
       );
       await appendRegistryAudit(
@@ -870,17 +867,17 @@ export class RegistryStore {
       if (!publisher) throw new RegistryError('NOT_FOUND');
       if (suspended && actor.kind === 'operator' && actor.id === publisher.id)
         throw new RegistryError('CONFLICT');
-      await client.query(
-        `UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL
-         AND entry_id IN (SELECT id FROM registry_entries WHERE publisher_id=$1)`,
-        [publisher.id],
-      );
       if ((publisher.suspended_at !== null) === suspended) return;
       const result = await client.query(
         `UPDATE registry_publishers SET suspended_at = ${suspended ? 'statement_timestamp()' : 'NULL'} WHERE id = $1 RETURNING id`,
         [id],
       );
       if (!result.rowCount) throw new RegistryError('NOT_FOUND');
+      await client.query(
+        `UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL
+         AND entry_id IN (SELECT id FROM registry_entries WHERE publisher_id=$1)`,
+        [publisher.id],
+      );
       await appendRegistryAudit(
         client,
         actor,
@@ -905,13 +902,13 @@ export class RegistryStore {
           !hasCuratedMetadata(TemplateMetadataSchema.parse(entry.metadata)))
       )
         throw new RegistryError('CURATION_METADATA_REQUIRED');
-      await client.query(
-        'UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL AND entry_id=$1',
-        [id],
-      );
       if (entry.curated === curated) return;
       await client.query(
         `UPDATE registry_entries SET curated_at = ${curated ? 'statement_timestamp()' : 'NULL'} WHERE id = $1`,
+        [id],
+      );
+      await client.query(
+        'UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL AND entry_id=$1',
         [id],
       );
       await appendRegistryAudit(
@@ -968,7 +965,7 @@ export class RegistryStore {
     after: string | undefined,
     limit: number,
   ) {
-    if (after && !SequenceSchema.safeParse(after).success)
+    if (after && !RegistrySequenceSchema.safeParse(after).success)
       throw new RegistryError('INVALID_REQUEST');
     if (!Number.isInteger(limit) || limit < 1 || limit > 100)
       throw new RegistryError('INVALID_REQUEST');

@@ -43,6 +43,7 @@ export type RegistryActor = {
 };
 export type RegistryAuditAction =
   | 'publisher.claimed'
+  | 'publisher.updated'
   | 'credential.created'
   | 'credential.revoked'
   | 'entry.published'

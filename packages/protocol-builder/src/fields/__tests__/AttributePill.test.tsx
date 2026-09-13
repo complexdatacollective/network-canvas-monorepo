@@ -119,10 +119,8 @@ describe('AttributePill', () => {
     expect(accents.size).toBe(EXPECTED.length);
   });
 
-  it('takes the neutral mark for a row that is not a codebook attribute', () => {
-    const { container } = render(
-      <AttributePill name="Create a new attribute…" />,
-    );
+  it('takes the neutral mark where the kind of answer is not known', () => {
+    const { container } = render(<AttributePill name="nickname" />);
     const pill = pillOf(container);
 
     expect(pill).not.toHaveAttribute('data-attribute-type');

@@ -4,9 +4,9 @@ import { expect, screen, userEvent, within } from 'storybook/test';
 import { awaitPassiveEffects } from '@codaco/fresco-ui/storybook-support/awaitPassiveEffects';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
-import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
-import type { InMemoryHost } from '../testing/host/createInMemoryHost.ts';
-import CreateEdgeField, { CREATE_EDGE_FIELD } from './CreateEdgeField.tsx';
+import { FieldStoryHost } from '../../../testing/FieldStoryHost.tsx';
+import type { InMemoryHost } from '../../../testing/host/createInMemoryHost.ts';
+import EdgeTypeSection, { CREATE_EDGE_FIELD } from './EdgeTypeSection.tsx';
 
 /** The stage whose every question records a connection between a pair. */
 const DYAD_CENSUS = sectionId({ kind: 'stage', stageId: 'dyad-census-1' });
@@ -65,7 +65,7 @@ const meta = {
     // What the host stands in for is the row dialog that edits one question,
     // which is where this control is met.
     sectionTitle: 'One question this stage asks',
-    children: <CreateEdgeField {...DYAD_CENSUS_WORDS} />,
+    children: <EdgeTypeSection {...DYAD_CENSUS_WORDS} />,
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof FieldStoryHost>;
@@ -167,10 +167,11 @@ export const AConnectionTypeThatWasDeleted: Story = {
  * Inventing the connection type the question needs, without leaving the
  * question.
  *
- * The codebook's own editor rather than a name box: an edge type carries a
- * colour the participant recognises it by, and the researcher is asked for
- * both at once. What the prompt is then pointed at is the id the HOST minted,
- * read off the write.
+ * Offered by the picker itself rather than beside it: looking for a type and
+ * finding it is not there are one act. The codebook's own editor rather than a
+ * name box — an edge type carries a colour the participant recognises it by,
+ * and the researcher is asked for both at once. What the prompt is then
+ * pointed at is the id the HOST minted, read off the write.
  */
 export const InventingOne: Story = {
   play: async ({ canvasElement }) => {
@@ -178,9 +179,7 @@ export const InventingOne: Story = {
     await awaitPassiveEffects();
 
     await userEvent.click(
-      await canvas.findByRole('button', {
-        name: 'Create a new connection type',
-      }),
+      await canvas.findByRole('button', { name: 'Create new edge type' }),
     );
 
     // The dialog is portalled out of the story root, so it is reached through

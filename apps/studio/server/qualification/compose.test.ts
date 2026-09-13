@@ -39,6 +39,7 @@ import {
   rpc,
   signIn,
 } from './data.ts';
+import { emptyRegistryRecoveryReconciliation } from './registry-recovery-fixture.ts';
 
 async function counts(deployment: Deployment) {
   const pools = await deployment.pools();
@@ -767,7 +768,7 @@ it('installs an immutable built image, drains a populated backup and restores al
   );
   const reconciliation = join(source.root, 'reconciliation.json');
   const reconciliationBytes = Buffer.from(
-    '{"format":"template-registry-recovery-reconciliation","version":1,"users":[]}\n',
+    `${JSON.stringify(emptyRegistryRecoveryReconciliation)}\n`,
   );
   await writeFile(reconciliation, reconciliationBytes, { mode: 0o600 });
   const reconciliationSha = createHash('sha256')
