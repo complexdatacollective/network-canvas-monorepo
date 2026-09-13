@@ -341,6 +341,9 @@ const interviewLinks = pgTable(
     participantId: uuid('participant_id'),
     kind: text('kind').notNull(),
     tokenHash: bytea('token_hash').notNull(),
+    tokenCiphertext: bytea('token_ciphertext'),
+    tokenKeyId: text('token_key_id'),
+    tokenAlgorithm: text('token_algorithm'),
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
     redemptionCount: integer('redemption_count').notNull().default(0),
@@ -352,6 +355,7 @@ const interviewLinks = pgTable(
   },
   (table) => [
     unique().on(table.id, table.teamId),
+    unique().on(table.id, table.participantId, table.studyId, table.teamId),
     // Redemption is one indexed lookup inside the pinned tenant.
     uniqueIndex('interview_links_team_id_token_hash_idx').on(
       table.teamId,
@@ -392,6 +396,13 @@ const interviewLinks = pgTable(
     check(
       'interview_links_token_hash_check',
       sql`octet_length(${table.tokenHash}) = 32`,
+    ),
+    check(
+      'interview_links_token_envelope_check',
+      sql`num_nonnulls(${table.tokenCiphertext}, ${table.tokenKeyId}, ${table.tokenAlgorithm}) IN (0, 3)
+          AND (${table.tokenCiphertext} IS NULL OR octet_length(${table.tokenCiphertext}) BETWEEN 30 AND 256)
+          AND (${table.tokenKeyId} IS NULL OR char_length(${table.tokenKeyId}) BETWEEN 1 AND 64)
+          AND (${table.tokenAlgorithm} IS NULL OR ${table.tokenAlgorithm} = 'aes-256-gcm.v1')`,
     ),
     ...teamIsolationPolicies(),
   ],
@@ -1000,6 +1011,13 @@ BEGIN
     RAISE EXCEPTION 'interview links are deleted only by an audited erasure or the maintenance purge';
   END IF;
 
+  IF TG_OP = 'UPDATE' AND current_user = 'studio_maintenance'
+     AND (to_jsonb(NEW) - ARRAY['token_ciphertext','token_key_id','token_algorithm']::text[])
+       IS NOT DISTINCT FROM
+         (to_jsonb(OLD) - ARRAY['token_ciphertext','token_key_id','token_algorithm']::text[]) THEN
+    RETURN NEW;
+  END IF;
+
   IF study_is_closed(
        CASE WHEN TG_OP = 'INSERT' THEN NEW.study_id ELSE OLD.study_id END,
        CASE WHEN TG_OP = 'INSERT' THEN NEW.team_id ELSE OLD.team_id END) THEN
@@ -1013,7 +1031,11 @@ BEGIN
           OR NEW.wave_id IS DISTINCT FROM OLD.wave_id
           OR NEW.participant_id IS DISTINCT FROM OLD.participant_id
           OR NEW.kind IS DISTINCT FROM OLD.kind
-          OR NEW.token_hash IS DISTINCT FROM OLD.token_hash) THEN
+          OR NEW.token_hash IS DISTINCT FROM OLD.token_hash
+          OR (current_user <> 'studio_maintenance' AND (
+            NEW.token_ciphertext IS DISTINCT FROM OLD.token_ciphertext
+            OR NEW.token_key_id IS DISTINCT FROM OLD.token_key_id
+            OR NEW.token_algorithm IS DISTINCT FROM OLD.token_algorithm))) THEN
     RAISE EXCEPTION 'interview link identity and token are immutable';
   END IF;
 

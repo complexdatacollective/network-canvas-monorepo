@@ -226,7 +226,7 @@ test('versions the studio lane packages that have changesets and consumes only s
 
   const body = renderPrBody(plans);
   assert.match(body, /versions `@codaco\/studio-server`/);
-  assert.match(body, /no automated production deploy lane yet/);
+  assert.match(body, /starts the qualified Studio distribution release/);
   assert.doesNotMatch(body, /Netlify \*\*production\*\*/);
 });
 

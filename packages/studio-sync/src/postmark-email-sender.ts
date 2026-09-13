@@ -82,7 +82,11 @@ function receipt(
     normalizeMailbox(accepted.data.To) === to
   ) {
     // The API's MessageID is Postmark's own tracking UUID, not the RFC header.
-    return { status: 'accepted', messageId };
+    return {
+      status: 'accepted',
+      messageId,
+      providerMessageId: accepted.data.MessageID,
+    };
   }
   if (
     data !== null &&
@@ -134,6 +138,7 @@ export function createPostmarkEmailSender(options: {
         MessageStream: messageStream,
         TrackOpens: false,
         TrackLinks: 'None',
+        ...(message.metadata ? { Metadata: message.metadata } : {}),
       });
       const result = Promise.withResolvers<EmailReceipt>();
       let outgoing: ClientRequest | undefined;

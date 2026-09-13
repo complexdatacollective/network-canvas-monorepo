@@ -169,7 +169,7 @@ export const LinkRegistryAccountInputSchema = z.strictObject({
 // never the session's active team (#1248: every route is team-scoped by
 // construction).
 export const TeamScopedSchema = z.object({
-  teamId: z.string().min(1),
+  teamId: z.string().min(1).max(255),
 });
 
 export const TemplateVersionSummarySchema = z.strictObject({
@@ -388,6 +388,20 @@ export const CreateStudyResultSchema = z.object({
   draftId: z.uuid(),
 });
 
+export const IssueParticipantInterviewLinkInputSchema = z.object({
+  studyId: z.uuid(),
+  waveId: z.uuid(),
+  participantId: z.uuid(),
+});
+
+export const IssueParticipantInterviewLinkResultSchema = z.object({
+  linkId: z.uuid(),
+  token: z
+    .string()
+    .regex(/^.+\.[A-Za-z0-9_-]{43}$/)
+    .max(299),
+});
+
 export const CreateProtocolInputSchema = TeamScopedSchema.extend({
   name: ProtocolNameSchema,
   protocolId: z.uuid(),
@@ -599,6 +613,35 @@ export const AuditGetInputSchema = TeamScopedSchema.extend({
   eventId: z.uuid(),
 });
 
+export const AuditExportInputSchema = AuditListInputSchema.omit({
+  cursor: true,
+  limit: true,
+});
+export const AuditExportOutputSchema = z.discriminatedUnion('deliveryMode', [
+  z.object({
+    deliveryMode: z.literal('direct'),
+    csv: z.string(),
+    rowCount: z.number().int().nonnegative(),
+  }),
+  z.object({
+    deliveryMode: z.literal('staged'),
+    jobId: z.uuid(),
+    status: z.enum(['pending', 'generating']),
+  }),
+]);
+export const AuditExportStatusInputSchema = TeamScopedSchema.extend({
+  jobId: z.uuid(),
+});
+export const AuditExportStatusSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.enum(['pending', 'generating']) }),
+  z.object({ status: z.literal('failed') }),
+  z.object({
+    status: z.literal('ready'),
+    handle: z.string().min(43).max(128),
+    expiresAt: z.date(),
+    downloadPath: z.string().startsWith('/audit-exports/').max(1024),
+  }),
+]);
 export const AuditEventDetailSchema = AuditEventSummarySchema.extend({
   teamLabel: z.string(),
   requestId: z.uuid(),

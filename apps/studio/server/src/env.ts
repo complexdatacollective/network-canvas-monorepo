@@ -16,6 +16,7 @@ export type {
   AuthEnv,
   DbEnv,
   MailerEnv,
+  MessageDeliveryEnv,
   S3Env,
   SocialProvidersEnv,
   StudioEnv,

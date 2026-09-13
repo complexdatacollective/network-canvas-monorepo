@@ -15,8 +15,13 @@ export type EmailMessage = Readonly<{
   text: string;
   replyTo?: string | EmailAddress;
   messageId?: string;
+  metadata?: Readonly<Record<string, string>>;
 }>;
-export type EmailReceipt = Readonly<{ status: 'accepted'; messageId: string }>;
+export type EmailReceipt = Readonly<{
+  status: 'accepted';
+  messageId: string;
+  providerMessageId?: string;
+}>;
 export type EmailFailureDisposition = 'retryable' | 'permanent' | 'uncertain';
 
 /** No provider response, address, credential, or submitted content escapes. */
@@ -64,6 +69,7 @@ const messageSchema = z.strictObject({
     .max(255)
     .regex(/^<[A-Za-z0-9._-]+@[A-Za-z0-9.-]+>$/)
     .optional(),
+  metadata: z.record(header, header).optional(),
 });
 
 /** Normalize only the domain of an already validated addr-spec. */

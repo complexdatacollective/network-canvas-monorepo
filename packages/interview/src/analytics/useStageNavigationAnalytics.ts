@@ -57,13 +57,11 @@ export function useStageNavigationAnalytics({
   const lastPromptIndexRef = useRef(0);
   const lastPromptEnteredAtRef = useRef<number | null>(null);
   const lastPromptCountRef = useRef(1);
-  const totalStageDurationRef = useRef<number | null>(null);
-  if (totalStageDurationRef.current === null) {
-    totalStageDurationRef.current =
-      persistedStageTiming?.stageExits
-        .filter((exit) => exit.stageType !== 'FinishSession')
-        .reduce((sum, exit) => sum + exit.durationMs, 0) ?? 0;
-  }
+  const totalStageDurationRef = useRef(
+    persistedStageTiming?.stageExits
+      .filter((exit) => exit.stageType !== 'FinishSession')
+      .reduce((sum, exit) => sum + exit.durationMs, 0) ?? 0,
+  );
   const startedRef = useRef(false);
   const completionTrackedRef = useRef(false);
   const unmountCleanupScheduledRef = useRef(false);

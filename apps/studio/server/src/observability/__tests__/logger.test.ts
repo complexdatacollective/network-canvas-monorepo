@@ -173,6 +173,7 @@ describe('operational output allowlists', () => {
       claimed: 4,
       completed: 1,
       retried: 1,
+      recovered: 3,
       failed: 1,
       suppressed: 0,
       uncertain: 1,
@@ -192,6 +193,9 @@ describe('operational output allowlists', () => {
       expect(body).toContain(
         `studio_outbox_dispatch_results_total{queue="team_invitation_deliveries",result="${result}"} 1`,
       );
+    expect(body).toContain(
+      'studio_outbox_dispatch_results_total{queue="team_invitation_deliveries",result="recovered"} 3',
+    );
     expect(body).toContain(
       'studio_outbox_dispatch_duration_seconds_count{queue="team_invitation_deliveries"} 1',
     );

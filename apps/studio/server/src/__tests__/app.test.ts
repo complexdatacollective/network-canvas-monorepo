@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { StudyCreatedWebhookEventSchema } from '@codaco/studio-rpc/webhooks';
+
 import { BLOCKED_BETTER_AUTH_TEAM_MUTATION_PATHS } from '../audit/better-auth-policy.ts';
 import { stubAuthService } from './support/auth.ts';
 import { createHttpTestApp as createApp } from './support/http-app.ts';
@@ -36,6 +38,7 @@ describe('studio server', () => {
       servers: { url: string }[];
       paths: Record<string, unknown>;
       components: { schemas: Record<string, unknown> };
+      webhooks: Record<string, unknown>;
     };
     expect(doc.openapi).toMatch(/^3\.1\./);
     // Paths are relative to the mount prefix; the document must say so, or
@@ -43,6 +46,40 @@ describe('studio server', () => {
     expect(doc.servers).toEqual([{ url: '/api/v1' }]);
     expect(Object.keys(doc.paths)).toContain('/status');
     expect(Object.keys(doc.components.schemas)).toContain('Status');
+    expect(doc.components.schemas.StudyCreatedWebhookEvent).toMatchObject({
+      required: ['type', 'teamId', 'studyId', 'resourceId'],
+      additionalProperties: false,
+      properties: {
+        type: { type: 'string', const: 'study.created' },
+        teamId: { type: 'string', minLength: 1, maxLength: 255 },
+        studyId: { type: 'string', format: 'uuid' },
+        resourceId: { type: 'string', format: 'uuid' },
+      },
+    });
+    expect(doc.webhooks.studyCreated).toMatchObject({
+      post: {
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/StudyCreatedWebhookEvent',
+              },
+            },
+          },
+        },
+      },
+    });
+    const event = {
+      type: 'study.created' as const,
+      teamId: 'team-a',
+      studyId: '00000000-0000-4000-8000-000000000001',
+      resourceId: '00000000-0000-4000-8000-000000000001',
+    };
+    expect(StudyCreatedWebhookEventSchema.safeParse(event).success).toBe(true);
+    expect(
+      StudyCreatedWebhookEventSchema.safeParse({ ...event, extra: true })
+        .success,
+    ).toBe(false);
   });
 
   it('does not serve unknown API paths, refusing as problem JSON', async () => {

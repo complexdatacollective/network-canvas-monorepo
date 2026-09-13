@@ -10,12 +10,14 @@ import { runAuditedSystemMutation } from '../../audit/command.ts';
 import type { AuditEventInput } from '../../audit/events.ts';
 import { createBetterAuthInstance } from '../../auth/better-auth.ts';
 import { readEnv } from '../../env.ts';
+import { issueParticipantInterviewLink } from '../../study/interview-links.ts';
 import { createContactBlindIndex } from '../contacts.ts';
 import {
   EncryptionStartupError,
   initializeCredentialMigration,
   initializeEncryption,
 } from '../initialize.ts';
+import { readInterviewLinkCapability } from '../interview-links.ts';
 import {
   migrateLegacyOAuthBatch,
   parseLegacyCursor,
@@ -195,6 +197,23 @@ describe('bounded encryption maintenance and retained suppression', () => {
       const { scratch, keys, context, target } = fixture;
       await updateParticipantPii(keys, context, target, contacts);
       const subscriptionId = await addWebhook(fixture);
+      await scratch.pool.query(
+        "UPDATE studies SET state='live',went_live_at=statement_timestamp() WHERE id=$1",
+        [target.studyId],
+      );
+      await scratch.pool.query(
+        'UPDATE participants SET enrolled_at=statement_timestamp() WHERE id=$1',
+        [target.participantId],
+      );
+      const waveId = randomUUID();
+      await scratch.pool.query(
+        'INSERT INTO study_waves(id,study_id,team_id,wave_number) VALUES($1,$2,$3,1)',
+        [waveId, target.studyId, context.tenantDb.teamId],
+      );
+      const issuedLink = await issueParticipantInterviewLink(keys, context, {
+        ...target,
+        waveId,
+      });
       if (!env.auth) throw new Error('Auth configuration required.');
       const auth = createBetterAuthInstance(
         env.auth,
@@ -226,7 +245,7 @@ describe('bounded encryption maintenance and retained suppression', () => {
         [target.participantId],
       );
       await scratch.pool.query(
-        "UPDATE studies SET state = 'closed', closed_at = now(), went_live_at = now() WHERE id = $1",
+        "UPDATE studies SET state = 'closed', closed_at = now() WHERE id = $1",
         [target.studyId],
       );
       const config = configuration();
@@ -253,7 +272,7 @@ describe('bounded encryption maintenance and retained suppression', () => {
         if (counts.length > 6)
           throw new Error('Rotation did not make bounded progress.');
       } while (cursor);
-      expect(counts).toEqual([1, 1, 1, 0]);
+      expect(counts).toEqual([1, 1, 1, 1, 0]);
       const after = await scratch.pool.query(
         'SELECT email_index, phone_index, blind_index_key_id, email_ciphertext, pii_key_id FROM participants WHERE id = $1',
         [target.participantId],
@@ -282,6 +301,17 @@ describe('bounded encryption maintenance and retained suppression', () => {
           teamId: context.tenantDb.teamId,
         }),
       ).toEqual(signingSecret);
+      const rotatedLink = await readInterviewLinkCapability(
+        rotatedKeys,
+        scratch.maintenance,
+        context.tenantDb.teamId,
+        issuedLink.linkId,
+        { allowInactive: true },
+      );
+      expect(
+        `${context.tenantDb.teamId}.${rotatedLink.secret.toString('utf8')}`,
+      ).toBe(issuedLink.token);
+      rotatedLink.secret.fill(0);
       const current = createBetterAuthInstance(
         env.auth,
         scratch.app,
@@ -326,7 +356,7 @@ describe('bounded encryption maintenance and retained suppression', () => {
         rotateEncryptionBatch(scratch.maintenance, rotatedKeys, { limit: 100 }),
       ).resolves.toMatchObject({
         processed: 0,
-        scanned: 3,
+        scanned: 4,
         passComplete: true,
         cursor: null,
       });

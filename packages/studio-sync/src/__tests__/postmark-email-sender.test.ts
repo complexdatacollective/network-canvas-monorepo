@@ -86,7 +86,11 @@ describe('bounded Postmark EmailSender through actual HTTP sockets', () => {
         ...message,
         replyTo: { name: 'Study "A", team', address: 'reply@example.test' },
       }),
-    ).resolves.toEqual({ status: 'accepted', messageId: message.messageId });
+    ).resolves.toEqual({
+      status: 'accepted',
+      messageId: message.messageId,
+      providerMessageId: '1ac5d3e3-a84d-42d3-a782-61246c7c4d21',
+    });
     expect(peer.messages).toHaveLength(1);
     expect(peer.messages[0]).toMatchObject({
       method: 'POST',

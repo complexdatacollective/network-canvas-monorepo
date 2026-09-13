@@ -42,6 +42,10 @@ export type AuthEnv = {
   trustedProxies: string[] | undefined;
   socialProviders: SocialProvidersEnv;
 };
+export type MessageDeliveryEnv = {
+  postmarkWebhookToken?: string;
+  twilio?: { accountSid: string; authToken: string; from: string };
+};
 
 // An undefined s3, db, or auth means that surface is not configured and
 // refuses with 503; the server still boots.
@@ -60,6 +64,7 @@ export type StudioEnv = {
   databaseAllowedLogins: readonly string[] | undefined;
   databaseAdministrativeLogins: readonly string[];
   auth: AuthEnv | undefined;
+  messageDelivery?: MessageDeliveryEnv;
   devDefaults: boolean;
   deploymentMode: DeploymentMode;
   /** Operator-controlled trusted origin for template publication and import. */
@@ -311,6 +316,20 @@ export function resolve(raw: RawEnv): StudioEnv {
       )
     : [];
   const deploymentMode = raw.STUDIO_DEPLOYMENT_MODE ?? DEFAULT_DEPLOYMENT_MODE;
+  const twilioValues = [
+    raw.TWILIO_ACCOUNT_SID,
+    raw.TWILIO_AUTH_TOKEN,
+    raw.TWILIO_FROM_NUMBER,
+  ];
+  if (twilioValues.some(Boolean) && !twilioValues.every(Boolean))
+    throw new Error(
+      'TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM_NUMBER must be configured together',
+    );
+  if (
+    twilioValues.every(Boolean) &&
+    (!raw.PUBLIC_URL || new URL(raw.PUBLIC_URL).protocol !== 'https:')
+  )
+    throw new Error('Twilio message delivery requires an HTTPS PUBLIC_URL');
   if (
     deploymentMode === 'managed' &&
     db &&
@@ -334,6 +353,20 @@ export function resolve(raw: RawEnv): StudioEnv {
     db,
     maintenanceDb,
     auth: resolveAuth(raw, configuredDb, devDefaults),
+    messageDelivery: {
+      postmarkWebhookToken: raw.POSTMARK_WEBHOOK_TOKEN,
+      ...(raw.TWILIO_ACCOUNT_SID &&
+      raw.TWILIO_AUTH_TOKEN &&
+      raw.TWILIO_FROM_NUMBER
+        ? {
+            twilio: {
+              accountSid: raw.TWILIO_ACCOUNT_SID,
+              authToken: raw.TWILIO_AUTH_TOKEN,
+              from: raw.TWILIO_FROM_NUMBER,
+            },
+          }
+        : {}),
+    },
     databaseAllowedLogins,
     databaseAdministrativeLogins,
     devDefaults,

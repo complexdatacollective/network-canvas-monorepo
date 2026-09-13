@@ -31,7 +31,8 @@
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
     "test:qualification": "vitest run --config vitest.qualification.config.ts",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "recovery:evidence": "node src/recovery-evidence.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1102.0",
@@ -56,6 +57,7 @@
     "better-auth": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "^4.13.5",
+    "ipaddr.js": "^2.5.0",
     "pg": "^8.22.0",
     "pino": "^10.3.1",
     "posthog-node": "^5.51.5",

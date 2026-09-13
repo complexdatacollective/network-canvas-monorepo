@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime
+
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  15:28:39
+   Duration  142ms (transform 15ms, setup 0ms, import 44ms, tests 12ms, environment 0ms)
+

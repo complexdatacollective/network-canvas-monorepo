@@ -26,6 +26,7 @@ import {
 } from './audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
 import type { AuditEventInput } from './audit/events.ts';
+import { readAuditExportStatus, requestAuditExport } from './audit/export.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
   authorizeAuditRead,
@@ -52,6 +53,7 @@ import {
   correlateAuthorizedTeam,
   logOperational,
 } from './observability/logger.ts';
+import type { EncryptionKeys } from './pii/keys.ts';
 import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
 import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import {
@@ -63,6 +65,10 @@ import {
 import { ProtocolStore } from './protocol/store.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
 import { readStudyCounts } from './study/counts.ts';
+import {
+  InterviewLinkError,
+  issueParticipantInterviewLink,
+} from './study/interview-links.ts';
 import { StudyStore } from './study/store.ts';
 import { resolveStudy, seesEveryTeamStudy } from './study/tenancy.ts';
 import {
@@ -80,7 +86,14 @@ import {
   publishTemplateVersion,
   readRegistryAccount,
   TemplateRegistryCommandError,
+  readRegistryIntentStatuses,
 } from './template/registry.ts';
+import {
+  createWebhookSubscription,
+  disableWebhookSubscription,
+  listWebhookSubscriptions,
+  WebhookSubscriptionError,
+} from './webhook/subscriptions.ts';
 
 // The SPA's internal surface: unpublished and free-moving within the
 // deploy-compatibility rules on #1245 — its only client is the Studio SPA.
@@ -350,6 +363,24 @@ async function handleAuditedStudyCommand<T>(
   }
 }
 
+async function handleWebhookCommand<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (!(error instanceof WebhookSubscriptionError)) throw error;
+    throw new ORPCError(error.code);
+  }
+}
+
+async function handleInterviewLinkCommand<T>(work: () => Promise<T>) {
+  try {
+    return await work();
+  } catch (error) {
+    if (!(error instanceof InterviewLinkError)) throw error;
+    throw new ORPCError(error.code);
+  }
+}
+
 export function createRpcRouter(
   caps: AuthCapabilities,
   deps: {
@@ -362,6 +393,7 @@ export function createRpcRouter(
     maintenancePool?: pg.Pool;
     protocolBuilder: ProtocolBuilderRuntime;
     assetStore?: AssetStore;
+    encryptionKeys?: EncryptionKeys;
     templateRegistryOrigin?: string;
   },
 ) {
@@ -373,6 +405,7 @@ export function createRpcRouter(
     pool,
     maintenancePool,
     assetStore,
+    encryptionKeys,
     templateRegistryOrigin,
   } = deps;
   // Tenancy is checked per request against an explicit teamId in the
@@ -570,6 +603,23 @@ export function createRpcRouter(
         }),
     },
     templates: {
+      registryIntents: os.templates.registryIntents
+        .use(requireTeamAdministration)
+        .handler(async ({ context, input }) => {
+          try {
+            return await readRegistryIntentStatuses(
+              auditedContextFor(context),
+              input.intents,
+            );
+          } catch (error) {
+            if (
+              error instanceof TemplateRegistryCommandError &&
+              error.code === 'FORBIDDEN'
+            )
+              throw new ORPCError('FORBIDDEN');
+            throw error;
+          }
+        }),
       list: os.templates.list
         .use(requireTeam)
         .handler(({ context }) =>
@@ -621,6 +671,37 @@ export function createRpcRouter(
             throw new ORPCError('SERVICE_UNAVAILABLE');
           }
         }),
+    },
+    webhooks: {
+      list: os.webhooks.list
+        .use(requireTeamAdministration)
+        .handler(({ context }) =>
+          handleWebhookCommand(() =>
+            listWebhookSubscriptions(auditedContextFor(context)),
+          ),
+        ),
+      create: os.webhooks.create
+        .use(requireTeamAdministration)
+        .handler(({ context, input }) => {
+          if (!encryptionKeys) throw new ORPCError('SERVICE_UNAVAILABLE');
+          return handleWebhookCommand(() =>
+            createWebhookSubscription(
+              encryptionKeys,
+              auditedContextFor(context),
+              input,
+            ),
+          );
+        }),
+      disable: os.webhooks.disable
+        .use(requireTeamAdministration)
+        .handler(({ context, input }) =>
+          handleWebhookCommand(() =>
+            disableWebhookSubscription(
+              auditedContextFor(context),
+              input.subscriptionId,
+            ),
+          ),
+        ),
     },
     team: {
       acceptInvitation: os.team.acceptInvitation
@@ -728,6 +809,22 @@ export function createRpcRouter(
           ),
         ),
       ),
+      issueParticipantLink: os.studies.issueParticipantLink
+        .use(requireStudy)
+        .handler(({ context, input }) => {
+          if (!encryptionKeys) throw new ORPCError('SERVICE_UNAVAILABLE');
+          return handleInterviewLinkCommand(() =>
+            issueParticipantInterviewLink(
+              encryptionKeys,
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          );
+        }),
     },
     // Every procedure below is addressed by a protocol line, and #1257's rule
     // decides which lines a caller has: `requireProtocol` refuses the rest,
@@ -901,6 +998,30 @@ export function createRpcRouter(
         if (!event) throw new ORPCError('NOT_FOUND');
         return renderAuditEventDetail(event);
       }),
+      export: os.audit.export.use(requireTeam).handler(({ context, input }) =>
+        guardAuditRead(context, 'audit.export', () =>
+          requestAuditExport(auditedContextFor(context), {
+            categories: input.categories,
+            eventTypes: input.eventTypes,
+            actor: input.actor,
+            outcomes: input.outcomes,
+            from: input.from,
+            to: input.to,
+          }),
+        ),
+      ),
+      exportStatus: os.audit.exportStatus
+        .use(requireTeam)
+        .handler(({ context, input }) => {
+          if (!encryptionKeys) throw new ORPCError('SERVICE_UNAVAILABLE');
+          return guardAuditRead(context, 'audit.exportStatus', () =>
+            readAuditExportStatus(
+              auditedContextFor(context),
+              input.jobId,
+              encryptionKeys,
+            ),
+          );
+        }),
       // The same rows as audit.list through the same read surface, so it takes
       // the same locked-membership authorization inside the read's own
       // transaction, and the same committed, rate-limited denial.

@@ -1,11 +1,17 @@
 import { createHash } from 'node:crypto';
 
 import {
+  AbortMultipartUploadCommand,
+  CompleteMultipartUploadCommand,
+  CreateMultipartUploadCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  ListMultipartUploadsCommand,
   PutObjectCommand,
   S3Client,
+  UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import { Hono } from 'hono';
 
@@ -46,7 +52,39 @@ export type AssetStore = {
   } | null>;
 };
 
-export function createAssetStore(env: S3Env): AssetStore {
+export type AuditExportArtifactStore = {
+  putAuditExport(
+    jobId: string,
+    attemptId: string,
+    chunks: AsyncIterable<Uint8Array>,
+    options: {
+      signal: AbortSignal;
+      recordUploadId(uploadId: string): Promise<boolean>;
+    },
+  ): Promise<{ key: string; size: number }>;
+  getAuditExport(
+    key: string,
+  ): Promise<{ body: ReadableStream<Uint8Array>; size?: number } | null>;
+  /** Abort exact in-progress uploads, delete the object, then verify absence. */
+  cleanupAuditExport(
+    key: string,
+    uploadId: string | null,
+    signal: AbortSignal,
+  ): Promise<boolean>;
+};
+
+export function auditExportArtifactKey(
+  jobId: string,
+  attemptId: string,
+): string {
+  if (!/^[0-9a-f-]{36}$/i.test(jobId) || !/^[0-9a-f-]{36}$/i.test(attemptId))
+    throw new Error('invalid export id');
+  return `audit-exports/${jobId}/${attemptId}.csv`;
+}
+
+export function createAssetStore(
+  env: S3Env,
+): AssetStore & AuditExportArtifactStore {
   const client = new S3Client({
     endpoint: env.endpoint,
     region: env.region,
@@ -114,13 +152,184 @@ export function createAssetStore(env: S3Env): AssetStore {
         throw error;
       }
     },
+    async putAuditExport(jobId, attemptId, chunks, options) {
+      const key = auditExportArtifactKey(jobId, attemptId);
+      options.signal.throwIfAborted();
+      const created = await client.send(
+        new CreateMultipartUploadCommand({
+          Bucket: env.bucket,
+          Key: key,
+          ContentType: 'text/csv; charset=utf-8',
+        }),
+        { abortSignal: options.signal },
+      );
+      if (!created.UploadId) throw new Error('multipart upload returned no id');
+      const uploadId = created.UploadId;
+      const parts: { ETag: string; PartNumber: number }[] = [];
+      let pending = Buffer.alloc(0);
+      let size = 0;
+      const upload = async (body: Buffer) => {
+        options.signal.throwIfAborted();
+        const PartNumber = parts.length + 1;
+        const result = await client.send(
+          new UploadPartCommand({
+            Bucket: env.bucket,
+            Key: key,
+            UploadId: uploadId,
+            PartNumber,
+            Body: body,
+            ContentLength: body.byteLength,
+          }),
+          { abortSignal: options.signal },
+        );
+        if (!result.ETag) throw new Error('multipart upload returned no etag');
+        parts.push({ ETag: result.ETag, PartNumber });
+      };
+      try {
+        if (!(await options.recordUploadId(uploadId)))
+          throw new Error('audit export lease lost');
+        for await (const chunk of chunks) {
+          options.signal.throwIfAborted();
+          size += chunk.byteLength;
+          pending = Buffer.concat([pending, chunk]);
+          if (pending.byteLength >= 5 * 1024 * 1024) {
+            await upload(pending);
+            pending = Buffer.alloc(0);
+          }
+        }
+        if (pending.byteLength > 0 || parts.length === 0) await upload(pending);
+        options.signal.throwIfAborted();
+        await client.send(
+          new CompleteMultipartUploadCommand({
+            Bucket: env.bucket,
+            Key: key,
+            UploadId: uploadId,
+            MultipartUpload: { Parts: parts },
+          }),
+          { abortSignal: options.signal },
+        );
+        return { key, size };
+      } catch (error) {
+        const cleanupSignal = AbortSignal.timeout(10_000);
+        await client
+          .send(
+            new AbortMultipartUploadCommand({
+              Bucket: env.bucket,
+              Key: key,
+              UploadId: uploadId,
+            }),
+            { abortSignal: cleanupSignal },
+          )
+          .catch(() => undefined);
+        throw error;
+      } finally {
+        pending.fill(0);
+      }
+    },
+    async getAuditExport(key) {
+      if (!/^audit-exports\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.csv$/i.test(key))
+        return null;
+      try {
+        const result = await client.send(
+          new GetObjectCommand({ Bucket: env.bucket, Key: key }),
+        );
+        return result.Body
+          ? {
+              body: result.Body.transformToWebStream(),
+              ...(result.ContentLength === undefined
+                ? {}
+                : { size: result.ContentLength }),
+            }
+          : null;
+      } catch (error) {
+        if (isNotFound(error)) return null;
+        throw error;
+      }
+    },
+    async cleanupAuditExport(key, uploadId, signal) {
+      if (!/^audit-exports\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.csv$/i.test(key))
+        throw new Error('invalid export key');
+      signal.throwIfAborted();
+      if (uploadId) {
+        try {
+          await client.send(
+            new AbortMultipartUploadCommand({
+              Bucket: env.bucket,
+              Key: key,
+              UploadId: uploadId,
+            }),
+            { abortSignal: signal },
+          );
+        } catch (error) {
+          if (!isNotFound(error)) throw error;
+        }
+      }
+      signal.throwIfAborted();
+      const uploads = await client.send(
+        new ListMultipartUploadsCommand({
+          Bucket: env.bucket,
+          Prefix: key,
+          MaxUploads: 100,
+        }),
+        { abortSignal: signal },
+      );
+      for (const upload of uploads.Uploads ?? []) {
+        if (upload.Key !== key || !upload.UploadId) continue;
+        signal.throwIfAborted();
+        try {
+          await client.send(
+            new AbortMultipartUploadCommand({
+              Bucket: env.bucket,
+              Key: key,
+              UploadId: upload.UploadId,
+            }),
+            { abortSignal: signal },
+          );
+        } catch (error) {
+          if (!isNotFound(error)) throw error;
+        }
+      }
+      signal.throwIfAborted();
+      await client.send(
+        new DeleteObjectCommand({ Bucket: env.bucket, Key: key }),
+        { abortSignal: signal },
+      );
+      signal.throwIfAborted();
+      const remaining = await client.send(
+        new ListMultipartUploadsCommand({
+          Bucket: env.bucket,
+          Prefix: key,
+          MaxUploads: 100,
+        }),
+        { abortSignal: signal },
+      );
+      if (
+        uploads.IsTruncated ||
+        remaining.IsTruncated ||
+        (remaining.Uploads ?? []).some((upload) => upload.Key === key)
+      )
+        return false;
+      signal.throwIfAborted();
+      try {
+        await client.send(
+          new HeadObjectCommand({ Bucket: env.bucket, Key: key }),
+          { abortSignal: signal },
+        );
+        return false;
+      } catch (error) {
+        if (isNotFound(error)) return true;
+        throw error;
+      }
+    },
   };
 }
 
 function isNotFound(error: unknown): boolean {
   return (
     error instanceof Error &&
-    (error.name === 'NoSuchKey' || error.name === 'NotFound')
+    (error.name === 'NoSuchKey' ||
+      error.name === 'NoSuchUpload' ||
+      error.name === 'NotFound')
   );
 }
 

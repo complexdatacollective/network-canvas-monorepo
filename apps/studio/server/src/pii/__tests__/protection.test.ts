@@ -9,6 +9,7 @@ import {
 } from '../keys.ts';
 import {
   createDataProtection,
+  createAuditExportHandleProtection,
   type IntegrationField,
   type ParticipantField,
   ProtectedDataError,
@@ -436,6 +437,27 @@ describe('participant AES-256-GCM envelope', () => {
         historical,
       ),
     ).rejects.toThrow(ProtectedDataError);
+  });
+});
+
+describe('audit export handle envelope', () => {
+  it('round-trips only under the exact team, actor, job and column tuple', async () => {
+    const api = createAuditExportHandleProtection(await loadTestKeys());
+    const target = {
+      kind: 'audit_export' as const,
+      teamId: 'team-1',
+      actorId: 'actor-1',
+      jobId: '00000000-0000-4000-8000-000000000001',
+      column: 'handle_ciphertext' as const,
+    };
+    const sealed = api.seal(target, plaintext);
+    expect(api.open(target, sealed)).toEqual(plaintext);
+    for (const changed of [
+      { ...target, teamId: 'team-2' },
+      { ...target, actorId: 'actor-2' },
+      { ...target, jobId: '00000000-0000-4000-8000-000000000002' },
+    ])
+      expect(() => api.open(changed, sealed)).toThrow(ProtectedDataError);
   });
 });
 

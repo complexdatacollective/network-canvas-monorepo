@@ -874,7 +874,7 @@ describe.skipIf(!db)('audit-alert policy and researcher delivery', () => {
       ).toEqual({ count: 1 });
       expect(
         await scratch.dispatcher({ sendAuditAlert: send }).runOnce(),
-      ).toMatchObject({ claimed: 0 });
+      ).toMatchObject({ claimed: 0, uncertain: 1 });
       expect(send).toHaveBeenCalledTimes(2);
       expect((await listAuditAlerts(scratch.context)).items[0]).toMatchObject({
         emailState: 'uncertain',

@@ -41,7 +41,7 @@ import {
 
 import { ERASURE_GUC, STUDY_TABLES } from '../study/schema.ts';
 
-const { studies, studyWaves, participants } = STUDY_TABLES;
+const { studies, studyWaves, participants, interviewLinks } = STUDY_TABLES;
 
 // Declaration order is forced by drizzle evaluating `foreignColumns` eagerly:
 //   study_schedules -> schedule_occurrences -> message_templates
@@ -263,7 +263,7 @@ const scheduleOccurrences = pgTable(
     ),
     check(
       'schedule_occurrences_state_check',
-      sql`${table.state} IN ('scheduled', 'dispatched', 'expired', 'cancelled', 'superseded')`,
+      sql`${table.state} IN ('scheduled', 'dispatched', 'blocked', 'expired', 'cancelled', 'superseded')`,
     ),
     check(
       'schedule_occurrences_bounds_check',
@@ -376,6 +376,7 @@ const messageDeliveries = pgTable(
     // Null for a delivery that is not schedule-driven (an invitation or a
     // manually triggered reminder).
     occurrenceId: uuid('occurrence_id'),
+    interviewLinkId: uuid('interview_link_id'),
     templateId: uuid('template_id').notNull(),
     kind: text('kind').notNull(),
     channel: text('channel').notNull(),
@@ -387,8 +388,12 @@ const messageDeliveries = pgTable(
     // sha256 hex of the exact rendered body: proves what was sent without
     // retaining the message (which carries a tokenized interview link).
     renderedBodyHash: text('rendered_body_hash').notNull(),
+    renderedCiphertext: bytea('rendered_ciphertext').notNull(),
+    renderedKeyId: text('rendered_key_id').notNull(),
+    renderedAlgorithm: text('rendered_algorithm').notNull(),
     provider: text('provider'),
     providerMessageId: text('provider_message_id'),
+    sendStartedAt: timestamp('send_started_at', { withTimezone: true }),
     attemptCount: integer('attempt_count').notNull().default(0),
     availableAt: timestamp('available_at', { withTimezone: true })
       .notNull()
@@ -440,6 +445,21 @@ const messageDeliveries = pgTable(
         scheduleOccurrences.teamId,
       ],
     }),
+    foreignKey({
+      name: 'message_deliveries_interview_link_fk',
+      columns: [
+        table.interviewLinkId,
+        table.participantId,
+        table.studyId,
+        table.teamId,
+      ],
+      foreignColumns: [
+        interviewLinks.id,
+        interviewLinks.participantId,
+        interviewLinks.studyId,
+        interviewLinks.teamId,
+      ],
+    }),
     // Same team only; the template's kind, channel and study scope are proven
     // by `message_deliveries_template_applies`, because a template's study is
     // nullable (a team default) and no foreign key can say "null or mine".
@@ -483,7 +503,10 @@ const messageDeliveries = pgTable(
       'message_deliveries_hash_check',
       sql`${table.renderedBodyHash} ~ '^[0-9a-f]{64}$'
           AND octet_length(${table.recipientBlindIndex}) = 32
-          AND char_length(${table.blindIndexKeyId}) BETWEEN 1 AND 64`,
+          AND char_length(${table.blindIndexKeyId}) BETWEEN 1 AND 64
+          AND octet_length(${table.renderedCiphertext}) BETWEEN 30 AND 16384
+          AND char_length(${table.renderedKeyId}) BETWEEN 1 AND 64
+          AND ${table.renderedAlgorithm} = 'aes-256-gcm.v1'`,
     ),
     check(
       'message_deliveries_lease_check',
@@ -755,12 +778,16 @@ CREATE OR REPLACE TRIGGER message_delivery_payload_immutable
     OR NEW.study_id IS DISTINCT FROM OLD.study_id
     OR NEW.participant_id IS DISTINCT FROM OLD.participant_id
     OR NEW.occurrence_id IS DISTINCT FROM OLD.occurrence_id
+    OR NEW.interview_link_id IS DISTINCT FROM OLD.interview_link_id
     OR NEW.template_id IS DISTINCT FROM OLD.template_id
     OR NEW.kind IS DISTINCT FROM OLD.kind
     OR NEW.channel IS DISTINCT FROM OLD.channel
     OR NEW.recipient_blind_index IS DISTINCT FROM OLD.recipient_blind_index
     OR NEW.blind_index_key_id IS DISTINCT FROM OLD.blind_index_key_id
     OR NEW.rendered_body_hash IS DISTINCT FROM OLD.rendered_body_hash
+    OR NEW.rendered_ciphertext IS DISTINCT FROM OLD.rendered_ciphertext
+    OR NEW.rendered_key_id IS DISTINCT FROM OLD.rendered_key_id
+    OR NEW.rendered_algorithm IS DISTINCT FROM OLD.rendered_algorithm
     OR NEW.created_at IS DISTINCT FROM OLD.created_at
   )
   EXECUTE FUNCTION message_delivery_payload_is_immutable();
@@ -792,6 +819,17 @@ BEGIN
       AND (t.study_id IS NULL OR t.study_id = NEW.study_id)
   ) THEN
     RAISE EXCEPTION 'a delivery''s template must be a published % template for the % channel, either the team default or its own study''s override', NEW.kind, NEW.channel;
+  END IF;
+  IF NEW.occurrence_id IS NOT NULL AND NEW.interview_link_id IS NOT NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM schedule_occurrences o
+       JOIN study_schedules s ON s.id=o.schedule_id AND s.study_id=o.study_id AND s.team_id=o.team_id
+       JOIN interview_links l ON l.id=NEW.interview_link_id AND l.wave_id=s.wave_id
+         AND l.participant_id=o.participant_id AND l.study_id=o.study_id AND l.team_id=o.team_id
+       WHERE o.id=NEW.occurrence_id AND o.participant_id=NEW.participant_id
+         AND o.study_id=NEW.study_id AND o.team_id=NEW.team_id
+     ) THEN
+    RAISE EXCEPTION 'an occurrence delivery link must name the occurrence schedule''s wave and participant';
   END IF;
   RETURN NULL;
 END;

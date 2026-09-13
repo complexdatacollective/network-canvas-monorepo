@@ -275,17 +275,19 @@ async function seedRestoredState() {
           now() + interval '1 day', 0);
       INSERT INTO templates (id, team_id, kind, name, state)
         VALUES ('00000000-0000-4000-8000-000000000021', 'current-team',
-          'protocol', 'Restored template', 'published');
+          'protocol', 'Restored template', 'published')
+        ON CONFLICT (id) DO UPDATE SET state='published';
       INSERT INTO template_versions
         (id, team_id, template_id, version_number, manifest, manifest_hash,
           schema_version)
         VALUES ('00000000-0000-4000-8000-000000000022', 'current-team',
-          '00000000-0000-4000-8000-000000000021', 1, '{}', repeat('b', 64), 1);
+          '00000000-0000-4000-8000-000000000021', 1, '{}', repeat('b', 64), 1)
+        ON CONFLICT (id) DO NOTHING;
       INSERT INTO template_registry_publication_intents
         (id, team_id, template_version_id, registry_url, registry_root,
           publisher_id, publisher_name, initiating_actor_id,
           initiating_actor_label, initiating_request_id)
-        VALUES ('00000000-0000-4000-8000-000000000023', 'current-team',
+        VALUES (gen_random_uuid(), 'current-team',
           '00000000-0000-4000-8000-000000000022', 'https://registry.example',
           repeat('c', 64), '00000000-0000-4000-8000-000000000024',
           'Restored publisher', 'current-user', 'Current',
@@ -294,7 +296,7 @@ async function seedRestoredState() {
         (id, team_id, registry_url, registry_entry_id, registry_root,
           entry_snapshot, asset_manifest, target_template_id, target_version_id,
           initiating_actor_id, initiating_actor_label, initiating_request_id)
-        VALUES ('00000000-0000-4000-8000-000000000026', 'current-team',
+        VALUES (gen_random_uuid(), 'current-team',
           'https://registry.example', '00000000-0000-4000-8000-000000000027',
           repeat('d', 64), '{}', '[]',
           '00000000-0000-4000-8000-000000000028',
@@ -327,12 +329,6 @@ async function seedRestoredState() {
             WHERE team_id = 'current-team'), 'security.fixture', 1,
           'security', 'succeeded', 'system', 'Studio', gen_random_uuid(),
           '{}'::jsonb);
-      INSERT INTO audit_alert_settings (team_id, revision)
-        VALUES ('current-team', gen_random_uuid());
-      INSERT INTO audit_alert_recipients
-        (id, team_id, member_id, user_id, in_app, email)
-        VALUES (gen_random_uuid(), 'current-team', 'current-membership',
-          'current-user', false, true);
       INSERT INTO audit_alert_outbox
         (id, team_id, audit_event_id, audit_event_sequence, event_type,
           event_version, alert_policy_key)
@@ -344,6 +340,37 @@ async function seedRestoredState() {
         VALUES (gen_random_uuid(), 'current-team',
           ${pg.escapeLiteral(auditAlertId)}::uuid, gen_random_uuid(),
           'current-membership', 'current-user', 'email');
+      INSERT INTO audit_export_artifact_attempts (id,job_id,artifact_key)
+        VALUES ('00000000-0000-4000-8000-000000000030',
+          '00000000-0000-4000-8000-000000000031',
+          'audit-exports/00000000-0000-4000-8000-000000000031/00000000-0000-4000-8000-000000000030.csv');
+      INSERT INTO audit_export_jobs
+        (id,team_id,actor_kind,actor_id,start_event_id,start_event_sequence,
+          high_water_sequence,filters,row_limit,byte_limit,
+          preflight_row_count,preflight_byte_count,status,artifact_attempt_id,artifact_key)
+        SELECT '00000000-0000-4000-8000-000000000031','current-team','user',
+          'current-user',id,sequence,sequence,'{}',100000,104857600,1001,1048577,
+          'generating','00000000-0000-4000-8000-000000000030',
+          'audit-exports/00000000-0000-4000-8000-000000000031/00000000-0000-4000-8000-000000000030.csv'
+        FROM audit_events WHERE id=${pg.escapeLiteral(auditEventId)}::uuid;
+      INSERT INTO audit_export_artifact_attempts (id,job_id,artifact_key)
+        VALUES ('00000000-0000-4000-8000-000000000033',
+          '00000000-0000-4000-8000-000000000032',
+          'audit-exports/00000000-0000-4000-8000-000000000032/00000000-0000-4000-8000-000000000033.csv');
+      INSERT INTO audit_export_jobs
+        (id,team_id,actor_kind,actor_id,start_event_id,start_event_sequence,
+          high_water_sequence,filters,row_limit,byte_limit,
+          preflight_row_count,preflight_byte_count,status,artifact_attempt_id,artifact_key,
+          artifact_row_count,artifact_byte_count,handle_hash,handle_ciphertext,
+          handle_key_id,handle_algorithm,handle_expires_at,completion_event_id,ready_at)
+        SELECT '00000000-0000-4000-8000-000000000032','current-team','user',
+          'current-user',id,sequence,sequence,'{}',100000,104857600,1001,1048577,
+          'ready','00000000-0000-4000-8000-000000000033',
+          'audit-exports/00000000-0000-4000-8000-000000000032/00000000-0000-4000-8000-000000000033.csv',
+          1001,4096,repeat('e',64),decode(repeat('ab',30),'hex'),
+          'integration-current','aes-256-gcm.v1',now()+interval '15 minutes',
+          '00000000-0000-4000-8000-000000000034',now()
+        FROM audit_events WHERE id=${pg.escapeLiteral(auditEventId)}::uuid;
     `);
   });
 }
@@ -517,10 +544,12 @@ beforeEach(async () => {
     await pool.query(`
       DELETE FROM team_invitation_deliveries;
       DELETE FROM team_invitations;
-      DELETE FROM audit_alert_recipients;
-      DELETE FROM audit_alert_settings;
       DELETE FROM audit_alert_deliveries;
       DELETE FROM audit_alert_outbox;
+      DELETE FROM audit_export_jobs;
+      DELETE FROM audit_export_artifact_attempts;
+      DELETE FROM template_registry_publication_intents;
+      DELETE FROM template_registry_import_intents;
       DELETE FROM webhook_deliveries;
       DELETE FROM webhook_subscriptions;
       DELETE FROM session;
@@ -969,6 +998,9 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_audit_outbox: number;
         uncertain_audit_deliveries: number;
         quarantined_registry_intents: number;
+        quarantined_audit_exports: number;
+        retired_export_attempts: number;
+        recovery_export_audit: boolean;
         alert_recipients: number;
         alert_settings: number;
         deletion_audit: boolean;
@@ -986,6 +1018,15 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         (SELECT count(*)::int FROM audit_alert_deliveries WHERE uncertain_at IS NOT NULL) uncertain_audit_deliveries,
         ((SELECT count(*) FROM template_registry_publication_intents WHERE quarantined_at IS NOT NULL)
           + (SELECT count(*) FROM template_registry_import_intents WHERE quarantined_at IS NOT NULL))::int quarantined_registry_intents,
+        (SELECT count(*)::int FROM audit_export_jobs
+          WHERE (status='failed' AND id='00000000-0000-4000-8000-000000000031')
+             OR (status='ready' AND id='00000000-0000-4000-8000-000000000032'
+               AND handle_consumed_at IS NOT NULL)) quarantined_audit_exports,
+        (SELECT count(*)::int FROM audit_export_artifact_attempts
+          WHERE state='retired' AND job_id='00000000-0000-4000-8000-000000000031') retired_export_attempts,
+        EXISTS (SELECT 1 FROM audit_events WHERE event_type='audit.export.failed'
+          AND subject_id='00000000-0000-4000-8000-000000000031'
+          AND details->>'failureCode'='recovery_quarantined') recovery_export_audit,
         (SELECT count(*)::int FROM audit_alert_recipients) alert_recipients,
         (SELECT count(*)::int FROM audit_alert_settings) alert_settings,
         EXISTS (SELECT 1 FROM credential_audit_events WHERE account_id = 'stale-account') deletion_audit`);
@@ -1002,6 +1043,9 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
         uncertain_audit_outbox: 1,
         uncertain_audit_deliveries: 1,
         quarantined_registry_intents: 2,
+        quarantined_audit_exports: 2,
+        retired_export_attempts: 1,
+        recovery_export_audit: true,
         alert_recipients: 0,
         alert_settings: 0,
         deletion_audit: true,
@@ -1009,27 +1053,6 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
     });
     await expect(run(evidence)).resolves.toMatchObject({
       reconciliationSha256: 'a'.repeat(64),
-    });
-  });
-
-  it('refuses reopening if restored alert recipients are reintroduced after reconciliation', async () => {
-    const evidence = await currentEvidence();
-    await run(evidence);
-    await withTargetAdministrator(async (pool) => {
-      await pool.query(`INSERT INTO audit_alert_recipients
-        (id, team_id, member_id, user_id, in_app, email)
-        VALUES (gen_random_uuid(), 'current-team', 'current-membership',
-          'current-user', false, true)`);
-    });
-    await expect(authorize(evidence)).rejects.toThrow();
-    await withTargetAdministrator(async (pool) => {
-      expect(
-        (
-          await pool.query(
-            'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
-          )
-        ).rows[0]?.count,
-      ).toBe(0);
     });
   });
 

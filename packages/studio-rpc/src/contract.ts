@@ -10,6 +10,13 @@ import {
   UpdateAuditAlertSettingsSchema,
 } from './alerts.ts';
 import { protocolBuilderContract } from './protocolBuilder.ts';
+import {
+  CreateWebhookSubscriptionInputSchema,
+  CreateWebhookSubscriptionResultSchema,
+  DisableWebhookSubscriptionInputSchema,
+  DisableWebhookSubscriptionResultSchema,
+  WebhookSubscriptionSchema,
+} from './webhooks.ts';
 export {
   AUDIT_ALERT_MAX_RECIPIENTS,
   AuditAlertPolicySchema,
@@ -26,6 +33,10 @@ import {
   AuditEventDetailSchema,
   AuditFilterOptionsSchema,
   AuditGetInputSchema,
+  AuditExportInputSchema,
+  AuditExportOutputSchema,
+  AuditExportStatusInputSchema,
+  AuditExportStatusSchema,
   AuditListInputSchema,
   AuditListOutputSchema,
   CancelTeamInvitationInputSchema,
@@ -41,6 +52,8 @@ import {
   ManifestRevisionSchema,
   ImportRegistryTemplateInputSchema,
   ImportRegistryTemplateResultSchema,
+  IssueParticipantInterviewLinkInputSchema,
+  IssueParticipantInterviewLinkResultSchema,
   LinkRegistryAccountInputSchema,
   MeSchema,
   MoveStageInputSchema,
@@ -69,6 +82,12 @@ export {
   SUPPORTED_STUDIO_LOCALES,
   type SupportedStudioLocale,
 } from './locales.ts';
+export {
+  WebhookEventTypeSchema,
+  WebhookSubscriptionSchema,
+  type WebhookEventType,
+  type WebhookSubscription,
+} from './webhooks.ts';
 
 export {
   AUDIT_CATEGORIES,
@@ -151,6 +170,36 @@ export const contract = {
       .output(UpdateAccountLocaleResultSchema),
   },
   templates: {
+    registryIntents: oc
+      .input(
+        TeamScopedSchema.extend({
+          intents: z
+            .array(
+              z.strictObject({
+                id: z.uuid(),
+                kind: z.enum(['publication', 'import']),
+              }),
+            )
+            .min(1)
+            .max(100),
+        }),
+      )
+      .output(
+        z
+          .array(
+            z.strictObject({
+              id: z.uuid(),
+              kind: z.enum(['publication', 'import']),
+              status: z.enum([
+                'pending',
+                'completed',
+                'quarantined',
+                'unavailable',
+              ]),
+            }),
+          )
+          .max(100),
+      ),
     list: oc
       .input(TeamScopedSchema)
       .output(z.array(TemplateVersionSummarySchema)),
@@ -160,6 +209,15 @@ export const contract = {
     import: oc
       .input(ImportRegistryTemplateInputSchema)
       .output(ImportRegistryTemplateResultSchema),
+  },
+  webhooks: {
+    list: oc.input(TeamScopedSchema).output(z.array(WebhookSubscriptionSchema)),
+    create: oc
+      .input(CreateWebhookSubscriptionInputSchema)
+      .output(CreateWebhookSubscriptionResultSchema),
+    disable: oc
+      .input(DisableWebhookSubscriptionInputSchema)
+      .output(DisableWebhookSubscriptionResultSchema),
   },
   team: {
     acceptInvitation: oc
@@ -208,6 +266,9 @@ export const contract = {
      * the study alone.
      */
     create: oc.input(CreateStudyInputSchema).output(CreateStudyResultSchema),
+    issueParticipantLink: oc
+      .input(IssueParticipantInterviewLinkInputSchema)
+      .output(IssueParticipantInterviewLinkResultSchema),
   },
   /**
    * Team-scoped procedures: every input carries a teamId, checked against the
@@ -250,6 +311,10 @@ export const contract = {
     },
     list: oc.input(AuditListInputSchema).output(AuditListOutputSchema),
     get: oc.input(AuditGetInputSchema).output(AuditEventDetailSchema),
+    export: oc.input(AuditExportInputSchema).output(AuditExportOutputSchema),
+    exportStatus: oc
+      .input(AuditExportStatusInputSchema)
+      .output(AuditExportStatusSchema),
     /**
      * The values the list filters can take, over the team's whole history.
      * A separate procedure, not a field on the list response: the option set

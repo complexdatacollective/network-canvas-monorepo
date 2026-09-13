@@ -370,7 +370,7 @@ describe.skipIf(!db)('webhook schema', () => {
       const id = await newDelivery(subscriptionOf[TEAM_A] as string);
 
       const row = await pool.query<Row>(
-        `SELECT attempt_count, lease_owner, lease_expires_at, delivered_at,
+        `SELECT attempt_count, lease_owner, lease_expires_at, send_started_at, delivered_at,
                 failed_at, uncertain_at, last_status_code, last_error
          FROM webhook_deliveries WHERE id = $1`,
         [id],
@@ -379,6 +379,7 @@ describe.skipIf(!db)('webhook schema', () => {
         attempt_count: 0,
         lease_owner: null,
         lease_expires_at: null,
+        send_started_at: null,
         delivered_at: null,
         failed_at: null,
         uncertain_at: null,
@@ -446,6 +447,11 @@ describe.skipIf(!db)('webhook schema', () => {
       [
         'a lease expiry with no owner',
         { lease_expires_at: new Date() },
+        'webhook_deliveries_lease_check',
+      ],
+      [
+        'an outbound handoff before the first claimed attempt',
+        { send_started_at: new Date() },
         'webhook_deliveries_lease_check',
       ],
       [

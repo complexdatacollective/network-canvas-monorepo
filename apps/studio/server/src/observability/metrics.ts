@@ -3,12 +3,27 @@ import type pg from 'pg';
 
 import { createHttpRuntimeMetrics } from '@codaco/studio-sync/operational-metrics';
 
-import type { OutboxObserver } from '../outbox/instrumentation.ts';
+import type {
+  OutboxObserver,
+  OutboxDispatchResult,
+} from '../outbox/instrumentation.ts';
 import type { RequestObservation } from './logger.ts';
 import { createQueueProbe } from './queues.ts';
 import type { createReadiness } from './readiness.ts';
 
 type Readiness = ReturnType<typeof createReadiness>;
+
+// Every dispatcher result must have a bounded exported metric label.
+const DISPATCH_RESULTS = {
+  claimed: 'claimed',
+  completed: 'completed',
+  retried: 'retried',
+  recovered: 'recovered',
+  failed: 'failed',
+  suppressed: 'suppressed',
+  uncertain: 'uncertain',
+  leaseLost: 'leaseLost',
+} as const satisfies { [Key in keyof OutboxDispatchResult]: Key };
 
 export function createOperationalMetrics(options: {
   pool?: pg.Pool;
@@ -101,15 +116,7 @@ export function createOperationalMetrics(options: {
   const observer: OutboxObserver = (event) => {
     if (event.kind === 'dispatch') {
       dispatchLatency.observe({ queue: event.queue }, event.durationMs / 1000);
-      for (const result of [
-        'claimed',
-        'completed',
-        'retried',
-        'failed',
-        'suppressed',
-        'uncertain',
-        'leaseLost',
-      ] as const) {
+      for (const result of Object.values(DISPATCH_RESULTS)) {
         attempts.inc({ queue: event.queue, result }, event[result]);
       }
     } else if (event.kind === 'heartbeat') {

@@ -1,0 +1,95 @@
+{
+  "format": 1,
+  "platforms": {
+    "darwin/arm64": {
+      "cosign": {
+        "version": "3.1.3",
+        "asset": "cosign-darwin-arm64",
+        "url": "https://github.com/sigstore/cosign/releases/download/v3.1.3/cosign-darwin-arm64",
+        "sha256": "5cf948c2f4dfe59687bdd0b8523709067383e03982cc543475c8a7dc70e92a76",
+        "executableSha256": "5cf948c2f4dfe59687bdd0b8523709067383e03982cc543475c8a7dc70e92a76",
+        "checksumUrl": "https://github.com/sigstore/cosign/releases/download/v3.1.3/cosign_checksums.txt",
+        "checksumSha256": "aec2a6f68d307b09ae196e388dc691a146fa8bdba7fcce9ca4ca41b918adfa63",
+        "archive": "binary"
+      },
+      "syft": {
+        "version": "1.51.1",
+        "asset": "syft_1.51.1_darwin_arm64.tar.gz",
+        "url": "https://github.com/anchore/syft/releases/download/v1.51.1/syft_1.51.1_darwin_arm64.tar.gz",
+        "sha256": "ac063af3b9874769deb7ea1e6d76841e68f9e3bb50cd654226fc977de65532c1",
+        "executableSha256": "47cd0bc89537c80eed48f34766743d54574e5830deff243cf54d99696a8e9ce0",
+        "checksumUrl": "https://github.com/anchore/syft/releases/download/v1.51.1/syft_1.51.1_checksums.txt",
+        "checksumSha256": "105346699e7cb694afa37a21e2386432df6278c99f71331c24b1e0bb0f38cc75",
+        "archive": "tar.gz",
+        "members": {
+          "CHANGELOG.md": false,
+          "LICENSE": false,
+          "README.md": false,
+          "syft": true
+        }
+      },
+      "crane": {
+        "version": "0.22.1",
+        "asset": "go-containerregistry_Darwin_arm64.tar.gz",
+        "url": "https://github.com/google/go-containerregistry/releases/download/v0.22.1/go-containerregistry_Darwin_arm64.tar.gz",
+        "sha256": "2231fc8df8806d20d680ff1225db44e095a55dd6ac1ae8eced4faf4b278b78fb",
+        "executableSha256": "712be73700414edb792c9d7dd07315ff6ef1200decd6b2363e4ab834babb302d",
+        "checksumUrl": "https://github.com/google/go-containerregistry/releases/download/v0.22.1/checksums.txt",
+        "checksumSha256": "889e6996ef939c12d613f4cae657cc2ecce822e69ea74a58a453a95d723a857d",
+        "archive": "tar.gz",
+        "members": {
+          "LICENSE": false,
+          "README.md": false,
+          "crane": true,
+          "gcrane": true,
+          "krane": true
+        }
+      }
+    },
+    "linux/x64": {
+      "cosign": {
+        "version": "3.1.3",
+        "asset": "cosign-linux-amd64",
+        "url": "https://github.com/sigstore/cosign/releases/download/v3.1.3/cosign-linux-amd64",
+        "sha256": "4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71",
+        "executableSha256": "4629c757b7618056f8ddd7e2625ae9fdd94c0372a65049520bc7d9df9efc7f71",
+        "checksumUrl": "https://github.com/sigstore/cosign/releases/download/v3.1.3/cosign_checksums.txt",
+        "checksumSha256": "aec2a6f68d307b09ae196e388dc691a146fa8bdba7fcce9ca4ca41b918adfa63",
+        "archive": "binary"
+      },
+      "syft": {
+        "version": "1.51.1",
+        "asset": "syft_1.51.1_linux_amd64.tar.gz",
+        "url": "https://github.com/anchore/syft/releases/download/v1.51.1/syft_1.51.1_linux_amd64.tar.gz",
+        "sha256": "8fcb33017a0dc1058298c923c436d19dfa68ae93968e0b423248542e3afb9fc3",
+        "executableSha256": "abca2def61de9952fa06d3977bb1e064818facb9badfce502b450d3d6846a91f",
+        "checksumUrl": "https://github.com/anchore/syft/releases/download/v1.51.1/syft_1.51.1_checksums.txt",
+        "checksumSha256": "105346699e7cb694afa37a21e2386432df6278c99f71331c24b1e0bb0f38cc75",
+        "archive": "tar.gz",
+        "members": {
+          "CHANGELOG.md": false,
+          "LICENSE": false,
+          "README.md": false,
+          "syft": true
+        }
+      },
+      "crane": {
+        "version": "0.22.1",
+        "asset": "go-containerregistry_Linux_x86_64.tar.gz",
+        "url": "https://github.com/google/go-containerregistry/releases/download/v0.22.1/go-containerregistry_Linux_x86_64.tar.gz",
+        "sha256": "0ab7a1d6932a213aed964ce97666c3077fe691c8606413674a8b3e0b9ec4cda0",
+        "executableSha256": "8e75c326adb43b053cfd78b9b987663f8f4fe4557f4d3915905643f25c730992",
+        "checksumUrl": "https://github.com/google/go-containerregistry/releases/download/v0.22.1/checksums.txt",
+        "checksumSha256": "889e6996ef939c12d613f4cae657cc2ecce822e69ea74a58a453a95d723a857d",
+        "archive": "tar.gz",
+        "members": {
+          "LICENSE": false,
+          "README.md": false,
+          "crane": true,
+          "gcrane": true,
+          "krane": true
+        }
+      }
+    }
+  }
+}

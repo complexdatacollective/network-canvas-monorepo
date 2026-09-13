@@ -46,6 +46,23 @@ describe('bootstrap configuration', () => {
     },
   );
 
+  it('requires complete Twilio credentials and an HTTPS callback origin', () => {
+    vi.stubEnv('TWILIO_ACCOUNT_SID', `AC${'0'.repeat(32)}`);
+    expect(() => readEnv()).toThrow('must be configured together');
+    vi.stubEnv('TWILIO_AUTH_TOKEN', 'secret');
+    vi.stubEnv('TWILIO_FROM_NUMBER', '+13125550100');
+    vi.stubEnv('PUBLIC_URL', 'http://studio.example.org');
+    expect(() => readEnv()).toThrow(
+      'Twilio message delivery requires an HTTPS PUBLIC_URL',
+    );
+    vi.stubEnv('PUBLIC_URL', 'https://studio.example.org');
+    expect(readEnv().messageDelivery?.twilio).toEqual({
+      accountSid: `AC${'0'.repeat(32)}`,
+      authToken: 'secret',
+      from: '+13125550100',
+    });
+  });
+
   it('withholds the credential from the lane without auth or a database', () => {
     vi.stubEnv('STUDIO_BOOTSTRAP_TOKEN', 'malformed-and-unused');
     expect(

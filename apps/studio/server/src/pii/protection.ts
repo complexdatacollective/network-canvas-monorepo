@@ -31,6 +31,13 @@ export type ParticipantField = {
 
 export type IntegrationField =
   | {
+      kind: 'audit_export';
+      teamId: string;
+      actorId: string;
+      jobId: string;
+      column: 'handle_ciphertext';
+    }
+  | {
       kind: 'webhook';
       teamId: string;
       subscriptionId: string;
@@ -42,6 +49,18 @@ export type IntegrationField =
       /** Globally unique account.id primary key, never the provider accountId. */
       accountRowId: string;
       column: 'accessToken' | 'refreshToken' | 'idToken';
+    }
+  | {
+      kind: 'message';
+      teamId: string;
+      deliveryId: string;
+      column: 'rendered_ciphertext';
+    }
+  | {
+      kind: 'interview-link';
+      teamId: string;
+      linkId: string;
+      column: 'token_ciphertext';
     };
 
 /**
@@ -93,7 +112,9 @@ function integrationContext(
   return Object.freeze(
     target.kind === 'webhook'
       ? { ...target, subscriptionId: canonicalUuid(target.subscriptionId) }
-      : { ...target },
+      : target.kind === 'interview-link'
+        ? { ...target, linkId: canonicalUuid(target.linkId) }
+        : { ...target },
   );
 }
 
@@ -107,13 +128,44 @@ function participantAad(target: ParticipantField): Buffer {
 }
 
 function integrationAad(target: IntegrationField): Buffer {
-  return target.kind === 'webhook'
-    ? tuple([target.kind, target.teamId, target.subscriptionId, target.column])
-    : tuple([target.kind, target.userId, target.accountRowId, target.column]);
+  if (target.kind === 'audit_export')
+    return tuple([
+      target.kind,
+      target.teamId,
+      target.actorId,
+      target.jobId,
+      target.column,
+    ]);
+  if (target.kind === 'webhook')
+    return tuple([
+      target.kind,
+      target.teamId,
+      target.subscriptionId,
+      target.column,
+    ]);
+  if (target.kind === 'message')
+    return tuple([
+      target.kind,
+      target.teamId,
+      target.deliveryId,
+      target.column,
+    ]);
+  if (target.kind === 'interview-link')
+    return tuple([target.kind, target.teamId, target.linkId, target.column]);
+  return tuple([
+    target.kind,
+    target.userId,
+    target.accountRowId,
+    target.column,
+  ]);
 }
 
 function integrationScope(target: IntegrationField): readonly string[] {
-  return target.kind === 'webhook'
+  if (target.kind === 'audit_export')
+    return ['audit-export', target.teamId, target.actorId, target.jobId];
+  return target.kind === 'webhook' ||
+    target.kind === 'message' ||
+    target.kind === 'interview-link'
     ? ['team', target.teamId]
     : ['account', target.userId, target.accountRowId];
 }
@@ -273,5 +325,46 @@ export function createDataProtection(
     readParticipant,
     encryptIntegration,
     readIntegration,
+  };
+}
+
+/** Recoverable export handles; callers must authorize the exact actor/job row. */
+export function createAuditExportHandleProtection(keys: EncryptionKeys) {
+  return {
+    seal(
+      target: Extract<IntegrationField, { kind: 'audit_export' }>,
+      value: Uint8Array,
+    ) {
+      const id = keys.currentId('integration-enc');
+      const context = integrationContext(target);
+      return {
+        algorithm: ALGORITHM,
+        keyId: id,
+        envelope: encrypt(
+          keys.derive('integration-enc', id, integrationScope(context)),
+          integrationAad(context),
+          value,
+        ),
+      };
+    },
+    open(
+      target: Extract<IntegrationField, { kind: 'audit_export' }>,
+      value: ProtectedValue,
+    ) {
+      const context = integrationContext(target);
+      try {
+        return decrypt(
+          keys.derive(
+            'integration-enc',
+            value.keyId,
+            integrationScope(context),
+          ),
+          integrationAad(context),
+          { ...value, envelope: Buffer.from(value.envelope) },
+        );
+      } catch {
+        throw new ProtectedDataError();
+      }
+    },
   };
 }

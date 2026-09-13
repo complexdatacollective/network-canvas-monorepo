@@ -61,7 +61,7 @@ export type ParticipantCiphertextRow = {
 
 const teamStore = new TeamStore();
 
-async function authorize(
+export async function authorizeParticipantPiiAccess(
   client: pg.PoolClient,
   context: AuditedCommandContext,
   studyId: string,
@@ -207,7 +207,14 @@ export async function readParticipantPiiField(
     // Even an absent field must authorize before revealing its absence.
     if (!row || !ciphertext || !row.pii_key_id || !row.pii_algorithm) {
       return runAuditedCommand(context, async (client, audit) => {
-        if (!(await authorize(client, context, target.studyId, false)))
+        if (
+          !(await authorizeParticipantPiiAccess(
+            client,
+            context,
+            target.studyId,
+            false,
+          ))
+        )
           return denied(audit, 'read');
         if (!row) throw new ParticipantPiiError('FORBIDDEN');
         const current = await selectParticipantCiphertext(
@@ -230,7 +237,14 @@ export async function readParticipantPiiField(
     const api = createDataProtection(keys, {
       participant: async (_field, read) => {
         await runAuditedCommand(context, async (client, audit) => {
-          if (!(await authorize(client, context, target.studyId, false)))
+          if (
+            !(await authorizeParticipantPiiAccess(
+              client,
+              context,
+              target.studyId,
+              false,
+            ))
+          )
             return denied(audit, 'read');
           const current = await selectParticipantCiphertext(
             client,
@@ -297,7 +311,14 @@ export async function updateParticipantPii(
   };
   return withDenialLimit(context, 'write', () =>
     runAuditedCommand(context, async (client, audit) => {
-      if (!(await authorize(client, context, target.studyId, true)))
+      if (
+        !(await authorizeParticipantPiiAccess(
+          client,
+          context,
+          target.studyId,
+          true,
+        ))
+      )
         return denied(audit, 'write');
       const row = await selectParticipantCiphertext(
         client,
@@ -389,7 +410,9 @@ export async function findParticipantByContact(
   const kind = contact.kind;
   return withDenialLimit(context, 'read', () =>
     runAuditedCommand(context, async (client, audit) => {
-      if (!(await authorize(client, context, studyId, false)))
+      if (
+        !(await authorizeParticipantPiiAccess(client, context, studyId, false))
+      )
         return denied(audit, 'read');
       const rows = await client.query<{
         participantId: string;

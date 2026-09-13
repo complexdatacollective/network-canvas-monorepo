@@ -1,11 +1,12 @@
 import { deepStrictEqual } from 'node:assert';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 import type pg from 'pg';
 
 import { assertSamePostgresDatabase } from '@codaco/studio-sync/postgres-database-identity';
-import { TENANT_ROLES } from '@codaco/studio-sync/rls';
+import { TEAM_GUC, TENANT_ROLES } from '@codaco/studio-sync/rls';
 
+import { AuditStore } from '../audit/store.ts';
 import { assertBackupAccess } from '../db/backup.ts';
 import { checkSchema } from '../db/schema.ts';
 import { tryParseRoles } from '../team/roles.ts';
@@ -20,6 +21,7 @@ import { assertStudioRecoveryQuarantine } from './quarantine.ts';
 const FAILURE = 'STUDIO_RECOVERY_AUTHORIZATION_FAILED';
 const MISMATCH = 'STUDIO_RECOVERY_RECONCILIATION_MISMATCH';
 const RECOVERY_ACTOR = 'studio-recovery';
+const auditStore = new AuditStore();
 
 type Policy = {
   allowedLogins: readonly string[];
@@ -213,9 +215,8 @@ async function reconcileInventories(
   const expectedAccounts = new Map(
     evidence.accounts.map((row) => [row.id, row]),
   );
-  const actualAccounts = new Map(accounts.rows.map((row) => [row.id, row]));
   for (const expected of evidence.accounts) {
-    const actual = actualAccounts.get(expected.id);
+    const actual = accounts.rows.find((row) => row.id === expected.id);
     if (!actual) throw new Error(MISMATCH);
     assertRows(
       {
@@ -249,11 +250,8 @@ async function reconcileInventories(
     const expectedMemberships = new Map(
       evidence.memberships.map((row) => [row.id, row]),
     );
-    const actualMemberships = new Map(
-      memberships.rows.map((row) => [row.id, row]),
-    );
     for (const expected of evidence.memberships) {
-      const actual = actualMemberships.get(expected.id);
+      const actual = memberships.rows.find(({ id }) => id === expected.id);
       const roles = actual ? tryParseRoles(actual.role) : null;
       if (!actual || !roles) throw new Error(MISMATCH);
       assertRows(
@@ -289,9 +287,8 @@ async function reconcileInventories(
     const expectedGrants = new Map(
       evidence.studyGrants.map((row) => [row.id, row]),
     );
-    const actualGrants = new Map(grants.rows.map((row) => [row.id, row]));
     for (const expected of evidence.studyGrants) {
-      const actual = actualGrants.get(expected.id);
+      const actual = grants.rows.find(({ id }) => id === expected.id);
       assertRows(
         actual && {
           id: actual.id,
@@ -322,9 +319,8 @@ async function reconcileInventories(
     const expectedWebhooks = new Map(
       evidence.activeWebhookSubscriptions.map((row) => [row.id, row]),
     );
-    const actualWebhooks = new Map(webhooks.rows.map((row) => [row.id, row]));
     for (const expected of evidence.activeWebhookSubscriptions) {
-      const actual = actualWebhooks.get(expected.id);
+      const actual = webhooks.rows.find(({ id }) => id === expected.id);
       if (!actual) throw new Error(MISMATCH);
       assertRows(
         {
@@ -410,9 +406,8 @@ async function reconcileInventories(
         "SELECT id FROM message_templates WHERE state = 'published' ORDER BY id",
       )
     ).rows.map(({ id }) => id);
-    const publishedTemplateIds = new Set(publishedTemplates);
     for (const id of evidence.publishedMessageTemplateIds)
-      if (!publishedTemplateIds.has(id)) throw new Error(MISMATCH);
+      if (!publishedTemplates.includes(id)) throw new Error(MISMATCH);
     if (
       mode === 'require-exact' &&
       publishedTemplates.length !== evidence.publishedMessageTemplateIds.length
@@ -434,10 +429,6 @@ async function invalidateRestoredAdmission(client: pg.PoolClient) {
     "UPDATE team_invitations SET status = 'canceled' WHERE status = 'pending'",
   );
   await asMaintenance(client, async () => {
-    // Restored alert preferences are not in the signed authority inventory.
-    // Clear them before reopening; retain the historical delivery evidence.
-    await client.query('DELETE FROM audit_alert_recipients');
-    await client.query('DELETE FROM audit_alert_settings');
     await client.query(
       `UPDATE api_tokens SET revoked_at = statement_timestamp(),
          revoked_by_user_id = $1 WHERE revoked_at IS NULL`,
@@ -487,6 +478,56 @@ async function holdRestoredDeliveries(client: pg.PoolClient) {
     SET quarantined_at = statement_timestamp(),
       lease_owner = NULL, lease_expires_at = NULL
     WHERE completed_at IS NULL AND quarantined_at IS NULL`);
+    const unfinishedExports = await client.query<{
+      id: string;
+      team_id: string;
+      team_name: string;
+      actor_id: string;
+      start_event_id: string;
+    }>(`SELECT jobs.id,jobs.team_id,teams.name AS team_name,jobs.actor_id,
+      jobs.start_event_id FROM audit_export_jobs jobs
+      JOIN teams ON teams.id=jobs.team_id
+      WHERE jobs.status IN ('pending','generating') ORDER BY jobs.team_id,jobs.id`);
+    for (const job of unfinishedExports.rows) {
+      await client.query(`SELECT set_config('${TEAM_GUC}', $1, true)`, [
+        job.team_id,
+      ]);
+      const event = await auditStore.append(client, {
+        teamId: job.team_id,
+        teamLabel: job.team_name.trim().slice(0, 320),
+        eventVersion: 1,
+        eventType: 'audit.export.failed',
+        category: 'audit',
+        outcome: 'succeeded',
+        actorKind: 'system',
+        actorId: null,
+        actorLabel: 'Audit export',
+        subjectType: 'audit_export',
+        subjectId: job.id,
+        subjectLabel: null,
+        resourceType: null,
+        resourceId: null,
+        resourceLabel: null,
+        requestId: randomUUID(),
+        details: {
+          startEventId: job.start_event_id,
+          requestedByActorId: job.actor_id,
+          failureCode: 'recovery_quarantined',
+        },
+      });
+      const failed = await client.query(
+        `UPDATE audit_export_jobs SET status='failed',failed_at=statement_timestamp(),
+          failure_event_id=$2,last_error='recovery quarantined',
+          lease_owner=NULL,lease_expires_at=NULL,
+          artifact_attempt_id=NULL,artifact_key=NULL WHERE id=$1
+          AND status IN ('pending','generating')`,
+        [job.id, event.id],
+      );
+      if (failed.rowCount !== 1) throw new Error(MISMATCH);
+    }
+    await client.query(`UPDATE audit_export_jobs
+      SET handle_consumed_at=COALESCE(handle_consumed_at,statement_timestamp())
+      WHERE status='ready' AND handle_consumed_at IS NULL`);
   });
 }
 
@@ -513,7 +554,9 @@ async function lockRecoveryAuthorizationState(client: pg.PoolClient) {
     studio_instance, "user", session, account, verification, teams,
     team_members, team_invitations, team_invitation_deliveries,
     study_role_grants, api_tokens, interview_links, webhook_subscriptions,
-    webhook_deliveries, study_schedules, schedule_occurrences,
+    webhook_deliveries, study_schedules, message_templates, message_deliveries,
+    audit_events, credential_audit_events, audit_export_artifact_attempts,
+    audit_export_jobs, schedule_occurrences,
     message_templates, message_deliveries,
     audit_events, credential_audit_events, audit_alert_settings,
     audit_alert_recipients, audit_alert_outbox,
@@ -543,12 +586,11 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
       live_leases: number;
       deliveries: number;
       registry_intents: number;
+      audit_exports: number;
       pending_schedule_occurrences: number;
       alert_recipients: number;
       alert_settings: number;
     }>(`SELECT
-    (SELECT count(*)::int FROM audit_alert_recipients) alert_recipients,
-    (SELECT count(*)::int FROM audit_alert_settings) alert_settings,
     (SELECT count(*)::int FROM api_tokens WHERE revoked_at IS NULL) tokens,
     (SELECT count(*)::int FROM interview_links WHERE revoked_at IS NULL) links,
     (SELECT count(*)::int FROM leases WHERE expires_at > statement_timestamp()) live_leases,
@@ -559,16 +601,18 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
      + (SELECT count(*) FROM audit_alert_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL))::int deliveries,
     ((SELECT count(*) FROM template_registry_publication_intents WHERE completed_at IS NULL AND quarantined_at IS NULL)
      + (SELECT count(*) FROM template_registry_import_intents WHERE completed_at IS NULL AND quarantined_at IS NULL))::int registry_intents,
+    (SELECT count(*)::int FROM audit_export_jobs
+      WHERE status IN ('pending','generating')
+         OR (status='ready' AND handle_consumed_at IS NULL)) audit_exports,
     (SELECT count(*)::int FROM schedule_occurrences WHERE state = 'scheduled') pending_schedule_occurrences`),
   );
   assertRows(remainingTenantState.rows[0], {
-    alert_recipients: 0,
-    alert_settings: 0,
     tokens: 0,
     links: 0,
     live_leases: 0,
     deliveries: 0,
     registry_intents: 0,
+    audit_exports: 0,
     pending_schedule_occurrences: 0,
   });
 }

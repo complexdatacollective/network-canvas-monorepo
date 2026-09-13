@@ -27,6 +27,8 @@ const MAX_DEADLINE_MS = 60_000;
 export type TemplateRegistryClientErrorCode =
   | 'TEMPLATE_REGISTRY_CONFIGURATION_INVALID'
   | 'TEMPLATE_REGISTRY_REQUEST_FAILED'
+  | 'TEMPLATE_REGISTRY_PUBLICATION_REJECTED'
+  | 'TEMPLATE_REGISTRY_RESOURCE_UNAVAILABLE'
   | 'TEMPLATE_REGISTRY_RESPONSE_INVALID'
   | 'TEMPLATE_REGISTRY_SCHEMA_UNSUPPORTED'
   | 'TEMPLATE_REGISTRY_ARTIFACT_INVALID';
@@ -318,7 +320,7 @@ export class TemplateRegistryClient {
     if (!parsedCredential.success) failure('TEMPLATE_REGISTRY_REQUEST_FAILED');
     return await boundedOperation(this.#deadlineMs, signal, async (context) => {
       const response = await context.race(
-        this.#fetch(pathUrl(this.#origin, '/publisher'), {
+        this.#fetch(pathUrl(this.#origin, '/api/v1/publisher'), {
           method: 'GET',
           headers: {
             Accept: 'application/json',
@@ -357,6 +359,8 @@ export class TemplateRegistryClient {
       context.setCancellation(async () => await response.body?.cancel());
       let complete = false;
       try {
+        if (response.status === 404 || response.status === 410)
+          failure('TEMPLATE_REGISTRY_RESOURCE_UNAVAILABLE');
         const entry = await parseEntry(response, 200, this.#origin, context);
         if (entry.id.toLowerCase() !== parsedId.data.toLowerCase())
           failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
@@ -447,6 +451,8 @@ export class TemplateRegistryClient {
       context.setCancellation(async () => await response.body?.cancel());
       let complete = false;
       try {
+        if (response.status === 404 || response.status === 410)
+          failure('TEMPLATE_REGISTRY_RESOURCE_UNAVAILABLE');
         if (
           response.status !== 200 ||
           mediaType(response) !== TEMPLATE_ARTIFACT_MEDIA_TYPE ||
@@ -535,6 +541,14 @@ export class TemplateRegistryClient {
       context.setCancellation(async () => await response.body?.cancel());
       let complete = false;
       try {
+        // A received 4xx refusal is definitive; a timeout response may still
+        // represent an ambiguous upstream handoff and remains reconcilable.
+        if (
+          response.status >= 400 &&
+          response.status < 500 &&
+          response.status !== 408
+        )
+          failure('TEMPLATE_REGISTRY_PUBLICATION_REJECTED');
         const entry = await parseEntry(response, 201, this.#origin, context);
         assertRegistryEntryArtifact(entry, artifact);
         complete = true;

@@ -1,0 +1,606 @@
+import { createHmac, randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+
+import { safe } from '@orpc/client';
+import { describe, expect, it } from 'vitest';
+
+import { stubAuthService } from '../../__tests__/support/auth.ts';
+import { createHttpTestApp } from '../../__tests__/support/http-app.ts';
+import { createRpcClient } from '../../__tests__/support/rpc.ts';
+import { readEnv } from '../../env.ts';
+import { participantFixture } from '../../pii/__tests__/integration-fixture.ts';
+import {
+  readWebhookSecretForDelivery,
+  setWebhookSecret,
+} from '../../pii/webhooks.ts';
+import { createAuditedStudy } from '../../study/commands.ts';
+import {
+  beginWebhookHandoff,
+  consumeWebhookResponse,
+  createStandardWebhookSender,
+  createWebhookDeliveryDispatcher,
+  startWebhookDeliveryWorker,
+  WebhookDeliveryAdapter,
+  type WebhookRequest,
+} from '../delivery.ts';
+import {
+  createWebhookSubscription,
+  disableWebhookSubscription,
+  enqueueWebhookEvent,
+} from '../subscriptions.ts';
+
+const secretBytes = Buffer.alloc(32, 71);
+const secret = `whsec_${secretBytes.toString('base64url')}`;
+
+async function addSubscription(
+  input: Parameters<Parameters<typeof participantFixture>[0]>[0],
+  studyId: string | null = input.target.studyId,
+) {
+  const subscriptionId = randomUUID();
+  await createWebhookSubscription(input.keys, input.context, {
+    subscriptionId,
+    studyId,
+    url: 'https://hooks.example.org/studio',
+    eventTypes: ['study.created'],
+    secret,
+  });
+  return subscriptionId;
+}
+
+async function enqueue(
+  input: Parameters<Parameters<typeof participantFixture>[0]>[0],
+) {
+  const client = await input.scratch.pool.connect();
+  try {
+    return await enqueueWebhookEvent(client, {
+      type: 'study.created',
+      teamId: input.context.tenantDb.teamId,
+      studyId: input.target.studyId,
+      resourceId: input.target.studyId,
+    });
+  } finally {
+    client.release();
+  }
+}
+
+describe('webhook runtime', () => {
+  it('refuses loopback delivery before opening an outbound request', async () => {
+    await expect(
+      createStandardWebhookSender({ timeoutMs: 100 }).send({
+        id: randomUUID(),
+        url: 'https://127.0.0.1/private',
+        timestamp: '1',
+        signature: 'v1,synthetic',
+        body: '{}',
+      }),
+    ).rejects.toMatchObject({ disposition: 'permanent' });
+  });
+
+  it('refuses a DNS answer set containing any private address', async () => {
+    await expect(
+      createStandardWebhookSender({
+        lookupAddress: async () => [
+          { address: '8.8.8.8', family: 4 },
+          { address: '169.254.169.254', family: 4 },
+        ],
+      }).send({
+        id: randomUUID(),
+        url: 'https://hooks.example.org/studio',
+        timestamp: '1',
+        signature: 'v1,synthetic',
+        body: '{}',
+      }),
+    ).rejects.toMatchObject({ disposition: 'permanent' });
+  });
+
+  it('bounds DNS inside the absolute deadline and destroys a response after its headers', async () => {
+    const started = Date.now();
+    await expect(
+      createStandardWebhookSender({
+        timeoutMs: 20,
+        lookupAddress: () =>
+          new Promise<{ address: string; family: 4 | 6 }[]>(() => undefined),
+      }).send({
+        id: randomUUID(),
+        url: 'https://hooks.example.org/studio',
+        timestamp: '1',
+        signature: 'v1,synthetic',
+        body: '{}',
+      }),
+    ).rejects.toMatchObject({ disposition: 'retryable' });
+    expect(Date.now() - started).toBeLessThan(500);
+
+    let destroyed = false;
+    expect(
+      consumeWebhookResponse({
+        statusCode: 204,
+        destroy(_error?: Error) {
+          destroyed = true;
+          return this;
+        },
+      }),
+    ).toBe(204);
+    expect(destroyed).toBe(true);
+  });
+
+  it('rechecks administration and never exposes stored secret material', async () => {
+    await participantFixture(async (fixture) => {
+      const auth = stubAuthService({
+        getSession: () => Promise.resolve(fixture.context.principal),
+        getMembership: () => Promise.resolve({ role: 'owner' }),
+        listMemberships: () =>
+          Promise.resolve([
+            { teamId: fixture.context.tenantDb.teamId, role: 'owner' },
+          ]),
+      });
+      const rpc = createRpcClient(
+        createHttpTestApp(readEnv(), {
+          auth,
+          pool: fixture.scratch.app,
+          encryptionKeys: fixture.keys,
+        }),
+      );
+      const subscriptionId = randomUUID();
+      await expect(
+        rpc.webhooks.create({
+          teamId: fixture.context.tenantDb.teamId,
+          subscriptionId,
+          studyId: fixture.target.studyId,
+          url: 'https://hooks.example.org/studio',
+          eventTypes: ['study.created'],
+          secret,
+        }),
+      ).resolves.toMatchObject({ subscription: { id: subscriptionId } });
+      const stored = await fixture.scratch.pool.query<{
+        secret_ciphertext: Buffer;
+      }>('SELECT secret_ciphertext FROM webhook_subscriptions WHERE id = $1', [
+        subscriptionId,
+      ]);
+      expect(stored.rows[0]?.secret_ciphertext.includes(secretBytes)).toBe(
+        false,
+      );
+
+      const demoted = await fixture.scratch.pool.query<{ role: string }>(
+        "UPDATE team_members SET role = 'member' WHERE user_id = $1 RETURNING role",
+        [fixture.context.principal.userId],
+      );
+      expect(demoted.rows).toEqual([{ role: 'member' }]);
+      const denied = await safe(
+        rpc.webhooks.create({
+          teamId: fixture.context.tenantDb.teamId,
+          subscriptionId: randomUUID(),
+          url: 'https://hooks.example.org/refused',
+          eventTypes: ['study.created'],
+          secret,
+        }),
+      );
+      expect(denied.error).toMatchObject({ code: 'FORBIDDEN' });
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            'SELECT count(*)::int AS count FROM webhook_subscriptions',
+          )
+        ).rows[0],
+      ).toEqual({ count: 1 });
+    });
+  });
+
+  it('queues a thin payload and delivers through the shared worker with a stable signed id across factual retries', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture, null);
+      const studyId = randomUUID();
+      await createAuditedStudy(fixture.context, {
+        name: 'Webhook producer study',
+        studyId,
+        protocolId: randomUUID(),
+        draftId: randomUUID(),
+      });
+      const requests: WebhookRequest[] = [];
+      const statuses = [503, 204];
+      const worker = startWebhookDeliveryWorker({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        leaseMs: 5_000,
+        retryBaseMs: 0,
+        retryMaxMs: 0,
+        pollIntervalMs: 2,
+        sender: {
+          async send(request) {
+            requests.push(request);
+            return statuses.shift() ?? 204;
+          },
+        },
+      });
+      try {
+        await expect
+          .poll(
+            async () =>
+              (
+                await fixture.scratch.pool.query<{ delivered: boolean }>(
+                  'SELECT delivered_at IS NOT NULL AS delivered FROM webhook_deliveries',
+                )
+              ).rows[0]?.delivered,
+            { timeout: 5_000 },
+          )
+          .toBe(true);
+      } finally {
+        await worker.stop();
+      }
+
+      expect(requests).toHaveLength(2);
+      expect(requests[0]?.id).toBe(requests[1]?.id);
+      for (const request of requests) {
+        expect(JSON.parse(request.body)).toEqual({
+          resourceId: studyId,
+          studyId,
+          teamId: fixture.context.tenantDb.teamId,
+          type: 'study.created',
+        });
+        expect(request.signature).toBe(
+          `v1,${createHmac('sha256', secretBytes)
+            .update(`${request.id}.${request.timestamp}.${request.body}`)
+            .digest('base64')}`,
+        );
+      }
+      const row = await fixture.scratch.pool.query(
+        `SELECT subscription_id, attempt_count, delivered_at IS NOT NULL AS delivered,
+                failed_at, uncertain_at, send_started_at IS NOT NULL AS handed_off
+         FROM webhook_deliveries`,
+      );
+      expect(row.rows).toEqual([
+        {
+          subscription_id: subscriptionId,
+          attempt_count: 2,
+          delivered: true,
+          failed_at: null,
+          uncertain_at: null,
+          handed_off: true,
+        },
+      ]);
+      expect(
+        (
+          await fixture.scratch.pool.query<{ event_type: string }>(
+            `SELECT event_type FROM audit_events
+             WHERE event_type LIKE 'webhook.%' ORDER BY sequence`,
+          )
+        ).rows.map(({ event_type }) => event_type),
+      ).toEqual([
+        'webhook.subscription.created',
+        'webhook.secret.read',
+        'webhook.secret.read',
+        'webhook.delivery.delivered',
+      ]);
+    });
+  });
+
+  it('retries an ambiguous post-handoff result with the stable id and suppresses a disabled subscription before handoff', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await enqueue(fixture);
+      let sends = 0;
+      const requests: WebhookRequest[] = [];
+      const dispatcher = createWebhookDeliveryDispatcher({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        retryBaseMs: 0,
+        retryMaxMs: 0,
+        maxAttempts: 2,
+        leaseMs: 5_000,
+        sender: {
+          async send(request) {
+            sends += 1;
+            requests.push(request);
+            throw new Error('synthetic connection loss after request handoff');
+          },
+        },
+      });
+      expect(await dispatcher.runOnce()).toMatchObject({ retried: 1 });
+      await setWebhookSecret(
+        fixture.keys,
+        fixture.context,
+        subscriptionId,
+        Buffer.alloc(32, 72),
+      );
+      expect(await dispatcher.runOnce()).toMatchObject({ failed: 1 });
+      expect(await dispatcher.runOnce()).toMatchObject({ claimed: 0 });
+      expect(sends).toBe(2);
+      // Retries use the currently configured signing key; receivers deduplicate
+      // the possible duplicate by the stable Standard Webhooks id.
+      expect(requests[0]?.id).toBe(requests[1]?.id);
+      expect(requests[1]).toBeDefined();
+      expect(requests[1]?.signature).toBe(
+        `v1,${createHmac('sha256', Buffer.alloc(32, 72))
+          .update(
+            `${requests[1]!.id}.${requests[1]!.timestamp}.${requests[1]!.body}`,
+          )
+          .digest('base64')}`,
+      );
+
+      await enqueue(fixture);
+      await disableWebhookSubscription(fixture.context, subscriptionId);
+      expect(await dispatcher.runOnce()).toMatchObject({ suppressed: 1 });
+      expect(sends).toBe(2);
+      expect(
+        (
+          await fixture.scratch.pool.query<{
+            uncertain: number;
+            failed: number;
+          }>(
+            `SELECT count(*) FILTER (WHERE uncertain_at IS NOT NULL)::int AS uncertain,
+                    count(*) FILTER (WHERE failed_at IS NOT NULL)::int AS failed
+             FROM webhook_deliveries`,
+          )
+        ).rows[0],
+      ).toEqual({ uncertain: 0, failed: 2 });
+    });
+  });
+
+  it('reconciles expired leases according to the durable handoff marker', async () => {
+    await participantFixture(async (fixture) => {
+      await addSubscription(fixture);
+      await enqueue(fixture);
+      const adapter = new WebhookDeliveryAdapter({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+      });
+      const firstOwner = randomUUID();
+      const first = await adapter.claim(
+        { owner: firstOwner, durationMs: 5_000 },
+        3,
+      );
+      if (!first) throw new Error('expected first delivery claim');
+      await fixture.scratch.pool.query(
+        `UPDATE webhook_deliveries
+         SET send_started_at = now(), lease_expires_at = now() - interval '1 second'
+         WHERE id = $1`,
+        [first.id],
+      );
+      expect(await adapter.reconcileExpiredRetries()).toBe(1);
+      const secondOwner = randomUUID();
+      const second = await adapter.claim(
+        { owner: secondOwner, durationMs: 5_000 },
+        3,
+      );
+      if (!second) throw new Error('expected second delivery claim');
+      expect(second.id).toBe(first.id);
+      await fixture.scratch.pool.query(
+        `UPDATE webhook_deliveries
+         SET attempt_count = 3, send_started_at=now(), lease_expires_at = now() - interval '1 second'
+         WHERE id = $1`,
+        [second.id],
+      );
+      expect(await adapter.failExhaustedLeases(3)).toBe(1);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT count(*) FILTER (WHERE uncertain_at IS NOT NULL)::int AS uncertain,
+                    count(*) FILTER (WHERE failed_at IS NOT NULL)::int AS failed
+             FROM webhook_deliveries`,
+          )
+        ).rows[0],
+      ).toEqual({ uncertain: 0, failed: 1 });
+    });
+  });
+
+  it('refuses handoff after the audited secret snapshot is rotated', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await enqueue(fixture);
+      const adapter = new WebhookDeliveryAdapter({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+      });
+      const owner = randomUUID();
+      const claim = await adapter.claim({ owner, durationMs: 5_000 }, 3);
+      if (!claim) throw new Error('expected delivery claim');
+      const read = await readWebhookSecretForDelivery(
+        fixture.keys,
+        subscriptionId,
+        {
+          kind: 'delivery',
+          maintenancePool: fixture.scratch.maintenance,
+          teamId: fixture.context.tenantDb.teamId,
+          deliveryId: claim.id,
+          leaseOwner: owner,
+        },
+      );
+      try {
+        await setWebhookSecret(
+          fixture.keys,
+          fixture.context,
+          subscriptionId,
+          Buffer.alloc(32, 72),
+        );
+        await expect(
+          beginWebhookHandoff(
+            fixture.scratch.maintenance,
+            claim,
+            read.snapshot,
+          ),
+        ).resolves.toBe(false);
+        const current = await readWebhookSecretForDelivery(
+          fixture.keys,
+          subscriptionId,
+          {
+            kind: 'delivery',
+            maintenancePool: fixture.scratch.maintenance,
+            teamId: fixture.context.tenantDb.teamId,
+            deliveryId: claim.id,
+            leaseOwner: owner,
+          },
+        );
+        try {
+          await fixture.scratch.pool.query(
+            "UPDATE webhook_deliveries SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE id=$1",
+            [claim.id],
+          );
+          await expect(
+            beginWebhookHandoff(
+              fixture.scratch.maintenance,
+              claim,
+              current.snapshot,
+            ),
+          ).resolves.toBe(false);
+        } finally {
+          current.secret.fill(0);
+        }
+      } finally {
+        read.secret.fill(0);
+      }
+    });
+  });
+
+  it('serializes handoff behind a concurrent disable before sending', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await enqueue(fixture);
+      const adapter = new WebhookDeliveryAdapter({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+      });
+      const owner = randomUUID();
+      const claim = await adapter.claim({ owner, durationMs: 5_000 }, 3);
+      if (!claim) throw new Error('expected delivery claim');
+      const read = await readWebhookSecretForDelivery(
+        fixture.keys,
+        subscriptionId,
+        {
+          kind: 'delivery',
+          maintenancePool: fixture.scratch.maintenance,
+          teamId: fixture.context.tenantDb.teamId,
+          deliveryId: claim.id,
+          leaseOwner: owner,
+        },
+      );
+      try {
+        const blocker = await fixture.scratch.pool.connect();
+        try {
+          await blocker.query('BEGIN');
+          await blocker.query(
+            'SELECT id FROM webhook_subscriptions WHERE id = $1 FOR UPDATE',
+            [subscriptionId],
+          );
+          const handoff = beginWebhookHandoff(
+            fixture.scratch.maintenance,
+            claim,
+            read.snapshot,
+          );
+          // There is no database event exposed for a waiter on a row lock;
+          // this bounded pause is the negative oracle that proves the old
+          // unlocked handoff would have completed before the mutation.
+          await delay(50);
+          await blocker.query(
+            `UPDATE webhook_subscriptions
+             SET state = 'disabled', disabled_at = clock_timestamp()
+             WHERE id = $1`,
+            [subscriptionId],
+          );
+          await blocker.query('COMMIT');
+          await expect(handoff).resolves.toBe(false);
+        } finally {
+          await blocker.query('ROLLBACK').catch(() => undefined);
+          blocker.release();
+        }
+      } finally {
+        read.secret.fill(0);
+      }
+    });
+  });
+
+  it('serializes handoff behind a concurrent secret rotation before sending', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await enqueue(fixture);
+      const adapter = new WebhookDeliveryAdapter({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+      });
+      const owner = randomUUID();
+      const claim = await adapter.claim({ owner, durationMs: 5_000 }, 3);
+      if (!claim) throw new Error('expected delivery claim');
+      const read = await readWebhookSecretForDelivery(
+        fixture.keys,
+        subscriptionId,
+        {
+          kind: 'delivery',
+          maintenancePool: fixture.scratch.maintenance,
+          teamId: fixture.context.tenantDb.teamId,
+          deliveryId: claim.id,
+          leaseOwner: owner,
+        },
+      );
+      try {
+        const blocker = await fixture.scratch.pool.connect();
+        try {
+          await blocker.query('BEGIN');
+          await blocker.query(
+            'SELECT id FROM webhook_subscriptions WHERE id = $1 FOR UPDATE',
+            [subscriptionId],
+          );
+          const handoff = beginWebhookHandoff(
+            fixture.scratch.maintenance,
+            claim,
+            read.snapshot,
+          );
+          // Keep the lock held while changing the ciphertext, then let the
+          // handoff observe the committed new key and suppress the old read.
+          await delay(50);
+          await blocker.query(
+            `UPDATE webhook_subscriptions
+             SET secret_ciphertext = $2, updated_at = clock_timestamp()
+             WHERE id = $1`,
+            [subscriptionId, Buffer.alloc(32, 72)],
+          );
+          await blocker.query('COMMIT');
+          await expect(handoff).resolves.toBe(false);
+        } finally {
+          await blocker.query('ROLLBACK').catch(() => undefined);
+          blocker.release();
+        }
+      } finally {
+        read.secret.fill(0);
+      }
+    });
+  });
+
+  it('disables an endpoint after five terminal delivery failures', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      let sends = 0;
+      const dispatcher = createWebhookDeliveryDispatcher({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        sender: {
+          async send() {
+            sends += 1;
+            return 400;
+          },
+        },
+      });
+      for (let index = 0; index < 5; index += 1) {
+        expect(await enqueue(fixture)).toBe(1);
+        expect(await dispatcher.runOnce()).toMatchObject({ failed: 1 });
+      }
+      expect(sends).toBe(5);
+      expect(await enqueue(fixture)).toBe(0);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT state, consecutive_failures FROM webhook_subscriptions
+             WHERE id = $1`,
+            [subscriptionId],
+          )
+        ).rows,
+      ).toEqual([{ state: 'disabled', consecutive_failures: 5 }]);
+      expect(
+        (
+          await fixture.scratch.pool.query<{ count: number }>(
+            `SELECT count(*)::int AS count FROM audit_events
+             WHERE event_type = 'webhook.subscription.disabled'
+               AND details->>'reason' = 'consecutive_failures'`,
+          )
+        ).rows[0],
+      ).toEqual({ count: 1 });
+    });
+  });
+});

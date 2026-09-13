@@ -132,6 +132,20 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     recipient_blind_index: Buffer.from(hex(`recipient-${randomUUID()}`), 'hex'),
     blind_index_key_id: 'index-v1',
     rendered_body_hash: hex(`body-${randomUUID()}`),
+    rendered_ciphertext: Buffer.alloc(30, 7),
+    rendered_key_id: 'integration-v1',
+    rendered_algorithm: 'aes-256-gcm.v1',
+    ...overrides,
+  });
+
+  const interviewLinkRow = (waveId: string, overrides: Row = {}): Row => ({
+    id: randomUUID(),
+    team_id: TEAM_A,
+    study_id: studyOf[TEAM_A],
+    wave_id: waveId,
+    participant_id: participantOf[TEAM_A],
+    kind: 'participant',
+    token_hash: Buffer.from(hex(`link-${randomUUID()}`), 'hex'),
     ...overrides,
   });
 
@@ -210,6 +224,8 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     await seedTestEncryptionKeyVerifications(pool, [
       { purpose: 'pii-index', keyId: 'index-v1' },
       { purpose: 'pii-index', keyId: 'index-v2' },
+      { purpose: 'integration-enc', keyId: 'integration-v1' },
+      { purpose: 'integration-enc', keyId: 'integration-v2' },
     ]);
 
     for (const teamId of [TEAM_A, TEAM_B]) {
@@ -1023,6 +1039,15 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
   });
 
   describe('message_deliveries', () => {
+    it('refuses an unverified rendered-message encryption key', async () => {
+      await expect(
+        insert(
+          'message_deliveries',
+          deliveryRow(await newTemplate(), { rendered_key_id: 'unverified' }),
+        ),
+      ).rejects.toThrow('encrypted data may reference only a verified key');
+    });
+
     it('applies the lease and attempt defaults', async () => {
       const deliveryId = await newDelivery();
 
@@ -1246,6 +1271,45 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
       });
     });
 
+    it('binds a scheduled delivery link to the occurrence wave', async () => {
+      const scheduleId = await newSchedule({ wave_id: waveOf[TEAM_A]! });
+      const occurrenceId = await newOccurrence(scheduleId);
+      const templateId = await newTemplate();
+      const correctLink = interviewLinkRow(waveOf[TEAM_A]!);
+      await insert('interview_links', correctLink);
+
+      const otherWave = randomUUID();
+      await insert('study_waves', {
+        id: otherWave,
+        study_id: studyOf[TEAM_A],
+        team_id: TEAM_A,
+        wave_number: 999,
+      });
+      const wrongLink = interviewLinkRow(otherWave);
+      await insert('interview_links', wrongLink);
+      await expect(
+        insert(
+          'message_deliveries',
+          deliveryRow(templateId, {
+            occurrence_id: occurrenceId,
+            interview_link_id: wrongLink.id,
+          }),
+        ),
+      ).rejects.toThrow(
+        "an occurrence delivery link must name the occurrence schedule's wave and participant",
+      );
+
+      await expect(
+        insert(
+          'message_deliveries',
+          deliveryRow(templateId, {
+            occurrence_id: occurrenceId,
+            interview_link_id: correctLink.id,
+          }),
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
     it('holds the addressing and content identity immutable', async () => {
       const deliveryId = await newDelivery();
       const scheduleId = await newSchedule();
@@ -1256,6 +1320,9 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
         `channel = 'sms'`,
         `recipient_blind_index = decode('${hex('someone-else')}', 'hex')`,
         `rendered_body_hash = '${hex('a different body')}'`,
+        `rendered_ciphertext = decode('${'08'.repeat(30)}', 'hex')`,
+        `rendered_key_id = 'integration-v2'`,
+        `rendered_algorithm = 'aes-256-gcm.v2'`,
         `occurrence_id = '${occurrenceId}'`,
         `participant_id = '${otherParticipantId}'`,
       ]) {

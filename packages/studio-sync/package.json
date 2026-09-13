@@ -23,6 +23,7 @@
     "./role-bootstrap": "./src/role-bootstrap.ts",
     "./email-sender": "./src/email-sender.ts",
     "./postmark-email-sender": "./src/postmark-email-sender.ts",
+    "./sms-sender": "./src/sms-sender.ts",
     "./section-references": "./src/section-references.ts",
     "./section-validation": "./src/section-validation.ts",
     "./template-metadata": "./src/template-metadata.ts",
@@ -42,7 +43,8 @@
     "./postgres-recovery-quarantine": "./src/postgres-recovery-quarantine.ts",
     "./operational-http": "./src/operational-http.ts",
     "./operational-metrics": "./src/operational-metrics.ts",
-    "./proxy-trust": "./src/proxy-trust.ts"
+    "./proxy-trust": "./src/proxy-trust.ts",
+    "./template-archive": "./src/template-archive.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

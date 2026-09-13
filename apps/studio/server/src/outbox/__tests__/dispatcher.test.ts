@@ -22,6 +22,14 @@ function adapter() {
     suppressUndeliverable: vi
       .fn<OutboxAdapter<Claim>['suppressUndeliverable']>()
       .mockResolvedValue(0),
+    reconcileExpiredUncertainLeases: vi
+      .fn<
+        NonNullable<OutboxAdapter<Claim>['reconcileExpiredUncertainLeases']>
+      >()
+      .mockResolvedValue(0),
+    reconcileExpiredRetries: vi
+      .fn<NonNullable<OutboxAdapter<Claim>['reconcileExpiredRetries']>>()
+      .mockResolvedValue(0),
     failExhaustedLeases: vi
       .fn<OutboxAdapter<Claim>['failExhaustedLeases']>()
       .mockResolvedValue(0),
@@ -163,7 +171,10 @@ describe('shared outbox execution', () => {
       failed: 0,
     });
 
-    expect(work.deliver).toHaveBeenCalledExactlyOnceWith(claim);
+    expect(work.deliver).toHaveBeenCalledExactlyOnceWith(
+      claim,
+      expect.any(AbortSignal),
+    );
     expect(events).toEqual([
       {
         queue: 'message_deliveries',
@@ -172,6 +183,7 @@ describe('shared outbox execution', () => {
         claimed: 1,
         completed: 0,
         retried: 1,
+        recovered: 0,
         failed: 0,
         suppressed: 0,
         uncertain: 0,
@@ -243,6 +255,7 @@ describe('shared outbox execution', () => {
     const work = adapter();
     work.suppressUndeliverable.mockResolvedValue(2);
     work.failExhaustedLeases.mockResolvedValue(3);
+    work.reconcileExpiredRetries.mockResolvedValue(4);
     work.remainsDeliverable.mockResolvedValue(false);
 
     await expect(
@@ -251,6 +264,7 @@ describe('shared outbox execution', () => {
       claimed: 1,
       completed: 0,
       retried: 0,
+      recovered: 4,
       failed: 3,
       suppressed: 3,
       uncertain: 0,
@@ -258,6 +272,24 @@ describe('shared outbox execution', () => {
     });
     expect(work.suppressClaim).toHaveBeenCalledOnce();
     expect(work.deliver).not.toHaveBeenCalled();
+  });
+
+  it('does not suppress or finalize when the final handoff reports a lost lease', async () => {
+    const work = adapter();
+    work.deliver.mockResolvedValue('lease-lost');
+
+    await expect(
+      new OutboxDispatcher({ pool, adapter: work }).runOnce(),
+    ).resolves.toMatchObject({
+      claimed: 1,
+      completed: 0,
+      suppressed: 0,
+      leaseLost: 1,
+    });
+    expect(work.suppressClaim).not.toHaveBeenCalled();
+    expect(work.recordComplete).not.toHaveBeenCalled();
+    expect(work.recordFailure).not.toHaveBeenCalled();
+    expect(work.recordUncertain).not.toHaveBeenCalled();
   });
 
   it.each(['throws', 'loses ownership'] as const)(
@@ -390,6 +422,9 @@ describe('shared outbox execution', () => {
       }).runOnce();
 
       await vi.advanceTimersByTimeAsync(30);
+      const signal = work.deliver.mock.calls[0]?.[1];
+      expect(signal).toBeInstanceOf(AbortSignal);
+      expect(signal?.aborted).toBe(true);
       expect(observer).toHaveBeenCalledWith({
         queue: 'message_deliveries',
         kind: 'heartbeat',

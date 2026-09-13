@@ -199,6 +199,9 @@ CREATE OR REPLACE TRIGGER participants_verified_index_key_reference_guard
 CREATE OR REPLACE TRIGGER message_deliveries_verified_key_reference_guard
   BEFORE INSERT OR UPDATE OF blind_index_key_id ON message_deliveries
   FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified('pii-index', 'blind_index_key_id');
+CREATE OR REPLACE TRIGGER message_deliveries_verified_rendered_key_reference_guard
+  BEFORE INSERT OR UPDATE OF rendered_key_id ON message_deliveries
+  FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified('integration-enc', 'rendered_key_id');
 CREATE OR REPLACE TRIGGER participant_contact_optouts_verified_key_reference_guard
   BEFORE INSERT OR UPDATE OF blind_index_key_id ON participant_contact_optouts
   FOR EACH ROW EXECUTE FUNCTION encryption_key_reference_is_verified('pii-index', 'blind_index_key_id');

@@ -23,6 +23,7 @@ import { emptyProtocol } from '../protocol/sectionize.ts';
 import { ProtocolStore } from '../protocol/store.ts';
 import { roleGrantsTeamAdministration } from '../team/roles.ts';
 import { TeamStore, type LockedMember } from '../team/store.ts';
+import { enqueueWebhookEvent } from '../webhook/subscriptions.ts';
 
 export type StudyCommandErrorCode = 'FORBIDDEN' | 'CONFLICT' | 'OVERLOADED';
 
@@ -241,6 +242,12 @@ export async function createAuditedStudy(
             studyId: input.studyId,
             teamId,
             userId: context.principal.userId,
+          });
+          await enqueueWebhookEvent(client, {
+            type: 'study.created',
+            teamId,
+            studyId: input.studyId,
+            resourceId: input.studyId,
           });
         }
 

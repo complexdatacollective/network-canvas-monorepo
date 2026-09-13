@@ -13,14 +13,17 @@ import {
   CLIENT_SESSION_PARAM,
   readClientSessionId,
 } from '@codaco/studio-rpc/client-session';
+import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import { createApiV1 } from './api.ts';
 import {
   createAssetRoutes,
   createAssetStore,
   type AssetStore,
+  type AuditExportArtifactStore,
 } from './assets.ts';
 import { BETTER_AUTH_ORGANIZATION_ROUTE_POLICIES } from './audit/better-auth-policy.ts';
+import { openAuditExportDownload } from './audit/export.ts';
 import { createAuthService } from './auth/create.ts';
 import { requireSameOrigin, requireWsOrigin } from './auth/csrf.ts';
 import type { StudioMailer } from './auth/email.ts';
@@ -43,6 +46,10 @@ import type { EncryptionKeys } from './pii/keys.ts';
 import { createProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import { createRpcRouter } from './rpc.ts';
 import {
+  receivePostmarkStatus,
+  receiveTwilioStatus,
+} from './schedule/message-status.ts';
+import {
   createSessionTimingOpenRoute,
   createSessionTimingReleaseRoute,
   createSessionTimingRoute,
@@ -57,6 +64,7 @@ const WS_PATH = '/ws';
 // Hono matches `/storage/*` against the children of /storage but not the bare
 // prefix, so anything covering the whole surface has to name both.
 const STORAGE_PATHS = ['/storage', '/storage/*'];
+const AUDIT_EXPORT_HANDLE_HEADER = 'x-studio-audit-export-handle';
 const MANAGED_INGRESS_PROOF_HEADER = 'x-studio-managed-ingress-proof';
 const UNSAFE_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
 const BETTER_AUTH_ORGANIZATION_MUTATION_POLICIES: ReadonlyMap<
@@ -74,11 +82,17 @@ type CreateAppDeps = {
   mailer?: StudioMailer;
   auth?: AuthService;
   assetStore?: AssetStore;
+  auditExportStore?: AuditExportArtifactStore;
   observability?: ReturnType<typeof createObservability>;
   logger?: OperationalLogger;
   /** A supported dispatcher is configured, locally or in a separate worker. */
   invitationDeliveryAvailable?: boolean;
   pool?: pg.Pool;
+  messageStatus?: {
+    maintenancePool: pg.Pool;
+    postmarkToken?: string;
+    twilioAuthToken?: string;
+  };
   maintenancePool?: pg.Pool;
 };
 
@@ -103,6 +117,11 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     });
   const assetStore =
     deps.assetStore ?? (env.s3 ? createAssetStore(env.s3) : undefined);
+  const auditExportStore =
+    deps.auditExportStore ??
+    (assetStore && 'putAuditExport' in assetStore
+      ? (assetStore as AssetStore & AuditExportArtifactStore)
+      : undefined);
   const observability =
     deps.observability ??
     createObservability({
@@ -142,6 +161,71 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       : undefined,
   );
   const enabled = Boolean(env.db && env.auth);
+  app.post('/api/v1/message-status/postmark', async (c) => {
+    const status = deps.messageStatus;
+    if (!status?.postmarkToken)
+      return c.json({ title: 'Not Found', status: 404 }, 404);
+    try {
+      await receivePostmarkStatus(status.maintenancePool, {
+        token: status.postmarkToken,
+        authorization: c.req.header('authorization'),
+        body: await c.req.text(),
+      });
+      return c.body(null, 204);
+    } catch (error) {
+      const unauthorized =
+        error instanceof Error &&
+        error.message === 'MESSAGE_STATUS_UNAUTHORIZED';
+      const retryable =
+        error instanceof Error && error.message === 'MESSAGE_STATUS_NOT_READY';
+      return c.json(
+        {
+          title: unauthorized
+            ? 'Unauthorized'
+            : retryable
+              ? 'Service Unavailable'
+              : 'Bad Request',
+          status: unauthorized ? 401 : retryable ? 503 : 400,
+        },
+        unauthorized ? 401 : retryable ? 503 : 400,
+      );
+    }
+  });
+  app.post('/api/v1/message-status/twilio/:deliveryId', async (c) => {
+    const status = deps.messageStatus;
+    if (!status?.twilioAuthToken)
+      return c.json({ title: 'Not Found', status: 404 }, 404);
+    const deliveryId = c.req.param('deliveryId');
+    if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(deliveryId))
+      return c.json({ title: 'Bad Request', status: 400 }, 400);
+    try {
+      await receiveTwilioStatus(status.maintenancePool, {
+        authToken: status.twilioAuthToken,
+        signature: c.req.header('x-twilio-signature'),
+        url: c.req.url,
+        body: await c.req.text(),
+        deliveryId,
+      });
+      return c.body(null, 204);
+    } catch (error) {
+      const unauthorized =
+        error instanceof Error &&
+        error.message === 'MESSAGE_STATUS_UNAUTHORIZED';
+      const retryable =
+        error instanceof Error && error.message === 'MESSAGE_STATUS_NOT_READY';
+      return c.json(
+        {
+          title: unauthorized
+            ? 'Unauthorized'
+            : retryable
+              ? 'Service Unavailable'
+              : 'Bad Request',
+          status: unauthorized ? 401 : retryable ? 503 : 400,
+        },
+        unauthorized ? 401 : retryable ? 503 : 400,
+      );
+    }
+  });
   const authCaps: AuthCapabilities = {
     enabled,
     magicLink: Boolean(env.db && env.auth && env.auth.mailer.kind !== 'refuse'),
@@ -213,6 +297,49 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
   );
   app.route('/storage', createAssetRoutes(assetStore));
 
+  app.use('/audit-exports/*', createPrincipalMiddleware(auth));
+  app.use('/audit-exports/*', requirePrincipal());
+  app.get('/audit-exports/:teamId/:jobId', async (c) => {
+    if (!pool || !auditExportStore) {
+      return c.json({ title: 'Audit export unavailable', status: 503 }, 503, {
+        'Cache-Control': 'no-store',
+      });
+    }
+    const handle = c.req.header(AUDIT_EXPORT_HANDLE_HEADER);
+    if (!handle || handle.length < 43 || handle.length > 128) {
+      return c.json({ title: 'Not Found', status: 404 }, 404, {
+        'Cache-Control': 'no-store',
+      });
+    }
+    try {
+      const principal = c.get('principal');
+      if (!principal) throw new Error('audit export unauthenticated');
+      const download = await openAuditExportDownload(
+        {
+          tenantDb: createTenantDb(pool, c.req.param('teamId')),
+          principal,
+          requestId: c.get('requestId'),
+        },
+        c.req.param('jobId'),
+        handle,
+        auditExportStore,
+      );
+      return new Response(download.body, {
+        headers: {
+          'Cache-Control': 'no-store',
+          'Content-Disposition': 'attachment; filename="studio-activity.csv"',
+          'Content-Length': String(download.size),
+          'Content-Type': 'text/csv; charset=utf-8',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+    } catch {
+      return c.json({ title: 'Not Found', status: 404 }, 404, {
+        'Cache-Control': 'no-store',
+      });
+    }
+  });
+
   // The SPA's typed procedures (oRPC v2, decision recorded on #1244),
   // implementing the @codaco/studio-rpc boundary contract.
   if (env.auth) {
@@ -231,6 +358,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     maintenancePool: deps.maintenancePool,
     protocolBuilder: createProtocolBuilderRuntime(),
     assetStore,
+    encryptionKeys: deps.encryptionKeys,
     templateRegistryOrigin: env.templateRegistryOrigin,
   });
   const captureRpcError = (error: unknown) => {
@@ -263,7 +391,15 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
         ),
       },
     });
-    if (matched) return c.newResponse(response.body, response);
+    if (matched) {
+      const headers = new Headers(response.headers);
+      headers.set('Cache-Control', 'no-store');
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    }
     await next();
   });
 
@@ -279,6 +415,7 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
     '/api',
     '/rpc',
     '/storage',
+    '/audit-exports',
     '/healthz',
     '/readyz',
     '/metrics',

@@ -33,6 +33,7 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
   if (event.eventVersion !== 1) return null;
   switch (event.eventType) {
     case 'participant.pii.read':
+    case 'message.contact.read':
       return 'contact_access';
     case 'participant.pii.lookup':
       return event.details.resultCount > 0 ? 'contact_access' : null;
@@ -59,6 +60,8 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
     case 'protocol.draft.committed':
     case 'study.created':
     case 'study.creation_denied':
+    case 'interview.link.issued':
+    case 'interview.link.rotated':
     case 'team.created':
     case 'team.invitation.acceptance_denied':
     case 'team.invitation.acceptance_failed':
@@ -75,6 +78,22 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
     case 'team.member.role_change_failed':
     case 'team.member.role_changed':
     case 'webhook.secret.rotated':
+    case 'webhook.subscription.created':
+    case 'webhook.subscription.disabled':
+    case 'webhook.delivery.delivered':
+    case 'webhook.delivery.failed':
+    case 'webhook.delivery.uncertain':
+    case 'webhook.delivery.suppressed':
+    case 'message.occurrence.dispatched':
+    case 'message.occurrence.blocked':
+    case 'message.occurrence.expired':
+    case 'message.payload.read':
+    case 'message.link.read':
+    case 'message.delivery.delivered':
+    case 'message.delivery.failed':
+    case 'message.delivery.uncertain':
+    case 'message.delivery.suppressed':
+    case 'message.delivery.status_received':
       return null;
   }
   return null;

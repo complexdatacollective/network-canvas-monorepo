@@ -822,6 +822,7 @@ jobs:
           pnpm --filter=@codaco/studio-client build
           pnpm --filter=@codaco/studio-server build
           pnpm --filter=@codaco/studio-server build:netlify
+          pnpm --filter=@codaco/template-registry build
       # Every other Storybook is built in CI as Chromatic's upload input
       # (chromatic.yml builds fresco-ui, interview and interviewer). Protocol
       # Builder has no Chromatic project by design, and the build step above
@@ -842,7 +843,10 @@ jobs:
         # This uses the built deployables and real browser SDK. External
         # requests are intercepted locally, including the enabled controls.
         # The server subprocess suite runs in the existing Studio test step.
+        env:
+          STUDIO_TELEMETRY_KERNEL_IMAGE: studio-telemetry-qualification:${{ github.sha }}
         run: |
+          docker build -f apps/studio/Dockerfile -t "$STUDIO_TELEMETRY_KERNEL_IMAGE" .
           pnpm --filter @codaco/studio-client exec playwright install --with-deps chromium
           pnpm --filter @codaco/studio-client test:telemetry
       - name: Typecheck workspaces
@@ -3059,6 +3063,7 @@ jobs:
       fresco_version: ${{ steps.fresco.outputs.version }}
       interviewer_released: ${{ steps.interviewer.outputs.released }}
       interviewer_version: ${{ steps.interviewer.outputs.version }}
+      studio_released: ${{ steps.studio_client.outputs.released == 'true' || steps.studio_rpc.outputs.released == 'true' || steps.studio_server.outputs.released == 'true' || steps.studio_sync.outputs.released == 'true' || steps.template_registry.outputs.released == 'true' }}
       website_released: ${{ steps.website.outputs.released }}
       website_version: ${{ steps.website.outputs.version }}
     steps:
@@ -3100,12 +3105,55 @@ jobs:
           PKG_NAME: '@codaco/interviewer'
           RELEASE_CHANNEL: stable-tagged
         run: bash .github/scripts/detect-app-release.sh
+      - id: studio_client
+        env:
+          PKG_JSON: apps/studio/client/package.json
+          PKG_NAME: '@codaco/studio-client'
+          RELEASE_CHANNEL: stable
+        run: bash .github/scripts/detect-app-release.sh
+      - id: studio_rpc
+        env:
+          PKG_JSON: packages/studio-rpc/package.json
+          PKG_NAME: '@codaco/studio-rpc'
+          RELEASE_CHANNEL: stable
+        run: bash .github/scripts/detect-app-release.sh
+      - id: studio_server
+        env:
+          PKG_JSON: apps/studio/server/package.json
+          PKG_NAME: '@codaco/studio-server'
+          RELEASE_CHANNEL: stable
+        run: bash .github/scripts/detect-app-release.sh
+      - id: studio_sync
+        env:
+          PKG_JSON: packages/studio-sync/package.json
+          PKG_NAME: '@codaco/studio-sync'
+          RELEASE_CHANNEL: stable
+        run: bash .github/scripts/detect-app-release.sh
+      - id: template_registry
+        env:
+          PKG_JSON: apps/template-registry/package.json
+          PKG_NAME: '@codaco/template-registry'
+          RELEASE_CHANNEL: stable
+        run: bash .github/scripts/detect-app-release.sh
       - id: website
         env:
           PKG_JSON: apps/networkcanvas.com/package.json
           PKG_NAME: 'networkcanvas.com'
           RELEASE_CHANNEL: stable
         run: bash .github/scripts/detect-app-release.sh
+
+  # A Studio distribution is expensive and mutating, so only the merge commit
+  # that changes the separately gated Studio version invokes it. The reusable
+  # workflow retains a manual dispatch for interrupted-run recovery.
+  studio-distribution-release:
+    needs: apps-release-detect
+    if: needs.apps-release-detect.outputs.studio_released == 'true'
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+      packages: write
+    uses: ./.github/workflows/studio-release.yml
 
   # Build, deploy to Netlify production, and cut a GitHub release for architect
   # when its version changed. Separate from the interviewer job (below) so one

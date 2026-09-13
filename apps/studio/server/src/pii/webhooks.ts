@@ -26,6 +26,15 @@ export type WebhookCiphertextRow = {
   state: string;
 };
 
+export type WebhookSecretRead = {
+  secret: Buffer;
+  snapshot: {
+    secretCiphertext: Buffer;
+    secretKeyId: string;
+    secretAlgorithm: string;
+  };
+};
+
 export async function selectWebhookCiphertext(
   client: pg.PoolClient,
   teamId: string,
@@ -90,11 +99,11 @@ const teams = new TeamStore();
  * rechecks live membership; delivery proves the actual unexpired database
  * lease and active subscription; rotation requires the maintenance DB role.
  */
-export async function readWebhookSecret(
+async function readWebhookSecretWithSnapshot(
   keys: EncryptionKeys,
   subscriptionId: string,
   authority: WebhookReadAuthority,
-): Promise<Buffer> {
+): Promise<WebhookSecretRead> {
   const teamId =
     authority.kind === 'configuration'
       ? authority.context.tenantDb.teamId
@@ -168,7 +177,7 @@ export async function readWebhookSecret(
             const current = await recheck(client);
             if (authority.kind === 'delivery') {
               const lease = await client.query(
-                `SELECT id FROM webhook_deliveries WHERE id = $1 AND team_id = $2 AND subscription_id = $3 AND lease_owner = $4 AND lease_expires_at > statement_timestamp() AND delivered_at IS NULL AND failed_at IS NULL FOR UPDATE`,
+                `SELECT id FROM webhook_deliveries WHERE id = $1 AND team_id = $2 AND subscription_id = $3 AND lease_owner = $4 AND lease_expires_at > statement_timestamp() AND delivered_at IS NULL AND failed_at IS NULL AND uncertain_at IS NULL FOR UPDATE`,
                 [
                   authority.deliveryId,
                   teamId,
@@ -196,7 +205,7 @@ export async function readWebhookSecret(
       }
     },
   });
-  return protection.readIntegration(
+  const secret = await protection.readIntegration(
     { kind: 'webhook', teamId, subscriptionId, column: 'secret_ciphertext' },
     {
       keyId: row.secret_key_id,
@@ -204,6 +213,31 @@ export async function readWebhookSecret(
       envelope: row.secret_ciphertext,
     },
   );
+  return {
+    secret,
+    snapshot: {
+      secretCiphertext: row.secret_ciphertext,
+      secretKeyId: row.secret_key_id,
+      secretAlgorithm: row.secret_algorithm,
+    },
+  };
+}
+
+export async function readWebhookSecret(
+  keys: EncryptionKeys,
+  subscriptionId: string,
+  authority: WebhookReadAuthority,
+): Promise<Buffer> {
+  return (await readWebhookSecretWithSnapshot(keys, subscriptionId, authority))
+    .secret;
+}
+
+export async function readWebhookSecretForDelivery(
+  keys: EncryptionKeys,
+  subscriptionId: string,
+  authority: Extract<WebhookReadAuthority, { kind: 'delivery' }>,
+): Promise<WebhookSecretRead> {
+  return readWebhookSecretWithSnapshot(keys, subscriptionId, authority);
 }
 
 /** Existing subscription configuration: raw secrets never enter SQL or audit. */

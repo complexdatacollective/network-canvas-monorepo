@@ -9,6 +9,10 @@ until mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSW
 done
 mc mb --ignore-existing local/studio >/dev/null
 mc anonymous set none local/studio >/dev/null
+# Runtime tombstones remain the prompt cleanup authority. This provider rule is
+# a seven-day backstop for both abandoned multipart uploads and expired private
+# export objects under their attempt-specific prefix.
+mc ilm rule add local/studio --prefix 'audit-exports/' --expire-days 7 >/dev/null
 mc admin user add local "$S3_ACCESS_KEY_ID" "$S3_SECRET_ACCESS_KEY" >/dev/null
 mc admin policy create local studio-assets /deployment/minio-policy.json >/dev/null
 mc admin policy attach local studio-assets --user "$S3_ACCESS_KEY_ID" >/dev/null

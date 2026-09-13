@@ -3,6 +3,16 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { serve } from '@hono/node-server';
 import { WebSocketServer } from 'ws';
 
+import {
+  createSmtpEmailSender,
+  type EmailSender,
+} from '@codaco/studio-sync/email-sender';
+import { createPostmarkEmailSender } from '@codaco/studio-sync/postmark-email-sender';
+import {
+  createTwilioSmsSender,
+  type SmsSender,
+} from '@codaco/studio-sync/sms-sender';
+
 import { createApp } from './app.ts';
 import { createAssetStore } from './assets.ts';
 import {
@@ -10,6 +20,7 @@ import {
   type AuditAlertWorker,
 } from './audit/alert-delivery.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
+import { startAuditExportWorker } from './audit/export.ts';
 import { createMailer } from './auth/email.ts';
 import { mountClient } from './client-assets.ts';
 import {
@@ -26,12 +37,17 @@ import { logOperational } from './observability/logger.ts';
 import { createOperationalApp } from './observability/operational-app.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
 import { createObservability } from './observability/runtime.ts';
+import type { OutboxWorker } from './outbox/worker.ts';
 import type { EncryptionKeys } from './pii/keys.ts';
 import {
   DatabaseRuntimeAdmissionError,
   initializeServingEncryption,
 } from './pii/serving-admission.ts';
 import { acquireWebLease } from './runtime/web-lease.ts';
+import {
+  startMessageDeliveryWorker,
+  type MessageDeliveryWorker,
+} from './schedule/message-delivery.ts';
 import {
   type InvitationDeliveryWorker,
   startInvitationDeliveryWorker,
@@ -40,6 +56,10 @@ import { createServerTelemetry, type ServerTelemetry } from './telemetry.ts';
 import { startTemplateRegistryIntentWorker } from './template/registry-intent-worker.ts';
 import { reconcileClaimedTemplateRegistryIntent } from './template/registry.ts';
 import { STUDIO_VERSION } from './version.ts';
+import {
+  startWebhookDeliveryWorker,
+  type WebhookDeliveryWorker,
+} from './webhook/delivery.ts';
 
 // Process policy is installed before configuration or SDK loading can fail.
 let telemetry: ServerTelemetry | undefined;
@@ -99,6 +119,11 @@ const schemaPool = pool ?? maintenancePool;
 const assetStore = env.s3 ? createAssetStore(env.s3) : undefined;
 let invitationDeliveryWorker: InvitationDeliveryWorker | undefined;
 let auditAlertWorker: AuditAlertWorker | undefined;
+let webhookDeliveryWorker: WebhookDeliveryWorker | undefined;
+let messageDeliveryWorker: MessageDeliveryWorker | undefined;
+let messageEmailSender: EmailSender | undefined;
+let messageSmsSender: SmsSender | undefined;
+let auditExportWorker: OutboxWorker | undefined;
 let templateRegistryIntentWorker:
   | ReturnType<typeof startTemplateRegistryIntentWorker>
   | undefined;
@@ -113,10 +138,68 @@ function startDatabaseWorkers(): void {
     observer: observability.metrics.observer,
     onError: (error) => telemetry?.capture('server_worker', error),
   });
+  if (encryptionKeys) {
+    webhookDeliveryWorker ??= startWebhookDeliveryWorker({
+      pool: maintenancePool,
+      encryptionKeys,
+      observer: observability.metrics.observer,
+      reportError: (error) => telemetry?.capture('server_worker', error),
+    });
+    const mailerConfig = env.auth?.mailer;
+    if (!messageEmailSender && mailerConfig?.kind === 'smtp')
+      messageEmailSender = createSmtpEmailSender({ url: mailerConfig.url });
+    if (!messageEmailSender && mailerConfig?.kind === 'postmark')
+      messageEmailSender = createPostmarkEmailSender({
+        serverToken: mailerConfig.serverToken,
+        messageStream: mailerConfig.messageStream,
+      });
+    const twilio = env.messageDelivery?.twilio;
+    if (!messageSmsSender && twilio && env.auth)
+      messageSmsSender = createTwilioSmsSender({
+        ...twilio,
+        callbackBaseUrl: env.auth.baseUrl,
+      });
+    if (
+      !messageDeliveryWorker &&
+      env.auth &&
+      (messageEmailSender || messageSmsSender)
+    ) {
+      messageDeliveryWorker = startMessageDeliveryWorker({
+        pool: maintenancePool,
+        encryptionKeys,
+        publicBaseUrl: env.auth.baseUrl,
+        observer: observability.metrics.observer,
+        reportError: (error) => telemetry?.capture('server_worker', error),
+        ...(messageEmailSender &&
+        mailerConfig &&
+        (mailerConfig.kind === 'smtp' || mailerConfig.kind === 'postmark')
+          ? {
+              email: {
+                sender: messageEmailSender,
+                from: mailerConfig.from,
+                provider: mailerConfig.kind,
+              },
+            }
+          : {}),
+        ...(messageSmsSender
+          ? { sms: { sender: messageSmsSender, provider: 'twilio' as const } }
+          : {}),
+      });
+    }
+  }
+  if (assetStore && encryptionKeys) {
+    auditExportWorker ??= startAuditExportWorker({
+      pool: maintenancePool,
+      store: assetStore,
+      keys: encryptionKeys,
+      observer: observability.metrics.observer,
+      reportError: (error) => telemetry?.capture('server_worker', error),
+    });
+  }
   if (!env.auth) return;
   const emailMailer = env.auth.mailer.kind === 'refuse' ? undefined : mailer;
   const registryOrigin = env.templateRegistryOrigin;
-  if (!templateRegistryIntentWorker && registryOrigin && assetStore) {
+  if (!templateRegistryIntentWorker) {
     templateRegistryIntentWorker = startTemplateRegistryIntentWorker({
       pool: maintenancePool,
       process: (claim) =>
@@ -253,6 +336,19 @@ const app = servesWeb
         env.auth && env.auth.mailer.kind !== 'refuse',
       ),
       pool,
+      ...(maintenancePool
+        ? {
+            messageStatus: {
+              maintenancePool,
+              ...(env.messageDelivery?.postmarkWebhookToken
+                ? { postmarkToken: env.messageDelivery.postmarkWebhookToken }
+                : {}),
+              ...(env.messageDelivery?.twilio
+                ? { twilioAuthToken: env.messageDelivery.twilio.authToken }
+                : {}),
+            },
+          }
+        : {}),
       maintenancePool,
     })
   : createOperationalApp(env, observability, undefined, (error) =>
@@ -288,6 +384,11 @@ stopServing = () => {
   for (const socket of wsServer?.clients ?? []) socket.terminate();
   void invitationDeliveryWorker?.stop();
   void auditAlertWorker?.stop();
+  void webhookDeliveryWorker?.stop();
+  void messageDeliveryWorker?.stop();
+  messageEmailSender?.close();
+  messageSmsSender?.close();
+  void auditExportWorker?.stop();
   void templateRegistryIntentWorker?.stop();
   void monitoringRollupWorker?.stop();
   mailer?.close();
@@ -311,9 +412,14 @@ function shutdown() {
   const workersStopped = Promise.all([
     invitationDeliveryWorker?.stop(),
     auditAlertWorker?.stop(),
+    webhookDeliveryWorker?.stop(),
+    messageDeliveryWorker?.stop(),
+    auditExportWorker?.stop(),
     templateRegistryIntentWorker?.stop(),
     monitoringRollupWorker?.stop(),
   ]);
+  messageEmailSender?.close();
+  messageSmsSender?.close();
   mailer?.close();
   const httpClosed = new Promise<void>((resolve, reject) => {
     server.close((error) => (error ? reject(error) : resolve()));
