@@ -65,6 +65,113 @@ it('probes object storage even when no artifacts exist', async () => {
   expect(ownerQuery).not.toHaveBeenCalled();
 });
 
+it('rejects a deleted artifact whose object bytes survived a completed deletion job', async () => {
+  const bytes = new Uint8Array([1, 2, 3]);
+  const ownerQuery = vi
+    .fn()
+    .mockResolvedValueOnce({
+      rows: [
+        {
+          root: 'a'.repeat(64),
+          raw_hash: templateBytesHash(bytes),
+          byte_size: bytes.byteLength,
+          template: null,
+          metadata: null,
+          license: null,
+          deleted: true,
+          deletion_requested: true,
+          deletion_completed: true,
+        },
+      ],
+    })
+    .mockResolvedValue({ rows: [{ '?column?': 1 }] });
+  const blobs = {
+    ready: vi.fn(async () => undefined),
+    get: vi.fn(async () => bytes),
+  } as unknown as RegistryBlobStore;
+
+  await expect(
+    verifyRegistryRecoveryArtifacts(
+      { query: ownerQuery } as unknown as pg.PoolClient,
+      {
+        query: vi.fn(async () => ({ rows: [{ '?column?': 1 }] })),
+      } as unknown as pg.PoolClient,
+      blobs,
+    ),
+  ).rejects.toThrow('REGISTRY_RECOVERY_ARTIFACT_INVALID');
+});
+
+it('accepts a deleted artifact only after both private content and object bytes are absent', async () => {
+  const ownerQuery = vi
+    .fn()
+    .mockResolvedValueOnce({
+      rows: [
+        {
+          root: 'a'.repeat(64),
+          raw_hash: 'b'.repeat(64),
+          byte_size: 123,
+          template: null,
+          metadata: null,
+          license: null,
+          deleted: true,
+          deletion_requested: true,
+          deletion_completed: true,
+        },
+      ],
+    })
+    .mockResolvedValue({ rows: [{ '?column?': 1 }] });
+  const blobs = {
+    ready: vi.fn(async () => undefined),
+    get: vi.fn(async () => null),
+  } as unknown as RegistryBlobStore;
+
+  await expect(
+    verifyRegistryRecoveryArtifacts(
+      { query: ownerQuery } as unknown as pg.PoolClient,
+      {
+        query: vi.fn(async () => ({ rows: [{ '?column?': 1 }] })),
+      } as unknown as pg.PoolClient,
+      blobs,
+    ),
+  ).resolves.toBeUndefined();
+});
+
+it('retains a pending deletion for the idempotent cleanup worker to resume', async () => {
+  const bytes = new Uint8Array([1, 2, 3]);
+  const ownerQuery = vi
+    .fn()
+    .mockResolvedValueOnce({
+      rows: [
+        {
+          root: 'a'.repeat(64),
+          raw_hash: templateBytesHash(bytes),
+          byte_size: bytes.byteLength,
+          template: null,
+          metadata: null,
+          license: null,
+          deleted: true,
+          deletion_requested: true,
+          deletion_completed: false,
+        },
+      ],
+    })
+    .mockResolvedValue({ rows: [{ '?column?': 1 }] });
+  const blobs = {
+    ready: vi.fn(async () => undefined),
+    get: vi.fn(async () => bytes),
+  } as unknown as RegistryBlobStore;
+
+  await expect(
+    verifyRegistryRecoveryArtifacts(
+      { query: ownerQuery } as unknown as pg.PoolClient,
+      {
+        query: vi.fn(async () => ({ rows: [{ '?column?': 1 }] })),
+      } as unknown as pg.PoolClient,
+      blobs,
+    ),
+  ).resolves.toBeUndefined();
+});
+
 it.each([false, true])(
   'bounds artifact inventory pages and checks the final page (corrupt=%s)',
   async (corrupt) => {

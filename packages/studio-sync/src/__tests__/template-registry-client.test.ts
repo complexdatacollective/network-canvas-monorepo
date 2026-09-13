@@ -16,7 +16,7 @@ import {
 } from '../template-registry-client.ts';
 
 const ENTRY_ID = '11111111-1111-4111-8111-111111111111';
-const PUBLISHER_ID = '22222222-2222-4222-8222-222222222222';
+const PUBLISHER_ID = 'aaaaaaaa-2222-4222-8222-222222222222';
 const ORIGIN = 'https://registry.example';
 const CREDENTIAL = `ncr1_${'a'.repeat(43)}`;
 const png = Uint8Array.from(
@@ -171,7 +171,15 @@ describe('TemplateRegistryClient', () => {
         const request = new Request(input, init);
         seen.push(request);
         return jsonResponse({
-          data: [entrySummary(root)],
+          data: [
+            entrySummary(root, {
+              publisher: {
+                id: PUBLISHER_ID.toUpperCase(),
+                name: 'Publisher',
+                orcid: null,
+              },
+            }),
+          ],
           next_cursor: null,
           has_more: false,
         });
@@ -180,7 +188,7 @@ describe('TemplateRegistryClient', () => {
     await expect(client.findEntry(root, PUBLISHER_ID)).resolves.toMatchObject({
       id: ENTRY_ID,
       root,
-      publisher: { id: PUBLISHER_ID },
+      publisher: { id: PUBLISHER_ID.toUpperCase() },
     });
     expect(seen).toHaveLength(1);
     const url = new URL(seen[0]!.url);

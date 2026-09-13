@@ -58,10 +58,28 @@ export const RegistryEntrySummarySchema = z
   })
   .meta({ id: 'EntrySummary' });
 
+const RegistryActionUrlSchema = z
+  .url()
+  .regex(/^https?:\/\//i)
+  .refine((value) => {
+    const url = new URL(value);
+    return (
+      url.hostname.length > 0 &&
+      !url.username &&
+      !url.password &&
+      !url.hash &&
+      !value.includes('\\')
+    );
+  });
+
 export const RegistryEntrySchema = RegistryEntrySummarySchema.extend({
   metadata: TemplateMetadataSchema,
-  artifact_url: z.url(),
-  report_url: z.url(),
+  artifact_url: RegistryActionUrlSchema.describe(
+    'Absolute HTTP(S) Registry GET URL for the artifact identified by this entry root; no user information or fragment.',
+  ),
+  report_url: RegistryActionUrlSchema.describe(
+    'Absolute HTTP(S) Registry POST URL for reports targeting this entry ID; no user information or fragment.',
+  ),
 }).meta({ id: 'Entry' });
 
 export type RegistryPublisher = z.infer<typeof RegistryPublisherSchema>;
