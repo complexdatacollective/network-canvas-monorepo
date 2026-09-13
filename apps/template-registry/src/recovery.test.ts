@@ -530,6 +530,67 @@ it.each(['email', 'verification'] as const)(
   },
 );
 
+it.each(['unverified publisher', 'suspended operator'] as const)(
+  'rejects an independently inventoried %s authority violation',
+  async (kind) => {
+    const installation = await createRegistryInstallation();
+    const fixture = await createRegistryFixture({}, installation);
+    try {
+      const migrations = await readMigrations(
+        fileURLToPath(new URL('../migrations', import.meta.url)),
+        'Template Registry',
+      );
+      await registryMigrator.migrate(
+        fixture.owner,
+        migrations,
+        REGISTRY_SCHEMA_FINGERPRINT,
+        installation.allowedLogins,
+      );
+      const account = await fixture.account(
+        'invalid-authority@example.test',
+        true,
+      );
+      await fixture.owner.query(
+        kind === 'unverified publisher'
+          ? 'UPDATE registry_auth_user SET email_verified = false WHERE id = $1'
+          : 'UPDATE registry_publishers SET suspended_at = now() WHERE id = $1',
+        [
+          kind === 'unverified publisher'
+            ? account.session.userId
+            : account.publisher.id,
+        ],
+      );
+      const reconciliation = await registryRecoveryEvidence(fixture.owner);
+      await installation.closeRuntimePools();
+      await installation.withAdministrator((administrator) =>
+        administrator.query(
+          `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN;
+           ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
+        ),
+      );
+
+      await expect(
+        reconcileRegistryRecovery({
+          pool: fixture.owner,
+          backupPool: installation.backupPool,
+          blobs: fixture.blobs,
+          admission: { allowedLogins: installation.allowedLogins },
+          reconciliation,
+        }),
+      ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT count(*)::int AS count FROM registry_credentials WHERE revoked_at IS NULL',
+          )
+        ).rows,
+      ).toEqual([{ count: 1 }]);
+    } finally {
+      await fixture.dispose();
+    }
+  },
+);
+
 it.each([
   'surviving-session',
   'prepared-transaction',

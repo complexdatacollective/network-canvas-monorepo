@@ -238,6 +238,20 @@ export async function reconcileRegistryRecovery({
       )
     )
       throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    const authority = await client.query<{ invalid: boolean }>(`SELECT
+      EXISTS (
+        SELECT 1 FROM registry_publishers publisher
+        JOIN registry_auth_user account ON account.id = publisher.user_id
+        WHERE NOT account.email_verified
+      ) OR EXISTS (
+        SELECT 1 FROM registry_operators operator
+        LEFT JOIN registry_publishers publisher
+          ON publisher.user_id = operator.user_id
+          AND publisher.suspended_at IS NULL
+        WHERE operator.enabled AND publisher.id IS NULL
+      ) AS invalid`);
+    if (authority.rows[0]?.invalid !== false)
+      throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
     const entriesInventory =
       createRegistryRecoveryInventoryAccumulator('entries');
     for await (const entries of recoveryPages<{
