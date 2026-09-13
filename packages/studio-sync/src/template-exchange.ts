@@ -164,12 +164,13 @@ const finiteNumber = (value: unknown): value is number =>
 const emptyCoordinates = (value: unknown): value is [] =>
   Array.isArray(value) && value.length === 0;
 
-function validBbox(value: unknown): boolean {
+function validBbox(value: unknown, dimensions: number | undefined): boolean {
   return (
     value === undefined ||
     (Array.isArray(value) &&
       value.length >= 4 &&
       value.length % 2 === 0 &&
+      (dimensions === undefined || value.length === dimensions * 2) &&
       value.every(finiteNumber))
   );
 }
@@ -199,75 +200,169 @@ function validRing(value: unknown): value is number[][] {
   return Boolean(first && last && samePosition(first, last));
 }
 
-function validGeometry(value: unknown, depth = 0): boolean {
-  if (!isRecord(value) || depth > 64 || !validBbox(value.bbox)) return false;
-  switch (value.type) {
-    case 'Point':
-      return (
-        emptyCoordinates(value.coordinates) || validPosition(value.coordinates)
-      );
-    case 'MultiPoint':
-      if (emptyCoordinates(value.coordinates)) return true;
-      return (
-        Array.isArray(value.coordinates) &&
-        value.coordinates.every(validPosition)
-      );
-    case 'LineString':
-      return (
-        emptyCoordinates(value.coordinates) || validLine(value.coordinates)
-      );
-    case 'MultiLineString':
-      if (emptyCoordinates(value.coordinates)) return true;
-      return (
-        Array.isArray(value.coordinates) && value.coordinates.every(validLine)
-      );
-    case 'Polygon':
-      if (emptyCoordinates(value.coordinates)) return true;
-      return (
-        Array.isArray(value.coordinates) && value.coordinates.every(validRing)
-      );
-    case 'MultiPolygon':
-      if (emptyCoordinates(value.coordinates)) return true;
-      return (
-        Array.isArray(value.coordinates) &&
-        value.coordinates.every(
-          (polygon) =>
-            Array.isArray(polygon) &&
-            polygon.length > 0 &&
-            polygon.every(validRing),
-        )
-      );
-    case 'GeometryCollection':
-      return (
-        Array.isArray(value.geometries) &&
-        value.geometries.every((geometry) => validGeometry(geometry, depth + 1))
-      );
-    default:
-      return false;
+type Dimensions = number | undefined;
+
+function mergeDimensions(
+  values: ReadonlyArray<Dimensions | null>,
+): Dimensions | null {
+  // A GeoJSON object's coordinate tree needs one dimension count for the
+  // bbox 2*n contract. Mixed-dimensional trees are not portable.
+  let merged: Dimensions;
+  for (const value of values) {
+    if (value === null) return null;
+    if (value === undefined) continue;
+    if (merged !== undefined && merged !== value) return null;
+    merged = value;
   }
+  return merged;
 }
 
-function validFeature(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    value.type === 'Feature' &&
-    validBbox(value.bbox) &&
-    Object.hasOwn(value, 'geometry') &&
-    (value.geometry === null || validGeometry(value.geometry)) &&
-    Object.hasOwn(value, 'properties') &&
-    (value.properties === null || isRecord(value.properties)) &&
-    (value.id === undefined ||
-      typeof value.id === 'string' ||
-      finiteNumber(value.id))
-  );
+function coordinateDimensions(value: unknown): Dimensions | null {
+  const pending = [value];
+  let dimensions: Dimensions;
+  while (pending.length > 0) {
+    const next = pending.pop();
+    if (!Array.isArray(next)) return null;
+    if (next.length === 0) continue;
+    if (next.every(finiteNumber)) {
+      if (!validPosition(next)) return null;
+      if (dimensions !== undefined && dimensions !== next.length) return null;
+      dimensions = next.length;
+      continue;
+    }
+    pending.push(...next);
+  }
+  return dimensions;
+}
+
+function hasMember(
+  value: Record<string, unknown>,
+  ...names: string[]
+): boolean {
+  return names.some((name) => Object.hasOwn(value, name));
+}
+
+function geometryDimensions(value: unknown, depth = 0): Dimensions | null {
+  if (
+    !isRecord(value) ||
+    depth > 64 ||
+    hasMember(value, 'geometry', 'properties', 'features')
+  )
+    return null;
+  let dimensions: Dimensions | null;
+  switch (value.type) {
+    case 'Point':
+      if (
+        hasMember(value, 'geometries') ||
+        (!emptyCoordinates(value.coordinates) &&
+          !validPosition(value.coordinates))
+      )
+        return null;
+      dimensions = coordinateDimensions(value.coordinates);
+      break;
+    case 'MultiPoint':
+      if (
+        hasMember(value, 'geometries') ||
+        (!emptyCoordinates(value.coordinates) &&
+          (!Array.isArray(value.coordinates) ||
+            !value.coordinates.every(validPosition)))
+      )
+        return null;
+      dimensions = coordinateDimensions(value.coordinates);
+      break;
+    case 'LineString':
+      if (
+        hasMember(value, 'geometries') ||
+        (!emptyCoordinates(value.coordinates) && !validLine(value.coordinates))
+      )
+        return null;
+      dimensions = coordinateDimensions(value.coordinates);
+      break;
+    case 'MultiLineString':
+      if (
+        hasMember(value, 'geometries') ||
+        (!emptyCoordinates(value.coordinates) &&
+          (!Array.isArray(value.coordinates) ||
+            !value.coordinates.every(validLine)))
+      )
+        return null;
+      dimensions = coordinateDimensions(value.coordinates);
+      break;
+    case 'Polygon':
+      if (
+        hasMember(value, 'geometries') ||
+        (!emptyCoordinates(value.coordinates) &&
+          (!Array.isArray(value.coordinates) ||
+            !value.coordinates.every(validRing)))
+      )
+        return null;
+      dimensions = coordinateDimensions(value.coordinates);
+      break;
+    case 'MultiPolygon':
+      if (
+        hasMember(value, 'geometries') ||
+        (!emptyCoordinates(value.coordinates) &&
+          (!Array.isArray(value.coordinates) ||
+            !value.coordinates.every(
+              (polygon) =>
+                Array.isArray(polygon) &&
+                polygon.length > 0 &&
+                polygon.every(validRing),
+            )))
+      )
+        return null;
+      dimensions = coordinateDimensions(value.coordinates);
+      break;
+    case 'GeometryCollection':
+      if (hasMember(value, 'coordinates') || !Array.isArray(value.geometries))
+        return null;
+      dimensions = mergeDimensions(
+        value.geometries.map((geometry) =>
+          geometryDimensions(geometry, depth + 1),
+        ),
+      );
+      break;
+    default:
+      return null;
+  }
+  return dimensions !== null && validBbox(value.bbox, dimensions)
+    ? dimensions
+    : null;
+}
+
+function featureDimensions(value: unknown): Dimensions | null {
+  if (
+    !isRecord(value) ||
+    value.type !== 'Feature' ||
+    hasMember(value, 'coordinates', 'geometries', 'features') ||
+    !Object.hasOwn(value, 'geometry') ||
+    !Object.hasOwn(value, 'properties') ||
+    (value.properties !== null && !isRecord(value.properties)) ||
+    (value.id !== undefined &&
+      typeof value.id !== 'string' &&
+      !finiteNumber(value.id))
+  )
+    return null;
+  const dimensions =
+    value.geometry === null ? undefined : geometryDimensions(value.geometry);
+  return dimensions !== null && validBbox(value.bbox, dimensions)
+    ? dimensions
+    : null;
 }
 
 function validGeoJson(value: unknown): boolean {
-  if (!isRecord(value) || !validBbox(value.bbox)) return false;
-  if (value.type === 'Feature') return validFeature(value);
-  if (value.type === 'FeatureCollection')
-    return Array.isArray(value.features) && value.features.every(validFeature);
-  return validGeometry(value);
+  if (!isRecord(value)) return false;
+  if (value.type === 'Feature') return featureDimensions(value) !== null;
+  if (value.type === 'FeatureCollection') {
+    if (
+      hasMember(value, 'coordinates', 'geometries', 'geometry', 'properties') ||
+      !Array.isArray(value.features)
+    )
+      return false;
+    const dimensions = mergeDimensions(value.features.map(featureDimensions));
+    return dimensions !== null && validBbox(value.bbox, dimensions);
+  }
+  return geometryDimensions(value) !== null;
 }
 
 async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
