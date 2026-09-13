@@ -1,6 +1,6 @@
 import { ORPCError } from '@orpc/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -129,10 +129,20 @@ const messages = defineMessages({
     defaultMessage: 'This Studio instance has no Template Registry configured.',
     description: 'Registry unavailable message.',
   },
+  importPending: {
+    id: 'studio.templates.importPending',
+    defaultMessage: 'Import is pending Registry reconciliation.',
+    description: 'Durable Registry import pending announcement.',
+  },
   imported: {
     id: 'studio.templates.imported',
     defaultMessage: 'The Registry template was imported.',
     description: 'Registry import success announcement.',
+  },
+  publicationPending: {
+    id: 'studio.templates.publicationPending',
+    defaultMessage: 'Publication is pending Registry reconciliation.',
+    description: 'Durable Registry publication pending announcement.',
   },
   published: {
     id: 'studio.templates.published',
@@ -176,12 +186,85 @@ function TeamTemplates({
   const intl = useAppIntl();
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState<string | null>(null);
-  const templates = useQuery(
-    orpc.templates.list.queryOptions({ input: { teamId } }),
-  );
+  const [pending, setPending] = useState<
+    Array<{
+      id: string;
+      kind: 'import' | 'publication';
+      versionId: string;
+      origin: string | null;
+    }>
+  >([]);
+  const templatesQuery = orpc.templates.list.queryOptions({
+    input: { teamId },
+  });
+  const intentStates = useQuery({
+    ...orpc.templates.registryIntents.queryOptions({
+      input: {
+        teamId,
+        intents: pending.slice(0, 100).map(({ id, kind }) => ({ id, kind })),
+      },
+    }),
+    enabled: canManage && pending.length > 0,
+    refetchInterval: pending.length > 0 ? 2_000 : false,
+  });
+  useEffect(() => {
+    const refused = intentStates.data?.filter(
+      (intent) =>
+        intent.status === 'quarantined' || intent.status === 'unavailable',
+    );
+    if (
+      !refused?.some((intent) =>
+        pending.some(
+          (operation) =>
+            operation.id === intent.id && operation.kind === intent.kind,
+        ),
+      )
+    )
+      return;
+    setPending((current) =>
+      current.filter(
+        (operation) =>
+          !refused.some(
+            (intent) =>
+              intent.id === operation.id && intent.kind === operation.kind,
+          ),
+      ),
+    );
+    setNotice(intl.formatMessage(messages.failed));
+  }, [intentStates.data, pending, intl]);
+  const templates = useQuery({
+    ...templatesQuery,
+    refetchInterval: pending.length > 0 ? 2_000 : false,
+  });
+  useEffect(() => {
+    if (!templates.data || pending.length === 0) return;
+    const remaining = pending.filter((operation) => {
+      const version = templates.data.find(
+        (candidate) => candidate.versionId === operation.versionId,
+      );
+      return (
+        !version ||
+        (operation.kind === 'publication' &&
+          !version.publications.some(
+            (publication) => publication.registryUrl === operation.origin,
+          ))
+      );
+    });
+    if (remaining.length === pending.length) return;
+    const completed = pending.find(
+      (operation) => !remaining.includes(operation),
+    );
+    setPending(remaining);
+    if (remaining.length === 0 && completed)
+      setNotice(
+        intl.formatMessage(
+          completed.kind === 'import' ? messages.imported : messages.published,
+        ),
+      );
+  }, [templates.data, pending, intl]);
   const refresh = () =>
     queryClient.invalidateQueries({
-      queryKey: orpc.templates.list.key({ input: { teamId } }),
+      queryKey: templatesQuery.queryKey,
     });
   return (
     <>
@@ -199,14 +282,32 @@ function TeamTemplates({
                 return { success: false };
               setNotice(null);
               try {
-                await rpcClient.templates.import({ teamId, entryId });
-                try {
-                  await refresh();
-                } catch {
-                  // The import already succeeded. The template query renders
-                  // its own bounded read error if the refresh cannot complete.
-                }
-                setNotice(intl.formatMessage(messages.imported));
+                const result = await rpcClient.templates.import({
+                  teamId,
+                  entryId,
+                });
+                if (result.status === 'pending')
+                  setPending((current) => [
+                    ...current.filter(
+                      (operation) =>
+                        operation.kind !== 'import' ||
+                        operation.versionId !== result.versionId,
+                    ),
+                    {
+                      id: result.intentId,
+                      kind: 'import',
+                      versionId: result.versionId,
+                      origin,
+                    },
+                  ]);
+                setNotice(
+                  intl.formatMessage(
+                    result.status === 'pending'
+                      ? messages.importPending
+                      : messages.imported,
+                  ),
+                );
+                void refresh().catch(() => undefined);
                 return { success: true };
               } catch (error) {
                 return {
@@ -305,13 +406,49 @@ function TeamTemplates({
                           versionId: template.versionId,
                           credential,
                         });
-                        try {
-                          await refresh();
-                        } catch {
-                          // The publication already succeeded. The template
-                          // query renders its own bounded read error if the
-                          // refresh cannot complete.
+                        if (result.status === 'pending') {
+                          setPending((current) => [
+                            ...current.filter(
+                              (operation) =>
+                                operation.kind !== 'publication' ||
+                                operation.versionId !== template.versionId ||
+                                operation.origin !== origin,
+                            ),
+                            {
+                              id: result.intentId,
+                              kind: 'publication',
+                              versionId: template.versionId,
+                              origin,
+                            },
+                          ]);
+                          setNotice(
+                            intl.formatMessage(messages.publicationPending),
+                          );
+                          void refresh().catch(() => undefined);
+                          return { success: true };
                         }
+                        queryClient.setQueryData<
+                          Awaited<ReturnType<typeof rpcClient.templates.list>>
+                        >(templatesQuery.queryKey, (current) =>
+                          current?.map((candidate) =>
+                            candidate.versionId === template.versionId &&
+                            !candidate.publications.some(
+                              (publication) =>
+                                publication.registryUrl ===
+                                  result.publication.registryUrl &&
+                                publication.entryId ===
+                                  result.publication.entryId,
+                            )
+                              ? {
+                                  ...candidate,
+                                  publications: [
+                                    ...candidate.publications,
+                                    result.publication,
+                                  ],
+                                }
+                              : candidate,
+                          ),
+                        );
                         setNotice(
                           intl.formatMessage(
                             result.replayed
@@ -319,6 +456,7 @@ function TeamTemplates({
                               : messages.published,
                           ),
                         );
+                        void refresh().catch(() => undefined);
                         return { success: true };
                       } catch {
                         return {

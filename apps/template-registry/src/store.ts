@@ -481,11 +481,14 @@ export class RegistryStore {
       return `$${parameters.length}`;
     };
     const where = [
-      'e.yanked_at IS NULL',
       'a.blocked_at IS NULL',
       'a.deleted_at IS NULL',
       'c.root IS NOT NULL',
     ];
+    // A known publication can be reconciled after withdrawal just as it can
+    // still be read by entry ID. Ordinary browse/search omits withdrawn entries.
+    if (!(filters.root && filters.publisher_id))
+      where.push('e.yanked_at IS NULL');
     if (after) where.push(`e.sequence < ${bind(after)}::bigint`);
     if (filters.kind) where.push(`c.template->>'kind' = ${bind(filters.kind)}`);
     if (filters.license) where.push(`c.license = ${bind(filters.license)}`);
@@ -493,6 +496,9 @@ export class RegistryStore {
       where.push(
         `(e.curated_at IS NOT NULL) = ${bind(filters.curated === 'true')}`,
       );
+    if (filters.root) where.push(`e.artifact_root = ${bind(filters.root)}`);
+    if (filters.publisher_id)
+      where.push(`e.publisher_id = ${bind(filters.publisher_id)}`);
     if (filters.keyword)
       where.push(
         `EXISTS (SELECT 1 FROM jsonb_array_elements_text(COALESCE(c.metadata->'keywords', '[]'::jsonb)) keyword WHERE lower(keyword) = lower(${bind(filters.keyword)}))`,
@@ -584,7 +590,18 @@ export class RegistryStore {
           [principal.publisherId, root],
         )
       ).rows[0];
-      if (existing) return this.#readEntry(client, existing.id);
+      if (existing) {
+        if (!artifact) throw new RegistryError('SERVICE_UNAVAILABLE');
+        let stored: Uint8Array | null;
+        try {
+          stored = await this.#blobs.get(artifact.raw_hash);
+        } catch {
+          throw new RegistryError('SERVICE_UNAVAILABLE');
+        }
+        if (!stored || templateBytesHash(stored) !== artifact.raw_hash)
+          throw new RegistryError('SERVICE_UNAVAILABLE');
+        return this.#readEntry(client, existing.id);
+      }
       // Visibility changes cannot release stored bytes. Charge pending erasure
       // until its durable, audited deletion job has completed successfully.
       const publisherBytes =
@@ -631,8 +648,16 @@ export class RegistryStore {
           ],
         );
         await this.#blobs.put(rawHash, bytes);
-      } else if (!(await this.#blobs.get(artifact.raw_hash)))
-        throw new RegistryError('SERVICE_UNAVAILABLE');
+      } else {
+        let stored: Uint8Array | null;
+        try {
+          stored = await this.#blobs.get(artifact.raw_hash);
+        } catch {
+          throw new RegistryError('SERVICE_UNAVAILABLE');
+        }
+        if (!stored || templateBytesHash(stored) !== artifact.raw_hash)
+          throw new RegistryError('SERVICE_UNAVAILABLE');
+      }
       const id = randomUUID();
       await client.query(
         'INSERT INTO registry_entries(id, publisher_id, artifact_root) VALUES ($1, $2, $3)',
@@ -706,6 +731,14 @@ export class RegistryStore {
 
   async report(id: string, value: RegistryReport) {
     const input = ReportSchema.parse(value);
+    // Invalid locators do not consume the deployment-wide public reporting
+    // allowance. Entries are retained for their installation's lifetime, so
+    // this existence proof cannot be invalidated by an ordinary request.
+    const target = await this.#pool.query(
+      'SELECT id FROM registry_entries WHERE id = $1',
+      [id],
+    );
+    if (!target.rowCount) throw new RegistryError('NOT_FOUND');
     await admitRegistryRate(
       this.#pool,
       'report:global',
@@ -805,6 +838,8 @@ export class RegistryStore {
       const publisher = current.rows[0];
       if (!publisher) throw new RegistryError('NOT_FOUND');
       if ((publisher.suspended_at !== null) === suspended) return;
+      if (suspended && actor.kind === 'operator' && actor.id === id)
+        throw new RegistryError('CONFLICT');
       const result = await client.query(
         `UPDATE registry_publishers SET suspended_at = ${suspended ? 'statement_timestamp()' : 'NULL'} WHERE id = $1 RETURNING id`,
         [id],

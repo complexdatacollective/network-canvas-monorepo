@@ -76,6 +76,16 @@
           "curated": {
             "type": "string",
             "enum": ["true", "false"]
+          },
+          "root": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "description": "Exact artifact root. Combined with publisher_id, includes yanked publications while still excluding removed content."
+          },
+          "publisher_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           }
         },
         "additionalProperties": false
@@ -538,6 +548,28 @@
             "schema": {
               "type": "string",
               "enum": ["true", "false"]
+            },
+            "allowEmptyValue": false,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "root",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact artifact root. Combined with publisher_id, includes yanked publications while still excluding removed content."
+            },
+            "allowEmptyValue": false,
+            "allowReserved": true
+          },
+          {
+            "in": "query",
+            "name": "publisher_id",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             },
             "allowEmptyValue": false,
             "allowReserved": true

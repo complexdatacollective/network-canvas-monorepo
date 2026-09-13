@@ -25,7 +25,7 @@ function CredentialForm({ label, submitLabel, disabled, onSubmit }: Props) {
         if (disabled || typeof credential !== 'string')
           return { success: false };
         const result = await onSubmit(credential);
-        if (result.success) resetField('credential');
+        resetField('credential');
         return result;
       }}
     >
@@ -45,7 +45,7 @@ function CredentialForm({ label, submitLabel, disabled, onSubmit }: Props) {
   );
 }
 
-/** Request credentials are cleared after success without remounting the focused form. */
+/** Request credentials are cleared after every completed handoff attempt. */
 export default function RegistryCredentialForm(props: Props) {
   return (
     <FormStoreProvider>

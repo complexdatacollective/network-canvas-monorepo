@@ -479,6 +479,14 @@ async function holdRestoredDeliveries(client: pg.PoolClient) {
       lease_owner = NULL, lease_expires_at = NULL
     WHERE delivered_at IS NULL AND failed_at IS NULL
       AND suppressed_at IS NULL AND uncertain_at IS NULL`);
+    await client.query(`UPDATE template_registry_publication_intents
+    SET quarantined_at = statement_timestamp(),
+      lease_owner = NULL, lease_expires_at = NULL
+    WHERE completed_at IS NULL AND quarantined_at IS NULL`);
+    await client.query(`UPDATE template_registry_import_intents
+    SET quarantined_at = statement_timestamp(),
+      lease_owner = NULL, lease_expires_at = NULL
+    WHERE completed_at IS NULL AND quarantined_at IS NULL`);
   });
 }
 
@@ -509,7 +517,8 @@ async function lockRecoveryAuthorizationState(client: pg.PoolClient) {
     message_templates, message_deliveries,
     audit_events, credential_audit_events, audit_alert_settings,
     audit_alert_recipients, audit_alert_outbox,
-    audit_alert_deliveries, leases IN SHARE ROW EXCLUSIVE MODE`);
+    audit_alert_deliveries, template_registry_publication_intents,
+    template_registry_import_intents, leases IN SHARE ROW EXCLUSIVE MODE`);
 }
 
 async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
@@ -533,6 +542,7 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
       links: number;
       live_leases: number;
       deliveries: number;
+      registry_intents: number;
       pending_schedule_occurrences: number;
       alert_recipients: number;
       alert_settings: number;
@@ -547,6 +557,8 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
      + (SELECT count(*) FROM webhook_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND uncertain_at IS NULL)
      + (SELECT count(*) FROM audit_alert_outbox WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL)
      + (SELECT count(*) FROM audit_alert_deliveries WHERE delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL))::int deliveries,
+    ((SELECT count(*) FROM template_registry_publication_intents WHERE completed_at IS NULL AND quarantined_at IS NULL)
+     + (SELECT count(*) FROM template_registry_import_intents WHERE completed_at IS NULL AND quarantined_at IS NULL))::int registry_intents,
     (SELECT count(*)::int FROM schedule_occurrences WHERE state = 'scheduled') pending_schedule_occurrences`),
   );
   assertRows(remainingTenantState.rows[0], {
@@ -556,6 +568,7 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
     links: 0,
     live_leases: 0,
     deliveries: 0,
+    registry_intents: 0,
     pending_schedule_occurrences: 0,
   });
 }

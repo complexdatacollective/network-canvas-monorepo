@@ -461,6 +461,92 @@ describe.skipIf(!db)('template schema', () => {
       );
       expect(hidden.rows).toEqual([]);
     });
+
+    it('lets separate local versions cite the same Registry entry', async () => {
+      const entryId = randomUUID();
+      const common = {
+        registry_url: 'https://registry.example',
+        registry_entry_id: entryId,
+        registry_root: hex64(),
+        publisher_id: randomUUID(),
+        publisher_name: 'Portable Publisher',
+        published_at: new Date(),
+      };
+      const versionA = await newVersion(await newTemplate());
+      const templateB = await newTemplate({ team_id: TEAM_B });
+      const versionB = await newVersion(templateB, { team_id: TEAM_B });
+
+      await insert('template_registry_publications', {
+        id: randomUUID(),
+        team_id: TEAM_A,
+        template_version_id: versionA,
+        ...common,
+      });
+      await expect(
+        insert('template_registry_publications', {
+          id: randomUUID(),
+          team_id: TEAM_B,
+          template_version_id: versionB,
+          ...common,
+        }),
+      ).resolves.toHaveProperty('rowCount', 1);
+    });
+
+    it('keeps publication and import intents durable until completion or recovery quarantine', async () => {
+      const versionId = await newVersion(await newTemplate());
+      const publicationIntent = {
+        id: randomUUID(),
+        team_id: TEAM_A,
+        template_version_id: versionId,
+        registry_url: 'https://registry.example',
+        registry_root: hex64(),
+        publisher_id: randomUUID(),
+        publisher_name: 'Portable Publisher',
+        initiating_actor_id: 'admin-a',
+        initiating_actor_label: 'Admin A',
+        initiating_request_id: randomUUID(),
+      };
+      await expect(
+        insert('template_registry_publication_intents', publicationIntent),
+      ).resolves.toHaveProperty('rowCount', 1);
+      await expect(
+        pool.query(
+          `UPDATE template_registry_publication_intents
+           SET completed_at = clock_timestamp() WHERE id = $1`,
+          [publicationIntent.id],
+        ),
+      ).rejects.toMatchObject({
+        constraint: 'template_registry_publication_intents_terminal_check',
+      });
+
+      const importIntent = {
+        id: randomUUID(),
+        team_id: TEAM_A,
+        registry_url: 'https://registry.example',
+        registry_entry_id: randomUUID(),
+        registry_root: hex64(),
+        entry_snapshot: { publisher: { name: 'Portable Publisher' } },
+        asset_manifest: JSON.stringify([]),
+        target_template_id: randomUUID(),
+        target_version_id: randomUUID(),
+        initiating_actor_id: 'admin-a',
+        initiating_actor_label: 'Admin A',
+        initiating_request_id: randomUUID(),
+      };
+      await expect(
+        insert('template_registry_import_intents', importIntent),
+      ).resolves.toHaveProperty('rowCount', 1);
+      await expect(
+        pool.query(
+          `UPDATE template_registry_import_intents
+           SET quarantined_at = clock_timestamp(), completed_at = clock_timestamp()
+           WHERE id = $1`,
+          [importIntent.id],
+        ),
+      ).rejects.toMatchObject({
+        constraint: 'template_registry_import_intents_terminal_check',
+      });
+    });
   });
 
   describe('template_version_sections', () => {

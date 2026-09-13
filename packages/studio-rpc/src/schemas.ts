@@ -209,20 +209,36 @@ export const PublishTemplateInputSchema = TeamScopedSchema.extend({
   credential: LinkRegistryAccountInputSchema.shape.credential,
 });
 
-export const PublishTemplateResultSchema = z.strictObject({
-  publication: TemplateVersionSummarySchema.shape.publications.element,
-  replayed: z.boolean(),
-});
+export const PublishTemplateResultSchema = z.discriminatedUnion('status', [
+  z.strictObject({
+    status: z.literal('completed'),
+    publication: TemplateVersionSummarySchema.shape.publications.element,
+    replayed: z.boolean(),
+  }),
+  z.strictObject({ status: z.literal('pending'), intentId: z.uuid() }),
+]);
 
 export const ImportRegistryTemplateInputSchema = TeamScopedSchema.extend({
   entryId: z.uuid(),
 });
 
-export const ImportRegistryTemplateResultSchema = z.strictObject({
-  templateId: z.uuid(),
-  versionId: z.uuid(),
-  replayed: z.boolean(),
-});
+export const ImportRegistryTemplateResultSchema = z.discriminatedUnion(
+  'status',
+  [
+    z.strictObject({
+      status: z.literal('completed'),
+      templateId: z.uuid(),
+      versionId: z.uuid(),
+      replayed: z.boolean(),
+    }),
+    z.strictObject({
+      status: z.literal('pending'),
+      intentId: z.uuid(),
+      templateId: z.uuid(),
+      versionId: z.uuid(),
+    }),
+  ],
+);
 
 export const UpdateTeamMemberRoleInputSchema = TeamScopedSchema.extend({
   memberId: z.string().min(1),

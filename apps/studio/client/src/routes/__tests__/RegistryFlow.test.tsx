@@ -15,6 +15,7 @@ const calls = vi.hoisted(() => ({
   registry: vi.fn<typeof rpcClient.account.registry>(),
   linkRegistry: vi.fn<typeof rpcClient.account.linkRegistry>(),
   list: vi.fn<typeof rpcClient.templates.list>(),
+  registryIntents: vi.fn<typeof rpcClient.templates.registryIntents>(),
   publish: vi.fn<typeof rpcClient.templates.publish>(),
   import: vi.fn<typeof rpcClient.templates.import>(),
 }));
@@ -24,6 +25,7 @@ vi.mock('../../lib/api.ts', async () => {
     me: calls.me,
     account: { registry: calls.registry, linkRegistry: calls.linkRegistry },
     templates: {
+      registryIntents: calls.registryIntents,
       list: calls.list,
       publish: calls.publish,
       import: calls.import,
@@ -112,8 +114,20 @@ beforeEach(() => {
   calls.registry.mockResolvedValue(account);
   calls.linkRegistry.mockResolvedValue(account);
   calls.list.mockResolvedValue([version()]);
-  calls.publish.mockResolvedValue({ publication, replayed: false });
-  calls.import.mockResolvedValue({ templateId, versionId, replayed: false });
+  calls.registryIntents.mockImplementation(async ({ intents }) =>
+    intents.map((intent) => ({ ...intent, status: 'pending' as const })),
+  );
+  calls.publish.mockResolvedValue({
+    status: 'completed',
+    publication,
+    replayed: false,
+  });
+  calls.import.mockResolvedValue({
+    status: 'completed',
+    templateId,
+    versionId,
+    replayed: false,
+  });
 });
 
 describe('Studio Registry forms', () => {
@@ -144,10 +158,10 @@ describe('Studio Registry forms', () => {
     ).toBeInTheDocument();
   });
 
-  it('keeps a successful link successful when the account refresh fails', async () => {
+  it('shows a linked publisher without waiting for a hung account refresh', async () => {
     const invalidateQueries = vi
       .spyOn(QueryClient.prototype, 'invalidateQueries')
-      .mockRejectedValueOnce(new Error('account-refresh-failed'));
+      .mockImplementationOnce(() => new Promise(() => undefined));
     calls.registry.mockImplementation(async () => {
       return { origin, link: null };
     });
@@ -162,6 +176,9 @@ describe('Studio Registry forms', () => {
     expect(
       await screen.findByText('The Registry publisher identity was linked.'),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Linked as Publisher Researcher/),
+    ).toBeInTheDocument();
     expect(screen.queryByDisplayValue(credential)).toBeNull();
     expect(invalidateQueries).toHaveBeenCalledTimes(1);
     invalidateQueries.mockRestore();
@@ -172,7 +189,7 @@ describe('Studio Registry forms', () => {
       calls.list.mockResolvedValue([
         { ...version(), publications: [publication] },
       ]);
-      return { publication, replayed: false };
+      return { status: 'completed', publication, replayed: false };
     });
     renderPage(<Templates />);
     expect(
@@ -186,6 +203,10 @@ describe('Studio Registry forms', () => {
     expect(
       await screen.findByText('The template version was published.'),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Published by Publisher Researcher/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Published' })).toBeDisabled();
     expect(calls.publish.mock.calls[0]?.[0]).toEqual({
       teamId: 'team-a',
       versionId,
@@ -197,6 +218,137 @@ describe('Studio Registry forms', () => {
     ).toBeInTheDocument();
     expect(input).toHaveValue('');
     expect(screen.getByRole('button', { name: 'Published' })).toBeDisabled();
+  });
+
+  it('clears the credential and reports a durable pending publication', async () => {
+    calls.publish.mockResolvedValue({
+      status: 'pending',
+      intentId: '00000000-0000-4000-8000-000000000099',
+    });
+    renderPage(<Templates />);
+    const input = await screen.findByLabelText(
+      /Registry publishing credential/,
+    );
+    fireEvent.change(input, { target: { value: credential } });
+    fireEvent.click(screen.getByRole('button', { name: 'Publish version' }));
+    expect(
+      await screen.findByText(
+        'Publication is pending Registry reconciliation.',
+      ),
+    ).toBeInTheDocument();
+    expect(input).toHaveValue('');
+  });
+
+  it('refreshes a reconciled publication after the initial pending invalidation', async () => {
+    calls.publish.mockResolvedValue({
+      status: 'pending',
+      intentId: '00000000-0000-4000-8000-000000000099',
+    });
+    renderPage(<Templates />);
+    const input = await screen.findByLabelText(
+      /Registry publishing credential/,
+    );
+    fireEvent.change(input, { target: { value: credential } });
+    fireEvent.click(screen.getByRole('button', { name: 'Publish version' }));
+    await screen.findByText('Publication is pending Registry reconciliation.');
+    await waitFor(() =>
+      expect(calls.list.mock.calls.length).toBeGreaterThanOrEqual(2),
+    );
+    calls.list.mockResolvedValue([
+      { ...version(), publications: [publication] },
+    ]);
+    await waitFor(
+      () =>
+        expect(
+          screen.getByRole('button', { name: 'Published' }),
+        ).toBeDisabled(),
+      { timeout: 4_000 },
+    );
+    expect(
+      screen.getByText('The template version was published.'),
+    ).toBeInTheDocument();
+    expect(calls.publish).toHaveBeenCalledTimes(1);
+    expect(input).toHaveValue('');
+  });
+
+  it('refreshes an imported version after background reconciliation', async () => {
+    const importedVersionId = '99999999-9999-4999-8999-999999999999';
+    calls.list.mockResolvedValue([]);
+    calls.import.mockResolvedValue({
+      status: 'pending',
+      intentId: '00000000-0000-4000-8000-000000000098',
+      templateId,
+      versionId: importedVersionId,
+    });
+    renderPage(<Templates />);
+    const input = await screen.findByLabelText(/Registry entry ID/);
+    fireEvent.change(input, { target: { value: entryId } });
+    fireEvent.click(screen.getByRole('button', { name: 'Import template' }));
+    await screen.findByText('Import is pending Registry reconciliation.');
+    await waitFor(() =>
+      expect(calls.list.mock.calls.length).toBeGreaterThanOrEqual(2),
+    );
+    calls.list.mockResolvedValue([
+      { ...version(), versionId: importedVersionId },
+    ]);
+    await waitFor(
+      () =>
+        expect(
+          screen.getByText('The Registry template was imported.'),
+        ).toBeInTheDocument(),
+      { timeout: 4_000 },
+    );
+    expect(
+      screen.getByRole('heading', { name: 'Research template, version 1' }),
+    ).toBeInTheDocument();
+    expect(calls.import).toHaveBeenCalledTimes(1);
+  });
+
+  it('announces quarantined background work and stops polling it', async () => {
+    calls.publish.mockResolvedValue({
+      status: 'pending',
+      intentId: '00000000-0000-4000-8000-000000000099',
+    });
+    renderPage(<Templates />);
+    const input = await screen.findByLabelText(
+      /Registry publishing credential/,
+    );
+    fireEvent.change(input, { target: { value: credential } });
+    fireEvent.click(screen.getByRole('button', { name: 'Publish version' }));
+    await screen.findByText('Publication is pending Registry reconciliation.');
+    await waitFor(() => expect(calls.registryIntents).toHaveBeenCalled());
+    calls.registryIntents.mockImplementation(async ({ intents }) =>
+      intents.map((intent) => ({ ...intent, status: 'quarantined' as const })),
+    );
+    await waitFor(
+      () =>
+        expect(
+          screen.getByText(
+            'The Registry operation could not be completed. Check the values and try again.',
+          ),
+        ).toBeInTheDocument(),
+      { timeout: 4_000 },
+    );
+    const statusCalls = calls.registryIntents.mock.calls.length;
+    // Negative oracle: wait longer than a polling interval to prove the
+    // terminal operation no longer generates status requests.
+    await new Promise((resolve) => setTimeout(resolve, 2_100));
+    expect(calls.registryIntents).toHaveBeenCalledTimes(statusCalls);
+    expect(calls.publish).toHaveBeenCalledTimes(1);
+  }, 10_000);
+
+  it('clears the credential after a failed Registry handoff', async () => {
+    calls.publish.mockRejectedValue(new Error('handoff failed'));
+    renderPage(<Templates />);
+    const input = await screen.findByLabelText(
+      /Registry publishing credential/,
+    );
+    fireEvent.change(input, { target: { value: credential } });
+    fireEvent.click(screen.getByRole('button', { name: 'Publish version' }));
+    expect(
+      await screen.findByText(/Registry operation could not be completed/),
+    ).toBeInTheDocument();
+    expect(input).toHaveValue('');
   });
 
   it('waits for an actual Registry response and prevents another click while publishing', async () => {
@@ -223,7 +375,7 @@ describe('Studio Registry forms', () => {
     expect(
       screen.queryByText('The template version was published.'),
     ).toBeNull();
-    release({ publication, replayed: false });
+    release({ status: 'completed', publication, replayed: false });
     expect(
       await screen.findByText('The template version was published.'),
     ).toBeInTheDocument();
@@ -233,7 +385,11 @@ describe('Studio Registry forms', () => {
     const invalidateQueries = vi
       .spyOn(QueryClient.prototype, 'invalidateQueries')
       .mockRejectedValueOnce(new Error('receipt-refresh-failed'));
-    calls.publish.mockResolvedValue({ publication, replayed: true });
+    calls.publish.mockResolvedValue({
+      status: 'completed',
+      publication,
+      replayed: true,
+    });
     renderPage(<Templates />);
     const input = await screen.findByLabelText(
       /Registry publishing credential/,
@@ -244,6 +400,25 @@ describe('Studio Registry forms', () => {
       await screen.findByText('This template version was already published.'),
     ).toBeInTheDocument();
     expect(screen.queryByDisplayValue(credential)).toBeNull();
+    expect(invalidateQueries).toHaveBeenCalledTimes(1);
+    invalidateQueries.mockRestore();
+  });
+
+  it('clears a used credential and reports success without waiting for a hung receipt refresh', async () => {
+    const invalidateQueries = vi
+      .spyOn(QueryClient.prototype, 'invalidateQueries')
+      .mockImplementationOnce(() => new Promise(() => undefined));
+    renderPage(<Templates />);
+    const input = await screen.findByLabelText(
+      /Registry publishing credential/,
+    );
+    fireEvent.change(input, { target: { value: credential } });
+    fireEvent.click(screen.getByRole('button', { name: 'Publish version' }));
+
+    expect(
+      await screen.findByText('The template version was published.'),
+    ).toBeInTheDocument();
+    expect(input).toHaveValue('');
     expect(invalidateQueries).toHaveBeenCalledTimes(1);
     invalidateQueries.mockRestore();
   });
@@ -272,6 +447,23 @@ describe('Studio Registry forms', () => {
       await screen.findByText('The Registry template was imported.'),
     ).toBeInTheDocument();
     expect(calls.import).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports a durable import that will resume in the background', async () => {
+    calls.import.mockResolvedValueOnce({
+      status: 'pending',
+      intentId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      templateId,
+      versionId: '99999999-9999-4999-8999-999999999999',
+    });
+    renderPage(<Templates />);
+    fireEvent.change(await screen.findByLabelText(/Registry entry ID/), {
+      target: { value: entryId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Import template' }));
+    expect(
+      await screen.findByText('Import is pending Registry reconciliation.'),
+    ).toBeInTheDocument();
   });
 
   it('clears the team-scoped forms and removes mutation controls for a member team', async () => {

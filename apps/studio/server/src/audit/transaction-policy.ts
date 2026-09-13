@@ -6,6 +6,11 @@ import type { AuditPolicy } from './policy.ts';
 // any other path. Protocol audit producers are delivered by #1521; lease
 // lifecycle writes are permanently excluded from the audit-log design.
 export const NO_AUDIT_TRANSACTION_POLICIES = {
+  'templates.registryIntents': {
+    kind: 'none',
+    reason:
+      'Locked team-administrator read of bounded Registry operation states; no credentials or remote data are returned.',
+  },
   'audit.alerts.settings': {
     kind: 'none',
     reason:

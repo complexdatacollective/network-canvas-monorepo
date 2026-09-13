@@ -151,6 +151,36 @@ export const contract = {
       .output(UpdateAccountLocaleResultSchema),
   },
   templates: {
+    registryIntents: oc
+      .input(
+        TeamScopedSchema.extend({
+          intents: z
+            .array(
+              z.strictObject({
+                id: z.uuid(),
+                kind: z.enum(['publication', 'import']),
+              }),
+            )
+            .min(1)
+            .max(100),
+        }),
+      )
+      .output(
+        z
+          .array(
+            z.strictObject({
+              id: z.uuid(),
+              kind: z.enum(['publication', 'import']),
+              status: z.enum([
+                'pending',
+                'completed',
+                'quarantined',
+                'unavailable',
+              ]),
+            }),
+          )
+          .max(100),
+      ),
     list: oc
       .input(TeamScopedSchema)
       .output(z.array(TemplateVersionSummarySchema)),

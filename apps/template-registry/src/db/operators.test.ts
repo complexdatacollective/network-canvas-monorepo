@@ -1,5 +1,7 @@
 import { expect, it } from 'vitest';
 
+import { createPostgresPool } from '@codaco/studio-sync/postgres-pool';
+
 import { createRegistryTestDatabase } from '../__tests__/database.ts';
 import { changeRegistryOperator } from './operators.ts';
 import { REGISTRY_TABLES, registrySidecarSql } from './schema.ts';
@@ -91,6 +93,50 @@ it('requires a real database owner and verified account, binds grant/revoke to i
       ).rows,
     ).toEqual([{ count: 2 }]);
   } finally {
+    await database.dispose();
+  }
+});
+
+it('pins the operator mutation to public despite a hostile owner search path', async () => {
+  const database = await createRegistryTestDatabase(
+    REGISTRY_TABLES,
+    registrySidecarSql,
+  );
+  const url = new URL(database.databaseUrl);
+  url.searchParams.set('options', '-c search_path=operator_shadow,public');
+  const hostile = createPostgresPool({
+    connectionString: url.toString(),
+    max: 1,
+    onIdleError: () => {
+      throw new Error('REGISTRY_TEST_IDLE_ERROR');
+    },
+  });
+  try {
+    await database.owner.query(`CREATE SCHEMA operator_shadow;
+      CREATE TABLE operator_shadow.registry_auth_user (LIKE public.registry_auth_user INCLUDING ALL);
+      CREATE TABLE operator_shadow.registry_operators (LIKE public.registry_operators INCLUDING ALL);
+      CREATE TABLE operator_shadow.registry_audit (LIKE public.registry_audit INCLUDING ALL);
+      INSERT INTO public.registry_auth_user(id, name, email, email_verified, created_at, updated_at)
+      VALUES ('verified', 'Verified', 'verified@example.test', true, now(), now());
+      INSERT INTO operator_shadow.registry_auth_user(id, name, email, email_verified, created_at, updated_at)
+      VALUES ('verified', 'Shadow', 'shadow@example.test', true, now(), now())`);
+    await changeRegistryOperator(hostile, 'verified', true);
+    expect(
+      (
+        await database.owner.query(
+          'SELECT user_id, enabled FROM public.registry_operators',
+        )
+      ).rows,
+    ).toEqual([{ user_id: 'verified', enabled: true }]);
+    expect(
+      (
+        await database.owner.query(
+          'SELECT user_id, enabled FROM operator_shadow.registry_operators',
+        )
+      ).rows,
+    ).toEqual([]);
+  } finally {
+    await hostile.end();
     await database.dispose();
   }
 });

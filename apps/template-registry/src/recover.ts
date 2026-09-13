@@ -19,6 +19,7 @@ if (import.meta.main) {
     );
     const pool = createPostgresPool({
       connectionString: configuration.databaseUrl,
+      parseConnectionString: true,
       max: 1,
       onIdleError: () => logRegistryDiagnostic('REGISTRY_DATABASE_IDLE_ERROR'),
     });
