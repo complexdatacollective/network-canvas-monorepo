@@ -316,6 +316,21 @@ describe('template exchange metadata', () => {
 });
 
 describe('portable template artifact', () => {
+  it('accepts large valid coordinate arrays within the asset byte limit', async () => {
+    const input = datasetFixture(
+      'geojson',
+      'application/geo+json',
+      'large.geojson',
+      JSON.stringify({
+        type: 'MultiPoint',
+        coordinates: Array.from({ length: 150_000 }, () => [1, 2]),
+      }),
+    );
+    const built = await createTemplateArtifact(input);
+    expect(built.artifact.assets[0]?.byte_size).toBe(
+      input.assets[0]?.bytes.byteLength,
+    );
+  });
   it('matches the independently generated public hash conformance fixture', async () => {
     const vector = JSON.parse(
       readFileSync(

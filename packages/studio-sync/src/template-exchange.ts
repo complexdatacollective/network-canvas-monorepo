@@ -230,7 +230,7 @@ function coordinateDimensions(value: unknown): Dimensions | null {
       dimensions = next.length;
       continue;
     }
-    pending.push(...next);
+    for (const child of next) pending.push(child);
   }
   return dimensions;
 }
