@@ -31,6 +31,7 @@ web and worker processes before the command and again on success, failure, or
 a signal. A closure failure makes the whole invocation fail.
 
 ```sh
+# BEGIN RECOVERY_AUTHORIZATION_GUARD
 close_recovery_admission() {
   close_failed=0
   if ! docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
@@ -59,10 +60,16 @@ run_closed_recovery_command() (
   trap cleanup_recovery_command EXIT
   trap 'exit 1' HUP INT TERM
   close_recovery_admission
+  # The recovery command uses the owner connection. Open only that operator;
+  # runtime and maintenance remain NOLOGIN and the backup identity stays
+  # read-only. The cleanup trap closes the operator again.
+  docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
+    -c 'ALTER ROLE studio_migrator LOGIN;' >/dev/null
   "$@"
   close_recovery_admission
   trap - EXIT HUP INT TERM
 )
+# END RECOVERY_AUTHORIZATION_GUARD
 ```
 
 Mount the private evidence directory read-only. From `apps/studio`, with the
