@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react';
 import {
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -33,7 +34,9 @@ import CodebookVariableValidationEditor, {
 import { optionsShapeFor } from '../codebook/variableOptions.ts';
 import { parameterShapeFor } from '../codebook/variableParameters.ts';
 import {
+  getValidationLabel,
   isValidationMap,
+  rulesSurvivingTypeChange,
   type ValidationMap,
 } from '../codebook/variableValidation.ts';
 import { useCodebookSectionWrite } from '../codebook/writes.ts';
@@ -114,6 +117,13 @@ const messages = defineMessages({
       'An attribute answered on a scale needs a label at each end, so it is created together with them.',
     description:
       'The same explanation for a scale: shown above the buttons when the researcher is inventing one, saying why they are sent to the codebook editor rather than being asked for a name here.',
+  },
+  rulesDroppedForNewKind: {
+    id: 'protocolBuilder.attributeCodebookControls.rulesDroppedForNewKind',
+    defaultMessage:
+      '{ruleCount, plural, one {Changing the kind of answer removed a rule that does not carry over: {ruleNames}.} other {Changing the kind of answer removed rules that do not carry over: {ruleNames}.}}',
+    description:
+      'Shown after the researcher changes the kind of answer an attribute they are inventing holds, when rules they had already written for it cannot be kept — either the new kind does not accept them, or they compare this answer with another attribute that is no longer comparable. ruleNames is the list of rule names, already translated.',
   },
   attributeDeletedTitle: {
     id: 'protocolBuilder.attributeCodebookControls.attributeDeletedTitle',
@@ -305,6 +315,15 @@ export default function AttributeCodebookControls({
   const chosen =
     asString(useRowValue(variableField) ?? committedVariable) ?? '';
   const liveComponent = useRowValue(componentField);
+  /**
+   * The rules the row is holding for an attribute it has not created yet.
+   *
+   * Followed rather than read once, because the kind of answer above them can
+   * change while they are held — see the effect below. The empty name for a
+   * row that is inventing nothing reads as a field the store does not hold,
+   * which is what it is.
+   */
+  const heldDraftRules = useRowValue(inventing?.rulesField ?? '');
   const [editing, setEditing] = useState<Readonly<{
     /** Fresh for every open, so the editor starts from the draft it is given. */
     openId: string;
@@ -401,6 +420,15 @@ export default function AttributeCodebookControls({
   const [createdElsewhere, setCreatedElsewhere] = useState<string | undefined>(
     undefined,
   );
+  /**
+   * The rules a change of kind of answer took off the row's draft, held for as
+   * long as the notice about them is on screen.
+   *
+   * Kept until another change of kind replaces it rather than cleared on the
+   * next act: it is the only record that rules the researcher wrote are no
+   * longer there, and nothing else on this surface says so.
+   */
+  const [rulesDropped, setRulesDropped] = useState<readonly string[]>([]);
   // The row's own picker is what a create here fills in, so it is the second
   // half of where the answer lands: see `useWhereTheAnswerLands`.
   const whereTheAnswerLands = useWhereTheAnswerLands(subject, () => chosen);
@@ -529,6 +557,49 @@ export default function AttributeCodebookControls({
   const inventedRules = inventedType !== undefined && !canCreate;
   const canEditRules = offerRules && (picked !== undefined || inventedRules);
   /**
+   * The rules draft following the kind of answer it was written about.
+   *
+   * The draft is the ROW's — there is no attribute to write it to until the
+   * row's own save creates one — and the kind above it is a control the
+   * researcher can go back to. A rule the new kind does not accept is refused
+   * by that create, and a rules editor opened on the new kind lists the new
+   * kind's rules alone: the researcher can then neither save the row nor
+   * switch the rule off, which is a dialog with no way out of it. So the draft
+   * follows the kind, by the same reading the codebook editor's own type
+   * control makes of a variable draft (`rulesSurvivingTypeChange`).
+   *
+   * What it drops is said. The researcher wrote those rules, and rules that
+   * disappeared between one control and the next are a change to their work
+   * that nothing else on this surface reports.
+   */
+  const rulesField = inventing?.rulesField;
+  useEffect(() => {
+    if (rulesField === undefined || inventedType === undefined) return;
+    if (!isValidationMap(heldDraftRules)) return;
+    const { kept, dropped } = rulesSurvivingTypeChange(
+      heldDraftRules,
+      inventedType,
+    );
+    if (dropped.length === 0) return;
+    setFieldValue(rulesField, kept);
+    setRulesDropped(dropped);
+  }, [heldDraftRules, inventedType, rulesField, setFieldValue]);
+  /**
+   * Those same rules, for the create that happens in the codebook's own
+   * editor.
+   *
+   * A kind a name cannot finish hides the rules button, and the row goes on
+   * holding whatever was written while the kind was one a name could finish —
+   * so the editor that creates the attribute is where they belong, and seeded
+   * nowhere they would be thrown away without a word. Narrowed here as well as
+   * in the effect above because this is read during the render that opens the
+   * editor, which is the render the effect has not run after yet.
+   */
+  const draftRulesForCreate =
+    inventedType === undefined || !isValidationMap(heldDraftRules)
+      ? {}
+      : rulesSurvivingTypeChange(heldDraftRules, inventedType).kept;
+  /**
    * Whether the invention is of a LIST of answers, which is what the create
    * controls are named after.
    *
@@ -575,7 +646,12 @@ export default function AttributeCodebookControls({
   // researcher created and this row did not take, and a component that
   // vanished at the moment it had something to say would take the sentence
   // with it.
-  if (!offerLaunch && openEditor === null && createdElsewhere === undefined) {
+  if (
+    !offerLaunch &&
+    openEditor === null &&
+    createdElsewhere === undefined &&
+    rulesDropped.length === 0
+  ) {
     return null;
   }
   // The attributes an open editor is reading about, which are the ones in the
@@ -824,13 +900,32 @@ export default function AttributeCodebookControls({
       <div
         role="status"
         aria-live="polite"
-        className={createdElsewhere === undefined ? undefined : 'mb-8'}
+        className={
+          createdElsewhere === undefined && rulesDropped.length === 0
+            ? undefined
+            : 'mb-8'
+        }
       >
         {createdElsewhere !== undefined && (
           <Alert variant="info" role="presentation">
             <AlertDescription>
               {intl.formatMessage(createdUnassigned, {
                 variableName: createdElsewhere,
+              })}
+            </AlertDescription>
+          </Alert>
+        )}
+        {rulesDropped.length > 0 && (
+          <Alert variant="info" role="presentation">
+            <AlertDescription>
+              {intl.formatMessage(messages.rulesDroppedForNewKind, {
+                ruleCount: rulesDropped.length,
+                // Joined through `formatList` rather than with a comma,
+                // because how a list of names is punctuated is the reader's
+                // language's to decide.
+                ruleNames: intl.formatList(
+                  rulesDropped.map((rule) => getValidationLabel(rule, intl)),
+                ),
               })}
             </AlertDescription>
           </Alert>
@@ -894,6 +989,14 @@ export default function AttributeCodebookControls({
                 name: inventing.name,
                 type: inventedType,
                 ...(creatingValues ? { options: [] } : {}),
+                // Whatever rules the row already holds for this invention. A
+                // kind that arrives here hides the row's rules button, so
+                // dropping them would lose work the researcher did behind a
+                // control that has since gone — and they are the codebook's
+                // from the moment this editor writes the attribute.
+                ...(Object.keys(draftRulesForCreate).length > 0
+                  ? { validation: draftRulesForCreate }
+                  : {}),
               }}
               // The kind of answer was chosen in the row behind this, and the
               // whole reason the editor is open is what that kind needs beyond a

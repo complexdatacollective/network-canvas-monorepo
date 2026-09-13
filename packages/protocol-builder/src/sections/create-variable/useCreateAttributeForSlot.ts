@@ -90,24 +90,26 @@ export function useCreateAttributeForSlot({
   });
 
   /**
-   * The type the slot is pointed at RIGHT NOW, for the moment a write comes
-   * back.
+   * What the slot is pointed at RIGHT NOW, and whether this researcher may
+   * still write to the form, for the moment a write comes back.
    *
-   * A direct create is one round trip to the host, and the stage can be
-   * repointed at another type while it is in flight — by this researcher, by a
-   * collaborator. Bound anyway, the slot would name an attribute of a type it
-   * has stopped collecting. The escalation path asks the same question of its
-   * own open editor.
+   * A direct create is one round trip to the host, and both halves can move
+   * while it is in flight — by this researcher, by a collaborator. A stage
+   * repointed at another type would have the slot naming an attribute of a
+   * type it has stopped collecting; a stage that has gone read-only in the
+   * meantime would have the slot's form written to programmatically after it
+   * stopped accepting edits. The escalation path asks the same two questions
+   * of its own open editor (`useCreateVariableEditor`'s `writable`).
    */
-  const liveSubject = useRef(chosenSubject);
-  liveSubject.current = chosenSubject;
+  const liveTarget = useRef({ subject: chosenSubject, writable: !readOnly });
+  liveTarget.current = { subject: chosenSubject, writable: !readOnly };
 
   const escalates =
     lockedOptions !== undefined || needsCodebookEditorToCreate(variableType);
 
   const createDirectly = useCallback(
     async (variableName: string): Promise<CreateOptionOutcome> => {
-      const asked = liveSubject.current;
+      const asked = liveTarget.current.subject;
       if (asked === undefined) return { status: 'refused' };
       const outcome = await createVariable({
         name: variableName,
@@ -118,12 +120,14 @@ export function useCreateAttributeForSlot({
           ? { status: 'refused' }
           : { status: 'refused', message: outcome.message };
       }
-      const now = liveSubject.current;
+      const now = liveTarget.current;
       // The codebook holds it either way; what is left is whether this slot is
-      // still the one that asked for it.
+      // still the one that asked for it, and whether it may still be written.
       if (
-        now === undefined ||
-        sectionIdForCodebookSubject(now) !== sectionIdForCodebookSubject(asked)
+        now.subject === undefined ||
+        !now.writable ||
+        sectionIdForCodebookSubject(now.subject) !==
+          sectionIdForCodebookSubject(asked)
       ) {
         return { status: 'unassigned' };
       }
