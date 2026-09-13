@@ -3,6 +3,7 @@ import {
   useCallback,
   useId,
   useMemo,
+  useRef,
   useState,
   type ComponentProps,
   type KeyboardEvent,
@@ -262,9 +263,20 @@ export default function VariableSpotlight({
     undefined,
   );
 
+  /**
+   * How many times this window has been closed, so an answer that arrives
+   * after a close can tell that the question it belongs to is over.
+   *
+   * Counted here, beside the reset, because every close passes through this
+   * comparison: the ones the researcher makes and the one a completed pick
+   * makes through the field.
+   */
+  const dismissals = useRef(0);
+
   if (openBaseline !== open) {
     setOpenBaseline(open);
     if (!open) {
+      dismissals.current += 1;
       setTerm('');
       setRefusedReason(undefined);
     }
@@ -369,12 +381,22 @@ export default function VariableSpotlight({
   const requestCreate = useCallback(
     async (name: string) => {
       if (onCreate === undefined || creating !== undefined) return;
+      const asked = dismissals.current;
       setCreating(name);
       try {
         // A refusal is ABOUT this name, so the window stays open with the name
         // still in the box for the researcher to correct — and whoever refused
         // it has already said why, on the field this window belongs to.
         const outcome = await onCreate(name);
+        // Unless the window it was asked from has been dismissed since. The
+        // window stays dismissible while a write is out — Architect's never
+        // held the researcher there either — so this answer can be about a
+        // name they have already walked away from, and the only state left to
+        // put it in is the NEXT window's, over whatever they type in it.
+        // Dropped, so the next open starts clean. What the codebook actually
+        // DID is not dropped with it: the field says an unassigned create in
+        // its own notice, which outlives this window.
+        if (asked !== dismissals.current) return;
         if (outcome === 'correct-the-name') return;
         if (typeof outcome === 'object') {
           setRefusedReason(outcome.keep);

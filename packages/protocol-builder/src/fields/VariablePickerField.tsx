@@ -629,7 +629,15 @@ export default function VariablePickerField({
           <VariableSpotlight
             open={open}
             onOpenChange={(next) => {
-              if (!disabled && !readOnly) setOpen(next);
+              // A close is always honoured, and only an attempt to OPEN is
+              // refused. The field can become read-only underneath an open
+              // window — a save answered `notLockHolder` leaves the form
+              // mounted and closes `FieldsDisabled` over every field in it —
+              // and `Modal` has made the page behind it inert, so a guard
+              // that dropped `false` as well would leave the researcher with
+              // a window they cannot dismiss and nothing behind it to press.
+              if (next && (disabled || readOnly)) return;
+              setOpen(next);
             }}
             options={offerable}
             onSelect={handleSelect}

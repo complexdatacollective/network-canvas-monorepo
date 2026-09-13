@@ -1033,6 +1033,90 @@ describe('the create row while the codebook write is in flight', () => {
     control.answerWith({ status: 'created' });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
+
+  /**
+   * The window is dismissible while the write is out — Architect's create
+   * never held the researcher there either — so a refusal can arrive about a
+   * name they have already walked away from. There is no window left to say it
+   * in, and the next one they open is about a different name: a refusal kept
+   * across the close would stand over whatever they type there, which is the
+   * "sentence the researcher cannot read about the name it was written for"
+   * the reason was moved into the window to prevent, one step later.
+   */
+  it('drops a refusal that lands after the window was dismissed', async () => {
+    const control = mountControl();
+    await askFor(control, 'nominated_early');
+
+    await control.user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    control.answerWith({
+      status: 'refused',
+      message: 'Robin is currently editing a section needed for this change.',
+    });
+
+    await control.user.click(
+      screen.getByRole('button', { name: 'Select attribute' }),
+    );
+    const reopened = await screen.findByRole('dialog');
+    const searchBox = within(reopened).getByRole('searchbox', {
+      name: 'Find or create an attribute',
+    });
+    expect(within(reopened).queryByRole('alert')).toBeNull();
+    expect(searchBox).toHaveValue('');
+    expect(searchBox).toBeEnabled();
+  });
+});
+
+/**
+ * A field can turn read-only underneath its own open window: the shell keeps
+ * the form mounted when a save is answered `notLockHolder` and closes
+ * `FieldsDisabled` over every field in it, and a researcher who pressed Save
+ * and opened this picker before the answer landed is standing in that window
+ * when it does. `Modal` has made the page behind it inert, so the window is
+ * the only thing left on screen that answers a press — and everything it
+ * offers is now refused.
+ */
+describe('the window when the field turns read-only under it', () => {
+  const OPTIONS = [
+    { value: 'flagged', label: 'flagged', type: 'boolean' as const },
+  ];
+
+  const openOver = async () => {
+    const user = userEvent.setup();
+    const view = render(
+      <VariablePickerField name="variable" options={OPTIONS} />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Select attribute' }));
+    await screen.findByRole('dialog');
+    return { user, view };
+  };
+
+  /** Escape is the way out, and it is honoured whatever the field has become. */
+  it('closes on Escape after the stage lock is lost', async () => {
+    const { user, view } = await openOver();
+
+    view.rerender(
+      <VariablePickerField name="variable" options={OPTIONS} readOnly />,
+    );
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(
+      screen.getByRole('button', { name: 'Select attribute' }),
+    ).toBeDisabled();
+  });
+
+  /** And so is a press outside it, which is the other way a window is let go. */
+  it('closes on a press outside it after the field is disabled', async () => {
+    const { user, view } = await openOver();
+
+    view.rerender(
+      <VariablePickerField name="variable" options={OPTIONS} disabled />,
+    );
+    await user.click(document.body);
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
 });
 
 /**
