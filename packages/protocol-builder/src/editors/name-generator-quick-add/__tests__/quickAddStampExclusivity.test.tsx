@@ -1,5 +1,5 @@
-import { screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
@@ -11,6 +11,32 @@ import {
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { nameGeneratorQuickAddStageEditor } from '../NameGeneratorQuickAddStageEditor.ts';
+
+/**
+ * The prompt text is a rich-text editor, and its editing surface cannot be
+ * driven in jsdom — the same substitution `NameGeneratorPromptsSection`'s own
+ * tests make, and for the same reason. Nothing here types a prompt.
+ */
+vi.mock('../../../fields/RichTextField.tsx', () => ({
+  default: ({
+    id,
+    name,
+    value,
+    onChange,
+  }: Readonly<{
+    id?: string;
+    name?: string;
+    value?: unknown;
+    onChange?: (next: string) => void;
+  }>) => (
+    <input
+      id={id}
+      name={name}
+      value={typeof value === 'string' ? value : ''}
+      onChange={(event) => onChange?.(event.target.value)}
+    />
+  ),
+}));
 
 const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
@@ -50,6 +76,15 @@ const addFreeTextVariable = (
 };
 
 const QUICK_ADD_LABEL = 'Select an attribute';
+
+/** The field a prompt's stamp row picks its attribute in. */
+const STAMP_PICKER = 'Create or select an attribute';
+
+/** Every attribute a picker's window offers, by the id it would store. */
+const offeredIds = (window: HTMLElement): string[] =>
+  [...window.querySelectorAll('[role="option"]')].map(
+    (row) => row.getAttribute('data-attribute-id') ?? '',
+  );
 
 const quickAddPicker = async (): Promise<HTMLElement> => {
   await screen.findByText(QUICK_ADD_LABEL, { selector: 'label' });
@@ -112,5 +147,68 @@ describe('what a quick-add generator and its own prompts may not share', () => {
     expect(await offeredAttributes(harness.user, picker)).not.toContain(
       'nickname',
     );
+  });
+
+  /**
+   * And the same pair in the other order, which is the direction a filter on
+   * the quick-add picker alone would leave open.
+   *
+   * It is closed by the kinds of answer the two writers take, not by a filter:
+   * quick add fills in ONE box, so it offers text attributes alone
+   * (`QuickAddSection`'s `QUICK_ADD_TYPE`), and a stamp writes a fixed value,
+   * so the row offers booleans alone (`AssignAttributes`' `ALLOWED_TYPES`).
+   * No attribute is ever in both pools, so the attribute quick add fills in
+   * cannot be stamped by a prompt of the same stage.
+   */
+  it('does not offer the quick-add attribute to its own prompt stamps', async () => {
+    const harness = renderStageEditor(
+      quickAddHolding({
+        quickAdd: 'nickname',
+        prompts: [
+          {
+            id: 'name-generator-quick-add-prompt-1',
+            text: 'Quickly add people you know',
+          },
+        ],
+      }),
+    );
+    addFreeTextVariable(harness, 'nickname');
+    // Held by the picker, so the conflict this is about is the live one.
+    const picker = await quickAddPicker();
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, picker)).toContain(
+        'nickname',
+      ),
+    );
+
+    const prompt = await screen.findByRole('button', { name: 'Edit prompt' });
+    await harness.user.click(prompt);
+    const dialog = await screen.findByRole('dialog');
+    await harness.user.click(
+      within(dialog).getByRole('button', {
+        name: 'Add new attribute to assign',
+      }),
+    );
+    await harness.user.click(
+      within(attributeField(STAMP_PICKER, dialog)).getByRole('button', {
+        name: (name: string) =>
+          name === 'Select attribute' || name === 'Change attribute',
+      }),
+    );
+    const window = await waitFor(() => {
+      const opened = screen
+        .getAllByRole('dialog')
+        .find((element) => element !== dialog);
+      if (opened === undefined) {
+        throw new Error('the attribute window did not open');
+      }
+      return opened;
+    });
+
+    const offered = offeredIds(window);
+    // A boolean the fixture leaves free is offered, so an empty list is not
+    // what is being read.
+    expect(offered).toContain('highlighted');
+    expect(offered).not.toContain('nickname');
   });
 });

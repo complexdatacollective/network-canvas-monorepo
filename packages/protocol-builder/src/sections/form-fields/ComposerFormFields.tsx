@@ -24,6 +24,7 @@ import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
 import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import type { Stage } from '@codaco/protocol-validation';
 
 import {
   useCodebookSectionDocument,
@@ -46,6 +47,7 @@ import {
   isValidationMap,
   unvalidatedElsewhereMessage,
   variableTypeForComponent,
+  type VariableOverlay,
 } from '../../codebook/variableValidation.ts';
 import ComposerParametersField, {
   type ComposerParameters,
@@ -114,6 +116,57 @@ const VALIDATION_HINTS_FIELD = 'showValidationHints';
 const isRecord = (value: unknown): value is ComposerParameters =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const NO_RENDERED_VARIABLES: ReadonlySet<string> = new Set();
+
+/**
+ * Every attribute of `subject` that a composer form OUTSIDE this stage renders
+ * with a control of its own.
+ *
+ * A composer field's control lives on the stage, so an attribute one form
+ * overrides is not rendered by the codebook's control anywhere the researcher
+ * can see. This form cannot know which control that other form chose, so the
+ * rules editor judges those attributes at no control at all rather than at a
+ * codebook default nothing renders — the same subtraction protocol validation
+ * makes (`schema.ts`'s `collectComposerFieldOverrides` / `unknownRenderingFor`).
+ *
+ * The stage being edited is skipped whole: its saved copy is superseded by the
+ * draft, whose forms the caller already accounts for, and within one composer
+ * no two forms share a subject — the node form's is a node type and each edge
+ * entry's type is unique.
+ */
+const composerRenderedElsewhere = (
+  stages: readonly Readonly<Stage>[],
+  subject: CodebookSubject | undefined,
+  editedStageId: string,
+): ReadonlySet<string> => {
+  if (subject === undefined || subject.entity === 'ego') {
+    return NO_RENDERED_VARIABLES;
+  }
+  const rendered = new Set<string>();
+  for (const stage of stages) {
+    if (stage.type !== 'NetworkComposer' || stage.id === editedStageId) {
+      continue;
+    }
+    if (
+      subject.entity === 'node' &&
+      stage.subject.type === subject.type &&
+      stage.nodeForm !== undefined
+    ) {
+      for (const field of stage.nodeForm.fields ?? []) {
+        rendered.add(field.variable);
+      }
+    }
+    if (subject.entity !== 'edge') continue;
+    for (const edge of stage.edges ?? []) {
+      if (edge.subject.type !== subject.type) continue;
+      for (const field of edge.form?.fields ?? []) {
+        rendered.add(field.variable);
+      }
+    }
+  }
+  return rendered;
+};
+
 /**
  * Held at module scope so it keeps one identity across renders: an inline
  * arrow returning JSX is a component defined during render.
@@ -143,6 +196,12 @@ type ComposerFormScope = Readonly<{
   rowUnderEdit: RefObject<string | undefined>;
   /** The list as it stands now, so a row can see its own siblings. */
   rows: readonly RowValues[];
+  /**
+   * Attributes of this form's subject that a composer form in ANOTHER stage
+   * renders with its own control — see `composerRenderedElsewhere`, and
+   * `StageRendering.unknownRenderings`, which is what a row hands them to.
+   */
+  renderedElsewhere: ReadonlySet<string>;
   /**
    * Attributes this stage writes around the codebook's validation rules in its
    * unsaved draft — a composer's position and grouping picks.
@@ -567,9 +626,25 @@ function ComposerFormRows({
     [addTitle, beforeSave, editTitle, formId, name],
   );
 
+  const renderedElsewhere = useMemo(
+    () =>
+      composerRenderedElsewhere(
+        protocolContext.orderedStages,
+        subject,
+        identity.id,
+      ),
+    [identity.id, protocolContext.orderedStages, subject],
+  );
+
   const scope = useMemo(
-    () => ({ subject, rows, draftUnvalidated, rowUnderEdit }),
-    [draftUnvalidated, rows, subject],
+    () => ({
+      subject,
+      rows,
+      draftUnvalidated,
+      renderedElsewhere,
+      rowUnderEdit,
+    }),
+    [draftUnvalidated, renderedElsewhere, rows, subject],
   );
 
   return (
@@ -644,10 +719,10 @@ function ComposerFieldPreviewPane({ item }: RowAsideProps) {
   return <FieldPreviewPane subject={subject} mode="composer" item={item} />;
 }
 
-function ComposerFormFieldEditor({ item }: RowEditorProps) {
+function ComposerFormFieldEditor({ item, editIndex }: RowEditorProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();
-  const { subject, rows, draftUnvalidated, rowUnderEdit } =
+  const { subject, rows, draftUnvalidated, renderedElsewhere, rowUnderEdit } =
     useComposerFormScope();
   const setRowValue = useFormStore((state) => state.setFieldValue);
   const inventing = useInventingAttribute(item);
@@ -686,6 +761,58 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
       ),
     [committed, rows],
   );
+  /**
+   * What the REST of this form renders its attributes with, for the rules the
+   * row is about to author to be judged against.
+   *
+   * The control and its settings live on the FIELD here, so a rule comparing
+   * this answer with another one this form asks for is satisfiable in the
+   * renderings both rows arrive with rather than in the codebook's. Keyed by
+   * the attribute, which is what a rule names; addressed by POSITION rather
+   * than by the row's id, because `id` is optional on a field an import
+   * carried in and the row being edited has to be left out however it is
+   * spelled — the draft the researcher is typing is what stands for it.
+   */
+  const siblingRenderings = useMemo<VariableOverlay>(
+    () =>
+      Object.fromEntries(
+        rows.flatMap((row, index) => {
+          const variable = asText(row[VARIABLE_FIELD]);
+          if (index === editIndex || variable === undefined) return [];
+          const component = asText(row[COMPONENT_FIELD]);
+          const parameters = row[PARAMETERS_FIELD];
+          return [
+            [
+              variable,
+              {
+                ...(component === undefined ? {} : { component }),
+                ...(isRecord(parameters) ? { parameters } : {}),
+              },
+            ],
+          ];
+        }),
+      ),
+    [editIndex, rows],
+  );
+  /**
+   * Attributes whose rendering neither this form nor this row decides: a
+   * composer form in another stage overrides them, and this dialog has no way
+   * to know which control it chose. Handed to the rules editor so they are
+   * judged at no control rather than at one nothing renders them with.
+   */
+  const unknownRenderings = useMemo(() => {
+    const here = new Set(
+      rows.flatMap((row) => {
+        const variable = asText(row[VARIABLE_FIELD]);
+        return variable === undefined ? [] : [variable];
+      }),
+    );
+    return new Set(
+      [...renderedElsewhere].filter(
+        (variable) => variable !== chosen && !here.has(variable),
+      ),
+    );
+  }, [chosen, renderedElsewhere, rows]);
   const variableOptions = useMemo(
     () =>
       offered.filter(
@@ -1007,6 +1134,8 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
         committedVariable={item[VARIABLE_FIELD]}
         componentField={COMPONENT_FIELD}
         parametersField={PARAMETERS_FIELD}
+        siblingRenderings={siblingRenderings}
+        unknownRenderings={unknownRenderings}
         offerParameters={false}
         {...(inventing
           ? {

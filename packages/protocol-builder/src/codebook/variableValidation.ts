@@ -1012,6 +1012,79 @@ const withOverlay = (
   return Object.fromEntries(entries);
 };
 
+const NO_UNKNOWN_RENDERINGS: ReadonlySet<string> = new Set();
+
+/**
+ * What a STAGE decides about how the attributes it renders are asked for,
+ * where the codebook does not decide it.
+ *
+ * A network composer's form field keeps its own `component` and `parameters`,
+ * and the analyser reads both: a date window is the picker's own
+ * `before`/`after`, and a boolean's domain is the control's options. The field
+ * being edited hands its own pair; `overlay` is every OTHER field of the same
+ * form, keyed by the attribute it renders, because a rule comparing two
+ * answers is satisfiable or not in the renderings BOTH of them arrive with.
+ */
+export type StageRendering = Readonly<{
+  component?: unknown;
+  parameters?: unknown;
+  overlay?: VariableOverlay;
+  /**
+   * Attributes whose rendering THIS form does not decide and some other form
+   * does — a composer form elsewhere in the protocol overriding the same
+   * attribute's control.
+   *
+   * Left in, they would be judged at a codebook control nothing renders them
+   * with: a boolean the codebook declares as a choice of one value, rendered
+   * as a toggle by the form that actually asks for it, would pin a comparison
+   * this form can never see. Dropped from the judged set instead, which is
+   * what protocol validation does with them (`schema.ts`'s
+   * `unknownRenderingFor`) and for the same reason — an accept-direction gap
+   * is preferred to a refusal of something satisfiable.
+   */
+  unknownRenderings?: ReadonlySet<string>;
+}>;
+
+/**
+ * The part of a rule check the stage's own renderings decide, for an editor to
+ * spread over the rest of its context.
+ *
+ * One helper for `ruleMapIssue` and `findLegalReferenceTargets` alike, so the
+ * rules a surface OFFERS and the verdict it gives are read from one view. The
+ * view is resolved rather than guessed — every attribute this form renders
+ * carries the form's own pair — which is what earns
+ * `stageEffectiveComponents`: the analyser reads a `Boolean` control's
+ * `options` as the participant-facing domain only from a caller that has
+ * settled each variable's rendering, and it is exactly the reading protocol
+ * validation makes of the saved form (`schema.ts`'s composer overlay). Absent
+ * where the codebook's own control is what the interview renders, which is
+ * every other caller.
+ */
+export const stageRenderingContext = (
+  allVariables: UnknownRecord,
+  stageRendering: StageRendering | undefined,
+): Readonly<{
+  allVariables: UnknownRecord;
+  component?: unknown;
+  parameters?: unknown;
+  stageEffectiveComponents?: boolean;
+}> =>
+  stageRendering === undefined
+    ? { allVariables }
+    : {
+        allVariables: withOverlay(
+          withoutUnknownRenderings(
+            allVariables,
+            stageRendering.unknownRenderings ?? NO_UNKNOWN_RENDERINGS,
+            NO_UNKNOWN_RENDERINGS,
+          ),
+          stageRendering.overlay,
+        ),
+        component: stageRendering.component,
+        parameters: stageRendering.parameters,
+        stageEffectiveComponents: true,
+      };
+
 const withoutUnknownRenderings = (
   variables: UnknownRecord,
   allRenderedVariableIds: ReadonlySet<string>,
