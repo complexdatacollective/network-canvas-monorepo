@@ -1,5 +1,5 @@
 import { DirectionProvider } from '@base-ui/react/direction-provider';
-import type { Decorator } from '@storybook/react-vite';
+import type { Decorator, Preview } from '@storybook/react-vite';
 import { useEffect, useLayoutEffect } from 'react';
 
 import {
@@ -71,7 +71,14 @@ export type StorybookI18nOptions = Readonly<{
 }>;
 
 export type StorybookI18n = Readonly<{
-  globalTypes: Record<string, unknown>;
+  /**
+   * Storybook's own type rather than `Record<string, unknown>`, so a preview
+   * can pass this straight to `definePreview({ globalTypes })`. A preview that
+   * typechecks its own config — `@codaco/protocol-builder`'s does — rejects the
+   * loose record, and widening it there would only hide a toolbar entry this
+   * builds wrongly.
+   */
+  globalTypes: NonNullable<Preview['globalTypes']>;
   initialGlobals: Readonly<{ appLocale: string; appDirection: DirectionMode }>;
   withAppI18n: Decorator;
 }>;
@@ -236,6 +243,10 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
       [LOCALE_KEY]: initialLocale,
       [DIRECTION_KEY]: initialDirection,
     },
+    // `dynamicTitle` and no `showName`: the latter was a Storybook 6 option
+    // and no longer exists anywhere in Storybook 10, so it was only ever
+    // ignored — typing this record as Storybook's own `globalTypes` is what
+    // said so.
     globalTypes: {
       [LOCALE_KEY]: {
         name: 'Language',
@@ -246,7 +257,6 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
             value: entry.locale,
             title: entry.label,
           })),
-          showName: true,
           dynamicTitle: true,
         },
       },
@@ -259,7 +269,6 @@ export function storybookI18n(options: StorybookI18nOptions): StorybookI18n {
             value,
             title: name,
           })),
-          showName: true,
           dynamicTitle: true,
         },
       },

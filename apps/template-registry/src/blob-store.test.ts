@@ -5,7 +5,8 @@ import {
   type ServerResponse,
 } from 'node:http';
 
-import { expect, it } from 'vitest';
+import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { expect, it, vi } from 'vitest';
 
 import { templateBytesHash } from '@codaco/studio-sync/template-exchange';
 
@@ -65,6 +66,7 @@ it('uses authenticated private requests, conditional content-addressed uploads, 
       condition: request.headers['if-none-match'],
       type: request.headers['content-type'],
     });
+    const url = new URL(request.url ?? '/', 'http://s3.test');
     if (request.method === 'PUT') {
       request.on('data', (chunk: unknown) => {
         if (!Buffer.isBuffer(chunk))
@@ -72,7 +74,11 @@ it('uses authenticated private requests, conditional content-addressed uploads, 
         received.push(chunk);
       });
       request.on('end', () => response.end());
-    } else if (request.method === 'GET') response.end(bytes);
+    } else if (request.method === 'GET' && url.searchParams.has('versions'))
+      response.end(
+        '<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated></ListVersionsResult>',
+      );
+    else if (request.method === 'GET') response.end(bytes);
     else response.end();
   });
   try {
@@ -81,16 +87,28 @@ it('uses authenticated private requests, conditional content-addressed uploads, 
     expect(await fixture.blobs.get(rawHash)).toEqual(bytes);
     await fixture.blobs.delete(rawHash);
     expect(Buffer.concat(received)).toEqual(Buffer.from(bytes));
-    expect(requests).toHaveLength(4);
+    expect(requests).toHaveLength(6);
     expect(
       requests.map(({ method, path, signed }) => ({ method, path, signed })),
     ).toEqual([
       { method: 'HEAD', path: '/private-registry/', signed: true },
-      ...['PUT', 'GET', 'DELETE'].map((method) => ({
-        method,
+      {
+        method: 'PUT',
         path: `/private-registry/template-artifacts/${rawHash}`,
         signed: true,
-      })),
+      },
+      {
+        method: 'GET',
+        path: `/private-registry/template-artifacts/${rawHash}`,
+        signed: true,
+      },
+      { method: 'GET', path: '/private-registry/', signed: true },
+      {
+        method: 'DELETE',
+        path: `/private-registry/template-artifacts/${rawHash}`,
+        signed: true,
+      },
+      { method: 'GET', path: '/private-registry/', signed: true },
     ]);
     expect(requests[1]).toMatchObject({
       condition: '*',
@@ -102,10 +120,152 @@ it('uses authenticated private requests, conditional content-addressed uploads, 
     await expect(fixture.blobs.get('../escape')).rejects.toMatchObject({
       code: 'SERVICE_UNAVAILABLE',
     });
-    expect(requests).toHaveLength(4);
+    expect(requests).toHaveLength(6);
   } finally {
     await fixture.close();
   }
+});
+
+it('permanently removes every version and delete marker for a versioned bucket', async () => {
+  const bytes = new TextEncoder().encode('Versioned synthetic artifact');
+  const rawHash = templateBytesHash(bytes);
+  const key = `template-artifacts/${rawHash}`;
+  let listCalls = 0;
+  const deleteBodies: string[] = [];
+  const methods: string[] = [];
+  const fixture = await peer((request, response) => {
+    methods.push(request.method ?? '');
+    const url = new URL(request.url ?? '/', 'http://s3.test');
+    if (request.method === 'GET' && url.searchParams.has('versions')) {
+      listCalls += 1;
+      response.setHeader('Content-Type', 'application/xml');
+      response.end(
+        listCalls === 1
+          ? `<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>true</IsTruncated><NextKeyMarker>${key}</NextKeyMarker><NextVersionIdMarker>old-version</NextVersionIdMarker><Version><Key>${key}</Key><VersionId>old-version</VersionId></Version></ListVersionsResult>`
+          : listCalls === 2
+            ? `<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated><DeleteMarker><Key>${key}</Key><VersionId>delete-marker</VersionId></DeleteMarker></ListVersionsResult>`
+            : '<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated></ListVersionsResult>',
+      );
+      return;
+    }
+    if (request.method === 'POST' && url.searchParams.has('delete')) {
+      const chunks: Buffer[] = [];
+      request.on('data', (chunk: Buffer) => chunks.push(chunk));
+      request.on('end', () => {
+        deleteBodies.push(Buffer.concat(chunks).toString('utf8'));
+        response.setHeader('Content-Type', 'application/xml');
+        response.end(
+          '<DeleteResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"/>',
+        );
+      });
+      return;
+    }
+    response.end();
+  });
+  try {
+    await fixture.blobs.delete(rawHash);
+    expect(listCalls).toBe(3);
+    expect(deleteBodies).toHaveLength(1);
+    expect(deleteBodies.join('\n')).toContain(
+      '<VersionId>old-version</VersionId>',
+    );
+    expect(deleteBodies.join('\n')).toContain(
+      '<VersionId>delete-marker</VersionId>',
+    );
+    expect(methods).not.toContain('DELETE');
+  } finally {
+    await fixture.close();
+  }
+});
+
+it('restarts version enumeration so a write behind the cursor is also deleted', async () => {
+  const rawHash = 'f'.repeat(64);
+  const key = `template-artifacts/${rawHash}`;
+  let listCalls = 0;
+  let lateVersionExists = false;
+  const deleteBodies: string[] = [];
+  const fixture = await peer((request, response) => {
+    const url = new URL(request.url ?? '/', 'http://s3.test');
+    if (request.method === 'GET' && url.searchParams.has('versions')) {
+      listCalls += 1;
+      response.setHeader('Content-Type', 'application/xml');
+      if (listCalls === 1)
+        response.end(
+          `<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>true</IsTruncated><NextKeyMarker>${key}</NextKeyMarker><NextVersionIdMarker>old-version</NextVersionIdMarker><Version><Key>${key}</Key><VersionId>old-version</VersionId></Version></ListVersionsResult>`,
+        );
+      else if (listCalls === 2)
+        response.end(
+          '<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated></ListVersionsResult>',
+        );
+      else if (lateVersionExists) {
+        lateVersionExists = false;
+        response.end(
+          `<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated><Version><Key>${key}</Key><VersionId>late-version</VersionId></Version></ListVersionsResult>`,
+        );
+      } else
+        response.end(
+          '<ListVersionsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><IsTruncated>false</IsTruncated></ListVersionsResult>',
+        );
+      return;
+    }
+    if (request.method === 'POST' && url.searchParams.has('delete')) {
+      const chunks: Buffer[] = [];
+      request.on('data', (chunk: Buffer) => chunks.push(chunk));
+      request.on('end', () => {
+        deleteBodies.push(Buffer.concat(chunks).toString('utf8'));
+        if (deleteBodies.length === 1) lateVersionExists = true;
+        response.setHeader('Content-Type', 'application/xml');
+        response.end(
+          '<DeleteResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"/>',
+        );
+      });
+      return;
+    }
+    response.end();
+  });
+  try {
+    await fixture.blobs.delete(rawHash);
+    expect(listCalls).toBe(4);
+    expect(deleteBodies).toHaveLength(2);
+    expect(deleteBodies[1]).toContain('<VersionId>late-version</VersionId>');
+  } finally {
+    await fixture.close();
+  }
+});
+
+it('uses ordinary deletion only for an explicitly admitted R2 endpoint', async () => {
+  const send = vi
+    .spyOn(S3Client.prototype, 'send')
+    .mockResolvedValue({} as never);
+  const blobs = createRegistryBlobStore({
+    provider: 'r2',
+    endpoint: `https://${'a'.repeat(32)}.us.r2.cloudflarestorage.com/`,
+    region: 'auto',
+    bucket: 'private-registry',
+    accessKeyId: 'synthetic-registry-access',
+    secretAccessKey: 'synthetic-registry-secret',
+  });
+  try {
+    await blobs.delete('e'.repeat(64));
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[0]).toBeInstanceOf(DeleteObjectCommand);
+  } finally {
+    blobs.close();
+    send.mockRestore();
+  }
+});
+
+it('rejects an unverified endpoint when R2 deletion is selected', () => {
+  expect(() =>
+    createRegistryBlobStore({
+      provider: 'r2',
+      endpoint: 'https://objects.example.test/',
+      region: 'auto',
+      bucket: 'private-registry',
+      accessKeyId: 'synthetic-registry-access',
+      secretAccessKey: 'synthetic-registry-secret',
+    }),
+  ).toThrow('REGISTRY_R2_ENDPOINT_INVALID');
 });
 
 it('deduplicates only after reading and verifying the existing immutable bytes', async () => {

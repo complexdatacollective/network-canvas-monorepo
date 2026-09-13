@@ -5,12 +5,8 @@ import {
   collectAssetReferences,
   collectEntityAttributeReferences,
   collectEntityTypeReferences,
-  collectVariableRoleHits,
-  findExclusiveVariableSlots,
-  findInterfaceOwnedOptionBindings,
   type EntityAttributeReferenceHit,
   type EntityTypeReferenceHit,
-  type InterfaceOwnedOptionSetKey,
 } from '@codaco/protocol-validation';
 import type { RootState } from '~/ducks/modules/root';
 
@@ -108,8 +104,7 @@ export const getEntityTypeUsageHitsById = createSelector(
 
 // Memoises the entity-attribute walk for every consumer below, so re-deriving
 // the index or the per-variable usage hits doesn't re-collect unless the
-// protocol changes. (getVariableRoleMap below has its own grouping needs and
-// calls collectVariableRoleHits directly rather than consuming this.)
+// protocol changes.
 const getEntityAttributeHits = createSelector(getProtocol, (protocol) =>
   protocol ? collectEntityAttributeReferences(protocol) : [],
 );
@@ -165,122 +160,6 @@ export const getVariableUsageHits = (
   variableId: string,
 ): readonly EntityAttributeReferenceHit[] =>
   getEntityAttributeHitsByVariableId(state).get(variableId) ?? NO_HITS;
-
-/**
- * Composite key scoping a variable to its writer subject (entity + type), so
- * identically-named variables on different node/edge types never collide.
- */
-export const roleMapKey = (
-  subject: { entity: string; type?: string },
-  variableId: string,
-): string => JSON.stringify([subject.entity, subject.type ?? null, variableId]);
-
-/**
- * Writer-role counts per subject-scoped variable, keyed by `roleMapKey`.
- * Exported because every consumer reads it through `~/selectors/roleFilters`'s
- * predicates rather than indexing it by hand — see `hasValidatedUse`.
- */
-export type VariableRoleMap = Record<
-  string,
-  { validated: number; unvalidated: number }
->;
-
-const buildVariableRoleMap = (
-  protocol: unknown,
-  excludedStageIndex?: number,
-): VariableRoleMap => {
-  if (!protocol) return {};
-  const map: VariableRoleMap = {};
-  for (const group of collectVariableRoleHits(protocol)) {
-    const countOutsideStage = (hits: typeof group.validated): number =>
-      excludedStageIndex === undefined
-        ? hits.length
-        : hits.filter((hit) => hit.stageIndex !== excludedStageIndex).length;
-    map[roleMapKey(group.subject, group.variableId)] = {
-      validated: countOutsideStage(group.validated),
-      unvalidated: countOutsideStage(group.unvalidated),
-    };
-  }
-  return map;
-};
-
-/**
- * Counts of validated- vs unvalidated-usage hits per subject-scoped variable,
- * keyed by `roleMapKey`. Backs the writer-picker exclusions and save-time
- * gates that keep a variable from being written both by a form (validated)
- * and by a bin/highlight/census/etc. (unvalidated).
- */
-export const getVariableRoleMap = createSelector(
-  getProtocol,
-  (protocol): VariableRoleMap => buildVariableRoleMap(protocol),
-);
-
-/**
- * Counts saved writer roles outside the stage currently being edited. The
- * editor overlays that stage's live Redux Form draft separately.
- */
-export const getVariableRoleMapOutsideStage = createSelector(
-  [
-    getProtocol,
-    (_state: unknown, excludedStageIndex: number | undefined) =>
-      excludedStageIndex,
-  ],
-  (protocol, excludedStageIndex): VariableRoleMap =>
-    buildVariableRoleMap(protocol, excludedStageIndex),
-);
-
-export type ExclusiveSlotClaim = {
-  slot: string;
-  owner: string;
-  ownerInterface?: string;
-};
-
-/**
- * The interface-owned structural slot claiming each subject-scoped variable,
- * keyed by `roleMapKey`. Derived from the schema's own `exclusive` tags (via
- * `findExclusiveVariableSlots`), so a picker exclusion cannot drift from the
- * protocol rule it exists to keep the researcher away from.
- *
- * SLOT-aware: the value records WHICH slot claims the variable, because the
- * same slot on another stage may legitimately name it — two Family Pedigree
- * stages over one node type share their structural variables.
- */
-export const getExclusiveVariableSlotMap = createSelector(
-  [getEntityAttributeHits, getProtocol],
-  (hits, protocol): Record<string, ExclusiveSlotClaim> => {
-    if (!protocol) return {};
-    const map: Record<string, ExclusiveSlotClaim> = {};
-    for (const slot of findExclusiveVariableSlots(protocol, hits)) {
-      map[roleMapKey(slot.subject, slot.variableId)] = {
-        slot: slot.descriptor.slot,
-        owner: slot.descriptor.owner,
-        ownerInterface:
-          slot.path[0] === 'stages' && typeof slot.path[1] === 'number'
-            ? protocol.stages[slot.path[1]]?.type
-            : undefined,
-      };
-    }
-    return map;
-  },
-);
-
-/**
- * The interface-owned option set bound to each subject-scoped variable, keyed
- * by `roleMapKey`. Backs the read-only option tables in the field and bin
- * editors: an interface that both writes and reads these values fixes the
- * option list, whoever else binds the variable.
- */
-export const getInterfaceOwnedOptionMap = createSelector(
-  [getEntityAttributeHits, getProtocol],
-  (hits, protocol): Record<string, InterfaceOwnedOptionSetKey> => {
-    if (!protocol) return {};
-    const map: Record<string, InterfaceOwnedOptionSetKey> = {};
-    for (const binding of findInterfaceOwnedOptionBindings(protocol, hits)) {
-      map[roleMapKey(binding.subject, binding.variableId)] = binding.optionSet;
-    }
-    return map;
-  },
-);
 
 /**
  * Returns index of used assets.

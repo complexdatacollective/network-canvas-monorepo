@@ -9,7 +9,7 @@ import {
   useState,
 } from 'react';
 
-import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
+import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { IconButton } from '@codaco/fresco-ui/Button';
 import ArrayField, {
@@ -44,13 +44,6 @@ const messages = defineMessages({
     defaultMessage: 'No rules have been created yet.',
     description:
       'Shown in place of the list when a researcher has added no rules to a rule set yet.',
-  },
-  saveUnavailable: {
-    id: 'protocolBuilder.ruleList.saveUnavailable',
-    defaultMessage:
-      'These rules are no longer editable, so this rule cannot be saved. Copy anything you want to keep, then close the editor.',
-    description:
-      'Shown inside the rule editor when the list it was opened from stopped accepting changes while the dialog was open — the rule cannot be committed, and the draft is kept on screen so nothing the researcher wrote is lost.',
   },
 });
 
@@ -118,7 +111,7 @@ function RuleListItem({
   // half-added row is already covered — it exists only while its dialog is
   // open, and is dropped whole when that dialog is cancelled — so the only
   // rows this used to hide were stored ones, from a protocol authored
-  // elsewhere or merged from a collaborator's edit. `ruleSetIssues` reports
+  // elsewhere. `ruleSetIssues` reports
   // those and the field tells the researcher to open rule N, and nothing here
   // opens a row by position: the row was the only way in, and hiding it left
   // the whole rule set unrepairable except by deleting every rule in it.
@@ -202,13 +195,6 @@ function RuleListItem({
   );
 }
 
-/**
- * Encoded rather than formatted: this crosses `DialogForm`'s string-only
- * `formErrors` contract, and `FormErrors` decodes it in the reader's own
- * language where it is rendered.
- */
-const SAVE_UNAVAILABLE_MESSAGE = createMessageError(messages.saveUnavailable);
-
 type RuleEditorSession = Readonly<{
   /** Bumped per session; the `key` that gives each one a fresh field store. */
   id: number;
@@ -280,7 +266,13 @@ function RuleListEditor({
     });
   }, [duplicateIds, isNewItem, item]);
 
-  if (session === null) return null;
+  // `ArrayField` withdraws its save handler while the list is not accepting
+  // changes, and there is no editor to render then: a disabled or read-only
+  // list offers neither Add nor Edit, and neither state can arrive while a
+  // dialog is open — the dialog is modal, so the controls that disable a list
+  // are out of reach, and a stage somebody else holds is read-only from the
+  // moment it opens.
+  if (session === null || onSave === undefined) return null;
 
   return (
     <RuleEditorDialog
@@ -290,17 +282,7 @@ function RuleListEditor({
       ruleTypes={ruleTypes}
       allowedTargets={allowedTargets}
       idIsShared={session.idIsShared}
-      // `ArrayField` withdraws its save handler when the list stops being
-      // editable, and this dialog may already be open when that happens.
-      // Turning that absence into a call that does nothing told the researcher
-      // their rule had been saved while the list never committed it and never
-      // left editing — so the draft was lost and the editor stuck open.
-      // Refusing keeps both the dialog and the draft, and says why.
-      onSave={(rule) =>
-        onSave === undefined
-          ? { formErrors: [SAVE_UNAVAILABLE_MESSAGE] }
-          : onSave(rule)
-      }
+      onSave={onSave}
       onCancel={onCancel}
       finalFocus={getEditorTrigger}
       {...(session.isNewItem ? {} : { layoutId: session.sourceId })}

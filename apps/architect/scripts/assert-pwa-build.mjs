@@ -11,7 +11,7 @@ import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { assertPwaCacheHeaders } from '../../../scripts/assert-pwa-cache-headers.mjs';
+import { assertPwaCacheHeaders } from '../../../scripts/build/assert-pwa-cache-headers.mjs';
 
 const appRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),

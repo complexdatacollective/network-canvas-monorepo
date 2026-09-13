@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -75,6 +75,14 @@ const messages = defineMessages({
   },
 });
 
+const renderDashboardLinkChunks = (chunks: ReactNode[]) => (
+  <Link href="https://uploadthing.com/dashboard/" target="_blank">
+    {chunks}
+  </Link>
+);
+
+const renderStrongChunks = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 function UploadThingModal() {
   const intl = useAppIntl();
 
@@ -94,18 +102,14 @@ function UploadThingModal() {
       <ol className="mt-6 ml-4 list-inside list-decimal">
         <li>
           {intl.formatMessage(messages.visitTheUploadThingDashboard, {
-            tag1: (chunks) => (
-              <Link href="https://uploadthing.com/dashboard/" target="_blank">
-                {chunks}
-              </Link>
-            ),
+            tag1: renderDashboardLinkChunks,
           })}
         </li>
         <li>{intl.formatMessage(messages.selectYourProject)}</li>
         <li>{intl.formatMessage(messages.selectTheAPIKeysTab)}</li>
         <li>
           {intl.formatMessage(messages.ensureYouHaveTheSDKV7Tab, {
-            tag1: (chunks) => <strong>{chunks}</strong>,
+            tag1: renderStrongChunks,
           })}
         </li>
         <li>

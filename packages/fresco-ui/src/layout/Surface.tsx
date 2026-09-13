@@ -273,6 +273,7 @@ const SurfaceComponent = forwardRef<HTMLDivElement, SurfaceProps>(
       // (and this whole effect body) is dead-code-eliminated from production
       // builds without requiring Node globals in browser consumers.
       if (import.meta.env.DEV && !floating && depth > MAX_SURFACE_DEPTH) {
+        // oxlint-disable-next-line no-console -- dev-only diagnostic, dead-code-eliminated from production builds by the DEV guard above
         console.warn(
           `Surface: nested ${depth} levels deep, which exceeds the surface token scale (0–${MAX_SURFACE_DEPTH}). Rendering with the level-${MAX_SURFACE_DEPTH} tokens. Consider flattening the layout.`,
         );

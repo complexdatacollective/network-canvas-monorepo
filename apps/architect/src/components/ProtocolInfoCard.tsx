@@ -242,6 +242,12 @@ const ProtocolInfoCard = () => {
    */
   const selfCommittedName = useRef<string | null>(null);
 
+  // This stays an effect, and not because syncing a prop into state usually
+  // should. It SPENDS the token above, exactly once per arriving `name`, and
+  // effects are the only place that can promise that: React may call a
+  // component's body twice for one render, and a second pass would find the
+  // token already spent and read its own commit as somebody else's — clearing
+  // the refusal notice the token exists to protect.
   useEffect(() => {
     setLocalName(name ?? '');
     // An external rename (undo, autosave round-trip, another surface) is not

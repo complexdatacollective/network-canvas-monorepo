@@ -1,6 +1,7 @@
 import {
   chmod,
   lstat,
+  mkdir,
   mkdtemp,
   readFile,
   readdir,
@@ -18,6 +19,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   configureRegistryDeployment,
+  isSecureConfigurationAncestor,
   registryConfigurationFiles,
   renderRegistryDeploymentTemplate,
 } from '../configure.ts';
@@ -59,6 +61,18 @@ async function environment(output: string) {
 }
 
 describe('Registry deployment configuration', () => {
+  it('rejects a non-root foreign owner that can replace a protected child', () => {
+    expect(isSecureConfigurationAncestor({ mode: 0o755, uid: 501 }, 502)).toBe(
+      false,
+    );
+    expect(isSecureConfigurationAncestor({ mode: 0o755, uid: 502 }, 502)).toBe(
+      true,
+    );
+    expect(isSecureConfigurationAncestor({ mode: 0o755, uid: 0 }, 502)).toBe(
+      true,
+    );
+  });
+
   it('limits public rendering to the signed Registry template inventory', () => {
     expect(() =>
       renderRegistryDeploymentTemplate('unrelated.env', Buffer.from('value')),
@@ -93,6 +107,50 @@ describe('Registry deployment configuration', () => {
       expect(env.REGISTRY_SMTP_URL).toBe(options.smtpUrl);
       expect(env.REGISTRY_DOMAIN).toBe(options.domain);
       expect(env.REGISTRY_S3_ACCESS_KEY_ID).toMatch(/^registry_/);
+    });
+  });
+
+  it('keeps writes in the validated root when an ancestor symlink is retargeted', async () => {
+    await fixture(async (root) => {
+      const trusted = join(root, 'trusted');
+      const redirected = join(root, 'redirected');
+      const alias = join(root, 'alias');
+      await mkdir(join(trusted, 'configuration'), { recursive: true });
+      await mkdir(join(redirected, 'configuration', 'deployment', 'registry'), {
+        recursive: true,
+      });
+      await symlink(trusted, alias);
+      let retargeted = false;
+      await configureRegistryDeployment(
+        { ...options, output: join(alias, 'configuration') },
+        templateRoot,
+        {
+          write: async (file, bytes) => {
+            await file.writeFile(bytes);
+            if (!retargeted) {
+              retargeted = true;
+              await rm(alias);
+              await symlink(redirected, alias);
+            }
+          },
+        },
+      );
+      expect(retargeted).toBe(true);
+      expect(await readdir(join(redirected, 'configuration'))).not.toContain(
+        'registry.env',
+      );
+      expect(
+        await readdir(
+          join(redirected, 'configuration', 'deployment', 'registry'),
+        ),
+      ).toEqual([]);
+      expect(
+        (await environment(join(trusted, 'configuration')))
+          .REGISTRY_AUTH_SECRET,
+      ).toBeTruthy();
+      expect(await readdir(join(trusted, 'configuration'))).not.toContain(
+        '.registry-configure.lock',
+      );
     });
   });
 
@@ -137,6 +195,30 @@ describe('Registry deployment configuration', () => {
       ).rejects.toThrow('mode0600');
       expect(await readFile(environmentPath)).toEqual(environmentBytes);
     });
+  });
+
+  it('rejects writable configuration roots and writable scoped ancestors', async () => {
+    await fixture(async (output) => {
+      await configureRegistryDeployment({ ...options, output }, templateRoot);
+      await chmod(output, 0o777);
+      await expect(
+        configureRegistryDeployment({ ...options, output }, templateRoot),
+      ).rejects.toThrow('output is unsafe');
+      await chmod(output, 0o700);
+    });
+
+    const parent = await mkdtemp(join(tmpdir(), 'registry-configure-parent-'));
+    try {
+      await chmod(parent, 0o777);
+      const output = join(parent, 'private-root');
+      await expect(
+        configureRegistryDeployment({ ...options, output }, templateRoot),
+      ).rejects.toThrow('output is unsafe');
+      await expect(lstat(output)).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally {
+      await chmod(parent, 0o700);
+      await rm(parent, { recursive: true, force: true });
+    }
   });
 
   it('removes a partially written owned deployment template', async () => {

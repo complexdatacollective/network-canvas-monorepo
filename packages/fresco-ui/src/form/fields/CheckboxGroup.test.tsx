@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -71,5 +71,33 @@ describe('CheckboxGroup readOnly', () => {
     await user.click(screen.getByText('Option B'));
 
     expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe('CheckboxGroup with nothing to tick', () => {
+  it('keeps the named group and says so inside it', () => {
+    // A group with no boxes is still the element the field's label names, so
+    // the sentence standing in for the boxes goes INSIDE it. Rendered in
+    // place of the `<fieldset>`, the field loses its accessible name: a
+    // `<label for>` cannot label a paragraph, and the `aria-labelledby` the
+    // field injects goes with the element it was spread onto.
+    render(
+      <>
+        <span id="edge-types-label">Edge types</span>
+        <CheckboxGroupField
+          name="options"
+          options={[]}
+          aria-labelledby="edge-types-label"
+          emptyState={<p>Nothing to choose from yet.</p>}
+          onChange={() => undefined}
+        />
+      </>,
+    );
+
+    const group = screen.getByRole('group', { name: 'Edge types' });
+    expect(
+      within(group).getByText('Nothing to choose from yet.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).toBeNull();
   });
 });

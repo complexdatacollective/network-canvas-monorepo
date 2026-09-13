@@ -111,6 +111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ kind, mode: s.mode, idleTimeoutMinutes });
   }, []);
 
+  // The vault lives in storage and the WebCrypto layer, not in React: its state
+  // can only be learned by asking the auth API, asynchronously, once the
+  // provider is mounted. The state written here is that answer arriving, so an
+  // effect is the right tool.
   useEffect(() => {
     void refresh();
   }, [refresh]);

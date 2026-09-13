@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0010_protocol_builder_write_receipts",
+  "previous": "0009_protocol_builder_event_log",
+  "fingerprint": "8f2de6724eda53cdefcb0d2f890ad162403cb67926e659ab838b99798fb76650",
+  "snapshotHash": "5af478ef28887a50bffc0476c123911722d37245a3c18615c3ce66ffa2310d5d",
+  "sqlHash": "a6e66e88174487f415634ca6eb33c7608f5edab4de01b85295233639ecc66a28",
+  "sidecarsHash": "3da448728fe9efe400949881e1c419636f8379fe561cb0ce8771df0bf9916b17"
+}

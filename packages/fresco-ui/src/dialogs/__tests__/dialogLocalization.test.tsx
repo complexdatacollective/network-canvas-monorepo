@@ -11,6 +11,14 @@ import { frescoUiCatalogs } from '../../locales/catalogs';
 import DialogProvider from '../DialogProvider';
 import useDialog from '../useDialog';
 
+// Held at module scope: built inside the click handler, these read to the
+// linter as components defined during render. Both still track the active
+// locale, which is what this file is here to prove.
+const confirmLabel = <AppMessage message={commonMessages.delete} />;
+const describeErrorRender = () => (
+  <AppMessage message={commonMessages.genericError} />
+);
+
 function Trigger({
   fail,
   describeError = true,
@@ -23,11 +31,9 @@ function Trigger({
     <button
       onClick={() =>
         void confirm({
-          confirmLabel: <AppMessage message={commonMessages.delete} />,
+          confirmLabel,
           onConfirm: fail,
-          describeError: describeError
-            ? () => <AppMessage message={commonMessages.genericError} />
-            : undefined,
+          describeError: describeError ? describeErrorRender : undefined,
         })
       }
     >

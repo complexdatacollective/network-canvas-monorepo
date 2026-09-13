@@ -2,18 +2,14 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import {
-  defineStageEditorPart,
-  missingStageEditors,
-  STAGE_TYPES,
-} from '../stage-editor-contract.ts';
+import StageEditorShell from '../form/StageEditorShell.tsx';
+import { missingStageEditors, STAGE_TYPES } from '../stage-editor-contract.ts';
 import type {
   StageEditorComponent,
   StageEditorProps,
 } from '../stage-editor-contract.ts';
-import { UnregisteredStageTypeError } from '../StageEditor.tsx';
 import {
   AWAITING_STAGE_EDITORS,
   composeStageEditorRegistry,
@@ -31,24 +27,24 @@ const EgoFormEditor: StageEditorComponent<'EgoForm'> = ({
 }: StageEditorProps<'EgoForm'>) => <p>{stageType} editor</p>;
 
 /**
- * An editor that renders the host's chrome and nothing else, so a test can
- * read whether the slot reached it — and what it was called with.
+ * An editor that forwards the host's chrome into the shell's slot and renders
+ * nothing else, so a test can read whether the slot reached it — and what the
+ * shell called it with. The stand-in when a host gave none says so, because
+ * the shell renders an empty slot as nothing at all.
  */
 const ChromeEditor: StageEditorComponent<'Information'> = ({
-  controller,
   actions,
 }: StageEditorProps<'Information'>) => (
-  <p>
-    {actions?.({ controller, formId: controller.formId, readOnly: false }) ??
-      'no chrome'}
-  </p>
+  <StageEditorShell actions={actions ?? (() => 'no chrome')}>
+    <p>Information editor</p>
+  </StageEditorShell>
 );
 
 describe('composing the registry from family parts', () => {
   it('merges the parts each family exports', () => {
     const registry = composeStageEditorRegistry(
-      defineStageEditorPart({ Information: InformationEditor }),
-      defineStageEditorPart({ EgoForm: EgoFormEditor }),
+      { Information: InformationEditor },
+      { EgoForm: EgoFormEditor },
     );
 
     expect(Object.keys(registry).toSorted()).toEqual([
@@ -85,6 +81,20 @@ describe('composing the registry from family parts', () => {
         ...Object.keys(stageEditorRegistry),
       ].toSorted(),
     ).toEqual([...STAGE_TYPES].toSorted());
+  });
+
+  /**
+   * The state PR 3 reaches, asserted rather than inferred from the pair above.
+   *
+   * Those two hold the runtime list, the type-level list and the schema to each
+   * other — which they would go on doing if a merge dropped an editor and its
+   * stage type reappeared in `AWAITING_STAGE_EDITORS` together. This says the
+   * only thing that pair cannot: there is nothing in either list.
+   */
+  it('leaves no interface without an editor', () => {
+    expect([...AWAITING_STAGE_EDITORS]).toEqual([]);
+    expect(missingStageEditors(stageEditorRegistry)).toEqual([]);
+    expect(Object.keys(stageEditorRegistry)).toHaveLength(STAGE_TYPES.length);
   });
 
   /**
@@ -158,8 +168,8 @@ describe('composing the registry from family parts', () => {
 });
 
 /**
- * Nineteen families are still to land, on branches of their own, and each of
- * them edits the same two lists in `stageEditorRegistry.ts`. Written as one
+ * Editors are still landing, on branches of their own, and each of them
+ * edits the same two lists in `stageEditorRegistry.ts`. Written as one
  * entry per line in a fixed alphabetical order, three concurrent one-line
  * changes touch three different lines and merge; written any other way — a
  * list collapsed onto one line, two entries sharing a line, an order nobody
@@ -175,8 +185,19 @@ describe('the two lists a family edits', () => {
     'utf8',
   );
 
-  /** The lines between a list's own brackets, comments and blanks dropped. */
+  /**
+   * The lines between a list's own brackets, comments and blanks dropped.
+   *
+   * A list with nothing in it is written `[]`, because there are no entries to
+   * keep on lines of their own — which is what `AWAITING_STAGE_EDITORS` is now
+   * that every interface has an editor. Only empty brackets are allowed
+   * through, with the whitespace the formatter chooses to put around them: a
+   * list that HAS entries and was collapsed onto one line still fails, which
+   * is the merge the shape is for.
+   */
   const entriesOf = (name: string): string[] => {
+    if (new RegExp(`const ${name} =\\s*\\[\\] as const`).test(source))
+      return [];
     const body = new RegExp(
       `const ${name} = \\[\\n([\\s\\S]*?)\\n\\] as const`,
     ).exec(source)?.[1];
@@ -194,8 +215,8 @@ describe('the two lists a family edits', () => {
   it.each([
     {
       name: 'REGISTRY_PARTS',
-      // An imported part, never an inline object: a family's part is declared
-      // in the family's own module, and one identifier is one line.
+      // An imported part, never an inline object: a part is declared in the
+      // editor's own module, and one identifier is one line.
       entry: /^[A-Za-z_$][\w$]*,$/,
       shape: 'an imported part name followed by a comma',
     },
@@ -218,10 +239,10 @@ describe('the two lists a family edits', () => {
     },
   );
 
-  it('says how to add a family, where a family will look', () => {
+  it('says how to add an editor, where whoever adds one will look', () => {
     // Two lines, and which two. A recipe that stops matching the file is worse
     // than none, so it is checked rather than trusted.
-    expect(source).toMatch(/ADDING A FAMILY IS TWO LINES/);
+    expect(source).toMatch(/ADDING AN EDITOR IS TWO LINES/);
     expect(source).toMatch(/add it to `REGISTRY_PARTS`/);
     expect(source).toMatch(/from `AWAITING_STAGE_EDITORS`/);
   });
@@ -235,7 +256,7 @@ describe('the two lists a family edits', () => {
  *
  * The controls matter as much as the probes: `valid.ts` proves the machinery
  * is not simply refusing everything, and its `ClaimsExactlyTheseTwo` proves
- * `defineStageEditorPart` keeps a part's exact key set — the fact all three
+ * `defineStageEditor` keeps a part's exact key set — the fact all three
  * registry probes rest on, and the one an annotated `const part:
  * StageEditorRegistryPart` destroys. `actionsSlot.ts` is the control for the
  * fourth probe: an editor may ignore the host's action chrome or forward it,
@@ -244,8 +265,9 @@ describe('the two lists a family edits', () => {
  * `partFromRegistry.ts` is a probe about the import graph rather than about
  * coverage: the registry imports every family's part, so the helper a part is
  * declared with must not be reachable through the registry, or a family closes
- * the cycle again. Its control is every other probe in this project — they all
- * import that helper from `stage-editor-contract.ts` and all compile.
+ * the cycle again. Its control is every other registry probe in this
+ * project — they all reach that helper through
+ * `editors/defineStageEditor.tsx` and all compile.
  */
 describe('the compile-time coverage checks', () => {
   it('refuses a missing entry, a stale entry, a duplicate claim, an editor that insists on chrome, and a part helper read from the registry', () => {
@@ -303,42 +325,22 @@ describe('dispatching to a named editor', () => {
   });
 
   /**
-   * Thrown rather than reported: there is no editor to fall back to, and
-   * rendering nothing would leave a researcher on an empty page with no
-   * account of why.
+   * Every interface now has an editor, so nothing this package composes can
+   * reach `UnregisteredStageTypeError` any more: an explicit `{}` from a host
+   * is merged OVER the package's registry rather than replacing it, and there
+   * is no longer a stage type the package leaves out. What the throw says, and
+   * that it names the interface, is asserted in
+   * `hostStageEditorOverrides.test.tsx`, where the package registry is mocked
+   * down to two interfaces and a third is genuinely unregistered.
    */
-  it('names the interface nothing is registered for', () => {
-    const consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
-
-    try {
-      expect(() =>
-        renderStageEditor({ stageId: 'information-1', registry: {} }),
-      ).toThrow(UnregisteredStageTypeError);
-      expect(() =>
-        renderStageEditor({ stageId: 'information-1', registry: {} }),
-      ).toThrow(/"Information" interface/);
-    } finally {
-      consoleError.mockRestore();
-    }
-  });
-
   it('is the package registry when a host does not supply one', () => {
-    const consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
+    // An interface a landed family claims opens in that family's editor with
+    // no registry passed at all, which is how a host reaches one.
+    const harness = renderStageEditor({ stageId: 'information-1' });
 
-    try {
-      // Every stage type is still awaiting its family, so the package's own
-      // registry cannot render anything yet — and says so rather than
-      // rendering a blank page.
-      expect(() => renderStageEditor({ stageId: 'information-1' })).toThrow(
-        UnregisteredStageTypeError,
-      );
-    } finally {
-      consoleError.mockRestore();
-    }
+    expect(harness.getByRole('textbox', { name: 'Stage name' })).toHaveValue(
+      'Information',
+    );
   });
 
   /**
@@ -347,10 +349,14 @@ describe('dispatching to a named editor', () => {
    * editor's slot. An editor mounted without one has to render nothing rather
    * than fail, because a spectator view is given no chrome at all.
    */
-  it('hands the host’s action chrome to the editor it chose', () => {
+  it('hands the host’s action chrome to the editor it chose', async () => {
     const withoutChrome = renderStageEditor({
       stageId: 'information-1',
       registry: { Information: ChromeEditor },
+      // The harness fills the slot everywhere else — it is where the editor
+      // publishes its sections — and the question here is what an editor given
+      // nothing does, which only an empty slot can ask.
+      withoutActionChrome: true,
     });
     expect(withoutChrome.getByText('no chrome')).toBeInTheDocument();
 
@@ -361,9 +367,11 @@ describe('dispatching to a named editor', () => {
     });
     // The id is this harness's own — one per mounted harness, so that two
     // forms never answer to the same one — and it is what the host is handed,
-    // so it is read off the harness rather than written down here.
+    // so it is read off the harness rather than written down here. Awaited,
+    // because a host's save control is refused the stage until the acquire
+    // has been answered: `readOnly` is true while it is still opening.
     expect(
-      withChrome.getByText(`chrome for ${withChrome.formId}, false`),
+      await withChrome.findByText(`chrome for ${withChrome.formId}, false`),
     ).toBeInTheDocument();
   });
 
@@ -385,7 +393,7 @@ describe('dispatching to a named editor', () => {
    * different editor is to open a different stage. A host that could pass one
    * could render a Sociogram editor over a name generator's document.
    */
-  it('reads the stage type from the session, so one registry serves both', () => {
+  it('reads the stage type from the open edit, so one registry serves both', () => {
     const registry = { EgoForm: EgoFormEditor, Information: InformationEditor };
 
     expect(

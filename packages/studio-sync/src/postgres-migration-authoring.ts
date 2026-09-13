@@ -84,11 +84,17 @@ export async function generatePostgresMigrationFiles({
   before?: string;
   after?: string;
 }): Promise<{ id: string; statements: number }> {
+  if (
+    !Array.isArray(sidecarStatements) ||
+    !sidecarStatements.every((statement) => typeof statement === 'string')
+  )
+    throw new Error('Supply sidecar statements as strings.');
+  const copiedSidecarStatements = [...sidecarStatements];
   if (!/^[a-z][a-z0-9_]*$/.test(name))
     throw new Error('Supply --name using lower_snake_case.');
   const fingerprint = fingerprintPostgresSchema(
     await renderPostgresSchemaStatements(schema),
-    sidecarStatements,
+    copiedSidecarStatements,
   );
   if (fingerprint !== expectedFingerprint)
     throw new Error('Run sync-fingerprint before generating a migration.');
@@ -125,6 +131,16 @@ export async function generatePostgresMigrationFiles({
     schema,
     previous ? oldSnapshot.id : undefined,
   );
+  // The schema object can change while the existing history is read. Verify
+  // the actual snapshot being written, rather than attaching a fingerprint
+  // calculated from an earlier rendering of caller-owned table definitions.
+  if (
+    fingerprintPostgresSchema(
+      await generateMigration(emptySnapshot, snapshot),
+      copiedSidecarStatements,
+    ) !== fingerprint
+  )
+    throw new Error('Schema changed during migration authoring.');
   // Pinned rc.4 needs the repository patch to expose a noninteractive policy.
   // Never guess a rename: copying existing data belongs in reviewed before/
   // after SQL, especially when a new column changes its storage format.
@@ -133,7 +149,7 @@ export async function generatePostgresMigrationFiles({
   });
   const sql =
     [before, statements.join('\n'), after].filter(Boolean).join('\n') + '\n';
-  const sidecars = sidecarStatements.join('\n').trimEnd() + '\n';
+  const sidecars = copiedSidecarStatements.join('\n').trimEnd() + '\n';
   const id = `${String(prior.length + 1).padStart(4, '0')}_${name}`;
   const manifest: MigrationManifest = {
     format: 1,

@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0011_recovery_authorization",
+  "previous": "0010_protocol_builder_write_receipts",
+  "fingerprint": "b698161e8f1a1ae7a2e86464cbeb51ed7e0ca314c567fac9d8ae0c78ea21d48c",
+  "snapshotHash": "1716e5c82cc6f3a922b667782ba487147006428e05f9c0663fb552deae034f85",
+  "sqlHash": "d2849271edeee8ddaeef40c067eeb4dc7cba1fcffc47886aa649393991190d43",
+  "sidecarsHash": "3da448728fe9efe400949881e1c419636f8379fe561cb0ce8771df0bf9916b17"
+}

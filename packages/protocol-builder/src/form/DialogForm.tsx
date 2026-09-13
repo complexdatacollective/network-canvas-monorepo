@@ -1,24 +1,26 @@
 import {
+  Component,
   createContext,
   type ReactNode,
   type RefObject,
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 
 import { commonMessages } from '@codaco/app-i18n/common';
-import { defineMessages } from '@codaco/app-i18n/messages';
+import {
+  createMessageError,
+  defineMessage,
+  defineMessages,
+} from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Button } from '@codaco/fresco-ui/Button';
 import Dialog, { type DialogProps } from '@codaco/fresco-ui/dialogs/Dialog';
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import type {
-  FieldProps,
-  ValidFieldComponent,
-} from '@codaco/fresco-ui/form/Field/types';
 import { FormWithoutProvider } from '@codaco/fresco-ui/form/Form';
+import FormErrors from '@codaco/fresco-ui/form/FormErrors';
 import { useFormMeta } from '@codaco/fresco-ui/form/hooks/useFormState';
 import FormStoreProvider, {
   FormStoreContext,
@@ -33,6 +35,11 @@ import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import { ResizableFlexPanel } from '@codaco/fresco-ui/ResizableFlexPanel';
 
 import { useDiscardDraftGuard } from './discardDraftGuard.ts';
+import {
+  documentFromSubmission,
+  dormantFieldsOf,
+  mountedPathsOf,
+} from './documentFromSubmission.ts';
 
 const dialogMessages = defineMessages({
   resizeHandle: {
@@ -40,6 +47,12 @@ const dialogMessages = defineMessages({
     defaultMessage: 'Resize form and preview panes',
     description:
       'Accessible name of the divider a researcher drags to give more room either to the fields of an editing dialog or to the live preview beside them.',
+  },
+  configurationPane: {
+    id: 'protocolBuilder.dialogForm.configurationPane',
+    defaultMessage: 'Configuration',
+    description:
+      'Accessible name of the half of a two-pane editing dialog that holds the controls, as opposed to the live preview of what they are describing.',
   },
 });
 
@@ -96,11 +109,16 @@ export type DialogFormProps = Readonly<{
    */
   formId: string;
   /**
-   * What the draft starts as, keyed by field name. Read by `DialogFormField`,
-   * so a field that names a key opens holding its value. An absent value is
-   * `undefined`; there is no `null`.
+   * The record this dialog is editing.
+   *
+   * Every field inside starts out holding whatever it has at the field's own
+   * path, so the dialog says once what each control would otherwise be handed
+   * one at a time; a field that states its own `initialValue` still decides
+   * for itself. An absent value is `undefined`; there is no `null`.
+   *
+   * It is also what a submit is composed over — see `onSubmit`.
    */
-  initialValues?: Readonly<Record<string, FieldValue>>;
+  document?: Readonly<Record<string, unknown>>;
   validate?: DialogFormValidate;
   /**
    * Receives the draft once every field and `validate` have passed. The dialog
@@ -123,9 +141,31 @@ export type DialogFormProps = Readonly<{
    */
   onSubmit: (
     values: Record<string, FieldValue>,
+    /**
+     * `document` as this submit leaves it: every field the dialog still has
+     * mounted written at its own path, and every field it is holding out of
+     * sight either put back where it belongs or, where the researcher emptied
+     * it, removed.
+     *
+     * The same answer the stage form's own submit produces, through the same
+     * function — so a capability switched off inside a row dialog removes its
+     * key rather than leaving the value the row opened on standing. A dialog
+     * whose draft is not a record — the rule editor, which assembles a rule
+     * out of named fields — reads `values` and ignores this.
+     */
+    document: Record<string, unknown>,
   ) => void | DialogFormErrors | Promise<void | DialogFormErrors>;
   /** Footer submit label — 'Save', 'Add rule'. */
   submitLabel: string;
+  /**
+   * Footer dismiss label, for a dialog whose dismissal is not simply Cancel.
+   *
+   * Left out it is the shared, translated `common.cancel` rather than an
+   * English literal: every one of this package's row editors mounts this
+   * dialog and none of them names its own, so a default written as a word here
+   * is the one string that stays English inside an otherwise translated
+   * dialog.
+   */
   cancelLabel?: string;
   /** Semantic width preset, forwarded to `Dialog`. */
   size?: DialogProps['size'];
@@ -159,32 +199,57 @@ export type DialogFormProps = Readonly<{
   children: ReactNode;
 }>;
 
-const NO_INITIAL_VALUES: Readonly<Record<string, FieldValue>> = Object.freeze(
-  {},
-);
-
-const DialogFormInitialValuesContext =
-  createContext<Readonly<Record<string, FieldValue>>>(NO_INITIAL_VALUES);
+const NO_DOCUMENT: Readonly<Record<string, unknown>> = Object.freeze({});
 
 /**
- * A field inside a `DialogForm`, seeded from the dialog's `initialValues`.
+ * The DOM id of the `<form>` this dialog actually rendered.
  *
- * The stage editor's own `ProtocolField` reads its starting value from the
- * stage document, which a dialog editing a rule or a single row is not part
- * of — so this is the same idea against the values the dialog was opened with.
- * A field may still state its own `initialValue`, which wins.
+ * The caller's `formId` is only the STEM: a dialog stays mounted while it
+ * animates closed, so a second dialog of the same kind opened in that window
+ * would render a second `<form>` under the same name, and a `form=` attribute
+ * resolves by id to the FIRST match in document order — the old, closing one.
+ * The rendered id therefore carries a per-mount suffix, and anything that
+ * needs to associate a control with this form has to ask for the id rather
+ * than assume the stem.
  */
-export function DialogFormField<C extends ValidFieldComponent>(
-  props: FieldProps<C>,
-) {
-  const initialValues = useContext(DialogFormInitialValuesContext);
-  const fieldProps = {
-    ...props,
-    initialValue: props.initialValue ?? initialValues[props.name],
-  } as FieldProps<C>;
+const DialogFormIdContext = createContext<string | null>(null);
 
-  return <Field<C> {...fieldProps} />;
+/** The DOM id of the enclosing `DialogForm`'s `<form>`, if there is one. */
+export function useDialogFormId(): string | null {
+  return useContext(DialogFormIdContext);
 }
+
+/**
+ * Registers a reason this dialog cannot be submitted, and answers with the
+ * release. Absent outside a `DialogForm`.
+ */
+const DialogFormSubmissionBlockContext = createContext<
+  ((reason: string) => () => void) | undefined
+>(undefined);
+
+/**
+ * States that the dialog around this component may not be submitted, and why,
+ * for as long as this component is mounted.
+ *
+ * For a part of a dialog that has failed in a way no field can express — a
+ * caller's editor that threw while rendering, so the controls the researcher
+ * would have filled in are not there at all. Fields report themselves; this is
+ * for their ABSENCE, which nothing left on screen can validate. The dialog
+ * puts the reason above the fields, where it reports every other form-level
+ * problem, announces it on the submit control and refuses the submission —
+ * until this unmounts, which for a boundary means the editor rendering again.
+ *
+ * Answers whether a dialog took it. A caller mounted outside one — which
+ * nothing in this package does — has to report the problem itself, because
+ * nothing else will.
+ */
+export function useDialogFormSubmissionBlock(reason: string): boolean {
+  const block = useContext(DialogFormSubmissionBlockContext);
+  useEffect(() => block?.(reason), [block, reason]);
+  return block !== undefined;
+}
+
+const NO_SUBMISSION_BLOCKS: ReadonlyMap<number, string> = new Map();
 
 /** Distinguishes concurrently mounted forms — see `domFormId` below. */
 let nextDialogFormInstance = 0;
@@ -248,7 +313,7 @@ function DialogFormBody({
   title,
   description,
   formId,
-  initialValues = NO_INITIAL_VALUES,
+  document = NO_DOCUMENT,
   validate,
   onSubmit,
   submitLabel,
@@ -280,6 +345,29 @@ function DialogFormBody({
     nextDialogFormInstance += 1;
     return `${formId}-${nextDialogFormInstance}`;
   });
+
+  /**
+   * Why this dialog may not be submitted, keyed so that two blocks holding the
+   * same sentence are still two blocks: see
+   * {@link useDialogFormSubmissionBlock}.
+   */
+  const [submissionBlocks, setSubmissionBlocks] =
+    useState(NO_SUBMISSION_BLOCKS);
+  const nextBlockKey = useRef(0);
+  const block = useCallback((reason: string) => {
+    const key = (nextBlockKey.current += 1);
+    setSubmissionBlocks((held) => new Map(held).set(key, reason));
+    return () => {
+      setSubmissionBlocks((held) => {
+        const remaining = new Map(held);
+        remaining.delete(key);
+        return remaining;
+      });
+    };
+  }, []);
+  const blockedReasons = [...submissionBlocks.values()];
+  const blocked = blockedReasons.length > 0;
+  const blockedReasonsId = `${domFormId}-unsubmittable`;
 
   /**
    * A live comparison against the values the fields registered with, never the
@@ -320,12 +408,39 @@ function DialogFormBody({
    * reason: only a submission that SUCCEEDS reaches `onClose`.
    */
   const handleSubmit: FormSubmitHandler = async (values) => {
+    // `aria-disabled` announces that this dialog cannot be submitted; it does
+    // not prevent it, and a form submits on Enter from any field it still
+    // has. The refusal is here, before `validate` — which is asked about the
+    // fields that ARE registered, and would pass a draft whose editor never
+    // rendered any. Nothing is added above the fields: the reason is already
+    // standing there.
+    if (blocked) return refusal({});
     const invalid = validate?.(values);
     if (hasErrors(invalid)) return refusal(invalid);
 
+    // Composed here rather than by each caller, because only this component is
+    // inside the store the dialog created: what the form is holding out of
+    // sight is the difference between a capability the researcher switched off
+    // and one they never opened, and neither the caller above the provider nor
+    // the submitted values alone can tell the two apart.
+    const edited = storeApi
+      ? documentFromSubmission({
+          currentFields: document,
+          submittedValues: values,
+          mountedPaths: mountedPathsOf(storeApi),
+          dormantFields: dormantFieldsOf(storeApi),
+          // A control the researcher emptied keeps its key here. What an
+          // emptied key MEANS belongs to whatever this dialog is editing — a
+          // content block's emptied slot is what clears the `content` it
+          // collapses into — so the caller's own normaliser decides, and one
+          // removed before it ran would leave the old value standing.
+          emptied: 'keep',
+        })
+      : { ...document, ...values };
+
     let refused: void | DialogFormErrors;
     try {
-      refused = await onSubmit(values);
+      refused = await onSubmit(values, edited);
     } catch (failure) {
       const reason = failureMessage(failure);
       // Nothing to report of its own: hand it back to Fresco's own catch,
@@ -340,6 +455,24 @@ function DialogFormBody({
     onClose();
     return { success: true };
   };
+
+  /**
+   * The reasons stand ABOVE the fields, where `FormWithoutProvider` renders a
+   * failed submission's own form errors — one place for "something about this
+   * whole draft is wrong", whether it was found on submission or, as here,
+   * before the researcher could type anything at all. The id is what lets the
+   * submit control name them as the reason it is unavailable.
+   */
+  const fields = (
+    <>
+      {blocked && (
+        <div id={blockedReasonsId}>
+          <FormErrors errors={blockedReasons} />
+        </div>
+      )}
+      <FieldsBoundary>{children}</FieldsBoundary>
+    </>
+  );
 
   return (
     <Dialog
@@ -361,45 +494,142 @@ function DialogFormBody({
           >
             {cancelLabel ?? intl.formatMessage(commonMessages.cancel)}
           </Button>
-          <SubmitButton form={domFormId}>{submitLabel}</SubmitButton>
+          <SubmitButton
+            form={domFormId}
+            aria-disabled={blocked || undefined}
+            aria-describedby={blocked ? blockedReasonsId : undefined}
+          >
+            {submitLabel}
+          </SubmitButton>
         </>
       }
     >
-      <DialogFormInitialValuesContext value={initialValues}>
-        {aside ? (
-          // Every responsive rule below stays anchored to `Dialog`'s own
-          // container. Making this panel a container instead would have its
-          // descendants query the narrower pane width while the panel itself
-          // still queries the dialog, so the split and the handle's visibility
-          // would answer to two different widths.
-          <ResizableFlexPanel
-            storageKey={`${formId}-workspace-split`}
-            defaultBasis={50}
-            min={30}
-            max={70}
-            stickyHandle
-            aria-label={intl.formatMessage(dialogMessages.resizeHandle)}
-            className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
-          >
-            <FormWithoutProvider
-              id={domFormId}
-              onSubmit={handleSubmit}
-              className="min-w-0 @min-[60rem]:pr-4"
+      <DialogFormIdContext value={domFormId}>
+        <DialogFormSubmissionBlockContext value={block}>
+          {aside ? (
+            // Every responsive rule below stays anchored to `Dialog`'s own
+            // container. Making this panel a container instead would have its
+            // descendants query the narrower pane width while the panel itself
+            // still queries the dialog, so the split and the handle's visibility
+            // would answer to two different widths.
+            <ResizableFlexPanel
+              storageKey={`${formId}-workspace-split`}
+              defaultBasis={50}
+              min={30}
+              max={70}
+              stickyHandle
+              aria-label={intl.formatMessage(dialogMessages.resizeHandle)}
+              className="[&>button>span]:bg-text/30 @min-[60rem]:[&>button:hover>span]:bg-text/50 @min-[60rem]:[&>button:focus-visible>span]:bg-text/50 w-full min-w-0 flex-col items-start gap-8 @min-[60rem]:flex-row @min-[60rem]:gap-0 [&>button]:hidden @min-[60rem]:[&>button]:flex"
             >
-              {children}
+              {/* Named only here. A dialog with an aside has two regions a
+                  researcher moves between, and one of them is the preview's
+                  named section — so the fields need a name of their own for
+                  either to be worth announcing. A dialog with no aside has
+                  one region, which the dialog's own title already names. */}
+              <FormWithoutProvider
+                id={domFormId}
+                onSubmit={handleSubmit}
+                aria-label={intl.formatMessage(
+                  dialogMessages.configurationPane,
+                )}
+                className="min-w-0 @min-[60rem]:pr-4"
+              >
+                {fields}
+              </FormWithoutProvider>
+              {/* A plain box rather than an `<aside>`: a complementary
+                  landmark may not be nested inside another, and this one is
+                  inside the dialog's. What the aside contains names itself —
+                  the preview is its own labelled region — so the wrapper has
+                  nothing left to announce. */}
+              <div className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
+                {aside}
+              </div>
+            </ResizableFlexPanel>
+          ) : (
+            <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
+              {fields}
             </FormWithoutProvider>
-            <aside className="z-10 min-w-0 @min-[60rem]:sticky @min-[60rem]:top-0 @min-[60rem]:pl-4">
-              {aside}
-            </aside>
-          </ResizableFlexPanel>
-        ) : (
-          <FormWithoutProvider id={domFormId} onSubmit={handleSubmit}>
-            {children}
-          </FormWithoutProvider>
-        )}
-      </DialogFormInitialValuesContext>
+          )}
+        </DialogFormSubmissionBlockContext>
+      </DialogFormIdContext>
     </Dialog>
   );
+}
+
+/**
+ * Said when the fields a caller renders inside this dialog cannot be shown.
+ *
+ * Whole, and about what the researcher can do: the fields are an interface's
+ * own code, so nothing in their protocol caused this and nothing they type
+ * will fix it. Naming that is what stops them hunting for a mistake they did
+ * not make.
+ *
+ * Encoded rather than formatted, because a class component has no hook to read
+ * a formatter with — and it does not need one: `FormErrors` decodes what it is
+ * handed, so the sentence is resolved in the reader's language where it is
+ * rendered.
+ */
+const editorFailedMessage = defineMessage({
+  id: 'protocolBuilder.arrayField.rowEditorFailed',
+  defaultMessage:
+    'This editor could not be shown, so there is nothing to fill in here. Close it and try again. If it keeps happening, the problem is in this interface’s editor rather than in your protocol.',
+  description:
+    'Shown in place of the fields of an editing dialog when the interface’s own editor code threw while rendering. Says the fault is in the software rather than in anything the researcher wrote, so they do not go looking for a mistake in their protocol.',
+});
+
+const EDITOR_FAILED = createMessageError(editorFailedMessage);
+
+/**
+ * What is left where the fields were.
+ *
+ * The dialog is told, rather than only shown: a dialog whose fields never
+ * rendered has nothing to save, and what it WOULD save is worse than nothing —
+ * for a new row, the empty record its template made, committed as though the
+ * researcher had written it. The fields that registered themselves are what is
+ * validated, and none did, so nothing would have been found wrong. Registered
+ * instead, the reason stands above the fields, the submit control announces
+ * that it is unavailable and says why, and the submission is refused for as
+ * long as this is on screen.
+ */
+function FieldsFailed() {
+  useDialogFormSubmissionBlock(EDITOR_FAILED);
+  return null;
+}
+
+/**
+ * Keeps a caller's fields from taking the stage editor with them.
+ *
+ * Every row dialog in this package mounts controls a section wrote — a
+ * prompt's variable picker, a content block's resource picker. Without a
+ * boundary, one of them throwing unmounts the whole React tree: the researcher
+ * loses the dialog, the stage editor around it, and every unsaved change in
+ * both, and is left on a blank page with no account of why. Caught here, the
+ * shell and the rest of the stage are still there, the other sections still
+ * hold what was typed in them, and the dialog says what happened where it
+ * reports every other form-level problem.
+ *
+ * Deliberately not a retry: the same fields would be mounted again with the
+ * same values and throw again. Closing the dialog is the recovery, and the
+ * dialog's own close is still there to do it — which is the point of catching
+ * INSIDE the dialog rather than around it. Saving is not a recovery, and is
+ * refused: see {@link FieldsFailed}.
+ *
+ * A class because that is the only thing React lets catch a render error.
+ */
+class FieldsBoundary extends Component<
+  Readonly<{ children: ReactNode }>,
+  Readonly<{ failed: boolean }>
+> {
+  state: Readonly<{ failed: boolean }> = { failed: false };
+
+  static getDerivedStateFromError(): Readonly<{ failed: boolean }> {
+    return { failed: true };
+  }
+
+  render(): ReactNode {
+    if (this.state.failed) return <FieldsFailed />;
+    return this.props.children;
+  }
 }
 
 /**
@@ -418,7 +648,7 @@ function DialogFormBody({
  */
 export default function DialogForm(props: DialogFormProps) {
   return (
-    <FormStoreProvider>
+    <FormStoreProvider initialValues={props.document}>
       <DialogFormBody {...props} />
     </FormStoreProvider>
   );

@@ -216,10 +216,10 @@ export type OptionsProps = Omit<
    * string rather than a `Create new ${itemLabel}` template, so it can be
    * localised and so no call site can fall back to a generic default.
    *
-   * The sibling `MultiSelect` doc explains what a shared default costs: a
-   * Categorical Bin prompt editor mounts this list alongside two sort-rule
-   * lists, and named "Add new" all three are the same control to anyone
-   * navigating by a list of buttons (#1391).
+   * A shared default costs a real defect: a Categorical Bin prompt editor
+   * mounts this list alongside two sort-rule lists, and named "Add new" all
+   * three are the same control to anyone navigating by a list of buttons
+   * (#1391).
    */
   addButtonLabel: string;
 };

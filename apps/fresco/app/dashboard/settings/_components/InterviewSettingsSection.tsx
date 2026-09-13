@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { type ReactNode, Suspense } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
@@ -82,6 +82,8 @@ const messages = defineMessages({
   },
 });
 
+const renderStrongChunks = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
+
 export default async function InterviewSettingsSection() {
   const intl = await getServerIntl();
 
@@ -113,7 +115,7 @@ export default async function InterviewSettingsSection() {
         label={intl.formatMessage(messages.limitInterviews)}
         testId="limit-interviews-field"
         description={intl.formatMessage(messages.completedLimit, {
-          strong: (chunks) => <strong>{chunks}</strong>,
+          strong: renderStrongChunks,
         })}
         control={
           <Suspense fallback={<ToggleFieldSkeleton />}>

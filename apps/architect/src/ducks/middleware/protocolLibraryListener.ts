@@ -7,6 +7,7 @@ import { assetDb } from '~/utils/assetDB';
 import { reportAutosaveFailure } from '~/utils/autosaveFailureQueue';
 import { beginProtocolCommit } from '~/utils/criticalOperation';
 import { getStoredProtocol, putStoredProtocol } from '~/utils/protocolLibrary';
+import { reportError } from '~/utils/reportError';
 
 import { getActiveProtocolId } from '../modules/app';
 import type { RootState } from '../modules/root';
@@ -77,7 +78,7 @@ const persistAcceptedCommit = (
       );
       autosaveErrorNotified = false;
     } catch (error: unknown) {
-      console.error('Protocol library commit failed', error);
+      reportError(error, { operation: 'protocolLibraryCommit' });
       if (!autosaveErrorNotified) {
         autosaveErrorNotified = true;
         reportAutosaveFailure();

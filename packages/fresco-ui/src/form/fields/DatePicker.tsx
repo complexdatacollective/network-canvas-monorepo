@@ -101,7 +101,12 @@ const MONTH_VALUES = [
 // calendar — fa-IR, or any tag carrying `u-ca-islamic` — would name these
 // Gregorian anchors in that calendar's months, so picking the option labelled
 // for one month would store a different one.
-const buildMonthOptions = (
+//
+// Exported because a second control offers the same twelve months for the same
+// stored values: `@codaco/protocol-builder` lets a researcher author the month
+// half of a `YYYY-MM` date bound. Two tables would be two chances to lose the
+// pinning above, which is not a rule either reader would notice was missing.
+export const datePickerMonthOptions = (
   formatDate: (date: Date, options: Intl.DateTimeFormatOptions) => string,
 ): SelectOption[] =>
   MONTH_VALUES.map((value) => ({
@@ -240,7 +245,8 @@ export default function DatePickerField(props: DatePickerFieldProps) {
   }, [coarseMinYmd.year, coarseMaxYmd.year, intl]);
 
   const months = useMemo(
-    () => buildMonthOptions((date, options) => intl.formatDate(date, options)),
+    () =>
+      datePickerMonthOptions((date, options) => intl.formatDate(date, options)),
     [intl],
   );
 

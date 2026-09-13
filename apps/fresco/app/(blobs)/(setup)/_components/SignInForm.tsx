@@ -19,6 +19,7 @@ import SegmentedCodeField from '@codaco/fresco-ui/form/fields/SegmentedCodeField
 import Form from '@codaco/fresco-ui/form/Form';
 import { type FormSubmitHandler } from '@codaco/fresco-ui/form/store/types';
 import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
+import useHasHydrated from '@codaco/fresco-ui/hooks/useHasHydrated';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { login, recoveryCodeLogin, type LoginResult } from '~/actions/auth';
 import { verifyTwoFactor } from '~/actions/twoFactor';
@@ -26,6 +27,8 @@ import {
   generateAuthenticationOptions,
   verifyAuthentication,
 } from '~/actions/webauthn';
+import { describePasskeyCeremonyError } from '~/i18n/passkeyCeremony';
+import { TWO_FACTOR_SETUP_PATH } from '~/lib/auth/paths';
 import { createAuthSchemas } from '~/schemas/auth';
 
 const messages = defineMessages({
@@ -207,6 +210,13 @@ function isTwoFactorRequired(result: LoginResult): result is {
   return 'requiresTwoFactor' in result;
 }
 
+function isTwoFactorSetupRequired(result: LoginResult): result is {
+  success: true;
+  requiresTwoFactorSetup: true;
+} {
+  return 'requiresTwoFactorSetup' in result;
+}
+
 export const SignInForm = () => {
   const intl = useAppIntl();
   const { loginSchema } = createAuthSchemas(createMessageError);
@@ -218,14 +228,15 @@ export const SignInForm = () => {
   const [retryAfter, setRetryAfter] = useState<number | null>(null);
   const [useRecovery, setUseRecovery] = useState(false);
 
-  const [webauthnSupported, setWebauthnSupported] = useState(false);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyError, setPasskeyError] = useState<string | null>(null);
   const [showRecovery, setShowRecovery] = useState(false);
 
-  useEffect(() => {
-    setWebauthnSupported(browserSupportsWebAuthn());
-  }, []);
+  // The server has no WebAuthn API, so the capability check can only run once
+  // there is a browser to ask. `useHasHydrated` is false through the hydrating
+  // render — matching the server's markup — and true afterwards.
+  const hasHydrated = useHasHydrated();
+  const webauthnSupported = hasHydrated && browserSupportsWebAuthn();
 
   useEffect(() => {
     if (retryAfter === null || retryAfter <= 0) {
@@ -269,7 +280,11 @@ export const SignInForm = () => {
     }
 
     if (result.success) {
-      router.push('/dashboard');
+      // The dashboard would only send a gated account back out to the setup
+      // page; going there directly avoids rendering the dashboard shell first.
+      router.push(
+        isTwoFactorSetupRequired(result) ? TWO_FACTOR_SETUP_PATH : '/dashboard',
+      );
     }
 
     return result;
@@ -329,11 +344,12 @@ export const SignInForm = () => {
 
       router.push('/dashboard');
     } catch (e) {
-      if (e instanceof Error && e.name === 'NotAllowedError') {
-        return;
-      }
       setPasskeyError(
-        createMessageError(messages.copyPasskeyAuthenticationFailed),
+        describePasskeyCeremonyError(
+          e,
+          'signIn',
+          messages.copyPasskeyAuthenticationFailed,
+        ),
       );
     } finally {
       setPasskeyLoading(false);

@@ -5,15 +5,15 @@ import { describe, expect, it } from 'vitest';
 
 import { commonCatalogs } from '@codaco/app-i18n/common';
 import { ecosystemLocales, mergeCatalogs } from '@codaco/app-i18n/locales';
+import { createAppIntl, type IntlShape } from '@codaco/app-i18n/messages';
 import { AppI18nProvider } from '@codaco/app-i18n/react';
 import { frescoUiCatalogs } from '@codaco/fresco-ui/locales';
+import { protocolValidationCatalogs } from '@codaco/protocol-validation/locales';
 import type { SectionDoc } from '@codaco/studio-sync/apply';
-import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { protocolBuilderCatalogs } from '../../locales/catalogs.ts';
 import type { ProtocolBuilderProtocolContext } from '../../protocol-context.ts';
-import type { CompoundEditResult } from '../../session.ts';
-import { esIntl, readMessage } from '../../testing/i18n.ts';
+import { readMessage } from '../../testing/i18n.ts';
 import {
   expectNoLocaleLeaks,
   protocolStrings,
@@ -21,8 +21,10 @@ import {
 import CodebookEntityEditor from '../components/CodebookEntityEditor.tsx';
 import CodebookSurface from '../components/CodebookSurface.tsx';
 import VariableEditor from '../components/VariableEditor.tsx';
+import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import CodebookVariableValidationEditor from '../validation/CodebookVariableValidationEditor.tsx';
 import { ruleMapPrecheck } from '../variableValidation.ts';
+import type { CodebookWriteOutcome } from '../writes.ts';
 
 /**
  * The codebook read in the researcher's own language, through both routes the
@@ -75,9 +77,11 @@ const context: ProtocolBuilderProtocolContext = {
 
 /**
  * The catalog a host actually mounts, in the merge order `frescoUiCatalogs`
- * documents: common verbs, then the shared components, then this package.
+ * documents: common verbs, then the shared components, then this package,
+ * then the shared validation rule names `@codaco/protocol-validation` owns
+ * (`architectCatalogs` merges them in the same order).
  *
- * All three layers matter to a sweep. Passing only `protocolBuilderCatalogs.es`
+ * All four layers matter to a sweep. Passing only `protocolBuilderCatalogs.es`
  * leaves `commonMessages.cancel` and every `frescoUi.*` id falling back to
  * English, and the fallbacks are not harmless noise: fresco-ui's field marker
  * is "Required", which is also the English of this package's own
@@ -89,7 +93,17 @@ const SPANISH = mergeCatalogs(
   commonCatalogs.es ?? {},
   frescoUiCatalogs.es ?? {},
   protocolBuilderCatalogs.es ?? {},
+  protocolValidationCatalogs.es ?? {},
 );
+
+/**
+ * `testing/i18n.ts`'s `esIntl` carries only this package's own catalog, which
+ * is right for a plain `defineMessages` id but not for a rule name — those
+ * are `@codaco/protocol-validation`'s own descriptors now, so decoding one
+ * needs its Spanish alongside this package's, the same `SPANISH` a host
+ * mounts above.
+ */
+const esIntl: IntlShape = createAppIntl({ locale: 'es', messages: SPANISH });
 
 const renderInSpanish = (children: ReactNode) =>
   render(
@@ -118,7 +132,6 @@ describe('the codebook read in Spanish', () => {
         'protocolBuilder.codebookEntity.subjectDescription',
         'protocolBuilder.codebookEntity.editAttributeLabel',
         'protocolBuilder.variableValidation.incompleteValueRule',
-        'protocolBuilder.variableValidation.minValueLabel',
       ]),
     );
   });
@@ -210,8 +223,6 @@ describe('the codebook read in Spanish', () => {
  * they raise is copy a reader only sees when something has already gone wrong
  * and is the least likely to be looked at in review.
  */
-const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
-
 const PERSON_DOCUMENT: SectionDoc = {
   name: 'Person',
   color: 'node-color-seq-1',
@@ -220,10 +231,11 @@ const PERSON_DOCUMENT: SectionDoc = {
   variables: {},
 };
 
-/** A refusal that names no holder, so the editor formats its own sentence. */
-const blocked = (): CompoundEditResult => ({
-  status: 'blocked',
-  blockedSections: [{ sectionId: PERSON_SECTION }],
+/** A refusal that names no holder, so the editor reads the package's words. */
+const refused = async (): Promise<CodebookWriteOutcome> => ({
+  status: 'refused',
+  message: codebookRefusalMessage({ kind: 'held' }),
+  refusal: { kind: 'unexplained' },
 });
 
 describe('the codebook editors swept for English', () => {
@@ -233,12 +245,10 @@ describe('the codebook editors swept for English', () => {
       <CodebookEntityEditor
         mode="create"
         sessionKey="es-entity"
-        createRequestId={() => 'request-es-entity'}
-        description="crear tipo de nodo"
         subject={{ entity: 'node', type: 'person' }}
         initialDraft={PERSON_DOCUMENT}
         existingEntityNames={[]}
-        onSubmit={blocked}
+        onSubmit={refused}
         onApplied={() => undefined}
         onCancel={() => undefined}
       />,
@@ -281,12 +291,10 @@ describe('the codebook editors swept for English', () => {
       <CodebookEntityEditor
         mode="create"
         sessionKey="locale-switch-entity"
-        createRequestId={() => 'request-locale-switch'}
-        description="create node type"
         subject={{ entity: 'node', type: 'person' }}
         initialDraft={{}}
         existingEntityNames={[]}
-        onSubmit={blocked}
+        onSubmit={refused}
         onApplied={() => undefined}
       />
     );
@@ -337,14 +345,14 @@ describe('the codebook editors swept for English', () => {
         variableId="new-variable"
         initialDraft={draft}
         protocolContext={context}
-        description="crear atributo"
-        createRequestId={() => 'request-es-variable'}
-        onSubmitRequest={blocked}
+        onSubmitDocument={refused}
         onComplete={() => undefined}
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Añadir opción' })).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Crear nueva opción' }),
+    ).toBeVisible();
     expectNoLocaleLeaks(
       'the attribute editor',
       protocolStrings(PERSON_DOCUMENT, draft),
@@ -352,16 +360,216 @@ describe('the codebook editors swept for English', () => {
 
     await user.click(screen.getByRole('button', { name: 'Crear atributo' }));
 
-    // The blocker itself is a section id, so the sentence around it is what
-    // identifies the alert.
+    // A section id is an internal address and is never shown, so a blocked
+    // save is reported by who is holding it — here, by nobody the host named.
     expect(
-      await screen.findByText(/Tu borrador se ha conservado\./),
+      await screen.findByText(
+        'Se está editando ahora mismo una sección necesaria para este cambio.',
+      ),
     ).toBeVisible();
     expectNoLocaleLeaks(
       'the attribute editor after a refused save',
       protocolStrings(PERSON_DOCUMENT, draft),
     );
   });
+
+  /**
+   * The other surfaces the attribute editor renders, one per answer
+   * `optionsShapeFor` and `parameterShapeFor` can give.
+   *
+   * The sweep above seeds a `categorical` draft, so it opens the editor on the
+   * option rows and on nothing else — and a sweep is only a backstop for the
+   * surfaces it actually mounts. Four hard-coded English sentences shipped on
+   * the yes/no and settings fieldsets underneath it for exactly that reason:
+   * no test in this package had ever put them on screen.
+   *
+   * Each row is also driven into its refusal, because the sentence a
+   * researcher reads when their bound or their label is wrong is the copy
+   * least likely to be looked at in review — and, for the two date controls,
+   * the place the protocol schema's own English used to arrive.
+   */
+  it.each([
+    {
+      surface: 'the two answers a boolean offers',
+      draft: {
+        name: 'consentimiento',
+        type: 'boolean',
+        component: 'Boolean',
+        options: [
+          { label: 'Sí, acepto', value: true },
+          { label: '', value: false },
+        ],
+      },
+      anchor: 'Valores booleanos',
+      refusal:
+        'Escribe lo que dice esta respuesta, o borra ambas para ofrecer Sí y No.',
+    },
+    {
+      surface: 'the bounds a date picker accepts',
+      draft: {
+        name: 'fecha',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'full', min: '2020-01-01', max: '2019-01-01' },
+      },
+      anchor: 'Ajustes del control',
+      refusal:
+        'La fecha más tardía no puede ser anterior a la fecha más temprana.',
+    },
+    {
+      surface: 'the window a relative date picker offers',
+      draft: {
+        name: 'contacto',
+        type: 'datetime',
+        component: 'RelativeDatePicker',
+        parameters: { anchor: '2020-01-01' },
+      },
+      anchor: 'Fecha de referencia',
+      // Nothing is wrong with this window, so the refusal is the host's.
+      refusal:
+        'Se está editando ahora mismo una sección necesaria para este cambio.',
+    },
+    {
+      surface: 'the words at each end of a scale',
+      // Written with spaces rather than left empty: the control carries
+      // `required`, so the browser refuses an empty one before the editor is
+      // asked — and a label of nothing but spaces is exactly the case the
+      // browser calls answered and a participant cannot read.
+      draft: {
+        name: 'cercanía',
+        type: 'scalar',
+        parameters: { minLabel: '   ', maxLabel: 'Muy cerca' },
+      },
+      anchor: 'Ajustes del control',
+      refusal: 'Escribe qué significa el extremo bajo de la escala.',
+    },
+  ])(
+    'leaves no English on $surface, or in the refusal it raises',
+    async ({ draft, anchor, refusal }) => {
+      const user = userEvent.setup();
+      renderInSpanish(
+        <VariableEditor
+          openId={`es-${draft.name}`}
+          mode="create"
+          subject={{ entity: 'node', type: 'person' }}
+          authoritativeDocument={PERSON_DOCUMENT}
+          variableId="new-variable"
+          initialDraft={draft}
+          protocolContext={context}
+          onSubmitDocument={refused}
+          onComplete={() => undefined}
+        />,
+      );
+
+      // An anchor per surface: a sweep over a fieldset that never rendered
+      // passes vacuously.
+      expect(screen.getByText(anchor)).toBeVisible();
+      expectNoLocaleLeaks(
+        `the attribute editor showing ${draft.name}`,
+        protocolStrings(PERSON_DOCUMENT, draft),
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Crear atributo' }));
+
+      expect(await screen.findByText(refusal)).toBeVisible();
+      expectNoLocaleLeaks(
+        `the attribute editor refusing ${draft.name}`,
+        protocolStrings(PERSON_DOCUMENT, draft),
+      );
+    },
+  );
+
+  /**
+   * The refusals the two new surfaces raise are held between submissions, so
+   * they are held to the rule the type-conflict refusal below already obeys:
+   * encoded where they are produced, decoded where they are rendered, and
+   * therefore following a change of language while they wait.
+   *
+   * A producer that formatted with the reader's own formatter would pass every
+   * Spanish assertion above and still fail here, which is the point: the
+   * defect is not the language it was raised in but that it is frozen in it.
+   */
+  it.each([
+    {
+      surface: 'an unnamed boolean answer',
+      draft: {
+        name: 'consent',
+        type: 'boolean',
+        component: 'Boolean',
+        options: [
+          { label: 'I agree', value: true },
+          { label: '', value: false },
+        ],
+      },
+      english:
+        'Write what this answer says, or clear both to offer Yes and No.',
+      spanish:
+        'Escribe lo que dice esta respuesta, o borra ambas para ofrecer Sí y No.',
+    },
+    {
+      surface: 'a scale with no end labels',
+      draft: {
+        name: 'closeness',
+        type: 'scalar',
+        parameters: { minLabel: '   ', maxLabel: 'Very close' },
+      },
+      english: 'Write what the low end of the scale means.',
+      spanish: 'Escribe qué significa el extremo bajo de la escala.',
+    },
+    {
+      surface: 'a date range that ends before it starts',
+      draft: {
+        name: 'met',
+        type: 'datetime',
+        component: 'DatePicker',
+        parameters: { type: 'full', min: '2020-01-01', max: '2019-01-01' },
+      },
+      english: 'The latest date cannot be earlier than the earliest date.',
+      spanish:
+        'La fecha más tardía no puede ser anterior a la fecha más temprana.',
+    },
+  ])(
+    're-reads the refusal it holds about $surface when the language changes',
+    async ({ draft, english, spanish }) => {
+      const user = userEvent.setup();
+      const editor = (
+        <VariableEditor
+          openId={`held-${draft.name}`}
+          mode="create"
+          subject={{ entity: 'node', type: 'person' }}
+          authoritativeDocument={PERSON_DOCUMENT}
+          variableId="new-variable"
+          initialDraft={draft}
+          protocolContext={context}
+          onSubmitDocument={refused}
+          onComplete={() => undefined}
+        />
+      );
+      const { rerender } = render(
+        <AppI18nProvider locale="en" locales={ecosystemLocales}>
+          {editor}
+        </AppI18nProvider>,
+      );
+
+      await user.click(
+        screen.getByRole('button', { name: 'Create attribute' }),
+      );
+      expect(await screen.findByText(english)).toBeVisible();
+
+      rerender(
+        <AppI18nProvider
+          locale="es"
+          locales={ecosystemLocales}
+          messages={SPANISH}
+        >
+          {editor}
+        </AppI18nProvider>,
+      );
+
+      expect(await screen.findByText(spanish)).toBeVisible();
+      expect(screen.queryByText(english)).not.toBeInTheDocument();
+    },
+  );
 
   /**
    * The attribute editor holds its refusals the same way and for as long, so
@@ -391,9 +599,7 @@ describe('the codebook editors swept for English', () => {
         }}
         variableId="comment"
         initialDraft={localVariable}
-        description="update comment"
-        createRequestId={() => 'request-locale-switch-variable'}
-        onSubmitRequest={blocked}
+        onSubmitDocument={refused}
         onComplete={() => undefined}
       />
     );
@@ -454,11 +660,7 @@ describe('the codebook editors swept for English', () => {
         variableId="age"
         authoritativeEntityDocument={document}
         allSubjectVariables={variables}
-        requestMetadata={{
-          createId: () => 'request-es-validation',
-          description: 'actualizar la validación de Age',
-        }}
-        onSubmitRequest={blocked}
+        onSubmitDocument={refused}
       />,
     );
 
@@ -476,7 +678,7 @@ describe('the codebook editors swept for English', () => {
 
     expect(
       await screen.findByText(
-        'Se está editando una sección necesaria para este cambio.',
+        'Se está editando ahora mismo una sección necesaria para este cambio.',
       ),
     ).toBeVisible();
     expectNoLocaleLeaks(
