@@ -433,9 +433,12 @@ export default function AttributeCodebookControls({
    *
    * Kept rather than cleared on the next act of any kind: it is the only
    * record that rules the researcher wrote are no longer there, and nothing
-   * else on this surface says so. It ends at the two acts that answer it — the
-   * next change of kind, and a save of the rules editor, both of which leave a
-   * draft the researcher has just seen against the kind it is now for.
+   * else on this surface says so. It ends at the two acts that answer it — a
+   * save of the rules editor, which is the researcher looking at the draft
+   * against the kind it is now for, and the row leaving the invention, which
+   * takes that draft away with it. A further change of kind is neither: one
+   * that takes nothing away has shown them nothing, so the notice stands; one
+   * that takes more away replaces the list with the rules that have just gone.
    */
   const [rulesDropped, setRulesDropped] =
     useState<readonly string[]>(NOTHING_DROPPED);
@@ -596,18 +599,30 @@ export default function AttributeCodebookControls({
   useEffect(() => {
     const previousKind = kindTheDraftWasWrittenFor.current;
     kindTheDraftWasWrittenFor.current = inventedType;
+    // The row is no longer inventing anything: the create landed, or an
+    // attribute the codebook already holds was picked instead. The draft the
+    // notice is about went with the invention, so there is nothing left for it
+    // to report. Asked before the kind is compared, because a row that leaves
+    // the invention with no kind chosen leaves it without moving one.
+    if (rulesField === undefined) {
+      setRulesDropped(NOTHING_DROPPED);
+      return;
+    }
     if (previousKind === inventedType) return;
-    if (rulesField === undefined || inventedType === undefined) return;
+    if (inventedType === undefined) return;
     if (!isValidationMap(heldDraftRules)) return;
     const { kept, dropped } = rulesSurvivingTypeChange(
       heldDraftRules,
       inventedType,
     );
-    // The notice is about the change of kind that has just happened, so the
-    // next change of kind ends it — including one that takes nothing away,
-    // which is a row whose draft and kind agree again.
-    setRulesDropped(dropped.length === 0 ? NOTHING_DROPPED : dropped);
+    // A change of kind that takes nothing away has shown the researcher
+    // nothing, so it cannot stand in for the record: the notice about the
+    // earlier change stands until they have looked at the draft against the
+    // kind it is now for (the rules editor's save) or the row has left the
+    // invention. One that takes more away replaces the list, because what it
+    // names is the rules that have just gone.
     if (dropped.length === 0) return;
+    setRulesDropped(dropped);
     setFieldValue(rulesField, kept);
   }, [heldDraftRules, inventedType, rulesField, setFieldValue]);
   /**
