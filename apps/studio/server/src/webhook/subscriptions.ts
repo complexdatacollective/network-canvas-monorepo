@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 
 import {
-  WebhookEventTypeSchema,
+  StoredWebhookEventTypeSchema,
   type WebhookEventType,
   type WebhookSubscription,
 } from '@codaco/studio-rpc';
@@ -52,7 +52,7 @@ function render(row: SubscriptionRow): WebhookSubscription {
   return {
     ...row,
     eventTypes: row.eventTypes.map((event) =>
-      WebhookEventTypeSchema.parse(event),
+      StoredWebhookEventTypeSchema.parse(event),
     ),
   };
 }

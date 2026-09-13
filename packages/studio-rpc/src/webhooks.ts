@@ -6,6 +6,22 @@ import { TeamScopedSchema } from './schemas.ts';
 export const WebhookEventTypeSchema = z.enum(['study.created']);
 export type WebhookEventType = z.infer<typeof WebhookEventTypeSchema>;
 
+/** Historical seed values remain readable but cannot be newly configured. */
+export const LegacyWebhookEventTypeSchema = z.enum([
+  'session.completed',
+  'session.abandoned',
+  'participant.enrolled',
+  'wave.opened',
+  'consent.withdrawn',
+]);
+export const StoredWebhookEventTypeSchema = z.union([
+  WebhookEventTypeSchema,
+  LegacyWebhookEventTypeSchema,
+]);
+export type StoredWebhookEventType = z.infer<
+  typeof StoredWebhookEventTypeSchema
+>;
+
 export const StudyCreatedWebhookEventSchema = z
   .strictObject({
     type: z.literal('study.created'),
@@ -21,12 +37,18 @@ const WebhookEventTypesSchema = z
   .max(50)
   .refine((values) => new Set(values).size === values.length);
 
+const StoredWebhookEventTypesSchema = z
+  .array(StoredWebhookEventTypeSchema)
+  .min(1)
+  .max(50)
+  .refine((values) => new Set(values).size === values.length);
+
 export const WebhookSubscriptionSchema = z.strictObject({
   id: z.uuid(),
   studyId: z.uuid().nullable(),
   url: z.url({ protocol: /^https$/ }),
   description: z.string().trim().min(1).max(500).nullable(),
-  eventTypes: WebhookEventTypesSchema,
+  eventTypes: StoredWebhookEventTypesSchema,
   state: z.enum(['active', 'disabled']),
   createdAt: z.date(),
   updatedAt: z.date(),

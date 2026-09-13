@@ -215,8 +215,9 @@ async function reconcileInventories(
   const expectedAccounts = new Map(
     evidence.accounts.map((row) => [row.id, row]),
   );
+  const actualAccounts = new Map(accounts.rows.map((row) => [row.id, row]));
   for (const expected of evidence.accounts) {
-    const actual = accounts.rows.find((row) => row.id === expected.id);
+    const actual = actualAccounts.get(expected.id);
     if (!actual) throw new Error(MISMATCH);
     assertRows(
       {
@@ -250,8 +251,11 @@ async function reconcileInventories(
     const expectedMemberships = new Map(
       evidence.memberships.map((row) => [row.id, row]),
     );
+    const actualMemberships = new Map(
+      memberships.rows.map((row) => [row.id, row]),
+    );
     for (const expected of evidence.memberships) {
-      const actual = memberships.rows.find(({ id }) => id === expected.id);
+      const actual = actualMemberships.get(expected.id);
       const roles = actual ? tryParseRoles(actual.role) : null;
       if (!actual || !roles) throw new Error(MISMATCH);
       assertRows(
@@ -287,8 +291,9 @@ async function reconcileInventories(
     const expectedGrants = new Map(
       evidence.studyGrants.map((row) => [row.id, row]),
     );
+    const actualGrants = new Map(grants.rows.map((row) => [row.id, row]));
     for (const expected of evidence.studyGrants) {
-      const actual = grants.rows.find(({ id }) => id === expected.id);
+      const actual = actualGrants.get(expected.id);
       assertRows(
         actual && {
           id: actual.id,
@@ -319,8 +324,9 @@ async function reconcileInventories(
     const expectedWebhooks = new Map(
       evidence.activeWebhookSubscriptions.map((row) => [row.id, row]),
     );
+    const actualWebhooks = new Map(webhooks.rows.map((row) => [row.id, row]));
     for (const expected of evidence.activeWebhookSubscriptions) {
-      const actual = webhooks.rows.find(({ id }) => id === expected.id);
+      const actual = actualWebhooks.get(expected.id);
       if (!actual) throw new Error(MISMATCH);
       assertRows(
         {
@@ -406,8 +412,9 @@ async function reconcileInventories(
         "SELECT id FROM message_templates WHERE state = 'published' ORDER BY id",
       )
     ).rows.map(({ id }) => id);
+    const publishedTemplateIds = new Set(publishedTemplates);
     for (const id of evidence.publishedMessageTemplateIds)
-      if (!publishedTemplates.includes(id)) throw new Error(MISMATCH);
+      if (!publishedTemplateIds.has(id)) throw new Error(MISMATCH);
     if (
       mode === 'require-exact' &&
       publishedTemplates.length !== evidence.publishedMessageTemplateIds.length
@@ -429,6 +436,10 @@ async function invalidateRestoredAdmission(client: pg.PoolClient) {
     "UPDATE team_invitations SET status = 'canceled' WHERE status = 'pending'",
   );
   await asMaintenance(client, async () => {
+    // Restored alert preferences are not in the signed authority inventory.
+    // Clear them before reopening; retain the historical delivery evidence.
+    await client.query('DELETE FROM audit_alert_recipients');
+    await client.query('DELETE FROM audit_alert_settings');
     await client.query(
       `UPDATE api_tokens SET revoked_at = statement_timestamp(),
          revoked_by_user_id = $1 WHERE revoked_at IS NULL`,
@@ -554,8 +565,7 @@ async function lockRecoveryAuthorizationState(client: pg.PoolClient) {
     studio_instance, "user", session, account, verification, teams,
     team_members, team_invitations, team_invitation_deliveries,
     study_role_grants, api_tokens, interview_links, webhook_subscriptions,
-    webhook_deliveries, study_schedules, message_templates, message_deliveries,
-    audit_events, credential_audit_events, audit_export_artifact_attempts,
+    webhook_deliveries, study_schedules, audit_export_artifact_attempts,
     audit_export_jobs, schedule_occurrences,
     message_templates, message_deliveries,
     audit_events, credential_audit_events, audit_alert_settings,
@@ -591,6 +601,8 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
       alert_recipients: number;
       alert_settings: number;
     }>(`SELECT
+    (SELECT count(*)::int FROM audit_alert_recipients) alert_recipients,
+    (SELECT count(*)::int FROM audit_alert_settings) alert_settings,
     (SELECT count(*)::int FROM api_tokens WHERE revoked_at IS NULL) tokens,
     (SELECT count(*)::int FROM interview_links WHERE revoked_at IS NULL) links,
     (SELECT count(*)::int FROM leases WHERE expires_at > statement_timestamp()) live_leases,
@@ -607,6 +619,8 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
     (SELECT count(*)::int FROM schedule_occurrences WHERE state = 'scheduled') pending_schedule_occurrences`),
   );
   assertRows(remainingTenantState.rows[0], {
+    alert_recipients: 0,
+    alert_settings: 0,
     tokens: 0,
     links: 0,
     live_leases: 0,

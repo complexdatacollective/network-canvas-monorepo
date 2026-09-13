@@ -17,8 +17,10 @@ import { createAuditedStudy } from '../../study/commands.ts';
 import {
   beginWebhookHandoff,
   consumeWebhookResponse,
+  createPinnedLookup,
   createStandardWebhookSender,
   createWebhookDeliveryDispatcher,
+  normalizeDnsHostname,
   startWebhookDeliveryWorker,
   WebhookDeliveryAdapter,
   type WebhookRequest,
@@ -27,6 +29,7 @@ import {
   createWebhookSubscription,
   disableWebhookSubscription,
   enqueueWebhookEvent,
+  listWebhookSubscriptions,
 } from '../subscriptions.ts';
 
 const secretBytes = Buffer.alloc(32, 71);
@@ -64,6 +67,25 @@ async function enqueue(
 }
 
 describe('webhook runtime', () => {
+  it('matches the Node lookup callback shape and normalizes IPv6 URL literals', async () => {
+    const pinnedLookup = createPinnedLookup({
+      address: '2606:4700:4700::1111',
+      family: 6,
+    });
+    await expect(
+      new Promise((resolve, reject) => {
+        pinnedLookup('ignored.example', { all: true }, (error, addresses) => {
+          if (error) reject(error);
+          else resolve(addresses);
+        });
+      }),
+    ).resolves.toEqual([{ address: '2606:4700:4700::1111', family: 6 }]);
+    expect(normalizeDnsHostname('[2606:4700:4700::1111]')).toBe(
+      '2606:4700:4700::1111',
+    );
+    expect(normalizeDnsHostname('hooks.example.org')).toBe('hooks.example.org');
+  });
+
   it('refuses loopback delivery before opening an outbound request', async () => {
     await expect(
       createStandardWebhookSender({ timeoutMs: 100 }).send({
@@ -182,6 +204,23 @@ describe('webhook runtime', () => {
           )
         ).rows[0],
       ).toEqual({ count: 1 });
+    });
+  });
+
+  it('renders historical seed event types without accepting them for new subscriptions', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await fixture.scratch.pool.query(
+        `UPDATE webhook_subscriptions
+         SET event_types = ARRAY['session.completed', 'study.created']
+         WHERE id = $1`,
+        [subscriptionId],
+      );
+      await expect(
+        listWebhookSubscriptions(fixture.context),
+      ).resolves.toMatchObject([
+        { eventTypes: ['session.completed', 'study.created'] },
+      ]);
     });
   });
 
@@ -370,6 +409,14 @@ describe('webhook runtime', () => {
         [second.id],
       );
       expect(await adapter.failExhaustedLeases(3)).toBe(1);
+
+      await enqueue(fixture);
+      await fixture.scratch.pool.query(
+        `UPDATE webhook_deliveries
+         SET attempt_count = 3, lease_owner = NULL, lease_expires_at = NULL
+         WHERE failed_at IS NULL`,
+      );
+      expect(await adapter.failExhaustedLeases(3)).toBe(1);
       expect(
         (
           await fixture.scratch.pool.query(
@@ -378,7 +425,7 @@ describe('webhook runtime', () => {
              FROM webhook_deliveries`,
           )
         ).rows[0],
-      ).toEqual({ uncertain: 0, failed: 1 });
+      ).toEqual({ uncertain: 0, failed: 2 });
     });
   });
 
@@ -417,7 +464,7 @@ describe('webhook runtime', () => {
             claim,
             read.snapshot,
           ),
-        ).resolves.toBe(false);
+        ).resolves.toBe('retry');
         const current = await readWebhookSecretForDelivery(
           fixture.keys,
           subscriptionId,
@@ -440,7 +487,7 @@ describe('webhook runtime', () => {
               claim,
               current.snapshot,
             ),
-          ).resolves.toBe(false);
+          ).resolves.toBe('lease-lost');
         } finally {
           current.secret.fill(0);
         }
@@ -496,7 +543,7 @@ describe('webhook runtime', () => {
             [subscriptionId],
           );
           await blocker.query('COMMIT');
-          await expect(handoff).resolves.toBe(false);
+          await expect(handoff).resolves.toBe('suppressed');
         } finally {
           await blocker.query('ROLLBACK').catch(() => undefined);
           blocker.release();
@@ -543,7 +590,7 @@ describe('webhook runtime', () => {
             read.snapshot,
           );
           // Keep the lock held while changing the ciphertext, then let the
-          // handoff observe the committed new key and suppress the old read.
+          // handoff observe the committed new key and retry the old read.
           await delay(50);
           await blocker.query(
             `UPDATE webhook_subscriptions
@@ -552,7 +599,7 @@ describe('webhook runtime', () => {
             [subscriptionId, Buffer.alloc(32, 72)],
           );
           await blocker.query('COMMIT');
-          await expect(handoff).resolves.toBe(false);
+          await expect(handoff).resolves.toBe('retry');
         } finally {
           await blocker.query('ROLLBACK').catch(() => undefined);
           blocker.release();
@@ -560,6 +607,98 @@ describe('webhook runtime', () => {
       } finally {
         read.secret.fill(0);
       }
+    });
+  });
+
+  it('retries a secret snapshot race and signs once with the current secret', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await enqueue(fixture);
+      const currentSecret = Buffer.alloc(32, 72);
+      const requests: WebhookRequest[] = [];
+      let rotateBeforeFirstHandoff = true;
+      const dispatcher = createWebhookDeliveryDispatcher({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        retryBaseMs: 0,
+        retryMaxMs: 0,
+        leaseMs: 5_000,
+        handoff: async (pool, claim, snapshot) => {
+          if (rotateBeforeFirstHandoff) {
+            rotateBeforeFirstHandoff = false;
+            await setWebhookSecret(
+              fixture.keys,
+              fixture.context,
+              subscriptionId,
+              currentSecret,
+            );
+          }
+          return beginWebhookHandoff(pool, claim, snapshot);
+        },
+        sender: {
+          async send(request) {
+            requests.push(request);
+            return 204;
+          },
+        },
+      });
+
+      expect(await dispatcher.runOnce()).toMatchObject({ retried: 1 });
+      expect(requests).toHaveLength(0);
+      expect(await dispatcher.runOnce()).toMatchObject({ completed: 1 });
+      expect(requests).toHaveLength(1);
+      const request = requests[0]!;
+      expect(request.signature).toBe(
+        `v1,${createHmac('sha256', currentSecret)
+          .update(`${request.id}.${request.timestamp}.${request.body}`)
+          .digest('base64')}`,
+      );
+    });
+  });
+
+  it('fails a pending historical event without invoking the transport', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await fixture.scratch.pool.query(
+        `UPDATE webhook_subscriptions
+         SET event_types = ARRAY['session.completed']
+         WHERE id = $1`,
+        [subscriptionId],
+      );
+      await fixture.scratch.pool.query(
+        `INSERT INTO webhook_deliveries
+           (id, team_id, subscription_id, webhook_id, event_type, payload)
+         VALUES ($1, $2, $3, $4, 'session.completed', $5)`,
+        [
+          randomUUID(),
+          fixture.context.tenantDb.teamId,
+          subscriptionId,
+          `whk_${randomUUID()}`,
+          { type: 'session.completed' },
+        ],
+      );
+      let sends = 0;
+      const dispatcher = createWebhookDeliveryDispatcher({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        maxAttempts: 1,
+        sender: {
+          async send() {
+            sends += 1;
+            return 204;
+          },
+        },
+      });
+      expect(await dispatcher.runOnce()).toMatchObject({ failed: 1 });
+      expect(sends).toBe(0);
+      await expect(
+        fixture.scratch.pool.query(
+          `SELECT failed_at IS NOT NULL AS failed, last_error
+           FROM webhook_deliveries`,
+        ),
+      ).resolves.toMatchObject({
+        rows: [{ failed: true, last_error: 'delivery_failed' }],
+      });
     });
   });
 
