@@ -53,6 +53,21 @@ function convert(value: unknown): unknown {
     converted[key] = convert(child);
   }
 
+  // OpenAPI 3.1 permits a nullable union in `type`; OpenAPI 3.0 requires a
+  // single type plus `nullable`. The installed Zod converter emits the former
+  // for primitive nullable values such as `string | null`.
+  if (Array.isArray(converted.type) && converted.type.includes('null')) {
+    const types = converted.type.filter((type) => type !== 'null');
+    delete converted.type;
+    if (types.length === 1) {
+      converted.type = types[0];
+      converted.nullable = true;
+    } else if (types.length > 1) {
+      converted.anyOf = types.map((type) => ({ type }));
+      converted.nullable = true;
+    }
+  }
+
   const alternatives = converted.anyOf;
   if (!Array.isArray(alternatives)) return converted;
   const nonNull = alternatives.filter(
