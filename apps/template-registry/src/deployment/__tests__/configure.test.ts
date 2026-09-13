@@ -305,6 +305,19 @@ describe('Registry deployment configuration', () => {
     { smtpUrl: "smtps://user:pass'@mail.example.test" },
     { postmarkServerToken: 'token\nINJECTED=value', smtpUrl: undefined },
     { postmarkMessageStream: 'outbound' },
+    { smtpUrl: 'https://mail.example.test' },
+    { smtpUrl: 'smtp://mail.example.test/path' },
+    { smtpUrl: undefined, postmarkServerToken: 'a'.repeat(257) },
+    {
+      smtpUrl: undefined,
+      postmarkServerToken: 'token',
+      postmarkMessageStream: 'a'.repeat(31),
+    },
+    {
+      smtpUrl: undefined,
+      postmarkServerToken: 'token',
+      postmarkMessageStream: 'bad stream',
+    },
   ])(
     'refuses unsafe or incomplete inputs before writing configuration: %j',
     async (invalid) => {
@@ -319,6 +332,20 @@ describe('Registry deployment configuration', () => {
       });
     },
   );
+
+  it('reuses configuration created under a restrictive process umask', async () => {
+    const previous = process.umask(0o077);
+    try {
+      await fixture(async (output) => {
+        await configureRegistryDeployment({ ...options, output }, templateRoot);
+        const original = await environment(output);
+        await configureRegistryDeployment({ ...options, output }, templateRoot);
+        expect(await environment(output)).toEqual(original);
+      });
+    } finally {
+      process.umask(previous);
+    }
+  });
 
   it('refuses an incomplete existing configuration and a malformed public template', async () => {
     await fixture(async (output) => {

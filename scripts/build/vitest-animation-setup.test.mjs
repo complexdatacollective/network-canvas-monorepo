@@ -68,7 +68,7 @@ function dependencySpecifier(manifest, dependencyName) {
 
 function findVitestConfigs(workspaceDirectory) {
   return readdirSync(workspaceDirectory)
-    .filter((file) => /^vitest\.config\.[cm]?[jt]s$/.test(file))
+    .filter((file) => /^vitest(?:\.[\w-]+)?\.config\.[cm]?[jt]s$/.test(file))
     .map((file) => path.join(workspaceDirectory, file));
 }
 

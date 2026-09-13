@@ -62,9 +62,8 @@
 //
 // Two hand placements override the packing:
 //
-//   * `@codaco/studio-sync` is pinned to the shard that starts Postgres, since
-//     it is the only workspace suite outside `@codaco/studio-server` that
-//     needs a database.
+//   * `@codaco/studio-sync` and `@codaco/template-registry` are pinned to
+//     the shard that starts Postgres because both need a real database.
 //   * `@codaco/site-navigation-element` pays a fixed `playwright install
 //     --with-deps chromium` before its (tiny) suite, so it is weighted by that
 //     install rather than by its tests.
@@ -137,6 +136,8 @@ export const TEST_SHARDS = [
       { name: '@codaco/interviewer-classic', seconds: 96.8 },
       { name: '@codaco/protocol-validation', seconds: 41.7 },
       { name: '@codaco/studio-sync', seconds: 20.5 },
+      // Initial local estimate; remeasure after the first database shard run.
+      { name: '@codaco/template-registry', seconds: 30 },
       { name: '@codaco/network-exporters', seconds: 4.5 },
     ],
   },
@@ -198,7 +199,7 @@ export function workspaceTestPackages(root = REPO_ROOT) {
   }
   // Sorted so the emitted filter list is stable across platforms: it is
   // compared against in tests and read by a human in the job log.
-  return [...names].sort((a, b) => a.localeCompare(b));
+  return [...names].toSorted((a, b) => a.localeCompare(b));
 }
 
 /**
