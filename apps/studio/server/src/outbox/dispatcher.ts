@@ -33,6 +33,8 @@ export type OutboxAdapter<Claim extends OutboxClaim> = {
   suppressUndeliverable(): Promise<number>;
   /** Reconcile expired rows known to have crossed an external handoff. */
   reconcileExpiredUncertainLeases?(): Promise<number>;
+  /** Requeue expired post-handoff rows for at-least-once retry. */
+  reconcileExpiredRetries?(): Promise<number>;
   failExhaustedLeases(maxAttempts: number): Promise<number>;
   claim(lease: OutboxLease, maxAttempts: number): Promise<Claim | null>;
   remainsDeliverable(claim: Claim, lease: OutboxLease): Promise<boolean>;
@@ -186,11 +188,13 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
     const suppressed = await this.adapter.suppressUndeliverable();
     const uncertain =
       (await this.adapter.reconcileExpiredUncertainLeases?.()) ?? 0;
+    const recovered = (await this.adapter.reconcileExpiredRetries?.()) ?? 0;
     const failed = await this.adapter.failExhaustedLeases(this.maxAttempts);
     const result: OutboxDispatchResult = {
       claimed: 0,
       completed: 0,
       retried: 0,
+      recovered,
       failed,
       suppressed,
       uncertain,

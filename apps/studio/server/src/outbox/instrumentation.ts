@@ -12,6 +12,8 @@ export type OutboxDispatchResult = {
   claimed: number;
   completed: number;
   retried: number;
+  /** Rows recovered from an expired post-handoff lease for another attempt. */
+  recovered: number;
   failed: number;
   suppressed: number;
   uncertain: number;

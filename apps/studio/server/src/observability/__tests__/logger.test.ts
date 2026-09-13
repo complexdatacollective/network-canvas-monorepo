@@ -173,6 +173,7 @@ describe('operational output allowlists', () => {
       claimed: 4,
       completed: 1,
       retried: 1,
+      recovered: 0,
       failed: 1,
       suppressed: 0,
       uncertain: 1,

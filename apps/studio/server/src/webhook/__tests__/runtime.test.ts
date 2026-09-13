@@ -1,4 +1,5 @@
 import { createHmac, randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 
 import { safe } from '@orpc/client';
 import { describe, expect, it } from 'vitest';
@@ -68,6 +69,23 @@ describe('webhook runtime', () => {
       createStandardWebhookSender({ timeoutMs: 100 }).send({
         id: randomUUID(),
         url: 'https://127.0.0.1/private',
+        timestamp: '1',
+        signature: 'v1,synthetic',
+        body: '{}',
+      }),
+    ).rejects.toMatchObject({ disposition: 'permanent' });
+  });
+
+  it('refuses a DNS answer set containing any private address', async () => {
+    await expect(
+      createStandardWebhookSender({
+        lookupAddress: async () => [
+          { address: '8.8.8.8', family: 4 },
+          { address: '169.254.169.254', family: 4 },
+        ],
+      }).send({
+        id: randomUUID(),
+        url: 'https://hooks.example.org/studio',
         timestamp: '1',
         signature: 'v1,synthetic',
         body: '{}',
@@ -259,7 +277,7 @@ describe('webhook runtime', () => {
       const subscriptionId = await addSubscription(fixture);
       await enqueue(fixture);
       let sends = 0;
-      const webhookIds: string[] = [];
+      const requests: WebhookRequest[] = [];
       const dispatcher = createWebhookDeliveryDispatcher({
         pool: fixture.scratch.maintenance,
         encryptionKeys: fixture.keys,
@@ -270,16 +288,32 @@ describe('webhook runtime', () => {
         sender: {
           async send(request) {
             sends += 1;
-            webhookIds.push(request.id);
+            requests.push(request);
             throw new Error('synthetic connection loss after request handoff');
           },
         },
       });
       expect(await dispatcher.runOnce()).toMatchObject({ retried: 1 });
+      await setWebhookSecret(
+        fixture.keys,
+        fixture.context,
+        subscriptionId,
+        Buffer.alloc(32, 72),
+      );
       expect(await dispatcher.runOnce()).toMatchObject({ failed: 1 });
       expect(await dispatcher.runOnce()).toMatchObject({ claimed: 0 });
       expect(sends).toBe(2);
-      expect(new Set(webhookIds).size).toBe(1);
+      // Retries use the currently configured signing key; receivers deduplicate
+      // the possible duplicate by the stable Standard Webhooks id.
+      expect(requests[0]?.id).toBe(requests[1]?.id);
+      expect(requests[1]).toBeDefined();
+      expect(requests[1]?.signature).toBe(
+        `v1,${createHmac('sha256', Buffer.alloc(32, 72))
+          .update(
+            `${requests[1]!.id}.${requests[1]!.timestamp}.${requests[1]!.body}`,
+          )
+          .digest('base64')}`,
+      );
 
       await enqueue(fixture);
       await disableWebhookSubscription(fixture.context, subscriptionId);
@@ -320,7 +354,7 @@ describe('webhook runtime', () => {
          WHERE id = $1`,
         [first.id],
       );
-      expect(await adapter.reconcileExpiredUncertainLeases()).toBe(0);
+      expect(await adapter.reconcileExpiredRetries()).toBe(1);
       const secondOwner = randomUUID();
       const second = await adapter.claim(
         { owner: secondOwner, durationMs: 5_000 },
@@ -408,6 +442,119 @@ describe('webhook runtime', () => {
           ).resolves.toBe(false);
         } finally {
           current.secret.fill(0);
+        }
+      } finally {
+        read.secret.fill(0);
+      }
+    });
+  });
+
+  it('serializes handoff behind a concurrent disable before sending', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await enqueue(fixture);
+      const adapter = new WebhookDeliveryAdapter({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+      });
+      const owner = randomUUID();
+      const claim = await adapter.claim({ owner, durationMs: 5_000 }, 3);
+      if (!claim) throw new Error('expected delivery claim');
+      const read = await readWebhookSecretForDelivery(
+        fixture.keys,
+        subscriptionId,
+        {
+          kind: 'delivery',
+          maintenancePool: fixture.scratch.maintenance,
+          teamId: fixture.context.tenantDb.teamId,
+          deliveryId: claim.id,
+          leaseOwner: owner,
+        },
+      );
+      try {
+        const blocker = await fixture.scratch.pool.connect();
+        try {
+          await blocker.query('BEGIN');
+          await blocker.query(
+            'SELECT id FROM webhook_subscriptions WHERE id = $1 FOR UPDATE',
+            [subscriptionId],
+          );
+          const handoff = beginWebhookHandoff(
+            fixture.scratch.maintenance,
+            claim,
+            read.snapshot,
+          );
+          // There is no database event exposed for a waiter on a row lock;
+          // this bounded pause is the negative oracle that proves the old
+          // unlocked handoff would have completed before the mutation.
+          await delay(50);
+          await blocker.query(
+            `UPDATE webhook_subscriptions
+             SET state = 'disabled', disabled_at = clock_timestamp()
+             WHERE id = $1`,
+            [subscriptionId],
+          );
+          await blocker.query('COMMIT');
+          await expect(handoff).resolves.toBe(false);
+        } finally {
+          await blocker.query('ROLLBACK').catch(() => undefined);
+          blocker.release();
+        }
+      } finally {
+        read.secret.fill(0);
+      }
+    });
+  });
+
+  it('serializes handoff behind a concurrent secret rotation before sending', async () => {
+    await participantFixture(async (fixture) => {
+      const subscriptionId = await addSubscription(fixture);
+      await enqueue(fixture);
+      const adapter = new WebhookDeliveryAdapter({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+      });
+      const owner = randomUUID();
+      const claim = await adapter.claim({ owner, durationMs: 5_000 }, 3);
+      if (!claim) throw new Error('expected delivery claim');
+      const read = await readWebhookSecretForDelivery(
+        fixture.keys,
+        subscriptionId,
+        {
+          kind: 'delivery',
+          maintenancePool: fixture.scratch.maintenance,
+          teamId: fixture.context.tenantDb.teamId,
+          deliveryId: claim.id,
+          leaseOwner: owner,
+        },
+      );
+      try {
+        const blocker = await fixture.scratch.pool.connect();
+        try {
+          await blocker.query('BEGIN');
+          await blocker.query(
+            'SELECT id FROM webhook_subscriptions WHERE id = $1 FOR UPDATE',
+            [subscriptionId],
+          );
+          const handoff = beginWebhookHandoff(
+            fixture.scratch.maintenance,
+            claim,
+            read.snapshot,
+          );
+          // Keep the lock held while changing the ciphertext, then let the
+          // handoff observe the committed new key and suppress the old read.
+          await delay(50);
+          await blocker.query(
+            `UPDATE webhook_subscriptions
+             SET secret_ciphertext = $2, updated_at = clock_timestamp()
+             WHERE id = $1`,
+            [subscriptionId, Buffer.alloc(32, 72)],
+          );
+          await blocker.query('COMMIT');
+          await expect(handoff).resolves.toBe(false);
+        } finally {
+          await blocker.query('ROLLBACK').catch(() => undefined);
+          blocker.release();
         }
       } finally {
         read.secret.fill(0);

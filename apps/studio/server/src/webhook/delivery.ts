@@ -224,26 +224,75 @@ class LeaseLostError extends Error {}
 
 export async function beginWebhookHandoff(
   pool: pg.Pool,
-  claim: Pick<ClaimedWebhookDelivery, 'id' | 'leaseOwner'>,
+  claim: Pick<
+    ClaimedWebhookDelivery,
+    'id' | 'teamId' | 'subscriptionId' | 'eventType' | 'leaseOwner'
+  >,
   snapshot: WebhookSecretRead['snapshot'],
 ): Promise<boolean> {
-  const handoff = await pool.query(
-    `UPDATE webhook_deliveries d SET send_started_at = clock_timestamp()
-     FROM webhook_subscriptions s
-     WHERE d.${OWNED} AND d.send_started_at IS NULL
-       AND d.lease_expires_at > statement_timestamp()
-       AND s.id = d.subscription_id AND s.team_id = d.team_id
-       AND s.state = 'active' AND d.event_type = ANY(s.event_types)
-       AND s.secret_key_id=$3 AND s.secret_algorithm=$4 AND s.secret_ciphertext=$5`,
-    [
-      claim.id,
-      claim.leaseOwner,
-      snapshot.secretKeyId,
-      snapshot.secretAlgorithm,
-      snapshot.secretCiphertext,
-    ],
-  );
-  return handoff.rowCount === 1;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Lock in the same order as terminal finalization (delivery, then
+    // subscription). The lock is held only through this database handoff,
+    // never across the outbound request. This gives disable/rotation a clear
+    // linearization point: a mutation committed before this check wins, while
+    // one that follows the handoff is explicitly an in-flight send.
+    const delivery = await client.query<{
+      teamId: string;
+      subscriptionId: string;
+    }>(
+      `SELECT team_id AS "teamId", subscription_id AS "subscriptionId"
+       FROM webhook_deliveries
+       WHERE id = $1 AND team_id = $2 AND subscription_id = $3
+         AND lease_owner = $4 AND ${PENDING}
+         AND send_started_at IS NULL
+         AND lease_expires_at > statement_timestamp()
+       FOR UPDATE`,
+      [claim.id, claim.teamId, claim.subscriptionId, claim.leaseOwner],
+    );
+    const row = delivery.rows[0];
+    if (!row) {
+      await client.query('COMMIT');
+      return false;
+    }
+    const subscription = await client.query(
+      `SELECT id
+       FROM webhook_subscriptions
+       WHERE id = $1 AND team_id = $2 AND state = 'active'
+         AND $3 = ANY(event_types)
+         AND secret_key_id = $4 AND secret_algorithm = $5
+         AND secret_ciphertext = $6
+       FOR UPDATE`,
+      [
+        row.subscriptionId,
+        row.teamId,
+        claim.eventType,
+        snapshot.secretKeyId,
+        snapshot.secretAlgorithm,
+        snapshot.secretCiphertext,
+      ],
+    );
+    if (subscription.rowCount !== 1) {
+      await client.query('COMMIT');
+      return false;
+    }
+    const handoff = await client.query(
+      `UPDATE webhook_deliveries
+       SET send_started_at = clock_timestamp()
+       WHERE id = $1 AND lease_owner = $2 AND ${PENDING}
+         AND send_started_at IS NULL
+         AND lease_expires_at > statement_timestamp()`,
+      [claim.id, claim.leaseOwner],
+    );
+    await client.query('COMMIT');
+    return handoff.rowCount === 1;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 function deliveryEvent(
@@ -299,15 +348,19 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
     return 0;
   }
 
-  async reconcileExpiredUncertainLeases(): Promise<number> {
-    await this.options.pool.query(
+  /**
+   * Replay with the current configured key; the stable webhook id is the
+   * receiver's deduplication boundary when the previous POST was ambiguous.
+   */
+  async reconcileExpiredRetries(): Promise<number> {
+    const reconciled = await this.options.pool.query(
       `UPDATE webhook_deliveries SET send_started_at=NULL,lease_owner=NULL,lease_expires_at=NULL,
          available_at=clock_timestamp(),last_error='delivery_retryable'
        WHERE ${PENDING} AND lease_expires_at<=clock_timestamp() AND send_started_at IS NOT NULL
          AND attempt_count < $1`,
       [this.options.maxAttempts ?? 8],
     );
-    return 0;
+    return reconciled.rowCount ?? 0;
   }
 
   async failExhaustedLeases(maxAttempts: number): Promise<number> {
