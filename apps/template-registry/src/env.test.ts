@@ -405,3 +405,72 @@ it.each(['A'.repeat(240), '\\'.repeat(120)])(
     ).toThrow('REGISTRY_CONFIGURATION_INVALID');
   },
 );
+
+describe('database transport policy', () => {
+  const recovery = {
+    ...valid,
+    REGISTRY_MIGRATION_DATABASE_URL: valid.REGISTRY_DATABASE_URL,
+    REGISTRY_BACKUP_DATABASE_URL: valid.REGISTRY_DATABASE_URL,
+    REGISTRY_RECOVERY_DATABASE_URL: valid.REGISTRY_DATABASE_URL,
+    REGISTRY_RECOVERY_RECONCILIATION_PATH: '/private/evidence.json',
+    REGISTRY_RECOVERY_RECONCILIATION_SHA256: 'a'.repeat(64),
+  };
+  const boundaries = [
+    [readRegistryEnv, 'REGISTRY_DATABASE_URL'],
+    [readRegistryEnv, 'REGISTRY_OPERATOR_DATABASE_URL'],
+    [readRegistryMigrationEnv, 'REGISTRY_MIGRATION_DATABASE_URL'],
+    [readRegistryBackupEnv, 'REGISTRY_BACKUP_DATABASE_URL'],
+    [readRegistryRecoveryEnv, 'REGISTRY_RECOVERY_DATABASE_URL'],
+    [readRegistryRecoveryEnv, 'REGISTRY_BACKUP_DATABASE_URL'],
+  ] as const;
+  for (const [read, key] of boundaries) {
+    it.each([
+      '',
+      '?sslmode=disable',
+      '?sslmode=no-verify',
+      '?sslmode=require&uselibpqcompat=true',
+      '?sslmode=verify-ca',
+      '?sslmode=verify-full&sslmode=disable',
+      '?sslmode=verify-full&connectionString=postgres://other/db',
+    ])('rejects unverified external transport for ' + key + ' %s', (query) => {
+      expect(() =>
+        read({
+          ...recovery,
+          [key]: 'postgres://user:secret@db.example.test/registry' + query,
+        }),
+      ).toThrow(/CONFIGURATION_INVALID/);
+    });
+    it(
+      'accepts verified TLS and explicit private networking for ' + key,
+      () => {
+        expect(() =>
+          read({
+            ...recovery,
+            [key]:
+              'postgres://user:secret@db.example.test/registry?sslmode=verify-full',
+          }),
+        ).not.toThrow();
+        expect(() =>
+          read({
+            ...recovery,
+            [key]: 'postgres://user:secret@registry-postgres/registry',
+            REGISTRY_DATABASE_INSECURE_PRIVATE_NETWORK: 'true',
+          }),
+        ).not.toThrow();
+        expect(() =>
+          read({
+            ...recovery,
+            REGISTRY_DATABASE_INSECURE_PRIVATE_NETWORK: '1',
+          }),
+        ).toThrow(/CONFIGURATION_INVALID/);
+        expect(() =>
+          read({
+            ...recovery,
+            [key]:
+              'postgres://user:secret@localhost/registry?host=db.example.test',
+          }),
+        ).toThrow(/CONFIGURATION_INVALID/);
+      },
+    );
+  }
+});

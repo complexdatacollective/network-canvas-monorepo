@@ -3329,7 +3329,7 @@ importers:
         specifier: ^0.8.3
         version: 0.8.3
       file-type:
-        specifier: ^22.0.2
+        specifier: 22.0.2
         version: 22.0.2(supports-color@10.2.2)
       ipaddr.js:
         specifier: ^2.5.0
