@@ -20,8 +20,9 @@ import {
 
 const evidence = {
   format: 'template-registry-recovery-reconciliation',
-  version: 1,
+  version: 2,
   users: [],
+  entries: [],
 };
 const bytes = Buffer.from(JSON.stringify(evidence) + '\n');
 
@@ -36,8 +37,9 @@ it('requires a unique stable publisher UUID for every publishing account', () =>
   };
   const input = {
     format: 'template-registry-recovery-reconciliation' as const,
-    version: 1 as const,
+    version: 2 as const,
     users: [publisher],
+    entries: [],
   };
   expect(copyRegistryRecoveryReconciliation(input).users[0]?.publisherId).toBe(
     publisher.publisherId.toLowerCase(),
@@ -70,6 +72,50 @@ it('requires a unique stable publisher UUID for every publishing account', () =>
   ).toThrow();
 });
 
+it('requires unique entry ownership bound to an approved publisher', () => {
+  const publisher = {
+    id: 'publisher',
+    email: 'publisher@example.test',
+    emailVerified: true,
+    publisher: 'active' as const,
+    publisherId: '00000000-0000-4000-8000-00000000000A',
+    operator: false,
+  };
+  const entry = {
+    id: '00000000-0000-4000-8000-00000000000B',
+    publisherId: publisher.publisherId,
+  };
+  const input = {
+    format: 'template-registry-recovery-reconciliation' as const,
+    version: 2 as const,
+    users: [publisher],
+    entries: [entry],
+  };
+  expect(copyRegistryRecoveryReconciliation(input).entries).toEqual([
+    {
+      id: entry.id.toLowerCase(),
+      publisherId: publisher.publisherId.toLowerCase(),
+    },
+  ]);
+  expect(() =>
+    copyRegistryRecoveryReconciliation({
+      ...input,
+      entries: [entry, entry],
+    }),
+  ).toThrow();
+  expect(() =>
+    copyRegistryRecoveryReconciliation({
+      ...input,
+      entries: [
+        {
+          ...entry,
+          publisherId: '00000000-0000-4000-8000-00000000000C',
+        },
+      ],
+    }),
+  ).toThrow();
+});
+
 it('verifies the exact private evidence bytes before parsing', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'registry-evidence-'));
   const path = join(directory, 'current.json');
@@ -84,14 +130,21 @@ it('verifies the exact private evidence bytes before parsing', async () => {
         templateBytesHash(bytes.subarray(0, -1)),
       ),
     ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
+    const legacy = Buffer.from(
+      JSON.stringify({ ...evidence, version: 1, entries: undefined }),
+    );
+    await writeFile(path, legacy, { mode: 0o600 });
+    await expect(
+      readRegistryRecoveryReconciliation(path, templateBytesHash(legacy)),
+    ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
 });
 
 it.each([
-  '{"format":"template-registry-recovery-reconciliation","version":2,"version":1,"users":[]}',
-  '{"format":"template-registry-recovery-reconciliation","version":1,"users":[{"id":"one","email":"one@example.test","emailVerified":true,"publisher":"active","publisherId":"00000000-0000-4000-8000-000000000001","operator":false,"operator":true}]}',
+  '{"format":"template-registry-recovery-reconciliation","version":3,"version":2,"users":[],"entries":[]}',
+  '{"format":"template-registry-recovery-reconciliation","version":2,"users":[{"id":"one","email":"one@example.test","emailVerified":true,"publisher":"active","publisherId":"00000000-0000-4000-8000-000000000001","operator":false,"operator":true}],"entries":[]}',
 ])(
   'rejects duplicate recovery evidence members before parsing: %s',
   async (text) => {

@@ -78,7 +78,10 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
        JOIN registry_publishers p ON p.user_id = u.id WHERE u.id LIKE 'page-user-%'`,
     );
     const account = await fixture.account('restored@example.test', true);
-    await fixture.published(account.token, 'Recovered template');
+    const recovered = await fixture.published(
+      account.token,
+      'Recovered template',
+    );
     await fixture.owner.query(
       `INSERT INTO registry_auth_verification(id, identifier, value, expires_at)
        VALUES ('restored-one-time', 'restored@example.test', 'one-time', statement_timestamp() + interval '5 minutes')`,
@@ -106,7 +109,7 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
       admission: { allowedLogins: installation.allowedLogins },
       reconciliation: {
         format: 'template-registry-recovery-reconciliation',
-        version: 1,
+        version: 2,
         users: [
           ...pagedUsers.rows.map((user) => ({
             id: user.id,
@@ -149,6 +152,12 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
             operator: false,
           },
         ],
+        entries: [
+          {
+            id: recovered.entry.id,
+            publisherId: account.publisher.id,
+          },
+        ],
       },
     });
 
@@ -162,6 +171,9 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
           ) ||
             event.sql.startsWith(
               'SELECT id, user_id FROM registry_publishers',
+            ) ||
+            event.sql.startsWith(
+              'SELECT id, publisher_id FROM registry_entries',
             )),
       );
     expect(
@@ -174,6 +186,11 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
         event.sql.includes('registry_publishers'),
       ),
     ).toHaveLength(2);
+    expect(
+      inventoryPages.filter(({ event }) =>
+        event.sql.includes('registry_entries'),
+      ),
+    ).toHaveLength(1);
     for (const { index } of inventoryPages) {
       expect(recoveryQueries.slice(index + 1, index + 3)).toEqual([
         { lane: 'owner', sql: 'SELECT 1' },
@@ -238,8 +255,8 @@ it('refuses swapped publisher UUID ownership before restoring authority', async 
     const first = await fixture.account('first@example.test');
     const second = await fixture.account('second@example.test');
     const reconciliation = {
-      format: 'template-registry-recovery-reconciliation',
-      version: 1,
+      format: 'template-registry-recovery-reconciliation' as const,
+      version: 2 as const,
       users: [first, second].map((account, index) => ({
         id: account.session.userId,
         email: index === 0 ? 'first@example.test' : 'second@example.test',
@@ -248,7 +265,8 @@ it('refuses swapped publisher UUID ownership before restoring authority', async 
         publisherId: account.publisher.id,
         operator: false,
       })),
-    } as const;
+      entries: [],
+    };
     // Both sets of IDs remain unchanged, but each account would acquire the
     // other publisher's historical entries after issuing a new credential.
     await fixture.owner.query(
@@ -277,6 +295,80 @@ it('refuses swapped publisher UUID ownership before restoring authority', async 
        ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
       ),
     );
+    await expect(
+      reconcileRegistryRecovery({
+        pool: fixture.owner,
+        backupPool: installation.backupPool,
+        blobs: fixture.blobs,
+        admission: { allowedLogins: installation.allowedLogins },
+        reconciliation,
+      }),
+    ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    expect(
+      (
+        await fixture.owner.query(
+          'SELECT count(*)::int AS count FROM registry_credentials WHERE revoked_at IS NULL',
+        )
+      ).rows,
+    ).toEqual([{ count: 2 }]);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+it('refuses restored entries whose publisher ownership was swapped', async () => {
+  const installation = await createRegistryInstallation();
+  const fixture = await createRegistryFixture({}, installation);
+  try {
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../migrations', import.meta.url)),
+      'Template Registry',
+    );
+    await registryMigrator.migrate(
+      fixture.owner,
+      migrations,
+      REGISTRY_SCHEMA_FINGERPRINT,
+      installation.allowedLogins,
+    );
+    const first = await fixture.account('entry-first@example.test');
+    const second = await fixture.account('entry-second@example.test');
+    const firstEntry = await fixture.published(first.token, 'First ownership');
+    const secondEntry = await fixture.published(
+      second.token,
+      'Second ownership',
+    );
+    const reconciliation = {
+      format: 'template-registry-recovery-reconciliation' as const,
+      version: 2 as const,
+      users: [first, second].map((account) => ({
+        id: account.session.userId,
+        email: account.session.email,
+        emailVerified: true,
+        publisher: 'active' as const,
+        publisherId: account.publisher.id,
+        operator: false,
+      })),
+      entries: [
+        { id: firstEntry.entry.id, publisherId: first.publisher.id },
+        { id: secondEntry.entry.id, publisherId: second.publisher.id },
+      ],
+    };
+    await fixture.owner.query(
+      'UPDATE registry_entries SET publisher_id = $1 WHERE id = $2',
+      [second.publisher.id, firstEntry.entry.id],
+    );
+    await fixture.owner.query(
+      'UPDATE registry_entries SET publisher_id = $1 WHERE id = $2',
+      [first.publisher.id, secondEntry.entry.id],
+    );
+    await installation.closeRuntimePools();
+    await installation.withAdministrator((administrator) =>
+      administrator.query(
+        `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN;
+         ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
+      ),
+    );
+
     await expect(
       reconcileRegistryRecovery({
         pool: fixture.owner,
@@ -331,8 +423,9 @@ it('requires object-store readiness even when the restored registry has no artif
         admission: { allowedLogins: installation.allowedLogins },
         reconciliation: {
           format: 'template-registry-recovery-reconciliation',
-          version: 1,
+          version: 2,
           users: [],
+          entries: [],
         },
       }),
     ).rejects.toThrow('object store unavailable');
@@ -359,7 +452,10 @@ it.each(['email', 'verification'] as const)(
         installation.allowedLogins,
       );
       const account = await fixture.account('approved@example.test');
-      await fixture.published(account.token, 'Authority binding');
+      const published = await fixture.published(
+        account.token,
+        'Authority binding',
+      );
       await fixture.owner.query(
         kind === 'email'
           ? 'UPDATE registry_auth_user SET email = $2 WHERE id = $1'
@@ -384,7 +480,7 @@ it.each(['email', 'verification'] as const)(
           admission: { allowedLogins: installation.allowedLogins },
           reconciliation: {
             format: 'template-registry-recovery-reconciliation',
-            version: 1,
+            version: 2,
             users: [
               {
                 id: account.session.userId,
@@ -393,6 +489,12 @@ it.each(['email', 'verification'] as const)(
                 publisher: 'active',
                 publisherId: account.publisher.id,
                 operator: false,
+              },
+            ],
+            entries: [
+              {
+                id: published.entry.id,
+                publisherId: account.publisher.id,
               },
             ],
           },
@@ -433,7 +535,10 @@ it.each([
       installation.allowedLogins,
     );
     const account = await fixture.account('quarantine@example.test', true);
-    await fixture.published(account.token, 'Quarantined template');
+    const published = await fixture.published(
+      account.token,
+      'Quarantined template',
+    );
     await installation.closeRuntimePools();
     await installation.withAdministrator((administrator) =>
       administrator.query(
@@ -466,7 +571,7 @@ it.each([
         admission: { allowedLogins: installation.allowedLogins },
         reconciliation: {
           format: 'template-registry-recovery-reconciliation',
-          version: 1,
+          version: 2,
           users: [
             {
               id: account.session.userId,
@@ -475,6 +580,12 @@ it.each([
               publisher: 'active',
               publisherId: account.publisher.id,
               operator: false,
+            },
+          ],
+          entries: [
+            {
+              id: published.entry.id,
+              publisherId: account.publisher.id,
             },
           ],
         },
@@ -536,7 +647,7 @@ it('rolls back credential invalidation when restored artifact bytes fail verific
         admission: { allowedLogins: installation.allowedLogins },
         reconciliation: {
           format: 'template-registry-recovery-reconciliation',
-          version: 1,
+          version: 2,
           users: [
             {
               id: account.session.userId,
@@ -545,6 +656,12 @@ it('rolls back credential invalidation when restored artifact bytes fail verific
               publisher: 'active',
               publisherId: account.publisher.id,
               operator: false,
+            },
+          ],
+          entries: [
+            {
+              id: published.entry.id,
+              publisherId: account.publisher.id,
             },
           ],
         },
@@ -586,7 +703,7 @@ it('refuses recovery while an enrolled runtime can still reconnect', async () =>
         admission: { allowedLogins: installation.allowedLogins },
         reconciliation: {
           format: 'template-registry-recovery-reconciliation',
-          version: 1,
+          version: 2,
           users: [
             {
               id: account.session.userId,
@@ -597,6 +714,7 @@ it('refuses recovery while an enrolled runtime can still reconnect', async () =>
               operator: false,
             },
           ],
+          entries: [],
         },
       }),
     ).rejects.toThrow('REGISTRY_RECOVERY_QUARANTINE_REQUIRED');
