@@ -13,10 +13,6 @@
   // diff is the POSIX tool apps/fresco/release-test/scripts/diff-exports.mjs
   // spawns to compare normalized export trees.
   "ignoreBinaries": ["electron-builder", "xcrun", "taskkill", "diff"],
-  // unplugin-dts loads @typescript/typescript6 by name at build time (TypeScript
-  // 7 dropped the JavaScript Compiler API it needs for declaration emit), so it
-  // is never imported from source.
-  "ignoreDependencies": ["@typescript/typescript6"],
   "tags": ["-public"],
   "workspaces": {
     // The release-test walkers are invoked with node by the
