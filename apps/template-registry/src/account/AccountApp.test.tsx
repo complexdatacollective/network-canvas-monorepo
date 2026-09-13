@@ -348,6 +348,8 @@ it('shows the structured reason for each moderation report', async () => {
       id: `00000000-0000-4000-8000-00000000000${index}`,
       sequence: String(index + 1),
       entry_id: `10000000-0000-4000-8000-00000000000${index}`,
+      artifact_root: String(index).padStart(64, '0'),
+      publisher_id: `20000000-0000-4000-8000-00000000000${index}`,
       category,
       details: null,
       created_at: '2026-09-06T00:00:00.000Z',

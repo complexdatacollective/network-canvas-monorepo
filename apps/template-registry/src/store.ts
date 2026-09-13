@@ -37,6 +37,7 @@ import type { RegistryBlobStore } from './blob-store.ts';
 import {
   EntrySchema,
   EntrySummarySchema,
+  YankedEntrySchema,
   ListEntriesSchema,
   type ListEntries,
   type RegistryEntry,
@@ -48,7 +49,10 @@ import {
 } from './db/transaction.ts';
 import { RegistryLimitsSchema, type RegistryLimits } from './limits.ts';
 import { RegistryError } from './problems.ts';
-import { admitRegistryRate } from './rate-limit.ts';
+import {
+  admitRegistryRate,
+  RegistrySharedSearchAdmission,
+} from './rate-limit.ts';
 
 type Principal = {
   publisherId: string;
@@ -110,6 +114,7 @@ export class RegistryStore {
   readonly #blobs: RegistryBlobStore;
   readonly #baseUrl: string;
   readonly #limits: RegistryLimits;
+  readonly #searchAdmission: RegistrySharedSearchAdmission;
 
   constructor(options: {
     pool: pg.Pool;
@@ -125,6 +130,7 @@ export class RegistryStore {
     this.#blobs = options.blobs;
     this.#baseUrl = new URL(options.baseUrl).origin;
     this.#limits = RegistryLimitsSchema.parse(options.limits);
+    this.#searchAdmission = new RegistrySharedSearchAdmission(options.pool);
   }
 
   async #principal(
@@ -546,12 +552,16 @@ export class RegistryStore {
         `(strpos(lower(c.template->>'name'), lower(${parameter})) > 0 OR strpos(lower(COALESCE(c.metadata->>'description', '')), lower(${parameter})) > 0)`,
       );
     }
-    const rows = (
-      await this.#pool.query<EntrySummaryRow>(
+    const read = (client: Pick<pg.PoolClient, 'query'>) =>
+      client.query<EntrySummaryRow>(
         `${ENTRY_SUMMARY_QUERY} WHERE ${where.join(' AND ')} ORDER BY e.sequence DESC LIMIT ${bind(limit + 1)}`,
         parameters,
-      )
-    ).rows;
+      );
+    const result =
+      filters.query || filters.keyword || filters.author
+        ? await this.#searchAdmission.run(read)
+        : await read(this.#pool);
+    const rows = result.rows;
     const selected = rows.slice(0, limit);
     const last = selected.at(-1);
     return {
@@ -750,7 +760,7 @@ export class RegistryStore {
           requestId,
         );
       }
-      return this.#readEntry(client, id);
+      return YankedEntrySchema.parse(await this.#readEntry(client, id));
     });
   }
 
@@ -759,11 +769,12 @@ export class RegistryStore {
     // Invalid locators do not consume the deployment-wide public reporting
     // allowance. Entries are retained for their installation's lifetime, so
     // this existence proof cannot be invalidated by an ordinary request.
-    const target = await this.#pool.query(
+    const target = await this.#pool.query<{ id: string }>(
       'SELECT id FROM registry_entries WHERE id = $1',
       [id],
     );
-    if (!target.rowCount) throw new RegistryError('NOT_FOUND');
+    const canonicalId = target.rows[0]?.id;
+    if (canonicalId === undefined) throw new RegistryError('NOT_FOUND');
     await admitRegistryRate(
       this.#pool,
       'report:global',
@@ -772,7 +783,7 @@ export class RegistryStore {
     );
     await admitRegistryRate(
       this.#pool,
-      `report:${id}`,
+      `report:${canonicalId}`,
       this.#limits.reportsPerEntryPerHour,
       3600,
     );
@@ -786,7 +797,7 @@ export class RegistryStore {
       const reportId = randomUUID();
       await client.query(
         'INSERT INTO registry_reports(id, entry_id, category, details) VALUES ($1, $2, $3, $4)',
-        [reportId, id, input.category, input.details],
+        [reportId, canonicalId, input.category, input.details],
       );
       return { id: reportId };
     });
@@ -979,13 +990,18 @@ export class RegistryStore {
           id: string;
           sequence: string;
           entry_id: string;
+          artifact_root: string;
+          publisher_id: string;
           category: RegistryReport['category'];
           details: string | null;
           created_at: Date;
         }>(
-          `SELECT id, sequence::text AS sequence, entry_id, category, details, created_at FROM registry_reports
-        WHERE details IS NOT NULL AND ($1::bigint IS NULL OR sequence < $1::bigint)
-        ORDER BY sequence DESC LIMIT $2`,
+          `SELECT report.id, report.sequence::text AS sequence, report.entry_id,
+            entry.artifact_root, entry.publisher_id, report.category, report.details, report.created_at
+          FROM registry_reports report
+          JOIN registry_entries entry ON entry.id = report.entry_id
+          WHERE report.details IS NOT NULL AND ($1::bigint IS NULL OR report.sequence < $1::bigint)
+          ORDER BY report.sequence DESC LIMIT $2`,
           [after ?? null, limit + 1],
         )
       ).rows;

@@ -14,7 +14,10 @@ export function paginatedPageSchema<Item extends z.ZodType>(
 ) {
   return z
     .strictObject({
-      data: z.array(item),
+      data: z
+        .array(item)
+        .max(100)
+        .describe('At most the requested limit, never more than 100 items.'),
       next_cursor: cursor.nullable(),
       has_more: z.boolean(),
     })
