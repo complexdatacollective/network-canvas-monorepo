@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
+import { Hono } from 'hono';
 import type pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -11,6 +12,7 @@ import {
   reachableDb,
   seedTeam,
 } from '../../__tests__/support/postgres.ts';
+import { createSessionTimingOpenRoute } from '../../study/session-timing-route.ts';
 import {
   MAX_TIMING_INTERVAL_MS,
   openInterviewSession,
@@ -25,7 +27,7 @@ import {
 
 const db = await reachableDb();
 
-const TEAM = 'timing.team-a';
+const TEAM = `timing.team.with.dots.${'a'.repeat(130)}`;
 const OTHER_TEAM = 'timing-team-b';
 const PROTOCOL_STAGES = [
   ['info-1', 'Information'],
@@ -226,11 +228,24 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
   });
 
   it('authenticates, fences, and persists a timing snapshot under tenant RLS', async () => {
-    const opened = await openInterviewSession(app, {
-      sessionId,
-      accessToken: token,
-      writerId,
+    expect(TEAM.length).toBeGreaterThan(128);
+    expect(TEAM.length).toBeLessThanOrEqual(255);
+
+    const route = new Hono();
+    route.post('/interview/:sessionId/open', createSessionTimingOpenRoute(app));
+    const response = await route.request(`/interview/${sessionId}/open`, {
+      method: 'POST',
+      headers: {
+        'authorization': `bEaReR ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ writerId }),
     });
+    expect(response.status).toBe(200);
+    const opened = (await response.json()) as {
+      holderEpoch: number;
+      syncRevision: number;
+    };
     holderEpoch = opened.holderEpoch;
     expect(opened.syncRevision).toBe(0);
 

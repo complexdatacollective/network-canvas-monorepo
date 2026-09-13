@@ -143,7 +143,10 @@ function tokenParts(accessToken: string): TokenParts {
   }
   const teamId = accessToken.slice(0, separator);
   const secret = accessToken.slice(separator + 1);
-  if (!/^[A-Za-z0-9_.-]{1,128}$/.test(teamId)) {
+  // Better Auth organization ids and Studio's team-id boundaries allow any
+  // non-empty string up to 255 characters. Keep token parsing on that same
+  // contract; the fixed-width suffix makes dots in the id unambiguous.
+  if (teamId.length < 1 || teamId.length > 255) {
     throw new SessionTimingError('INVALID_TOKEN');
   }
   if (!/^[A-Za-z0-9_-]{43}$/.test(secret)) {

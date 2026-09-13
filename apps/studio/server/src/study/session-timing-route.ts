@@ -38,9 +38,9 @@ const ReleaseBodySchema = z.object({
 });
 
 function bearerToken(header: string | undefined): string | undefined {
-  if (!header?.startsWith('Bearer ')) return undefined;
-  const token = header.slice('Bearer '.length).trim();
-  return token.length > 0 ? token : undefined;
+  const match = header?.match(/^Bearer +(.+)$/i);
+  const token = match?.[1]?.trim();
+  return token && token.length > 0 ? token : undefined;
 }
 
 /**
