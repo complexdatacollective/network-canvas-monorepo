@@ -14,7 +14,12 @@ export type OptionRow = { label: string; value: string };
  *   while nothing is chosen and "Change attribute" once something is, plus the
  *   chosen attribute as a typed pill (or the line "No attribute selected").
  * - The trigger opens one modal window, marked `data-variable-spotlight` and
- *   named after the field's own label. Inside it: a `role="searchbox"` named
+ *   named after the field's own label. Base UI keeps a dismissed popup mounted
+ *   (`hidden`, `data-closed`), so a second picker opened after a first would
+ *   match two windows at page scope — the OPEN one is the window, and
+ *   `data-open` is what says so. A window that has closed then matches
+ *   nothing, which is what `dismissAttributeWindow` reads. Inside it: a
+ *   `role="searchbox"` named
  *   "Find or create an attribute" — the same name whether or not this caller
  *   allows one to be created — and one flat `role="listbox"` named "Attribute
  *   results" whose rows are named for the attribute and carry
@@ -43,7 +48,7 @@ export type OptionRow = { label: string; value: string };
  *   seeding is asserted rather than retyped: this is the only place the suite
  *   reads it back end to end.
  */
-const SPOTLIGHT = '[data-variable-spotlight]';
+const SPOTLIGHT = '[data-variable-spotlight][data-open]';
 
 const TRIGGER = /^(Select|Change) attribute$/u;
 
