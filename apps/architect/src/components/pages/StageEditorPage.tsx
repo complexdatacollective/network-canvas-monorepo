@@ -288,58 +288,61 @@ const StageEditorPage = () => {
         stageId={stageId}
         insertAtIndex={insertAtIndex}
       />
-      <div className="phone-landscape:px-6 px-4">
-        {/*
-         * The editor's visible hero heading is the stage-name INPUT, which is
-         * a control rather than a heading — so this is the route's real
-         * heading and RouteFocus's landing point, and it is `sr-only`
-         * because the input already shows the same text at hero size.
-         *
-         * Focus lands HERE, never on the name input: opening an edit the
-         * researcher did not ask for is worse than a silent arrival. The
-         * new-stage flow is the deliberate exception — the editor autofocuses
-         * the name because naming the stage IS the next step, and RouteFocus
-         * leaves any destination that has already claimed focus alone.
-         *
-         * Above the two columns rather than inside them, so it is neither a
-         * grid item of its own nor behind the section list: the first Tab
-         * after arriving here has to reach that list, which means the list
-         * must come after this heading in the document.
-         */}
-        <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
-          {stageName}
-        </Heading>
-        {/*
-          The container is the column, and the grid inside it is what the
-          column's own width is asked about: an element declaring `@container`
-          is a container for what it CONTAINS, so a query written on the same
-          element would be answered by whatever happens to be above the page
-          instead — which is nothing, and the two columns would never arrive.
-        */}
-        <div className="@container mx-auto w-full max-w-6xl">
-          <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
-            {/*
-              Where the section list goes. The editor publishes its sections on
-              the action slot, which is called inside the form — so the chrome
-              rendered there portals the list up into this column, and the list
-              reads a form it is not rendered inside.
-            */}
-            <div ref={setOutlineHost} />
-            {/*
-              No `EnclosingHeadingLevel` around the editor: the heading above it
-              is this page's `h1`, which is the top of the ladder and what the
-              editor already assumes when nothing states otherwise — its own
-              stage title lands on `h2` and every section one below that.
-            */}
-            <ProtocolBuilder client={client} protocolId={activeProtocolId}>
-              <StageEditor
-                target={target}
-                formId={STAGE_FORM_ID}
-                actions={renderChrome}
-                onSaved={handleSaved}
-              />
-            </ProtocolBuilder>
-          </div>
+      {/*
+       * The editor's visible hero heading is the stage-name INPUT, which is
+       * a control rather than a heading — so this is the route's real
+       * heading and RouteFocus's landing point, and it is `sr-only`
+       * because the input already shows the same text at hero size.
+       *
+       * Focus lands HERE, never on the name input: opening an edit the
+       * researcher did not ask for is worse than a silent arrival. The
+       * new-stage flow is the deliberate exception — the editor autofocuses
+       * the name because naming the stage IS the next step, and RouteFocus
+       * leaves any destination that has already claimed focus alone.
+       *
+       * Above the two columns rather than inside them, so it is neither a
+       * grid item of its own nor behind the section list: the first Tab
+       * after arriving here has to reach that list, which means the list
+       * must come after this heading in the document.
+       */}
+      <Heading level="h1" className="sr-only" {...routeFocusTargetProps}>
+        {stageName}
+      </Heading>
+      {/*
+        The container is the column, and the grid inside it is what the
+        column's own width is asked about: an element declaring `@container`
+        is a container for what it CONTAINS, so a query written on the same
+        element would be answered by whatever happens to be above the page
+        instead — which is nothing, and the two columns would never arrive.
+      */}
+      <div className="@container mx-auto w-full max-w-6xl">
+        <div className="grid grid-cols-1 gap-6 @min-[60rem]:grid-cols-[16rem_minmax(0,1fr)] @min-[60rem]:gap-10">
+          {/*
+            Where the section list goes. The editor publishes its sections on
+            the action slot, which is called inside the form — so the chrome
+            rendered there portals the list up into this column, and the list
+            reads a form it is not rendered inside.
+
+            The gutter is this column's own, and the editor column carries the
+            same one inside the package: a gutter on a wrapper around both
+            would be applied to the form twice, indenting it by 32px at phone
+            width and 48px above it.
+          */}
+          <div ref={setOutlineHost} className="phone-landscape:px-6 px-4" />
+          {/*
+            No `EnclosingHeadingLevel` around the editor: the heading above it
+            is this page's `h1`, which is the top of the ladder and what the
+            editor already assumes when nothing states otherwise — its own
+            stage title lands on `h2` and every section one below that.
+          */}
+          <ProtocolBuilder client={client} protocolId={activeProtocolId}>
+            <StageEditor
+              target={target}
+              formId={STAGE_FORM_ID}
+              actions={renderChrome}
+              onSaved={handleSaved}
+            />
+          </ProtocolBuilder>
         </div>
       </div>
     </div>
