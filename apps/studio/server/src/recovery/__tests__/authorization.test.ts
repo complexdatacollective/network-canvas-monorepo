@@ -329,6 +329,12 @@ async function seedRestoredState() {
             WHERE team_id = 'current-team'), 'security.fixture', 1,
           'security', 'succeeded', 'system', 'Studio', gen_random_uuid(),
           '{}'::jsonb);
+      INSERT INTO audit_alert_settings (team_id, revision)
+        VALUES ('current-team', gen_random_uuid());
+      INSERT INTO audit_alert_recipients
+        (id, team_id, member_id, user_id, in_app, email)
+        VALUES (gen_random_uuid(), 'current-team', 'current-membership',
+          'current-user', false, true);
       INSERT INTO audit_alert_outbox
         (id, team_id, audit_event_id, audit_event_sequence, event_type,
           event_version, alert_policy_key)
@@ -544,6 +550,8 @@ beforeEach(async () => {
     await pool.query(`
       DELETE FROM team_invitation_deliveries;
       DELETE FROM team_invitations;
+      DELETE FROM audit_alert_recipients;
+      DELETE FROM audit_alert_settings;
       DELETE FROM audit_alert_deliveries;
       DELETE FROM audit_alert_outbox;
       DELETE FROM audit_export_jobs;
@@ -1053,6 +1061,27 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
     });
     await expect(run(evidence)).resolves.toMatchObject({
       reconciliationSha256: 'a'.repeat(64),
+    });
+  });
+
+  it('refuses reopening if restored alert recipients are reintroduced after reconciliation', async () => {
+    const evidence = await currentEvidence();
+    await run(evidence);
+    await withTargetAdministrator(async (pool) => {
+      await pool.query(`INSERT INTO audit_alert_recipients
+        (id, team_id, member_id, user_id, in_app, email)
+        VALUES (gen_random_uuid(), 'current-team', 'current-membership',
+          'current-user', false, true)`);
+    });
+    await expect(authorize(evidence)).rejects.toThrow();
+    await withTargetAdministrator(async (pool) => {
+      expect(
+        (
+          await pool.query(
+            'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
+          )
+        ).rows[0]?.count,
+      ).toBe(0);
     });
   });
 
