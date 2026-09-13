@@ -751,7 +751,7 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
 
     const lateOccurrenceId =
       await seedPendingOccurrenceForPausedSchedule(seeded);
-    await expect(authorize(reviewed)).resolves.toMatchObject({
+    await expect(authorize(evidence)).resolves.toMatchObject({
       format: 'studio-recovery-current-authorization-receipt',
     });
     await withTargetAdministrator(async (pool) => {
@@ -766,6 +766,12 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
     await expect(authorize(reviewed)).resolves.toMatchObject({
       format: 'studio-recovery-current-authorization-receipt',
     });
+    await withTargetAdministrator((pool) =>
+      pool.query("UPDATE study_schedules SET state = 'active' WHERE id = $1", [
+        seeded.scheduleId,
+      ]),
+    );
+    await expect(authorize(reviewed)).rejects.toThrow(FAILURE);
   });
 
   it('refuses changed authority after revocation without enabling a user', async () => {

@@ -413,22 +413,8 @@ explicitly replaces it.
 
 ```sh
 # BEGIN RECOVERY_REOPEN_GUARD
-reopen_recovered_studio() (
+recovery_retained_compose_files() (
   set -eu
-  recovery_smoke_check=$1
-  shift
-  test -x "$recovery_smoke_check"
-  test "$#" -gt 0
-  cleanup_recovery_reopen() {
-    reopen_exit=$?
-    trap - EXIT HUP INT TERM
-    if ! close_recovery_admission; then reopen_exit=1; fi
-    docker compose stop traefik >/dev/null 2>&1 || reopen_exit=1
-    exit "$reopen_exit"
-  }
-  trap cleanup_recovery_reopen EXIT
-  trap 'exit 1' HUP INT TERM
-  close_recovery_admission
   retained_compose=
   previous_ifs=$IFS
   IFS=:
@@ -439,14 +425,44 @@ reopen_recovered_studio() (
     fi
   done
   IFS=$previous_ifs
-  test -n "$retained_compose"
+  test -n "$retained_compose" || exit 1
+  printf '%s' "$retained_compose"
+)
+run_recovery_reopen_guard() (
+  set -eu
+  retained_compose=$1
+  recovery_smoke_check=$2
+  shift 2
+  test -x "$recovery_smoke_check" || exit 1
+  test "$#" -gt 0 || exit 1
+  cleanup_recovery_reopen() {
+    reopen_exit=$?
+    trap - EXIT HUP INT TERM
+    if ! close_recovery_admission; then reopen_exit=1; fi
+    docker compose stop traefik >/dev/null 2>&1 || reopen_exit=1
+    exit "$reopen_exit"
+  }
+  trap cleanup_recovery_reopen EXIT
+  trap 'exit 1' HUP INT TERM
+  # Explicit failures also work when the caller tests this function's status,
+  # which suppresses shell errexit inside a function on POSIX shells.
+  close_recovery_admission || exit 1
   export COMPOSE_FILE="$retained_compose"
   docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres -d postgres \
-    -c 'BEGIN; ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; COMMIT;' >/dev/null
-  docker compose up -d --wait "$@"
-  "$recovery_smoke_check"
+    -c 'BEGIN; ALTER ROLE studio_migrator LOGIN; ALTER ROLE studio_runtime LOGIN; ALTER ROLE studio_maintenance_runtime LOGIN; COMMIT;' >/dev/null || exit "$?"
+  docker compose up -d --wait "$@" || exit "$?"
+  "$recovery_smoke_check" || exit "$?"
   trap - EXIT HUP INT TERM
 )
+reopen_recovered_studio() {
+  recovery_reopened_compose=$(recovery_retained_compose_files) || return "$?"
+  if run_recovery_reopen_guard "$recovery_reopened_compose" "$@"; then
+    # Commit the successful selection in the calling recovery shell too.
+    export COMPOSE_FILE="$recovery_reopened_compose"
+  else
+    return "$?"
+  fi
+}
 # END RECOVERY_REOPEN_GUARD
 ```
 
