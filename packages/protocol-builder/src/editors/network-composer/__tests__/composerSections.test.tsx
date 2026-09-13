@@ -1446,24 +1446,24 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
         { label: 'South', value: 'south' },
       ],
     });
-    const grouping = await screen.findByRole('combobox', {
-      name: 'Create or select a categorical attribute for grouping',
-    });
-    await waitFor(() =>
-      expect(
-        within(grouping).getByRole('option', { name: 'region' }),
-      ).toBeInTheDocument(),
+    const grouping = await waitFor(() =>
+      picker('Create or select a categorical attribute for grouping'),
+    );
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, grouping)).toContain(
+        'region',
+      ),
     );
 
     collectInAnAlterForm(harness, 'contactType', 'region');
-    await waitFor(() =>
-      expect(
-        within(grouping).queryByRole('option', { name: 'region' }),
-      ).toBeNull(),
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, grouping)).not.toContain(
+        'region',
+      ),
     );
-    expect(
-      within(grouping).getByRole('option', { name: 'contactType' }),
-    ).toBeInTheDocument();
+    expect(await offeredAttributes(harness.user, grouping)).toContain(
+      'contactType',
+    );
 
     expect(await harness.submit()).toBeNull();
     expect(
@@ -1476,22 +1476,26 @@ describe('a composer pick that conflicts with the rest of the protocol', () => {
   /** The same rule the other way round, on the box that adds a node. */
   it('refuses the save for an attribute another stage stamps', async () => {
     const harness = renderStageEditor(composerHolding({}));
-    const quickAdd = await screen.findByRole('combobox', {
-      name: 'Create or select an attribute for the quick-add form',
-    });
-    expect(quickAdd).toHaveValue('composerName');
+    const quickAdd = await waitFor(() =>
+      picker('Create or select an attribute for the quick-add form'),
+    );
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, quickAdd)).toContain(
+        'relationship_to_ego',
+      ),
+    );
 
     // Two claims in one edit, for the same reason: `composerName` is what this
     // picker is holding, so its leaving is not something a test can watch for.
     highlightInASociogram(harness, 'composerName', 'relationship_to_ego');
-    await waitFor(() =>
-      expect(
-        within(quickAdd).queryByRole('option', { name: 'relationship_to_ego' }),
-      ).toBeNull(),
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, quickAdd)).not.toContain(
+        'relationship_to_ego',
+      ),
     );
-    expect(
-      within(quickAdd).getByRole('option', { name: 'composerName' }),
-    ).toBeInTheDocument();
+    expect(await offeredAttributes(harness.user, quickAdd)).toContain(
+      'composerName',
+    );
 
     expect(await harness.submit()).toBeNull();
     expect(
