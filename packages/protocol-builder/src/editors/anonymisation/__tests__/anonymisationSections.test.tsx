@@ -8,7 +8,6 @@ import {
   StageEditorFormContext,
   useStageEditorForm,
 } from '../../../form/stageEditorContext.ts';
-import type { InMemoryClient } from '../../../testing/host/createInMemoryHost.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -18,6 +17,8 @@ import EncryptedAttributesSection from '../sections/EncryptedAttributesSection.t
 import {
   alreadyProtecting,
   attributeCheckbox,
+  collaboratorSets,
+  heldWrites,
   personDocument,
   personVariable,
   switchOnType,
@@ -473,22 +474,11 @@ describe('the attributes a passphrase protects', () => {
    * about why or about the change that is already on its way.
    */
   it('says a change is in flight, so a tick the section drops is not silent', async () => {
-    const gate = Promise.withResolvers<void>();
+    const held = heldWrites();
     const harness = renderStageEditor({
       stageId: 'anonymisation-1',
       registry: anonymisationStageEditor,
-      client: (host) => {
-        const submit: InMemoryClient['submit'] = async (
-          ...args: Parameters<InMemoryClient['submit']>
-        ) => {
-          await gate.promise;
-          return host.client.submit(...args);
-        };
-        return new Proxy(host.client, {
-          get: (target, property) =>
-            property === 'submit' ? submit : Reflect.get(target, property),
-        });
-      },
+      client: held.client,
     });
     await switchOnType(harness, 'person');
 
@@ -504,7 +494,7 @@ describe('the attributes a passphrase protects', () => {
     await harness.user.click(
       attributeCheckbox('person', 'relationship_to_ego'),
     );
-    gate.resolve();
+    held.release();
 
     await waitFor(() =>
       expect(personVariable(harness, 'name').encrypted).toBe(true),
@@ -753,32 +743,12 @@ describe('the attributes a passphrase protects', () => {
    * the only affordance that could clear it is behind the closed switch.
    */
   describe('a type’s switch after a collaborator writes', () => {
-    /** One attribute of the person type, as a collaborator leaves it. */
-    const collaboratorSets = (
-      harness: StageEditorHarness,
-      variableId: string,
-      variable: Readonly<Record<string, unknown>>,
-    ): void => {
-      const person = personDocument(harness);
-      harness.receiveCodebookUpdate({
-        node: {
-          person: {
-            ...person,
-            variables: {
-              ...(person.variables as Record<string, unknown>),
-              [variableId]: variable,
-            },
-          },
-        },
-      });
-    };
-
     it('shows the researcher that a type now protects something', async () => {
       const harness = openEditor();
       await harness.opened();
       expect(screen.getByRole('switch', { name: 'person' })).not.toBeChecked();
 
-      collaboratorSets(harness, 'name', {
+      collaboratorSets(harness, 'person', 'name', {
         name: 'name',
         type: 'text',
         encrypted: true,
@@ -802,7 +772,10 @@ describe('the attributes a passphrase protects', () => {
         expect(attributeCheckbox('person', 'name')).toBeChecked(),
       );
 
-      collaboratorSets(harness, 'name', { name: 'name', type: 'text' });
+      collaboratorSets(harness, 'person', 'name', {
+        name: 'name',
+        type: 'text',
+      });
 
       await waitFor(() =>
         expect(
@@ -820,7 +793,7 @@ describe('the attributes a passphrase protects', () => {
       const harness = openEditor();
       await switchOnType(harness, 'person');
 
-      collaboratorSets(harness, 'relationship_to_ego', {
+      collaboratorSets(harness, 'person', 'relationship_to_ego', {
         name: 'relationship_to_ego',
         type: 'text',
       });
@@ -860,6 +833,101 @@ describe('the attributes a passphrase protects', () => {
       );
       expect(screen.getByRole('switch', { name: 'person' })).toBeChecked();
       expect(attributeCheckbox('person', 'name')).not.toBeChecked();
+    });
+
+    /**
+     * A write of this section's own is in flight for AS LONG AS THE HOST
+     * TAKES, and a collaborator's change to another type in that window is
+     * still news the researcher has to be told.
+     *
+     * Deferred rather than dropped: re-seeding a type while this section is
+     * mid-write would take the panel away under the gesture that started the
+     * write, so the switch that has to move waits for that write to settle and
+     * moves then. Saying "not now" and never coming back would leave the type
+     * protecting an attribute behind a switch that says it protects nothing,
+     * for the rest of the session — and every later revision on that type
+     * would find the switch already agreeing with the codebook it is lying
+     * about.
+     */
+    it('re-seeds a type a collaborator changed while this section had a write in flight', async () => {
+      const held = heldWrites();
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        client: held.client,
+      });
+      await switchOnType(harness, 'person');
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+      // This section's own write is with the host and unanswered.
+      expect(await screen.findByText('Saving…')).toBeInTheDocument();
+      collaboratorSets(
+        harness,
+        'family_member',
+        'fm_name',
+        { name: 'fm_name', type: 'text', encrypted: true },
+        { name: 'household member' },
+      );
+      // The revision is on screen while the write is still in flight: the
+      // rename it carries is a prop the type's section takes every render,
+      // where the switch is state it seeded once.
+      expect(
+        await screen.findByRole('switch', { name: 'household member' }),
+      ).toBeInTheDocument();
+
+      held.release();
+
+      await waitFor(() =>
+        expect(personVariable(harness, 'name').encrypted).toBe(true),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole('switch', { name: 'household member' }),
+        ).toBeChecked(),
+      );
+      // And the panel that switch controls is on screen, which is where the
+      // affordance that could clear the attribute lives.
+      expect(attributeCheckbox('household member', 'fm_name')).toBeChecked();
+    });
+
+    /** The same for a collaborator taking the last flag of another type off. */
+    it('closes the switch of a type a collaborator cleared while this section had a write in flight', async () => {
+      const held = heldWrites(alreadyProtecting('fm_name', 'family_member'));
+      const harness = renderStageEditor({
+        stageId: 'anonymisation-1',
+        registry: anonymisationStageEditor,
+        client: held.client,
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByRole('switch', { name: 'family member' }),
+        ).toBeChecked(),
+      );
+      await switchOnType(harness, 'person');
+
+      await harness.user.click(attributeCheckbox('person', 'name'));
+      expect(await screen.findByText('Saving…')).toBeInTheDocument();
+      collaboratorSets(
+        harness,
+        'family_member',
+        'fm_name',
+        { name: 'fm_name', type: 'text' },
+        { name: 'household member' },
+      );
+      expect(
+        await screen.findByRole('switch', { name: 'household member' }),
+      ).toBeInTheDocument();
+
+      held.release();
+
+      await waitFor(() =>
+        expect(personVariable(harness, 'name').encrypted).toBe(true),
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole('switch', { name: 'household member' }),
+        ).not.toBeChecked(),
+      );
     });
   });
 

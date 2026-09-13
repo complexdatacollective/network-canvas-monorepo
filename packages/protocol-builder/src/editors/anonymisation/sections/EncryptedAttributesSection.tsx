@@ -243,6 +243,11 @@ export default function EncryptedAttributesSection() {
    * under a gesture in progress takes the panel away mid-edit, and a
    * researcher who opened a type that protects nothing yet must keep the empty
    * panel they opened.
+   *
+   * A collaborator's move that arrives while one of this section's own writes
+   * is in flight is DEFERRED, never dropped: it re-seeds on the render that
+   * write's settling causes, so a type nobody in this session touched still
+   * ends up saying what the codebook says.
    */
   const [switchGenerations, setSwitchGenerations] = useState<
     ReadonlyMap<string, number>
@@ -267,11 +272,18 @@ export default function EncryptedAttributesSection() {
   for (const view of nodeTypes) {
     const seen = seenProtection.current.get(view.typeId);
     if (seen === view.hasEncrypted) continue;
-    seenProtection.current.set(view.typeId, view.hasEncrypted);
     const ours = askedProtection.current.get(view.typeId) === view.hasEncrypted;
+    // A move this section did not make, arriving while a write of its own is
+    // in flight, has NOT been seeded: recording it as seen here is what would
+    // lose it for the session, because the render that follows the write
+    // settling could no longer tell this type from one already seeded. Left
+    // unseen, the same move re-seeds on that render instead — which is the
+    // only reason the switch can be deferred rather than dropped.
+    if (seen !== undefined && !ours && pending.current > 0) continue;
+    seenProtection.current.set(view.typeId, view.hasEncrypted);
     askedProtection.current.delete(view.typeId);
     // A type met for the first time is seeded by mounting, not by re-mounting.
-    if (seen === undefined || ours || pending.current > 0) continue;
+    if (seen === undefined || ours) continue;
     reseeded.push(view.typeId);
   }
   if (reseeded.length > 0) {

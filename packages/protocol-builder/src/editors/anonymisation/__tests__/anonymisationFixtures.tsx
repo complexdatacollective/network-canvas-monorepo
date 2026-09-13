@@ -9,10 +9,8 @@ import type {
 } from '../../../testing/host/createInMemoryHost.ts';
 import type { StageEditorHarness } from '../../../testing/renderStageEditor.tsx';
 
-const PERSON_SECTION = sectionId({
-  kind: 'codebookNode',
-  typeId: 'person',
-});
+const nodeSection = (typeId: string) =>
+  sectionId({ kind: 'codebookNode', typeId });
 
 /** The checkbox for one attribute of one type, named by its own group. */
 export const attributeCheckbox = (typeName: string, attribute: string) =>
@@ -32,11 +30,93 @@ export const personVariable = (
   return variable;
 };
 
-/** The person type as the authoritative protocol currently holds it. */
-export const personDocument = (harness: StageEditorHarness) => {
-  const document = harness.protocolSections()[PERSON_SECTION];
-  if (document === undefined) throw new Error('the fixture has no person type');
+/** One node type as the authoritative protocol currently holds it. */
+const typeDocument = (
+  harness: StageEditorHarness,
+  typeId: string,
+): SectionDoc => {
+  const document = harness.protocolSections()[nodeSection(typeId)];
+  if (document === undefined) {
+    throw new Error(`the fixture has no "${typeId}" type`);
+  }
   return document;
+};
+
+/** The person type as the authoritative protocol currently holds it. */
+export const personDocument = (harness: StageEditorHarness) =>
+  typeDocument(harness, 'person');
+
+/**
+ * One attribute of one type, left there by a COLLABORATOR.
+ *
+ * A revision delivered to the editor rather than a write of this section's
+ * own, which is the whole difference the switch has to tell: the section
+ * re-seeds a type's switch for a move it did not make, and leaves the panel
+ * the researcher is working in alone.
+ */
+export const collaboratorSets = (
+  harness: StageEditorHarness,
+  typeId: string,
+  variableId: string,
+  variable: Readonly<Record<string, unknown>>,
+  /**
+   * Anything else the SAME revision carries — a rename, say.
+   *
+   * A test that has to know the revision has reached the screen waits on
+   * something the section takes as a prop every render: the type's name is one
+   * (its switch is not, which is the whole point of the re-seed).
+   */
+  alsoRevised: Readonly<Record<string, unknown>> = {},
+): void => {
+  const definition = typeDocument(harness, typeId);
+  harness.receiveCodebookUpdate({
+    node: {
+      [typeId]: {
+        ...definition,
+        ...alsoRevised,
+        variables: {
+          ...(definition.variables as Record<string, unknown>),
+          [variableId]: variable,
+        },
+      },
+    },
+  });
+};
+
+/**
+ * A host that holds every write open until the test releases it.
+ *
+ * "A write of this section's own is in flight" is a state with rules of its
+ * own — every box disabled, and a collaborator's move on another type deferred
+ * rather than dropped — and a test can only stand in it if it decides when the
+ * host answers. `inner` is the client the rest of the fixture would have used,
+ * so a protocol seeded as already protecting something can be gated too.
+ */
+export const heldWrites = (
+  inner: (host: InMemoryHost) => InMemoryClient = (host) => host.client,
+): Readonly<{
+  release: () => void;
+  client: (host: InMemoryHost) => InMemoryClient;
+}> => {
+  const gate = Promise.withResolvers<void>();
+  return {
+    release: () => {
+      gate.resolve();
+    },
+    client: (host: InMemoryHost) => {
+      const client = inner(host);
+      const submit: InMemoryClient['submit'] = async (
+        ...args: Parameters<InMemoryClient['submit']>
+      ) => {
+        await gate.promise;
+        return client.submit(...args);
+      };
+      return new Proxy(client, {
+        get: (target, property) =>
+          property === 'submit' ? submit : Reflect.get(target, property),
+      });
+    },
+  };
 };
 
 /**
@@ -69,19 +149,20 @@ export const switchOnType = async (
  * both — which is what the tests that deliver one afterwards are about.
  */
 export const alreadyProtecting =
-  (variableId: string) =>
+  (variableId: string, typeId = 'person') =>
   (host: InMemoryHost): InMemoryClient => {
-    const person = host.store.read(PERSON_SECTION).document;
-    const variables = person.variables;
+    const section = nodeSection(typeId);
+    const definition = host.store.read(section).document;
+    const variables = definition.variables;
     if (typeof variables !== 'object' || variables === null) {
-      throw new Error('the fixture has no person attributes');
+      throw new Error(`the fixture has no "${typeId}" attributes`);
     }
     const held = (variables as Record<string, SectionDoc>)[variableId];
     if (held === undefined) {
-      throw new Error(`the person type has no "${variableId}" attribute`);
+      throw new Error(`the ${typeId} type has no "${variableId}" attribute`);
     }
-    host.store.applyAsCollaborator(PERSON_SECTION, {
-      ...person,
+    host.store.applyAsCollaborator(section, {
+      ...definition,
       variables: { ...variables, [variableId]: { ...held, encrypted: true } },
     });
     return host.client;
