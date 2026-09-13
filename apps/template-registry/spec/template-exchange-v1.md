@@ -50,7 +50,11 @@ MUST reject:
 A reader MUST enforce both the sizes declared by ZIP and the bytes actually
 produced during decompression. It MUST verify the complete archive before
 using any content and SHOULD process entries without extracting them to a
-filesystem.
+filesystem. Readers MUST ignore ZIP external file attributes and materialize
+payloads only as regular byte sequences. If writing entries to disk, they MUST
+create new regular files without following symlinks; they MUST NOT restore
+symlinks, devices, sockets, FIFOs, executable permission bits, or other special
+file metadata from the archive.
 
 Only these entry names are valid:
 
@@ -287,7 +291,31 @@ section. All asset references elsewhere in the sections MUST resolve to an
 included asset definition. API-key asset definitions are forbidden.
 
 Binary media MUST be identified from its bytes, not only the declared media
-type. The following declarations are allowed:
+type. Version 1 uses the ordered detection algorithm of `file-type` **22.0.2**,
+`fileTypeFromBuffer(bytes)` with its default options, as a normative algorithm
+reference for every binary type below. The exact npm source archive is
+`https://registry.npmjs.org/file-type/-/file-type-22.0.2.tgz`; its integrity is
+`sha512-0H8TsCUGBLx+V5adH3EY52hTAcyLKbV1D4gq5cIOJ6DnQAHeV9Z2Hhuc5CoBX4YmvB2oL+JIC84z0qO7JsCoNw==`.
+The algorithm is in `source/index.js` and its `source/detectors/` modules.
+Independent implementations MAY port that algorithm, but MUST preserve its
+ordered tests, offsets, defaults, and failure behavior. This reference retains
+the dependency's own software license.
+
+Normalize only these detected MIME aliases: `audio/ogg; codecs=opus` to
+`audio/ogg`, `audio/x-m4a` to `audio/mp4`, and `video/x-m4v` to `video/mp4`.
+The normalized MIME MUST equal the declared MIME exactly, and its class MUST
+match the table. An exception or absent/unsupported detection MUST reject the
+asset. Container classification follows the detector's header procedure;
+readers MUST NOT substitute track enumeration or a different mixed-track rule.
+For example, Ogg classification uses the identification bytes beginning at
+byte offset 28: Opus, FLAC, Speex and Vorbis identify audio; Theora and the
+OGM video marker identify video. An unrecognized Ogg header is rejected.
+ISO BMFF classification uses the initial `ftyp` major brand: `M4A`, `M4B`,
+`F4A` and `F4B` identify audio; `avif` and `avis` identify AVIF images;
+remaining MP4 brands use the exact ordered exclusions and video fallback in
+the pinned algorithm. Later audio/video tracks do not change this classification.
+
+The following declarations are allowed:
 
 | Class     | Media types                                                                      |
 | --------- | -------------------------------------------------------------------------------- |
@@ -297,7 +325,9 @@ type. The following declarations are allowed:
 | `dataset` | `text/csv`, `application/json`, `application/geo+json`                           |
 
 Dataset bytes MUST be valid UTF-8, non-empty, and contain no disallowed C0
-controls. CSV whose first non-whitespace token begins an HTML, SVG, script, or
+controls. The permitted C0 controls are only TAB (U+0009), LF (U+000A),
+and CR (U+000D); U+0000–U+0008, U+000B–U+000C, and U+000E–U+001F are
+forbidden. CSV whose first non-whitespace token begins an HTML, SVG, script, or
 doctype document is invalid. JSON datasets MUST decode to an object or array.
 GeoJSON MUST decode to an object whose `type` is one of `FeatureCollection`,
 `Feature`, `Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`,
