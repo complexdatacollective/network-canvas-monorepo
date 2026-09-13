@@ -31,6 +31,8 @@ export type OutboxRetryOptions = {
 export type OutboxAdapter<Claim extends OutboxClaim> = {
   queue: OutboxQueue;
   suppressUndeliverable(): Promise<number>;
+  /** Reconcile expired rows known to have crossed an external handoff. */
+  reconcileExpiredUncertainLeases?(): Promise<number>;
   failExhaustedLeases(maxAttempts: number): Promise<number>;
   claim(lease: OutboxLease, maxAttempts: number): Promise<Claim | null>;
   remainsDeliverable(claim: Claim, lease: OutboxLease): Promise<boolean>;
@@ -182,6 +184,8 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
   private async dispatch(): Promise<OutboxDispatchResult> {
     await this.verifyRole();
     const suppressed = await this.adapter.suppressUndeliverable();
+    const uncertain =
+      (await this.adapter.reconcileExpiredUncertainLeases?.()) ?? 0;
     const failed = await this.adapter.failExhaustedLeases(this.maxAttempts);
     const result: OutboxDispatchResult = {
       claimed: 0,
@@ -189,7 +193,7 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
       retried: 0,
       failed,
       suppressed,
-      uncertain: 0,
+      uncertain,
       leaseLost: 0,
     };
     const claim = await this.adapter.claim(this.lease, this.maxAttempts);

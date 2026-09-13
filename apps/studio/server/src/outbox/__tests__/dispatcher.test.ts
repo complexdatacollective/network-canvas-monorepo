@@ -22,6 +22,11 @@ function adapter() {
     suppressUndeliverable: vi
       .fn<OutboxAdapter<Claim>['suppressUndeliverable']>()
       .mockResolvedValue(0),
+    reconcileExpiredUncertainLeases: vi
+      .fn<
+        NonNullable<OutboxAdapter<Claim>['reconcileExpiredUncertainLeases']>
+      >()
+      .mockResolvedValue(0),
     failExhaustedLeases: vi
       .fn<OutboxAdapter<Claim>['failExhaustedLeases']>()
       .mockResolvedValue(0),
@@ -243,6 +248,7 @@ describe('shared outbox execution', () => {
     const work = adapter();
     work.suppressUndeliverable.mockResolvedValue(2);
     work.failExhaustedLeases.mockResolvedValue(3);
+    work.reconcileExpiredUncertainLeases.mockResolvedValue(4);
     work.remainsDeliverable.mockResolvedValue(false);
 
     await expect(
@@ -253,7 +259,7 @@ describe('shared outbox execution', () => {
       retried: 0,
       failed: 3,
       suppressed: 3,
-      uncertain: 0,
+      uncertain: 4,
       leaseLost: 0,
     });
     expect(work.suppressClaim).toHaveBeenCalledOnce();

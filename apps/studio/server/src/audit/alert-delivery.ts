@@ -130,20 +130,30 @@ export class AuditAlertDeliveryAdapter implements OutboxAdapter<ClaimedAuditAler
       `WITH candidates AS (
       SELECT id FROM audit_alert_deliveries WHERE ${PENDING}
         AND (lease_expires_at IS NULL OR lease_expires_at <= clock_timestamp())
-        AND (send_started_at IS NOT NULL OR attempt_count >= $1)
+        AND send_started_at IS NULL AND attempt_count >= $1
       ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 100
     ) UPDATE audit_alert_deliveries d SET
-      uncertain_at = CASE WHEN send_started_at IS NOT NULL THEN clock_timestamp() ELSE NULL END,
-      failed_at = CASE WHEN send_started_at IS NULL THEN clock_timestamp() ELSE NULL END,
-      last_error = CASE WHEN send_started_at IS NOT NULL THEN 'handoff_interrupted' ELSE 'attempts_exhausted' END,
+      failed_at = clock_timestamp(), last_error = 'attempts_exhausted',
       lease_owner = NULL, lease_expires_at = NULL FROM candidates c WHERE d.id = c.id
-      RETURNING d.failed_at`,
+      RETURNING d.id`,
       [maxAttempts],
     );
     await this.finishParents();
-    return failed.rows.filter(
-      (row: { failed_at: Date | null }) => row.failed_at !== null,
-    ).length;
+    return failed.rowCount ?? 0;
+  }
+
+  async reconcileExpiredUncertainLeases(): Promise<number> {
+    const uncertain = await this.pool.query(
+      `WITH candidates AS (
+      SELECT id FROM audit_alert_deliveries WHERE ${PENDING}
+        AND lease_expires_at <= clock_timestamp() AND send_started_at IS NOT NULL
+      ORDER BY created_at, id FOR UPDATE SKIP LOCKED LIMIT 100
+    ) UPDATE audit_alert_deliveries d SET
+      uncertain_at = clock_timestamp(), last_error = 'handoff_interrupted',
+      lease_owner = NULL, lease_expires_at = NULL FROM candidates c WHERE d.id = c.id`,
+    );
+    await this.finishParents();
+    return uncertain.rowCount ?? 0;
   }
 
   async claim(
