@@ -41,7 +41,12 @@ export const EntrySchema = RegistryEntrySchema;
 export type RegistryEntry = z.infer<typeof EntrySchema>;
 
 const codePointLimitedText = (maxLength: number) =>
-  z.string().min(1).max(maxLength);
+  z
+    .string()
+    .min(1)
+    .refine((value) => Array.from(value).length <= maxLength, {
+      message: `Must contain at most ${maxLength} Unicode code points`,
+    });
 
 export const ListEntriesSchema = z
   .strictObject({

@@ -46,8 +46,7 @@
           },
           "query": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 200
+            "minLength": 1
           },
           "kind": {
             "type": "string",
@@ -65,13 +64,11 @@
           },
           "keyword": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 100
+            "minLength": 1
           },
           "author": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 200
+            "minLength": 1
           },
           "curated": {
             "type": "string",
