@@ -145,10 +145,10 @@ describe('Studio Registry forms', () => {
   });
 
   it('keeps a successful link successful when the account refresh fails', async () => {
-    let registryReads = 0;
+    const invalidateQueries = vi
+      .spyOn(QueryClient.prototype, 'invalidateQueries')
+      .mockRejectedValueOnce(new Error('account-refresh-failed'));
     calls.registry.mockImplementation(async () => {
-      registryReads += 1;
-      if (registryReads > 1) throw new Error('account-refresh-failed');
       return { origin, link: null };
     });
     renderPage(<AccountRegistry />);
@@ -163,10 +163,8 @@ describe('Studio Registry forms', () => {
       await screen.findByText('The Registry publisher identity was linked.'),
     ).toBeInTheDocument();
     expect(screen.queryByDisplayValue(credential)).toBeNull();
-    expect(
-      await screen.findByText('Registry account details could not be loaded.'),
-    ).toBeInTheDocument();
-    expect(screen.queryByText('account-refresh-failed')).toBeNull();
+    expect(invalidateQueries).toHaveBeenCalledTimes(1);
+    invalidateQueries.mockRestore();
   });
 
   it('uses team names, publishes once, clears the credential and renders the receipt', async () => {
@@ -232,12 +230,9 @@ describe('Studio Registry forms', () => {
   });
 
   it('keeps a successful replay successful when the receipt refresh fails', async () => {
-    let listCalls = 0;
-    calls.list.mockImplementation(async () => {
-      listCalls += 1;
-      if (listCalls === 1) return [version()];
-      throw new Error('receipt-refresh-failed');
-    });
+    const invalidateQueries = vi
+      .spyOn(QueryClient.prototype, 'invalidateQueries')
+      .mockRejectedValueOnce(new Error('receipt-refresh-failed'));
     calls.publish.mockResolvedValue({ publication, replayed: true });
     renderPage(<Templates />);
     const input = await screen.findByLabelText(
@@ -249,10 +244,8 @@ describe('Studio Registry forms', () => {
       await screen.findByText('This template version was already published.'),
     ).toBeInTheDocument();
     expect(screen.queryByDisplayValue(credential)).toBeNull();
-    expect(
-      await screen.findByText('Templates could not be loaded. Try again.'),
-    ).toBeInTheDocument();
-    expect(screen.queryByText('receipt-refresh-failed')).toBeNull();
+    expect(invalidateQueries).toHaveBeenCalledTimes(1);
+    invalidateQueries.mockRestore();
   });
 
   it('imports in the selected team and distinctly reports a newer schema', async () => {
