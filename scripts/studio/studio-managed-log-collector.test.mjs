@@ -8,9 +8,12 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test, { afterEach } from 'node:test';
+
+import { connect as connectNats } from '@nats-io/transport-node';
 
 import { bootstrapMonthlyEgressBudget } from '../../apps/studio/deployment/managed/observability-egress-budget.mjs';
 import {
@@ -145,6 +148,15 @@ function createNatsFixture() {
       const subscriptionClosed = new Promise((resolve) => {
         closeSubscription = resolve;
       });
+      /**
+       * @type {Pick<import('@nats-io/transport-node').Subscription,
+       *   'closed' | 'unsubscribe'> & {
+       *     callback: import('@nats-io/transport-node').MsgCallback<
+       *       import('@nats-io/transport-node').Msg
+       *     >;
+       *     closeSubscription: () => void;
+       *   }}
+       */
       const subscription = {
         closed: subscriptionClosed,
         closeSubscription,
@@ -172,6 +184,116 @@ function createNatsFixture() {
     },
     get subscriptionCount() {
       return subscriptions.size;
+    },
+  };
+}
+
+async function createNatsProtocolFixture() {
+  const sockets = new Set();
+  const subscriptions = new Map();
+  const waiters = new Set();
+  let unsubscribeCount = 0;
+  const notify = () => {
+    for (const check of waiters) check();
+  };
+  const server = createServer((socket) => {
+    sockets.add(socket);
+    socket.on('close', () => {
+      sockets.delete(socket);
+      notify();
+    });
+    socket.write(
+      'INFO {"server_id":"collector-test","server_name":"collector-test",' +
+        '"version":"2.11.8","proto":1,"host":"127.0.0.1",' +
+        '"port":4222,"max_payload":1048576}\r\n',
+    );
+    let pending = '';
+    socket.on('data', (bytes) => {
+      pending += bytes.toString();
+      for (;;) {
+        const boundary = pending.indexOf('\r\n');
+        if (boundary === -1) break;
+        const command = pending.slice(0, boundary);
+        pending = pending.slice(boundary + 2);
+        if (command === 'PING') socket.write('PONG\r\n');
+        else if (command.startsWith('SUB ')) {
+          const tokens = command.split(' ');
+          subscriptions.set(tokens[1], {
+            sid: tokens.at(-1),
+            socket,
+          });
+          notify();
+        } else if (command.startsWith('UNSUB ')) {
+          unsubscribeCount += 1;
+          notify();
+        }
+      }
+    });
+  });
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  const waitUntil = (predicate) => {
+    if (predicate()) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const check = () => {
+        if (!predicate()) return;
+        clearTimeout(timeout);
+        waiters.delete(check);
+        resolve();
+      };
+      const timeout = setTimeout(() => {
+        waiters.delete(check);
+        reject(new Error('NATS protocol fixture condition was not reached'));
+      }, 3_000);
+      waiters.add(check);
+    });
+  };
+  return {
+    url: `nats://127.0.0.1:${address.port}`,
+    async waitForSubscriptions(count) {
+      await waitUntil(() => subscriptions.size === count);
+    },
+    publish(subject, data) {
+      const match = [...subscriptions.entries()].find(([pattern]) => {
+        const prefix = pattern.endsWith('*') ? pattern.slice(0, -1) : pattern;
+        return pattern.endsWith('*')
+          ? subject.startsWith(prefix)
+          : subject === pattern;
+      });
+      assert.ok(match, `missing real subscription for ${subject}`);
+      const [, subscription] = match;
+      subscription.socket.write(
+        Buffer.concat([
+          Buffer.from(
+            `MSG ${subject} ${subscription.sid} ${data.byteLength}\r\n`,
+          ),
+          data,
+          Buffer.from('\r\n'),
+        ]),
+      );
+    },
+    denySubscription(subject) {
+      const subscription = subscriptions.get(subject);
+      assert.ok(subscription, `missing real subscription for ${subject}`);
+      subscription.socket.write(
+        `-ERR 'Permissions Violation for Subscription to "${subject}"'\r\n`,
+      );
+    },
+    async waitForDisconnect() {
+      await waitUntil(() => sockets.size === 0);
+    },
+    get unsubscribeCount() {
+      return unsubscribeCount;
+    },
+    async close() {
+      for (const socket of sockets) socket.destroy();
+      await new Promise((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      });
     },
   };
 }
@@ -260,6 +382,127 @@ async function fixture(
   await waitFor(() => nats.subscriptionCount === 4);
   return { abort, configuration, nats, run };
 }
+
+async function realNatsFixture(fetchNewRelic) {
+  const nats = await createNatsProtocolFixture();
+  const configuration =
+    managedLogCollectorConfigurationFromEnvironment(environment());
+  const launch = createLockLauncher(configuration);
+  const anchor = createMemoryAnchor();
+  await bootstrapMonthlyEgressBudget(
+    managedLogCollectorBudgetOptions(configuration),
+    { operatorAnchor: anchor, now: () => new Date(observedAt), launch },
+  );
+  const subscriptions = [];
+  const abort = new AbortController();
+  const run = runManagedLogCollector(configuration, {
+    connect: async (options) => {
+      const connection = await connectNats({
+        ...options,
+        servers: nats.url,
+        reconnect: false,
+        timeout: 1_000,
+      });
+      const subscribe = connection.subscribe.bind(connection);
+      connection.subscribe = (subject, subscriptionOptions) => {
+        const subscription = subscribe(subject, subscriptionOptions);
+        subscriptions.push(subscription);
+        return subscription;
+      };
+      return connection;
+    },
+    fetchAnchor: anchor.fetch,
+    fetchNewRelic,
+    launch,
+    now: () => observedAt,
+    signal: abort.signal,
+  });
+  try {
+    await Promise.race([
+      nats.waitForSubscriptions(4),
+      run.then(
+        () => {
+          throw new Error('collector stopped before subscribing');
+        },
+        (error) => {
+          throw error;
+        },
+      ),
+    ]);
+    return { abort, configuration, nats, run, subscriptions };
+  } catch (error) {
+    abort.abort();
+    await run.catch(() => undefined);
+    await nats.close();
+    throw error;
+  }
+}
+
+test(
+  'the pinned NATS transport subscribes, ingests, and closes through its public lifecycle',
+  { timeout: 10_000 },
+  async () => {
+    const logRequests = [];
+    const f = await realNatsFixture(async (url, options) => {
+      if (url === 'https://api.newrelic.com/graphql') return usageResponse();
+      logRequests.push({ url, options });
+      return new Response(null, { status: 202 });
+    });
+    try {
+      assert.equal(f.subscriptions.length, 4);
+      for (const subscription of f.subscriptions) {
+        assert.equal(typeof subscription.closed.then, 'function');
+        assert.equal(subscription.isClosed(), false);
+      }
+      const source = flyLog({
+        level: 30,
+        time: '2026-09-13T12:34:56.789Z',
+        event: 'http_request',
+        request_id: '123e4567-e89b-42d3-a456-426614174000',
+        route: '/healthz',
+        method: 'GET',
+        status: 200,
+        duration_ms: 1.25,
+        team_id: canary,
+      });
+      f.nats.publish(source.subject, source.payload);
+      await waitFor(() => logRequests.length === 1);
+      assert.ok(!logRequests[0].options.body.includes(canary));
+      f.abort.abort();
+      assert.deepEqual(await f.run, { outcome: 'stopped' });
+      assert.equal(f.nats.unsubscribeCount, 4);
+      await f.nats.waitForDisconnect();
+      for (const subscription of f.subscriptions)
+        assert.equal(subscription.isClosed(), true);
+    } finally {
+      f.abort.abort();
+      await f.run.catch(() => undefined);
+      await f.nats.close();
+    }
+  },
+);
+
+test(
+  'an unexpected real NATS subscription rejection fails without provider egress',
+  { timeout: 10_000 },
+  async () => {
+    let providerRequests = 0;
+    const f = await realNatsFixture(async () => {
+      providerRequests += 1;
+      return usageResponse();
+    });
+    try {
+      f.nats.denySubscription('logs.nc-studio-production.iad.*');
+      await assert.rejects(f.run, /STUDIO_COLLECTOR_NATS_UNAVAILABLE/);
+      assert.equal(providerRequests, 0);
+      await f.nats.waitForDisconnect();
+    } finally {
+      f.abort.abort();
+      await f.run.catch(() => undefined);
+      await f.nats.close();
+    }
+  },
+);
 
 test('subscribes with Fly credentials and forwards only the sanitized composition', async () => {
   const logRequests = [];
