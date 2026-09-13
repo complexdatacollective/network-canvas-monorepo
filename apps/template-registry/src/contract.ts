@@ -39,15 +39,25 @@ import {
 
 export const EntrySummarySchema = RegistryEntrySummarySchema;
 export const EntrySchema = RegistryEntrySchema;
+export const YankedEntrySchema = EntrySchema.extend({
+  yanked: z.literal(true),
+}).meta({ id: 'YankedEntry' });
 export type RegistryEntry = z.infer<typeof EntrySchema>;
 
 const codePointLimitedText = (maxLength: number) =>
   z
     .string()
     .min(1)
-    .refine((value) => Array.from(value).length <= maxLength, {
-      message: `Must contain at most ${maxLength} Unicode code points`,
-    });
+    .refine(
+      (value) =>
+        value.isWellFormed() &&
+        !value.includes('\0') &&
+        Array.from(value).length <= maxLength,
+      {
+        message: `Must contain at most ${maxLength} Unicode code points`,
+      },
+    )
+    .meta({ maxLength, pattern: '^[^\\u0000]+$(?![\\s\\S])' });
 
 export const ListEntriesSchema = z
   .strictObject({
@@ -308,6 +318,8 @@ export const registryContract = {
         method: 'POST',
         path: '/entries',
         summary: 'Publish a verified template artifact',
+        description:
+          'A newly created entry has yanked=false. Repeating publication of the same artifact for the same publisher is idempotent: it returns the existing entry and preserves its current withdrawal state, including yanked=true. Publication never reverses a withdrawal.',
         successStatus: 201,
         spec: (operation) => tokenOperation(operation, 'publish'),
       }),
@@ -331,7 +343,7 @@ export const registryContract = {
       }),
     )
     .input(entryTarget)
-    .output(EntrySchema),
+    .output(YankedEntrySchema),
   report: route
     .meta(
       openapi({
@@ -414,6 +426,8 @@ export const registryContract = {
         method: 'DELETE',
         path: '/account/tokens/{id}',
         summary: 'Revoke a registry credential',
+        description:
+          'Requires a verified registry session whose account owns the targeted credential. A credential belonging to another account is not accessible or revocable through this operation.',
         inputStructure: 'detailed',
         spec: (operation) => securedOperation(operation, cookie),
       }),

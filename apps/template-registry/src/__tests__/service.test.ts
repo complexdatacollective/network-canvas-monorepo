@@ -12,6 +12,10 @@ import { TokenDescriptionSchema } from '../account-contract.ts';
 import { EntrySchema, EntrySummarySchema } from '../contract.ts';
 import { RegistryProblemSchema } from '../problems.ts';
 import {
+  REGISTRY_SEARCH_ADMISSION_SCOPE,
+  RegistrySharedSearchAdmission,
+} from '../rate-limit.ts';
+import {
   createRegistryFixture,
   ORIGIN,
   template,
@@ -345,6 +349,24 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
           )
         ).rows,
       ).toEqual([{ details }]);
+      const reports = await fixture.request(
+        'GET',
+        '/moderation/reports',
+        undefined,
+        operator.bearer,
+      );
+      expect(reports.status).toBe(200);
+      expect(await reports.json()).toMatchObject({
+        data: [
+          {
+            id: reported.id,
+            entry_id: created.entry.id,
+            artifact_root: created.entry.root,
+            publisher_id: account.publisher.id,
+            details,
+          },
+        ],
+      });
       expect(
         (
           await fixture.owner.query(
@@ -917,6 +939,67 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     ).toEqual([{ count: 1 }]);
   });
 
+  it.each(['query', 'keyword', 'author'] as const)(
+    'rejects NUL in the public %s filter before PostgreSQL',
+    async (field) => {
+      await problem(
+        await fixture.request('GET', `/entries?${field}=unsafe%00filter`),
+        400,
+        'INVALID_REQUEST',
+      );
+    },
+  );
+
+  it('bounds shared anonymous scans without occupying ordinary read capacity', async () => {
+    const account = await fixture.account('search-admission@example.test');
+    const created = await fixture.published(account.token);
+    expect(REGISTRY_SEARCH_ADMISSION_SCOPE).toContain('public-search');
+    const first = new RegistrySharedSearchAdmission(fixture.pool);
+    const second = new RegistrySharedSearchAdmission(fixture.pool);
+    const entered = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    let active = 0;
+    const occupy = (admission: RegistrySharedSearchAdmission) =>
+      admission.run(async () => {
+        active += 1;
+        if (active === 2) entered.resolve();
+        await release.promise;
+      });
+    const occupied = [occupy(first), occupy(second)];
+    try {
+      await entered.promise;
+      await expect(first.run(async () => undefined)).rejects.toMatchObject({
+        code: 'RATE_LIMITED',
+      });
+      const replicas = [fixture.app, fixture.createReplica().app];
+      const rejected = await Promise.all(
+        replicas.map(
+          async (app) =>
+            await fixture.request(
+              'GET',
+              '/entries?query=network',
+              undefined,
+              undefined,
+              app,
+            ),
+        ),
+      );
+      for (const response of rejected)
+        await problem(response, 429, 'RATE_LIMITED');
+      const ordinary = await fixture.request(
+        'GET',
+        `/entries/${created.entry.id}`,
+      );
+      expect(ordinary.status).toBe(200);
+      expect(EntrySchema.parse(await ordinary.json()).id).toBe(
+        created.entry.id,
+      );
+    } finally {
+      release.resolve();
+      await Promise.all(occupied);
+    }
+  });
+
   it('selects only bounded summary columns for public list results', async () => {
     const account = await fixture.account();
     await fixture.published(account.token);
@@ -1224,6 +1307,29 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
       expect(recovered.status).toBe(201);
     },
   );
+
+  it('preserves withdrawal when publication is repeated idempotently', async () => {
+    const account = await fixture.account();
+    const created = await fixture.published(account.token);
+    expect(created.entry.yanked).toBe(false);
+    const withdrawal = await fixture.request(
+      'POST',
+      `/entries/${created.entry.id}/yank`,
+      {},
+      account.bearer,
+    );
+    expect(withdrawal.status).toBe(200);
+    const repeated = await fixture.publish(account.token, created.bytes);
+    expect(repeated.status).toBe(201);
+    expect(EntrySchema.parse(await repeated.json())).toMatchObject({
+      id: created.entry.id,
+      root: created.entry.root,
+      yanked: true,
+    });
+    expect(
+      (await fixture.owner.query('SELECT id FROM registry_entries')).rowCount,
+    ).toBe(1);
+  });
 
   it('verifies storage before returning an idempotent publication', async () => {
     const account = await fixture.account();
