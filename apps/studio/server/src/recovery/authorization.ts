@@ -161,6 +161,7 @@ async function reconcileInventories(
   client: pg.PoolClient,
   evidence: StudioRecoveryAuthorizationReconciliation,
   mode: 'revoke-stale' | 'require-exact',
+  scheduling: 'initial' | 'post-reconciliation' = 'initial',
 ) {
   await assertEvidenceFreshness(client, evidence);
   const instance = await client.query<{
@@ -349,18 +350,56 @@ async function reconcileInventories(
         "SELECT id FROM study_schedules WHERE state = 'active' ORDER BY id",
       )
     ).rows.map(({ id }) => id);
-    for (const id of evidence.activeScheduleIds)
-      if (!activeSchedules.includes(id)) throw new Error(MISMATCH);
-    if (
-      mode === 'require-exact' &&
-      activeSchedules.length !== evidence.activeScheduleIds.length
-    )
-      throw new Error(MISMATCH);
-    await client.query(
-      `UPDATE study_schedules SET state = 'paused', updated_at = statement_timestamp()
-       WHERE state = 'active' AND NOT (id = ANY($1::uuid[]))`,
-      [evidence.activeScheduleIds],
-    );
+    if (scheduling === 'post-reconciliation') {
+      const expectedScheduleIds = await client.query<{ id: string }>(
+        `SELECT id FROM study_schedules
+         WHERE id = ANY($1::uuid[]) ORDER BY id`,
+        [evidence.activeScheduleIds],
+      );
+      if (
+        expectedScheduleIds.rows.length !== evidence.activeScheduleIds.length ||
+        activeSchedules.length !== 0
+      )
+        throw new Error(MISMATCH);
+      const pendingOccurrences = await client.query<{ count: number }>(
+        "SELECT count(*)::int AS count FROM schedule_occurrences WHERE state = 'scheduled'",
+      );
+      if (pendingOccurrences.rows[0]?.count !== 0) throw new Error(MISMATCH);
+    } else {
+      const expectedSchedules = await client.query<{
+        id: string;
+        state: string;
+      }>(
+        `SELECT id, state FROM study_schedules
+         WHERE id = ANY($1::uuid[]) ORDER BY id`,
+        [evidence.activeScheduleIds],
+      );
+      if (
+        expectedSchedules.rows.length !== evidence.activeScheduleIds.length ||
+        expectedSchedules.rows.some(
+          ({ state }) => state !== 'active' && state !== 'paused',
+        )
+      )
+        throw new Error(MISMATCH);
+      const activeScheduleIds = new Set(activeSchedules);
+      if (
+        mode === 'require-exact' &&
+        evidence.activeScheduleIds.some((id) => !activeScheduleIds.has(id))
+      )
+        throw new Error(MISMATCH);
+      if (
+        mode === 'require-exact' &&
+        activeSchedules.length !== evidence.activeScheduleIds.length
+      )
+        throw new Error(MISMATCH);
+      // The schedule IDs in signed evidence prove the inventory that the
+      // operator reviewed; they do not prove that recurrence, channels,
+      // participant time zones, settings, or pending occurrences are safe to
+      // resume after a restore. Keep every restored schedule paused until a
+      // separate operator review produces fresh current evidence, and cancel
+      // every occurrence that could otherwise be picked up by the dispatcher.
+      await pauseRestoredScheduleActivity(client);
+    }
 
     const publishedTemplates = (
       await client.query<{ id: string }>(
@@ -492,6 +531,24 @@ async function holdRestoredDeliveries(client: pg.PoolClient) {
   });
 }
 
+/** Keep restored scheduling inert until its complete operational state has
+ * been reviewed. Pausing a schedule alone is insufficient: the due index is
+ * keyed by occurrence state, so a restored `scheduled` row could still be
+ * dispatched while its parent schedule is paused. */
+export async function pauseRestoredScheduleActivity(
+  client: Pick<pg.PoolClient, 'query'>,
+): Promise<void> {
+  await client.query(
+    `UPDATE study_schedules SET state = 'paused', updated_at = statement_timestamp()
+     WHERE state = 'active'`,
+  );
+  await client.query(
+    `UPDATE schedule_occurrences
+     SET state = 'cancelled'
+     WHERE state = 'scheduled'`,
+  );
+}
+
 async function lockRecoveryAuthorizationState(client: pg.PoolClient) {
   await client.query(`LOCK TABLE "schemaFingerprint", "studio_migrations".history,
     studio_instance, "user", session, account, verification, teams,
@@ -499,7 +556,10 @@ async function lockRecoveryAuthorizationState(client: pg.PoolClient) {
     study_role_grants, api_tokens, interview_links, webhook_subscriptions,
     webhook_deliveries, study_schedules, message_templates, message_deliveries,
     audit_events, credential_audit_events, audit_export_artifact_attempts,
-    audit_export_jobs, audit_alert_outbox,
+    audit_export_jobs, schedule_occurrences,
+    message_templates, message_deliveries,
+    audit_events, credential_audit_events, audit_alert_settings,
+    audit_alert_recipients, audit_alert_outbox,
     audit_alert_deliveries, template_registry_publication_intents,
     template_registry_import_intents, leases IN SHARE ROW EXCLUSIVE MODE`);
 }
@@ -527,6 +587,9 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
       deliveries: number;
       registry_intents: number;
       audit_exports: number;
+      pending_schedule_occurrences: number;
+      alert_recipients: number;
+      alert_settings: number;
     }>(`SELECT
     (SELECT count(*)::int FROM api_tokens WHERE revoked_at IS NULL) tokens,
     (SELECT count(*)::int FROM interview_links WHERE revoked_at IS NULL) links,
@@ -540,7 +603,8 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
      + (SELECT count(*) FROM template_registry_import_intents WHERE completed_at IS NULL AND quarantined_at IS NULL))::int registry_intents,
     (SELECT count(*)::int FROM audit_export_jobs
       WHERE status IN ('pending','generating')
-         OR (status='ready' AND handle_consumed_at IS NULL)) audit_exports`),
+         OR (status='ready' AND handle_consumed_at IS NULL)) audit_exports,
+    (SELECT count(*)::int FROM schedule_occurrences WHERE state = 'scheduled') pending_schedule_occurrences`),
   );
   assertRows(remainingTenantState.rows[0], {
     tokens: 0,
@@ -549,6 +613,7 @@ async function assertRestoredAdmissionInvalidated(client: pg.PoolClient) {
     deliveries: 0,
     registry_intents: 0,
     audit_exports: 0,
+    pending_schedule_occurrences: 0,
   });
 }
 
@@ -616,7 +681,12 @@ export async function reconcileStudioRecoveryAuthorization(options: {
       'SELECT count(*)::int AS count FROM "user" WHERE NOT recovery_disabled',
     );
     assertRows(enabled.rows, [{ count: 0 }]);
-    await reconcileInventories(client, evidence, 'revoke-stale');
+    await reconcileInventories(
+      client,
+      evidence,
+      'revoke-stale',
+      'post-reconciliation',
+    );
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
       expectedTransaction: { isolation: 'serializable', readOnly: false },
@@ -740,7 +810,12 @@ export async function authorizeCurrentStudioRecovery(options: {
       )
     ).rows.map(({ id }) => id);
     assertRows(finalEnabled, eligibleUserIds);
-    await reconcileInventories(client, evidence, 'require-exact');
+    await reconcileInventories(
+      client,
+      evidence,
+      'require-exact',
+      'post-reconciliation',
+    );
     await assertRestoredAdmissionInvalidated(client);
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,

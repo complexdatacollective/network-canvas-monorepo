@@ -1,9 +1,12 @@
+import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
+import { once } from 'node:events';
 
 import type pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation';
+import { contract } from '@codaco/studio-rpc';
 import { manifestHash } from '@codaco/studio-sync/apply';
 import {
   createTemplateArtifact,
@@ -13,7 +16,10 @@ import {
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
   type TemplateArtifactInput,
 } from '@codaco/studio-sync/template-exchange';
-import { TemplateRegistryClient } from '@codaco/studio-sync/template-registry-client';
+import {
+  TemplateRegistryClient,
+  TemplateRegistryClientError,
+} from '@codaco/studio-sync/template-registry-client';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import {
@@ -24,11 +30,14 @@ import {
 } from '../../__tests__/support/postgres.ts';
 import type { AssetStore } from '../../assets.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
+import { encryptionEnvironment } from '../../pii/__tests__/fixtures.ts';
 import { claimSpecificTemplateRegistryIntent } from '../registry-intent-worker.ts';
 import {
   importRegistryTemplate,
+  listTemplateVersions,
   publishTemplateVersion,
   reconcileClaimedTemplateRegistryIntent,
+  readRegistryIntentStatuses,
 } from '../registry.ts';
 
 const db = await reachableDb();
@@ -184,7 +193,7 @@ function registryClient(options: {
     origin: ORIGIN,
     fetch: async (input, init) => {
       const url = requestUrl(input);
-      if (url.pathname === '/publisher') {
+      if (url.pathname === '/api/v1/publisher') {
         return Response.json({
           id: PUBLISHER_ID,
           name: 'Original Publisher',
@@ -252,7 +261,7 @@ function unavailableRegistryClient() {
     origin: ORIGIN,
     fetch: async (input, init) => {
       const url = requestUrl(input);
-      if (url.pathname === '/publisher')
+      if (url.pathname === '/api/v1/publisher')
         return Response.json({
           id: PUBLISHER_ID,
           name: 'Original Publisher',
@@ -446,6 +455,27 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       ['registry-lock'],
     );
     expect(events.rows).toEqual([{ actor_kind: 'system', event_version: 2 }]);
+  });
+
+  it('returns publication timestamps accepted by the real RPC output contract', async () => {
+    const seeded = await seedPublication('registry-list-dates');
+    await publishTemplateVersion(
+      seeded.context,
+      {
+        origin: ORIGIN,
+        assetStore,
+        maintenancePool: maintenance,
+        client: registryClient({}),
+      },
+      { versionId: seeded.versionId, credential: CREDENTIAL },
+    );
+    const rows = await listTemplateVersions(seeded.context);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.publications).toHaveLength(1);
+    const output = contract.templates.list['~orpc'].outputSchemas?.[0];
+    if (!output) throw new Error('RPC output schema missing');
+    const parsed = await output['~standard'].validate(rows);
+    expect(parsed.issues).toBeUndefined();
   });
 
   it('rechecks a revoked administrator before any Registry request', async () => {
@@ -851,6 +881,481 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       { quarantined: false, completed: true },
     ]);
   });
+
+  it.each([403, 429])(
+    'quarantines definitive publication refusal %s instead of returning endless pending work',
+    async (status) => {
+      const teamId = `registry-publication-rejected-${status}`;
+      const seeded = await seedPublication(teamId);
+      const registry = new TemplateRegistryClient({
+        origin: ORIGIN,
+        fetch: async (input, init) => {
+          const path = requestUrl(input).pathname;
+          if (path === '/api/v1/publisher')
+            return Response.json({
+              id: PUBLISHER_ID,
+              name: 'Original Publisher',
+              orcid: null,
+            });
+          if (path === '/api/v1/entries' && init?.method === 'GET')
+            return Response.json({
+              data: [],
+              next_cursor: null,
+              has_more: false,
+            });
+          if (path === '/api/v1/entries' && init?.method === 'POST')
+            return new Response(null, { status });
+          throw new Error('unexpected request');
+        },
+      });
+      await expect(
+        publishTemplateVersion(
+          seeded.context,
+          {
+            origin: ORIGIN,
+            assetStore,
+            maintenancePool: maintenance,
+            client: registry,
+          },
+          { versionId: seeded.versionId, credential: CREDENTIAL },
+        ),
+      ).rejects.toMatchObject({ code: 'REGISTRY_UNAVAILABLE' });
+      expect(
+        (
+          await pool.query(
+            `SELECT quarantined_at IS NOT NULL AS quarantined,lease_owner FROM template_registry_publication_intents WHERE team_id=$1`,
+            [teamId],
+          )
+        ).rows,
+      ).toEqual([{ quarantined: true, lease_owner: null }]);
+      expect(
+        (
+          await pool.query(
+            `SELECT details FROM audit_events WHERE team_id=$1 AND event_type='template.registry_intent_quarantined'`,
+            [teamId],
+          )
+        ).rows,
+      ).toEqual([
+        { details: { kind: 'publication', reason: 'publication_rejected' } },
+      ]);
+      await expect(
+        publishTemplateVersion(
+          seeded.context,
+          {
+            origin: ORIGIN,
+            assetStore,
+            maintenancePool: maintenance,
+            client: registryClient({}),
+          },
+          { versionId: seeded.versionId, credential: REPLACEMENT_CREDENTIAL },
+        ),
+      ).resolves.toMatchObject({ status: 'completed' });
+    },
+  );
+
+  it.each([
+    ['publication', 'https://replacement.example'],
+    ['import', 'https://replacement.example'],
+    ['publication', undefined],
+    ['import', undefined],
+  ] as const)(
+    'quarantines a pending %s when the Registry changes to %s',
+    async (kind, origin) => {
+      const teamId = `registry-origin-change-${kind}-${origin ? 'changed' : 'disabled'}`;
+      const seeded = await seedPublication(teamId);
+      let intentId: string;
+      const table =
+        kind === 'publication'
+          ? 'template_registry_publication_intents'
+          : 'template_registry_import_intents';
+      if (kind === 'publication') {
+        const pending = await publishTemplateVersion(
+          seeded.context,
+          {
+            origin: ORIGIN,
+            assetStore,
+            maintenancePool: maintenance,
+            client: unavailableRegistryClient(),
+          },
+          { versionId: seeded.versionId, credential: CREDENTIAL },
+        );
+        if (pending.status !== 'pending')
+          throw new Error('missing pending intent');
+        intentId = pending.intentId;
+        await pool.query(`UPDATE ${table} SET available_at=now() WHERE id=$1`, [
+          intentId,
+        ]);
+      } else {
+        intentId = randomUUID();
+        await pool.query(
+          `INSERT INTO template_registry_import_intents
+        (id,team_id,registry_url,registry_entry_id,registry_root,entry_snapshot,asset_manifest,
+         target_template_id,target_version_id,initiating_actor_id,initiating_actor_label,initiating_request_id)
+        VALUES ($1,$2,$3,$4,$5,'{}','[]',$6,$7,$8,'Registry Admin',$9)`,
+          [
+            intentId,
+            teamId,
+            ORIGIN,
+            randomUUID(),
+            'a'.repeat(64),
+            randomUUID(),
+            randomUUID(),
+            `${teamId}-admin`,
+            randomUUID(),
+          ],
+        );
+      }
+      const claim = await claimSpecificTemplateRegistryIntent(
+        maintenance,
+        kind,
+        intentId,
+      );
+      if (!claim) throw new Error('missing claim');
+      await expect(
+        readRegistryIntentStatuses(seeded.context, [{ id: intentId, kind }]),
+      ).resolves.toEqual([{ id: intentId, kind, status: 'pending' }]);
+      let calls = 0;
+      const replacement = new TemplateRegistryClient({
+        origin: 'https://replacement.example',
+        fetch: async () => {
+          calls += 1;
+          throw new Error('replacement must not be contacted');
+        },
+      });
+      await expect(
+        reconcileClaimedTemplateRegistryIntent(
+          {
+            origin,
+            assetStore,
+            maintenancePool: maintenance,
+            client: replacement,
+          },
+          claim,
+        ),
+      ).resolves.toBe('quarantined');
+      expect(calls).toBe(0);
+      await expect(
+        readRegistryIntentStatuses(seeded.context, [{ id: intentId, kind }]),
+      ).resolves.toEqual([{ id: intentId, kind, status: 'quarantined' }]);
+      const other = await seedPublication(`${teamId}-other`);
+      await expect(
+        readRegistryIntentStatuses(other.context, [{ id: intentId, kind }]),
+      ).resolves.toEqual([{ id: intentId, kind, status: 'unavailable' }]);
+      await pool.query('UPDATE team_members SET role=$2 WHERE team_id=$1', [
+        teamId,
+        'member',
+      ]);
+      await expect(
+        readRegistryIntentStatuses(seeded.context, [{ id: intentId, kind }]),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+      expect(
+        (
+          await pool.query(
+            `SELECT quarantined_at IS NOT NULL AS quarantined FROM ${table} WHERE id=$1`,
+            [intentId],
+          )
+        ).rows,
+      ).toEqual([{ quarantined: true }]);
+      expect(
+        (
+          await pool.query(
+            `SELECT details FROM audit_events WHERE team_id=$1 AND event_type='template.registry_intent_quarantined'`,
+            [teamId],
+          )
+        ).rows,
+      ).toEqual([{ details: { kind, reason: 'registry_changed' } }]);
+    },
+  );
+
+  it.each([
+    ['entry', 404],
+    ['entry', 410],
+    ['artifact', 404],
+    ['artifact', 410],
+    ['schema', 200],
+  ] as const)(
+    'quarantines pending import after permanent %s HTTP %s without publishing local data',
+    async (resource, status) => {
+      const teamId = `registry-removed-${resource}-${status}`;
+      const seeded = await seedPublication(teamId);
+      const built = await createTemplateArtifact(importFixture());
+      const root = built.artifact.manifest.merkle_root;
+      const id = randomUUID();
+      const entryId = randomUUID();
+      const entry = {
+        id: entryId,
+        publisher: {
+          id: PUBLISHER_ID,
+          name: 'Original Publisher',
+          orcid: null,
+        },
+        root,
+        template: built.artifact.manifest.template,
+        license: built.artifact.license,
+        curated: false,
+        yanked: false,
+        published_at: '2026-09-08T00:00:00.000Z',
+        metadata: built.artifact.metadata,
+        artifact_url: `${ORIGIN}/api/v1/artifacts/${root}`,
+        report_url: `${ORIGIN}/api/v1/entries/${entryId}/reports`,
+      };
+      await pool.query(
+        `INSERT INTO template_registry_import_intents
+        (id,team_id,registry_url,registry_entry_id,registry_root,entry_snapshot,asset_manifest,
+         target_template_id,target_version_id,initiating_actor_id,initiating_actor_label,initiating_request_id)
+        VALUES ($1,$2,$3,$4,$5,$6,'[]',$7,$8,$9,'Registry Admin',$10)`,
+        [
+          id,
+          teamId,
+          ORIGIN,
+          entryId,
+          root,
+          entry,
+          randomUUID(),
+          randomUUID(),
+          `${teamId}-admin`,
+          randomUUID(),
+        ],
+      );
+      const claim = await claimSpecificTemplateRegistryIntent(
+        maintenance,
+        'import',
+        id,
+      );
+      if (!claim) throw new Error('missing claim');
+      const paths: string[] = [];
+      const client = new TemplateRegistryClient({
+        origin: ORIGIN,
+        fetch: async (input) => {
+          const path = requestUrl(input).pathname;
+          paths.push(path);
+          return resource === 'artifact' && path.includes('/entries/')
+            ? Response.json(entry)
+            : new Response(null, { status });
+        },
+      });
+      if (resource === 'schema') {
+        vi.spyOn(client, 'entry').mockResolvedValue(entry);
+        vi.spyOn(client, 'fetchArtifact').mockRejectedValue(
+          new TemplateRegistryClientError(
+            'TEMPLATE_REGISTRY_SCHEMA_UNSUPPORTED',
+          ),
+        );
+      }
+      await expect(
+        reconcileClaimedTemplateRegistryIntent(
+          { origin: ORIGIN, assetStore, maintenancePool: maintenance, client },
+          claim,
+        ),
+      ).resolves.toBe('quarantined');
+      expect(paths).toHaveLength(
+        resource === 'schema' ? 0 : resource === 'entry' ? 1 : 2,
+      );
+      await expect(
+        readRegistryIntentStatuses(seeded.context, [{ id, kind: 'import' }]),
+      ).resolves.toEqual([{ id, kind: 'import', status: 'quarantined' }]);
+      expect(
+        (
+          await pool.query(
+            `SELECT details FROM audit_events WHERE team_id=$1 AND event_type='template.registry_intent_quarantined'`,
+            [teamId],
+          )
+        ).rows,
+      ).toEqual([
+        {
+          details: {
+            kind: 'import',
+            reason:
+              resource === 'schema'
+                ? 'schema_unsupported'
+                : 'resource_unavailable',
+          },
+        },
+      ]);
+      expect(
+        (
+          await pool.query('SELECT id FROM templates WHERE team_id=$1', [
+            teamId,
+          ])
+        ).rows,
+      ).toHaveLength(1);
+    },
+  );
+
+  it.each([false, true])(
+    'preserves imported source aliases and declared media types (typed aliases: %s)',
+    async (typed) => {
+      const teamId = `registry-source-aliases-${typed}`;
+      const seeded = await seedPublication(teamId);
+      const original = twoAssetFixture();
+      const bytes = typed
+        ? new TextEncoder().encode('{"type":"FeatureCollection","features":[]}')
+        : png;
+      const input: TemplateArtifactInput = typed
+        ? {
+            ...fixture(),
+            sections: {
+              ...fixture().sections,
+              assets: {
+                first: { type: 'network', name: 'First', source: 'a.json' },
+                second: {
+                  type: 'geojson',
+                  name: 'Second',
+                  source: 'b.geojson',
+                },
+              },
+            },
+            assets: [
+              {
+                source: 'a.json',
+                media_class: 'dataset',
+                media_type: 'application/json',
+                bytes,
+              },
+              {
+                source: 'b.geojson',
+                media_class: 'dataset',
+                media_type: 'application/geo+json',
+                bytes,
+              },
+            ],
+          }
+        : {
+            ...original,
+            assets: original.assets.map((asset) => ({ ...asset, bytes })),
+          };
+      const canonicalType = typed ? 'application/json' : 'image/png';
+      const canonicalClass = typed ? 'dataset' : 'image';
+      const built = await createTemplateArtifact(input);
+      const root = built.artifact.manifest.merkle_root;
+      const hash = templateBytesHash(bytes);
+      await pool.query(
+        `INSERT INTO assets (team_id,hash,media_type,media_class,byte_size,original_filename,origin,uploaded_by_user_id)
+       VALUES ($1,$2,$5,$6,$3,'preexisting.png','upload',$4)`,
+        [
+          teamId,
+          hash,
+          bytes.byteLength,
+          `${teamId}-admin`,
+          canonicalType,
+          canonicalClass,
+        ],
+      );
+      const entryId = randomUUID();
+      const entry = {
+        id: entryId,
+        publisher: {
+          id: PUBLISHER_ID,
+          name: 'Original Publisher',
+          orcid: null,
+        },
+        root,
+        template: built.artifact.manifest.template,
+        license: built.artifact.license,
+        curated: false,
+        yanked: false,
+        published_at: '2026-09-08T00:00:00.000Z',
+        metadata: built.artifact.metadata,
+        artifact_url: `${ORIGIN}/api/v1/artifacts/${root}`,
+        report_url: `${ORIGIN}/api/v1/entries/${entryId}/reports`,
+      };
+      const publishedSources: string[][] = [];
+      const registry = new TemplateRegistryClient({
+        origin: ORIGIN,
+        fetch: async (request, init) => {
+          const path = requestUrl(request).pathname;
+          if (path === '/api/v1/publisher')
+            return Response.json(entry.publisher);
+          if (path === `/api/v1/entries/${entryId}`)
+            return Response.json(entry);
+          if (path === `/api/v1/artifacts/${root}`)
+            return new Response(built.bytes, {
+              headers: {
+                'Content-Type': TEMPLATE_ARTIFACT_MEDIA_TYPE,
+                'ETag': `"${templateBytesHash(built.bytes)}"`,
+                'X-Template-Root': root,
+                'X-Registry-Yanked': 'false',
+              },
+            });
+          if (path === '/api/v1/entries' && init?.method === 'GET')
+            return Response.json({
+              data: [],
+              next_cursor: null,
+              has_more: false,
+            });
+          if (path === '/api/v1/entries' && init?.method === 'POST') {
+            if (!(init.body instanceof FormData))
+              throw new Error('missing publication form');
+            const file = init.body.get('artifact');
+            if (!(file instanceof File))
+              throw new Error('missing publication artifact');
+            const artifact = await readTemplateArtifact(
+              new Uint8Array(await file.arrayBuffer()),
+            );
+            publishedSources.push(artifact.assets.map((asset) => asset.source));
+            expect(artifact.assets.map((asset) => asset.media_type)).toEqual(
+              input.assets.map((asset) => asset.media_type),
+            );
+            expect(artifact.manifest.merkle_root).toBe(root);
+            return Response.json(entry, { status: 201 });
+          }
+          throw new Error('unexpected Registry request');
+        },
+      });
+      const store: AssetStore = {
+        checkHealth: async () => undefined,
+        put: async (uploadedBytes) => ({
+          hash: templateBytesHash(uploadedBytes),
+          size: uploadedBytes.byteLength,
+          mediaType: canonicalType,
+        }),
+        get: async (requested) =>
+          requested === hash
+            ? {
+                size: bytes.byteLength,
+                mediaType: canonicalType,
+                body: new ReadableStream({
+                  start(controller) {
+                    controller.enqueue(bytes);
+                    controller.close();
+                  },
+                }),
+              }
+            : null,
+      };
+      const config = {
+        origin: ORIGIN,
+        assetStore: store,
+        maintenancePool: maintenance,
+        client: registry,
+      };
+      const imported = await importRegistryTemplate(
+        seeded.context,
+        config,
+        entryId,
+      );
+      expect(imported.status).toBe('completed');
+      if (imported.status !== 'completed')
+        throw new Error('import did not complete');
+      await expect(
+        publishTemplateVersion(seeded.context, config, {
+          versionId: imported.versionId,
+          credential: CREDENTIAL,
+        }),
+      ).resolves.toMatchObject({ status: 'completed' });
+      expect(publishedSources).toEqual([
+        input.assets.map((asset) => asset.source),
+      ]);
+      expect(
+        (
+          await pool.query(
+            'SELECT original_filename FROM assets WHERE team_id=$1 AND hash=$2',
+            [teamId, hash],
+          )
+        ).rows,
+      ).toEqual([{ original_filename: 'preexisting.png' }]);
+    },
+  );
 
   it('imports verified Registry bytes with asset and machine origin stamps', async () => {
     const teamId = 'registry-import';
@@ -1264,5 +1769,91 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       { quarantined: true, completed: false },
       { quarantined: false, completed: true },
     ]);
+  });
+  it('starts the actual worker with Registry and storage disabled and quarantines existing work', async () => {
+    if (!db) throw new Error('database unavailable');
+    const isolated = await createScratchSchema(db);
+    let child: ReturnType<typeof spawn> | undefined;
+    let exited: Promise<unknown> | undefined;
+    let output = '';
+    try {
+      await provisionScratchSchema(isolated.pool);
+      const teamId = 'registry-disabled-startup';
+      await seedTeam(isolated.pool, teamId);
+      const userId = 'registry-disabled-owner';
+      await isolated.pool.query(
+        `INSERT INTO "user" (id,name,email,"emailVerified") VALUES ($1,'Owner','disabled-startup@example.com',true)`,
+        [userId],
+      );
+      const id = randomUUID();
+      await isolated.pool.query(
+        `INSERT INTO template_registry_import_intents
+        (id,team_id,registry_url,registry_entry_id,registry_root,entry_snapshot,asset_manifest,
+         target_template_id,target_version_id,initiating_actor_id,initiating_actor_label,initiating_request_id)
+        VALUES ($1,$2,$3,$4,$5,'{}','[]',$6,$7,$8,'Owner',$9)`,
+        [
+          id,
+          teamId,
+          ORIGIN,
+          randomUUID(),
+          'a'.repeat(64),
+          randomUUID(),
+          randomUUID(),
+          userId,
+          randomUUID(),
+        ],
+      );
+      const schema = (
+        await isolated.pool.query<{ name: string }>(
+          'SELECT current_schema() AS name',
+        )
+      ).rows[0]!.name;
+      const url = new URL(db.url);
+      url.searchParams.set('options', `-c search_path=${schema}`);
+      child = spawn(
+        process.execPath,
+        [new URL('../../index.ts', import.meta.url).pathname],
+        {
+          env: {
+            NODE_ENV: 'test',
+            STUDIO_DEV_DEFAULTS: 'true',
+            STUDIO_ROLE: 'worker',
+            DATABASE_URL: url.href,
+            STUDIO_TELEMETRY: 'false',
+            HOST: '127.0.0.1',
+            PORT: '0',
+            BETTER_AUTH_SECRET: 'synthetic-startup-test-secret-more-than-32',
+            PUBLIC_URL: 'http://localhost:4173',
+            ...encryptionEnvironment(),
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        },
+      );
+      exited = once(child, 'exit');
+      child.stdout?.on('data', (bytes: Buffer) => {
+        output += bytes.toString();
+      });
+      child.stderr?.on('data', (bytes: Buffer) => {
+        output += bytes.toString();
+      });
+      await vi.waitFor(
+        async () => {
+          expect(child?.exitCode, output).toBeNull();
+          expect(
+            (
+              await isolated.pool.query(
+                'SELECT quarantined_at IS NOT NULL AS quarantined FROM template_registry_import_intents WHERE id=$1',
+                [id],
+              )
+            ).rows,
+          ).toEqual([{ quarantined: true }]);
+        },
+        { timeout: 15_000 },
+      );
+    } finally {
+      if (child && child.exitCode === null) child.kill('SIGTERM');
+      if (exited) await exited;
+      await isolated.dispose();
+    }
   });
 });

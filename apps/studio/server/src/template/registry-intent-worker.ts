@@ -17,7 +17,10 @@ export type ClaimedTemplateRegistryIntent = {
   leaseOwner: string;
 };
 
-export type TemplateRegistryIntentDisposition = 'completed' | 'deferred';
+export type TemplateRegistryIntentDisposition =
+  | 'completed'
+  | 'deferred'
+  | 'quarantined';
 
 type Options = {
   pool: pg.Pool;

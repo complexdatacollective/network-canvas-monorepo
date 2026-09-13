@@ -93,8 +93,9 @@ serialization is defined recursively:
    newline.
 
 Only JSON data is valid on the wire. A reader MUST reject invalid UTF-8,
-duplicate object keys, non-canonical member order or whitespace, nesting deeper
-than 64 containers, NUL characters, and unpaired Unicode surrogates. Comparing
+duplicate object keys, non-canonical member order or whitespace, any value at
+a nesting depth greater than 64 (the root has depth zero and each array element
+or object member value adds one), NUL characters, and unpaired Unicode surrogates. Comparing
 the decoded value reserialized by the algorithm above with the original text
 is the final canonicality check.
 
@@ -328,10 +329,52 @@ Dataset bytes MUST be valid UTF-8, non-empty, and contain no disallowed C0
 controls. The permitted C0 controls are only TAB (U+0009), LF (U+000A),
 and CR (U+000D); U+0000–U+0008, U+000B–U+000C, and U+000E–U+001F are
 forbidden. CSV whose first non-whitespace token begins an HTML, SVG, script, or
-doctype document is invalid. JSON datasets MUST decode to an object or array.
+doctype document is invalid. The CSV check MUST be the ECMAScript regular
+expression `/^\s*<(?:!doctype|html|svg|script)\b/i` applied to the decoded
+JavaScript string, without the Unicode (`u`) flag. Here `^` anchors the input,
+`\s*` consumes zero or more ECMAScript whitespace code points, the alternatives
+are ASCII case-insensitive under `i`, and `\b` is the ECMAScript word-boundary
+assertion using the non-Unicode `\w` set of ASCII letters, decimal digits, and
+underscore; the expression need not consume the remainder of the string. For
+this version, ECMAScript `\s` means exactly U+0009–U+000D, U+0020, U+00A0,
+U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000, and U+FEFF.
+JSON datasets MUST decode to an object or array. JSON and GeoJSON dataset
+objects MUST NOT contain duplicate member names, including names that become
+equal after decoding JSON escapes, at any nesting level. Their decoded member
+names and string values MUST NOT contain NUL or unpaired Unicode surrogates.
+Every decoded value MUST satisfy the same depth limit as canonical JSON above.
+Dataset JSON need not use canonical member ordering, escaping, or whitespace;
+its original bytes, including insignificant whitespace, remain the asset hash
+input.
+
 GeoJSON MUST decode to an object whose `type` is one of `FeatureCollection`,
 `Feature`, `Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`,
-`MultiPolygon`, or `GeometryCollection`.
+`MultiPolygon`, or `GeometryCollection`. A type name alone is insufficient:
+the corresponding structure MUST validate recursively. Positions are arrays
+of at least two finite numbers; LineStrings contain at least two positions;
+linear rings contain at least four positions with identical first and last
+positions. MultiPoint, MultiLineString, Polygon, and MultiPolygon contain the
+corresponding arrays of positions, lines, rings, and non-empty ring arrays.
+A geometry's `coordinates` MAY be an empty array. GeometryCollections require
+a `geometries` array containing only geometry objects. Features require both
+`geometry` (a geometry object or null) and `properties` (an object or null);
+an optional `id` is a string or finite number. FeatureCollections require a
+`features` array containing only Features. Empty collection arrays are valid.
+Foreign members remain permitted and their descendants are ordinary JSON.
+Geometry objects MUST NOT carry `geometry`, `properties`, or `features`;
+Features MUST NOT carry `coordinates`, `geometries`, or `features`;
+FeatureCollections MUST NOT carry `coordinates`, `geometries`, `geometry`,
+or `properties`. Only GeometryCollection uses `geometries`; other geometry
+types use `coordinates` and MUST NOT carry `geometries`, while
+GeometryCollection MUST NOT carry `coordinates`.
+
+This profile requires all non-empty positions in a GeoJSON object's recursive
+geometry tree to have the same dimension count `n`. An optional `bbox` MUST
+contain exactly `2*n` finite numbers. For an entirely empty or null geometry
+tree, where `n` is unknown, `bbox` MAY contain any even number of finite
+numbers of at least four. The structural rules follow
+[RFC 7946 sections 3, 5, and 7.1](https://www.rfc-editor.org/rfc/rfc7946.html);
+the consistent-dimension rule is this exchange profile's portability constraint.
 
 The allowlist excludes scripts, HTML, SVG, arbitrary binaries, and embedded API
 credentials. A consumer MUST reject an unknown media type, a declared class
@@ -363,7 +406,9 @@ content:
 1. Apply the ZIP profile and resource limits, including local/central directory
    consistency and bounded streaming decompression.
 2. Require exactly the permitted, referenced file set.
-3. Parse every JSON file as canonical JSON and reject unknown object members.
+3. Parse manifest, metadata, license, and section files as canonical JSON.
+   Reject unknown members wherever the applicable schema defines a closed
+   object; dataset assets follow the separate dataset rules above.
 4. Require `format` and `format_version` to identify this specification.
 5. Reject an unsupported `protocol_schema_version` with a versioned error.
 6. Validate the manifest, metadata, and license shapes.

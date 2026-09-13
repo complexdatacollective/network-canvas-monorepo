@@ -26,6 +26,11 @@ export const NO_AUDIT_TRANSACTION_POLICIES = {
     reason:
       'Maintenance-only bounded page reads below an immutable high-water mark; completion or failure is audited separately.',
   },
+  'templates.registryIntents': {
+    kind: 'none',
+    reason:
+      'Locked team-administrator read of bounded Registry operation states; no credentials or remote data are returned.',
+  },
   'audit.alerts.settings': {
     kind: 'none',
     reason:

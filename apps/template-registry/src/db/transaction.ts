@@ -18,9 +18,9 @@ export async function registryTransaction<T>(
   let discard = false;
   try {
     await client.query('BEGIN');
-    await client.query(
-      "SET LOCAL statement_timeout = '15s'; SET LOCAL lock_timeout = '10s'",
-    );
+    await client.query(`SET LOCAL search_path = public;
+      SET LOCAL statement_timeout = '15s';
+      SET LOCAL lock_timeout = '10s'`);
     await lockRegistry(client);
     const result = await work(client);
     await client.query('COMMIT');

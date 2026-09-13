@@ -66,6 +66,21 @@ it('pins live query budgets and the public schema after hostile URL options, ret
     } finally {
       await unparsed.end();
     }
+    const parsedOwner = createPostgresPool({
+      connectionString: url.toString(),
+      parseConnectionString: true,
+      max: 1,
+      onIdleError: () => {
+        throw new Error('REGISTRY_TEST_IDLE_ERROR');
+      },
+    });
+    setRegistryPoolBounds(parsedOwner);
+    try {
+      expect(parsedOwner.options.connectionString).toBeUndefined();
+      expect(parsedOwner.options.max).toBe(1);
+    } finally {
+      await parsedOwner.end();
+    }
   } finally {
     await database.dispose();
   }

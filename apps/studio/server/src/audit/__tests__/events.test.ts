@@ -53,6 +53,7 @@ describe('audit event registry', () => {
       'template.registry_import_requested@1',
       'template.registry_imported@1',
       'template.registry_imported@2',
+      'template.registry_intent_quarantined@1',
       'template.registry_publish_requested@1',
       'template.registry_published@1',
       'template.registry_published@2',

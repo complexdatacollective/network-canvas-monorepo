@@ -22,6 +22,10 @@ const reconciliationSchema = z
         email: z.email().max(254).transform(normalizeMailbox),
         emailVerified: z.boolean(),
         publisher: z.enum(['none', 'active', 'suspended']),
+        publisherId: z
+          .uuid()
+          .transform((value) => value.toLowerCase())
+          .nullable(),
         operator: z.boolean(),
       }),
     ),
@@ -30,7 +34,21 @@ const reconciliationSchema = z
     const ids = value.users.map((user) => user.id);
     if (new Set(ids).size !== ids.length)
       context.addIssue({ code: 'custom', message: 'Repeated recovery user.' });
+    const publisherIds = value.users.flatMap((user) =>
+      user.publisherId === null ? [] : [user.publisherId],
+    );
+    if (new Set(publisherIds).size !== publisherIds.length)
+      context.addIssue({
+        code: 'custom',
+        message: 'Repeated recovery publisher.',
+      });
     for (const [index, user] of value.users.entries()) {
+      if ((user.publisher === 'none') !== (user.publisherId === null))
+        context.addIssue({
+          code: 'custom',
+          path: ['users', index, 'publisherId'],
+          message: 'Publisher authority requires its stable publisher UUID.',
+        });
       if (user.publisher !== 'none' && !user.emailVerified)
         context.addIssue({
           code: 'custom',
