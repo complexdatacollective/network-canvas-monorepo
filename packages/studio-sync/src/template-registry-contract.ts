@@ -11,14 +11,21 @@ import {
   TemplateMetadataSchema,
 } from './template-metadata.ts';
 
-const nonblank = z
+export const RegistryPublisherNameSchema = z
   .string()
   .min(1)
-  .max(200)
   .refine(
     (value) =>
-      value.trim().length > 0 && value.isWellFormed() && !value.includes('\0'),
-  );
+      Array.from(value).length <= 200 &&
+      value.trim().length > 0 &&
+      value.isWellFormed() &&
+      !value.includes('\0'),
+    { message: 'Must be a nonblank string of at most 200 Unicode code points' },
+  )
+  .meta({
+    maxLength: 200,
+    pattern: '^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])',
+  });
 
 export const REGISTRY_CREDENTIAL_PREFIX = 'ncr1_';
 export const RegistryCredentialSchema = z
@@ -31,7 +38,7 @@ export const RegistryEntryIdSchema = StrictUuidSchema.describe(
 export const RegistryPublisherSchema = z
   .strictObject({
     id: StrictUuidSchema,
-    name: nonblank,
+    name: RegistryPublisherNameSchema,
     orcid: OrcidSchema.nullable(),
   })
   .meta({ id: 'Publisher' });

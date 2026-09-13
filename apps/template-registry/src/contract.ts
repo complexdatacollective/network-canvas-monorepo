@@ -14,6 +14,7 @@ import {
   StrictUuidSchema,
 } from '@codaco/studio-sync/template-metadata';
 import {
+  RegistryCredentialSchema,
   RegistryEntrySchema,
   RegistryEntrySummarySchema,
 } from '@codaco/studio-sync/template-registry-contract';
@@ -28,7 +29,7 @@ import {
   ReportsPageSchema,
   TokenDescriptionSchema,
 } from './account-contract.ts';
-import { PaginationCursorSchema } from './pagination.ts';
+import { paginatedPageSchema, PaginationCursorSchema } from './pagination.ts';
 import {
   REGISTRY_PROBLEMS,
   RegistryProblemSchema,
@@ -91,11 +92,13 @@ const entryTarget = z.object({
   query: empty,
   body: empty.optional(),
 });
+const readEntryTarget = z.object({ params: entryId, query: empty });
 const artifactTarget = z.object({
   params: artifactRoot,
   query: empty,
   body: empty.optional(),
 });
+const readArtifactTarget = z.object({ params: artifactRoot, query: empty });
 const success = z.strictObject({ ok: z.literal(true) });
 
 const requiredRegistryOrigin = {
@@ -256,13 +259,7 @@ export const registryContract = {
       }),
     )
     .input(ListEntriesSchema)
-    .output(
-      z.strictObject({
-        data: z.array(EntrySummarySchema),
-        next_cursor: PaginationCursorSchema.nullable(),
-        has_more: z.boolean(),
-      }),
-    ),
+    .output(paginatedPageSchema(EntrySummarySchema, PaginationCursorSchema)),
   entry: route
     .meta(
       openapi({
@@ -272,7 +269,7 @@ export const registryContract = {
         inputStructure: 'detailed',
       }),
     )
-    .input(entryTarget)
+    .input(readEntryTarget)
     .output(EntrySchema),
   artifact: route
     .meta(
@@ -284,7 +281,7 @@ export const registryContract = {
         outputStructure: 'detailed',
       }),
     )
-    .input(artifactTarget)
+    .input(readArtifactTarget)
     .output(
       z.strictObject({
         headers: z.strictObject({
@@ -396,7 +393,10 @@ export const registryContract = {
     )
     .input(CreateTokenSchema)
     .output(
-      z.strictObject({ token: z.string(), credential: TokenDescriptionSchema }),
+      z.strictObject({
+        token: RegistryCredentialSchema,
+        credential: TokenDescriptionSchema,
+      }),
     ),
   listTokens: route
     .meta(
@@ -468,6 +468,11 @@ export async function generateRegistryOpenApi(options: {
     customErrorResponseBodySchema: () =>
       converter.convert(RegistryProblemSchema, 'output')[0],
   });
+  const problemSchemas = doc.components?.schemas;
+  if (!problemSchemas) throw new Error('REGISTRY_PROBLEM_SCHEMAS_MISSING');
+  const baseProblemSchema = problemSchemas.RegistryProblem;
+  if (!isRecord(baseProblemSchema) || !isRecord(baseProblemSchema.properties))
+    throw new Error('REGISTRY_PROBLEM_SCHEMA_INVALID');
   for (const path of Object.values(doc.paths ?? {})) {
     if (!path) continue;
     for (const method of ['get', 'post', 'put', 'delete'] as const) {
@@ -488,6 +493,22 @@ export async function generateRegistryOpenApi(options: {
         response.content['application/problem+json'] =
           response.content['application/json'];
         delete response.content['application/json'];
+        const problem = response.content['application/problem+json'];
+        if (isRecord(problem) && isRecord(problem.schema)) {
+          const codes = Object.entries(REGISTRY_PROBLEMS)
+            .filter(([, value]) => value.status === Number(status))
+            .map(([code]) => code);
+          const schemaName = `RegistryProblem${status}`;
+          problemSchemas[schemaName] = {
+            ...structuredClone(baseProblemSchema),
+            properties: {
+              ...structuredClone(baseProblemSchema.properties),
+              status: { type: 'integer', enum: [Number(status)] },
+              code: { type: 'string', enum: codes },
+            },
+          };
+          problem.schema = { $ref: `#/components/schemas/${schemaName}` };
+        }
       }
     }
   }
@@ -544,6 +565,47 @@ export async function generateRegistryOpenApi(options: {
     Object.values(value).forEach(hardenUuidPatterns);
   };
   hardenUuidPatterns(doc);
+  for (const [path, method] of [
+    ['/entries', 'get'],
+    ['/moderation/reports', 'get'],
+    ['/account/moderation/reports', 'post'],
+  ] as const) {
+    const operation = doc.paths?.[path]?.[method];
+    const response = operation?.responses?.['200'];
+    const content = isRecord(response) ? response.content : undefined;
+    const media = isRecord(content) ? content['application/json'] : undefined;
+    const schema = isRecord(media) ? media.schema : undefined;
+    if (!isRecord(media) || !isRecord(schema) || !isRecord(schema.properties))
+      throw new Error('REGISTRY_PAGE_SCHEMA_INVALID');
+    const cursor = schema.properties.next_cursor;
+    if (!isRecord(cursor) || !Array.isArray(cursor.anyOf))
+      throw new Error('REGISTRY_PAGE_CURSOR_SCHEMA_INVALID');
+    const present = cursor.anyOf.find(
+      (candidate) => isRecord(candidate) && candidate.type !== 'null',
+    );
+    if (!isRecord(present)) throw new Error('REGISTRY_PAGE_CURSOR_MISSING');
+    const properties = schema.properties;
+    media.schema = {
+      oneOf: [
+        {
+          ...schema,
+          properties: {
+            ...properties,
+            next_cursor: present,
+            has_more: { type: 'boolean', const: true },
+          },
+        },
+        {
+          ...schema,
+          properties: {
+            ...properties,
+            next_cursor: { type: 'null' },
+            has_more: { type: 'boolean', const: false },
+          },
+        },
+      ],
+    };
+  }
   return doc;
 }
 
