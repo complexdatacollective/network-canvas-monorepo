@@ -131,9 +131,9 @@ export const anonymisationMessages = defineMessages({
   storageNotice: {
     id: 'protocolBuilder.anonymisation.storageNotice',
     defaultMessage:
-      'An encrypted attribute is stored so that only the passphrase can unlock it. It cannot be read, exported, or recovered without it.',
+      'Values for encrypted attributes are not stored in the database.',
     description:
-      'Notice at the top of the encrypted-attributes section, warning the researcher that encryption applies to their own copy of the data too: an answer whose passphrase is lost cannot be exported or recovered by anyone.',
+      'Notice at the top of the encrypted-attributes section, telling the researcher where an encrypted answer does NOT end up: the database holds only the protected form, so nothing readable is kept there.',
   },
   noTypesEmptyState: {
     id: 'protocolBuilder.anonymisation.noTypesEmptyState',
@@ -166,5 +166,39 @@ export const anonymisationMessages = defineMessages({
     defaultMessage: '{attributeName} is no longer encrypted.',
     description:
       'Announced to a screen reader after a checkbox in the encrypted-attributes section is cleared and the codebook change has been applied. Never shown on screen. attributeName is the researcher’s own name for the attribute.',
+  },
+
+  typeSwitchDescription: {
+    id: 'protocolBuilder.anonymisation.typeSwitchDescription',
+    defaultMessage:
+      'Enable encryption for attributes belonging to this node type.',
+    description:
+      'Description under one node type’s own switch in the encrypted-attributes section, saying what switching it on is for. A node type is a kind of thing an interview records, such as "person".',
+  },
+  clearTypeConfirmTitle: {
+    id: 'protocolBuilder.anonymisation.clearTypeConfirmTitle',
+    defaultMessage: 'This will clear selected attributes',
+    description:
+      'Title of the confirmation shown when a researcher switches encryption off for a whole node type, which un-encrypts every attribute of that type at once.',
+  },
+  clearTypeConfirmDescription: {
+    id: 'protocolBuilder.anonymisation.clearTypeConfirmDescription',
+    defaultMessage:
+      'This will deselect all encrypted attributes for the {typeName} node type. Do you want to continue?',
+    description:
+      'Body of the confirmation shown when a researcher switches encryption off for a whole node type. typeName is the researcher’s own name for the type, such as "person".',
+  },
+  clearTypeConfirmLabel: {
+    id: 'protocolBuilder.anonymisation.clearTypeConfirmLabel',
+    defaultMessage: 'Clear encrypted attributes',
+    description:
+      'Label of the button that confirms un-encrypting every attribute of one node type at once.',
+  },
+  clearedTypeAnnouncement: {
+    id: 'protocolBuilder.anonymisation.clearedTypeAnnouncement',
+    defaultMessage:
+      'No attribute of the {typeName} type is encrypted any more.',
+    description:
+      'Announced to a screen reader once every attribute of one node type has stopped being encrypted. Never shown on screen — the section closing is the visible confirmation. typeName is the researcher’s own name for the type.',
   },
 });

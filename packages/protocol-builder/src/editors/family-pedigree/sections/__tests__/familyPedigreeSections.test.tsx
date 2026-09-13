@@ -604,6 +604,55 @@ describe('the pedigree’s own configuration', () => {
  * offering a refused attribute; the save-time gate is the backstop for a draft
  * that predates the rule.
  */
+/**
+ * The family-building prompt is the one prompt a researcher writes at length.
+ *
+ * Every rotating prompt in every other interface is one line, because it is
+ * one of several the participant is walked through. This one stands on screen
+ * for the whole census, so it takes full markdown — and the cost of narrowing
+ * it is not that a toolbar button is missing: the markdown a stored prompt
+ * already carries is parsed against the same restriction, so a link is dropped
+ * and the paragraphs run together the moment the editor opens, and the flattened
+ * text is written back over the researcher's own at their next keystroke.
+ */
+describe('what the family-building prompt may hold', () => {
+  const STORED_PROMPT =
+    'Who is in your family? See the [study guide](https://example.org/guide).\n\nTake as long as you need.';
+
+  const openWithStoredPrompt = () => ({
+    stage: familyPedigreeStageWith({ censusPrompt: STORED_PROMPT }),
+    sections: pedigreeSections,
+  });
+
+  it('shows the link the researcher stored', async () => {
+    const harness = renderStageEditor(openWithStoredPrompt());
+    await harness.opened();
+
+    expect(
+      within(screen.getByRole('textbox', { name: 'Census prompt' })).getByRole(
+        'link',
+        { name: 'study guide' },
+      ),
+    ).toHaveAttribute('href', 'https://example.org/guide');
+  });
+
+  it('keeps the link and the second paragraph through an edit', async () => {
+    const harness = renderStageEditor(openWithStoredPrompt());
+    await harness.opened();
+
+    // Typing lands at the start of the first paragraph — see the harness's
+    // note on where a caret goes in a rich text field under jsdom.
+    await harness.user.type(
+      screen.getByRole('textbox', { name: 'Census prompt' }),
+      'Now: ',
+    );
+
+    expect((await savedStage(harness)).censusPrompt).toBe(
+      `Now: ${STORED_PROMPT}`,
+    );
+  });
+});
+
 describe('the attributes a pedigree may bind', () => {
   it('offers only attributes whose values are the ones the interface owns', async () => {
     const harness = renderStageEditor(openFixture());
@@ -2281,8 +2330,14 @@ describe('a pedigree whose node type changes', () => {
  *
  * The clear has to reach the document and not only the control it emptied: the
  * union has no room for a terminology beside a participant choice, and a
- * cleared field that parked its emptiness in the form store alone would put
- * the old terminology back the next time the control mounted.
+ * document still holding a terminology beside a participant choice is not a
+ * framing the schema accepts.
+ *
+ * Coming back to a fixed framing is the other half of the same decision, and
+ * it is not a decision to stop using the words the stage already uses: the
+ * committed terminology is put back, or the canonical one for a stage that was
+ * saved as a participant choice, so a round trip through the other branch
+ * leaves a stage that still saves.
  */
 describe('what a framing change costs', () => {
   /** Seeded away from the schema's canonical framing, so a fallback shows. */
@@ -2300,10 +2355,10 @@ describe('what a framing change costs', () => {
     await harness.user.click(screen.getByRole('radio', { name }));
   };
 
-  it('leaves the terminology gone when the researcher goes back to a fixed framing', async () => {
-    const harness = renderStageEditor(openWithGenderedFraming());
-    expect(await terminology()).toHaveValue('gendered');
-
+  /** The round trip, with nothing else changed: a save the researcher expects. */
+  const roundTripThroughParticipantChoice = async (
+    harness: StageEditorHarness,
+  ) => {
     await chooseMode(harness, 'Let the participant choose');
     await waitFor(() =>
       expect(
@@ -2311,16 +2366,57 @@ describe('what a framing change costs', () => {
       ).not.toBeInTheDocument(),
     );
     await chooseMode(harness, 'Fixed framing');
+  };
 
-    // Empty rather than back at what the fixed framing used to say — and the
-    // stage is refused, because a fixed framing with no terminology is not a
-    // framing the union accepts.
-    expect(await terminology()).toHaveValue('');
-    expect(await harness.submit()).toBeNull();
+  it('drops the terminology while the participant is the one choosing', async () => {
+    const harness = renderStageEditor(openWithGenderedFraming());
+    expect(await terminology()).toHaveValue('gendered');
 
-    // Answered afresh, it saves the answer the researcher gave rather than the
-    // one they left behind.
+    await chooseMode(harness, 'Let the participant choose');
+
+    expect((await savedStage(harness)).framing).toEqual({
+      mode: 'participantChoice',
+    });
+  });
+
+  it('puts the committed terminology back when the researcher returns to a fixed framing', async () => {
+    const harness = renderStageEditor(openWithGenderedFraming());
+    expect(await terminology()).toHaveValue('gendered');
+
+    await roundTripThroughParticipantChoice(harness);
+
+    expect(await terminology()).toHaveValue('gendered');
+    expect((await savedStage(harness)).framing).toEqual({
+      mode: 'fixed',
+      value: 'gendered',
+    });
+  });
+
+  it('falls back to the canonical framing for a stage saved as a participant choice', async () => {
+    const harness = renderStageEditor({
+      stage: familyPedigreeStageWith({
+        framing: { mode: 'participantChoice' },
+      }),
+      sections: pedigreeSections,
+    });
+    await harness.opened();
+
+    await chooseMode(harness, 'Fixed framing');
+
+    expect(await terminology()).toHaveValue('gamete');
+    expect((await savedStage(harness)).framing).toEqual({
+      mode: 'fixed',
+      value: 'gamete',
+    });
+  });
+
+  it('still saves the answer the researcher gives instead', async () => {
+    const harness = renderStageEditor(openWithGenderedFraming());
+    await terminology();
+
+    await roundTripThroughParticipantChoice(harness);
     await harness.user.selectOptions(await terminology(), 'gamete');
+
     expect((await savedStage(harness)).framing).toEqual({
       mode: 'fixed',
       value: 'gamete',
