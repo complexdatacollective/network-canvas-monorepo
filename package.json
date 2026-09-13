@@ -9,6 +9,8 @@
     "test:watch": "turbo watch test:watch",
     "test:scripts": "vitest run --config scripts/vitest.config.ts",
     "studio:managed-log-collector": "node scripts/studio/studio-managed-log-collector.mjs",
+    "studio:managed-log-collector:build": "vite build --config scripts/studio/studio-managed-log-collector.vite.config.mjs",
+    "studio:managed-log-collector:image:test": "node --test scripts/studio/studio-managed-log-collector-image.test.mjs",
     "publish-packages": "pnpm exec changeset publish",
     "version-packages": "pnpm exec changeset version && pnpm install --no-frozen-lockfile && pnpm lint:fix",
     "changeset": "changeset add",

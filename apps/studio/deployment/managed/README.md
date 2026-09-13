@@ -674,13 +674,80 @@ bounded jitter. `SIGINT` and `SIGTERM` stop intake, drain admitted queue entries
 drain NATS, and await release of the durable budget lease.
 
 This CLI is executable but is not deployed or production-qualified here. It
-still requires a signed immutable collector image, Fly Machine configuration,
-operator bootstrap of the budget and anchor, real expansion/lag measurements,
-and live evidence for retention, queryability, NATS loss behavior, alert
-delivery, and the hard stop. Fly describes the direct NATS logs transport as
-experimental and real-time only, so reconnects cannot recover messages missed
-while disconnected. See the [Fly NATS connection and authentication contract](https://fly.io/docs/blueprints/observability-for-user-apps/)
+still requires Fly Machine configuration, operator bootstrap of the budget and
+anchor, real expansion/lag measurements, and live evidence for retention,
+queryability, NATS loss behavior, alert delivery, and the hard stop. Fly
+describes the direct NATS logs transport as experimental and real-time only, so
+reconnects cannot recover messages missed while disconnected. See the [Fly NATS connection and authentication contract](https://fly.io/docs/blueprints/observability-for-user-apps/)
 and [Fly log export behavior](https://fly.io/docs/monitoring/exporting-logs/).
+
+### Collector container artifact
+
+`managed-log-collector.Dockerfile` builds that CLI into one JavaScript artifact
+on the digest-pinned Node 24 runtime already used by the Studio and Registry
+images. Vite follows and bundles the source-first application catalogs,
+workspace modules, and the lock-pinned NATS transport. The final image contains
+only that artifact and a `SOURCE_REVISION` file as its application payload,
+runs as the unprivileged Node user, and has no dependency tree, source checkout,
+shell entrypoint, listening port, or health endpoint. The single bundled module
+has no deployed `node_modules` closure, so the repository's deployed-lock
+verifier does not apply; the image build instead imports the complete bundle and
+proves that empty configuration fails with the fixed configuration error before
+any network client can start.
+
+Build from the monorepo root with the exact lowercase full commit id whose tree
+is in the Docker context:
+
+```sh
+docker build \
+  --build-arg SOURCE_REVISION="$(git rev-parse HEAD)" \
+  --file apps/studio/deployment/managed/managed-log-collector.Dockerfile \
+  --tag network-canvas-managed-log-collector:review .
+```
+
+The build validates that `SOURCE_REVISION` is a lowercase 40-character commit
+id and records it in both the OCI revision label and `/app/SOURCE_REVISION`.
+Because `.git` is intentionally excluded from every image context, the release
+builder must also require a clean checkout and pass its checked-out `HEAD`; the
+future signed release must bind the resulting image digest to that revision.
+
+At runtime, mount the collector's dedicated persistent volume read-write at the
+exact absolute path supplied as `STUDIO_OBSERVABILITY_BUDGET_DIRECTORY`. Create
+that directory with mode 0700 and ownership `1000:1000`, the UID/GID of the
+image's `node` user, so it can create, fsync, rename, and lock files. Do not
+share the mount with an application or another collector replica. The estate
+contract requires at least 1 GB even though actual checkpoint records are
+bounded and much smaller. A read-only root filesystem with a writable `/tmp`
+is compatible with the collector; the budget mount is its only persistent
+writable state.
+
+Inject `FLY_NATS_TOKEN`, `NEW_RELIC_LICENSE_KEY`, `NEW_RELIC_USER_KEY`, and
+`OBSERVABILITY_ANCHOR_FORWARDER_TOKEN` through the runtime secret channel. Pass
+the remaining table entries as explicit configuration. Do not bake either set
+into an image layer, image label, command argument, or release manifest. The
+image makes no secret-file convention implicit.
+
+The build rejects an absent, abbreviated, uppercase, or malformed revision.
+The OCI `org.opencontainers.image.revision` label and `/app/SOURCE_REVISION`
+record the supplied revision. They are provenance metadata, not a signature or
+proof that the build context matches that revision. The pending signed-release
+workflow must enforce that binding, publish an immutable digest, and authenticate
+it before managed activation. This artifact is intentionally absent from the
+existing two-image Studio/Registry release-manifest contract; adding a third
+release subject is a separate integration and review decision.
+
+For an offline artifact check, with no provider variables or credentials set:
+
+```sh
+pnpm studio:managed-log-collector:image:test
+docker run --rm network-canvas-managed-log-collector:review
+# exits 1 and writes only STUDIO_COLLECTOR_CONFIGURATION_INVALID to stderr
+```
+
+Neither command provisions a provider resource or qualifies the image for
+deployment. The signed release, exact managed Machine definition, volume
+creation/custody, secret injection, process supervision, and live behavior
+receipts remain prerequisites for activation.
 
 ## Operator alert and migration runbook
 
