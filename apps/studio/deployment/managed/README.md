@@ -626,7 +626,20 @@ reset a lineage.
 `apps/studio/deployment/managed/dist-anchor/studio-observability-anchor.zip`.
 The archive contains the Lambda handler (`lambda.handler`), enrollment command,
 month-authorization command, and the exact lockfile-pinned AWS SDK closure; it
-does not depend on Lambda's ambient SDK or a repository checkout.
+does not depend on Lambda's ambient SDK or a repository checkout. Every code
+entry carries mode `0644`, as required by AWS Lambda's deployment-package
+[permissions guidance](https://docs.aws.amazon.com/lambda/latest/dg/nodejs-package.html),
+and the checkout-free extraction test preserves and executes those archive
+permissions. Build-time credential and token canaries prove that runtime
+secrets are absent from the ZIP.
+
+The Lambda and enrollment command set the pinned AWS SDK's
+`ignoreConfiguredEndpointUrls` option. They therefore refuse ambient DynamoDB
+endpoint redirection through service-specific or global environment variables
+and shared AWS profiles while retaining the explicit injected-client seam used
+for the separately authorized DynamoDB Local test. This follows AWS's
+[service-specific endpoint configuration](https://docs.aws.amazon.com/sdkref/latest/guide/feature-ss-endpoints.html),
+which documents those override sources and the ignore setting.
 
 The complete local path can be exercised without cloud calls against an
 explicit loopback DynamoDB Local endpoint:

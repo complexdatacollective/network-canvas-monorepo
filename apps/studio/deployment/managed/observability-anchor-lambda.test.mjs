@@ -236,7 +236,7 @@ test('configuration failures expose only a fixed safe error', async () => {
   assert.equal(result.body.includes('STUDIO_ANCHOR'), false);
 });
 
-test('constructs the production DynamoDB client with the fixed region and no endpoint override', () => {
+test('constructs the production DynamoDB client with ambient endpoints disabled', () => {
   const f = fixture();
   let options;
   class FakeDynamoDBClient {
@@ -251,5 +251,8 @@ test('constructs the production DynamoDB client with the fixed region and no end
     env: f.env,
     DynamoDBClientClass: FakeDynamoDBClient,
   });
-  assert.deepEqual(options, { region: 'us-east-1' });
+  assert.deepEqual(options, {
+    region: 'us-east-1',
+    ignoreConfiguredEndpointUrls: true,
+  });
 });

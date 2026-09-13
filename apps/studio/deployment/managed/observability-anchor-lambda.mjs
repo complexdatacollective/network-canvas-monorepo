@@ -1,5 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 
+import { managedAnchorDynamoClientConfiguration } from './observability-anchor-dynamodb-client.mjs';
 import { readManagedAnchorEnvironment } from './observability-anchor-runtime-config.mjs';
 import { createDynamoAnchorStore } from './observability-dynamodb-anchor-store.mjs';
 import {
@@ -74,7 +75,10 @@ export function createManagedAnchorLambda({
 }) {
   const configuration = readManagedAnchorEnvironment(env);
   const client =
-    dynamoClient ?? new DynamoDBClientClass({ region: configuration.region });
+    dynamoClient ??
+    new DynamoDBClientClass(
+      managedAnchorDynamoClientConfiguration(configuration.region),
+    );
   const anchor = createMonotonicAnchorHandler({
     accountIdentitySha256: configuration.accountIdentitySha256,
     authenticate: fixedBearerAuthenticator(configuration),

@@ -16,6 +16,7 @@ test('managed observability budget and anchor controls', () => {
       'apps/studio/deployment/managed/observability-dynamodb-anchor-store.integration.test.mjs',
       'apps/studio/deployment/managed/observability-anchor-client.test.mjs',
       'apps/studio/deployment/managed/observability-anchor-month-authorization.test.mjs',
+      'apps/studio/deployment/managed/observability-anchor-dynamodb-client.test.mjs',
       'apps/studio/deployment/managed/observability-anchor-lambda.test.mjs',
       'apps/studio/deployment/managed/observability-anchor-enroll.test.mjs',
       'apps/studio/deployment/managed/observability-anchor-bundle.test.mjs',

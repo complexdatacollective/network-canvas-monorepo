@@ -34,7 +34,7 @@ export async function buildManagedAnchorArtifact(outputDirectory) {
     archive.file(name, await readFile(path), {
       createFolders: false,
       date: new Date(0),
-      unixPermissions: 0o100600,
+      unixPermissions: 0o100644,
     });
   await writeFile(
     artifact,

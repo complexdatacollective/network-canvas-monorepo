@@ -12,16 +12,19 @@ function environment() {
 }
 
 test('operator enrollment uses only the fixed region, account partition, and table', async () => {
-  let region;
+  let configuration;
   let command;
   assert.equal(
     await enrollManagedAnchor(environment(), (value) => {
-      region = value;
+      configuration = value;
       return { send: async (item) => void (command = item) };
     }),
     'ANCHOR_ENROLLED',
   );
-  assert.equal(region, 'us-east-1');
+  assert.deepEqual(configuration, {
+    region: 'us-east-1',
+    ignoreConfiguredEndpointUrls: true,
+  });
   assert.equal(command.constructor.name, 'PutItemCommand');
   assert.equal(command.input.TableName, 'studio-anchor-test');
   assert.equal(command.input.Item.account.S, `ACCOUNT#${'a'.repeat(64)}`);

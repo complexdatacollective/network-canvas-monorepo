@@ -1,17 +1,20 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 
+import { managedAnchorDynamoClientConfiguration } from './observability-anchor-dynamodb-client.mjs';
 import { readManagedAnchorStoreEnvironment } from './observability-anchor-runtime-config.mjs';
 import { createDynamoAnchorStore } from './observability-dynamodb-anchor-store.mjs';
 
 export async function enrollManagedAnchor(
   env = process.env,
-  clientFactory = (region) => new DynamoDBClient({ region }),
+  clientFactory = (configuration) => new DynamoDBClient(configuration),
 ) {
   try {
     const configuration = readManagedAnchorStoreEnvironment(env);
     const enrolled = await createDynamoAnchorStore({
       accountIdentitySha256: configuration.accountIdentitySha256,
-      client: clientFactory(configuration.region),
+      client: clientFactory(
+        managedAnchorDynamoClientConfiguration(configuration.region),
+      ),
       tableName: configuration.tableName,
     }).enroll();
     if (!enrolled) throw new Error();
