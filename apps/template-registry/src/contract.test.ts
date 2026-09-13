@@ -8,11 +8,13 @@ import {
   TEMPLATE_ARTIFACT_LIMITS,
   TEMPLATE_ARTIFACT_MEDIA_TYPE,
 } from '@codaco/studio-sync/template-exchange';
+import { StrictUuidSchema } from '@codaco/studio-sync/template-metadata';
 
 import { RegistrySequenceSchema } from './account-contract.ts';
 import {
   EntrySchema,
   generateRegistryOpenApi,
+  ListEntriesSchema,
   registryContract,
 } from './contract.ts';
 import { toOpenApi30 } from './openapi-compatibility.ts';
@@ -26,6 +28,17 @@ const ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_ID = '22222222-2222-4222-8222-222222222222';
 const ROOT = 'a'.repeat(64);
 const OTHER_ROOT = 'b'.repeat(64);
+const EMOJI_150 = '😀'.repeat(150);
+
+it('counts search limits in Unicode code points', () => {
+  expect(
+    ListEntriesSchema.parse({ query: EMOJI_150, author: EMOJI_150 }),
+  ).toMatchObject({ query: EMOJI_150, author: EMOJI_150 });
+  expect(() =>
+    ListEntriesSchema.parse({ query: `${EMOJI_150}${'😀'.repeat(51)}` }),
+  ).toThrow();
+});
+
 function expectSequenceRange(schema: Record<string, unknown>) {
   expect(schema.type).toBe('string');
   if (typeof schema.pattern !== 'string')
@@ -772,6 +785,12 @@ describe('generated registry OpenAPI', () => {
       const metadata = record(
         record(record(record(candidate.components).schemas).Entry).properties,
       );
+      const entryIdSchema = record(
+        record(record(candidate.components).schemas).EntrySummary,
+      ).properties;
+      expect(record(record(entryIdSchema).id).pattern).toBe(
+        '^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])',
+      );
       expect(
         record(record(metadata.metadata).properties).schema_version,
       ).toMatchObject({ type: 'integer', enum: [1] });
@@ -804,7 +823,7 @@ describe('generated registry OpenAPI', () => {
       expect(cursorString).toMatchObject({
         minLength: 1,
         maxLength: 1024,
-        pattern: '^[A-Za-z0-9_-]+$',
+        pattern: '^[A-Za-z0-9_-]+$(?![\\s\\S])',
       });
 
       for (const [path, method, transport] of [
@@ -879,6 +898,23 @@ describe('generated registry OpenAPI', () => {
         'moderate',
       ]);
       expect(issuance.description).toContain('current operator');
+      const credentialSchema = record(
+        record(
+          record(
+            record(record(record(issuance.responses)['201']).content)[
+              'application/json'
+            ],
+          ).schema,
+        ).properties,
+      ).credential;
+      expect(record(record(credentialSchema).properties).scopes).toMatchObject({
+        minItems: 1,
+        maxItems: 2,
+      });
+      const yank = record(
+        record(record(candidate.paths)['/entries/{id}/yank']).post,
+      );
+      expect(yank.description).toContain('publisher owns the targeted entry');
       for (const [path, method] of [
         ['/account/moderation/entries/{id}/takedown', 'post'],
         ['/account/moderation/entries/{id}/restore', 'post'],
@@ -893,6 +929,11 @@ describe('generated registry OpenAPI', () => {
         expect(operation.security).toEqual([{ registrySession: [] }]);
       }
     }
+  });
+
+  it('rejects a UUID with a final newline in the runtime contract', () => {
+    expect(StrictUuidSchema.safeParse(`${ID}\n`).success).toBe(false);
+    expect(StrictUuidSchema.safeParse(ID).success).toBe(true);
   });
 
   it('advertises the cookie name used by supported HTTP localhost mode', async () => {
@@ -1008,7 +1049,7 @@ describe('generated registry OpenAPI', () => {
     });
     expect(headers['x-template-root']).toMatchObject({
       required: true,
-      schema: { pattern: '^[0-9a-f]{64}$' },
+      schema: { pattern: '^[0-9a-f]{64}$(?![\\s\\S])' },
     });
     expect(headers['x-registry-yanked']).toMatchObject({
       required: true,

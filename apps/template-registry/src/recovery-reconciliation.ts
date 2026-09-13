@@ -1,8 +1,10 @@
+import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
 import { lstat, open } from 'node:fs/promises';
 
 import { z } from 'zod';
 
+import { canonicalize } from '@codaco/studio-sync/apply';
 import { normalizeMailbox } from '@codaco/studio-sync/email-sender';
 import {
   parseBoundedJson,
@@ -16,76 +18,139 @@ const userId = z
   .refine((value) => value.isWellFormed() && !value.includes('\0'));
 
 const canonicalUuid = z.uuid().transform((value) => value.toLowerCase());
+const sha256 = z
+  .string()
+  .length(64)
+  .regex(/^[0-9a-f]+$/);
+const artifactRoot = sha256;
+const inventoryCount = z
+  .string()
+  .regex(/^(0|[1-9][0-9]{0,18})$/)
+  .refine(
+    (value) =>
+      BigInt(value).toString() === value &&
+      BigInt(value) <= 9_223_372_036_854_775_807n,
+  );
+const inventory = z.strictObject({
+  count: inventoryCount,
+  sha256,
+});
 
-const reconciliationSchema = z
-  .strictObject({
-    format: z.literal('template-registry-recovery-reconciliation'),
-    version: z.literal(2),
-    users: z.array(
-      z.strictObject({
-        id: userId,
-        email: z.email().max(254).transform(normalizeMailbox),
-        emailVerified: z.boolean(),
-        publisher: z.enum(['none', 'active', 'suspended']),
-        publisherId: canonicalUuid.nullable(),
-        operator: z.boolean(),
-      }),
-    ),
-    entries: z.array(
-      z.strictObject({
-        id: canonicalUuid,
-        publisherId: canonicalUuid,
-      }),
-    ),
-  })
-  .superRefine((value, context) => {
-    const ids = value.users.map((user) => user.id);
-    if (new Set(ids).size !== ids.length)
-      context.addIssue({ code: 'custom', message: 'Repeated recovery user.' });
-    const publisherIds = value.users.flatMap((user) =>
-      user.publisherId === null ? [] : [user.publisherId],
-    );
-    if (new Set(publisherIds).size !== publisherIds.length)
-      context.addIssue({
-        code: 'custom',
-        message: 'Repeated recovery publisher.',
-      });
-    const entryIds = value.entries.map((entry) => entry.id);
-    if (new Set(entryIds).size !== entryIds.length)
-      context.addIssue({
-        code: 'custom',
-        message: 'Repeated recovery entry.',
-      });
-    const knownPublishers = new Set(publisherIds);
-    for (const [index, entry] of value.entries.entries()) {
-      if (!knownPublishers.has(entry.publisherId))
-        context.addIssue({
-          code: 'custom',
-          path: ['entries', index, 'publisherId'],
-          message: 'Entry authority requires an approved publisher UUID.',
-        });
-    }
-    for (const [index, user] of value.users.entries()) {
-      if ((user.publisher === 'none') !== (user.publisherId === null))
-        context.addIssue({
-          code: 'custom',
-          path: ['users', index, 'publisherId'],
-          message: 'Publisher authority requires its stable publisher UUID.',
-        });
-      if (user.publisher !== 'none' && !user.emailVerified)
-        context.addIssue({
-          code: 'custom',
-          path: ['users', index, 'emailVerified'],
-          message: 'Publishers must have a verified email.',
-        });
-      if (user.operator && user.publisher !== 'active')
-        context.addIssue({
-          code: 'custom',
-          path: ['users', index, 'operator'],
-          message: 'Operators must remain active publishers.',
-        });
-    }
-  });
+const inventoryRows = {
+  users: z.strictObject({
+    id: userId,
+    email: z.email().max(254).transform(normalizeMailbox),
+    emailVerified: z.boolean(),
+  }),
+  publishers: z.strictObject({
+    id: canonicalUuid,
+    userId,
+    suspended: z.boolean(),
+  }),
+  operators: z.strictObject({ userId }),
+  entries: z.strictObject({
+    id: canonicalUuid,
+    publisherId: canonicalUuid,
+    artifactRoot,
+  }),
+};
+
+export type RegistryRecoveryInventoryKind = keyof typeof inventoryRows;
+export type RegistryRecoveryInventory = z.infer<typeof inventory>;
+export type RegistryRecoveryInventoryRow = {
+  [Kind in RegistryRecoveryInventoryKind]: z.input<
+    (typeof inventoryRows)[Kind]
+  >;
+};
+
+type ParsedInventoryRow =
+  | z.output<(typeof inventoryRows)['users']>
+  | z.output<(typeof inventoryRows)['publishers']>
+  | z.output<(typeof inventoryRows)['operators']>
+  | z.output<(typeof inventoryRows)['entries']>;
+
+function parseInventoryRow<Kind extends RegistryRecoveryInventoryKind>(
+  kind: Kind,
+  value: RegistryRecoveryInventoryRow[Kind],
+): ParsedInventoryRow {
+  switch (kind) {
+    case 'users':
+      return inventoryRows.users.parse(value);
+    case 'publishers':
+      return inventoryRows.publishers.parse(value);
+    case 'operators':
+      return inventoryRows.operators.parse(value);
+    case 'entries':
+      return inventoryRows.entries.parse(value);
+  }
+  throw new Error('Unknown recovery inventory kind.');
+}
+
+function inventoryRowKey(
+  kind: RegistryRecoveryInventoryKind,
+  value: ParsedInventoryRow,
+): string {
+  if (kind === 'operators' && 'userId' in value) return value.userId;
+  if ('id' in value) return value.id;
+  throw new Error('Recovery inventory row does not match its kind.');
+}
+
+function compareUtf8(left: string, right: string): number {
+  return Buffer.compare(Buffer.from(left), Buffer.from(right));
+}
+
+/**
+ * Hash a pre-sorted independently reviewed authority inventory without keeping
+ * its population in memory. Rows use UTF-8 byte ordering by their stable ID.
+ */
+export function createRegistryRecoveryInventoryAccumulator<
+  Kind extends RegistryRecoveryInventoryKind,
+>(kind: Kind) {
+  const hash = createHash('sha256');
+  let count = 0n;
+  let previousKey: string | undefined;
+  let finished = false;
+  return {
+    add(value: RegistryRecoveryInventoryRow[Kind]): void {
+      if (finished) throw new Error('Recovery inventory is already complete.');
+      const row = parseInventoryRow(kind, value);
+      const key = inventoryRowKey(kind, row);
+      if (previousKey !== undefined && compareUtf8(previousKey, key) >= 0)
+        throw new Error('Recovery inventory rows are not strictly ordered.');
+      hash.update(canonicalize({ kind, value: row }));
+      hash.update('\n');
+      previousKey = key;
+      count += 1n;
+    },
+    finish(): RegistryRecoveryInventory {
+      if (finished) throw new Error('Recovery inventory is already complete.');
+      finished = true;
+      return { count: count.toString(), sha256: hash.digest('hex') };
+    },
+  };
+}
+
+export function createRegistryRecoveryInventory<
+  Kind extends RegistryRecoveryInventoryKind,
+>(
+  kind: Kind,
+  rows: Iterable<RegistryRecoveryInventoryRow[Kind]>,
+): RegistryRecoveryInventory {
+  const accumulator = createRegistryRecoveryInventoryAccumulator(kind);
+  for (const row of rows) accumulator.add(row);
+  return accumulator.finish();
+}
+
+const reconciliationSchema = z.strictObject({
+  format: z.literal('template-registry-recovery-reconciliation'),
+  version: z.literal(3),
+  inventories: z.strictObject({
+    users: inventory,
+    publishers: inventory,
+    operators: inventory,
+    entries: inventory,
+  }),
+});
 
 export type RegistryRecoveryReconciliation = z.infer<
   typeof reconciliationSchema
@@ -103,7 +168,8 @@ export async function readRegistryRecoveryReconciliation(
   expectedSha256: string,
 ): Promise<RegistryRecoveryReconciliation> {
   try {
-    if (!/^[0-9a-f]{64}$/.test(expectedSha256)) throw new Error();
+    if (expectedSha256.length !== 64 || !/^[0-9a-f]+$/.test(expectedSha256))
+      throw new Error();
     const info = await lstat(path);
     if (!info.isFile() || info.isSymbolicLink() || (info.mode & 0o077) !== 0)
       throw new Error();

@@ -1,4 +1,5 @@
 import { deepStrictEqual } from 'node:assert';
+import { isDeepStrictEqual } from 'node:util';
 
 import type pg from 'pg';
 
@@ -17,6 +18,7 @@ import { readRegistrySchemaIdentity } from './db/schema-state.ts';
 import { REGISTRY_ROLES } from './db/schema.ts';
 import {
   copyRegistryRecoveryReconciliation,
+  createRegistryRecoveryInventoryAccumulator,
   type RegistryRecoveryReconciliation,
 } from './recovery-reconciliation.ts';
 
@@ -175,74 +177,106 @@ export async function reconcileRegistryRecovery({
       registry_credentials, registry_artifacts, registry_artifact_content,
       registry_entries
       IN SHARE ROW EXCLUSIVE MODE`);
-    const expectedUsers = new Map(
-      evidence.users.map((user) => [user.id, user]),
-    );
-    let userCount = 0;
+    const usersInventory = createRegistryRecoveryInventoryAccumulator('users');
     for await (const users of recoveryPages<RecoveredUser>(
       client,
       backup,
-      'SELECT id, email, email_verified FROM registry_auth_user WHERE ($1::text IS NULL OR id > $1) ORDER BY id LIMIT $2',
+      'SELECT id, email, email_verified FROM registry_auth_user WHERE ($1::text IS NULL OR id COLLATE "C" > $1 COLLATE "C") ORDER BY id COLLATE "C" LIMIT $2',
       'id',
     )) {
-      for (const user of users) {
-        const expected = expectedUsers.get(user.id);
-        if (
-          !expected ||
-          normalizeMailbox(user.email) !== expected.email ||
-          user.email_verified !== expected.emailVerified
-        )
-          throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
-        userCount += 1;
-      }
+      for (const user of users)
+        usersInventory.add({
+          id: user.id,
+          email: normalizeMailbox(user.email),
+          emailVerified: user.email_verified,
+        });
     }
-    if (userCount !== expectedUsers.size)
+    if (!isDeepStrictEqual(usersInventory.finish(), evidence.inventories.users))
       throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
     await verifyRegistryRecoveryArtifacts(client, backup, blobs);
-    const expectedPublishers = new Map(
-      evidence.users
-        .filter((user) => user.publisher !== 'none')
-        .map((user) => [user.id, user.publisherId]),
-    );
-    const publisherIds = [...expectedPublishers.keys()];
-    let publisherCount = 0;
+    const publishersInventory =
+      createRegistryRecoveryInventoryAccumulator('publishers');
     for await (const publishers of recoveryPages<{
       id: string;
       user_id: string;
+      suspended: boolean;
     }>(
       client,
       backup,
-      'SELECT id, user_id FROM registry_publishers WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
+      'SELECT id, user_id, suspended_at IS NOT NULL AS suspended FROM registry_publishers WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
       'id',
     )) {
-      for (const publisher of publishers) {
-        if (expectedPublishers.get(publisher.user_id) !== publisher.id)
-          throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
-        publisherCount += 1;
-      }
+      for (const publisher of publishers)
+        publishersInventory.add({
+          id: publisher.id,
+          userId: publisher.user_id,
+          suspended: publisher.suspended,
+        });
     }
-    if (publisherCount !== expectedPublishers.size)
+    if (
+      !isDeepStrictEqual(
+        publishersInventory.finish(),
+        evidence.inventories.publishers,
+      )
+    )
       throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
-    const expectedEntries = new Map(
-      evidence.entries.map((entry) => [entry.id, entry.publisherId]),
-    );
-    let entryCount = 0;
+    const operatorsInventory =
+      createRegistryRecoveryInventoryAccumulator('operators');
+    for await (const operators of recoveryPages<{ user_id: string }>(
+      client,
+      backup,
+      'SELECT user_id FROM registry_operators WHERE enabled AND ($1::text IS NULL OR user_id COLLATE "C" > $1 COLLATE "C") ORDER BY user_id COLLATE "C" LIMIT $2',
+      'user_id',
+    )) {
+      for (const operator of operators)
+        operatorsInventory.add({ userId: operator.user_id });
+    }
+    if (
+      !isDeepStrictEqual(
+        operatorsInventory.finish(),
+        evidence.inventories.operators,
+      )
+    )
+      throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    const authority = await client.query<{ invalid: boolean }>(`SELECT
+      EXISTS (
+        SELECT 1 FROM registry_publishers publisher
+        JOIN registry_auth_user account ON account.id = publisher.user_id
+        WHERE NOT account.email_verified
+      ) OR EXISTS (
+        SELECT 1 FROM registry_operators operator
+        LEFT JOIN registry_publishers publisher
+          ON publisher.user_id = operator.user_id
+          AND publisher.suspended_at IS NULL
+        WHERE operator.enabled AND publisher.id IS NULL
+      ) AS invalid`);
+    if (authority.rows[0]?.invalid !== false)
+      throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    const entriesInventory =
+      createRegistryRecoveryInventoryAccumulator('entries');
     for await (const entries of recoveryPages<{
       id: string;
       publisher_id: string;
+      artifact_root: string;
     }>(
       client,
       backup,
-      'SELECT id, publisher_id FROM registry_entries WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
+      'SELECT id, publisher_id, artifact_root FROM registry_entries WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
       'id',
     )) {
-      for (const entry of entries) {
-        if (expectedEntries.get(entry.id) !== entry.publisher_id)
-          throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
-        entryCount += 1;
-      }
+      for (const entry of entries)
+        entriesInventory.add({
+          id: entry.id,
+          publisherId: entry.publisher_id,
+          artifactRoot: entry.artifact_root,
+        });
     }
-    if (entryCount !== expectedEntries.size)
+    if (
+      !isDeepStrictEqual(
+        entriesInventory.finish(),
+        evidence.inventories.entries,
+      )
+    )
       throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
     await client.query('DELETE FROM registry_auth_session');
     await client.query('DELETE FROM registry_auth_verification');
@@ -250,29 +284,6 @@ export async function reconcileRegistryRecovery({
       `UPDATE registry_credentials SET revoked_at = statement_timestamp()
        WHERE revoked_at IS NULL`,
     );
-    await client.query(
-      `UPDATE registry_publishers AS publisher SET suspended_at = CASE
-        WHEN evidence.suspended THEN statement_timestamp() ELSE NULL END
-       FROM unnest($1::text[], $2::boolean[]) AS evidence(user_id, suspended)
-       WHERE publisher.user_id = evidence.user_id`,
-      [
-        publisherIds,
-        evidence.users
-          .filter((user) => user.publisher !== 'none')
-          .map((user) => user.publisher === 'suspended'),
-      ],
-    );
-    await client.query('UPDATE registry_operators SET enabled = false');
-    const enabledOperators = evidence.users
-      .filter((user) => user.operator)
-      .map((user) => user.id);
-    if (enabledOperators.length)
-      await client.query(
-        `INSERT INTO registry_operators(user_id, enabled)
-         SELECT unnest($1::text[]), true
-         ON CONFLICT (user_id) DO UPDATE SET enabled = excluded.enabled`,
-        [enabledOperators],
-      );
     const remaining = await client.query<{
       sessions: number;
       verifications: number;

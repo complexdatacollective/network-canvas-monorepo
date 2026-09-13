@@ -1,0 +1,38 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/registry-recovery-review/apps/template-registry
+
+ ❯ src/recovery.test.ts (12 tests | 1 failed | 11 skipped) 421ms
+   × refuses restored entries whose artifact roots were swapped within one publisher 421ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/recovery.test.ts > refuses restored entries whose artifact roots were swapped within one publisher
+AssertionError: promise resolved "undefined" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+undefined
+
+ ❯ src/recovery.test.ts:422:6
+    420|         reconciliation,
+    421|       }),
+    422|     ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+       |      ^
+    423|     expect(
+    424|       (
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 skipped (12)
+   Start at  18:37:10
+   Duration  2.24s (transform 317ms, setup 0ms, import 1.74s, tests 421ms, environment 0ms)
+
+undefined
+/Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/registry-recovery-review/apps/template-registry:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/recovery.test.ts -t 'artifact roots were swapped'
