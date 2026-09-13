@@ -239,6 +239,22 @@ describe('TemplateRegistryClient', () => {
     expect(requests).toBe(1);
   });
 
+  it('accepts an uppercase request UUID for the same lowercase entry', async () => {
+    const built = await createTemplateArtifact(fixture());
+    const id = 'abcdefab-cdef-4abc-8def-abcdefabcdef';
+    const client = new TemplateRegistryClient({
+      origin: ORIGIN,
+      fetch: async () =>
+        jsonResponse(
+          entry(built.artifact.manifest.merkle_root, {
+            id,
+            report_url: `${ORIGIN}/api/v1/entries/${id}/reports`,
+          }),
+        ),
+    });
+    await expect(client.entry(id.toUpperCase())).resolves.toMatchObject({ id });
+  });
+
   it('refuses a valid but wrong entry identity from a stale upstream response', async () => {
     const built = await createTemplateArtifact(fixture());
     const client = new TemplateRegistryClient({

@@ -154,7 +154,10 @@ export async function reconcileRegistryRecovery({
       ...policy,
       runtimeRoles: Object.values(REGISTRY_ROLES),
       allowedClientPids: [backupPid],
-      transaction: { isolation: 'serializable' as const, readOnly: false },
+      expectedTransaction: {
+        isolation: 'serializable' as const,
+        readOnly: false,
+      },
     };
     await assertPostgresRecoveryQuarantine(client, backup, quarantine).catch(
       () => {

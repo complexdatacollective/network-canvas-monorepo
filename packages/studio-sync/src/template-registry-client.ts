@@ -297,7 +297,7 @@ export class TemplateRegistryClient {
       let complete = false;
       try {
         const entry = await parseEntry(response, 200, this.#origin, context);
-        if (entry.id !== parsedId.data)
+        if (entry.id.toLowerCase() !== parsedId.data.toLowerCase())
           failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
         complete = true;
         return entry;

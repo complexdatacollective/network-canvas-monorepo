@@ -131,6 +131,17 @@ const readDatabaseAdmission = (raw: RawEnv) => {
 const fromAddress = z
   .string()
   .transform((value) => validateEmailAddress(value));
+export const registryMailConfiguration = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('smtp'),
+    url: smtpUrl,
+    from: fromAddress,
+  }),
+  postmarkConfiguration.extend({
+    kind: z.literal('postmark'),
+    from: z.string().transform((value) => validatePostmarkFrom(value)),
+  }),
+]);
 const schema = z.strictObject({
   port: z.number().int().min(1).max(65535),
   publicUrl: originUrl,
@@ -138,17 +149,7 @@ const schema = z.strictObject({
   operatorDatabaseUrl: databaseUrl,
   ...enrollmentSchema.shape,
   authSecret: nonblank.min(32).max(1024),
-  mailer: z.discriminatedUnion('kind', [
-    z.strictObject({
-      kind: z.literal('smtp'),
-      url: smtpUrl,
-      from: fromAddress,
-    }),
-    postmarkConfiguration.extend({
-      kind: z.literal('postmark'),
-      from: z.string().transform((value) => validatePostmarkFrom(value)),
-    }),
-  ]),
+  mailer: registryMailConfiguration,
   magicLinksPerDay: z.number().int().min(1).max(10_000),
   s3: objectStorageSchema,
   limits: RegistryLimitsSchema,
