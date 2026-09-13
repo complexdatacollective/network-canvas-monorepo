@@ -59,6 +59,10 @@ export function useStageNavigationAnalytics({
   const lastPromptIndexRef = useRef(0);
   const lastPromptEnteredAtRef = useRef<number | null>(null);
   const lastPromptCountRef = useRef(1);
+  // Completion analytics keeps an in-memory running total for the current
+  // loaded runtime even after persisted history compacts. A resumed runtime
+  // can only seed this from retained history; discarded intervals cannot be
+  // reconstructed and are not silently presented as lossless lifetime data.
   const totalStageDurationRef = useRef(
     persistedStageTiming?.stageExits
       .filter((exit) => exit.stageType !== 'FinishSession')

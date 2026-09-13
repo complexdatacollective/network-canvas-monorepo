@@ -72,6 +72,11 @@ export type StageTimingPayload = {
   stageExits: StageTimingExit[];
   /** Optional for payloads persisted by runtimes before prompt timing shipped. */
   promptExits?: PromptTimingExit[];
+  /**
+   * Sum of the authored-stage intervals retained in `stageExits`. Once the
+   * 10,000-exit cap discards older intervals, this covers that bounded
+   * observation window rather than the interview's lifetime duration.
+   */
   totalDurationMs?: number;
 };
 

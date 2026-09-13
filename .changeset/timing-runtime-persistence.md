@@ -5,4 +5,4 @@
 'fresco': patch
 ---
 
-Persist privacy-safe stage timing in the interview session contract, including resumed-session totals.
+Persist privacy-safe stage timing in the interview session contract. Stage and prompt history retains the latest 10,000 exits; stored totals describe that bounded observation window, while completion analytics continues its in-memory total for the current loaded runtime.
