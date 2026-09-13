@@ -1,6 +1,7 @@
 import {
   chmod,
   lstat,
+  mkdir,
   mkdtemp,
   readFile,
   readdir,
@@ -106,6 +107,50 @@ describe('Registry deployment configuration', () => {
       expect(env.REGISTRY_SMTP_URL).toBe(options.smtpUrl);
       expect(env.REGISTRY_DOMAIN).toBe(options.domain);
       expect(env.REGISTRY_S3_ACCESS_KEY_ID).toMatch(/^registry_/);
+    });
+  });
+
+  it('keeps writes in the validated root when an ancestor symlink is retargeted', async () => {
+    await fixture(async (root) => {
+      const trusted = join(root, 'trusted');
+      const redirected = join(root, 'redirected');
+      const alias = join(root, 'alias');
+      await mkdir(join(trusted, 'configuration'), { recursive: true });
+      await mkdir(join(redirected, 'configuration', 'deployment', 'registry'), {
+        recursive: true,
+      });
+      await symlink(trusted, alias);
+      let retargeted = false;
+      await configureRegistryDeployment(
+        { ...options, output: join(alias, 'configuration') },
+        templateRoot,
+        {
+          write: async (file, bytes) => {
+            await file.writeFile(bytes);
+            if (!retargeted) {
+              retargeted = true;
+              await rm(alias);
+              await symlink(redirected, alias);
+            }
+          },
+        },
+      );
+      expect(retargeted).toBe(true);
+      expect(await readdir(join(redirected, 'configuration'))).not.toContain(
+        'registry.env',
+      );
+      expect(
+        await readdir(
+          join(redirected, 'configuration', 'deployment', 'registry'),
+        ),
+      ).toEqual([]);
+      expect(
+        (await environment(join(trusted, 'configuration')))
+          .REGISTRY_AUTH_SECRET,
+      ).toBeTruthy();
+      expect(await readdir(join(trusted, 'configuration'))).not.toContain(
+        '.registry-configure.lock',
+      );
     });
   });
 

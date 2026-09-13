@@ -374,8 +374,10 @@ export async function configureRegistryDeployment(
       ),
     })),
   );
-  const output = resolve(options.output);
-  const canonicalOutput = await outputRoot(output);
+  // Validate and use the same canonical path for every later operation. A
+  // mutable symlink in the caller's path must not redirect credential writes
+  // after the real directory and its ancestors have passed the custody check.
+  const output = await outputRoot(resolve(options.output));
   let outputExists = true;
   try {
     await lstat(output);
@@ -410,17 +412,14 @@ export async function configureRegistryDeployment(
           resolve(options.previousConfigurationRoot!),
         );
         await assertSecureConfigurationRoot(previous);
-        if (
-          nested(canonicalOutput, previous) ||
-          nested(previous, canonicalOutput)
-        )
+        if (nested(output, previous) || nested(previous, output))
           throw new Error(
             'Registry transition requires separate configuration roots.',
           );
         return retainedGenerated(await readRegistryConfiguration(previous));
       })()
     : null;
-  if (outputExists) await assertSecureConfigurationRoot(canonicalOutput);
+  if (outputExists) await assertSecureConfigurationRoot(output);
   else await assertSecureConfigurationAncestors(output);
   await mkdir(output, { recursive: true, mode: 0o700 });
   await assertSecureConfigurationRoot(await realpath(output));
