@@ -726,6 +726,7 @@ networks:
     deployment,
     registerConfiguration: (configuration: string) =>
       configurations.add(configuration),
+    startKernelObservers,
     registerCleanup: (cleanup: () => void) => extraCleanup.push(cleanup),
     assertTelemetryQuiet,
     proveKernelTelemetryControls,
@@ -784,6 +785,7 @@ async function exerciseInstall(
       fixture.execute,
     );
     fixture.registerConfiguration(first.configuration);
+    fixture.startKernelObservers(first.configuration);
     await fixture.setup(first);
     fixture.assertTelemetryQuiet(first.configuration);
     fixture.proveKernelTelemetryControls(first.configuration);
@@ -829,6 +831,7 @@ async function exerciseInstall(
         fixture.execute,
       );
       fixture.registerConfiguration(updated.configuration);
+      fixture.startKernelObservers(updated.configuration);
       if (updated.release !== candidate.current.digest)
         throw new Error('Distribution upgrade selected the wrong release.');
       await waitForReady(fixture.origin);

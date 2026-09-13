@@ -180,7 +180,7 @@ const main = async () => {
   fs.writeFileSync('/tmp/kernel-ready', '', { mode: 0o600 });
   process.stdout.write(ready + ' ' + JSON.stringify({ networkNamespace: fs.readlinkSync('/proc/self/ns/net') }) + '\\n');
   setInterval(() => { scan(); }, 25);
-  setInterval(() => { process.stdout.write(liveness + ' ' + (++sequence) + '\\n'); }, 500);
+  setInterval(() => { process.stdout.write(liveness + ' ' + Date.now() + ' ' + (++sequence) + '\\n'); }, 500);
   for (const endpoint of input.controls) {
     if (endpoint.protocol === 'tcp') {
       const socket = net.connect(endpoint.port, endpoint.host);
@@ -396,12 +396,17 @@ export function assertProcessTelemetryInstrumentationPositive(logs: string) {
     );
 }
 
-export function assertKernelTelemetryReady(logs: string) {
+export function assertKernelTelemetryReady(logs: string, now = Date.now()) {
   if (!logs.includes(TELEMETRY_KERNEL_READY_MARKER))
     throw new Error('Kernel egress observer did not become ready.');
-  const liveness = logs.split(TELEMETRY_KERNEL_LIVENESS_MARKER).length - 1;
-  if (liveness < 2)
+  const liveness = logs
+    .split('\n')
+    .filter((line) => line.startsWith(`${TELEMETRY_KERNEL_LIVENESS_MARKER} `))
+    .map((line) => Number(line.split(/\s+/u)[1]));
+  if (liveness.length < 2 || !Number.isFinite(liveness.at(-1)))
     throw new Error('Kernel egress observer did not remain live.');
+  if (now - liveness.at(-1)! > 2_000)
+    throw new Error('Kernel egress observer liveness is stale.');
 }
 
 export function assertNoKernelTelemetryEgress(logs: string) {

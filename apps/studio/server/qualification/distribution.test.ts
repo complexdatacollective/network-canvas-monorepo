@@ -67,15 +67,23 @@ describe('local distribution recovery boundary', () => {
   });
 
   it('requires a live kernel sensor and both transport controls', () => {
-    const logs = `${TELEMETRY_KERNEL_READY_MARKER}\n${TELEMETRY_KERNEL_LIVENESS_MARKER} 1\n${TELEMETRY_KERNEL_LIVENESS_MARKER} 2\n${TELEMETRY_KERNEL_CONTROL_MARKER} {"protocol":"tcp","destination":"172.18.0.2","port":8443}\n${TELEMETRY_KERNEL_CONTROL_MARKER} {"protocol":"udp","destination":"172.18.0.2","port":8443}\n`;
-    expect(() => assertKernelTelemetryReady(logs)).not.toThrow();
+    const now = Date.now();
+    const logs = `${TELEMETRY_KERNEL_READY_MARKER}\n${TELEMETRY_KERNEL_LIVENESS_MARKER} ${now - 500} 1\n${TELEMETRY_KERNEL_LIVENESS_MARKER} ${now - 100} 2\n${TELEMETRY_KERNEL_CONTROL_MARKER} {"protocol":"tcp","destination":"172.18.0.2","port":8443}\n${TELEMETRY_KERNEL_CONTROL_MARKER} {"protocol":"udp","destination":"172.18.0.2","port":8443}\n`;
+    expect(() => assertKernelTelemetryReady(logs, now)).not.toThrow();
     expect(() => assertKernelTelemetryControls(logs)).not.toThrow();
     expect(() => assertNoKernelTelemetryEgress(logs)).not.toThrow();
     expect(() =>
       assertKernelTelemetryReady(
-        logs.replace(`${TELEMETRY_KERNEL_LIVENESS_MARKER} 2`, 'missing'),
+        logs.replace(
+          `${TELEMETRY_KERNEL_LIVENESS_MARKER} ${now - 100} 2`,
+          'missing',
+        ),
+        now,
       ),
     ).toThrow('remain live');
+    expect(() => assertKernelTelemetryReady(logs, now + 2_101)).toThrow(
+      'stale',
+    );
     expect(() =>
       assertKernelTelemetryControls(
         logs.replace('"protocol":"udp"', '"protocol":"missing"'),

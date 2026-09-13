@@ -30,10 +30,19 @@ async function docker(args, options = {}) {
   return result.stdout.trim();
 }
 
+async function assertObserverRunning(name) {
+  assert.equal(
+    await docker(['inspect', '--format', '{{.State.Running}}', name]),
+    'true',
+    'Browser kernel observer is no longer running.',
+  );
+}
+
 async function waitForObserver(name) {
   for (let attempt = 0; attempt < 100; attempt++) {
     const logs = await docker(['logs', name]);
     try {
+      await assertObserverRunning(name);
       assertKernelTelemetryReady(logs);
       assertKernelTelemetryControls(logs);
       return logs;
@@ -61,10 +70,16 @@ export async function launchKernelObservedChromium({
   const namespace = `${network}-namespace`;
   const detector = `${network}-detector`;
   const observer = `${network}-observer`;
+  const servers = new Set();
   const cleanup = async () => {
-    await docker(['rm', '--force', observer, detector, namespace]).catch(
-      () => {},
-    );
+    await docker([
+      'rm',
+      '--force',
+      ...servers,
+      observer,
+      detector,
+      namespace,
+    ]).catch(() => {});
     await docker(['network', 'rm', network]).catch(() => {});
   };
   try {
@@ -95,14 +110,7 @@ export async function launchKernelObservedChromium({
       '-e',
       TELEMETRY_DETECTOR_SOURCE,
     ]);
-    const [gateway, detectorIp, namespacePid] = await Promise.all([
-      docker([
-        'network',
-        'inspect',
-        '--format',
-        '{{(index .IPAM.Config 0).Gateway}}',
-        network,
-      ]),
+    const [detectorIp, namespacePid] = await Promise.all([
       docker([
         'inspect',
         '--format',
@@ -114,7 +122,7 @@ export async function launchKernelObservedChromium({
     const endpoints = JSON.stringify({
       allowed: serverPorts.map((port) => ({
         protocol: 'tcp',
-        host: gateway,
+        host: '127.0.0.1',
         port,
       })),
       controls: [
@@ -190,11 +198,75 @@ export async function launchKernelObservedChromium({
     await waitForObserver(observer);
     return {
       browser,
-      origin: (port) => `http://${gateway}:${port}`,
+      origin: (port) => `http://127.0.0.1:${port}`,
+      async readFile(path) {
+        assert.match(path, /^\/app\//u);
+        return docker(['exec', namespace, 'cat', path]);
+      },
+      async startServer({ port, mode, enabled }) {
+        assert(serverPorts.includes(port));
+        const name = `${network}-server-${port}`;
+        servers.add(name);
+        await docker([
+          'run',
+          '-d',
+          '--name',
+          name,
+          '--network',
+          `container:${namespace}`,
+          '--entrypoint',
+          'node',
+          '--env',
+          'NODE_ENV=production',
+          '--env',
+          'HOST=0.0.0.0',
+          '--env',
+          `PORT=${port}`,
+          '--env',
+          'CLIENT_DIST=/app/client',
+          '--env',
+          `STUDIO_DEPLOYMENT_MODE=${mode}`,
+          '--env',
+          `STUDIO_TELEMETRY=${enabled}`,
+          image,
+          'dist/index.js',
+        ]);
+        return {
+          async waitForStarted() {
+            for (let attempt = 0; attempt < 400; attempt++) {
+              const output = await docker(['logs', name]);
+              if (output.includes('STUDIO_SERVER_STARTED')) return output;
+              const running = await docker([
+                'inspect',
+                '--format',
+                '{{.State.Running}}',
+                name,
+              ]);
+              if (running !== 'true')
+                throw new Error(`Server startup failed: ${output}`);
+              await delay(50);
+            }
+            throw new Error(
+              `Server did not start in the isolated namespace: ${name}`,
+            );
+          },
+          async output() {
+            return docker(['logs', name]);
+          },
+          async stop() {
+            await docker(['rm', '--force', name]).catch(() => {});
+            servers.delete(name);
+          },
+        };
+      },
       async assertQuiet() {
-        assertNoKernelTelemetryEgress(await docker(['logs', observer]));
+        await assertObserverRunning(observer);
+        const logs = await docker(['logs', observer]);
+        assertKernelTelemetryReady(logs);
+        assertNoKernelTelemetryEgress(logs);
       },
       async proveExternalLookalike() {
+        await assertObserverRunning(observer);
         const page = await browser.newPage();
         await page
           .goto(`http://${detectorIp}:9443/`, { waitUntil: 'commit' })
@@ -220,6 +292,7 @@ export async function launchKernelObservedChromium({
         for (let attempt = 0; attempt < 50; attempt++) {
           const logs = await docker(['logs', observer]);
           try {
+            assertKernelTelemetryReady(logs);
             assertKernelTelemetryEgressProtocols(logs);
             return;
           } catch (error) {

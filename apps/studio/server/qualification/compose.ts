@@ -731,6 +731,7 @@ ${telemetryKernelComposeServices(
     overlay,
     pools,
     ready,
+    startKernelObservers,
     assertTelemetryQuiet,
     proveTelemetryProcessInstrumentation,
     proveKernelTelemetryControls,
