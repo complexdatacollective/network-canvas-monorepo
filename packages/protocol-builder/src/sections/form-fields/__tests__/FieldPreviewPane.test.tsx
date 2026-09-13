@@ -50,6 +50,13 @@ const mocks = vi.hoisted(() => {
         type: 'number' as const,
         component: 'Number' as const,
       },
+      // A second attribute the first is indistinguishable from by kind and
+      // control alone — the pair a rebound row is told apart by.
+      yearsKnown: {
+        name: 'Years known',
+        type: 'number' as const,
+        component: 'Number' as const,
+      },
       satisfaction: {
         name: 'Satisfaction',
         type: 'scalar' as const,
@@ -364,6 +371,49 @@ describe('FieldPreviewPane', () => {
 
     const group = screen.getByRole('radiogroup', { name: 'How often?' });
     expect(within(group).queryAllByRole('radio')).toHaveLength(0);
+  });
+
+  it('starts the trial answer again when the row is bound to another attribute', () => {
+    // Two numbers collected by the same control resolve to the same field, so
+    // the kind-and-control pairing alone cannot tell the rebinding apart. The
+    // answer typed for the first must not stand under the second's question
+    // and be checked against the second's rules.
+    const previewOf = (variable: string, prompt: string) => (
+      <Form onSubmit={() => ({ success: true as const })}>
+        <FieldPreviewPane subject={PERSON} item={{ variable, prompt }} />
+      </Form>
+    );
+    const { rerender } = render(previewOf('age', 'Research_Question_Á1'));
+
+    const age = screen.getByRole('spinbutton', {
+      name: 'Research_Question_Á1',
+    });
+    fireEvent.change(age, { target: { value: '42' } });
+    expect(age).toHaveValue(42);
+
+    rerender(previewOf('yearsKnown', 'Research_Question_Á2'));
+
+    expect(
+      screen.getByRole('spinbutton', { name: 'Research_Question_Á2' }),
+    ).toHaveValue(null);
+  });
+
+  it('offers a composer nothing to answer when its attribute has left the codebook', () => {
+    // A composer's row keeps its own control after the attribute it collects
+    // for is deleted from under it, or arrives in an imported codebook without
+    // it. The interview refuses such a row outright — `createFieldMetadata`
+    // throws on a missing codebook entry — so a kind inferred from the control
+    // would preview a working field the participant can never meet.
+    renderPreview(
+      { variable: 'departed', component: 'Number' },
+      { mode: 'composer' },
+    );
+
+    expect(screen.getByText(EMPTY_STATE)).toBeVisible();
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Check response' }),
+    ).not.toBeInTheDocument();
   });
 
   it('offers nothing while the row’s control and its attribute disagree', () => {
