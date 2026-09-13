@@ -25,6 +25,7 @@ describe('audit event registry', () => {
       'message.contact.read@1',
       'message.delivery.delivered@1',
       'message.delivery.failed@1',
+      'message.delivery.status_received@1',
       'message.delivery.suppressed@1',
       'message.delivery.uncertain@1',
       'message.occurrence.dispatched@1',

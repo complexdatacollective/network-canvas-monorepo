@@ -3,6 +3,14 @@ import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
 
+import { createTenantDb } from '@codaco/studio-sync/tenant';
+
+import {
+  runAuditedSystemMutation,
+  type SystemAuditEventContext,
+} from '../audit/command.ts';
+import type { AuditEventInput } from '../audit/events.ts';
+
 const postmark = z.object({
   MessageID: z.uuid(),
   RecordType: z.enum(['Delivery', 'Bounce', 'SpamComplaint']),
@@ -10,6 +18,7 @@ const postmark = z.object({
   BouncedAt: z.string().max(64).optional(),
   ReceivedAt: z.string().max(64).optional(),
   TypeCode: z.number().int().optional(),
+  Metadata: z.strictObject({ deliveryId: z.uuid() }).optional(),
 });
 const twilio = z.object({
   MessageSid: z.string().regex(/^SM[0-9a-f]{32}$/i),
@@ -33,6 +42,29 @@ function equalSecret(actual: string | undefined, expected: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+class DuplicateStatus extends Error {}
+
+function statusEvent(
+  context: SystemAuditEventContext<'Message delivery'>,
+  deliveryId: string,
+  channel: 'email' | 'sms',
+): AuditEventInput {
+  return {
+    ...context,
+    eventVersion: 1,
+    eventType: 'message.delivery.status_received',
+    category: 'participant_data',
+    outcome: 'succeeded',
+    subjectType: null,
+    subjectId: null,
+    subjectLabel: null,
+    resourceType: 'message_delivery',
+    resourceId: deliveryId,
+    resourceLabel: null,
+    details: { channel },
+  };
+}
+
 async function store(
   pool: pg.Pool,
   input: {
@@ -45,53 +77,85 @@ async function store(
     detail: Record<string, string | number>;
   },
 ) {
-  const client = await pool.connect();
+  const located = await pool.query<{ team_id: string }>(
+    input.deliveryId
+      ? `SELECT team_id FROM message_deliveries WHERE id=$1 AND provider=$2 AND send_started_at IS NOT NULL
+           AND (provider_message_id IS NULL OR provider_message_id=$3)`
+      : 'SELECT team_id FROM message_deliveries WHERE provider=$1 AND provider_message_id=$2',
+    input.deliveryId
+      ? [input.deliveryId, input.provider, input.providerMessageId]
+      : [input.provider, input.providerMessageId],
+  );
+  const teamId = located.rows[0]?.team_id;
+  if (!teamId) throw new Error('MESSAGE_STATUS_NOT_READY');
   try {
-    await client.query('BEGIN');
-    const delivery = await client.query<{
-      id: string;
-      team_id: string;
-      channel: 'email' | 'sms';
-      recipient_blind_index: Buffer;
-      blind_index_key_id: string;
-    }>(
-      `SELECT id,team_id,channel,recipient_blind_index,blind_index_key_id FROM message_deliveries
-       WHERE provider=$1 AND provider_message_id=$2 ${input.deliveryId ? 'AND id=$3' : ''} FOR UPDATE`,
-      input.deliveryId
-        ? [input.provider, input.providerMessageId, input.deliveryId]
-        : [input.provider, input.providerMessageId],
-    );
-    const row = delivery.rows[0];
-    if (!row) throw new Error('MESSAGE_STATUS_NOT_FOUND');
-    const inserted = await client.query(
-      `INSERT INTO message_delivery_events(id,team_id,delivery_id,provider,provider_event_id,kind,occurred_at,detail)
+    return await runAuditedSystemMutation(
+      {
+        tenantDb: createTenantDb(pool, teamId),
+        actorLabel: 'Message delivery',
+        requestId: randomUUID(),
+      },
+      async (client, context) => {
+        const delivery = await client.query<{
+          id: string;
+          team_id: string;
+          channel: 'email' | 'sms';
+          recipient_blind_index: Buffer;
+          blind_index_key_id: string;
+        }>(
+          input.deliveryId
+            ? `SELECT id,team_id,channel,recipient_blind_index,blind_index_key_id FROM message_deliveries
+               WHERE id=$1 AND team_id=$2 AND provider=$3 AND send_started_at IS NOT NULL
+                 AND (provider_message_id IS NULL OR provider_message_id=$4) FOR UPDATE`
+            : `SELECT id,team_id,channel,recipient_blind_index,blind_index_key_id FROM message_deliveries
+               WHERE team_id=$1 AND provider=$2 AND provider_message_id=$3 FOR UPDATE`,
+          input.deliveryId
+            ? [
+                input.deliveryId,
+                teamId,
+                input.provider,
+                input.providerMessageId,
+              ]
+            : [teamId, input.provider, input.providerMessageId],
+        );
+        const row = delivery.rows[0];
+        if (!row) throw new Error('MESSAGE_STATUS_NOT_READY');
+        await client.query(
+          `UPDATE message_deliveries SET provider_message_id=coalesce(provider_message_id,$2)
+           WHERE id=$1`,
+          [row.id, input.providerMessageId],
+        );
+        const inserted = await client.query(
+          `INSERT INTO message_delivery_events(id,team_id,delivery_id,provider,provider_event_id,kind,occurred_at,detail)
        VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(delivery_id,provider,provider_event_id) DO NOTHING`,
-      [
-        randomUUID(),
-        row.team_id,
-        row.id,
-        input.provider,
-        input.providerEventId,
-        input.kind,
-        input.occurredAt,
-        JSON.stringify(input.detail),
-      ],
-    );
-    if (
-      inserted.rowCount &&
-      (input.kind === 'bounced' || input.kind === 'complained')
-    ) {
-      await client.query(
-        `INSERT INTO participant_contact_optouts(channel,recipient_blind_index,blind_index_key_id,source)
+          [
+            randomUUID(),
+            row.team_id,
+            row.id,
+            input.provider,
+            input.providerEventId,
+            input.kind,
+            input.occurredAt,
+            JSON.stringify(input.detail),
+          ],
+        );
+        if (inserted.rowCount !== 1) throw new DuplicateStatus();
+        if (input.kind === 'bounced' || input.kind === 'complained') {
+          await client.query(
+            `INSERT INTO participant_contact_optouts(channel,recipient_blind_index,blind_index_key_id,source)
          VALUES($1,$2,$3,'provider') ON CONFLICT(channel,blind_index_key_id,recipient_blind_index) DO NOTHING`,
-        [row.channel, row.recipient_blind_index, row.blind_index_key_id],
-      );
-    }
-    await client.query('COMMIT');
-    return inserted.rowCount === 1;
-  } finally {
-    await client.query('ROLLBACK').catch(() => undefined);
-    client.release();
+            [row.channel, row.recipient_blind_index, row.blind_index_key_id],
+          );
+        }
+        return {
+          result: true,
+          events: [statusEvent(context, row.id, row.channel)],
+        };
+      },
+    );
+  } catch (error) {
+    if (error instanceof DuplicateStatus) return false;
+    throw error;
   }
 }
 
@@ -116,13 +180,20 @@ export async function receivePostmarkStatus(
       : parsed.RecordType === 'Bounce'
         ? 'bounced'
         : 'complained';
-  const timestamp = parsed.DeliveredAt ?? parsed.BouncedAt ?? parsed.ReceivedAt;
-  const occurredAt = timestamp ? new Date(timestamp) : new Date();
+  const timestamp =
+    parsed.RecordType === 'Delivery'
+      ? parsed.DeliveredAt
+      : parsed.RecordType === 'Bounce'
+        ? parsed.BouncedAt
+        : parsed.ReceivedAt;
+  if (!timestamp) throw new Error('MESSAGE_STATUS_INVALID');
+  const occurredAt = new Date(timestamp);
   if (!Number.isFinite(occurredAt.getTime()))
     throw new Error('MESSAGE_STATUS_INVALID');
   const providerEventId = `${parsed.MessageID}:${parsed.RecordType}:${occurredAt.toISOString()}`;
   return store(pool, {
     provider: 'postmark',
+    deliveryId: parsed.Metadata?.deliveryId,
     providerMessageId: parsed.MessageID,
     providerEventId,
     kind,
@@ -148,7 +219,7 @@ export async function receiveTwilioStatus(
   if (new Set(entries.map(([key]) => key)).size !== entries.length)
     throw new Error('MESSAGE_STATUS_INVALID');
   const signed = entries
-    .toSorted(([a], [b]) => a.localeCompare(b))
+    .toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .reduce((value, [key, item]) => value + key + item, options.url);
   const expected = createHmac('sha1', options.authToken)
     .update(signed)
@@ -160,10 +231,12 @@ export async function receiveTwilioStatus(
   const kind =
     parsed.data.MessageStatus === 'delivered'
       ? 'delivered'
-      : parsed.data.MessageStatus === 'failed' ||
-          parsed.data.MessageStatus === 'undelivered'
-        ? 'bounced'
-        : 'queued';
+      : parsed.data.ErrorCode === '21610'
+        ? 'complained'
+        : parsed.data.MessageStatus === 'failed' ||
+            parsed.data.MessageStatus === 'undelivered'
+          ? 'failed'
+          : 'queued';
   return store(pool, {
     deliveryId: options.deliveryId,
     provider: 'twilio',

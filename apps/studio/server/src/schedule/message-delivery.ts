@@ -136,22 +136,32 @@ export async function enqueueOccurrenceMessages(
           scheduled_for: Date;
           expires_at: Date;
           state: string;
+          schedule_state: string;
+          due: boolean;
+          expired: boolean;
           channels: Channel[];
           email_index: Buffer | null;
           phone_index: Buffer | null;
           blind_index_key_id: string | null;
         }>(
-          `SELECT o.study_id, o.participant_id, o.scheduled_for, o.expires_at, o.state, s.channels,
+          `SELECT o.study_id, o.participant_id, o.scheduled_for, o.expires_at, o.state,
+                s.state AS schedule_state, o.scheduled_for <= statement_timestamp() AS due,
+                o.expires_at <= statement_timestamp() AS expired, s.channels,
                 p.email_index, p.phone_index, p.blind_index_key_id
          FROM schedule_occurrences o JOIN study_schedules s ON s.id = o.schedule_id AND s.team_id = o.team_id
          JOIN participants p ON p.id = o.participant_id AND p.study_id = o.study_id AND p.team_id = o.team_id
-         WHERE o.id = $1 AND o.team_id = $2 FOR UPDATE OF o, p`,
+         WHERE o.id = $1 AND o.team_id = $2 FOR UPDATE OF o, s, p`,
           [occurrenceId, teamId],
         );
         const row = result.rows[0];
-        if (!row || row.state !== 'scheduled') throw new NoOccurrenceChange();
-        if (row.scheduled_for > new Date()) throw new NoOccurrenceChange();
-        if (row.expires_at <= new Date()) {
+        if (
+          !row ||
+          row.state !== 'scheduled' ||
+          row.schedule_state !== 'active'
+        )
+          throw new NoOccurrenceChange();
+        if (!row.due) throw new NoOccurrenceChange();
+        if (row.expired) {
           await client.query(
             "UPDATE schedule_occurrences SET state = 'expired' WHERE id = $1",
             [occurrenceId],
@@ -243,7 +253,7 @@ export async function enqueueOccurrenceMessages(
   }
 }
 
-class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDelivery> {
+export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDelivery> {
   readonly queue = QUEUE;
   private readonly options: Options;
   constructor(options: Options) {
@@ -315,7 +325,11 @@ class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDelivery> {
       );
       if (!locked.rows[0]?.locked) return null;
       const updated = await client.query(
-        `UPDATE message_deliveries SET lease_owner=$2, lease_expires_at=clock_timestamp()+make_interval(secs=>$3::float/1000), attempt_count=attempt_count+1 WHERE id=$1 AND ${PENDING}`,
+        `UPDATE message_deliveries d SET lease_owner=$2, lease_expires_at=clock_timestamp()+make_interval(secs=>$3::float/1000), attempt_count=attempt_count+1
+         WHERE d.id=$1 AND ${PENDING} AND NOT EXISTS (SELECT 1 FROM message_deliveries active
+           WHERE active.team_id=d.team_id AND active.participant_id=d.participant_id AND active.id<>d.id
+             AND active.lease_expires_at>clock_timestamp() AND active.sent_at IS NULL AND active.failed_at IS NULL
+             AND active.suppressed_at IS NULL AND active.uncertain_at IS NULL)`,
         [row.id, lease.owner, lease.durationMs],
       );
       if (updated.rowCount !== 1)
@@ -337,8 +351,11 @@ class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDelivery> {
     lease: OutboxLease,
   ): Promise<boolean> {
     const result = await this.options.pool.query(
-      `SELECT 1 FROM message_deliveries d LEFT JOIN schedule_occurrences so ON so.id=d.occurrence_id
-       WHERE d.${OWNED} AND (so.id IS NULL OR so.expires_at > clock_timestamp())
+      `SELECT 1 FROM message_deliveries d
+       LEFT JOIN schedule_occurrences so ON so.id=d.occurrence_id
+       LEFT JOIN study_schedules ss ON ss.id=so.schedule_id AND ss.study_id=so.study_id AND ss.team_id=so.team_id
+       WHERE d.${OWNED} AND d.lease_expires_at>statement_timestamp()
+       AND (so.id IS NULL OR (so.state='dispatched' AND so.expires_at>statement_timestamp() AND ss.state='active'))
        AND NOT EXISTS (SELECT 1 FROM participant_contact_optouts o WHERE o.channel=d.channel AND o.blind_index_key_id=d.blind_index_key_id AND o.recipient_blind_index=d.recipient_blind_index)`,
       [claim.id, lease.owner],
     );
@@ -349,7 +366,8 @@ class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDelivery> {
   }
   async renewLease(claim: ClaimedMessageDelivery, lease: OutboxLease) {
     const result = await this.options.pool.query(
-      `UPDATE message_deliveries SET lease_expires_at=clock_timestamp()+make_interval(secs=>$3::float/1000) WHERE ${OWNED}`,
+      `UPDATE message_deliveries SET lease_expires_at=clock_timestamp()+make_interval(secs=>$3::float/1000)
+       WHERE ${OWNED} AND lease_expires_at>statement_timestamp()`,
       [claim.id, lease.owner, lease.durationMs],
     );
     return result.rowCount === 1;
@@ -397,11 +415,18 @@ class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDelivery> {
         throw new ProtectedDataError();
       const handoff = await this.options.pool.query(
         `UPDATE message_deliveries d SET send_started_at=clock_timestamp(), provider=$3
-         WHERE ${OWNED} AND send_started_at IS NULL AND NOT EXISTS
+         WHERE ${OWNED} AND d.lease_expires_at>statement_timestamp()
+         AND send_started_at IS NULL AND NOT EXISTS
          (SELECT 1 FROM participant_contact_optouts o WHERE o.channel=d.channel AND o.blind_index_key_id=d.blind_index_key_id AND o.recipient_blind_index=d.recipient_blind_index)
          AND EXISTS (SELECT 1 FROM participants p WHERE p.id=d.participant_id AND p.study_id=d.study_id AND p.team_id=d.team_id
            AND p.blind_index_key_id=d.blind_index_key_id
-           AND CASE WHEN d.channel='email' THEN p.email_index ELSE p.phone_index END=d.recipient_blind_index)`,
+           AND CASE WHEN d.channel='email' THEN p.email_index ELSE p.phone_index END=d.recipient_blind_index)
+         AND (d.occurrence_id IS NULL OR EXISTS (
+           SELECT 1 FROM schedule_occurrences o JOIN study_schedules s
+             ON s.id=o.schedule_id AND s.study_id=o.study_id AND s.team_id=o.team_id
+           WHERE o.id=d.occurrence_id AND o.participant_id=d.participant_id
+             AND o.study_id=d.study_id AND o.team_id=d.team_id
+             AND o.state='dispatched' AND o.expires_at>statement_timestamp() AND s.state='active'))`,
         [claim.id, claim.leaseOwner, provider.provider],
       );
       if (handoff.rowCount !== 1) return 'suppressed';

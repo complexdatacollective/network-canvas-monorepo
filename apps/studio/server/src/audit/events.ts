@@ -533,6 +533,7 @@ const MessageDeliveryV1EventSchema = z
       'message.delivery.failed',
       'message.delivery.uncertain',
       'message.delivery.suppressed',
+      'message.delivery.status_received',
     ]),
     subjectType: z.null(),
     subjectId: z.null(),
@@ -1083,6 +1084,17 @@ export const AUDIT_EVENT_REGISTRY = {
     fixture: {
       ...FIXTURE_MESSAGE_DELIVERY_COMMON,
       eventType: 'message.delivery.suppressed',
+    },
+  },
+  'message.delivery.status_received@1': {
+    inputSchema: MessageDeliveryV1EventSchema,
+    title: 'Participant message provider status received',
+    detailFields: ['channel'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_MESSAGE_DELIVERY_COMMON,
+      eventType: 'message.delivery.status_received',
     },
   },
   'team.created@1': {

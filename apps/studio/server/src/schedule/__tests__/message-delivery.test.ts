@@ -18,6 +18,7 @@ import { updateParticipantPii } from '../../pii/participants.ts';
 import {
   createMessageDeliveryDispatcher,
   enqueueOccurrenceMessages,
+  MessageDeliveryAdapter,
 } from '../message-delivery.ts';
 import {
   receivePostmarkStatus,
@@ -201,6 +202,27 @@ describe('message delivery runtime', () => {
         ).rows[0],
       ).toEqual({ n: 0 });
 
+      const paused = await occurrence(fixture);
+      await fixture.scratch.pool.query(
+        `UPDATE study_schedules SET state='paused' WHERE id=(SELECT schedule_id FROM schedule_occurrences WHERE id=$1)`,
+        [paused.occurrenceId],
+      );
+      await expect(
+        enqueueOccurrenceMessages(
+          { pool: fixture.scratch.maintenance, encryptionKeys: fixture.keys },
+          paused.occurrenceId,
+          [
+            {
+              channel: 'email',
+              templateId: paused.templateId,
+              kind: 'prompt',
+              subject: 'Paused',
+              body: 'Paused body',
+            },
+          ],
+        ),
+      ).resolves.toBe(false);
+
       const active = await occurrence(fixture);
       await enqueueOccurrenceMessages(
         { pool: fixture.scratch.maintenance, encryptionKeys: fixture.keys },
@@ -328,15 +350,15 @@ describe('message delivery runtime', () => {
         ],
       );
       const postmarkId = randomUUID();
-      await fixture.scratch.pool.query(
-        "UPDATE message_deliveries SET provider='postmark',provider_message_id=$1,sent_at=clock_timestamp()",
-        [postmarkId],
+      const emailDelivery = await fixture.scratch.pool.query<{ id: string }>(
+        "UPDATE message_deliveries SET provider='postmark',provider_message_id=NULL,send_started_at=clock_timestamp(),sent_at=clock_timestamp() RETURNING id",
       );
       const postmarkBody = JSON.stringify({
         MessageID: postmarkId,
         RecordType: 'Bounce',
         BouncedAt: '2026-09-13T12:00:00.000Z',
         TypeCode: 1,
+        Metadata: { deliveryId: emailDelivery.rows[0]!.id },
       });
       const app = createHttpTestApp(readEnv(), {
         auth: stubAuthService(),
@@ -346,6 +368,20 @@ describe('message delivery runtime', () => {
           postmarkToken: 'x'.repeat(32),
         },
       });
+      expect(
+        (
+          await app.request('/api/v1/message-status/postmark', {
+            method: 'POST',
+            headers: { authorization: `Bearer ${'x'.repeat(32)}` },
+            body: JSON.stringify({
+              MessageID: randomUUID(),
+              RecordType: 'Delivery',
+              DeliveredAt: '2026-09-13T12:00:00.000Z',
+              Metadata: { deliveryId: randomUUID() },
+            }),
+          })
+        ).status,
+      ).toBe(503);
       expect(
         (
           await app.request('/api/v1/message-status/postmark', {
@@ -371,6 +407,17 @@ describe('message delivery runtime', () => {
           body: postmarkBody,
         }),
       ).resolves.toBe(false);
+      await expect(
+        receivePostmarkStatus(fixture.scratch.maintenance, {
+          token: 'x'.repeat(32),
+          authorization: `Bearer ${'x'.repeat(32)}`,
+          body: JSON.stringify({
+            MessageID: randomUUID(),
+            RecordType: 'Bounce',
+            Metadata: { deliveryId: emailDelivery.rows[0]!.id },
+          }),
+        }),
+      ).rejects.toThrow('MESSAGE_STATUS_INVALID');
 
       const sms = await occurrence(fixture, false, 'sms');
       await enqueueOccurrenceMessages(
@@ -387,7 +434,7 @@ describe('message delivery runtime', () => {
         ],
       );
       const delivery = await fixture.scratch.pool.query<{ id: string }>(
-        "UPDATE message_deliveries SET provider='twilio',provider_message_id='SM00000000000000000000000000000000',sent_at=clock_timestamp() WHERE occurrence_id=$1 RETURNING id",
+        "UPDATE message_deliveries SET provider='twilio',provider_message_id=NULL,send_started_at=clock_timestamp(),sent_at=clock_timestamp() WHERE occurrence_id=$1 RETURNING id",
         [sms.occurrenceId],
       );
       const deliveryId = delivery.rows[0]!.id;
@@ -433,7 +480,45 @@ describe('message delivery runtime', () => {
             'SELECT count(*)::int AS n FROM participant_contact_optouts',
           )
         ).rows[0],
+      ).toEqual({ n: 1 });
+
+      const optoutBody =
+        'MessageSid=SM00000000000000000000000000000000&MessageStatus=failed&ErrorCode=21610';
+      const optoutSignature = createHmac('sha1', 'twilio-secret')
+        .update(
+          url +
+            'ErrorCode21610' +
+            'MessageSidSM00000000000000000000000000000000' +
+            'MessageStatusfailed',
+        )
+        .digest('base64');
+      await expect(
+        receiveTwilioStatus(fixture.scratch.maintenance, {
+          authToken: 'twilio-secret',
+          signature: optoutSignature,
+          url,
+          body: optoutBody,
+          deliveryId,
+        }),
+      ).resolves.toBe(true);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            'SELECT count(*)::int AS n FROM participant_contact_optouts',
+          )
+        ).rows[0],
       ).toEqual({ n: 2 });
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            "SELECT provider_message_id,count(*) OVER()::int AS status_events FROM message_deliveries d JOIN audit_events a ON a.resource_id=d.id::text AND a.event_type='message.delivery.status_received' WHERE d.id=$1",
+            [deliveryId],
+          )
+        ).rows[0],
+      ).toEqual({
+        provider_message_id: 'SM00000000000000000000000000000000',
+        status_events: 2,
+      });
     });
   });
 
@@ -553,6 +638,80 @@ describe('message delivery runtime', () => {
       );
       expect(await second.runOnce()).toMatchObject({ claimed: 1, failed: 1 });
       expect(sends).toBe(2);
+    });
+  });
+
+  it('refuses provider handoff after the database lease expires or the schedule pauses', async () => {
+    await participantFixture(async (fixture) => {
+      const first = await occurrence(fixture);
+      await enqueueOccurrenceMessages(
+        { pool: fixture.scratch.maintenance, encryptionKeys: fixture.keys },
+        first.occurrenceId,
+        [
+          {
+            channel: 'email',
+            templateId: first.templateId,
+            kind: 'prompt',
+            subject: 'Boundary',
+            body: 'Never handed off',
+          },
+        ],
+      );
+      await fixture.scratch.pool.query(
+        'UPDATE message_deliveries SET available_at=clock_timestamp()',
+      );
+      let sends = 0;
+      const sender = {
+        async send() {
+          sends += 1;
+          throw new Error('must not send');
+        },
+        close() {},
+      };
+      const adapter = new MessageDeliveryAdapter({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        email: {
+          provider: 'smtp',
+          from: 'studio@example.org',
+          sender,
+        },
+      });
+      const owner = randomUUID();
+      const claim = await adapter.claim({ owner, durationMs: 1 }, 3);
+      if (!claim) throw new Error('expected delivery claim');
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      await expect(
+        adapter.renewLease(claim, { owner, durationMs: 5_000 }),
+      ).resolves.toBe(false);
+      await expect(adapter.deliver(claim)).rejects.toThrow(
+        'Stored encrypted data could not be read',
+      );
+      expect(sends).toBe(0);
+
+      await fixture.scratch.pool.query(
+        `UPDATE message_deliveries SET lease_owner=NULL,lease_expires_at=NULL,available_at=clock_timestamp()
+         WHERE id=$1`,
+        [claim.id],
+      );
+      await fixture.scratch.pool.query(
+        `UPDATE study_schedules SET state='paused' WHERE id=(SELECT schedule_id FROM schedule_occurrences WHERE id=$1)`,
+        [first.occurrenceId],
+      );
+      const dispatcher = createMessageDeliveryDispatcher({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        email: {
+          provider: 'smtp',
+          from: 'studio@example.org',
+          sender,
+        },
+      });
+      await expect(dispatcher.runOnce()).resolves.toMatchObject({
+        claimed: 1,
+        suppressed: 1,
+      });
+      expect(sends).toBe(0);
     });
   });
 });

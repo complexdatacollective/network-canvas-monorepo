@@ -160,12 +160,18 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       const unauthorized =
         error instanceof Error &&
         error.message === 'MESSAGE_STATUS_UNAUTHORIZED';
+      const retryable =
+        error instanceof Error && error.message === 'MESSAGE_STATUS_NOT_READY';
       return c.json(
         {
-          title: unauthorized ? 'Unauthorized' : 'Bad Request',
-          status: unauthorized ? 401 : 400,
+          title: unauthorized
+            ? 'Unauthorized'
+            : retryable
+              ? 'Service Unavailable'
+              : 'Bad Request',
+          status: unauthorized ? 401 : retryable ? 503 : 400,
         },
-        unauthorized ? 401 : 400,
+        unauthorized ? 401 : retryable ? 503 : 400,
       );
     }
   });
@@ -189,12 +195,18 @@ export function createApp(env = readEnv(), deps: CreateAppDeps = {}) {
       const unauthorized =
         error instanceof Error &&
         error.message === 'MESSAGE_STATUS_UNAUTHORIZED';
+      const retryable =
+        error instanceof Error && error.message === 'MESSAGE_STATUS_NOT_READY';
       return c.json(
         {
-          title: unauthorized ? 'Unauthorized' : 'Bad Request',
-          status: unauthorized ? 401 : 400,
+          title: unauthorized
+            ? 'Unauthorized'
+            : retryable
+              ? 'Service Unavailable'
+              : 'Bad Request',
+          status: unauthorized ? 401 : retryable ? 503 : 400,
         },
-        unauthorized ? 401 : 400,
+        unauthorized ? 401 : retryable ? 503 : 400,
       );
     }
   });

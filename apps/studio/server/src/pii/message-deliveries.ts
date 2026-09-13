@@ -59,7 +59,7 @@ function event(
 }
 
 async function selectDelivery(
-  client: pg.PoolClient,
+  client: Pick<pg.PoolClient, 'query'>,
   id: string,
   teamId: string,
   lock = false,
@@ -122,9 +122,7 @@ export async function readRenderedMessage(
   input: { teamId: string; deliveryId: string; leaseOwner: string },
 ): Promise<RenderedMessage> {
   const tenant = createTenantDb(pool, input.teamId);
-  const row = await tenant.transaction((client) =>
-    selectDelivery(client, input.deliveryId, input.teamId),
-  );
+  const row = await selectDelivery(pool, input.deliveryId, input.teamId);
   if (!row) throw new ProtectedDataError();
   const protection = createDataProtection(keys, {
     participant: async () => {
@@ -180,16 +178,17 @@ export async function readDeliveryContact(
   input: { teamId: string; deliveryId: string; leaseOwner: string },
 ): Promise<Buffer> {
   const tenant = createTenantDb(pool, input.teamId);
-  const snapshot = await tenant.transaction(async (client) => {
+  const snapshotClient = await pool.connect();
+  const snapshot = await (async () => {
     const delivery = await selectDelivery(
-      client,
+      snapshotClient,
       input.deliveryId,
       input.teamId,
     );
     if (!delivery) throw new ProtectedDataError();
     const column: 'email_ciphertext' | 'phone_ciphertext' =
       delivery.channel === 'email' ? 'email_ciphertext' : 'phone_ciphertext';
-    const participant = await client.query<{
+    const participant = await snapshotClient.query<{
       pii_key_id: string | null;
       pii_algorithm: string | null;
       ciphertext: Buffer | null;
@@ -199,7 +198,7 @@ export async function readDeliveryContact(
       [delivery.participant_id, delivery.study_id, input.teamId],
     );
     return { delivery, column, participant: participant.rows[0] };
-  });
+  })().finally(() => snapshotClient.release());
   const stored = snapshot.participant;
   if (!stored?.ciphertext || !stored.pii_key_id || !stored.pii_algorithm)
     throw new ProtectedDataError();

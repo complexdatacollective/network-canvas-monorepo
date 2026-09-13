@@ -85,6 +85,7 @@ export function alertCandidate(event: AuditEventInput): AlertPolicyKey | null {
     case 'message.delivery.failed':
     case 'message.delivery.uncertain':
     case 'message.delivery.suppressed':
+    case 'message.delivery.status_received':
       return null;
   }
   return null;
