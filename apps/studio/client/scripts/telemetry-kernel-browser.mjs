@@ -158,8 +158,7 @@ async function waitForObserver(name) {
 
 export async function emitKernelBrowserUdpControl({ address, port }) {
   const connection = new RTCPeerConnection({
-    // A relay-only TURN probe emits the deliberate UDP control without
-    // gathering host candidates and advertising their mDNS names.
+    // The relay-only probe targets only the synthetic TURN detector.
     iceTransportPolicy: 'relay',
     iceServers: [
       {
@@ -203,8 +202,13 @@ export async function launchKernelObservedChromium({
   const detector = `${network}-detector`;
   const observer = `${network}-observer`;
   const servers = new Set();
+  const browsers = new Set();
   const cleanup = async () => {
     const failures = [];
+    for (const browser of browsers) {
+      await browser.close().catch((error) => failures.push(error));
+    }
+    browsers.clear();
     await docker([
       'rm',
       '--force',
@@ -370,13 +374,19 @@ export async function launchKernelObservedChromium({
         );
       }
     };
-    const browser = await chromium.launch({
+    // Only the disposable control process disables WebRTC's synthetic mDNS
+    // announcement. The application gets a fresh browser with default flags.
+    const controlBrowser = await chromium.launch({
       executablePath: wrapper,
       headless: true,
+      args: ['--disable-features=WebRtcHideLocalIpsWithMdns'],
     });
+    browsers.add(controlBrowser);
     await delay(500);
-    await assertBaseline('after Chromium launch, before controls or Studio');
-    const control = await browser.newPage();
+    await assertBaseline(
+      'after control-browser launch, before probes or Studio',
+    );
+    const control = await controlBrowser.newPage();
     await control
       .goto(`http://${detectorIp}:8443/`, { waitUntil: 'commit' })
       .catch(() => {});
@@ -384,8 +394,18 @@ export async function launchKernelObservedChromium({
       address: detectorIp,
       port: 8443,
     });
-    await control.close();
+    await controlBrowser.close();
+    browsers.delete(controlBrowser);
     await assertBaseline('after controls, before Studio');
+    const browser = await chromium.launch({
+      executablePath: wrapper,
+      headless: true,
+    });
+    browsers.add(browser);
+    await delay(500);
+    await assertBaseline(
+      'after default application-browser launch, before Studio',
+    );
     return {
       browser,
       origin: (port) => `http://127.0.0.1:${port}`,
@@ -464,8 +484,7 @@ export async function launchKernelObservedChromium({
         await page.evaluate(
           async ({ address, port }) => {
             const connection = new RTCPeerConnection({
-              // A relay-only TURN probe emits the deliberate UDP control without
-              // gathering host candidates and advertising their mDNS names.
+              // The relay-only probe targets only the synthetic TURN detector.
               iceTransportPolicy: 'relay',
               iceServers: [
                 {
@@ -492,7 +511,10 @@ export async function launchKernelObservedChromium({
           const logs = await docker(['logs', observer]);
           try {
             assertKernelTelemetryReady(logs);
-            assertKernelTelemetryEgressProtocols(logs);
+            assertKernelTelemetryEgressProtocols(logs, {
+              destination: detectorIp,
+              port: 9443,
+            });
             return;
           } catch (error) {
             if (attempt === 49) throw error;
@@ -500,10 +522,7 @@ export async function launchKernelObservedChromium({
           }
         }
       },
-      close: async () => {
-        await browser.close();
-        await cleanup();
-      },
+      close: cleanup,
     };
   } catch (error) {
     await cleanup();
