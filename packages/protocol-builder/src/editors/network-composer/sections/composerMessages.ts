@@ -242,6 +242,13 @@ export const composerMessages = defineMessages({
     description:
       'Refusal shown when two rows of a network composer’s connection list would name the same kind of connection.',
   },
+  connectionQuestionsDropped: {
+    id: 'protocolBuilder.networkCanvas.composerEdgeQuestionsDropped',
+    defaultMessage:
+      '{questionCount, plural, one {Pointing this connection at another kind removed the question it asked: it recorded an attribute the new kind does not have.} other {Pointing this connection at another kind removed the # questions it asked: they recorded attributes the new kind does not have.}}',
+    description:
+      'Shown after the researcher points a row of a network composer’s connection list at a different kind of connection, when questions had already been written for the kind it used to stand for. Those questions record attributes that belong to the old kind alone, so they cannot be carried over. questionCount is how many were removed.',
+  },
   connectionUnnamedPreview: {
     id: 'protocolBuilder.networkCanvas.composerEdgeUnnamedPreview',
     defaultMessage: 'No connection type chosen',

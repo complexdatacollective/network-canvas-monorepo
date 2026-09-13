@@ -17,6 +17,8 @@ import {
   isValidationWithoutValue,
   parseForRule,
   ruleMapIssue,
+  stageRenderingContext,
+  type StageRendering,
   type ValidationMap,
   type ValidationValue,
 } from '../variableValidation.ts';
@@ -72,18 +74,15 @@ type VariableValidationEditorProps = Readonly<{
    */
   'aria-describedby'?: string;
   /**
-   * What this attribute is actually rendered by, where the STAGE owns that
-   * rather than the codebook.
+   * How the STAGE renders the attributes this rule map compares, where the
+   * codebook does not decide it — see `StageRendering`.
    *
-   * A network composer's form field keeps its own `component` and `parameters`
-   * (`ComposerFormFieldSchema`), and the contradiction analyser reads both: a
-   * date window is the picker's own `before`/`after`, and a boolean's domain
-   * is the control's, not the codebook's. Judged against the codebook's pair
-   * instead, a contradiction this one dialog is able to author went
-   * unreported. Omitted wherever the codebook's own control is what the
-   * interview renders, which is every other caller.
+   * Judged against the codebook's renderings instead, a contradiction this one
+   * dialog is able to author went unreported, and a comparison the form's own
+   * renderings make satisfiable was blocked. Omitted wherever the codebook's
+   * own control is what the interview renders, which is every other caller.
    */
-  'stageRendering'?: Readonly<{ component?: unknown; parameters?: unknown }>;
+  'stageRendering'?: StageRendering;
 }>;
 
 const messages = defineMessages({
@@ -258,6 +257,9 @@ export default function VariableValidationEditor({
     () => candidates.map(({ id }) => id),
     [candidates],
   );
+  // Offered against the same view the verdict below is given against: a target
+  // the field's own rendering cannot satisfy is not a choice, and offering it
+  // made the researcher pick it to be told so.
   const legalTargets = useMemo(() => {
     const completeValidation = completeRuleValues(value);
     return new Map(
@@ -267,7 +269,7 @@ export default function VariableValidationEditor({
         .map(({ value: ruleKey }) => [
           ruleKey,
           findLegalReferenceTargets({
-            allVariables: { ...allVariables },
+            ...stageRenderingContext({ ...allVariables }, stageRendering),
             currentVariableId,
             variableType,
             validation: completeValidation,
@@ -281,6 +283,7 @@ export default function VariableValidationEditor({
     candidateIds,
     currentVariableId,
     groups,
+    stageRendering,
     value,
     variableType,
   ]);
@@ -299,10 +302,9 @@ export default function VariableValidationEditor({
     missingTargetRule === undefined
       ? readIssue(
           ruleMapIssue(value, {
-            allVariables: { ...allVariables },
+            ...stageRenderingContext({ ...allVariables }, stageRendering),
             currentVariableId,
             variableType,
-            ...stageRendering,
           }),
           intl,
         )

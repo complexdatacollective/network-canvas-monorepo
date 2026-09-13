@@ -15,10 +15,12 @@ import {
 import { readMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
+  addEdgeType,
   addPersonVariable,
   addRow,
   collectInAnAlterForm,
   composerHolding,
+  composerInAnotherStage,
   edgeFormFieldsOf,
   edgesOf,
   highlightInASociogram,
@@ -277,6 +279,160 @@ describe('what a network composer lets the participant build', () => {
     expect(edgesOf(saved?.stageDocument ?? {})).toEqual([
       { id: KNOWS_ENTRY.id, subject: { entity: 'edge', type: 'family_edge' } },
     ]);
+  });
+
+  /**
+   * The same act, for an entry that arrived naming no type at all.
+   *
+   * `edges` tolerates one — the preview names it, and `ConnectionForms` shows
+   * nothing for it — so its questions are invisible until the researcher gives
+   * it a type, and answering "unchanged" for it saved a form recording
+   * attributes the chosen type does not have.
+   */
+  it('drops them for an entry that arrived naming no type', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        edges: [
+          {
+            id: 'composer-edge-1',
+            form: {
+              fields: [
+                {
+                  id: 'edge-field-1',
+                  variable: 'edgeNotes',
+                  component: 'TextArea',
+                  label: 'Anything else?',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+
+    const dialog = await openRow(harness, 'Edit connection type');
+    await harness.user.click(
+      dialog.getByRole('radio', { name: 'family_edge' }),
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    // The questions were invisible while the entry had no type, so the list
+    // arriving with them under the new one is what the researcher sees.
+    expect(screen.queryByText('Anything else?')).not.toBeInTheDocument();
+    const saved = await harness.submit();
+    expect(edgesOf(saved?.stageDocument ?? {})).toEqual([
+      {
+        id: 'composer-edge-1',
+        subject: { entity: 'edge', type: 'family_edge' },
+      },
+    ]);
+  });
+
+  /**
+   * What it drops is said. The dialog shows the connection type and nothing
+   * else, so the questions go from a list the researcher cannot see while they
+   * press Save — and this section reports it the way the rules editor reports
+   * rules a change of kind takes away.
+   */
+  it('says how many questions a re-pointed connection lost', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        edges: [
+          {
+            ...KNOWS_ENTRY,
+            form: {
+              fields: [
+                {
+                  id: 'edge-field-1',
+                  variable: 'edgeNotes',
+                  component: 'TextArea',
+                  label: 'Anything else?',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    expect(await screen.findByText('Anything else?')).toBeInTheDocument();
+
+    const dialog = await openRow(harness, 'Edit connection type');
+    await harness.user.click(
+      dialog.getByRole('radio', { name: 'family_edge' }),
+    );
+    await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
+
+    const notice = await screen.findByText(
+      'Pointing this connection at another kind removed the question it asked: it recorded an attribute the new kind does not have.',
+    );
+    // In a live region, so it is announced rather than only drawn.
+    expect(notice.closest('[role="status"]')).not.toBeNull();
+  });
+
+  /**
+   * And says it again for the next one.
+   *
+   * Two re-points that each take one question away say the same sentence, and
+   * a live region whose text has not changed announces nothing — so the second
+   * removal was silent to the reader this notice is for. Asserted as the
+   * element rather than the words: what a live region reports is a change to
+   * its content, which the same node standing there is not.
+   */
+  it('says it again when the next re-point takes as many', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        edges: [
+          {
+            ...KNOWS_ENTRY,
+            form: {
+              fields: [
+                {
+                  id: 'edge-field-1',
+                  variable: 'edgeNotes',
+                  component: 'TextArea',
+                  label: 'Anything else?',
+                },
+              ],
+            },
+          },
+          {
+            id: 'composer-edge-2',
+            subject: { entity: 'edge', type: 'family_edge' },
+            form: {
+              fields: [
+                {
+                  id: 'edge-field-2',
+                  variable: 'isActive',
+                  component: 'Boolean',
+                  label: 'Still in touch?',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    // A third kind to move the first entry to, so the second entry's own type
+    // is free for it afterwards.
+    addEdgeType(harness, 'colleague_edge');
+
+    const first = await openRow(harness, 'Edit connection type');
+    await harness.user.click(
+      await first.findByRole('radio', { name: 'colleague_edge' }),
+    );
+    await harness.user.click(first.getByRole('button', { name: 'Save' }));
+    const dropped =
+      'Pointing this connection at another kind removed the question it asked: it recorded an attribute the new kind does not have.';
+    const announced = await screen.findByText(dropped);
+
+    const second = await openRow(harness, 'Edit connection type', 1);
+    await harness.user.click(second.getByRole('radio', { name: 'knows' }));
+    await harness.user.click(second.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.getByText(dropped)).not.toBe(announced));
   });
 
   /**
@@ -1652,6 +1808,11 @@ describe('the rules a composer field authors', () => {
     parameters: { type: 'year', min, max },
   });
 
+  /**
+   * The verdict the editor gives is the one protocol validation gives the
+   * saved stage: a rule the attribute already holds is judged against the
+   * window this FIELD renders it in, not the codebook's.
+   */
   it('judges them against the window the FIELD renders', async () => {
     const harness = renderStageEditor(
       composerHolding({
@@ -1666,9 +1827,9 @@ describe('the rules a composer field authors', () => {
         },
       }),
     );
-    // Both attributes accept the same years in the CODEBOOK, so "same as"
-    // between them is satisfiable there — and unsatisfiable only through the
-    // window this field puts on one of them.
+    // Both attributes accept the same years in the CODEBOOK, so the rule one
+    // of them arrives holding is satisfiable there — and unsatisfiable only
+    // through the window this field puts on it.
     addPersonVariable(harness, 'bornOn', {
       name: 'bornOn',
       type: 'datetime',
@@ -1677,6 +1838,7 @@ describe('the rules a composer field authors', () => {
     addPersonVariable(harness, 'metOn', {
       name: 'metOn',
       type: 'datetime',
+      validation: { sameAs: 'bornOn' },
       ...YEAR_PICKER('1990', '1995'),
     });
 
@@ -1684,21 +1846,17 @@ describe('the rules a composer field authors', () => {
     await harness.user.click(
       await dialog.findByRole('button', { name: 'Set rules for this answer' }),
     );
-    await harness.user.click(
-      await screen.findByRole('checkbox', {
-        name: 'Same as another attribute',
-      }),
-    );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Same as another attribute' }),
-      'bornOn',
-    );
 
     expect(
       await screen.findByText(
         'The comparisons for bornOn and metOn cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
       ),
     ).toBeInTheDocument();
+    // Switching another rule on leaves something to save, so what refuses the
+    // save is the contradiction rather than there being nothing to write.
+    await harness.user.click(
+      screen.getByRole('checkbox', { name: 'Required answer' }),
+    );
     expect(
       screen.getByRole('button', { name: 'Save validation' }),
     ).toBeDisabled();
@@ -1711,19 +1869,26 @@ describe('the rules a composer field authors', () => {
    * control and settings are the ONLY rendering it has — and its rules are
    * authored in the row's draft surface rather than the codebook's. Judged
    * without them, the analyser read the invented answer as accepting any date
-   * and reported nothing.
+   * and offered it a comparison that cannot be satisfied.
    */
   it('judges an invented field’s rules against that field too', async () => {
     const harness = renderStageEditor(
       composerHolding({ nodeForm: { fields: [] } }),
     );
-    // The comparison target, bounded in the CODEBOOK: the two windows can only
-    // be judged against each other once the invented one is read from the row.
+    // One comparison target the invented window can meet and one it cannot,
+    // both bounded in the CODEBOOK: which of them is offered is the whole
+    // question, and a list with neither would answer it by accident.
     addPersonVariable(harness, 'bornOn', {
       name: 'bornOn',
       type: 'datetime',
       component: 'DatePicker',
       parameters: { type: 'full', min: '1990-01-01', max: '1995-12-31' },
+    });
+    addPersonVariable(harness, 'movedOn', {
+      name: 'movedOn',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', min: '2020-01-01', max: '2025-12-31' },
     });
     await switchOnNodeForm(harness);
 
@@ -1748,17 +1913,268 @@ describe('the rules a composer field authors', () => {
         name: 'Same as another attribute',
       }),
     );
-    await harness.user.selectOptions(
-      screen.getByRole('combobox', { name: 'Same as another attribute' }),
-      'bornOn',
+
+    const targets = screen.getByRole('combobox', {
+      name: 'Same as another attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(targets).queryByRole('option', { name: 'bornOn' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      within(targets).getByRole('option', { name: 'movedOn' }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The other half of the same rule: the attribute a comparison POINTS AT is
+   * rendered by its own row of this form too.
+   *
+   * Read through the codebook instead, the editor offered a comparison the
+   * saved stage makes impossible, because the window that makes it impossible
+   * is one a sibling FIELD puts on the target.
+   */
+  it('judges them against the windows the other FIELDS render', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            {
+              id: 'field-1',
+              variable: 'metOn',
+              ...YEAR_PICKER('2020', '2025'),
+            },
+            {
+              id: 'field-2',
+              variable: 'bornOn',
+              ...YEAR_PICKER('1990', '1995'),
+            },
+            {
+              id: 'field-3',
+              variable: 'movedOn',
+              ...YEAR_PICKER('2020', '2025'),
+            },
+          ],
+        },
+      }),
+    );
+    // All three accept the same years in the CODEBOOK, so every comparison
+    // between them is satisfiable there. Only the second field's own window
+    // makes one of them impossible.
+    for (const variableId of ['bornOn', 'metOn', 'movedOn']) {
+      addPersonVariable(harness, variableId, {
+        name: variableId,
+        type: 'datetime',
+        ...YEAR_PICKER('2020', '2025'),
+      });
+    }
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Same as another attribute',
+      }),
+    );
+
+    const targets = screen.getByRole('combobox', {
+      name: 'Same as another attribute',
+    });
+    // The one the sibling row narrows is gone; the one nothing narrows is
+    // still there, so what is being read is the form rather than an empty
+    // answer.
+    await waitFor(() =>
+      expect(
+        within(targets).queryByRole('option', { name: 'bornOn' }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      within(targets).getByRole('option', { name: 'movedOn' }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * And the same reading in the other direction, which is the half a check
+   * that only ever refuses more would get wrong.
+   */
+  it('offers a comparison the fields’ own windows make satisfiable', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            {
+              id: 'field-1',
+              variable: 'metOn',
+              ...YEAR_PICKER('2020', '2025'),
+            },
+            {
+              id: 'field-2',
+              variable: 'bornOn',
+              ...YEAR_PICKER('2020', '2025'),
+            },
+          ],
+        },
+      }),
+    );
+    // Disjoint in the CODEBOOK, and brought together by the window the second
+    // field renders its attribute with.
+    addPersonVariable(harness, 'bornOn', {
+      name: 'bornOn',
+      type: 'datetime',
+      ...YEAR_PICKER('1990', '1995'),
+    });
+    addPersonVariable(harness, 'metOn', {
+      name: 'metOn',
+      type: 'datetime',
+      ...YEAR_PICKER('2020', '2025'),
+    });
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Same as another attribute',
+      }),
+    );
+    const targets = await screen.findByRole('combobox', {
+      name: 'Same as another attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(targets).getByRole('option', { name: 'bornOn' }),
+      ).toBeInTheDocument(),
+    );
+    await harness.user.selectOptions(targets, 'bornOn');
+
+    // Taken, with nothing to report: the rule is satisfiable in the renderings
+    // the saved form actually carries.
+    expect(
+      screen.queryByText(/cannot be satisfied within their allowed ranges/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Save validation' }),
+    ).toBeEnabled();
+  });
+
+  /**
+   * A boolean's domain is the control's too, which the analyser reads only
+   * from a caller that has settled every judged attribute's rendering
+   * (`stageEffectiveComponents`). Left unsettled, every boolean reads as
+   * accepting both answers, and two the form pins to the same one still
+   * accepted "different from".
+   */
+  it('judges a boolean’s answers against the controls the fields render', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            { id: 'field-1', variable: 'isKin', component: 'Boolean' },
+            { id: 'field-2', variable: 'isClose', component: 'Boolean' },
+          ],
+        },
+      }),
+    );
+    // Each field offers the participant one button, so each answer can only be
+    // `true` — and two answers that are both `true` cannot differ. The rule
+    // arrives on the attribute, as it does from a codebook authored before the
+    // form chose these controls.
+    addPersonVariable(harness, 'isKin', {
+      name: 'isKin',
+      type: 'boolean',
+      options: [{ label: 'Yes', value: true }],
+      validation: { differentFrom: 'isClose' },
+    });
+    addPersonVariable(harness, 'isClose', {
+      name: 'isClose',
+      type: 'boolean',
+      options: [{ label: 'Yes', value: true }],
+    });
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
     );
 
     expect(
       await screen.findByText(
-        'The comparisons for bornOn and this attribute cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+        'The rules require different answers for isClose and isKin, but their allowed ranges force the same value. Widen a range or change the comparison.',
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+    // Switching another rule on leaves something to save, so what refuses the
+    // save is the contradiction rather than there being nothing to write.
+    await harness.user.click(
+      screen.getByRole('checkbox', { name: 'Required answer' }),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Save validation' }),
+    ).toBeDisabled();
+  });
+
+  /**
+   * And not against a control this form does not choose.
+   *
+   * A composer field's control lives on the stage, so an attribute another
+   * composer overrides is not asked for with the codebook's control anywhere —
+   * reading it there pins a boolean this form never renders, and refuses a
+   * comparison the protocol accepts. Protocol validation drops such attributes
+   * from the judged set (`schema.ts`'s `unknownRenderingFor`); so does this.
+   */
+  it('ignores a rendering only another stage decides', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            { id: 'field-1', variable: 'isKin', component: 'Boolean' },
+            { id: 'field-2', variable: 'isPinned', component: 'Boolean' },
+          ],
+        },
+      }),
+    );
+    // All three are declared in the codebook as a choice of one value, so all
+    // three are pinned to `true` wherever that declaration is what renders
+    // them.
+    for (const variableId of ['isKin', 'isPinned', 'isClose']) {
+      addPersonVariable(harness, variableId, {
+        name: variableId,
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+      });
+    }
+    // `isClose` is asked for by another composer, with a control that offers
+    // both answers — which this editor cannot see, and must not guess at.
+    composerInAnotherStage(harness, [
+      { id: 'other-field-1', variable: 'isClose', component: 'Toggle' },
+    ]);
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Different from another attribute',
+      }),
+    );
+
+    const targets = screen.getByRole('combobox', {
+      name: 'Different from another attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(targets).getByRole('option', { name: 'isClose' }),
+      ).toBeInTheDocument(),
+    );
+    // The one THIS form pins is still refused, so what changed is the reach of
+    // the reading rather than the reading itself.
+    expect(
+      within(targets).queryByRole('option', { name: 'isPinned' }),
+    ).not.toBeInTheDocument();
   });
 });
 
