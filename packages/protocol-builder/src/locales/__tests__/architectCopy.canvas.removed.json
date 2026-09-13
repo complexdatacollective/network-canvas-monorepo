@@ -1,0 +1,21 @@
+[
+  "protocolBuilder.anonymisation.explanationBodyHint",
+  "protocolBuilder.anonymisation.explanationHeadingHint",
+  "protocolBuilder.geospatial.colorOptionLabel",
+  "protocolBuilder.narrativePedigree.atRiskDescription",
+  "protocolBuilder.narrativePedigree.diseaseColorOption",
+  "protocolBuilder.narrativePedigree.diseasesDescription",
+  "protocolBuilder.narrativePedigree.sourceDescription",
+  "protocolBuilder.networkCanvas.presetHighlightHint",
+  "protocolBuilder.networkCanvas.presetIdentityDescription",
+  "protocolBuilder.networkCanvas.presetPositionsDescription",
+  "protocolBuilder.networkCanvas.promptCreateEdgeHint",
+  "protocolBuilder.networkCanvas.promptDisplayEdgesHint",
+  "protocolBuilder.networkCanvas.promptSortHint",
+  "protocolBuilder.networkCanvas.sociogramPromptsEmptyState",
+  "protocolBuilder.pedigree.censusDescription",
+  "protocolBuilder.pedigree.edgeTypeHint",
+  "protocolBuilder.pedigree.memberFormFieldHint",
+  "protocolBuilder.pedigree.nodeTypeHint",
+  "protocolBuilder.pedigree.nominationFieldHint"
+]

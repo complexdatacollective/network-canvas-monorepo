@@ -81,7 +81,7 @@ Rules that keep this working:
 - **Publishing** — each published package keeps its live `exports` on `src/` and
   carries a dist-pointing override in `publishConfig`; `changeset publish`
   delegates to `pnpm publish`, which applies the swap at pack time.
-  `scripts/verify-publish-exports.mjs` (run in the release job, or manually
+  `scripts/release/verify-publish-exports.mjs` (run in the release job, or manually
   after `pnpm build`) asserts every packed tarball resolves into `dist/`.
   fresco-ui's 140-entry map pair is generated: after adding/removing a subpath
   in `exports`, run `pnpm --filter @codaco/fresco-ui sync-exports`; a vitest
@@ -96,12 +96,12 @@ Rules that keep this working:
   Packages PR then fails the npm version guard. Instead, from a clean checkout
   of the merged commit, with an npm token that may create packages in the
   scope, run
-  `pnpm --filter <pkg> build && node scripts/verify-publish-exports.mjs <pkg> && pnpm --filter <pkg> publish --access public`,
+  `pnpm --filter <pkg> build && node scripts/release/verify-publish-exports.mjs <pkg> && pnpm --filter <pkg> publish --access public`,
   push the `<pkg>@<version>` tag the lane would have created, and add the
   package's trusted publisher on npmjs.com (package Settings → Trusted
   publishing: repository `complexdatacollective/network-canvas-monorepo`,
   workflow `ci-and-release.yml`, environment `npm-publish`).
-  `scripts/check-first-publications.mjs` refuses the Version Packages merge
+  `scripts/release/check-first-publications.mjs` refuses the Version Packages merge
   and the release job's publish path until npm knows every lane package.
 - **No `~/` path aliases in package source.** Consumers typecheck package
   source inside their own TS program, where the consumer's `paths` win — an
@@ -206,16 +206,16 @@ Netlify replaces them, and rejects Netlify's SPA `_redirects` outright, so the
 deploy-time transform in
 `apps/architect/scripts/write-cloudflare-archive-config.mjs` reshapes a copy.
 Never "fix" `apps/architect/public/_headers` for Cloudflare — its Netlify shape
-is asserted in CI by `scripts/assert-pwa-cache-headers.mjs`. Details in
+is asserted in CI by `scripts/build/assert-pwa-cache-headers.mjs`. Details in
 `apps/architect/RELEASING.md`.
 
 #### Apps that release by mirroring
 
 Fresco and the two classic apps are developed here but ship from their own
-GitHub repositories. `scripts/mirror-app.mjs` replaces the external repo's
+GitHub repositories. `scripts/release/mirror-app.mjs` replaces the external repo's
 default branch with the app's source as a single linear-append commit, resolving
 every `workspace:`/`catalog:` specifier to a registry version
-(`scripts/resolve-manifest.mjs`) so the mirrored tree installs standalone. The
+(`scripts/release/resolve-manifest.mjs`) so the mirrored tree installs standalone. The
 external repository is a mirror, never a source of truth — changes made there
 are overwritten by the next release.
 

@@ -96,11 +96,11 @@ describe('the tasks a sociogram sets', () => {
 
     const prompt = await openPrompt(harness);
     await harness.user.click(
-      prompt.getByRole('option', { name: /Mark the node/ }),
+      prompt.getByRole('option', { name: /Attribute toggling/ }),
     );
     await chooseAttributeById(
       harness.user,
-      await promptAttributeField('Attribute marked'),
+      await promptAttributeField('Boolean attribute'),
       'highlighted',
     );
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
@@ -126,7 +126,7 @@ describe('the tasks a sociogram sets', () => {
 
     const prompt = await openPrompt(harness, 1);
     await harness.user.click(
-      prompt.getByRole('option', { name: /Create a connection/ }),
+      prompt.getByRole('option', { name: /Edge creation/ }),
     );
     await harness.user.click(
       await prompt.findByRole('radio', { name: /family_edge/ }),
@@ -160,11 +160,11 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
 
     const prompt = await openPrompt(harness);
     await harness.user.click(
-      prompt.getByRole('option', { name: /Mark the node/ }),
+      prompt.getByRole('option', { name: /Attribute toggling/ }),
     );
     await chooseAttributeById(
       harness.user,
-      await promptAttributeField('Attribute marked'),
+      await promptAttributeField('Boolean attribute'),
       'highlighted',
     );
 
@@ -174,7 +174,7 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
     // the row's own gate has to refuse from. Waited for rather than assumed:
     // a save clicked before the change lands is refused by nothing, which is
     // the defect this test exists for.
-    await within(await promptAttributeField('Attribute marked')).findByText(
+    await within(await promptAttributeField('Boolean attribute')).findByText(
       'highlighted — this attribute is not available here',
     );
 
@@ -392,7 +392,7 @@ describe('a prompt that only highlights its nodes', () => {
 
     const prompt = await openPrompt(harness);
     await harness.user.click(
-      prompt.getByRole('option', { name: /Create a connection/ }),
+      prompt.getByRole('option', { name: /Edge creation/ }),
     );
     await harness.user.click(
       await prompt.findByRole('radio', { name: /family_edge/ }),
@@ -441,7 +441,7 @@ describe('a prompt that draws a connection it does not show', () => {
 
     const prompt = await openPrompt(harness);
     expect(
-      prompt.getByRole('option', { name: /Create a connection/ }),
+      prompt.getByRole('option', { name: /Edge creation/ }),
     ).toHaveAttribute('aria-selected', 'true');
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
@@ -523,8 +523,8 @@ describe('what tapping a node does, against what the prompt already said', () =>
   });
 
   const NOTHING = /Nothing/;
-  const CREATE_EDGE = /Create a connection/;
-  const MARK = /Mark the node/;
+  const CREATE_EDGE = /Edge creation/;
+  const MARK = /Attribute toggling/;
 
   type Case = Readonly<{
     /** What the protocol holds for this prompt's `highlight`. */
@@ -648,7 +648,7 @@ describe('what tapping a node does, against what the prompt already said', () =>
       if (tap === MARK && scenario.marks !== undefined) {
         await chooseAttributeById(
           harness.user,
-          await promptAttributeField('Attribute marked'),
+          await promptAttributeField('Boolean attribute'),
           scenario.marks,
         );
       }
@@ -735,7 +735,7 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
     ).find(([, variable]) => variable.name === 'second_canvas')?.[0];
     await waitFor(() =>
       expect(
-        within(attributeField('Position attribute')).getByText('second_canvas'),
+        within(attributeField('Layout attribute')).getByText('second_canvas'),
       ).toBeInTheDocument(),
     );
 
@@ -757,6 +757,49 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
  * who the participant is asked about first, so a stage that holds one and an
  * editor that cannot show it is an editor that quietly discards a decision.
  */
+/**
+ * A tick list whose choices all come from the codebook can have none, and a
+ * fieldset with no boxes in it reads as an editor that failed to draw rather
+ * than as a protocol with nothing to offer. The released Architect disabled
+ * the whole section instead; the package says why.
+ */
+describe('a connections list with nothing in it', () => {
+  it('says why, rather than rendering an empty fieldset', async () => {
+    const harness = renderStageEditor(
+      sociogramHolding({
+        id: 'sociogram-prompt-1',
+        text: 'Place the people who know each other close together',
+        layout: { layoutVariable: 'layout' },
+      }),
+    );
+
+    // Every edge type gone, so the prompt's own list has nothing to offer and
+    // holds no reference of its own to report as lost.
+    harness.receiveCodebookUpdate({ edge: { knows: null, family_edge: null } });
+
+    const prompt = await openPrompt(harness);
+
+    expect(
+      await prompt.findByText(
+        'Nothing to choose from yet. Create what this list offers in the codebook first.',
+      ),
+    ).toBeInTheDocument();
+    expect(prompt.queryByRole('checkbox')).toBeNull();
+
+    // Inside the field's own group, which still answers to the label. A
+    // sentence rendered in place of the group instead leaves the field with
+    // no accessible name at all — the `<label for>` above it can name a
+    // fieldset through `aria-labelledby`, and names nothing at all when what
+    // is there is a paragraph.
+    const list = prompt.getByRole('group', { name: 'Edge types' });
+    expect(
+      within(list).getByText(
+        'Nothing to choose from yet. Create what this list offers in the codebook first.',
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('the order a sociogram hands unplaced nodes over in', () => {
   const SORTED_PROMPT = {
     id: 'sociogram-prompt-1',
@@ -797,7 +840,7 @@ describe('the order a sociogram hands unplaced nodes over in', () => {
     );
     await harness.user.click(
       await prompt.findByRole('button', {
-        name: 'Add a rule for the order unplaced nodes are handed over in',
+        name: 'Add new sort rule',
       }),
     );
     await harness.user.selectOptions(

@@ -38,9 +38,10 @@ test('creates a valid DyadCensus stage from scratch', async ({
   // The shared prompts section's row dialog, filled with what a Dyad Census
   // prompt is made of (DyadCensusPromptsSection.tsx): the family's
   // `PromptTextField` (`label: 'Prompt text'`), and a `CreateEdgeField` —
-  // "Affirmative answer", holding a "Connection created" picker over the
-  // codebook's edge types and a "Create a new connection type" button that
-  // opens the codebook entity editor. That editor's only field a researcher
+  // rendered bare inside the "Prompt configuration" group, as Architect's is,
+  // holding a "Created edge type" picker over the codebook's edge types and a
+  // "Create a new connection type" button that opens the codebook entity
+  // editor. That editor's only field a researcher
   // must supply is "Edge type name" (its colour is seeded from
   // `NEW_ENTITY_DRAFT.edge`), and it commits with "Save entity".
   await addPrompt(editor.field('prompts'), async () => {

@@ -10,8 +10,8 @@ import { composerHolding } from './composerFixtures.tsx';
  *
  * Architect sets `labelHidden` on both mounts of `EditableAttributesList`
  * (`Form/arrayFields/EditableAttributesList.tsx:312,341` at `74a07e626`); the
- * package showed a second, differently worded label ("Form fields") under a
- * section headed "Node attributes".
+ * package showed a second, differently worded label ("Form fields") under the
+ * section, which P1c renamed to Architect's own "Editable attributes".
  */
 describe('the composer’s node attribute list', () => {
   /** A composer whose node form already holds a field, so the section is open. */
@@ -23,7 +23,7 @@ describe('the composer’s node attribute list', () => {
         },
       }),
     );
-    return await screen.findByRole('list', { name: 'Node attributes' });
+    return await screen.findByRole('list', { name: 'Editable attributes' });
   };
 
   it('is named after the section that holds it', async () => {
@@ -42,7 +42,7 @@ describe('the composer’s node attribute list', () => {
     // asserts the label element carries it — not that the words are absent,
     // which would also pass if the field lost its accessible name.
     expect(
-      within(field as HTMLElement).getByText('Node attributes', {
+      within(field as HTMLElement).getByText('Editable attributes', {
         selector: 'label',
       }),
     ).toHaveClass('sr-only');

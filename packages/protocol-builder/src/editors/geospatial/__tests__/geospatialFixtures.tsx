@@ -87,4 +87,6 @@ export const openPrompt = async (
  * layer arriving. The picker renders a sentence in its place until then.
  */
 export const awaitLayerRead = async (): Promise<HTMLElement> =>
-  waitFor(() => screen.getByRole('combobox', { name: 'Recorded property' }));
+  waitFor(() =>
+    screen.getByRole('combobox', { name: 'Map selection property' }),
+  );

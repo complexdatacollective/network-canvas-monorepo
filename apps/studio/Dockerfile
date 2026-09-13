@@ -37,7 +37,7 @@ COPY --from=pruner /repo/out/full/ .
 # outside both package roots. Copy the exact candidate bytes from the pruner
 # stage so the client and server Vite configurations resolve the same plugins.
 COPY --from=pruner /repo/apps/studio/scripts/telemetry-plugins.ts ./apps/studio/scripts/telemetry-plugins.ts
-COPY --from=pruner /repo/scripts/posthog-source-maps-plugin.ts ./scripts/posthog-source-maps-plugin.ts
+COPY --from=pruner /repo/scripts/build/posthog-source-maps-plugin.ts ./scripts/build/posthog-source-maps-plugin.ts
 RUN pnpm --filter @codaco/studio-client build && pnpm --filter @codaco/studio-server build
 RUN pnpm --filter @codaco/studio-server deploy --prod --legacy /deploy
 

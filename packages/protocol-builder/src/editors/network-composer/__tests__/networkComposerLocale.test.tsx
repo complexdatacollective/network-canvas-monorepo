@@ -42,16 +42,16 @@ describe('the network composer sections, read in Spanish', () => {
     // halfway.
     await waitFor(() => expect(harness.outline()).toHaveLength(3));
     expect(harness.outline().map((section) => section.title)).toEqual([
-      'Añadir y organizar nodos',
-      'Atributos de nodo',
-      'Vínculos',
+      'Configuración de nodos',
+      'Atributos editables',
+      'Configuración de vínculos',
     ]);
     // Each attribute is chosen in a window its field's trigger opens, so the
     // control is named by the field's own label — which is what
     // `attributeField` finds, and what fails here if a section held an English
     // string instead.
     const quickAdd = attributeField(
-      'Atributo que se rellena al añadir un nodo',
+      'Crear o seleccionar un atributo para el formulario de adición rápida',
     );
     // The stage arrives holding one, so its trigger says the word for changing
     // that choice rather than the word for making one: the picker's own words
@@ -62,7 +62,9 @@ describe('the network composer sections, read in Spanish', () => {
         within(quickAdd).getByRole('button', { name: 'Cambiar atributo' }),
       ).toBeInTheDocument(),
     );
-    expect(attributeField('Atributo de agrupación')).toBeInTheDocument();
+    expect(
+      attributeField('Crear o seleccionar un atributo categórico para agrupar'),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -105,11 +107,11 @@ describe('the network composer sections, read in Spanish', () => {
     // The type's name comes from the protocol, so this is also where a
     // placeholder left out of the Spanish would render as `{typeName}`.
     expect(
-      await screen.findByText('Atributos de los vínculos «knows»'),
+      await screen.findByText('Atributos de vínculo: knows'),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
-        name: 'Crear nuevo campo de atributo para los vínculos «knows»',
+        name: 'Crear nuevo atributo para knows',
       }),
     ).toBeInTheDocument();
   });
