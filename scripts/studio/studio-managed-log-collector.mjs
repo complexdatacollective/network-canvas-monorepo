@@ -24,7 +24,10 @@ const NEW_RELIC_FREE_INGEST_LIMIT_BYTES = 100_000_000_000;
 const BASIS_POINTS = 10_000;
 const SHA256 = /^[a-f0-9]{64}$/;
 const FLY_NAME = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-const SECRET = /^[\x21-\x7e]{32,4096}$/;
+// `fly tokens create readonly` returns the complete NATS password in this
+// scheme-and-token form. Preserve its one required space exactly.
+const FLY_READONLY_TOKEN = /^FlyV1 fm2_[\x21-\x7e]{22,4086}$(?![\s\S])/;
+const SECRET = /^[\x21-\x7e]{32,4096}$(?![\s\S])/;
 const ENVIRONMENT_KEYS = Object.freeze([
   'FLY_ORG',
   'FLY_NATS_TOKEN',
@@ -179,7 +182,11 @@ export function managedLogCollectorConfigurationFromEnvironment(environment) {
     finalSignalReserveBytes,
     flyApplications: applications,
     flyOrg: requiredEnvironmentString(environment, 'FLY_ORG', FLY_NAME),
-    flyToken: requiredEnvironmentString(environment, 'FLY_NATS_TOKEN', SECRET),
+    flyToken: requiredEnvironmentString(
+      environment,
+      'FLY_NATS_TOKEN',
+      FLY_READONLY_TOKEN,
+    ),
     licenseKey: requiredEnvironmentString(
       environment,
       'NEW_RELIC_LICENSE_KEY',
@@ -268,7 +275,7 @@ function validatedConfiguration(configuration) {
     !integer(configuration.storedExpansionBasisPoints, BASIS_POINTS) ||
     configuration.storedExpansionBasisPoints > 1_000_000 ||
     !FLY_NAME.test(configuration.flyOrg) ||
-    !SECRET.test(configuration.flyToken) ||
+    !FLY_READONLY_TOKEN.test(configuration.flyToken) ||
     !SECRET.test(configuration.licenseKey) ||
     !SECRET.test(configuration.userKey) ||
     !SECRET.test(configuration.anchorToken) ||
@@ -505,6 +512,7 @@ export async function runManagedLogCollector(
       const subscription = connection.subscribe(`logs.${application}.iad.*`, {
         slow: maximumQueueRecords,
         callback: (error, message) => {
+          if (stopped || fatal) return;
           if (error || !message) {
             fail('STUDIO_COLLECTOR_NATS_UNAVAILABLE');
             return;

@@ -21,6 +21,7 @@ import {
 
 const observedAt = Date.parse('2026-09-13T12:34:57.000Z');
 const canary = 'private-team-SecretToken';
+const flyReadOnlyToken = `FlyV1 fm2_${'A'.repeat(100)}`;
 const temporaryDirectories = [];
 
 afterEach(() => {
@@ -33,7 +34,7 @@ function environment(overrides = {}) {
   temporaryDirectories.push(directory);
   return {
     FLY_ORG: 'network-canvas',
-    FLY_NATS_TOKEN: 'synthetic-fly-token'.repeat(3),
+    FLY_NATS_TOKEN: flyReadOnlyToken,
     STUDIO_FLY_PRODUCTION_APP: 'nc-studio-production',
     STUDIO_FLY_STAGING_APP: 'nc-studio-staging',
     REGISTRY_FLY_PRODUCTION_APP: 'nc-registry-production',
@@ -270,7 +271,7 @@ test('subscribes with Fly credentials and forwards only the sanitized compositio
   assert.deepEqual(f.nats.connectOptions, {
     servers: 'nats://[fdaa::3]:4223',
     user: 'network-canvas',
-    pass: 'synthetic-fly-token'.repeat(3),
+    pass: flyReadOnlyToken,
     name: 'network-canvas-managed-log-collector',
     reconnect: true,
     maxReconnectAttempts: 60,
@@ -396,6 +397,41 @@ test('bounded queue overflow closes the subscription instead of dropping private
   assert.equal(logRequests, 0);
 });
 
+test('shutdown refuses late intake while draining an admitted request', async () => {
+  let releaseUsage;
+  const waitingUsage = new Promise((resolve) => {
+    releaseUsage = resolve;
+  });
+  let usageRequests = 0;
+  let logRequests = 0;
+  const f = await fixture({}, async (url) => {
+    if (url === 'https://api.newrelic.com/graphql') {
+      usageRequests += 1;
+      return waitingUsage;
+    }
+    logRequests += 1;
+    return new Response(null, { status: 202 });
+  });
+  const source = flyLog({
+    level: 30,
+    time: '2026-09-13T12:34:56.789Z',
+    event: 'http_request',
+    request_id: '123e4567-e89b-42d3-a456-426614174000',
+    route: '/healthz',
+    method: 'GET',
+    status: 200,
+    duration_ms: 1.25,
+  });
+  f.nats.emit(source.subject, source.payload);
+  await waitFor(() => usageRequests === 1);
+  f.abort.abort();
+  f.nats.emit(source.subject, source.payload);
+  releaseUsage(usageResponse());
+  assert.deepEqual(await f.run, { outcome: 'stopped' });
+  assert.equal(usageRequests, 1);
+  assert.equal(logRequests, 1);
+});
+
 test('environment contract rejects an unmeasured or free-limit configuration', () => {
   for (const changes of [
     { STUDIO_NEW_RELIC_STORED_EXPANSION_BPS: '9999' },
@@ -418,6 +454,47 @@ test('environment contract accepts the non-plain process environment shape', () 
     managedLogCollectorConfigurationFromEnvironment(inherited).accountId,
     1234567,
   );
+});
+
+test('environment contract preserves the documented Fly read-only token', () => {
+  const configuration = managedLogCollectorConfigurationFromEnvironment(
+    environment({ FLY_NATS_TOKEN: flyReadOnlyToken }),
+  );
+  assert.equal(configuration.flyToken, flyReadOnlyToken);
+});
+
+test('environment contract rejects line terminators appended to credentials', () => {
+  for (const changes of [
+    { FLY_NATS_TOKEN: `${flyReadOnlyToken}\n` },
+    { FLY_NATS_TOKEN: `${flyReadOnlyToken}\r` },
+    { NEW_RELIC_LICENSE_KEY: `${'license-key'.repeat(4)}\n` },
+    { NEW_RELIC_USER_KEY: `${'user-key'.repeat(5)}\r` },
+    {
+      OBSERVABILITY_ANCHOR_FORWARDER_TOKEN: `${'anchor-token'.repeat(4)}\n`,
+    },
+  ]) {
+    assert.throws(
+      () =>
+        managedLogCollectorConfigurationFromEnvironment(environment(changes)),
+      /STUDIO_COLLECTOR_CONFIGURATION_INVALID/,
+    );
+  }
+});
+
+test('direct runtime configuration rejects appended credential bytes', async () => {
+  const configuration =
+    managedLogCollectorConfigurationFromEnvironment(environment());
+  for (const changes of [
+    { flyToken: `${configuration.flyToken}\n` },
+    { licenseKey: `${configuration.licenseKey}\r` },
+    { userKey: `${configuration.userKey}\n` },
+    { anchorToken: `${configuration.anchorToken}\r` },
+  ]) {
+    await assert.rejects(
+      runManagedLogCollector({ ...configuration, ...changes }),
+      /STUDIO_COLLECTOR_CONFIGURATION_INVALID/,
+    );
+  }
 });
 
 test('budget binding changes with measured expansion evidence', () => {
