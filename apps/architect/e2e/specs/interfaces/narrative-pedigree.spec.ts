@@ -13,6 +13,7 @@ import { emptyProtocol } from '../../fixtures/seed.js';
 import { stageSnapshotJson } from '../../helpers/normalize-stage.js';
 import { readProtocolJson } from '../../helpers/read-store.js';
 import { addPrompt } from '../../pageobjects/editor-sections/prompts.js';
+import { chooseAttribute } from '../../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../../pageobjects/stage-editor.js';
 
 const SOURCE_STAGE_ID = 'family-pedigree-1';
@@ -236,12 +237,15 @@ test('creates a valid NarrativePedigree stage from scratch', async ({
       // The attribute picker is deliberately pick-only: a disease READS an
       // attribute the source pedigree records, so there is no create
       // affordance beside it (DiseaseRow.tsx says so, and the picker's empty
-      // message points at the pedigree's nomination prompts instead). It lists
-      // only attributes a nomination prompt of the source stage records —
-      // `hasConditionX`, seeded above — as a native select.
-      await architectPage
-        .getByRole('combobox', { name: 'Node attribute' })
-        .selectOption('hasConditionX');
+      // message points at the pedigree's nomination prompts instead). Its
+      // window lists only attributes a nomination prompt of the source stage
+      // records — `hasConditionX`, seeded above.
+      await chooseAttribute(
+        architectPage
+          .getByRole('dialog', { name: 'Create disease' })
+          .locator('[data-field-name="variable"]'),
+        'hasConditionX',
+      );
 
       // "Inheritance pattern" is a native select whose options are written out
       // per pattern rather than derived from the schema token, so

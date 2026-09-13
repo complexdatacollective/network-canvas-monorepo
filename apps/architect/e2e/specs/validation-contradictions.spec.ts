@@ -5,6 +5,7 @@ import { emptyProtocol } from '../fixtures/seed.js';
 import { readProtocolJson } from '../helpers/read-store.js';
 import { openValidationSection } from '../pageobjects/editor-sections/form-field-controls.js';
 import { addFormField } from '../pageobjects/editor-sections/forms.js';
+import { createAttribute } from '../pageobjects/editor-sections/variables.js';
 import { StageEditor } from '../pageobjects/stage-editor.js';
 
 // The repair guidance a researcher is given for an inverted min/max pair
@@ -228,9 +229,11 @@ test('the option editor rejects canonically equivalent labels', async ({
     .getByRole('button', { name: 'Create new form field', exact: true })
     .click();
   const fieldDialog = page.getByRole('dialog', { name: 'Create form field' });
-  await fieldDialog
-    .getByRole('combobox', { name: 'Attribute', exact: true })
-    .selectOption({ label: 'Create a new attribute…' });
+  // The name is taken in the picker's own window, on its create row.
+  await createAttribute(
+    fieldDialog.locator('[data-field-name="variable"]'),
+    'venue',
+  );
   // An attribute a participant chooses an answer from IS its list of values —
   // the schema refuses fewer than two — so it is invented in the codebook's
   // own editor rather than from a name and a type. Driven here rather than
@@ -247,9 +250,14 @@ test('the option editor rejects canonically equivalent labels', async ({
     name: openEditor,
     exact: true,
   });
-  await attributeEditor
-    .getByRole('textbox', { name: 'Attribute name', exact: true })
-    .fill('venue');
+  // Opened already holding the name the create row took, rather than asking
+  // for it a second time.
+  await expect(
+    attributeEditor.getByRole('textbox', {
+      name: 'Attribute name',
+      exact: true,
+    }),
+  ).toHaveValue('venue');
 
   const addOption = attributeEditor.getByRole('button', {
     name: 'Create new option',
@@ -278,13 +286,15 @@ test('the option editor rejects canonically equivalent labels', async ({
   await optionLabel(2).fill(DECOMPOSED);
   await optionValue(2).fill('cafe_b');
 
-  const createAttribute = attributeEditor.getByRole('button', {
+  const submit = attributeEditor.getByRole('button', {
     name: 'Create attribute',
     exact: true,
   });
-  await createAttribute.click();
+  await submit.click();
 
-  await expect(createAttribute).toBeVisible();
+  // Still there, because the editor refused rather than writing: a create that
+  // landed would have taken this dialog off screen.
+  await expect(submit).toBeVisible();
   await expect(
     attributeEditor.getByText('Every option needs a unique label.').first(),
   ).toBeVisible();

@@ -315,6 +315,10 @@
     "defaultMessage": "Change this attribute’s values",
     "description": "Button that opens the codebook editor for the list of answers a participant chooses between. Also the title of the dialog it opens."
   },
+  "protocolBuilder.attributeCodebookControls.rulesDroppedForNewKind": {
+    "defaultMessage": "{ruleCount, plural, one {Changing the kind of answer removed a rule that does not carry over: {ruleNames}.} other {Changing the kind of answer removed rules that do not carry over: {ruleNames}.}}",
+    "description": "Shown after the researcher changes the kind of answer an attribute they are inventing holds, when rules they had already written for it cannot be kept — either the new kind does not accept them, or they compare this answer with another attribute that is no longer comparable. ruleNames is the list of rule names, already translated."
+  },
   "protocolBuilder.cardDisplay.addLabel": {
     "defaultMessage": "Add new display property",
     "description": "Button that adds one more attribute to what a roster card shows. Whole rather than a generic \"Add\", because a stage editor shows several lists at once and they would otherwise be indistinguishable to anyone navigating by a list of buttons."
@@ -373,7 +377,7 @@
   },
   "protocolBuilder.censusPrompts.attributeCreateLabel": {
     "defaultMessage": "Create a new attribute",
-    "description": "Button that opens the codebook editor for inventing an attribute this prompt can write to. Also the title of the dialog it opens."
+    "description": "Names the act of inventing an attribute this prompt can write to, and titles the codebook editor the attribute picker’s create row opens for it. Reached from inside that picker, on the name the researcher typed."
   },
   "protocolBuilder.censusPrompts.attributeLabel": {
     "defaultMessage": "Attribute",
@@ -705,7 +709,7 @@
   },
   "protocolBuilder.censusPrompts.tieStrengthScaleCreateLabel": {
     "defaultMessage": "Create a new attribute",
-    "description": "Button that opens the codebook editor for inventing the attribute whose ordered values become the points of the scale. Also the title of the dialog it opens."
+    "description": "Names the act of inventing the attribute whose ordered values become the points of the scale, and titles the codebook editor the attribute picker’s create row opens for it."
   },
   "protocolBuilder.censusPrompts.tieStrengthScaleDescription": {
     "defaultMessage": "Choose the ordinal attribute whose options participants use to rate the relationship.",
@@ -1631,10 +1635,6 @@
     "defaultMessage": "Visual analogue scale",
     "description": "Choice offered for the control a participant answers with: a slider they move along a continuous line."
   },
-  "protocolBuilder.formFields.createNewOption": {
-    "defaultMessage": "Create a new attribute…",
-    "description": "The last choice in the attribute list, which stands for an attribute that does not exist yet and asks the researcher to name one. The trailing character is an ellipsis."
-  },
   "protocolBuilder.formFields.createWithSettingsFirst": {
     "defaultMessage": "Create this attribute and what it accepts before adding the field that collects it.",
     "description": "The same refusal for an attribute whose answer is not chosen from a list but still needs something the researcher has not been asked for — a scale, whose two end labels tell the participant what each end means."
@@ -1714,22 +1714,6 @@
   "protocolBuilder.formFields.malformedField": {
     "defaultMessage": "This form holds an entry that is not a field, so its fields cannot be shown or changed here. That entry has to be taken out of the protocol before this stage can be saved.",
     "description": "Refusal shown above a form’s list of fields when the list holds an entry that is not a field at all — which an import, a migration or another session can leave behind. The list cannot render such an entry, so there is no row for the researcher to open and finish, which is why this says the protocol itself has to be repaired."
-  },
-  "protocolBuilder.formFields.newNameHint": {
-    "defaultMessage": "How this attribute is named in the codebook and in exported data.",
-    "description": "Guidance under the new-attribute name field. The codebook is the protocol’s definition of what an interview records; exported data is the file a researcher analyzes afterwards."
-  },
-  "protocolBuilder.formFields.newNameLabel": {
-    "defaultMessage": "Attribute name",
-    "description": "Label of the field naming an attribute the researcher is inventing."
-  },
-  "protocolBuilder.formFields.newNamePlaceholder": {
-    "defaultMessage": "Nickname",
-    "description": "Example attribute name shown in the empty field. An example a researcher might write, not a value that is stored."
-  },
-  "protocolBuilder.formFields.newNameRequired": {
-    "defaultMessage": "Name the attribute this field collects.",
-    "description": "Refusal shown under the new-attribute name field when it has been left empty."
   },
   "protocolBuilder.formFields.newTypeHint": {
     "defaultMessage": "What this attribute holds. It cannot be changed once answers have been collected.",
@@ -2847,9 +2831,9 @@
     "defaultMessage": "Show validation hints",
     "description": "Label of the switch that tells the participant what a valid answer to one field of a network composer form looks like."
   },
-  "protocolBuilder.networkCanvas.formFieldVariableEmpty": {
-    "defaultMessage": "This type has no attributes a form can collect yet. Create one in the codebook to continue.",
-    "description": "Shown in place of the attribute list when the type this form is about has nothing a form could ask for. The codebook is where a protocol defines the kinds of member its network holds and the attributes recorded about each."
+  "protocolBuilder.networkCanvas.formFieldVariableCreateTitle": {
+    "defaultMessage": "Create a new attribute",
+    "description": "Titles the codebook editor that the attribute picker’s create row opens for a network composer form field. The researcher is asked for the kind of answer there, because this row does not decide it."
   },
   "protocolBuilder.networkCanvas.formFieldVariableHint": {
     "defaultMessage": "The attribute each answer is recorded in. Only attributes a form can collect are listed: a position or a location is written by the canvas rather than answered.",
@@ -6021,47 +6005,99 @@
   },
   "protocolBuilder.variablePicker.attributeTypeLabel": {
     "defaultMessage": "Attribute type: {attributeType}",
-    "description": "Accessible name of the badge stating what kind of answer the chosen attribute records. attributeType is a protocol schema token such as \"number\", \"text\" or \"categorical\", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence."
+    "description": "Read out after the chosen attribute’s name, saying what kind of answer it records. attributeType is a protocol schema token such as \"number\", \"text\" or \"categorical\", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence."
   },
-  "protocolBuilder.variablePicker.createAction": {
-    "defaultMessage": "Create the attribute",
-    "description": "Button that adds the attribute named in the box beside it to the codebook and selects it."
+  "protocolBuilder.variablePicker.changeAttribute": {
+    "defaultMessage": "Change attribute",
+    "description": "The same button once an attribute has been chosen, saying that pressing it replaces the choice rather than adding to it."
   },
-  "protocolBuilder.variablePicker.createHint": {
-    "defaultMessage": "Adds it to this type’s codebook and selects it above.",
-    "description": "Guidance under the box for naming a new attribute, saying that it lands in the codebook — the protocol’s definition of what an interview records — and becomes the choice made above."
+  "protocolBuilder.variablePicker.createRow": {
+    "defaultMessage": "Create new attribute called “{attributeName}”.",
+    "description": "First row of the attribute list, offering to add an attribute under the name the researcher has typed into the search box. attributeName is what they typed and is not translated."
   },
-  "protocolBuilder.variablePicker.createLabel": {
-    "defaultMessage": "Create a new attribute",
-    "description": "Label of the box where a researcher types the name of an attribute that does not exist yet, beside the list of the ones that do. An attribute is one thing an interview records about a network member."
+  "protocolBuilder.variablePicker.createRowBusy": {
+    "defaultMessage": "Creating the attribute “{attributeName}”…",
+    "description": "The first row of the attribute list while the attribute the researcher asked for is being added to the codebook — the protocol’s definition of what an interview records. attributeName is the name they typed and is not translated."
   },
-  "protocolBuilder.variablePicker.createPlaceholder": {
-    "defaultMessage": "nominated_early",
-    "description": "Example attribute name shown in the empty box. A name the codebook would accept: letters, digits and the symbols . _ - : only, so it deliberately has no space in it. Translate it to an equally valid example if that reads better."
+  "protocolBuilder.variablePicker.createRowRefused": {
+    "defaultMessage": "Cannot create attribute named “{attributeName}”: {reason}",
+    "description": "The same first row of the attribute list, switched off because the name typed cannot be used. attributeName is what the researcher typed and is not translated; reason is the sentence saying what is wrong with it."
   },
   "protocolBuilder.variablePicker.createdUnassigned": {
     "defaultMessage": "“{variableName}” was added to the codebook, but it has not been selected here.",
-    "description": "Notice under the create button, shown when the attribute the researcher named was added to the codebook — the protocol’s definition of what an interview records — but whatever they were creating it for did not take it. variableName is the name they typed and is not translated."
+    "description": "Notice under the control, shown when the attribute the researcher named was added to the codebook — the protocol’s definition of what an interview records — but whatever they were creating it for did not take it. variableName is the name they typed and is not translated."
+  },
+  "protocolBuilder.variablePicker.dialogName": {
+    "defaultMessage": "Select an attribute",
+    "description": "Accessible name of the window a researcher searches the protocol’s codebook in, used only where the control that opened it carries no label of its own to be named after. An attribute is one thing an interview records about a network member."
   },
   "protocolBuilder.variablePicker.emptyState": {
     "defaultMessage": "No attributes are available to choose from.",
-    "description": "Shown in place of the select when nothing can be picked — the caller offered no attributes at all. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead."
+    "description": "Shown in place of the control when nothing can be picked — the caller offered no attributes at all and does not allow one to be created. An attribute is a variable the protocol’s codebook defines. Callers that can say something more specific pass their own sentence instead."
+  },
+  "protocolBuilder.variablePicker.firstAttribute": {
+    "defaultMessage": "Nothing has been recorded about this type yet. Type a name above to create the first attribute, and see the <docs>documentation on attribute naming</docs> for what makes a good one.",
+    "description": "Shown in the attribute window when the protocol’s codebook holds nothing this control can offer and the researcher may create one. The text inside the docs tag is the words of a link to the Network Canvas documentation and must read as part of the sentence."
   },
   "protocolBuilder.variablePicker.missingAttribute": {
     "defaultMessage": "This attribute is not available here. Choose another one.",
-    "description": "Shown under the select when the attribute a researcher’s stored choice names is not among the ones this control was given to offer — it may have been deleted from the protocol’s codebook, or ruled out by whatever the choice is being made for. Worded for what the control actually knows: it is handed a list of attributes and a stored choice, and cannot tell those two cases apart."
+    "description": "Shown under the control when the attribute a researcher’s stored choice names is not among the ones this control was given to offer — it may have been deleted from the protocol’s codebook, or ruled out by whatever the choice is being made for. Worded for what the control actually knows: it is handed a list of attributes and a stored choice, and cannot tell those two cases apart."
   },
   "protocolBuilder.variablePicker.missingOptionLabel": {
     "defaultMessage": "{attributeId} — this attribute is not available here",
     "description": "Name of the one option standing for an attribute that is not among the ones this control was given to offer. attributeId is the raw stored identifier — there is no name to show, because no definition of it reached this control."
   },
-  "protocolBuilder.variablePicker.placeholder": {
-    "defaultMessage": "Select an attribute…",
-    "description": "Placeholder in the select a researcher chooses one codebook attribute from, shown while nothing has been chosen. An attribute is a variable the protocol’s codebook defines for a node type, an edge type or the interview participant."
+  "protocolBuilder.variablePicker.nameInvalid": {
+    "defaultMessage": "only letters, numbers and the symbols ._-: can be used in a name",
+    "description": "Reason given on the switched-off create row of the attribute list when the name typed holds characters the export formats cannot carry. Reads after a colon, so it is a clause rather than a sentence. The listed symbols are literal characters and must not be translated."
+  },
+  "protocolBuilder.variablePicker.nameTaken": {
+    "defaultMessage": "this type already has an attribute called that",
+    "description": "Reason given on the switched-off create row of the attribute list. Reads after a colon, so it is a clause rather than a sentence: “Cannot create attribute named “age”: this type already has an attribute called that”."
+  },
+  "protocolBuilder.variablePicker.noneSelected": {
+    "defaultMessage": "No attribute selected",
+    "description": "Shown where the chosen attribute would be, while none has been chosen. Said rather than left blank, so an empty control reads as an unanswered question rather than as a control that failed to draw."
+  },
+  "protocolBuilder.variablePicker.nothingMatches": {
+    "defaultMessage": "No attribute matches what you typed, and one cannot be created from this window. Create one elsewhere in your protocol and come back to choose it.",
+    "description": "Shown in the attribute window when what the researcher typed in the search box matches none of the attributes offered and this control does not allow one to be created."
+  },
+  "protocolBuilder.variablePicker.nothingToSelect": {
+    "defaultMessage": "There are no attributes to choose from here, and one cannot be created from this window. Create one elsewhere in your protocol and come back to choose it.",
+    "description": "Shown in the attribute window when the protocol’s codebook holds nothing this control can offer and this control does not allow one to be created."
+  },
+  "protocolBuilder.variablePicker.resultsLabel": {
+    "defaultMessage": "Attribute results",
+    "description": "Accessible name of the list of attributes under the attribute window’s search box."
+  },
+  "protocolBuilder.variablePicker.rowTypeDescription": {
+    "defaultMessage": "Attribute type: {attributeType}",
+    "description": "Read out after an attribute’s name in the list, saying what kind of answer it records. attributeType is a protocol schema token such as \"number\", \"text\" or \"categorical\", and is shown as it is stored rather than translated. Read as a label and its value, not as a sentence."
+  },
+  "protocolBuilder.variablePicker.searchLabel": {
+    "defaultMessage": "Find or create an attribute",
+    "description": "Accessible name of the search box at the top of the attribute window, where this control allows a new attribute to be created. Typing in it narrows the list below and offers to create an attribute under whatever was typed."
+  },
+  "protocolBuilder.variablePicker.searchOnlyLabel": {
+    "defaultMessage": "Find an attribute",
+    "description": "Accessible name of the search box at the top of the attribute window where this control only chooses from attributes that already exist. Typing in it narrows the list below."
+  },
+  "protocolBuilder.variablePicker.searchOnlyPlaceholder": {
+    "defaultMessage": "Find an attribute…",
+    "description": "Placeholder in the attribute window’s search box where this control only chooses from attributes that already exist."
+  },
+  "protocolBuilder.variablePicker.searchPlaceholder": {
+    "defaultMessage": "Find or create an attribute…",
+    "description": "Placeholder in the attribute window’s search box where this control allows a new attribute to be created."
+  },
+  "protocolBuilder.variablePicker.selectAttribute": {
+    "defaultMessage": "Select attribute",
+    "description": "Button that opens the window a researcher chooses one codebook attribute in, while nothing has been chosen yet. An attribute is a variable the protocol’s codebook defines for a node type, an edge type or the interview participant."
   },
   "protocolBuilder.variablePicker.unusableAttribute": {
     "defaultMessage": "This attribute cannot be used in a rule. Choose another one.",
-    "description": "Shown under the select when the attribute a researcher’s stored choice names is still in the codebook but cannot carry a rule. Worded apart from the deleted-attribute sentence on purpose: this attribute is still where the researcher left it."
+    "description": "Shown under the control when the attribute a researcher’s stored choice names is still in the codebook but cannot carry a rule. Worded apart from the deleted-attribute sentence on purpose: this attribute is still where the researcher left it."
   },
   "protocolBuilder.variablePicker.unusableOptionLabel": {
     "defaultMessage": "{attributeName} — cannot be used in a rule",

@@ -200,6 +200,24 @@ function PedigreeSlot({ slot }: Readonly<{ slot: NodeSlot }>) {
   );
 }
 
+/**
+ * Opens the slot's attribute window, the way a researcher reaches the list.
+ *
+ * The stage arrives from the host over a promise, so the editor — and every
+ * control in it — is drawn a turn after the story mounts; every play in this
+ * file awaits that before its first query. Either trigger name, because some
+ * of these stories open on a slot that already holds an attribute and some on
+ * one that does not, and the button says which.
+ */
+const openTheWindow = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  await awaitPassiveEffects();
+  await userEvent.click(
+    await canvas.findByRole('button', { name: /^(Select|Change) attribute$/u }),
+  );
+  return within(await within(document.body).findByRole('dialog'));
+};
+
 const nodeConfigOf = (document: SectionDoc): Record<string, unknown> =>
   isRecord(document.nodeConfig) ? document.nodeConfig : {};
 
@@ -251,8 +269,10 @@ type Story = StoryObj<typeof meta>;
 
 /**
  * The slot as the protocol holds it, with the attribute's type stated beside
- * the choice and the way to invent another underneath it — the attribute a
- * researcher wants is often the one they have only just thought of.
+ * the choice and the way to invent another inside the window the choice is
+ * made in — the attribute a researcher wants is often the one they have only
+ * just thought of, and looking for it and finding it does not exist are one
+ * act.
  */
 export const AHeldSlot: Story = {
   play: async ({ canvasElement }) => {
@@ -262,17 +282,30 @@ export const AHeldSlot: Story = {
     // in this file awaits its FIRST query for that reason.
     await awaitPassiveEffects();
 
+    // The slot's choice is shown as a typed pill over the trigger that opens
+    // the window, and the kind of answer is stated beside it rather than left
+    // to the pill's colour.
     await expect(
-      await canvas.findByRole('combobox', { name: 'Participant identifier' }),
-    ).toHaveValue('is_ego');
-    await expect(
-      canvas.getByLabelText('Attribute type: boolean'),
-    ).toHaveTextContent('boolean');
-    await expect(
-      canvas.getByRole('button', {
-        name: 'Create a new participant identifier attribute',
-      }),
+      await canvas.findByRole('button', { name: 'Change attribute' }),
     ).toBeEnabled();
+    const held = canvasElement.querySelector('[data-attribute-type]');
+    await expect(held).toHaveAttribute('data-attribute-type', 'boolean');
+    await expect(held).toHaveTextContent('is_ego');
+    await expect(
+      canvas.getByText('Attribute type: boolean'),
+    ).toBeInTheDocument();
+    // Inventing one is offered from inside that window, on the term the
+    // researcher typed: the slot carries no create control of its own.
+    const window = await openTheWindow(canvasElement);
+    await userEvent.type(
+      window.getByRole('searchbox', { name: 'Find or create an attribute' }),
+      'seen_in_person',
+    );
+    await expect(
+      await window.findByRole('option', {
+        name: 'Create new attribute called “seen_in_person”.',
+      }),
+    ).toBeInTheDocument();
   },
 };
 
@@ -288,8 +321,11 @@ export const NothingChosenYet: Story = {
     await awaitPassiveEffects();
 
     await expect(
-      await canvas.findByRole('combobox', { name: 'Participant identifier' }),
-    ).toHaveValue('');
+      await canvas.findByText('No attribute selected'),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Select attribute' }),
+    ).toBeInTheDocument();
   },
 };
 
@@ -303,24 +339,28 @@ export const ChoosingAnotherAttribute: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    const picker = await canvas.findByRole('combobox', {
-      name: 'Participant identifier',
-    });
+    const window = await openTheWindow(canvasElement);
+    await expect(window.queryByRole('option', { name: 'fm_name' })).toBeNull();
+
+    await userEvent.click(
+      window.getByRole('option', { name: 'hasConditionX' }),
+    );
+
     await expect(
-      within(picker).queryByRole('option', { name: 'fm_name' }),
-    ).toBeNull();
-
-    await userEvent.selectOptions(picker, 'hasConditionX');
-
-    await expect(picker).toHaveValue('hasConditionX');
+      await canvas.findByRole('button', { name: 'Change attribute' }),
+    ).toBeInTheDocument();
+    await expect(
+      canvasElement.querySelector('[data-attribute-type]'),
+    ).toHaveTextContent('hasConditionX');
   },
 };
 
 /**
- * Held elsewhere: the binding can be read and not changed, and the create
- * control is gone rather than disabled — an action whose only explanation
- * would be that somebody else has the stage is better not offered, and the
- * banner above the editor says who has it.
+ * Held elsewhere: the binding can be read and not changed. Creating is inside
+ * the window now, so the disabled trigger is what withholds it — the window
+ * never opens, and with it neither the list nor its create row, which is the
+ * right answer for an action whose only explanation would be that somebody
+ * else has the stage. The banner above the editor says who has it.
  */
 export const ASpectator: Story = {
   args: { readOnly: true },
@@ -328,14 +368,12 @@ export const ASpectator: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    await expect(
-      await canvas.findByRole('combobox', { name: 'Participant identifier' }),
-    ).toBeDisabled();
-    await expect(
-      canvas.queryByRole('button', {
-        name: 'Create a new participant identifier attribute',
-      }),
-    ).toBeNull();
+    const trigger = await canvas.findByRole('button', {
+      name: 'Change attribute',
+    });
+    await expect(trigger).toBeDisabled();
+    await userEvent.click(trigger);
+    await expect(within(document.body).queryByRole('dialog')).toBeNull();
   },
 };
 
@@ -361,9 +399,9 @@ export const AnAttributeTheCodebookHasLost: Story = {
     // Kept and named rather than blanked: blanking would hide the reference
     // the researcher has to replace, and then write the blank over it.
     await expect(
-      await canvas.findByRole('option', {
-        name: 'was_the_participant — this attribute is not available here',
-      }),
+      await canvas.findByText(
+        'was_the_participant — this attribute is not available here',
+      ),
     ).toBeInTheDocument();
 
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
@@ -415,21 +453,22 @@ export const AnAttributeWhoseValuesChanged: Story = {
     const canvas = within(canvasElement);
     await awaitPassiveEffects();
 
-    const picker = await canvas.findByRole('combobox', {
-      name: 'Biological sex',
-    });
-    // Still the held choice, and the only thing the list offers: an attribute
-    // ruled out that no slot holds is never listed at all.
-    await expect(picker).toHaveValue('biologicalSex');
+    // Still the held choice, named for what is actually wrong with it, and the
+    // reason said under the control the researcher has to change.
     await expect(
-      within(picker).getByRole('option', {
-        name: 'biologicalSex — no longer offers the values this control needs',
-      }),
+      await canvas.findByText(
+        'biologicalSex — no longer offers the values this control needs',
+      ),
     ).toBeInTheDocument();
     await expect(
       canvas.getByText(
         'This attribute no longer offers the exact values this control needs, because they were changed somewhere else. Choose another one.',
       ),
     ).toBeInTheDocument();
+    // And the window offers nothing at all: an attribute ruled out that no
+    // slot holds is never listed, so the only categorical this node type has
+    // is not on the list either.
+    const window = await openTheWindow(canvasElement);
+    await expect(window.queryAllByRole('option')).toHaveLength(0);
   },
 };

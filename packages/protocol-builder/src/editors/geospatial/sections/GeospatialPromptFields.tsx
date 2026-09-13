@@ -17,7 +17,7 @@ import type {
 import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { useVariableChoices } from '../../../sections/canvas/codebookChoices.ts';
 import { asText } from '../../../sections/canvas/rowValues.ts';
-import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
+import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 
 const TEXT_FIELD = 'text';
@@ -44,7 +44,8 @@ export const promptsOf = (prompts: unknown): readonly unknown[] =>
  * a picker memoises its options on the type list it was asked for, and a
  * literal at the call site is a new array every render.
  */
-const LOCATION_TYPES: readonly VariableType[] = Object.freeze(['location']);
+const LOCATION_TYPE = 'location';
+const LOCATION_TYPES: readonly VariableType[] = Object.freeze([LOCATION_TYPE]);
 
 /** The picker takes an open prop bag from the field wrapper. */
 const VariablePicker = VariablePickerField as ComponentType<
@@ -113,6 +114,13 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
     [offered, recordedByAnotherPrompt],
   );
 
+  const { createProps, editor } = useCreateAttributeForSlot({
+    subject,
+    variableType: LOCATION_TYPE,
+    title: intl.formatMessage(geospatialMessages.createAttributeLabel),
+    onCreated: (variableId) => setRowValue(VARIABLE_FIELD, variableId),
+  });
+
   return (
     <>
       <Field<typeof RichTextField>
@@ -143,13 +151,9 @@ export function GeospatialPromptFields({ item }: RowEditorProps) {
           required={intl.formatMessage(
             geospatialMessages.promptVariableRequired,
           )}
+          {...createProps}
         />
-        <CreateVariableButton
-          subject={subject ?? null}
-          variableType="location"
-          label={intl.formatMessage(geospatialMessages.createAttributeLabel)}
-          onCreated={(variableId) => setRowValue(VARIABLE_FIELD, variableId)}
-        />
+        {editor}
       </Section>
     </>
   );

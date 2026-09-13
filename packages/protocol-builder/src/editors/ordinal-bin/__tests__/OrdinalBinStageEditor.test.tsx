@@ -1,6 +1,11 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  attributeField,
+  chooseAttributeById,
+  inventAttribute,
+} from '../../../testing/attributePicker.ts';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
@@ -12,8 +17,19 @@ const ORDINAL_BIN_INDEX = fixtureStageIds().indexOf('ordinal-bin-1');
 const stageNameInput = (): HTMLInputElement =>
   screen.getByRole('textbox', { name: 'Stage name' });
 
-const attributePicker = (): HTMLSelectElement =>
-  screen.getByRole('combobox', { name: 'Attribute' });
+/**
+ * The field a prompt's scale is chosen in.
+ *
+ * A scope rather than a control: the scale is picked in a window the field's
+ * trigger opens, so what the field itself shows is the attribute it holds.
+ */
+const attributePicker = (): HTMLElement => attributeField('Attribute');
+
+/** The same, once the prompt has drawn it. */
+const findAttributePicker = async (): Promise<HTMLElement> => {
+  await screen.findByText('Attribute', { selector: 'label' });
+  return attributePicker();
+};
 
 const prompts = (stage: Record<string, unknown>): Record<string, unknown>[] =>
   Array.isArray(stage.prompts)
@@ -53,8 +69,9 @@ describe('creating an ordinal bin stage', () => {
       await screen.findByRole('textbox', { name: 'Prompt text' }),
       'How often do you see them?',
     );
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await findAttributePicker(),
       'contactFreq',
     );
     await harness.user.click(screen.getByRole('button', { name: 'Add' }));
@@ -96,17 +113,17 @@ describe('creating an ordinal bin stage', () => {
     await harness.user.click(
       screen.getByRole('button', { name: 'Edit prompt' }),
     );
-    await harness.user.click(
-      await screen.findByRole('button', { name: 'Create a new attribute' }),
-    );
-    await writeInto(
-      harness,
-      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    // An ordinal attribute IS its ordered values, and the schema refuses one
+    // with fewer than two — which is why the picker's create row opens the
+    // codebook's own editor on the typed name rather than writing it.
+    await inventAttribute(
+      harness.user,
+      await waitFor(() => attributeField('Attribute')),
       'closenessBand',
     );
-    // An ordinal attribute IS its ordered values, and the schema refuses one
-    // with fewer than two — which is why creating one opens the codebook's own
-    // editor rather than asking for a name here.
+    expect(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    ).toHaveValue('closenessBand');
     for (const [index, [label, value]] of [
       ['Near', '1'],
       ['Far', '2'],
@@ -140,7 +157,14 @@ describe('creating an ordinal bin stage', () => {
       if (entry === undefined) throw new Error('the attribute was not created');
       return entry[0];
     });
-    await waitFor(() => expect(attributePicker()).toHaveValue(created));
+    // The picker shows the researcher's NAME for it; that the prompt holds the
+    // attribute just created — rather than another of that name — is what the
+    // saved id below says.
+    await waitFor(() =>
+      expect(
+        within(attributePicker()).getByText('closenessBand'),
+      ).toBeVisible(),
+    );
 
     await harness.user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>

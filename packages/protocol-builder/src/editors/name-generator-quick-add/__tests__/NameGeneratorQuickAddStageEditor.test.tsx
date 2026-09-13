@@ -1,6 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  attributeField,
+  chooseAttributeById,
+} from '../../../testing/attributePicker.ts';
 import { fixtureStageIds } from '../../../testing/protocolFixture.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { writeInto } from '../../__tests__/writeInto.ts';
@@ -43,8 +47,9 @@ describe('creating a quick-add name generator', () => {
     ).toBeInTheDocument();
 
     await harness.user.click(screen.getByRole('radio', { name: 'person' }));
-    await harness.user.selectOptions(
-      await screen.findByRole('combobox', { name: 'Select an attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      attributeField('Select an attribute'),
       'name',
     );
 

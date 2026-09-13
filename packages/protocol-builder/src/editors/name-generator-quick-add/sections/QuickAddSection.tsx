@@ -1,12 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 
-import {
-  createMessageError,
-  defineMessages,
-  formatMessageError,
-} from '@codaco/app-i18n/messages';
+import { createMessageError, defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
-import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 
 import {
@@ -18,7 +13,6 @@ import {
   buildVariableRoleMap,
   excludeUnvalidatedUses,
 } from '../../../codebook/variableRoles.ts';
-import { draftAdditionalAttributeVariableIds } from '../../../codebook/variableValidation.ts';
 import VariablePickerField, {
   type CreateOptionOutcome,
   type VariablePickerOption,
@@ -30,14 +24,12 @@ import {
   variablesForSubject,
 } from '../../../protocol-context.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
+import { useSubjectVariableNames } from '../../../sections/canvas/codebookChoices.ts';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 
 /** Where a quick-add name generator records what it fills in. */
 const QUICK_ADD = 'quickAdd';
-
-/** Where the same stage keeps the questions whose stamps this must avoid. */
-const PROMPTS = 'prompts';
 
 /**
  * Quick add writes the participant's typing straight into one attribute as the
@@ -135,12 +127,7 @@ const useTypeName = (subject: CodebookSubject | undefined): string => {
  *
  * The attribute is a validated writer, so the pool excludes anything written
  * unvalidated elsewhere in the protocol: an export must not mix a checked
- * answer with a value some other stage stamped. THIS stage's own prompts are
- * such a writer too — each of them stamps fixed values on everyone named under
- * it — and the role map is built with the edited stage taken out, so the live
- * prompts are read here and excluded beside it. Left out, the picker offered an
- * attribute this stage already stamps, and the protocol the researcher saved
- * was one the schema's role-conflict rule refuses.
+ * answer with a value some other stage stamped.
  */
 export default function QuickAddSection() {
   const intl = useAppIntl();
@@ -150,15 +137,13 @@ export default function QuickAddSection() {
   const typeName = useTypeName(subject);
   const committed = useStageValue(QUICK_ADD);
   const fillsIn = typeof committed === 'string' ? committed : undefined;
-  const draftPrompts = useStageValue(PROMPTS);
+  // What the create row checks a typed name against: every attribute name this
+  // type holds, not just the text ones the picker offers.
+  const namesInUse = useSubjectVariableNames(subject);
 
   const roleMap = useMemo(
     () => buildVariableRoleMap(protocolContext, identity.id),
     [identity.id, protocolContext],
-  );
-  const stamped = useMemo(
-    () => draftAdditionalAttributeVariableIds(draftPrompts),
-    [draftPrompts],
   );
 
   const options = useMemo(() => {
@@ -170,21 +155,18 @@ export default function QuickAddSection() {
         label: variable.name,
         type: variable.type,
       }));
-    return excludeUnvalidatedUses(roleMap, subject, pool, fillsIn).filter(
-      // The committed pick is offered back whatever the filters say: a picker
-      // that dropped its own value would blank the control and write the blank
-      // over the reference the researcher has to resolve.
-      ({ value }) => value === fillsIn || !stamped.has(value),
-    );
-  }, [fillsIn, protocolContext, roleMap, stamped, subject]);
+    return excludeUnvalidatedUses(roleMap, subject, pool, fillsIn);
+  }, [fillsIn, protocolContext, roleMap, subject]);
 
   // Answered as an outcome rather than by writing the picker itself: the
   // control owns the name box and what becomes of the name in it, and the
-  // caller owns where the attribute goes. The refusal is kept and shown here,
-  // because the picker is handed an outcome with no words of its own.
+  // caller owns where the attribute goes. The refusal travels back WITH the
+  // outcome rather than being shown here: the name was typed in the picker's
+  // window, the window stays open on it, and this section is inert behind it
+  // while it does — so a sentence left here is one the researcher cannot read
+  // until they have given up on the name it was written about.
   const createVariable = useCreateCodebookVariable(subject);
   const answerLands = useWhereTheAnswerLands(subject, () => fillsIn);
-  const [problem, setProblem] = useState<string | undefined>(undefined);
 
   const createQuickAddAttribute = useCallback(
     async (variableName: string): Promise<CreateOptionOutcome> => {
@@ -201,10 +183,8 @@ export default function QuickAddSection() {
         validation: QUICK_ADD_VALIDATION,
       });
       if (outcome.status === 'refused') {
-        setProblem(outcome.message);
-        return { status: 'refused' };
+        return { status: 'refused', message: outcome.message };
       }
-      setProblem(undefined);
       // The codebook holds it either way. Selecting it is only right while
       // this section is still pointed where the create was asked from: a stage
       // repointed at another type would be left naming an attribute the new
@@ -240,15 +220,9 @@ export default function QuickAddSection() {
         options={options}
         emptyMessage={intl.formatMessage(messages.noTextAttribute)}
         onCreateOption={createQuickAddAttribute}
+        namesInUse={namesInUse}
         required={CHOOSE_AN_ATTRIBUTE}
       />
-      {problem !== undefined && (
-        <Alert variant="destructive" className="my-7">
-          <AlertDescription>
-            {formatMessageError(problem, intl) ?? problem}
-          </AlertDescription>
-        </Alert>
-      )}
       <CodebookVariableValidationSection
         subject={subject}
         variableId={fillsIn}

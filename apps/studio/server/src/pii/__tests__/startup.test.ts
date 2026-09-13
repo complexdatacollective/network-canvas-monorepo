@@ -5,13 +5,14 @@ import { fileURLToPath } from 'node:url';
 import { escapeIdentifier, escapeLiteral } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 
+import { readMigrations } from '@codaco/studio-sync/postgres-migration-artifacts';
+
 import { enrollMigrationTestDatabase } from '../../__tests__/support/migrations.ts';
 import {
   createScratchDatabase,
   reachableDb,
 } from '../../__tests__/support/postgres.ts';
 import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
-import { readMigrations } from '../../db/migrations/artifact.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { createMaintenancePool } from '../../db/pool.ts';
 import type { DbEnv } from '../../env.ts';

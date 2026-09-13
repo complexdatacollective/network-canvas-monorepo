@@ -1,6 +1,10 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import {
+  attributeField,
+  createRowIn,
+} from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
   narrativeEditor,
@@ -57,14 +61,26 @@ describe('the narrative sections, read in Spanish', () => {
     });
 
     const preset = await openPreset(harness, 0, 'Editar vista predefinida');
+    // The picker is a labelled field holding a trigger, so the label and the
+    // words on the button are two separate translations and both are asserted.
+    // This preset already positions by an attribute, which is the state the
+    // trigger says "change" rather than "select" in.
     expect(
-      preset.getByRole('combobox', { name: 'Atributo de disposición' }),
+      within(
+        attributeField('Atributo de disposición', screen.getByRole('dialog')),
+      ).getByRole('button', { name: 'Cambiar atributo' }),
     ).toBeInTheDocument();
+    // Inventing one is offered from inside that window, on the term the
+    // researcher typed, and in their language: the sections no longer carry a
+    // create control of their own.
     expect(
-      preset.getByRole('button', {
-        name: 'Crear un nuevo atributo de posición',
-      }),
-    ).toBeInTheDocument();
+      await createRowIn(
+        harness.user,
+        attributeField('Atributo de disposición', screen.getByRole('dialog')),
+        'Busca o crea un atributo',
+        (term) => `Crear un atributo nuevo llamado “${term}”.`,
+      ),
+    ).not.toBeNull();
     expect(preset.getByText('Resaltado de nodos')).toBeInTheDocument();
   });
 

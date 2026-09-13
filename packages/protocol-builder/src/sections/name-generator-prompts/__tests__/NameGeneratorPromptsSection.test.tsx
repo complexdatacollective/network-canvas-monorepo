@@ -1,6 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { sectionId } from '@codaco/studio-sync/taxonomy';
+
+import { attributeField } from '../../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import NameGeneratorPromptsSection from '../NameGeneratorPromptsSection.tsx';
 
@@ -35,13 +38,91 @@ vi.mock('../../../fields/RichTextField.tsx', () => ({
 
 const prompts = <NameGeneratorPromptsSection />;
 
+type Harness = ReturnType<typeof renderStageEditor>;
+
+/**
+ * A prompt's open dialog, with the element it was found as.
+ *
+ * The element is carried because the attribute picker opens a SECOND dialog on
+ * top of this one, so "the dialog" is ambiguous while its window is up: the
+ * window is the one that is not this element.
+ */
+type OpenDialog = ReturnType<typeof within> & { element: HTMLElement };
+
 const openPrompt = async (
-  harness: ReturnType<typeof renderStageEditor>,
+  harness: Harness,
   name: string,
-) => {
+): Promise<OpenDialog> => {
   await harness.user.click(screen.getByRole('button', { name }));
-  return within(await screen.findByRole('dialog'));
+  const element = await screen.findByRole('dialog');
+  return Object.assign(within(element), { element });
 };
+
+/** The field a stamp row picks its attribute in. */
+const STAMP_PICKER = 'Create or select an attribute';
+
+/** The two names the attribute picker's trigger goes by, before and after. */
+const isPickerTrigger = (name: string) =>
+  name === 'Select attribute' || name === 'Change attribute';
+
+const stampPicker = (dialog: OpenDialog): HTMLElement =>
+  attributeField(STAMP_PICKER, dialog.element);
+
+/** Opens the stamp row's picker, and hands back the window it opened. */
+const openPicker = async (
+  harness: Harness,
+  dialog: OpenDialog,
+): Promise<HTMLElement> => {
+  await harness.user.click(
+    within(stampPicker(dialog)).getByRole('button', { name: isPickerTrigger }),
+  );
+  return await waitFor(() => {
+    const window = screen
+      .getAllByRole('dialog')
+      .find((element) => element !== dialog.element);
+    if (window === undefined) {
+      throw new Error('the attribute window did not open');
+    }
+    return window;
+  });
+};
+
+const expectWindowClosed = async (window: HTMLElement) => {
+  await waitFor(() => {
+    if (window.isConnected) throw new Error('the attribute window is open');
+  });
+};
+
+/** Every attribute the window is offering, by the id choosing it would store. */
+const offeredIds = (window: HTMLElement): string[] =>
+  [...window.querySelectorAll('[role="option"]')].map(
+    (row) => row.getAttribute('data-attribute-id') ?? '',
+  );
+
+/** Points the stamp row at the attribute the codebook files under this id. */
+const chooseStamp = async (
+  harness: Harness,
+  dialog: OpenDialog,
+  attributeId: string,
+) => {
+  const window = await openPicker(harness, dialog);
+  const row = window.querySelector<HTMLElement>(
+    `[role="option"][data-attribute-id="${attributeId}"]`,
+  );
+  if (row === null) {
+    throw new Error(`The window is not offering "${attributeId}".`);
+  }
+  await harness.user.click(row);
+  // The pick is written as the window closes, so nothing may carry on while it
+  // is still covering the row.
+  await expectWindowClosed(window);
+};
+
+/** The search box a name is typed into, which is also where one is invented. */
+const searchBox = (window: HTMLElement): HTMLElement =>
+  within(window).getByRole('searchbox', {
+    name: 'Find or create an attribute',
+  });
 
 const personDefinition = (variables: Record<string, unknown>) => ({
   name: 'person',
@@ -98,12 +179,7 @@ describe("a name generator's prompts", () => {
     await harness.user.click(
       dialog.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    await harness.user.selectOptions(
-      await dialog.findByRole('combobox', {
-        name: 'Create or select an attribute',
-      }),
-      'highlighted',
-    );
+    await chooseStamp(harness, dialog, 'highlighted');
     await harness.user.click(dialog.getByRole('radio', { name: 'True' }));
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
@@ -133,12 +209,7 @@ describe("a name generator's prompts", () => {
     await harness.user.click(
       dialog.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    const picker = await dialog.findByRole('combobox', {
-      name: 'Create or select an attribute',
-    });
-    const offered = within(picker)
-      .getAllByRole('option')
-      .map((option) => (option as HTMLOptionElement).value);
+    const offered = offeredIds(await openPicker(harness, dialog));
 
     expect(offered).toContain('highlighted');
     expect(offered).not.toContain('name');
@@ -161,12 +232,7 @@ describe("a name generator's prompts", () => {
     await harness.user.click(
       dialog.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    await harness.user.selectOptions(
-      await dialog.findByRole('combobox', {
-        name: 'Create or select an attribute',
-      }),
-      'highlighted',
-    );
+    await chooseStamp(harness, dialog, 'highlighted');
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
 
     expect(
@@ -207,18 +273,10 @@ describe("a name generator's prompts", () => {
     await harness.user.click(
       dialog.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    const picker = await dialog.findByRole('combobox', {
-      name: 'Create or select an attribute',
-    });
+    const window = await openPicker(harness, dialog);
     // The revision reaches the picker over the protocol channel, which is a
     // microtask rather than the click that opened the dialog.
-    await waitFor(() =>
-      expect(
-        within(picker)
-          .getAllByRole('option')
-          .map((option) => (option as HTMLOptionElement).value),
-      ).toContain('contacted'),
-    );
+    await waitFor(() => expect(offeredIds(window)).toContain('contacted'));
   });
 
   /**
@@ -273,32 +331,40 @@ describe("a name generator's prompts", () => {
     await harness.user.click(
       dialog.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    await harness.user.type(
-      await dialog.findByRole('textbox', { name: 'Create a new attribute' }),
-      'nominated_early',
-    );
+    // Looking for the attribute and finding it does not exist are one act, so
+    // the name is typed into the window's search box and invented from there.
+    const window = await openPicker(harness, dialog);
+    await harness.user.type(searchBox(window), 'nominated_early');
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Create the attribute' }),
+      within(window).getByRole('option', {
+        name: 'Create new attribute called “nominated_early”.',
+      }),
     );
-
-    const picker = await dialog.findByRole('combobox', {
-      name: 'Create or select an attribute',
-    });
-    await waitFor(() =>
-      expect(
-        within(picker).getByRole('option', { name: 'nominated_early' }),
-      ).toBeInTheDocument(),
-    );
-    const created = (picker as HTMLSelectElement).value;
-    expect(created).not.toBe('');
+    // A create that landed closes the window, and the row now shows what it
+    // holds: the attribute the researcher has just invented.
+    await expectWindowClosed(window);
+    expect(
+      within(stampPicker(dialog)).getByText('nominated_early'),
+    ).toBeInTheDocument();
 
     // A stamp is written straight onto the node, so it has to be a boolean
     // the interview can set — the type is the section's, not the researcher's.
     // Read from the protocol rather than from the picker: the attribute is
-    // already committed, and nothing this stage saves later can add it.
-    expect(
-      harness.hostCodebook().node?.person?.variables?.[created],
-    ).toMatchObject({ name: 'nominated_early', type: 'boolean' });
+    // already committed, and nothing this stage saves later can add it. The id
+    // it was filed under is the codebook's to choose, so the stamp below is
+    // compared against whatever the codebook says it is.
+    const variables = harness.hostCodebook().node?.person?.variables ?? {};
+    const [created] =
+      Object.entries(variables).find(
+        ([, variable]) => variable.name === 'nominated_early',
+      ) ?? [];
+    if (created === undefined) {
+      throw new Error('nominated_early was not added to the codebook');
+    }
+    expect(variables[created]).toMatchObject({
+      name: 'nominated_early',
+      type: 'boolean',
+    });
 
     await harness.user.click(dialog.getByRole('radio', { name: 'True' }));
     await harness.user.click(dialog.getByRole('button', { name: 'Save' }));
@@ -339,23 +405,83 @@ describe("a name generator's prompts", () => {
     await harness.user.click(
       dialog.getByRole('button', { name: 'Add new attribute to assign' }),
     );
-    const box = await dialog.findByRole('textbox', {
-      name: 'Create a new attribute',
-    });
+    const window = await openPicker(harness, dialog);
+    const box = searchBox(window);
     await harness.user.type(box, 'nominated early');
+
+    // Said on the row that would have created it, which is switched off rather
+    // than offering a write the codebook is going to refuse.
+    const refused = within(window).getByRole('option', {
+      name: 'Cannot create attribute named “nominated early”: only letters, numbers and the symbols ._-: can be used in a name',
+    });
+    expect(refused).toHaveAttribute('aria-disabled', 'true');
+    await harness.user.click(refused);
+
+    // The name stays in the box: the refusal is ABOUT that name, and it is the
+    // one thing the researcher needs in front of them to act on it.
+    expect(box).toHaveValue('nominated early');
+
+    // And the row is still holding nothing. Read with the window dismissed,
+    // because the window takes the surface underneath it out of the
+    // accessibility tree while it is up.
+    await harness.user.keyboard('{Escape}');
+    await expectWindowClosed(window);
+    expect(
+      within(stampPicker(dialog)).getByRole('button', {
+        name: 'Select attribute',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * The other refusal — the host's, not the schema's — reaches the same place.
+   *
+   * A name the codebook would take can still be refused because a colleague is
+   * holding the section it would be written into, and that answer arrives
+   * after the researcher has pressed the create row. It is said in the window,
+   * on the name it is about, and nowhere else: this section is behind a modal
+   * while the window is up, so a sentence left here is one nobody reads until
+   * they have given up on the name it was written about — and it would still
+   * be standing there after they recovered by choosing an attribute that
+   * already exists.
+   */
+  it('says a held section inside the window, and nowhere behind it', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: prompts,
+      heldSections: [
+        {
+          sectionId: sectionId({ kind: 'codebookNode', typeId: 'person' }),
+          displayName: 'Priya Raman',
+        },
+      ],
+    });
+
+    const dialog = await openPrompt(harness, 'Edit prompt');
     await harness.user.click(
-      dialog.getByRole('button', { name: 'Create the attribute' }),
+      dialog.getByRole('button', { name: 'Add new attribute to assign' }),
+    );
+    const window = await openPicker(harness, dialog);
+    await harness.user.type(searchBox(window), 'nominatedEarly');
+    await harness.user.click(
+      within(window).getByRole('option', {
+        name: 'Create new attribute called “nominatedEarly”.',
+      }),
     );
 
-    expect(
-      await dialog.findByRole('alert', undefined, { timeout: 2000 }),
-    ).toHaveTextContent(
-      'Not a valid attribute name. Only letters, numbers and the symbols ._-: are supported',
+    expect(await within(window).findByRole('alert')).toHaveTextContent(
+      'Priya Raman is currently editing a section needed for this change.',
     );
-    expect(box).toHaveValue('nominated early');
-    const picker = dialog.getByRole('combobox', {
-      name: 'Create or select an attribute',
-    });
-    expect((picker as HTMLSelectElement).value).toBe('');
+    expect(searchBox(window)).toHaveValue('nominatedEarly');
+
+    // And once the researcher gives up on the name, the sentence goes with the
+    // window rather than being left standing on the section behind it.
+    await harness.user.keyboard('{Escape}');
+    await expectWindowClosed(window);
+    expect(
+      dialog.queryByText(
+        'Priya Raman is currently editing a section needed for this change.',
+      ),
+    ).toBeNull();
   });
 });

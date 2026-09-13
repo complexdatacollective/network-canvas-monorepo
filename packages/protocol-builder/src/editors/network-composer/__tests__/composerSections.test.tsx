@@ -5,6 +5,13 @@ import {
   unvalidatedElsewhereMessage,
   validatedElsewhereMessage,
 } from '../../../codebook/variableValidation.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+  createRowIn,
+  inventAttribute,
+  offeredAttributes,
+} from '../../../testing/attributePicker.ts';
 import { readMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
@@ -24,6 +31,17 @@ const KNOWS_ENTRY = {
   id: 'composer-edge-1',
   subject: { entity: 'edge', type: 'knows' },
 };
+
+/**
+ * The field one attribute is chosen in, by the label of the question it
+ * answers.
+ *
+ * A scope rather than a control: every attribute here is picked in a window
+ * the field's trigger opens, so everything a test does to a picker it does
+ * through the field. The row's own field is labelled "Attribute", which no
+ * other label on these sections is.
+ */
+const picker = (label: string): HTMLElement => attributeField(label);
 
 /** The node form is a capability, so a stage that has none opens with it off. */
 const switchOnNodeForm = async (
@@ -339,10 +357,7 @@ describe('what a network composer lets the participant build', () => {
       }),
     );
     const dialog = within(await screen.findByRole('dialog'));
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'edgeNotes',
-    );
+    await chooseAttributeById(harness.user, picker('Attribute'), 'edgeNotes');
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
@@ -406,8 +421,9 @@ describe('what a network composer lets the participant build', () => {
     await switchOnNodeForm(harness);
 
     const dialog = await addRow(harness, 'Create new node attribute');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      picker('Attribute'),
       'composerName',
     );
     await waitFor(() =>
@@ -462,13 +478,12 @@ describe('what a network composer lets the participant build', () => {
     );
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute');
-    expect(
-      dialog.queryByRole('option', { name: 'contactType' }),
-    ).not.toBeInTheDocument();
+    await addRow(harness, 'Create new node attribute');
+    const offered = await offeredAttributes(harness.user, picker('Attribute'));
+    expect(offered).not.toContain('contactType');
     // And something nothing on this stage claims still is, so the case is
     // about the grouping rather than about an empty list.
-    expect(dialog.getByRole('option', { name: 'age' })).toBeInTheDocument();
+    expect(offered).toContain('age');
   });
 
   /**
@@ -495,24 +510,23 @@ describe('what a network composer lets the participant build', () => {
       ],
     });
 
-    const grouping = await screen.findByRole('combobox', {
-      name: 'Create or select a categorical attribute for grouping',
-    });
-    await waitFor(() =>
-      expect(
-        within(grouping).getByRole('option', { name: 'circle' }),
-      ).toBeInTheDocument(),
+    const grouping = await waitFor(() =>
+      picker('Create or select a categorical attribute for grouping'),
     );
-    await harness.user.selectOptions(grouping, 'circle');
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, grouping)).toContain(
+        'circle',
+      ),
+    );
+    await chooseAttributeById(harness.user, grouping, 'circle');
     await switchOnNodeForm(harness);
 
-    const dialog = await addRow(harness, 'Create new node attribute');
-    expect(
-      dialog.queryByRole('option', { name: 'circle' }),
-    ).not.toBeInTheDocument();
+    await addRow(harness, 'Create new node attribute');
+    const offered = await offeredAttributes(harness.user, picker('Attribute'));
+    expect(offered).not.toContain('circle');
     // And something nothing on this stage claims still is, so the case is
     // about the pick rather than about an empty list.
-    expect(dialog.getByRole('option', { name: 'age' })).toBeInTheDocument();
+    expect(offered).toContain('age');
   });
 
   it('stops offering an attribute the node form collects to the grouping', async () => {
@@ -541,17 +555,17 @@ describe('what a network composer lets the participant build', () => {
       ],
     });
 
-    const grouping = await screen.findByRole('combobox', {
-      name: 'Create or select a categorical attribute for grouping',
-    });
-    await waitFor(() =>
-      expect(
-        within(grouping).getByRole('option', { name: 'circle' }),
-      ).toBeInTheDocument(),
+    const grouping = await waitFor(() =>
+      picker('Create or select a categorical attribute for grouping'),
     );
-    expect(
-      within(grouping).queryByRole('option', { name: 'contactType' }),
-    ).not.toBeInTheDocument();
+    await waitFor(async () =>
+      expect(await offeredAttributes(harness.user, grouping)).toContain(
+        'circle',
+      ),
+    );
+    expect(await offeredAttributes(harness.user, grouping)).not.toContain(
+      'contactType',
+    );
   });
 
   /**
@@ -589,39 +603,213 @@ describe('what a network composer lets the participant build', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  /** The attribute is created and bound without the researcher leaving. */
-  it('creates a position attribute without leaving the stage', async () => {
-    const harness = renderStageEditor(composerHolding({ layoutVariable: '' }));
+  /**
+   * The attribute a form field asks for, invented from the picker's create
+   * row.
+   *
+   * Every other slot that offers this names the kind of answer it needs, and
+   * most are finished by a name alone. This row names none — the kind is the
+   * codebook's, and all the row decides is which control renders it — so the
+   * create row opens the codebook's own editor on the typed name, and the
+   * attribute the researcher finishes there is the one the field records into.
+   */
+  it('creates the attribute a form field records, from its picker', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ nodeForm: { fields: [] } }),
+    );
+    await switchOnNodeForm(harness);
 
+    const dialog = await addRow(harness, 'Create new node attribute');
+    await inventAttribute(harness.user, picker('Attribute'), 'favouriteFood');
+
+    // The editor arrives holding the name that was typed, so the researcher is
+    // asked only for what a name cannot say.
+    expect(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    ).toHaveValue('favouriteFood');
+    const kind = screen.getByRole('combobox', { name: 'Attribute type' });
+    // Unanswered, because this row does not decide it: seeded with one, the
+    // researcher would have to notice a choice they were never offered.
+    expect(kind).toHaveValue('');
+    // And answerable with every kind a form can collect, and no other: a
+    // position and a place on a map are written by the canvas rather than
+    // answered, so no control can ask for either.
+    expect(
+      within(kind)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual([
+      'Select an attribute type',
+      'Text',
+      'Number',
+      'Boolean',
+      'Ordinal',
+      'Categorical',
+      'Scalar',
+      'Date',
+    ]);
+
+    await harness.user.selectOptions(kind, 'number');
     await harness.user.click(
-      await screen.findByRole('button', {
-        name: 'Create a new position attribute',
-      }),
+      screen.getByRole('button', { name: 'Create attribute' }),
     );
-    const name = await screen.findByRole('textbox', {
-      name: 'Attribute name',
+
+    // In the codebook, under a record key the researcher never sees — so it is
+    // looked up by the name they typed, and read whole, because the kind they
+    // chose is the half a name could not say.
+    const created = await waitFor(() => {
+      const variables = harness.hostCodebook().node?.person?.variables ?? {};
+      const entry = Object.entries(variables).find(
+        ([, variable]) => variable.name === 'favouriteFood',
+      );
+      if (entry === undefined) {
+        throw new Error('the codebook has no “favouriteFood” attribute');
+      }
+      return entry;
     });
-    const creator = within(name.closest('[role="dialog"]') as HTMLElement);
-    await harness.user.type(name, 'placedAt');
-    await harness.user.click(
-      creator.getByRole('button', { name: 'Create attribute' }),
+    expect(created[1]).toMatchObject({ name: 'favouriteFood', type: 'number' });
+
+    // Recorded by the field that asked for it, not merely created: finding it
+    // in a list that has just grown is not the answer. Read off the field
+    // itself, because what it SHOWS is the attribute it holds.
+    await waitFor(() =>
+      expect(
+        within(picker('Attribute')).getByText('favouriteFood'),
+      ).toBeVisible(),
     );
+    // And asked for with a control that can render it, as it is when the
+    // attribute was chosen rather than invented: the codebook write lands a
+    // moment before the section carrying it reaches this row, so a pairing
+    // decided once and for all would leave the field with no control at all.
+    await waitFor(() =>
+      expect(
+        dialog.getByRole('combobox', { name: 'Input control' }),
+      ).toHaveValue('Number'),
+    );
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
     await waitFor(() =>
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
     );
 
+    const saved = await harness.submit();
+    expect(nodeFormFieldsOf(saved?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: created[0],
+        component: 'Number',
+      },
+    ]);
+  });
+
+  /**
+   * The typed name is judged against everything the type already records,
+   * rather than against what this picker offers: a name the canvas's own
+   * position attribute holds is taken just as firmly as one a text attribute
+   * holds, and the codebook would refuse it after a round trip nobody needs.
+   */
+  it('says a form field cannot invent a name the type already holds', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ nodeForm: { fields: [] } }),
+    );
+    await switchOnNodeForm(harness);
+    await addRow(harness, 'Create new node attribute');
+
+    // A position attribute: named on this type, and never offered here,
+    // because no control can ask a participant for one.
+    expect(
+      await createRowIn(
+        harness.user,
+        picker('Attribute'),
+        'Find or create an attribute',
+        (term) =>
+          `Cannot create attribute named “${term}”: this type already has an attribute called that`,
+        'layout',
+      ),
+    ).not.toBeNull();
+  });
+
+  /** The attribute is created and bound without the researcher leaving. */
+  it('creates a position attribute without leaving the stage', async () => {
+    const harness = renderStageEditor(composerHolding({ layoutVariable: '' }));
+
+    await harness.opened();
+    await inventAttribute(
+      harness.user,
+      picker('Create or select an attribute to store node coordinates'),
+      'placedAt',
+    );
+
     // Bound here, not merely created: the researcher asked for it from this
     // control, so finding it in a list that has just grown is not the answer.
-    const picker = await screen.findByRole('combobox', {
-      name: 'Create or select an attribute to store node coordinates',
-    });
+    // Read off the field itself: what it SHOWS is the attribute it holds.
     await waitFor(() =>
       expect(
-        within(picker).getByRole('option', {
-          name: 'placedAt',
-        }),
-      ).toHaveProperty('selected', true),
+        within(
+          picker('Create or select an attribute to store node coordinates'),
+        ).getByText('placedAt'),
+      ).toBeVisible(),
     );
+  });
+
+  /**
+   * The attribute every node this composer adds is stamped with, invented from
+   * the same control that binds it. A name finishes a text attribute, so this
+   * one is written straight to the codebook.
+   */
+  it('creates the attribute a quick-added node is named in', async () => {
+    const harness = renderStageEditor(composerHolding({ quickAdd: '' }));
+
+    await harness.opened();
+    await inventAttribute(
+      harness.user,
+      picker('Create or select an attribute for the quick-add form'),
+      'calledThem',
+    );
+
+    const created = await waitFor(() => {
+      const entry = Object.entries(
+        harness.hostCodebook().node?.person?.variables ?? {},
+      ).find(([, variable]) => variable.name === 'calledThem');
+      if (entry === undefined) throw new Error('the attribute was not created');
+      return entry;
+    });
+    expect(created[1].type).toBe('text');
+    await waitFor(() =>
+      expect(
+        within(
+          picker('Create or select an attribute for the quick-add form'),
+        ).getByText('calledThem'),
+      ).toBeVisible(),
+    );
+  });
+
+  /**
+   * And the grouping attribute, which a name cannot finish: the groups ARE its
+   * values, and the schema refuses fewer than two of them. So this create row
+   * opens the codebook's own editor on the typed name rather than writing
+   * anything, which is the second of Architect's two create shapes.
+   */
+  it('sends a grouping attribute to the editor that authors its groups', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+
+    await harness.opened();
+    await inventAttribute(
+      harness.user,
+      picker('Create or select a categorical attribute for grouping'),
+      'circle',
+    );
+
+    // Nothing written yet, and the editor holding the name the researcher
+    // typed: a list of groups is what it is open to ask for.
+    expect(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    ).toHaveValue('circle');
+    expect(
+      Object.values(harness.hostCodebook().node?.person?.variables ?? {}).some(
+        (variable) => variable.name === 'circle',
+      ),
+    ).toBe(false);
   });
 
   /**
@@ -698,6 +886,78 @@ describe('what a network composer lets the participant build', () => {
 });
 
 /**
+ * Where the create row is offered, and where it is not.
+ *
+ * This row's create is finished in the codebook's own editor, so it is offered
+ * exactly where that editor can be opened. The two cases are asked of the same
+ * control with the same words, so a term or a label this suite got wrong would
+ * fail the first of them rather than pass the second for the wrong reason.
+ */
+describe('inventing the attribute a connection form records', () => {
+  const SEARCH_LABEL = 'Find or create an attribute';
+  /**
+   * What the same box is called where nothing may be created — the other half
+   * of the same fact, said to a researcher who cannot see the list. Asked for
+   * by name in the negative case, so a site that started offering creation
+   * fails here rather than quietly renaming its own search box.
+   */
+  const SEARCH_ONLY_LABEL = 'Find an attribute';
+  const createRowName = (term: string) =>
+    `Create new attribute called “${term}”.`;
+
+  /** A composer whose one connection form already asks something. */
+  const askingAbout = (type: string) =>
+    composerHolding({
+      edges: [
+        {
+          id: 'composer-edge-1',
+          subject: { entity: 'edge', type },
+          form: {
+            fields: [
+              { id: 'field-1', variable: 'edgeNotes', component: 'TextArea' },
+            ],
+          },
+        },
+      ],
+    });
+
+  const createRowOfTheOpenRow = async (
+    harness: ReturnType<typeof renderStageEditor>,
+    searchLabel: string = SEARCH_LABEL,
+  ): Promise<HTMLElement | null> => {
+    await openRow(harness, 'Edit form field');
+    return createRowIn(
+      harness.user,
+      picker('Attribute'),
+      searchLabel,
+      createRowName,
+      'howOften',
+    );
+  };
+
+  it('offers it on the connection type the codebook holds', async () => {
+    expect(
+      await createRowOfTheOpenRow(renderStageEditor(askingAbout('knows'))),
+    ).not.toBeNull();
+  });
+
+  /**
+   * A connection type a collaborator has deleted has no codebook section to
+   * add an attribute to, so no editor can open on the typed name — and the
+   * picker's rule is that a create row exists exactly where a create does. The
+   * form is still reachable, because it is still on screen to be taken out.
+   */
+  it('offers none on a connection type the codebook has lost', async () => {
+    expect(
+      await createRowOfTheOpenRow(
+        renderStageEditor(askingAbout('former_edge')),
+        SEARCH_ONLY_LABEL,
+      ),
+    ).toBeNull();
+  });
+});
+
+/**
  * A form field collects its answer through the codebook's own rules, so it may
  * not record an attribute something else writes around them.
  *
@@ -713,14 +973,13 @@ describe('an attribute another stage starts writing mid-edit', () => {
     await switchOnNodeForm(harness);
 
     const dialog = await addRow(harness, 'Create new node attribute');
-    const attribute = dialog.getByRole('combobox', { name: 'Attribute' });
     // The fixture's marking prompt already claims `highlighted`, so the picker
     // is not offering it — which is what makes the same picker offering it a
     // moment later the collaborator's change ARRIVING rather than a guess.
     expect(
-      within(attribute).queryByRole('option', { name: 'highlighted' }),
-    ).toBeNull();
-    await harness.user.selectOptions(attribute, 'flagged');
+      await offeredAttributes(harness.user, picker('Attribute')),
+    ).not.toContain('highlighted');
+    await chooseAttributeById(harness.user, picker('Attribute'), 'flagged');
 
     highlightInASociogram(harness, 'flagged');
     // Waited for rather than assumed: a save clicked before the change lands
@@ -729,10 +988,14 @@ describe('an attribute another stage starts writing mid-edit', () => {
     // value the row is holding would blank the control and write the blank
     // over the reference the researcher has to resolve — so the row's own gate
     // is the only thing left that can refuse it.
-    await within(attribute).findByRole('option', { name: 'highlighted' });
+    await waitFor(async () =>
+      expect(
+        await offeredAttributes(harness.user, picker('Attribute')),
+      ).toContain('highlighted'),
+    );
     expect(
-      within(attribute).getByRole('option', { name: 'flagged' }),
-    ).toBeInTheDocument();
+      await offeredAttributes(harness.user, picker('Attribute')),
+    ).toContain('flagged');
     await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
 
     // The dialog staying open IS the refusal, and the reason is the one the
@@ -798,10 +1061,7 @@ describe('an attribute a collaborator retypes mid-edit', () => {
     await switchOnNodeForm(harness);
 
     const dialog = await addRow(harness, 'Create new node attribute');
-    await harness.user.selectOptions(
-      dialog.getByRole('combobox', { name: 'Attribute' }),
-      'age',
-    );
+    await chooseAttributeById(harness.user, picker('Attribute'), 'age');
     const control = dialog.getByRole('combobox', { name: 'Input control' });
     // A number attribute arrives paired with the one control that can ask for
     // a number, which is what makes the pairing below the collaborator's doing.

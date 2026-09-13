@@ -6,12 +6,18 @@ import {
   missingSortPropertyLabel,
 } from '../../../../../fields/sortOrderOptions.ts';
 import { validatedElsewhereMessage } from '../../../../../form/arrayFields/crossClassPick.ts';
+import {
+  attributeField,
+  chooseAttributeById,
+  inventAttribute,
+} from '../../../../../testing/attributePicker.ts';
 import { enIntl, readMessage } from '../../../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../../../testing/renderStageEditor.tsx';
 import { sociogramPromptMessages } from '../sociogramPromptMessages.ts';
 import {
   collectInAForm,
   openPrompt,
+  promptAttributeField,
   personVariables,
   promptsOf,
   sociogramHolding,
@@ -182,8 +188,9 @@ describe('the tasks a sociogram sets', () => {
 
     const prompt = await openPrompt(harness);
     await chooseTapBehaviour(harness, prompt, /Attribute toggling/);
-    await harness.user.selectOptions(
-      await prompt.findByRole('combobox', { name: 'Boolean attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await promptAttributeField('Boolean attribute'),
       'highlighted',
     );
     await switchTapping(harness, prompt, false);
@@ -205,8 +212,9 @@ describe('the tasks a sociogram sets', () => {
 
     const prompt = await openPrompt(harness);
     await chooseTapBehaviour(harness, prompt, /Attribute toggling/);
-    await harness.user.selectOptions(
-      await prompt.findByRole('combobox', { name: 'Boolean attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await promptAttributeField('Boolean attribute'),
       'highlighted',
     );
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
@@ -264,8 +272,9 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
 
     const prompt = await openPrompt(harness);
     await chooseTapBehaviour(harness, prompt, /Attribute toggling/);
-    await harness.user.selectOptions(
-      await prompt.findByRole('combobox', { name: 'Boolean attribute' }),
+    await chooseAttributeById(
+      harness.user,
+      await promptAttributeField('Boolean attribute'),
       'highlighted',
     );
 
@@ -275,9 +284,9 @@ describe('a highlight attribute a form starts collecting mid-edit', () => {
     // the row's own gate has to refuse from. Waited for rather than assumed:
     // a save clicked before the change lands is refused by nothing, which is
     // the defect this test exists for.
-    await prompt.findByRole('option', {
-      name: 'highlighted — this attribute is not available here',
-    });
+    await within(await promptAttributeField('Boolean attribute')).findByText(
+      'highlighted — this attribute is not available here',
+    );
 
     await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
 
@@ -750,8 +759,9 @@ describe('what tapping a node does, against what the prompt already said', () =>
       }
       await chooseTapBehaviour(harness, prompt, tap);
       if (tap === MARK && scenario.marks !== undefined) {
-        await harness.user.selectOptions(
-          await prompt.findByRole('combobox', { name: 'Boolean attribute' }),
+        await chooseAttributeById(
+          harness.user,
+          await promptAttributeField('Boolean attribute'),
           scenario.marks,
         );
       }
@@ -795,28 +805,23 @@ describe('what tapping a node does, against what the prompt already said', () =>
 });
 
 /**
- * The attribute a prompt needs, created from inside the prompt's own dialog.
+ * The attribute a prompt needs, invented from inside the prompt's own picker.
  *
- * Two dialogs are then open at once — the prompt's, and the editor for the
- * attribute — so the inner one is reached through the control it owns rather
- * than by asking for "the dialog": which of the two `getByRole` answers with
- * is not this test's to depend on.
+ * A position attribute is finished the moment it is named — there is no list
+ * of values and no control a participant answers it through — so the create
+ * row writes it and the window closes on the new pill. No second dialog, and
+ * no sibling button: looking for the attribute and finding it does not exist
+ * are one act, in one control.
  */
 describe('creating an attribute a prompt needs without leaving the stage', () => {
   it('binds the prompt to the attribute the codebook now holds', async () => {
     const harness = renderStageEditor(openEditor());
 
     const prompt = await openPrompt(harness);
-    await harness.user.click(
-      prompt.getByRole('button', { name: 'Create a new position attribute' }),
-    );
-    const name = await screen.findByRole('textbox', {
-      name: 'Attribute name',
-    });
-    const creator = within(name.closest('[role="dialog"]') as HTMLElement);
-    await harness.user.type(name, 'second_canvas');
-    await harness.user.click(
-      creator.getByRole('button', { name: 'Create attribute' }),
+    await inventAttribute(
+      harness.user,
+      await promptAttributeField('Layout attribute'),
+      'second_canvas',
     );
 
     await waitFor(() => {
@@ -829,15 +834,76 @@ describe('creating an attribute a prompt needs without leaving the stage', () =>
     });
 
     // Created and BOUND: the picker holds the new attribute, so the prompt the
-    // researcher was writing is the one the attribute was created for.
+    // researcher was writing is the one the attribute was created for. The
+    // picker shows the researcher's NAME for it, and the prompt stores the id,
+    // so both are read — the field for what is on screen, and the saved stage
+    // for the reference that survives the dialog.
     const created = Object.entries(
       harness.hostCodebook().node?.person?.variables ?? {},
     ).find(([, variable]) => variable.name === 'second_canvas')?.[0];
     await waitFor(() =>
       expect(
-        prompt.getByRole('combobox', { name: 'Layout attribute' }),
-      ).toHaveValue(created),
+        within(attributeField('Layout attribute')).getByText('second_canvas'),
+      ).toBeInTheDocument(),
     );
+
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]?.layout).toEqual({
+      layoutVariable: created,
+    });
+  });
+
+  /**
+   * The other slot a sociogram prompt fills, and the same act: deciding to
+   * mark these people and inventing the flag to mark them with is one thought.
+   *
+   * A boolean is finished by a name too, so this one is written straight to the
+   * codebook as well — and it is written as the flag the tap will set rather
+   * than as whatever kind of answer happened to be handy, which is the only
+   * thing the slot decides on the researcher's behalf.
+   */
+  it('invents the flag a tap marks a node with', async () => {
+    const harness = renderStageEditor(openEditor());
+
+    const prompt = await openPrompt(harness);
+    await harness.user.click(
+      prompt.getByRole('option', { name: /Attribute toggling/ }),
+    );
+    await inventAttribute(
+      harness.user,
+      await promptAttributeField('Boolean attribute'),
+      'spoke_to_recently',
+    );
+
+    const created = await waitFor(() => {
+      const entry = Object.entries(
+        harness.hostCodebook().node?.person?.variables ?? {},
+      ).find(([, variable]) => variable.name === 'spoke_to_recently');
+      if (entry === undefined) throw new Error('the flag was not created');
+      return entry;
+    });
+    expect(created[1].type).toBe('boolean');
+    await waitFor(() =>
+      expect(
+        within(attributeField('Boolean attribute')).getByText(
+          'spoke_to_recently',
+        ),
+      ).toBeInTheDocument(),
+    );
+
+    await harness.user.click(prompt.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+    const saved = await harness.submit();
+    expect(promptsOf(saved?.stageDocument ?? {})[0]?.highlight).toEqual({
+      allowHighlighting: true,
+      variable: created[0],
+    });
   });
 });
 
