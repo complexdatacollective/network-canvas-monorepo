@@ -86,13 +86,18 @@ replace `COMPOSE_FILE` and could silently select mutable image tags.
 ```sh
 RECOVERY_ENV=/absolute/private/recovery-command.env
 RECOVERY_EVIDENCE_DIR=/absolute/private/recovery-evidence
+# BEGIN RECOVERY_COMPOSE_OVERLAYS
 RECOVERY_COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 case ":$RECOVERY_COMPOSE_FILE:" in
   *":deployment/recovery-images.yml:"*) ;;
   *) RECOVERY_COMPOSE_FILE="$RECOVERY_COMPOSE_FILE:deployment/recovery-images.yml" ;;
 esac
-RECOVERY_COMPOSE_FILE="$RECOVERY_COMPOSE_FILE:deployment/quarantine.yml"
+case ":$RECOVERY_COMPOSE_FILE:" in
+  *":deployment/quarantine.yml:"*) ;;
+  *) RECOVERY_COMPOSE_FILE="$RECOVERY_COMPOSE_FILE:deployment/quarantine.yml" ;;
+esac
 export COMPOSE_FILE="$RECOVERY_COMPOSE_FILE"
+# END RECOVERY_COMPOSE_OVERLAYS
 run_closed_recovery_command docker compose \
   run --user "$(id -u):$(id -g)" \
   --rm --no-deps --env-from-file "$RECOVERY_ENV" \
