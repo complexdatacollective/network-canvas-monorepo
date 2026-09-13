@@ -479,14 +479,21 @@ async function holdRestoredDeliveries(client: pg.PoolClient) {
       const failed = await client.query(
         `UPDATE audit_export_jobs SET status='failed',failed_at=statement_timestamp(),
           failure_event_id=$2,last_error='recovery quarantined',
-          lease_owner=NULL,lease_expires_at=NULL WHERE id=$1
+          lease_owner=NULL,lease_expires_at=NULL,
+          artifact_effect_expires_at=CASE WHEN artifact_key IS NULL THEN NULL ELSE statement_timestamp() END,
+          artifact_cleanup_owner=NULL,artifact_cleanup_expires_at=NULL,
+          artifact_cleanup_not_before=CASE WHEN artifact_key IS NULL THEN NULL ELSE statement_timestamp() END,
+          artifact_cleanup_observed_at=NULL WHERE id=$1
           AND status IN ('pending','generating')`,
         [job.id, event.id],
       );
       if (failed.rowCount !== 1) throw new Error(MISMATCH);
     }
     await client.query(`UPDATE audit_export_jobs
-      SET handle_consumed_at=COALESCE(handle_consumed_at,statement_timestamp())
+      SET handle_consumed_at=COALESCE(handle_consumed_at,statement_timestamp()),
+        artifact_cleanup_owner=NULL,artifact_cleanup_expires_at=NULL,
+        artifact_cleanup_not_before=statement_timestamp(),
+        artifact_cleanup_observed_at=NULL
       WHERE status='ready' AND handle_consumed_at IS NULL`);
   });
 }

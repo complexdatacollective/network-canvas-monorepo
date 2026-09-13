@@ -197,6 +197,23 @@ const auditExportJobs = pgTable(
     leaseOwner: uuid('lease_owner'),
     leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     artifactKey: text('artifact_key'),
+    artifactUploadId: text('artifact_upload_id'),
+    // Every storage call for an attempt shares this absolute deadline. Cleanup
+    // may fence an expired owner immediately, but cannot verify absence until
+    // the deadline has passed.
+    artifactEffectExpiresAt: timestamp('artifact_effect_expires_at', {
+      withTimezone: true,
+    }),
+    artifactCleanupOwner: uuid('artifact_cleanup_owner'),
+    artifactCleanupExpiresAt: timestamp('artifact_cleanup_expires_at', {
+      withTimezone: true,
+    }),
+    artifactCleanupNotBefore: timestamp('artifact_cleanup_not_before', {
+      withTimezone: true,
+    }),
+    artifactCleanupObservedAt: timestamp('artifact_cleanup_observed_at', {
+      withTimezone: true,
+    }),
     artifactRowCount: integer('artifact_row_count'),
     artifactByteCount: bigint('artifact_byte_count', { mode: 'number' }),
     // sha256 hex of a 256-bit CSPRNG handle. The handle itself is returned
@@ -294,6 +311,15 @@ const auditExportJobs = pgTable(
       'audit_export_jobs_lease_check',
       sql`(${table.leaseOwner} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
     ),
+    check(
+      'audit_export_jobs_artifact_cleanup_check',
+      sql`(${table.artifactCleanupOwner} IS NULL) = (${table.artifactCleanupExpiresAt} IS NULL)
+          AND (${table.artifactUploadId} IS NULL OR ${table.artifactKey} IS NOT NULL)
+          AND (${table.artifactEffectExpiresAt} IS NULL OR ${table.artifactKey} IS NOT NULL)
+          AND (${table.artifactCleanupOwner} IS NULL OR ${table.artifactKey} IS NOT NULL)
+          AND (${table.artifactCleanupNotBefore} IS NULL OR ${table.artifactKey} IS NOT NULL)
+          AND (${table.artifactCleanupObservedAt} IS NULL OR ${table.artifactCleanupNotBefore} IS NOT NULL)`,
+    ),
     // A terminal job holds no lease.
     check(
       'audit_export_jobs_terminal_state_check',
@@ -305,6 +331,7 @@ const auditExportJobs = pgTable(
       sql`char_length(${table.teamId}) BETWEEN 1 AND 255
           AND char_length(${table.actorId}) BETWEEN 1 AND 255
           AND (${table.artifactKey} IS NULL OR char_length(${table.artifactKey}) BETWEEN 1 AND 1024)
+          AND (${table.artifactUploadId} IS NULL OR char_length(${table.artifactUploadId}) BETWEEN 1 AND 1024)
           AND (${table.lastError} IS NULL OR char_length(${table.lastError}) <= 1000)`,
     ),
     // The ordinary policy, with the maintenance escape — deliberately not the

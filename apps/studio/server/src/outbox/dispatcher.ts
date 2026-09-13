@@ -37,7 +37,11 @@ export type OutboxAdapter<Claim extends OutboxClaim> = {
   suppressClaim(claim: Claim, lease: OutboxLease): Promise<boolean>;
   renewLease(claim: Claim, lease: OutboxLease): Promise<boolean>;
   // A final authorization check may suppress work after its initial claim.
-  deliver(claim: Claim): Promise<void | 'suppressed'>;
+  deliver(
+    claim: Claim,
+    /** Aborts when this process can no longer prove lease ownership. */
+    signal?: AbortSignal,
+  ): Promise<void | 'suppressed'>;
   failureDisposition(error: unknown): 'retryable' | 'permanent' | 'uncertain';
   /**
    * Override only when a successful deliver() made no external or otherwise
@@ -66,7 +70,7 @@ type OutboxDispatcherOptions<Claim extends OutboxClaim> = OutboxRetryOptions & {
   roleError?: (role: string) => Error;
 };
 
-type LeaseHeartbeat = { stop(): Promise<boolean> };
+type LeaseHeartbeat = { signal: AbortSignal; stop(): Promise<boolean> };
 
 export function requirePositiveFinite(name: string, value: number): void {
   if (!Number.isFinite(value) || value <= 0) {
@@ -127,6 +131,7 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
   }
 
   private startLeaseHeartbeat(claim: Claim): LeaseHeartbeat {
+    const controller = new AbortController();
     const heartbeatMs = Math.max(1, Math.floor(this.lease.durationMs / 3));
     let ownsLease = true;
     let stopped = false;
@@ -140,6 +145,7 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
           .then(() => this.adapter.renewLease(claim, this.lease))
           .then((renewed) => {
             ownsLease = renewed;
+            if (!renewed) controller.abort(new Error('outbox lease lost'));
             observeOutbox(this.observer, {
               queue: this.adapter.queue,
               kind: 'heartbeat',
@@ -152,6 +158,7 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
             // require confirmed ownership; uncertain delivery may still use its
             // finalizer's lease-owner CAS to prevent an unsafe automatic retry.
             ownsLease = false;
+            controller.abort(new Error('outbox lease renewal failed'));
             observeOutbox(this.observer, {
               queue: this.adapter.queue,
               kind: 'heartbeat',
@@ -165,6 +172,7 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
 
     schedule();
     return {
+      signal: controller.signal,
       stop: async () => {
         stopped = true;
         if (timer) clearTimeout(timer);
@@ -207,7 +215,7 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
 
     const heartbeat = this.startLeaseHeartbeat(claim);
     try {
-      const outcome = await this.adapter.deliver(claim);
+      const outcome = await this.adapter.deliver(claim, heartbeat.signal);
       if (outcome === 'suppressed') {
         await heartbeat.stop();
         if (await this.adapter.suppressClaim(claim, this.lease))

@@ -1,6 +1,6 @@
 {
   "dialect": "postgres",
-  "id": "010aa5d4-2ded-403f-a6fb-83fcc8a933c4",
+  "id": "124e0627-7334-4b8f-bc6c-4587d0f493b1",
   "prevIds": ["3b55c83b-3d20-4e2f-a6d8-51e52c1d3ec1"],
   "version": "8",
   "ddl": [
@@ -8848,6 +8848,84 @@
       "table": "audit_export_jobs"
     },
     {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "artifact_upload_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_jobs"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "artifact_effect_expires_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_jobs"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "artifact_cleanup_owner",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_jobs"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "artifact_cleanup_expires_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_jobs"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "artifact_cleanup_not_before",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_jobs"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "artifact_cleanup_observed_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "audit_export_jobs"
+    },
+    {
       "type": "integer",
       "typeSchema": null,
       "notNull": false,
@@ -16249,6 +16327,13 @@
       "table": "audit_export_jobs"
     },
     {
+      "value": "(\"artifact_cleanup_owner\" IS NULL) = (\"artifact_cleanup_expires_at\" IS NULL)\n          AND (\"artifact_upload_id\" IS NULL OR \"artifact_key\" IS NOT NULL)\n          AND (\"artifact_effect_expires_at\" IS NULL OR \"artifact_key\" IS NOT NULL)\n          AND (\"artifact_cleanup_owner\" IS NULL OR \"artifact_key\" IS NOT NULL)\n          AND (\"artifact_cleanup_not_before\" IS NULL OR \"artifact_key\" IS NOT NULL)\n          AND (\"artifact_cleanup_observed_at\" IS NULL OR \"artifact_cleanup_not_before\" IS NOT NULL)",
+      "name": "audit_export_jobs_artifact_cleanup_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "audit_export_jobs"
+    },
+    {
       "value": "\"status\" IN ('pending', 'generating')\n          OR (\"lease_owner\" IS NULL AND \"lease_expires_at\" IS NULL)",
       "name": "audit_export_jobs_terminal_state_check",
       "entityType": "checks",
@@ -16256,7 +16341,7 @@
       "table": "audit_export_jobs"
     },
     {
-      "value": "char_length(\"team_id\") BETWEEN 1 AND 255\n          AND char_length(\"actor_id\") BETWEEN 1 AND 255\n          AND (\"artifact_key\" IS NULL OR char_length(\"artifact_key\") BETWEEN 1 AND 1024)\n          AND (\"last_error\" IS NULL OR char_length(\"last_error\") <= 1000)",
+      "value": "char_length(\"team_id\") BETWEEN 1 AND 255\n          AND char_length(\"actor_id\") BETWEEN 1 AND 255\n          AND (\"artifact_key\" IS NULL OR char_length(\"artifact_key\") BETWEEN 1 AND 1024)\n          AND (\"artifact_upload_id\" IS NULL OR char_length(\"artifact_upload_id\") BETWEEN 1 AND 1024)\n          AND (\"last_error\" IS NULL OR char_length(\"last_error\") <= 1000)",
       "name": "audit_export_jobs_identifier_lengths_check",
       "entityType": "checks",
       "schema": "public",

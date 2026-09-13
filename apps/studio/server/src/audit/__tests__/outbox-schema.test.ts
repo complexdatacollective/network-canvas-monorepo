@@ -186,7 +186,10 @@ describe.skipIf(!db)('audit outbox schema', () => {
 
       const row = await pool.query<Row>(
         `SELECT status, attempt_count, lease_owner, lease_expires_at,
-                artifact_key, handle_hash, handle_consumed_at,
+                artifact_key, artifact_upload_id, artifact_effect_expires_at,
+                artifact_cleanup_owner, artifact_cleanup_expires_at,
+                artifact_cleanup_not_before, artifact_cleanup_observed_at,
+                handle_hash, handle_consumed_at,
                 completion_event_id, failure_event_id, ready_at, failed_at,
                 available_at IS NOT NULL AS scheduled,
                 created_at IS NOT NULL AS stamped
@@ -199,6 +202,12 @@ describe.skipIf(!db)('audit outbox schema', () => {
         lease_owner: null,
         lease_expires_at: null,
         artifact_key: null,
+        artifact_upload_id: null,
+        artifact_effect_expires_at: null,
+        artifact_cleanup_owner: null,
+        artifact_cleanup_expires_at: null,
+        artifact_cleanup_not_before: null,
+        artifact_cleanup_observed_at: null,
         handle_hash: null,
         handle_consumed_at: null,
         completion_event_id: null,
@@ -261,15 +270,6 @@ describe.skipIf(!db)('audit outbox schema', () => {
         'failure evidence on a job that has not failed',
         { failed_at: new Date(), failure_event_id: randomUUID() },
       ],
-      [
-        'a failed job that still names an artifact',
-        {
-          status: 'failed',
-          failed_at: new Date(),
-          failure_event_id: randomUUID(),
-          artifact_key: 'exports/partial.csv',
-        },
-      ],
     ])('refuses %s', async (_label, overrides) => {
       await expect(
         insert('audit_export_jobs', jobRow(overrides)),
@@ -290,6 +290,47 @@ describe.skipIf(!db)('audit outbox schema', () => {
           }),
         ),
       ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it('retains a failed attempt artifact under a restart-safe cleanup fence', async () => {
+      await expect(
+        insert(
+          'audit_export_jobs',
+          jobRow({
+            status: 'failed',
+            failed_at: new Date(),
+            failure_event_id: randomUUID(),
+            artifact_key: `audit-exports/${randomUUID()}/${randomUUID()}.csv`,
+            artifact_upload_id: 'upload-id',
+            artifact_effect_expires_at: new Date(),
+            artifact_cleanup_not_before: new Date(),
+          }),
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it.each([
+      ['an upload id without an artifact key', { artifact_upload_id: 'id' }],
+      [
+        'a cleanup owner without its lease expiry',
+        {
+          artifact_key: 'exports/partial.csv',
+          artifact_cleanup_owner: randomUUID(),
+        },
+      ],
+      [
+        'an observed cleanup without a durable not-before',
+        {
+          artifact_key: 'exports/partial.csv',
+          artifact_cleanup_observed_at: new Date(),
+        },
+      ],
+    ])('refuses %s', async (_label, overrides) => {
+      await expect(
+        insert('audit_export_jobs', jobRow(overrides)),
+      ).rejects.toMatchObject({
+        constraint: 'audit_export_jobs_artifact_cleanup_check',
+      });
     });
 
     it.each([

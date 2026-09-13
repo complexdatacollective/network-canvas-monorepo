@@ -163,7 +163,10 @@ describe('shared outbox execution', () => {
       failed: 0,
     });
 
-    expect(work.deliver).toHaveBeenCalledExactlyOnceWith(claim);
+    expect(work.deliver).toHaveBeenCalledExactlyOnceWith(
+      claim,
+      expect.any(AbortSignal),
+    );
     expect(events).toEqual([
       {
         queue: 'message_deliveries',
@@ -390,6 +393,9 @@ describe('shared outbox execution', () => {
       }).runOnce();
 
       await vi.advanceTimersByTimeAsync(30);
+      const signal = work.deliver.mock.calls[0]?.[1];
+      expect(signal).toBeInstanceOf(AbortSignal);
+      expect(signal?.aborted).toBe(true);
       expect(observer).toHaveBeenCalledWith({
         queue: 'message_deliveries',
         kind: 'heartbeat',

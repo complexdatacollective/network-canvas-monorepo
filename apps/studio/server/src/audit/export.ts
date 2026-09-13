@@ -33,6 +33,9 @@ const STAGED_ROWS = 100_000;
 const STAGED_BYTES = 100 * 1024 * 1024;
 const PAGE_ROWS = 250;
 const HANDLE_TTL_MS = 15 * 60_000;
+const ARTIFACT_EFFECT_TIMEOUT_MS = 15 * 60_000;
+const ARTIFACT_CLEANUP_LEASE_MS = 30_000;
+const ARTIFACT_CLEANUP_TIMEOUT_MS = 25_000;
 const teamStore = new TeamStore();
 
 export type AuditExportFilters = {
@@ -649,6 +652,10 @@ type CleanupClaim = {
   actorId: string;
   startEventId: string;
   artifactKey: string;
+  artifactUploadId: string | null;
+  status: string;
+  cleanupOwner: string;
+  cleanupObservedAt: Date | null;
   reason: 'consumed' | 'expired';
 };
 
@@ -676,117 +683,81 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
     this.keys = keys;
     this.cleanupConsumedAfterMs = cleanupConsumedAfterMs;
   }
-  private async cleanupGeneratedAfterDecision(
-    c: Pick<Claim, 'id' | 'leaseOwner'>,
-  ): Promise<void> {
-    const id = generatedId(c);
-    const generated = this.generated.get(id);
-    if (!generated) return;
-    await this.store.deleteAuditExport(generated.key);
+  private forgetGenerated(c: Pick<Claim, 'id' | 'leaseOwner'>): void {
+    this.generated.delete(generatedId(c));
+  }
+
+  private async releaseCleanupClaim(claim: CleanupClaim): Promise<void> {
     await this.pool.query(
-      `UPDATE audit_export_jobs SET artifact_key=NULL
-       WHERE id=$1 AND artifact_key=$2 AND status<>'ready'`,
-      [c.id, generated.key],
+      `UPDATE audit_export_jobs
+       SET artifact_cleanup_owner=NULL,artifact_cleanup_expires_at=NULL
+       WHERE id=$1 AND artifact_cleanup_owner=$2`,
+      [claim.id, claim.cleanupOwner],
     );
-    this.generated.delete(id);
   }
-  private async cleanupGeneratedAfterLostDecision(
-    c: Pick<Claim, 'id' | 'leaseOwner'>,
-  ): Promise<void> {
-    const id = generatedId(c);
-    const generated = this.generated.get(id);
-    if (!generated) return;
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-      const current = (
-        await client.query<{ status: string; artifact_key: string | null }>(
-          `SELECT status,artifact_key FROM audit_export_jobs WHERE id=$1 FOR UPDATE`,
-          [c.id],
-        )
-      ).rows[0];
-      if (
-        current?.status === 'ready' &&
-        current.artifact_key === generated.key
-      ) {
-        await client.query('COMMIT');
-        this.generated.delete(id);
-        return;
-      }
-      await this.store.deleteAuditExport(generated.key);
-      await client.query(
-        `UPDATE audit_export_jobs SET artifact_key=NULL
-         WHERE id=$1 AND artifact_key=$2 AND status<>'ready'`,
-        [c.id, generated.key],
-      );
-      await client.query('COMMIT');
-      this.generated.delete(id);
-    } catch (error) {
-      await client.query('ROLLBACK').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-  private async cleanupDetachedArtifact(): Promise<boolean> {
-    const client = await this.pool.connect();
-    try {
-      await client.query('BEGIN');
-      const detached = (
-        await client.query<{ id: string; artifact_key: string }>(
-          `SELECT id,artifact_key FROM audit_export_jobs
-           WHERE artifact_key IS NOT NULL AND (
-             status IN ('pending','failed') OR
-             (status='generating' AND lease_expires_at<=statement_timestamp())
-           ) ORDER BY available_at,id FOR UPDATE SKIP LOCKED LIMIT 1`,
-        )
-      ).rows[0];
-      if (!detached) {
-        await client.query('COMMIT');
-        return false;
-      }
-      await this.store.deleteAuditExport(detached.artifact_key);
-      const cleared = await client.query(
-        `UPDATE audit_export_jobs SET artifact_key=NULL
-         WHERE id=$1 AND artifact_key=$2 AND status<>'ready'`,
-        [detached.id, detached.artifact_key],
-      );
-      if (cleared.rowCount !== 1) throw new CleanupClaimLostError();
-      await client.query('COMMIT');
-      return true;
-    } catch (error) {
-      await client.query('ROLLBACK').catch(() => undefined);
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-  async suppressUndeliverable() {
-    const detachedEntry = this.generated.entries().next().value;
-    if (detachedEntry) {
-      const separator = detachedEntry[0].indexOf(':');
-      const jobId = detachedEntry[0].slice(0, separator);
-      const leaseOwner = detachedEntry[0].slice(separator + 1);
-      if (jobId && leaseOwner) {
-        await this.cleanupGeneratedAfterLostDecision({ id: jobId, leaseOwner });
-        return 1;
-      }
-    }
-    if (await this.cleanupDetachedArtifact()) return 1;
-    const selected = await this.pool.query<CleanupClaim>(
-      `SELECT id,team_id AS "teamId",actor_id AS "actorId",
-        start_event_id AS "startEventId",artifact_key AS "artifactKey",
-        CASE WHEN handle_consumed_at IS NULL THEN 'expired' ELSE 'consumed' END AS reason
-       FROM audit_export_jobs
-       WHERE status='ready' AND artifact_key IS NOT NULL AND (
-         (handle_consumed_at IS NULL AND handle_expires_at<=statement_timestamp())
-         OR (handle_consumed_at IS NOT NULL
-           AND handle_consumed_at<=statement_timestamp()-($1*interval '1 millisecond'))
-       ) ORDER BY COALESCE(handle_consumed_at,handle_expires_at),id LIMIT 1`,
-      [this.cleanupConsumedAfterMs],
+
+  private async claimCleanup(): Promise<CleanupClaim | null> {
+    const cleanupOwner = randomUUID();
+    const result = await this.pool.query<CleanupClaim>(
+      `WITH candidate AS (
+         SELECT id FROM audit_export_jobs
+         WHERE artifact_key IS NOT NULL
+           AND (artifact_cleanup_owner IS NULL
+             OR artifact_cleanup_expires_at<=statement_timestamp())
+           AND (artifact_cleanup_not_before IS NULL
+             OR artifact_cleanup_not_before<=statement_timestamp())
+           AND (
+             status IN ('pending','failed')
+             OR (status='generating'
+               AND lease_expires_at<=statement_timestamp())
+             OR (status='ready' AND (
+               (handle_consumed_at IS NULL
+                 AND handle_expires_at<=statement_timestamp())
+               OR (handle_consumed_at IS NOT NULL
+                 AND handle_consumed_at<=statement_timestamp()-($1*interval '1 millisecond'))
+             ))
+           )
+         ORDER BY CASE WHEN status='ready' THEN 1 ELSE 0 END,
+           COALESCE(handle_consumed_at,handle_expires_at,available_at),id
+         FOR UPDATE SKIP LOCKED LIMIT 1
+       )
+       UPDATE audit_export_jobs jobs
+       SET artifact_cleanup_owner=$2,
+         artifact_cleanup_expires_at=statement_timestamp()+($3*interval '1 millisecond'),
+         artifact_cleanup_not_before=COALESCE(
+           artifact_cleanup_not_before,
+          GREATEST(
+            statement_timestamp(),
+            artifact_effect_expires_at+interval '1 millisecond'
+          )
+         )
+       FROM candidate WHERE jobs.id=candidate.id
+       RETURNING jobs.id,jobs.team_id AS "teamId",jobs.actor_id AS "actorId",
+         jobs.start_event_id AS "startEventId",jobs.artifact_key AS "artifactKey",
+         jobs.artifact_upload_id AS "artifactUploadId",jobs.status,
+         jobs.artifact_cleanup_owner::text AS "cleanupOwner",
+         jobs.artifact_cleanup_observed_at AS "cleanupObservedAt",
+         CASE WHEN jobs.handle_consumed_at IS NULL THEN 'expired' ELSE 'consumed' END AS reason`,
+      [this.cleanupConsumedAfterMs, cleanupOwner, ARTIFACT_CLEANUP_LEASE_MS],
     );
-    const claim = selected.rows[0];
-    if (!claim) return 0;
+    return result.rows[0] ?? null;
+  }
+
+  private async completeAttemptCleanup(claim: CleanupClaim): Promise<boolean> {
+    const result = await this.pool.query(
+      `UPDATE audit_export_jobs SET artifact_key=NULL,artifact_upload_id=NULL,
+         artifact_effect_expires_at=NULL,artifact_cleanup_owner=NULL,
+         artifact_cleanup_expires_at=NULL,artifact_cleanup_not_before=NULL,
+         artifact_cleanup_observed_at=NULL
+       WHERE id=$1 AND artifact_key=$2 AND artifact_cleanup_owner=$3
+         AND artifact_cleanup_expires_at>statement_timestamp()
+         AND status<>'ready'`,
+      [claim.id, claim.artifactKey, claim.cleanupOwner],
+    );
+    return result.rowCount === 1;
+  }
+
+  private async completeReadyCleanup(claim: CleanupClaim): Promise<boolean> {
     const tenant = createTenantDb(this.pool, claim.teamId);
     try {
       await runAuditedSystemMutation(
@@ -795,53 +766,90 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
           actorLabel: 'Audit export',
           requestId: randomUUID(),
         },
-        async (client, ctx) => {
-          const locked = await client.query(
-            `SELECT 1 FROM audit_export_jobs WHERE id=$1 AND status='ready'
-             AND artifact_key=$2 AND (
-               (handle_consumed_at IS NULL AND handle_expires_at<=statement_timestamp())
-               OR (handle_consumed_at IS NOT NULL
-                 AND handle_consumed_at<=statement_timestamp()-($3*interval '1 millisecond')))
-             FOR UPDATE`,
-            [claim.id, claim.artifactKey, this.cleanupConsumedAfterMs],
-          );
-          if (locked.rowCount !== 1) throw new CleanupClaimLostError();
-          await this.store.deleteAuditExport(claim.artifactKey);
-          return {
-            result: undefined,
-            events: [
-              {
-                ...ctx,
-                eventVersion: 1,
-                eventType: 'audit.export.cleaned',
-                category: 'audit',
-                outcome: 'succeeded',
-                subjectType: 'audit_export',
-                subjectId: claim.id,
-                subjectLabel: null,
-                resourceType: null,
-                resourceId: null,
-                resourceLabel: null,
-                details: {
-                  startEventId: claim.startEventId,
-                  requestedByActorId: claim.actorId,
-                  reason: claim.reason,
-                },
+        async (_client, ctx) => ({
+          result: undefined,
+          events: [
+            {
+              ...ctx,
+              eventVersion: 1,
+              eventType: 'audit.export.cleaned',
+              category: 'audit',
+              outcome: 'succeeded',
+              subjectType: 'audit_export',
+              subjectId: claim.id,
+              subjectLabel: null,
+              resourceType: null,
+              resourceId: null,
+              resourceLabel: null,
+              details: {
+                startEventId: claim.startEventId,
+                requestedByActorId: claim.actorId,
+                reason: claim.reason,
               },
-            ],
-            afterEventsStored: async (eventClient) => {
-              const deleted = await eventClient.query(
-                `DELETE FROM audit_export_jobs WHERE id=$1 AND status='ready'
-                 AND artifact_key=$2`,
-                [claim.id, claim.artifactKey],
-              );
-              if (deleted.rowCount !== 1) throw new CleanupClaimLostError();
             },
-          };
-        },
+          ],
+          afterEventsStored: async (client) => {
+            const deleted = await client.query(
+              `DELETE FROM audit_export_jobs WHERE id=$1 AND status='ready'
+               AND artifact_key=$2 AND artifact_cleanup_owner=$3
+               AND artifact_cleanup_expires_at>statement_timestamp()`,
+              [claim.id, claim.artifactKey, claim.cleanupOwner],
+            );
+            if (deleted.rowCount !== 1) throw new CleanupClaimLostError();
+          },
+        }),
       );
+      return true;
+    } catch (error) {
+      if (error instanceof CleanupClaimLostError) return false;
+      throw error;
+    }
+  }
+
+  async suppressUndeliverable() {
+    const claim = await this.claimCleanup();
+    if (!claim) return 0;
+    try {
+      // The first durable pass fences the old attempt. It never touches the
+      // store before the absolute deadline shared by every old storage call.
+      const notBefore = await this.pool.query<{ ready: boolean }>(
+        `SELECT artifact_cleanup_not_before<=statement_timestamp() AS ready
+         FROM audit_export_jobs WHERE id=$1 AND artifact_cleanup_owner=$2`,
+        [claim.id, claim.cleanupOwner],
+      );
+      if (!notBefore.rows[0]?.ready) {
+        await this.releaseCleanupClaim(claim);
+        return 1;
+      }
+      const settled = await this.store.cleanupAuditExport(
+        claim.artifactKey,
+        claim.artifactUploadId,
+        AbortSignal.timeout(ARTIFACT_CLEANUP_TIMEOUT_MS),
+      );
+      if (!settled) {
+        await this.releaseCleanupClaim(claim);
+        return 1;
+      }
+      if (!claim.cleanupObservedAt) {
+        const observed = await this.pool.query(
+          `UPDATE audit_export_jobs SET
+             artifact_cleanup_observed_at=statement_timestamp(),
+             artifact_cleanup_owner=NULL,artifact_cleanup_expires_at=NULL
+           WHERE id=$1 AND artifact_key=$2 AND artifact_cleanup_owner=$3
+             AND artifact_cleanup_expires_at>statement_timestamp()`,
+          [claim.id, claim.artifactKey, claim.cleanupOwner],
+        );
+        if (observed.rowCount !== 1) throw new CleanupClaimLostError();
+        return 1;
+      }
+      const completed =
+        claim.status === 'ready'
+          ? await this.completeReadyCleanup(claim)
+          : await this.completeAttemptCleanup(claim);
+      if (!completed) throw new CleanupClaimLostError();
       return 1;
     } catch (error) {
+      await this.releaseCleanupClaim(claim).catch(() => undefined);
       if (error instanceof CleanupClaimLostError) return 0;
       throw error;
     }
@@ -894,7 +902,7 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
     const r = await this.pool.query(
       `SELECT 1 FROM audit_export_jobs WHERE id=$1
       AND lease_owner=$2 AND lease_expires_at>statement_timestamp()
-      AND status='generating'`,
+      AND artifact_cleanup_not_before IS NULL AND status='generating'`,
       [c.id, l.owner],
     );
     return r.rowCount === 1;
@@ -906,13 +914,18 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
     const r = await this.pool.query(
       `UPDATE audit_export_jobs SET lease_expires_at=
       statement_timestamp()+($3*interval '1 millisecond') WHERE id=$1 AND lease_owner=$2
-      AND lease_expires_at>statement_timestamp() AND status='generating' RETURNING id`,
+      AND lease_expires_at>statement_timestamp()
+      AND artifact_cleanup_not_before IS NULL AND status='generating' RETURNING id`,
       [c.id, l.owner, l.durationMs],
     );
     return r.rowCount === 1;
   }
-  async deliver(c: Claim) {
+  async deliver(c: Claim, leaseSignal?: AbortSignal) {
     const tenant = createTenantDb(this.pool, c.teamId);
+    const timeoutSignal = AbortSignal.timeout(ARTIFACT_EFFECT_TIMEOUT_MS);
+    const signal = leaseSignal
+      ? AbortSignal.any([leaseSignal, timeoutSignal])
+      : timeoutSignal;
     let after = '0',
       count = 0,
       bytes = Buffer.byteLength(HEADER);
@@ -922,8 +935,10 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
         durationMs: 1,
       });
     async function* chunks() {
+      signal.throwIfAborted();
       yield Buffer.from(HEADER);
       for (;;) {
+        signal.throwIfAborted();
         const rows = await runNoAuditTenantTransaction(
           tenant,
           'audit.export.generate',
@@ -932,6 +947,7 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
         );
         if (rows.length === 0) break;
         for (const row of rows) {
+          signal.throwIfAborted();
           const chunk = Buffer.from(csvRow(row));
           count += 1;
           bytes += chunk.byteLength;
@@ -953,10 +969,13 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
     };
     this.generated.set(generatedId(c), generated);
     const recordedArtifact = await this.pool.query(
-      `UPDATE audit_export_jobs SET artifact_key=$3 WHERE id=$1 AND lease_owner=$2
+      `UPDATE audit_export_jobs SET artifact_key=$3,
+         artifact_effect_expires_at=statement_timestamp()+($4*interval '1 millisecond')
+       WHERE id=$1 AND lease_owner=$2
        AND lease_expires_at>statement_timestamp() AND status='generating'
+       AND artifact_cleanup_not_before IS NULL
        RETURNING id`,
-      [c.id, c.leaseOwner, generated.key],
+      [c.id, c.leaseOwner, generated.key, ARTIFACT_EFFECT_TIMEOUT_MS],
     );
     if (recordedArtifact.rowCount !== 1) {
       this.generated.delete(generatedId(c));
@@ -966,7 +985,24 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
       c.id,
       c.leaseOwner,
       chunks(),
+      {
+        signal,
+        recordUploadId: async (uploadId) => {
+          signal.throwIfAborted();
+          const recorded = await this.pool.query(
+            `UPDATE audit_export_jobs SET artifact_upload_id=$4
+             WHERE id=$1 AND lease_owner=$2 AND artifact_key=$3
+               AND lease_expires_at>statement_timestamp()
+               AND artifact_effect_expires_at>statement_timestamp()
+               AND artifact_cleanup_not_before IS NULL
+               AND status='generating' RETURNING id`,
+            [c.id, c.leaseOwner, generated.key, uploadId],
+          );
+          return recorded.rowCount === 1;
+        },
+      },
     );
+    signal.throwIfAborted();
     if (artifact.key !== generated.key)
       throw new Error('audit export store returned unexpected key');
     generated.rowCount = count;
@@ -1063,10 +1099,10 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
             },
           }),
         );
-        await this.cleanupGeneratedAfterDecision(c);
+        this.forgetGenerated(c);
         return true;
       } catch (cleanupError) {
-        await this.cleanupGeneratedAfterLostDecision(c);
+        this.forgetGenerated(c);
         throw cleanupError;
       }
     }
@@ -1084,8 +1120,7 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
         this.generated.get(generatedId(c))?.key ?? null,
       ],
     );
-    if (r.rowCount === 1) await this.cleanupGeneratedAfterDecision(c);
-    else await this.cleanupGeneratedAfterLostDecision(c);
+    this.forgetGenerated(c);
     return r.rowCount === 1;
   }
   async recordComplete(c: Claim, l: OutboxLease) {
@@ -1123,11 +1158,12 @@ export class AuditExportAdapter implements OutboxAdapter<Claim> {
           const r = await client.query(
             `UPDATE audit_export_jobs SET
           status='ready',artifact_key=$3,artifact_row_count=$4,artifact_byte_count=$5,
+          artifact_upload_id=NULL,artifact_effect_expires_at=NULL,
           handle_hash=$6,handle_ciphertext=$7,handle_key_id=$8,handle_algorithm=$9,
           handle_expires_at=statement_timestamp()+($10*interval '1 millisecond'),
           completion_event_id=$11,ready_at=statement_timestamp(),lease_owner=NULL,lease_expires_at=NULL
           WHERE id=$1 AND lease_owner=$2 AND lease_expires_at>statement_timestamp()
-          AND status='generating'`,
+          AND artifact_cleanup_not_before IS NULL AND status='generating'`,
             [
               c.id,
               l.owner,

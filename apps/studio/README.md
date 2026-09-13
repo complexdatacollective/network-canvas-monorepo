@@ -202,7 +202,7 @@ is why `drizzle-kit` is pinned to the 1.0 release candidate: the stable line's
 
 Open the image for the full-size diagram. Tables with row-level security or trigger sidecars carry those details as SVG tooltips. The diagram shows physical foreign-key constraints; deliberately unconstrained logical references are not drawn as relationships. The renderer uses `1`/`*` edge endpoints, so optionality remains visible through each column's not-null marker rather than the edge.
 
-Schema fingerprint: `14d1cf23f6806bb4d47a83ebf39f5b6efe00836ce3cf993e4c484101cfef61ae`.
+Schema fingerprint: `334333cb115bf8dc1e45d41bb3f1ede7bc998475dc815f3c176f82d0fb67433e`.
 
 Sidecar behavior that cannot be represented as ERD relationships:
 
@@ -748,6 +748,20 @@ The server reads its object store from `S3_ENDPOINT`, `S3_REGION`,
 `S3_BUCKET`, `S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY` — all five or
 none (partial configuration fails fast). Unset means asset routes refuse
 with 503. See [Environment](#environment).
+
+The object-store principal needs object read/write access under `assets/` and
+read/write/delete plus multipart-abort access under `audit-exports/`; it also
+needs bucket-level multipart-upload listing. Staged exports use a private key
+per worker attempt. Every upload command is bounded by a deadline recorded in
+Postgres before the first storage request. After an owner expires, cleanup
+first fences that attempt, waits until its recorded effect deadline, and then
+performs two restart-durable exact-key abort/delete/absence passes. This relies
+on the configured S3-compatible service serializing complete and abort for one
+multipart upload and making completed writes, listings, heads, and deletes
+strongly consistent. Cloudflare documents those consistency guarantees for R2;
+another endpoint must qualify the same behavior before use. A timeout remains
+an ambiguous remote result, so the durable second pass is required rather than
+treating the first local error as proof that no object was created.
 
 Set the server's `DATABASE_URL` to its dedicated, unprivileged application
 login and `STUDIO_MAINTENANCE_DATABASE_URL` to a different, unprivileged
