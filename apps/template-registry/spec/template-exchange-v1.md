@@ -1,0 +1,321 @@
+# Network Canvas template exchange format, version 1
+
+## Status and scope
+
+This document specifies version 1 of the portable Network Canvas template
+artifact. The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, and
+**MAY** are to be interpreted as described in RFC 2119 and RFC 8174 when they
+appear in uppercase.
+
+The media type is
+`application/vnd.networkcanvas.template+zip`. A conforming artifact is a
+bounded ZIP container whose content is identified independently of any
+registry. It contains declarative protocol sections, metadata, a license, and
+optional inert assets. It contains no executable content.
+
+The artifact format is distinct from the Template Registry API. A registry
+entry UUID locates a publication. The `merkle_root` in the artifact manifest
+identifies the immutable artifact content. Two registries can therefore serve
+the same artifact under different entry UUIDs while preserving one content
+identity.
+
+## Terminology
+
+- **Canonical JSON** is the exact UTF-8 serialization defined below.
+- **Content hash** is the lowercase hexadecimal SHA-256 digest of the exact
+  file bytes.
+- **Section ID** is a Network Canvas protocol-store section identifier.
+- **Source name** is the logical filename used by an asset definition inside a
+  protocol section. It is not a ZIP path.
+- **Supported protocol schema version** is a schema version that the consumer
+  can validate and import. A consumer MUST reject an unsupported version.
+
+## Container profile
+
+The container MUST use the ZIP file format with only ZIP 2.0 features. Readers
+MUST reject:
+
+- encrypted, multi-disk, or ZIP64 archives;
+- archive comments, per-entry comments, and extra fields;
+- directory entries, non-ASCII entry names, duplicate entry names, and names
+  outside the grammar below;
+- inconsistent local headers, central-directory records, CRC-32 values,
+  compressed sizes, uncompressed sizes, compression methods, or data
+  descriptors;
+- overlapping entries, bytes outside the declared entry ranges, or a central
+  directory that does not end immediately before the end-of-central-directory
+  record; and
+- compression methods other than stored (`0`) and DEFLATE (`8`).
+
+A reader MUST enforce both the sizes declared by ZIP and the bytes actually
+produced during decompression. It MUST verify the complete archive before
+using any content and SHOULD process entries without extracting them to a
+filesystem.
+
+Only these entry names are valid:
+
+```text
+manifest.json
+metadata.json
+license.json
+sections/<64 lowercase hexadecimal characters>.json
+assets/<64 lowercase hexadecimal characters>
+```
+
+`manifest.json`, `metadata.json`, and `license.json` are REQUIRED exactly once.
+At least one section is REQUIRED. Every section and asset named by the
+manifest MUST exist. Every file in the archive MUST be named by the manifest;
+unreferenced or unknown files are invalid. Multiple logical references MAY
+share one content-hash path when their exact bytes are identical.
+
+Writers SHOULD sort ZIP entries by their ASCII path and use a fixed timestamp
+to make transport bytes reproducible. ZIP entry order, compression level, and
+timestamps do not participate in the artifact identity.
+
+## Canonical JSON
+
+All four JSON-bearing entry classes (`manifest.json`, `metadata.json`,
+`license.json`, and section files) MUST contain canonical JSON. The canonical
+serialization is defined recursively:
+
+1. Serialize JSON primitives with the ECMAScript `JSON.stringify` rules,
+   including its number and string escaping rules.
+2. Preserve array order and serialize each element canonically, with no
+   whitespace between tokens.
+3. Sort object member names in ascending ECMAScript string comparison order,
+   serialize each name with `JSON.stringify`, and serialize its value
+   canonically. Insert no whitespace.
+4. Encode the resulting string as UTF-8 without a byte-order mark or trailing
+   newline.
+
+Only JSON data is valid on the wire. A reader MUST reject invalid UTF-8,
+duplicate object keys, non-canonical member order or whitespace, nesting deeper
+than 64 containers, NUL characters, and unpaired Unicode surrogates. Comparing
+the decoded value reserialized by the algorithm above with the original text
+is the final canonicality check.
+
+## Hashes and artifact identity
+
+Every hash in this format is a 64-character lowercase hexadecimal SHA-256
+digest.
+
+- A section reference hashes the exact canonical bytes of its section file.
+- An asset reference hashes the exact raw bytes of its asset file.
+- `metadata_hash` hashes the exact canonical bytes of `metadata.json`.
+- `license_hash` hashes the exact canonical bytes of `license.json`.
+- `merkle_root` hashes the canonical JSON bytes of the complete manifest object
+  with the `merkle_root` member omitted.
+
+The last rule defines a one-level Merkle commitment: the root commits to the
+template descriptor, ordered section and asset references, metadata hash, and
+license hash. A verifier MUST recompute every leaf hash and the root. A
+mismatch makes the artifact invalid.
+
+## Manifest
+
+`manifest.json` MUST be a JSON object with exactly these members:
+
+| Member                    | Type             | Requirement                               |
+| ------------------------- | ---------------- | ----------------------------------------- |
+| `format`                  | string           | MUST equal `network-canvas-template`.     |
+| `format_version`          | integer          | MUST equal `1`.                           |
+| `protocol_schema_version` | positive integer | Schema used to validate the sections.     |
+| `template`                | object           | Frozen template descriptor defined below. |
+| `sections`                | array            | 1–512 ordered section references.         |
+| `assets`                  | array            | 0–128 ordered asset references.           |
+| `metadata_hash`           | content hash     | Hash of `metadata.json`.                  |
+| `license_hash`            | content hash     | Hash of `license.json`.                   |
+| `merkle_root`             | content hash     | Artifact identity computed above.         |
+
+The `template` object MUST contain exactly:
+
+| Member    | Type    | Requirement                                                                                 |
+| --------- | ------- | ------------------------------------------------------------------------------------------- |
+| `name`    | string  | 1–200 characters and not whitespace-only.                                                   |
+| `kind`    | string  | One of `protocol`, `stage`, `entity_definition`, `variable_set`, or `generator_prompt_set`. |
+| `version` | integer | 1–2,147,483,647.                                                                            |
+| `summary` | string  | Optional; 1–2,000 characters.                                                               |
+
+Each member of `sections` MUST contain exactly an `id` string of 1–255
+characters and a `hash`. The array MUST be sorted by ascending section ID and
+MUST NOT contain duplicate IDs. Its file is `sections/<hash>.json`.
+
+Each member of `assets` MUST contain exactly:
+
+| Member        | Type         | Requirement                                                                                             |
+| ------------- | ------------ | ------------------------------------------------------------------------------------------------------- |
+| `source`      | string       | 1–255 characters; not `.`, `..`, or whitespace-only; no slash, backslash, NUL, or C0 control character. |
+| `hash`        | content hash | Hash of the raw asset bytes.                                                                            |
+| `byte_size`   | integer      | 1–10 MiB and equal to the actual byte length.                                                           |
+| `media_class` | string       | One of `image`, `audio`, `video`, or `dataset`.                                                         |
+| `media_type`  | string       | 1–127 characters and admitted for the declared class.                                                   |
+
+The `assets` array MUST be sorted by ascending `source` and MUST NOT contain
+duplicate sources. Its file is `assets/<hash>`.
+
+All manifest objects are closed: a reader MUST reject additional members.
+
+## Metadata document
+
+`metadata.json` is the authored metadata document. It MUST be an object with
+`schema_version: 1` and only the optional members below. Importers MUST preserve
+the document and MUST NOT add machine provenance to it.
+
+| Member          | Shape and limits                                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `authors`       | Up to 100 objects with required `name` (1–200), optional `affiliation` (1–500), and optional `orcid`.                              |
+| `keywords`      | Up to 100 strings, each 1–100 characters.                                                                                          |
+| `description`   | String of 1–20,000 characters.                                                                                                     |
+| `publications`  | Up to 100 objects with required `citation` (1–4,000), required `relation` (`describes`, `validates`, or `uses`), and optional DOI. |
+| `related_links` | Up to 100 objects with required HTTPS `url` (at most 2,048 characters) and optional `label` (1–200).                               |
+| `funding`       | String of 1–4,000 characters.                                                                                                      |
+
+Every bounded text string MUST contain a non-whitespace character, valid
+Unicode, and no NUL. An ORCID, when present, MUST match
+`dddd-dddd-dddd-dddC`, where each `d` is a decimal digit and `C` is a decimal
+digit or `X`. This is syntax validation and does not assert that the author
+controls that ORCID. A DOI, when present, MUST match `10.` followed by 4–9
+digits, `/`, and one or more non-whitespace characters, with a maximum length
+of 255.
+
+The metadata object and every nested object are closed. Registry curation can
+require an author, description, and keyword, but those fields are not required
+for a valid publication and curation does not change artifact identity.
+
+An importing instance records machine-written origin data separately. That
+origin contains the registry URL, registry entry UUID, source version hash, and
+fetch timestamp; it is not part of `metadata.json` or the fetched artifact.
+
+## License document
+
+`license.json` MUST be a closed canonical JSON object with one member:
+
+```json
+{"spdx":"CC-BY-4.0"}
+```
+
+The `spdx` value MUST be either `CC-BY-4.0` or `CC0-1.0`. This license applies
+to the template artifact. The CC0 dedication covering this specification does
+not replace the artifact's declared license.
+
+## Sections
+
+Each section file MUST contain a canonical JSON object that validates as the
+section named by its section ID under `protocol_schema_version`. Version 1
+recognizes these section IDs:
+
+```text
+settings
+stageOrder
+stage:<non-empty stage id>
+codebook:node:<non-empty node type id>
+codebook:edge:<non-empty edge type id>
+codebook:ego
+assets
+```
+
+Colons inside stage and type IDs are data after the fixed prefix. Consumers
+MUST NOT split those suffixes on additional colons.
+
+Every section MUST pass its section-specific schema. A stage document's `id`
+MUST equal the suffix of its `stage:<id>` section ID. When `stageOrder` is
+present, it MUST name every included stage exactly once and no absent stage.
+The `stageOrder` section defines execution order; manifest ordering is only
+canonical section-ID order. For a `protocol` template, the assembled sections
+and all cross-section references MUST validate as a complete protocol. Other
+template kinds MAY carry only a reusable subset plus supporting sections, but
+MUST contain at least the following subject matter:
+
+- `stage`: a stage section;
+- `entity_definition`: an ego, node, or edge codebook definition;
+- `variable_set`: an ego, node, or edge codebook definition with at least one
+  variable; and
+- `generator_prompt_set`: a supported generator stage with at least one prompt
+  that creates nodes or edges. A display-only sociogram prompt is insufficient.
+
+## Assets and executable-content exclusion
+
+Every asset definition in the `assets` section MUST resolve to a manifest asset
+with the same source and media class. Every manifest asset MUST be used by that
+section. All asset references elsewhere in the sections MUST resolve to an
+included asset definition. API-key asset definitions are forbidden.
+
+Binary media MUST be identified from its bytes, not only the declared media
+type. The following declarations are allowed:
+
+| Class     | Media types                                                                      |
+| --------- | -------------------------------------------------------------------------------- |
+| `image`   | `image/png`, `image/apng`, `image/jpeg`, `image/gif`, `image/webp`, `image/avif` |
+| `audio`   | `audio/mpeg`, `audio/wav`, `audio/ogg`, `audio/aac`, `audio/flac`, `audio/mp4`   |
+| `video`   | `video/mp4`, `video/webm`, `video/ogg`                                           |
+| `dataset` | `text/csv`, `application/json`, `application/geo+json`                           |
+
+Dataset bytes MUST be valid UTF-8, non-empty, and contain no disallowed C0
+controls. CSV whose first non-whitespace token begins an HTML, SVG, script, or
+doctype document is invalid. JSON datasets MUST decode to an object or array.
+GeoJSON MUST decode to an object whose `type` is one of `FeatureCollection`,
+`Feature`, `Point`, `MultiPoint`, `LineString`, `MultiLineString`, `Polygon`,
+`MultiPolygon`, or `GeometryCollection`.
+
+The allowlist excludes scripts, HTML, SVG, arbitrary binaries, and embedded API
+credentials. A consumer MUST reject an unknown media type, a declared class
+that disagrees with the detected bytes, or an unused payload.
+
+## Resource limits
+
+A version 1 reader MUST enforce these upper bounds:
+
+| Resource                                            |        Limit |
+| --------------------------------------------------- | -----------: |
+| Compressed archive                                  |       25 MiB |
+| Total uncompressed bytes                            |       32 MiB |
+| One asset                                           |       10 MiB |
+| One section                                         |        1 MiB |
+| `manifest.json`, `metadata.json`, or `license.json` | 128 KiB each |
+| Section references                                  |          512 |
+| Asset references                                    |          128 |
+| ZIP entries                                         |        1,024 |
+
+Limits apply to declared values and observed decompression output. Exceeding a
+limit invalidates the complete artifact.
+
+## Verification procedure
+
+A conforming verifier performs the following checks before exposing or storing
+content:
+
+1. Apply the ZIP profile and resource limits, including local/central directory
+   consistency and bounded streaming decompression.
+2. Require exactly the permitted, referenced file set.
+3. Parse every JSON file as canonical JSON and reject unknown object members.
+4. Require `format` and `format_version` to identify this specification.
+5. Reject an unsupported `protocol_schema_version` with a versioned error.
+6. Validate the manifest, metadata, and license shapes.
+7. Recompute `metadata_hash`, `license_hash`, every section hash, every asset
+   hash and byte size, and `merkle_root`.
+8. Validate every section and cross-section reference under the declared
+   protocol schema and enforce the template-kind requirement.
+9. Detect asset media from bytes, apply the media allowlist, reject API-key
+   definitions, and prove that all asset definitions and payloads are used.
+
+No partially verified file is a valid artifact. Registry intake and instance
+import MUST apply the same verification boundary. The registry entry UUID,
+publisher account, curation state, reports, yank state, and moderation state are
+registry records and do not participate in `merkle_root`.
+
+Yanking a publication removes its entry from browse and search while a direct
+fetch by `merkle_root` can continue to return the verified artifact with a yank
+notice. Operator hard deletion can make the bytes unavailable, but it does not
+change the identity of bytes already obtained.
+
+## Versioning
+
+`format_version` versions this container contract. Writers MUST emit version 1
+exactly. Readers MUST reject an unsupported format version rather than guessing
+at compatibility. `protocol_schema_version` independently versions the schema
+used by the contained sections.
+
+Additive or breaking changes to closed objects, entry names, hashing,
+canonicalization, or verification rules require a new format version. Registry
+API evolution is versioned separately by its `/api/v1/` path and OpenAPI
+contract.
