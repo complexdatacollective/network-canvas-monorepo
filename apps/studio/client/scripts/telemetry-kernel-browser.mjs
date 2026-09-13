@@ -247,6 +247,10 @@ export async function launchKernelObservedChromium({
       'NET_ADMIN',
       '--cap-add',
       'NET_RAW',
+      '--cap-add',
+      'SETUID',
+      '--cap-add',
+      'SETGID',
       '--env',
       `STUDIO_QUALIFICATION_KERNEL_ENDPOINTS=${endpoints}`,
       '--entrypoint',
@@ -292,7 +296,7 @@ export async function launchKernelObservedChromium({
       observer,
       'sh',
       '-c',
-      'timeout 30 tcpdump -Z root -i lo -nn -l -s 256 -c 32 port 53 > /tmp/browser-dns.log 2>&1',
+      'timeout 30 tcpdump -i lo -nn -l -s 256 -c 32 port 53 > /tmp/browser-dns.log 2>&1',
     ]);
     for (let attempt = 0; attempt < 50; attempt++) {
       const diagnostic = await docker([
