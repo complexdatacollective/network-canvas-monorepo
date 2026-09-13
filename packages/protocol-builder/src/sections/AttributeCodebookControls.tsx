@@ -248,6 +248,15 @@ export type AttributeCodebookControlsProps = Readonly<{
    */
   siblingRenderings?: VariableOverlay;
   /**
+   * Attributes whose rendering neither this form nor this row decides —
+   * overridden by a form somewhere else, at a control this surface cannot see.
+   *
+   * See `StageRendering.unknownRenderings`: judged at the codebook's control
+   * they would be judged at one nothing renders them with, which can refuse a
+   * comparison the protocol accepts.
+   */
+  unknownRenderings?: ReadonlySet<string>;
+  /**
    * The attribute this row is inventing, while it is inventing one.
    *
    * One prop rather than three, because the three are one fact about the row
@@ -333,6 +342,7 @@ export default function AttributeCodebookControls({
   componentField,
   parametersField = DEFAULT_PARAMETERS_FIELD,
   siblingRenderings,
+  unknownRenderings,
   inventing,
   offerParameters = true,
   offerRules = true,
@@ -582,8 +592,15 @@ export default function AttributeCodebookControls({
             ...(siblingRenderings === undefined
               ? {}
               : { overlay: siblingRenderings }),
+            ...(unknownRenderings === undefined ? {} : { unknownRenderings }),
           },
-    [liveParameters, offerParameters, pickedComponent, siblingRenderings],
+    [
+      liveParameters,
+      offerParameters,
+      pickedComponent,
+      siblingRenderings,
+      unknownRenderings,
+    ],
   );
   /**
    * The kind of answer the row is inventing, once the researcher has said what

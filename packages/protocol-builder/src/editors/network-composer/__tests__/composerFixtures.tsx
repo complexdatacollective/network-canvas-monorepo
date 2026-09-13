@@ -33,6 +33,15 @@ const composerSections = (
 
 const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
+const KNOWS_SECTION = sectionId({ kind: 'codebookEdge', typeId: 'knows' });
+
+const COMPOSER_SECTION = sectionId({
+  kind: 'stage',
+  stageId: 'network-composer-1',
+});
+
+const STAGE_ORDER_SECTION = sectionId({ kind: 'stageOrder' });
+
 const SOCIOGRAM_SECTION = sectionId({ kind: 'stage', stageId: 'sociogram-1' });
 
 const ALTER_FORM_SECTION = sectionId({
@@ -275,5 +284,66 @@ export const collectInAnAlterForm = (
   };
   act(() => {
     harness.host.store.applyAsCollaborator(ALTER_FORM_SECTION, updated);
+  });
+};
+
+/**
+ * One more kind of connection in the codebook, put there from outside this
+ * editor.
+ *
+ * Cloned from the fixture's own `knows` definition rather than written out, so
+ * it carries whatever a connection type is currently required to have and the
+ * test is about the extra type rather than about the shape of one.
+ */
+export const addEdgeType = (
+  harness: StageEditorHarness,
+  typeId: string,
+): void => {
+  const knows = harness.protocolSections()[KNOWS_SECTION];
+  if (knows === undefined) {
+    throw new Error('the fixture protocol has no "knows" connection type');
+  }
+  harness.receiveCodebookUpdate({
+    edge: { [typeId]: { ...knows, name: typeId, variables: {} } },
+  });
+};
+
+/**
+ * ANOTHER network composer in the protocol, asking about the same node type
+ * with controls of its own.
+ *
+ * A composer field's control lives on the stage, so a second composer is the
+ * only way an attribute can be rendered by a control this editor cannot see —
+ * which is what the rules editor must not read through the codebook's own.
+ * Cloned from the fixture's composer and added to the stage order, because
+ * `orderedStages` is what the protocol context reads.
+ */
+export const composerInAnotherStage = (
+  harness: StageEditorHarness,
+  fields: readonly Record<string, unknown>[],
+): void => {
+  const composer = harness.protocolSections()[COMPOSER_SECTION];
+  const order = harness.protocolSections()[STAGE_ORDER_SECTION];
+  if (composer === undefined || order === undefined) {
+    throw new Error('the fixture protocol has no composer to copy');
+  }
+  const stages = Array.isArray(order.stages) ? order.stages : [];
+  const id = 'network-composer-2';
+  const second: SectionDoc = {
+    ...composer,
+    id,
+    label: 'Second composer',
+    edges: [],
+    nodeForm: { fields: [...fields] },
+  };
+  act(() => {
+    harness.host.store.applyAsCollaborator(
+      sectionId({ kind: 'stage', stageId: id }),
+      second,
+    );
+    harness.host.store.applyAsCollaborator(STAGE_ORDER_SECTION, {
+      ...order,
+      stages: [...stages, id],
+    });
   });
 };

@@ -89,8 +89,16 @@ export default function ComposerConnectionsSection() {
   const intl = useAppIntl();
   const held = useStageValue(EDGES_FIELD);
   const entries = useMemo(() => rowsOf(held), [held]);
-  /** How many questions the last re-point took away, for the notice below. */
-  const [questionsDropped, setQuestionsDropped] = useState(0);
+  /**
+   * How many questions the last re-point took away, for the notice below, and
+   * WHICH re-point took them.
+   *
+   * The count alone is the same value twice when two re-points each drop one,
+   * and a live region whose text has not changed announces nothing — so the
+   * second one would be silent, which is the state this notice exists to end.
+   * The act's own number keys the notice, so each save replaces the node.
+   */
+  const [dropped, setDropped] = useState({ questions: 0, act: 0 });
 
   /**
    * One kind of connection may only be drawable once, and an entry pointed at
@@ -144,7 +152,10 @@ export default function ComposerConnectionsSection() {
         }
         const openedOn = typeOf(context.openedOn);
         if (openedOn === type) return { row };
-        setQuestionsDropped(fieldsOf(context.openedOn).length);
+        setDropped((previous) => ({
+          questions: fieldsOf(context.openedOn).length,
+          act: previous.act + 1,
+        }));
         const { form: _form, ...repointed } = row;
         return { row: repointed };
       },
@@ -179,11 +190,16 @@ export default function ComposerConnectionsSection() {
           presentational because its `info` variant is a `role="status"` of its
           own, and a second polite region inside this one is announced twice. */}
       <div role="status" aria-live="polite">
-        {questionsDropped > 0 && (
-          <Alert variant="info" role="presentation" className="mb-8">
+        {dropped.questions > 0 && (
+          <Alert
+            key={dropped.act}
+            variant="info"
+            role="presentation"
+            className="mb-8"
+          >
             <AlertDescription>
               {intl.formatMessage(messages.connectionQuestionsDropped, {
-                questionCount: questionsDropped,
+                questionCount: dropped.questions,
               })}
             </AlertDescription>
           </Alert>

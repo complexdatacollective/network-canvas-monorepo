@@ -1012,6 +1012,8 @@ const withOverlay = (
   return Object.fromEntries(entries);
 };
 
+const NO_UNKNOWN_RENDERINGS: ReadonlySet<string> = new Set();
+
 /**
  * What a STAGE decides about how the attributes it renders are asked for,
  * where the codebook does not decide it.
@@ -1027,6 +1029,20 @@ export type StageRendering = Readonly<{
   component?: unknown;
   parameters?: unknown;
   overlay?: VariableOverlay;
+  /**
+   * Attributes whose rendering THIS form does not decide and some other form
+   * does — a composer form elsewhere in the protocol overriding the same
+   * attribute's control.
+   *
+   * Left in, they would be judged at a codebook control nothing renders them
+   * with: a boolean the codebook declares as a choice of one value, rendered
+   * as a toggle by the form that actually asks for it, would pin a comparison
+   * this form can never see. Dropped from the judged set instead, which is
+   * what protocol validation does with them (`schema.ts`'s
+   * `unknownRenderingFor`) and for the same reason — an accept-direction gap
+   * is preferred to a refusal of something satisfiable.
+   */
+  unknownRenderings?: ReadonlySet<string>;
 }>;
 
 /**
@@ -1056,7 +1072,14 @@ export const stageRenderingContext = (
   stageRendering === undefined
     ? { allVariables }
     : {
-        allVariables: withOverlay(allVariables, stageRendering.overlay),
+        allVariables: withOverlay(
+          withoutUnknownRenderings(
+            allVariables,
+            stageRendering.unknownRenderings ?? NO_UNKNOWN_RENDERINGS,
+            NO_UNKNOWN_RENDERINGS,
+          ),
+          stageRendering.overlay,
+        ),
         component: stageRendering.component,
         parameters: stageRendering.parameters,
         stageEffectiveComponents: true,

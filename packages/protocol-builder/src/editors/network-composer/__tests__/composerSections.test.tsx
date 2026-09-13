@@ -15,10 +15,12 @@ import {
 import { readMessage } from '../../../testing/i18n.ts';
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import {
+  addEdgeType,
   addPersonVariable,
   addRow,
   collectInAnAlterForm,
   composerHolding,
+  composerInAnotherStage,
   edgeFormFieldsOf,
   edgesOf,
   highlightInASociogram,
@@ -368,6 +370,69 @@ describe('what a network composer lets the participant build', () => {
     );
     // In a live region, so it is announced rather than only drawn.
     expect(notice.closest('[role="status"]')).not.toBeNull();
+  });
+
+  /**
+   * And says it again for the next one.
+   *
+   * Two re-points that each take one question away say the same sentence, and
+   * a live region whose text has not changed announces nothing — so the second
+   * removal was silent to the reader this notice is for. Asserted as the
+   * element rather than the words: what a live region reports is a change to
+   * its content, which the same node standing there is not.
+   */
+  it('says it again when the next re-point takes as many', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        edges: [
+          {
+            ...KNOWS_ENTRY,
+            form: {
+              fields: [
+                {
+                  id: 'edge-field-1',
+                  variable: 'edgeNotes',
+                  component: 'TextArea',
+                  label: 'Anything else?',
+                },
+              ],
+            },
+          },
+          {
+            id: 'composer-edge-2',
+            subject: { entity: 'edge', type: 'family_edge' },
+            form: {
+              fields: [
+                {
+                  id: 'edge-field-2',
+                  variable: 'isActive',
+                  component: 'Boolean',
+                  label: 'Still in touch?',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    );
+    // A third kind to move the first entry to, so the second entry's own type
+    // is free for it afterwards.
+    addEdgeType(harness, 'colleague_edge');
+
+    const first = await openRow(harness, 'Edit connection type');
+    await harness.user.click(
+      await first.findByRole('radio', { name: 'colleague_edge' }),
+    );
+    await harness.user.click(first.getByRole('button', { name: 'Save' }));
+    const dropped =
+      'Pointing this connection at another kind removed the question it asked: it recorded an attribute the new kind does not have.';
+    const announced = await screen.findByText(dropped);
+
+    const second = await openRow(harness, 'Edit connection type', 1);
+    await harness.user.click(second.getByRole('radio', { name: 'knows' }));
+    await harness.user.click(second.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(screen.getByText(dropped)).not.toBe(announced));
   });
 
   /**
@@ -2049,8 +2114,76 @@ describe('the rules a composer field authors', () => {
       screen.getByRole('button', { name: 'Save validation' }),
     ).toBeDisabled();
   });
+
+  /**
+   * And not against a control this form does not choose.
+   *
+   * A composer field's control lives on the stage, so an attribute another
+   * composer overrides is not asked for with the codebook's control anywhere —
+   * reading it there pins a boolean this form never renders, and refuses a
+   * comparison the protocol accepts. Protocol validation drops such attributes
+   * from the judged set (`schema.ts`'s `unknownRenderingFor`); so does this.
+   */
+  it('ignores a rendering only another stage decides', async () => {
+    const harness = renderStageEditor(
+      composerHolding({
+        nodeForm: {
+          fields: [
+            { id: 'field-1', variable: 'isKin', component: 'Boolean' },
+            { id: 'field-2', variable: 'isPinned', component: 'Boolean' },
+          ],
+        },
+      }),
+    );
+    // All three are declared in the codebook as a choice of one value, so all
+    // three are pinned to `true` wherever that declaration is what renders
+    // them.
+    for (const variableId of ['isKin', 'isPinned', 'isClose']) {
+      addPersonVariable(harness, variableId, {
+        name: variableId,
+        type: 'boolean',
+        component: 'Boolean',
+        options: [{ label: 'Yes', value: true }],
+      });
+    }
+    // `isClose` is asked for by another composer, with a control that offers
+    // both answers — which this editor cannot see, and must not guess at.
+    composerInAnotherStage(harness, [
+      { id: 'other-field-1', variable: 'isClose', component: 'Toggle' },
+    ]);
+
+    const dialog = await openRow(harness, 'Edit form field');
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Different from another attribute',
+      }),
+    );
+
+    const targets = screen.getByRole('combobox', {
+      name: 'Different from another attribute',
+    });
+    await waitFor(() =>
+      expect(
+        within(targets).getByRole('option', { name: 'isClose' }),
+      ).toBeInTheDocument(),
+    );
+    // The one THIS form pins is still refused, so what changed is the reach of
+    // the reading rather than the reading itself.
+    expect(
+      within(targets).queryByRole('option', { name: 'isPinned' }),
+    ).not.toBeInTheDocument();
+  });
 });
 
+/**
+ * Architect mounts the same nested validation section under the composer's own
+ * quick-add picker as it does under the quick-add name generator's
+ * (`sections/NodeConfiguration/NodeConfiguration.tsx:481-488`), and seeds the
+ * attribute it creates there with the one rule the role itself needs.
+ */
 describe('the rules the composer’s quick-add attribute has to satisfy', () => {
   it('edits them under the picker, and writes them to the codebook', async () => {
     const harness = renderStageEditor(composerHolding({}));
