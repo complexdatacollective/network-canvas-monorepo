@@ -458,7 +458,7 @@
               "maxLength": 1024,
               "pattern": "^[A-Za-z0-9_-]+$"
             },
-            "allowEmptyValue": true,
+            "allowEmptyValue": false,
             "allowReserved": true
           },
           {
@@ -470,7 +470,7 @@
               "minimum": 1,
               "maximum": 100
             },
-            "allowEmptyValue": true,
+            "allowEmptyValue": false,
             "allowReserved": true
           },
           {
@@ -481,7 +481,7 @@
               "minLength": 1,
               "maxLength": 200
             },
-            "allowEmptyValue": true,
+            "allowEmptyValue": false,
             "allowReserved": false
           },
           {
@@ -497,7 +497,7 @@
                 "generator_prompt_set"
               ]
             },
-            "allowEmptyValue": true,
+            "allowEmptyValue": false,
             "allowReserved": true
           },
           {
@@ -507,7 +507,7 @@
               "type": "string",
               "enum": ["CC-BY-4.0", "CC0-1.0"]
             },
-            "allowEmptyValue": true,
+            "allowEmptyValue": false,
             "allowReserved": true
           },
           {
@@ -518,7 +518,7 @@
               "minLength": 1,
               "maxLength": 100
             },
-            "allowEmptyValue": true,
+            "allowEmptyValue": false,
             "allowReserved": false
           },
           {
@@ -529,7 +529,7 @@
               "minLength": 1,
               "maxLength": 200
             },
-            "allowEmptyValue": true,
+            "allowEmptyValue": false,
             "allowReserved": false
           },
           {
@@ -539,7 +539,7 @@
               "type": "string",
               "enum": ["true", "false"]
             },
-            "allowEmptyValue": true,
+            "allowEmptyValue": false,
             "allowReserved": true
           }
         ],
@@ -2062,6 +2062,17 @@
           {
             "registrySession": []
           }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The exact registry origin. Required for cookie-authenticated account writes."
+          }
         ]
       }
     },
@@ -2291,6 +2302,17 @@
           {
             "registrySession": []
           }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The exact registry origin. Required for cookie-authenticated account writes."
+          }
         ]
       },
       "get": {
@@ -2501,6 +2523,15 @@
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The exact registry origin. Required for cookie-authenticated account writes."
           }
         ],
         "requestBody": {
@@ -3554,7 +3585,7 @@
               "type": "string",
               "pattern": "^[1-9][0-9]{0,18}$"
             },
-            "allowEmptyValue": true,
+            "allowEmptyValue": false,
             "allowReserved": true
           },
           {
@@ -3566,7 +3597,7 @@
               "minimum": 1,
               "maximum": 100
             },
-            "allowEmptyValue": true,
+            "allowEmptyValue": false,
             "allowReserved": true
           }
         ],
@@ -3779,6 +3810,15 @@
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The exact registry origin. Required for cookie-authenticated account writes."
           }
         ],
         "requestBody": {
@@ -3953,6 +3993,15 @@
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The exact registry origin. Required for cookie-authenticated account writes."
           }
         ],
         "requestBody": {
@@ -4126,6 +4175,15 @@
               "type": "string",
               "pattern": "^[0-9a-f]{64}$"
             }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The exact registry origin. Required for cookie-authenticated account writes."
           }
         ],
         "requestBody": {
@@ -4300,6 +4358,15 @@
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The exact registry origin. Required for cookie-authenticated account writes."
           }
         ],
         "requestBody": {
@@ -4480,6 +4547,15 @@
               "format": "uuid",
               "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
             }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The exact registry origin. Required for cookie-authenticated account writes."
           }
         ],
         "requestBody": {
@@ -4864,6 +4940,17 @@
         "security": [
           {
             "registrySession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The exact registry origin. Required for cookie-authenticated account writes."
           }
         ]
       }
