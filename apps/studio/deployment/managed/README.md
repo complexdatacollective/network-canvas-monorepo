@@ -90,6 +90,37 @@ Fly's pinned
 and
 [`MachineLease` types](https://github.com/superfly/fly-go/blob/v0.9.15/machine_types.go#L1021-L1032).
 
+## Managed PostgreSQL enrollment
+
+`@codaco/studio-sync/managed-postgres-estate` composes the existing database
+enrollment and restricted-identity validators into a four-database operator.
+It has explicit read-only plan, apply, and readback phases. Existing roles and
+databases are accepted only when their marker, owner, attributes, memberships,
+direct `CONNECT` grants, and quarantine state match the reviewed manifest.
+Unmarked name collisions are refused. Interrupted exact state remains at
+`connection_limit = 0` with every managed login `NOLOGIN`; a retry may resume
+it. Runtime passwords cross only a caller-owned credential callback and are
+never returned in the plan or result.
+
+The operator creates no application tables and invokes no numbered migration.
+It establishes database ownership, database-local admission, exact SET-only
+role memberships, large-object restrictions, and a 256 MiB login `work_mem`
+default. Activation then uses fresh application, maintenance/operator, and
+backup login connections to prove the setting survives `SET ROLE`, and reuses
+the existing effective privilege validators. A failure disables and drains
+every managed login. Startup's existing fingerprint admission remains the
+authority on whether a fully migrated schema may serve traffic.
+
+Crunchy Bridge documents its `postgres` connection as a real superuser intended
+for administrative role and permission work, including arbitrary `CREATE ROLE`
+SQL: https://docs.crunchybridge.com/concepts/users and
+https://docs.crunchybridge.com/api/postgres-role. The provider's changelog says
+direct `ALTER SYSTEM` settings do not persist across failover and were being
+disabled in favor of cluster settings: https://docs.crunchybridge.com/changelog.
+The operator therefore requires that administrative superuser and refuses
+before mutation unless provider-managed `shared_buffers` is already at least
+1 GiB. It never runs `ALTER SYSTEM`.
+
 The routing-only Cloudflare Worker in `workers/studio-ingress` defines the
 single public origin: fixed server surfaces stream to the persistent Fly
 backend, including `/ws`, while all other GET/HEAD traffic reaches the Netlify

@@ -12,7 +12,7 @@ output "candidate_inventory" {
       region              = local.aws_region
       cluster_id          = crunchybridge_cluster.postgres.id
       logical_databases   = local.databases
-      database_enrollment = "pending-sql-operator-module"
+      database_enrollment = "@codaco/studio-sync/managed-postgres-estate"
       required_effective_tuning = {
         shared_buffers_bytes    = 1073741824
         app_role_work_mem_bytes = 268435456
