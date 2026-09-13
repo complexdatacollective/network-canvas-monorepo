@@ -531,6 +531,171 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     expect(row.rows[0]?.entered_count).toBe(2);
   });
 
+  it('excludes synthetic completion while preserving an authored FinishSession stage', async () => {
+    const finishProtocolId = randomUUID();
+    const finishVersionId = randomUUID();
+    const finishStudyId = randomUUID();
+    const authoredWaveId = randomUUID();
+    const syntheticWaveId = randomUUID();
+    const leasedSyntheticWaveId = randomUUID();
+    await insert('protocols', {
+      id: finishProtocolId,
+      team_id: TEAM,
+      name: 'literal FinishSession protocol',
+    });
+    const client = await pool.connect();
+    try {
+      await client.query('begin');
+      await insert(
+        'protocol_versions',
+        {
+          id: finishVersionId,
+          protocol_id: finishProtocolId,
+          team_id: TEAM,
+          version_number: 1,
+          version_hash: 'literal-finish-version-hash',
+          manifest: JSON.stringify({ name: 'literal FinishSession protocol' }),
+          schema_version: 8,
+          source_manifest_hash: 'literal-finish-source-hash',
+        },
+        client,
+      );
+      await insert(
+        'sections',
+        {
+          team_id: TEAM,
+          hash: 'literal-finish-stage-order-hash',
+          doc: JSON.stringify({ stages: ['FinishSession'] }),
+        },
+        client,
+      );
+      await insert(
+        'version_sections',
+        {
+          version_id: finishVersionId,
+          team_id: TEAM,
+          section_id: 'stageOrder',
+          section_hash: 'literal-finish-stage-order-hash',
+        },
+        client,
+      );
+      await insert(
+        'sections',
+        {
+          team_id: TEAM,
+          hash: 'literal-finish-stage-hash',
+          doc: JSON.stringify({ id: 'FinishSession', type: 'Information' }),
+        },
+        client,
+      );
+      await insert(
+        'version_sections',
+        {
+          version_id: finishVersionId,
+          team_id: TEAM,
+          section_id: 'stage:FinishSession',
+          section_hash: 'literal-finish-stage-hash',
+        },
+        client,
+      );
+      await client.query('commit');
+    } catch (error) {
+      await client.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+    await insert('studies', {
+      id: finishStudyId,
+      team_id: TEAM,
+      name: 'literal FinishSession study',
+      participation_mode: 'anonymous',
+      protocol_id: finishProtocolId,
+    });
+    for (const [targetWaveId, waveNumber] of [
+      [authoredWaveId, 1],
+      [syntheticWaveId, 2],
+      [leasedSyntheticWaveId, 3],
+    ] as const)
+      await insert('study_waves', {
+        id: targetWaveId,
+        study_id: finishStudyId,
+        team_id: TEAM,
+        wave_number: waveNumber,
+        protocol_version_id: finishVersionId,
+      });
+    for (const [targetWaveId, currentStageIndex] of [
+      [authoredWaveId, 0],
+      [authoredWaveId, 1],
+      [syntheticWaveId, 1],
+      [leasedSyntheticWaveId, 1],
+    ] as const) {
+      const targetSessionId = randomUUID();
+      await insert('interview_sessions', {
+        id: targetSessionId,
+        study_id: finishStudyId,
+        team_id: TEAM,
+        wave_id: targetWaveId,
+        protocol_version_id: finishVersionId,
+        ego_uid: `ego-${targetSessionId.slice(0, 8)}`,
+        current_stage_index: currentStageIndex,
+        current_stage_id: 'FinishSession',
+      });
+    }
+    await insert('study_stage_rollups', {
+      team_id: TEAM,
+      study_id: finishStudyId,
+      wave_id: syntheticWaveId,
+      stage_id: 'FinishSession',
+      entered_count: 7,
+    });
+    await insert('study_stage_rollups', {
+      team_id: TEAM,
+      study_id: finishStudyId,
+      wave_id: leasedSyntheticWaveId,
+      stage_id: 'FinishSession',
+      entered_count: 7,
+      lease_owner: 'active-stage-reader',
+      lease_expires_at: new Date(Date.now() + 60_000),
+    });
+
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await runMonitoringRollupOnce(maintenance);
+      const complete = await pool.query<{ count: number }>(
+        `select count(*)::int as count from study_wave_rollups
+          where wave_id = any($1::uuid[]) and recomputed_at is not null
+            and stale_at is null`,
+        [[authoredWaveId, syntheticWaveId, leasedSyntheticWaveId]],
+      );
+      if (complete.rows[0]?.count === 3) break;
+    }
+    const authored = await pool.query<{
+      entered_count: number;
+    }>(
+      `select entered_count from study_stage_rollups
+        where wave_id = $1 and stage_id = 'FinishSession'`,
+      [authoredWaveId],
+    );
+    expect(authored.rows).toEqual([{ entered_count: 1 }]);
+    const expired = await pool.query(
+      `select 1 from study_stage_rollups
+        where wave_id = $1 and stage_id = 'FinishSession'`,
+      [syntheticWaveId],
+    );
+    expect(expired.rows).toEqual([]);
+    const leased = await pool.query<{
+      entered_count: number;
+      lease_owner: string;
+    }>(
+      `select entered_count, lease_owner from study_stage_rollups
+        where wave_id = $1 and stage_id = 'FinishSession'`,
+      [leasedSyntheticWaveId],
+    );
+    expect(leased.rows).toEqual([
+      { entered_count: 0, lease_owner: 'active-stage-reader' },
+    ]);
+  });
+
   it('rejects implausible timing at the server boundary before writing', async () => {
     await expect(
       writeInterviewTiming(app, {

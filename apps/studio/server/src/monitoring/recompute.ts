@@ -64,11 +64,31 @@ async function recomputeWave(
        from timing
        order by session_id, stage_id, ordinal desc
      ),
-     observed as (
+     authored_current as (
        select s.team_id, s.study_id, s.wave_id, s.id as session_id,
               s.current_stage_id as stage_id
        from interview_sessions s
-       where s.wave_id = $1 and s.current_stage_id is not null
+       join version_sections stage_order_pin
+         on stage_order_pin.version_id = s.protocol_version_id
+        and stage_order_pin.team_id = s.team_id
+        and stage_order_pin.section_id = 'stageOrder'
+       join sections stage_order
+         on stage_order.team_id = stage_order_pin.team_id
+        and stage_order.hash = stage_order_pin.section_hash
+       where s.wave_id = $1
+         and s.current_stage_id is not null
+         and s.current_stage_index >= 0
+         and s.current_stage_index < case
+               when jsonb_typeof(stage_order.doc->'stages') = 'array'
+                 then jsonb_array_length(stage_order.doc->'stages')
+               else 0
+             end
+         and stage_order.doc->'stages'->>s.current_stage_index =
+             s.current_stage_id
+     ),
+     observed as (
+       select team_id, study_id, wave_id, session_id, stage_id
+       from authored_current
        union
        select s.team_id, s.study_id, s.wave_id, s.id as session_id,
               n.stage_id
@@ -131,7 +151,23 @@ async function recomputeWave(
         )
         and not exists (
           select 1 from interview_sessions s
-          where s.wave_id = r.wave_id and s.current_stage_id = r.stage_id
+          join version_sections stage_order_pin
+            on stage_order_pin.version_id = s.protocol_version_id
+           and stage_order_pin.team_id = s.team_id
+           and stage_order_pin.section_id = 'stageOrder'
+          join sections stage_order
+            on stage_order.team_id = stage_order_pin.team_id
+           and stage_order.hash = stage_order_pin.section_hash
+          where s.wave_id = r.wave_id
+            and s.current_stage_id = r.stage_id
+            and s.current_stage_index >= 0
+            and s.current_stage_index < case
+                  when jsonb_typeof(stage_order.doc->'stages') = 'array'
+                    then jsonb_array_length(stage_order.doc->'stages')
+                  else 0
+                end
+            and stage_order.doc->'stages'->>s.current_stage_index =
+                s.current_stage_id
         )
         and not exists (
           select 1 from interview_sessions s
@@ -150,7 +186,23 @@ async function recomputeWave(
         and (r.lease_owner is null or r.lease_expires_at <= clock_timestamp())
         and not exists (
           select 1 from interview_sessions s
-          where s.wave_id = r.wave_id and s.current_stage_id = r.stage_id
+          join version_sections stage_order_pin
+            on stage_order_pin.version_id = s.protocol_version_id
+           and stage_order_pin.team_id = s.team_id
+           and stage_order_pin.section_id = 'stageOrder'
+          join sections stage_order
+            on stage_order.team_id = stage_order_pin.team_id
+           and stage_order.hash = stage_order_pin.section_hash
+          where s.wave_id = r.wave_id
+            and s.current_stage_id = r.stage_id
+            and s.current_stage_index >= 0
+            and s.current_stage_index < case
+                  when jsonb_typeof(stage_order.doc->'stages') = 'array'
+                    then jsonb_array_length(stage_order.doc->'stages')
+                  else 0
+                end
+            and stage_order.doc->'stages'->>s.current_stage_index =
+                s.current_stage_id
         )
         and not exists (
           select 1 from interview_sessions s
