@@ -468,7 +468,67 @@ describe('registry magic-link authentication on PostgreSQL', () => {
     expect(new Set(fixture.diagnostics)).toEqual(
       new Set(['REGISTRY_AUTH_REQUEST_FAILURE']),
     );
+    expect(
+      (await fixture.owner.query('SELECT id FROM registry_auth_verification'))
+        .rows,
+    ).toEqual([]);
   });
+
+  it('removes only the failed delivery token and preserves a separately delivered link', async () => {
+    const delivered = await send(fixture);
+    const before = (
+      await fixture.owner.query(
+        'SELECT identifier FROM registry_auth_verification',
+      )
+    ).rows;
+    const unavailable = fixture.createAuth({
+      sendMagicLink: async () => {
+        throw new Error('mail quota exhausted');
+      },
+    });
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      expect(
+        (
+          await post(unavailable, '/sign-in/magic-link', {
+            email: 'reader@example.test',
+          })
+        ).status,
+      ).toBe(503);
+    }
+    expect(
+      (
+        await fixture.owner.query(
+          'SELECT identifier FROM registry_auth_verification',
+        )
+      ).rows,
+    ).toEqual(before);
+    expect((await fixture.auth.handler(new Request(delivered))).status).toBe(
+      302,
+    );
+    expect(
+      (await fixture.owner.query('SELECT id FROM registry_auth_session')).rows,
+    ).toHaveLength(1);
+  });
+
+  it.each([
+    { name: 'n'.repeat(30_000) },
+    { metadata: { unbounded: 'payload' } },
+    { callbackURL: '/' + 'a'.repeat(2048) },
+  ])(
+    'rejects unsupported or oversized sign-in fields before storing a token (case %#)',
+    async (extra) => {
+      const response = await post(fixture.auth, '/sign-in/magic-link', {
+        email: 'reader@example.test',
+        ...extra,
+      });
+      expect(response.status).toBe(400);
+      expect(
+        (await fixture.owner.query('SELECT id FROM registry_auth_verification'))
+          .rows,
+      ).toEqual([]);
+      expect(fixture.sent).toHaveLength(0);
+    },
+  );
 
   it('redacts real PostgreSQL auth failures and fails session reads closed', async () => {
     const errorLog = vi

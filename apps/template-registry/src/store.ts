@@ -375,21 +375,25 @@ export class RegistryStore {
     await this.#admitAccountWrite(userId);
     await registryTransaction(this.#pool, async (client) => {
       const principal = await this.#accountPublisher(client, userId);
-      const result = await client.query<{ revoked_at: Date | null }>(
-        'SELECT revoked_at FROM registry_credentials WHERE id = $1 AND publisher_id = $2',
+      const result = await client.query<{
+        id: string;
+        revoked_at: Date | null;
+      }>(
+        'SELECT id, revoked_at FROM registry_credentials WHERE id = $1 AND publisher_id = $2',
         [id, principal.publisherId],
       );
-      if (!result.rows[0]) throw new RegistryError('NOT_FOUND');
-      if (result.rows[0].revoked_at) return;
+      const credential = result.rows[0];
+      if (!credential) throw new RegistryError('NOT_FOUND');
+      if (credential.revoked_at) return;
       await client.query(
         'UPDATE registry_credentials SET revoked_at = statement_timestamp() WHERE id = $1',
-        [id],
+        [credential.id],
       );
       await appendRegistryAudit(
         client,
         { kind: 'publisher', id: principal.publisherId },
         'credential.revoked',
-        id,
+        credential.id,
         requestId,
       );
     });
@@ -736,13 +740,13 @@ export class RegistryStore {
       if (!entry.yanked) {
         await client.query(
           'UPDATE registry_entries SET yanked_at = statement_timestamp() WHERE id = $1',
-          [id],
+          [entry.id],
         );
         await appendRegistryAudit(
           client,
           { kind: 'publisher', id: principal.publisherId },
           'entry.yanked',
-          id,
+          entry.id,
           requestId,
         );
       }
@@ -870,7 +874,7 @@ export class RegistryStore {
       if ((publisher.suspended_at !== null) === suspended) return;
       const result = await client.query(
         `UPDATE registry_publishers SET suspended_at = ${suspended ? 'statement_timestamp()' : 'NULL'} WHERE id = $1 RETURNING id`,
-        [id],
+        [publisher.id],
       );
       if (!result.rowCount) throw new RegistryError('NOT_FOUND');
       await client.query(
@@ -882,7 +886,7 @@ export class RegistryStore {
         client,
         actor,
         suspended ? 'publisher.suspended' : 'publisher.reinstated',
-        id,
+        publisher.id,
         requestId,
       );
     });
@@ -905,17 +909,17 @@ export class RegistryStore {
       if (entry.curated === curated) return;
       await client.query(
         `UPDATE registry_entries SET curated_at = ${curated ? 'statement_timestamp()' : 'NULL'} WHERE id = $1`,
-        [id],
+        [entry.id],
       );
       await client.query(
         'UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL AND entry_id=$1',
-        [id],
+        [entry.id],
       );
       await appendRegistryAudit(
         client,
         actor,
         curated ? 'entry.curated' : 'entry.uncurated',
-        id,
+        entry.id,
         requestId,
       );
     });
