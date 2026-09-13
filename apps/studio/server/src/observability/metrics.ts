@@ -81,7 +81,7 @@ export function createOperationalMetrics(options: {
   });
   const lastFailure = new Gauge({
     name: 'studio_outbox_last_failure_timestamp_seconds',
-    help: 'Unix time of the most recent retained terminal failure; zero when no failed rows exist.',
+    help: 'Unix time of the most recent retained terminal failure or uncertain delivery; zero when neither exists.',
     labelNames: ['queue'] as const,
     registers,
   });

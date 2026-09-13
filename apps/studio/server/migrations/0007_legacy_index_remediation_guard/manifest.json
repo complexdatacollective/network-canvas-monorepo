@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0007_legacy_index_remediation_guard",
+  "previous": "0006_audit_alert_delivery",
+  "fingerprint": "07cdebeb73a88aaba32cd0f32b5fdb3d6c736828edfa47c8dbaecb9abade7919",
+  "snapshotHash": "51fbff264127fc9d433d4bb48b109e92a0a7cc3cae44797e07d8a3f456721dfd",
+  "sqlHash": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+  "sidecarsHash": "62c7928b7fbf8348e820607877356e8426bdd3aa23d44585670b2b3e4f38485f"
+}

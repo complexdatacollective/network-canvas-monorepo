@@ -5,6 +5,15 @@ import { AUDIT_FACET_LIMIT, contract } from '@codaco/studio-rpc';
 import { createTenantDb, type TenantDb } from '@codaco/studio-sync/tenant';
 
 import { updateUserLocale } from './account/commands.ts';
+import type { AssetStore } from './assets.ts';
+import {
+  acknowledgeAuditAlert,
+  AuditAlertError,
+  listAuditAlerts,
+  markAuditAlertRead,
+  readAuditAlertSettings,
+  updateAuditAlertSettings,
+} from './audit/alerts.ts';
 import {
   appendAuditedEvent,
   auditActorEventContext,
@@ -16,6 +25,7 @@ import {
   reserveDeniedAuditAttempt,
 } from './audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
+import type { AuditEventInput } from './audit/events.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
   authorizeAuditRead,
@@ -34,18 +44,23 @@ import {
   getInstanceStatus,
 } from './domain.ts';
 import {
+  completeSetup,
+  getSetupStatus,
+  SetupError,
+} from './instance/bootstrap.ts';
+import {
   correlateAuthorizedTeam,
   logOperational,
 } from './observability/logger.ts';
+import { createProtocolBuilderRouter } from './protocol-builder/router.ts';
+import type { ProtocolBuilderRuntime } from './protocol-builder/runtime.ts';
 import {
   addAuditedInformationStage,
-  commitAuditedProtocolSection,
   createAuditedProtocol,
   moveAuditedProtocolStage,
   ProtocolCommandAuthorizationError,
 } from './protocol/commands.ts';
 import { ProtocolStore } from './protocol/store.ts';
-import { createProtocolSyncServer } from './protocol/sync.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
 import { readStudyCounts } from './study/counts.ts';
 import { StudyStore } from './study/store.ts';
@@ -65,6 +80,19 @@ import { roleGrantsTeamAdministration } from './team/roles.ts';
 export type RpcContext = {
   principal: Principal | null;
   requestId: string;
+  /**
+   * The WebSocket this call arrived on, when it arrived on one. This is the
+   * protocol-builder host's presence identity: a colleague's cursor belongs to
+   * a connection and goes when the connection does.
+   */
+  connectionId?: string;
+  /**
+   * The browser tab behind this call, when it named one — see
+   * `@codaco/studio-rpc/client-session`. A protocol-builder lock belongs to
+   * this rather than to the connection, so two tabs of one researcher are two
+   * lock owners and one tab's reconnection is not a third.
+   */
+  clientSessionId?: string;
 };
 
 const os = implement(contract).$context<RpcContext>();
@@ -78,7 +106,10 @@ type TeamRpcContext = {
   tenantDb: TenantDb;
 };
 
-type AuditReadProcedure = 'audit.list' | 'audit.get' | 'audit.filterOptions';
+type AuditReadProcedure = Extract<
+  AuditEventInput,
+  { eventType: 'audit.read_denied' }
+>['details']['procedure'];
 
 /**
  * Thrown from inside the read transaction when the caller's locked membership
@@ -226,10 +257,14 @@ async function guardAuditRead<T>(
     reservation?.complete('other');
     return result;
   } catch (error) {
-    if (error instanceof AuditReadDeniedError) {
+    if (
+      error instanceof AuditReadDeniedError ||
+      (error instanceof AuditAlertError && error.code === 'FORBIDDEN')
+    ) {
       return denyAuditRead(context, procedure, reservation);
     }
     reservation?.complete('other');
+    if (error instanceof AuditAlertError) throw new ORPCError(error.code);
     throw error;
   }
 }
@@ -314,10 +349,19 @@ export function createRpcRouter(
     deployment: DeploymentStatus;
     telemetry: boolean;
     invitationDeliveryAvailable: boolean;
+    bootstrapToken?: string;
     pool?: pg.Pool;
+    protocolBuilder: ProtocolBuilderRuntime;
+    assetStore?: AssetStore;
   },
 ) {
-  const { auth, deployment, invitationDeliveryAvailable, pool } = deps;
+  const {
+    auth,
+    deployment,
+    invitationDeliveryAvailable,
+    bootstrapToken,
+    pool,
+  } = deps;
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
   // nonexistent team both read FORBIDDEN, so the check is not an existence
@@ -429,6 +473,29 @@ export function createRpcRouter(
     status: os.status.handler(() =>
       getInstanceStatus(caps, deployment, deps.telemetry),
     ),
+    setup: {
+      status: os.setup.status.handler(() => {
+        if (deployment.mode !== 'self-hosted') throw new ORPCError('NOT_FOUND');
+        return getSetupStatus(pool, caps.enabled ? bootstrapToken : undefined);
+      }),
+      complete: os.setup.complete.handler(async ({ input, context }) => {
+        if (deployment.mode !== 'self-hosted') throw new ORPCError('NOT_FOUND');
+        if (!caps.enabled || !pool) throw new ORPCError('SERVICE_UNAVAILABLE');
+        try {
+          return await completeSetup(
+            pool,
+            bootstrapToken,
+            input,
+            context.requestId,
+          );
+        } catch (error) {
+          if (!(error instanceof SetupError)) throw error;
+          throw new ORPCError(
+            error.code === 'UNAVAILABLE' ? 'SERVICE_UNAVAILABLE' : error.code,
+          );
+        }
+      }),
+    },
     me: os.me.use(requireUser).handler(async ({ context }) => ({
       userId: context.principal.userId,
       email: context.principal.email,
@@ -574,6 +641,12 @@ export function createRpcRouter(
     // exactly as `studies.get` refuses the study in front of them. Creating a
     // line answers to the same rule from the other side — a line no study owns
     // is reachable only by an Admin or Owner, so only they may make one.
+    protocolBuilder: createProtocolBuilderRouter({
+      auth,
+      runtime: deps.protocolBuilder,
+      ...(pool === undefined ? {} : { pool }),
+      ...(deps.assetStore === undefined ? {} : { assetStore: deps.assetStore }),
+    }),
     protocols: {
       create: os.protocols.create
         .use(requireTeamAdministration)
@@ -613,91 +686,6 @@ export function createRpcRouter(
             sections: draft.sections,
           };
         }),
-      acquireSection: os.protocols.acquireSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          const syncServer = createProtocolSyncServer(context.tenantDb);
-          const owner = `${context.principal.userId}:${input.clientId}`;
-          const lease = await syncServer.acquire(
-            input.draftId,
-            input.sectionId,
-            owner,
-          );
-          if (!lease) return { mode: 'readOnly' as const };
-
-          let resume: Awaited<ReturnType<typeof syncServer.resume>>;
-          try {
-            resume = await syncServer.resume(input.draftId, owner);
-          } catch (error) {
-            // Acquisition and resume are separate transactions. If the
-            // sequence lookup fails after the lease commits, expire the exact
-            // epoch so a client that never received it cannot block editors.
-            await syncServer
-              .release(input.draftId, input.sectionId, owner, lease.epoch)
-              .catch(() => undefined);
-            throw error;
-          }
-          const lastApplied = resume.lastApplied[input.sectionId];
-          const nextClientSequence =
-            lastApplied?.epoch === lease.epoch
-              ? lastApplied.clientSeq + 1n
-              : 1n;
-          return {
-            mode: 'editable' as const,
-            leaseEpoch: String(lease.epoch),
-            nextClientSequence: String(nextClientSequence),
-          };
-        }),
-      commitSection: os.protocols.commitSection
-        .use(requireProtocol)
-        .handler(({ context, input }) =>
-          handleAuditedProtocolCommand(() =>
-            commitAuditedProtocolSection(
-              {
-                tenantDb: context.tenantDb,
-                principal: context.principal,
-                requestId: context.requestId,
-              },
-              input,
-            ),
-          ),
-        ),
-      renewSection: os.protocols.renewSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          return {
-            renewed: Boolean(
-              await createProtocolSyncServer(context.tenantDb).renew(
-                input.draftId,
-                input.sectionId,
-                `${context.principal.userId}:${input.clientId}`,
-                BigInt(input.leaseEpoch),
-              ),
-            ),
-          };
-        }),
-      releaseSection: os.protocols.releaseSection
-        .use(requireProtocol)
-        .handler(async ({ context, input }) => {
-          await new ProtocolStore(context.tenantDb).getProtocolDraftMetadata(
-            input.protocolId,
-            input.draftId,
-          );
-          await createProtocolSyncServer(context.tenantDb).release(
-            input.draftId,
-            input.sectionId,
-            `${context.principal.userId}:${input.clientId}`,
-            BigInt(input.leaseEpoch),
-          );
-        }),
       addInformationStage: os.protocols.addInformationStage
         .use(requireProtocol)
         .handler(({ context, input }) =>
@@ -728,6 +716,53 @@ export function createRpcRouter(
         ),
     },
     audit: {
+      alerts: {
+        settings: os.audit.alerts.settings
+          .use(requireTeam)
+          .handler(({ context }) =>
+            guardAuditRead(context, 'audit.alerts.settings', () =>
+              readAuditAlertSettings(
+                auditedContextFor(context),
+                invitationDeliveryAvailable,
+              ),
+            ),
+          ),
+        updateSettings: os.audit.alerts.updateSettings
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.updateSettings', () =>
+              updateAuditAlertSettings(
+                auditedContextFor(context),
+                input,
+                invitationDeliveryAvailable,
+              ),
+            ),
+          ),
+        list: os.audit.alerts.list
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.list', () =>
+              listAuditAlerts(auditedContextFor(context), input.cursor),
+            ),
+          ),
+        markRead: os.audit.alerts.markRead
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.markRead', () =>
+              markAuditAlertRead(auditedContextFor(context), input.alertId),
+            ),
+          ),
+        acknowledge: os.audit.alerts.acknowledge
+          .use(requireTeam)
+          .handler(({ context, input }) =>
+            guardAuditRead(context, 'audit.alerts.acknowledge', () =>
+              acknowledgeAuditAlert(
+                auditedContextFor(context),
+                input.deliveryId,
+              ),
+            ),
+          ),
+      },
       list: os.audit.list
         .use(requireTeam)
         .handler(async ({ context, input }) => {

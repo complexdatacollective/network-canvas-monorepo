@@ -4,6 +4,7 @@ import {
   createRoute,
   createRouter,
   Outlet,
+  notFound,
   redirect,
   useRouterState,
   type RouterHistory,
@@ -18,6 +19,7 @@ import { TeamInvitationIdSchema } from '@codaco/studio-rpc';
 import LanguageChoice from './i18n/LanguageChoice.tsx';
 import LocaleSync from './i18n/LocaleSync.tsx';
 import { StudioI18nProvider } from './i18n/StudioI18nProvider.tsx';
+import { orpc } from './lib/api.ts';
 import { fetchDeploymentMode } from './lib/deployment.ts';
 import {
   landingRedirect,
@@ -38,9 +40,11 @@ import AppLayout from './routes/AppLayout.tsx';
 import Editor from './routes/Editor.tsx';
 import ErrorScreen from './routes/ErrorScreen.tsx';
 import Marketing from './routes/Marketing.tsx';
+import Setup, { SetupNotFound } from './routes/Setup.tsx';
 import SignIn from './routes/SignIn.tsx';
 import TeamActivity from './routes/TeamActivity.tsx';
 import TeamMembers from './routes/TeamMembers.tsx';
+import TeamSettings from './routes/TeamSettings.tsx';
 import TeamStudies from './routes/TeamStudies.tsx';
 import AccountArea from './shell/AccountArea.tsx';
 import NoTeamSignOut from './shell/NoTeamSignOut.tsx';
@@ -261,19 +265,6 @@ const screens = defineMessages({
     description:
       'What the Account ready screen at /sign-up/complete will do, shown on it while it is not yet built.',
   },
-  setupTitle: {
-    id: 'studio.screens.setupTitle',
-    defaultMessage: 'First-run setup',
-    description:
-      'Name of the First-run setup screen at /setup, used as its heading.',
-  },
-  setupDescription: {
-    id: 'studio.screens.setupDescription',
-    defaultMessage:
-      'Configures a freshly installed self-hosted instance: its first owner, its name, and how it sends mail and stores files.',
-    description:
-      'What the First-run setup screen at /setup will do, shown on it while it is not yet built.',
-  },
   noTeamTitle: {
     id: 'studio.screens.noTeamTitle',
     defaultMessage: 'No team yet',
@@ -438,19 +429,6 @@ const screens = defineMessages({
       "The team's plan, the seats it is paying for, and its invoices.",
     description:
       'What the Billing screen at /billing will do, shown on it while it is not yet built.',
-  },
-  teamSettingsTitle: {
-    id: 'studio.screens.teamSettingsTitle',
-    defaultMessage: 'Team settings',
-    description:
-      'Name of the Team settings screen at /settings, used as its heading.',
-  },
-  teamSettingsDescription: {
-    id: 'studio.screens.teamSettingsDescription',
-    defaultMessage:
-      "The team's name, the defaults every new study inherits from it, and deleting the team.",
-    description:
-      'What the Team settings screen at /settings will do, shown on it while it is not yet built.',
   },
   teamSettingsApiTitle: {
     id: 'studio.screens.teamSettingsApiTitle',
@@ -735,6 +713,11 @@ const marketingRoute = createRoute({
   beforeLoad: async ({ context }) => {
     if ((await fetchDeploymentMode(context.queryClient)) === 'managed') return;
 
+    const setup = await context.queryClient.fetchQuery(
+      orpc.setup.status.queryOptions(),
+    );
+    if (setup.state === 'ready') throw redirect({ to: '/setup' });
+
     const session = await context.queryClient.fetchQuery(sessionQueryOptions);
     if (session === 'signedOut') throw redirect({ to: '/sign-in' });
     throw landingRedirect(await resolveLandingDestination(context.queryClient));
@@ -868,11 +851,12 @@ const invitationRoute = createRoute({
 const setupRoute = createRoute({
   getParentRoute: () => focusedLayoutRoute,
   path: '/setup',
-  component: screenPlaceholder({
-    title: screens.setupTitle,
-    description: screens.setupDescription,
-    issue: '#1250',
-  }),
+  beforeLoad: async ({ context }) => {
+    if ((await fetchDeploymentMode(context.queryClient)) === 'managed')
+      throw notFound();
+  },
+  notFoundComponent: SetupNotFound,
+  component: Setup,
 });
 
 const noTeamRoute = createRoute({
@@ -1193,11 +1177,10 @@ const teamBillingRoute = createRoute({
 const teamSettingsRoute = createRoute({
   getParentRoute: () => teamLayoutRoute,
   path: '/settings',
-  component: areaPlaceholder({
-    title: screens.teamSettingsTitle,
-    description: screens.teamSettingsDescription,
-    issue: '#1249',
-  }),
+  component: () => {
+    const { teamId } = teamSettingsRoute.useParams();
+    return <TeamSettings key={teamId} teamId={teamId} />;
+  },
 });
 
 const teamSettingsApiRoute = createRoute({

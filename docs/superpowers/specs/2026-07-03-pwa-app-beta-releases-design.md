@@ -107,7 +107,7 @@ CLI version:
 - Contributors run `pnpm changeset`, select an app, and get a normal
   `.changeset/*.md` file. Library `changeset version` preserves it (verified).
 - **Guard (hard CI failure in the `quality` job):** a root check (e.g.
-  `scripts/check-changeset-app-isolation.mjs`, wired as a `//#` turbo task or a
+  `scripts/release/check-changeset-app-isolation.mjs`, wired as a `//#` turbo task or a
   step in the `quality` job) scans every `.changeset/*.md`; if any single
   changeset references an app package **together with** a non-app package, it
   fails with a message telling the author to split it into an app-only changeset

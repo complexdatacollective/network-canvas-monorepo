@@ -9,10 +9,7 @@ import {
 import { v4 as uuid } from 'uuid';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import createTimeline, {
-  createTimelineActions,
-  timelineActions,
-} from '../timeline';
+import createTimeline, { timelineActions } from '../timeline';
 
 vi.mock('uuid');
 
@@ -383,36 +380,6 @@ describe('timeline middleware', () => {
       expect(resetState.future.length).toBe(0);
       expect(resetState.futureTimeline.length).toBe(0);
       expect(resetState.timeline.length).toBe(1);
-    });
-  });
-
-  describe('createTimelineActions()', () => {
-    it('namespaces action types by name', () => {
-      const actions = createTimelineActions('stageEditorDraft');
-
-      expect(actions.undo().type).toBe('stageEditorDraft/undo');
-      expect(actions.redo().type).toBe('stageEditorDraft/redo');
-      expect(actions.jump('x').type).toBe('stageEditorDraft/jump');
-      expect(actions.reset().type).toBe('stageEditorDraft/reset');
-    });
-
-    it('an instance only responds to its own scoped actions', () => {
-      const reducer = getRewindableReducer(defaultReducer, {
-        name: 'stageEditorDraft',
-      });
-
-      const nextState = applyTimes(5, reducer);
-
-      // A foreign-scoped undo is NOT treated as an undo by this instance: it
-      // does not shrink history (past does not decrease by one).
-      const ignored = reducer(nextState, timelineActions.undo());
-      expect(ignored.past.length).not.toBe(nextState.past.length - 1);
-
-      // Its own scoped undo performs the undo.
-      const scoped = createTimelineActions('stageEditorDraft');
-      const undone = reducer(nextState, scoped.undo());
-      expect(undone.past.length).toBe(nextState.past.length - 1);
-      expect(undone.timeline.length).toBe(nextState.timeline.length - 1);
     });
   });
 

@@ -17,7 +17,7 @@ import {
 
 import {
   TENANT_ROLES_SQL,
-  teamIsolationPolicy,
+  teamIsolationPolicies,
   tenantTablesSql,
 } from './rls.ts';
 
@@ -35,7 +35,7 @@ export const drafts = pgTable(
   (table) => [
     unique().on(table.id, table.teamId),
     index('drafts_team_id_idx').on(table.teamId),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -56,7 +56,7 @@ export const sections = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.teamId, table.hash] }),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -80,7 +80,7 @@ const manifests = pgTable(
       foreignColumns: [drafts.id, drafts.teamId],
     }),
     index('manifests_team_id_idx').on(table.teamId),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -103,7 +103,7 @@ const leases = pgTable(
       columns: [table.draftId, table.teamId],
       foreignColumns: [drafts.id, drafts.teamId],
     }),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -137,7 +137,7 @@ const commandLog = pgTable(
       table.epoch,
       table.clientSeq,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 

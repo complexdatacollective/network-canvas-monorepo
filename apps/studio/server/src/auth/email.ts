@@ -10,7 +10,25 @@ import {
   validatePostmarkFrom,
 } from '@codaco/studio-sync/postmark-email-sender';
 
+import type { AlertPolicyKey } from '../audit/alert-policy.ts';
 import type { MailerEnv } from '../env.ts';
+
+export type AuditAlertMailer = {
+  sendAuditAlert(input: {
+    email: string;
+    policy: AlertPolicyKey;
+    occurredAt: Date;
+    alertUrl: string;
+    messageId: string;
+  }): Promise<void>;
+};
+
+const alertDescriptions: Record<AlertPolicyKey, string> = {
+  contact_access: 'Participant contact information was accessed.',
+  credential_access: 'An integration credential was accessed or changed.',
+  repeated_denials:
+    'Repeated attempts to access a protected team operation were refused.',
+};
 
 export type MagicLinkMailer = {
   sendMagicLink(input: { email: string; url: string }): Promise<void>;
@@ -30,11 +48,18 @@ export type InvitationMailer = {
 
 export type StudioMailer = MagicLinkMailer &
   InvitationMailer &
+  AuditAlertMailer &
   Pick<EmailSender, 'close'>;
 
 export function createConsoleMailer(): StudioMailer {
   return {
     close() {},
+    sendAuditAlert: () => {
+      // No address, link, event detail or private label in development output.
+      // oxlint-disable-next-line no-console -- local delivery confirmation only
+      console.log('Studio activity alert processed by the development mailer.');
+      return Promise.resolve();
+    },
     sendMagicLink: ({ email, url }) => {
       // oxlint-disable-next-line no-console -- the development sign-in loop
       console.log(`Magic link for ${email}: ${url}`);
@@ -55,6 +80,30 @@ function createTransportMailer(
   const from = validateEmailAddress(configuredFrom);
   return {
     close: () => sender.close(),
+    sendAuditAlert: async ({
+      email,
+      policy,
+      occurredAt,
+      alertUrl,
+      messageId,
+    }) => {
+      await sender.send({
+        from,
+        to: email,
+        messageId,
+        subject: 'Activity alert in Network Canvas Studio',
+        text: [
+          alertDescriptions[policy],
+          '',
+          `Recorded: ${occurredAt.toISOString()}`,
+          '',
+          'Sign in to review your team alerts:',
+          alertUrl,
+          '',
+          'This notification contains no participant details.',
+        ].join('\n'),
+      });
+    },
     sendMagicLink: async ({ email, url }) => {
       await sender.send({
         from,
@@ -105,6 +154,12 @@ function createTransportMailer(
 function createRefusingMailer(): StudioMailer {
   return {
     close() {},
+    sendAuditAlert: () =>
+      Promise.reject(
+        new Error(
+          'No email transport is configured; cannot send activity alert',
+        ),
+      ),
     sendMagicLink: () =>
       Promise.reject(
         new Error(

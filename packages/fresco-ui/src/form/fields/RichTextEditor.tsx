@@ -1054,12 +1054,12 @@ export default function RichTextEditorField({
   // editor commands against a field the host had just made read-only —
   // reporting the result back as a change a researcher had made. So the
   // popover is closed when the field stops being one anybody can edit.
-  useEffect(() => {
-    if (!isDisabled) return;
-
+  // Adjusted during render rather than after a commit: the panel is gone in
+  // the same paint that disables the field, and cannot reappear on re-enable.
+  if (isDisabled && (isLinkPopoverOpen || linkValidationMessage !== '')) {
     setIsLinkPopoverOpen(false);
     setLinkValidationMessage('');
-  }, [isDisabled]);
+  }
 
   if (!editor) {
     return null;

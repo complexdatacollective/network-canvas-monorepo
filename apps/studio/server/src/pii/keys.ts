@@ -2,6 +2,8 @@ import { createSecretKey, hkdfSync, type KeyObject } from 'node:crypto';
 
 import { z } from 'zod';
 
+import { isReservedLegacyIndexId } from './legacy-indexes.ts';
+
 const keyId = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/);
 const namespace = z.strictObject({
   current: keyId,
@@ -29,8 +31,37 @@ const configurationSchema = z.strictObject({
 export type KeysetConfiguration = z.infer<typeof configurationSchema>;
 export type KeyPurpose = 'pii-enc' | 'pii-index' | 'integration-enc';
 
-/** The deployment boundary supplies environment or KMS-backed key material. */
-export type RootKeyLoader = (reference: string) => Promise<Uint8Array>;
+/**
+ * A loader-created plaintext whose ownership transfers to this module. The
+ * callback is synchronous so the bytes cannot remain borrowed across an await;
+ * they are cleared even when validation or KeyObject import throws.
+ */
+export class TransferredRootKeyMaterial {
+  #bytes: Uint8Array | undefined;
+
+  constructor(bytes: Uint8Array) {
+    this.#bytes = bytes;
+  }
+
+  consume<T>(use: (bytes: Uint8Array) => T): T {
+    const bytes = this.#bytes;
+    if (!bytes) throw new KeyConfigurationError();
+    this.#bytes = undefined;
+    try {
+      return use(bytes);
+    } finally {
+      bytes.fill(0);
+    }
+  }
+}
+
+/**
+ * The deployment boundary supplies either a caller-owned borrowed view or a
+ * fresh plaintext whose ownership is explicitly transferred for destruction.
+ */
+export type RootKeyLoader = (
+  reference: string,
+) => Promise<Uint8Array | TransferredRootKeyMaterial>;
 
 export class KeyConfigurationError extends Error {
   constructor() {
@@ -56,9 +87,10 @@ export function createBase64RootKeyLoader(
       }
       const bytes = Buffer.from(raw, 'base64');
       if (bytes.byteLength !== 32 || bytes.toString('base64') !== raw) {
+        bytes.fill(0);
         throw new KeyConfigurationError();
       }
-      return bytes;
+      return new TransferredRootKeyMaterial(bytes);
     } catch {
       throw new KeyConfigurationError();
     }
@@ -88,6 +120,10 @@ class LoadedEncryptionKeys {
 
   has(purpose: KeyPurpose, id: string): boolean {
     return this.#namespaces[purpose].rootsByKeyId.has(id);
+  }
+
+  ids(purpose: KeyPurpose): readonly string[] {
+    return [...this.#namespaces[purpose].rootsByKeyId.keys()];
   }
 
   /** Internal to the encryption boundary; scope is an unambiguous tuple. */
@@ -134,6 +170,7 @@ export async function loadEncryptionKeys(
     if (
       ids.size !== definition.keys.length ||
       !ids.has(definition.current) ||
+      definition.keys.some((key) => isReservedLegacyIndexId(key.id)) ||
       definition.keys.some((key) => !rootIds.has(key.rootId))
     ) {
       throw new KeyConfigurationError();
@@ -143,13 +180,23 @@ export async function loadEncryptionKeys(
   const roots = new Map<string, KeyObject>();
   try {
     for (const root of config.roots) {
-      const material = await loadRootKey(root.reference);
-      if (!(material instanceof Uint8Array) || material.byteLength !== 32) {
+      const loaded = await loadRootKey(root.reference);
+      const importRoot = (material: Uint8Array) => {
+        if (material.byteLength !== 32) throw new KeyConfigurationError();
+        const bytes = Buffer.from(material);
+        try {
+          roots.set(root.id, createSecretKey(bytes));
+        } finally {
+          bytes.fill(0);
+        }
+      };
+      if (loaded instanceof TransferredRootKeyMaterial) {
+        loaded.consume(importRoot);
+      } else if (loaded instanceof Uint8Array) {
+        importRoot(loaded);
+      } else {
         throw new KeyConfigurationError();
       }
-      const bytes = Buffer.from(material);
-      roots.set(root.id, createSecretKey(bytes));
-      bytes.fill(0);
     }
   } catch {
     throw new KeyConfigurationError();

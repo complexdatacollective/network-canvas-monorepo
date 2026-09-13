@@ -107,7 +107,7 @@ Step-up auth (re-authenticate before a sensitive action, without relocking the w
 - **No `any`, no `as` assertions to bypass type checking.** Fix the underlying type instead.
 - **No barrel files** (`index.ts` re-export aggregators). Import from the original source.
 - **No re-exports for convenience.** All references to a function/variable should import from the original source.
-- **oxlint + oxfmt** lint and format: 2-space indentation, single quotes. Pre-commit hooks format staged files. Run `pnpm lint:fix` from the repo root before committing.
+- **oxlint + oxfmt** lint and format: 2-space indentation, single quotes. Agent hooks format and lint every file as you edit it and pre-commit blocks on lint errors; do not run `pnpm lint` or `pnpm lint:fix` yourself (see the root CLAUDE.md, "Automatic quality gates").
 - **Tests** are co-located in `__tests__/` directories with `.test.ts` / `.test.tsx` extensions, using Vitest.
 - **Four auth modes, never combined.** A vault is exactly one of `pin` / `passphrase` / `biometric` / `none` — see Vault & Auth above.
 - **Single-user invariant.** `installationId` identifies the device, not a user. No code path may introduce a user identifier.

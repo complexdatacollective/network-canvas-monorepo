@@ -5,7 +5,7 @@ import {
   type MessageDescriptor,
 } from '@codaco/app-i18n/messages';
 
-import type { ResourceContentKind, ResourceKind } from '../gateway.ts';
+import type { ResourceContentKind, ResourceKind } from '../types.ts';
 
 /**
  * What one picker offers.
@@ -83,12 +83,12 @@ export function browsableKinds(
 /**
  * Whether a field of this picker's kind may hold that resource.
  *
- * The gateway's `kinds` option asks a host for the right resources, and the
- * contract requires an adapter to honour it — but the field's own rule is not
- * the host's to keep. An adapter that ignores the filter, or a browser left
- * open across a change, is all it takes for a descriptor of the wrong kind to
- * reach a picker, and an asset id in a field the schema does not allow it in
- * is a protocol that fails validation at best and the interview at worst.
+ * `list`'s `kinds` option asks a host for the right resources, and the contract
+ * requires a host to honour it — but the field's own rule is not the host's to
+ * keep. A host that ignores the filter, or a browser left open across a change,
+ * is all it takes for a descriptor of the wrong kind to reach a picker, and an
+ * asset id in a field the schema does not allow it in is a protocol that fails
+ * validation at best and the interview at worst.
  */
 export function acceptsResourceKind(
   picker: ResourcePickerKind,
@@ -204,7 +204,7 @@ const statusMessages = defineMessages({
     id: 'protocolBuilder.resourceKinds.stagedStatus',
     defaultMessage: 'Imported, not yet saved',
     description:
-      'Badge on a resource the researcher imported during this editing session, which the protocol will only hold once the stage (one step of an interview) is saved.',
+      'Badge on a resource the researcher imported while this stage was open, which the protocol will only hold once the stage (one step of an interview) is saved.',
   },
   committed: {
     id: 'protocolBuilder.resourceKinds.committedStatus',

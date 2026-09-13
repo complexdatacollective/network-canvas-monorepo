@@ -1,5 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit';
 
+import { readStageDraft } from '~/components/StageEditor/stageDraftBeacon';
 import type { RootState } from '~/ducks/store';
 
 import { getVariableIndex } from '../indexes';
@@ -23,10 +24,17 @@ const isUsedMapEquals = (a: IsUsedMap, b: IsUsedMap): boolean => {
   return aKeys.every((key) => a[key] === b[key]);
 };
 
-// The stage form's live values, mirrored into Redux by `StageFormBridge` —
-// the only Redux-visible view of in-progress editor state.
-const getLiveStageValues = (state: RootState) =>
-  state.stageEditorDraft.ui.liveValues;
+/**
+ * The stage the editor is holding, if one is open.
+ *
+ * Not Redux state: the editor is the protocol-builder package's and its
+ * document lives in that form's own store, published to a beacon as it changes
+ * (`stageDraftBeacon`). Read as an input selector so that every evaluation of
+ * this selector — including the ones a codebook refusal makes from a thunk —
+ * sees the draft as it stands, and so that a new reading invalidates the memo
+ * the way a Redux input would.
+ */
+const getLiveStageValues = (_state: RootState) => readStageDraft().stage;
 
 /**
  * Gets a key value object describing which variables are in use, including by
@@ -41,12 +49,12 @@ const getLiveStageValues = (state: RootState) =>
  * The unsaved stage is matched by JSON string search, because the shape of a
  * stage's in-progress values is dynamic and cannot be walked at known paths.
  *
- * The combiner reruns on every `liveValues` mirror tick (that reactivity is
- * the feature: a variable referenced only by unsaved in-progress values must
- * still read as used), but `resultEqualityCheck` hands back the PREVIOUS map
- * reference whenever the recomputed content is unchanged — the common case
- * while typing — so downstream selectors and `useSelector` equality guards
- * keyed on this map's identity stay quiet.
+ * The combiner reruns whenever the editor publishes a new draft (that is the
+ * feature: a variable referenced only by an unsaved stage must still read as
+ * used), but `resultEqualityCheck` hands back the PREVIOUS map reference
+ * whenever the recomputed content is unchanged — the common case while typing
+ * — so downstream selectors and `useSelector` equality guards keyed on this
+ * map's identity stay quiet.
  *
  * @returns a key value object describing which variables are in use
  */
@@ -72,5 +80,15 @@ export const getIsUsed = createSelector(
       return memo;
     }, {});
   },
-  { memoizeOptions: { resultEqualityCheck: isUsedMapEquals } },
+  {
+    memoizeOptions: { resultEqualityCheck: isUsedMapEquals },
+    // No memo on the ARGUMENT. One of this selector's inputs is not in the
+    // state it is handed — the stage the editor is holding is published to a
+    // beacon, and the editor changes it without dispatching anything — so a
+    // cache keyed on the state object would answer a question about the
+    // protocol as it stood when that object was made. The inputs are memoised
+    // selectors and the result is compared by content, so what this costs is
+    // running three cheap reads.
+    argsMemoize: (selector) => selector,
+  },
 );

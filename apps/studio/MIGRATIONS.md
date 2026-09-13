@@ -219,8 +219,66 @@ For an existing deployment:
    client assets are not needed for schema administration. Keep credentials
    in the restricted environment file instead of putting them in shell history.
 
-4. Start the application containers only after migration succeeds. Retain the
-   backup and the old image reference until you have verified the upgrade.
+4. Keep all application containers stopped. Run the new image's bounded legacy
+   data converter with a separate restricted environment file containing the
+   operator `DATABASE_URL`, `STUDIO_ENCRYPTION_KEYSET`, and every referenced root:
+
+   Before running it, select a new current PII encryption key ID whose ID is
+   distinct from every key referenced by a legacy participant. Keep every
+   historical key ID and root in the keyset. The converter authenticates old
+   ciphertext before replacement; configuring an old referenced key as current
+   would leave that ciphertext in place and cannot establish the required
+   historical-to-current conversion proof.
+
+   ```sh
+   docker run --rm --network YOUR_DEPLOYMENT_NETWORK \
+     --env-file /secure/path/studio-encryption-operator.env \
+     YOUR_STUDIO_IMAGE encryption migrate-legacy --limit 100
+   ```
+
+   This command first authenticates and re-encrypts legacy participant data and
+   migration-0001 webhook secrets,
+   including name-only and attributes-only records that have no contact blind
+   index, then classifies retained contact suppression and delivery indexes, and
+   finally converts OAuth credentials. Classification preserves the original
+   contact digest; it does not claim that an old public HMAC was secret or create
+   a key proof for it. See the [legacy-data contract](server/src/pii/README.md).
+
+   Save the returned JSON. If `passComplete` is false and `afterId` is null,
+   repeat the command without `--after-id`: the pre-OAuth phases resume from
+   their remaining raw markers. A null cursor alone does not mean completion.
+   If `afterId` is non-null, copy it unchanged into the next invocation:
+
+   ```sh
+   docker run --rm --network YOUR_DEPLOYMENT_NETWORK \
+     --env-file /secure/path/studio-encryption-operator.env \
+     YOUR_STUDIO_IMAGE encryption migrate-legacy --limit 100 \
+     --after-id 'COPIED_AFTER_ID'
+   ```
+
+   Repeat with each newly returned cursor until `passComplete` is true and
+   `afterId` is null. A batch reporting `processed: 0` is not necessarily done;
+   it may have visited accounts that need no conversion. A full final batch
+   requires another invocation to observe exhaustion. If a command fails, leave
+   services stopped and replay the last successful cursor after resolving the
+   failure. Do not clear retained columns or edit key evidence manually.
+
+5. Run full verification with the same image, operator environment and complete
+   historical keyset before admitting traffic:
+
+   ```sh
+   docker run --rm --network YOUR_DEPLOYMENT_NETWORK \
+     --env-file /secure/path/studio-encryption-operator.env \
+     YOUR_STUDIO_IMAGE encryption verify
+   ```
+
+   Require exit status zero and `{"operation":"verify","verified":true}`.
+   Traversal completion does not replace this verification and does not authorize
+   key retirement. Any retained plaintext token still refuses startup.
+
+6. Start the application containers with their runtime credentials only after
+   migration, conversion and verification succeed. Retain the backup and the old
+   image reference until you have verified the upgrade.
 
 The same command provisions a fresh empty database before its first start.
 Repeated runs verify and leave applied migrations alone, while rechecking role
@@ -243,6 +301,13 @@ history. The runner reasserts those evidence restrictions after historical
 sidecars on every run. Role safety and access checks are repeatable operator
 invariants outside the immutable schema history; no numbered artifact is
 rewritten to update them.
+
+The offline `encryption migrate-legacy` command also receives the separate
+operator `DATABASE_URL`. It opens an unpinned connection only for legacy token
+conversion and requires the connecting login's own account-table ownership or
+direct SELECT privileges on all retained token columns, plus account updates
+and credential-audit inserts. Runtime `studio_app`/`studio_maintenance` membership
+cannot provide that capability. See [encryption maintenance](server/src/pii/README.md#migration-and-maintenance).
 
 ## Pre-release databases
 

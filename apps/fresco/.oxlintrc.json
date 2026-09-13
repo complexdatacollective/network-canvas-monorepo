@@ -14,7 +14,7 @@
     "formatjs/enforce-placeholders": "error",
     "formatjs/no-multiple-whitespaces": "error",
     "nextjs/no-img-element": "off",
-    "tailwindcss/no-unknown-classes": "warn",
+    "tailwindcss/no-unknown-classes": "error",
     "tailwindcss/no-duplicate-classes": "error",
     "tailwindcss/no-conflicting-classes": "warn",
     "tailwindcss/no-unnecessary-whitespace": "error",

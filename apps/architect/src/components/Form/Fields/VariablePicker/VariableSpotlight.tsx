@@ -31,6 +31,13 @@ import { createValidations } from '~/utils/validations';
 import { getVariablesForSubject } from '../../../../selectors/codebook';
 import { sortByLabel } from '../../../Codebook/helpers';
 import ExternalLink from '../../../ExternalLink';
+
+// Rich-text tag renderers live at module scope so they keep one identity across
+// renders (an inline arrow returning JSX is a component defined during render).
+const renderVariableNamingLink = (chunks: ReactNode[]) => (
+  <ExternalLink href={documentationLinks.variableNaming}>{chunks}</ExternalLink>
+);
+
 const additionalMessages = defineMessages({
   toCreateYourFirstAttributeOf: {
     id: 'architect.additional.form.fields.variablePicker.variableSpotlight.toCreateYourFirstAttributeOf',
@@ -488,13 +495,7 @@ const VariableSpotlight = ({
                         value1: intl.formatMessage(
                           messages.documentationOnAttributeNaming,
                         ),
-                        ExternalLink: (chunks) => (
-                          <ExternalLink
-                            href={documentationLinks.variableNaming}
-                          >
-                            {chunks}
-                          </ExternalLink>
-                        ),
+                        ExternalLink: renderVariableNamingLink,
                       },
                     )}
                   </Paragraph>,

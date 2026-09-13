@@ -21,6 +21,7 @@ import {
   createOwnerPool,
 } from '../../db/pool.ts';
 import { checkSchema } from '../../db/schema.ts';
+import { encryptionEnvironment } from '../../pii/__tests__/fixtures.ts';
 import { createReadiness } from '../readiness.ts';
 
 const database = await reachableDb();
@@ -138,10 +139,24 @@ describe.skipIf(!database)(
           get: async () => null,
         },
       });
+    const workerReadiness = () =>
+      createReadiness({
+        maintenancePool: maintenance,
+        allowedLogins,
+        cacheMs: 0,
+        assetStore: {
+          checkHealth: async () => {},
+          put: async () => {
+            throw new Error('unused');
+          },
+          get: async () => null,
+        },
+      });
     const boot = (
       logins: readonly string[] | null = allowedLogins,
       administrativeLogins: readonly string[] = [],
       maintenanceDatabaseUrl: string | null = maintenanceRuntimeUrl,
+      role: 'web' | 'worker' | 'both' = 'both',
     ) =>
       spawnSync(
         process.execPath,
@@ -153,6 +168,8 @@ describe.skipIf(!database)(
         {
           env: {
             NODE_ENV: 'production',
+            STUDIO_ROLE: role,
+            ...encryptionEnvironment(),
             DATABASE_URL: appRuntimeUrl,
             ...(maintenanceDatabaseUrl
               ? {
@@ -198,10 +215,18 @@ describe.skipIf(!database)(
       } finally {
         probe.stop();
       }
-      const result = boot();
-      expect(result.error).toBeUndefined();
-      expect(result.status).toBe(0);
-      expect(result.stdout).toContain('admission-listener-started');
+      const workerProbe = workerReadiness();
+      try {
+        expect((await workerProbe.check()).status).toBe('ready');
+      } finally {
+        workerProbe.stop();
+      }
+      for (const role of ['web', 'worker', 'both'] as const) {
+        const result = boot(allowedLogins, [], maintenanceRuntimeUrl, role);
+        expect(result.error).toBeUndefined();
+        expect(result.status).toBe(0);
+        expect(result.stdout).toContain('admission-listener-started');
+      }
     });
 
     it('requires app and maintenance connections to reach the same live database', async () => {
@@ -731,7 +756,7 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
     ).toEqual([{ history: null }]);
     const configuredFresh = migrationCommand(administrativeLogins);
     expect(configuredFresh.error).toBeUndefined();
-    expect(configuredFresh.status).toBe(0);
+    expect(configuredFresh.status, configuredFresh.stderr).toBe(0);
     expect(configuredFresh.stdout).toContain('Applied Studio migrations:');
     expect(
       (
@@ -789,6 +814,7 @@ it('admits healthy runtime evidence authored by a distinct enrolled non-superuse
       {
         env: {
           NODE_ENV: 'production',
+          ...encryptionEnvironment(),
           DATABASE_URL: runtimeUrl.href,
           STUDIO_MAINTENANCE_DATABASE_URL: maintenanceUrl.href,
           STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(allowedLogins),

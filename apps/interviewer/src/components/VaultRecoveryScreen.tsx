@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
@@ -39,6 +39,10 @@ const messages = defineMessages({
     description: 'Visible copy in Interviewer Vault Recovery Screen.',
   },
 });
+
+// Rich-text chunk formatter for the reload advice, at module scope so it keeps
+// one identity across renders.
+const renderStrong = (chunks: ReactNode[]) => <strong>{chunks}</strong>;
 
 // Shown when the vault record exists but can't be read (corrupt, or written by a
 // newer app version than the one now running — e.g. a service-worker rollback on
@@ -88,7 +92,7 @@ export function VaultRecoveryScreen() {
         </Paragraph>
         <Paragraph>
           {intl.formatMessage(messages.tryStrongReloadStrongFirstIfA, {
-            strong: (chunks) => <strong>{chunks}</strong>,
+            strong: renderStrong,
           })}
         </Paragraph>
       </Dialog>

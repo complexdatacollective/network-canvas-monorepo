@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0008_verified_key_references",
+  "previous": "0007_legacy_index_remediation_guard",
+  "fingerprint": "6c0583b89a4a0603239b4e011b0162c3887ef357fe9384d61cbb9964b4f4558a",
+  "snapshotHash": "a110a26b7174f41881dbae63364f10aa0076a1500eb2cf3d9dc6b595b644ca6c",
+  "sqlHash": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+  "sidecarsHash": "2296d62a7d058f60e3b0eb5cc37d2a6b63248bf107b52ad948cdf8ec1ae2b5cb"
+}

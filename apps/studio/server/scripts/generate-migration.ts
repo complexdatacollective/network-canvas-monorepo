@@ -79,7 +79,7 @@ export async function generateMigrationFiles({
   });
   const sql =
     [before, statements.join('\n'), after].filter(Boolean).join('\n') + '\n';
-  const sidecars = SIDECARS.join('\n') + '\n';
+  const sidecars = SIDECARS.join('\n').trimEnd() + '\n';
   const id = `${String(prior.length + 1).padStart(4, '0')}_${name}`;
   const manifest: MigrationManifest = {
     format: 1,

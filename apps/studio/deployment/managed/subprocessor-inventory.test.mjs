@@ -4,8 +4,9 @@ import { createHash } from 'node:crypto';
 import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { test } from 'vitest';
 
 const directory = fileURLToPath(new URL('.', import.meta.url));
 
@@ -65,7 +66,7 @@ function generateAt(temp, check = false) {
 
 test('regenerates an approved provider-source change without editing generated output', async (context) => {
   const temp = await mkdtemp(join(tmpdir(), 'studio-provider-change-'));
-  context.after(() => rm(temp, { recursive: true, force: true }));
+  context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
   await copyReviewedEstate(temp);
   const contractPath = join(temp, 'estate-provider-contract.json');
   const contract = JSON.parse(await readFile(contractPath, 'utf8'));
@@ -123,7 +124,7 @@ for (const [name, version] of [
 ])
   test(`refuses an approved non-exact provider version: ${name}`, async (context) => {
     const temp = await mkdtemp(join(tmpdir(), 'studio-provider-version-'));
-    context.after(() => rm(temp, { recursive: true, force: true }));
+    context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
     await copyReviewedEstate(temp);
     const path = join(temp, 'estate-provider-contract.json');
     const contract = JSON.parse(await readFile(path, 'utf8'));
@@ -152,7 +153,7 @@ for (const [file, extra] of [
 ])
   test(`refuses unmapped declarations in approved ${file}`, async (context) => {
     const temp = await mkdtemp(join(tmpdir(), 'studio-approved-provider-'));
-    context.after(() => rm(temp, { recursive: true, force: true }));
+    context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
     await copyReviewedEstate(temp);
     const previous = await readFile(join(temp, file), 'utf8').catch((error) => {
       if (error.code !== 'ENOENT') throw error;
@@ -195,7 +196,7 @@ for (const [file, extra] of [
 ])
   test(`refuses unsupported approved top-level operational block ${file}`, async (context) => {
     const temp = await mkdtemp(join(tmpdir(), 'studio-approved-top-level-'));
-    context.after(() => rm(temp, { recursive: true, force: true }));
+    context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
     await copyReviewedEstate(temp);
     await writeFile(join(temp, file), extra);
     await approveManifestFile(temp, file);
@@ -211,7 +212,7 @@ for (const type of ['aws_caller_identity', 'google_client_config'])
   for (const format of ['hcl', 'json'])
     test(`refuses approved scoped check data ${type} in ${format}`, async (context) => {
       const temp = await mkdtemp(join(tmpdir(), 'studio-approved-check-data-'));
-      context.after(() => rm(temp, { recursive: true, force: true }));
+      context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
       await copyReviewedEstate(temp);
       const file =
         format === 'hcl' ? 'nested-check.tf' : 'nested-check.tf.json';
@@ -291,7 +292,7 @@ for (const [name, file, replace] of providerRoutingChanges)
     const temp = await mkdtemp(
       join(tmpdir(), 'studio-approved-provider-routing-'),
     );
-    context.after(() => rm(temp, { recursive: true, force: true }));
+    context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
     await copyReviewedEstate(temp);
     const path = join(temp, file);
     const before = await readFile(path, 'utf8');
@@ -306,7 +307,7 @@ for (const [name, file, replace] of providerRoutingChanges)
 
 test('refuses an approved Terraform JSON provider endpoint', async (context) => {
   const temp = await mkdtemp(join(tmpdir(), 'studio-approved-json-endpoint-'));
-  context.after(() => rm(temp, { recursive: true, force: true }));
+  context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
   await copyReviewedEstate(temp);
   const path = join(temp, 'versions.tf');
   const original = await readFile(path, 'utf8');
@@ -344,7 +345,7 @@ for (const [name, extra] of [
 ])
   test(`refuses an approved Terraform ${name} subblock`, async (context) => {
     const temp = await mkdtemp(join(tmpdir(), 'studio-approved-terraform-'));
-    context.after(() => rm(temp, { recursive: true, force: true }));
+    context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
     await copyReviewedEstate(temp);
     const path = join(temp, 'versions.tf');
     await writeFile(path, `${await readFile(path, 'utf8')}${extra}`);
@@ -365,7 +366,7 @@ for (const [name, terraform] of [
 ])
   test(`refuses an approved Terraform JSON ${name} subblock`, async (context) => {
     const temp = await mkdtemp(join(tmpdir(), 'studio-approved-json-state-'));
-    context.after(() => rm(temp, { recursive: true, force: true }));
+    context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
     await copyReviewedEstate(temp);
     const file = 'remote-state.tf.json';
     await writeFile(join(temp, file), JSON.stringify({ terraform }));
@@ -384,7 +385,7 @@ for (const [name, nested] of [
 ])
   test(`refuses an approved resource ${name} side effect`, async (context) => {
     const temp = await mkdtemp(join(tmpdir(), 'studio-approved-side-effect-'));
-    context.after(() => rm(temp, { recursive: true, force: true }));
+    context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
     await copyReviewedEstate(temp);
     const path = join(temp, 'main.tf');
     const original = await readFile(path, 'utf8');
@@ -414,7 +415,7 @@ for (const [file, pattern, replacement] of [
 ])
   test(`refuses non-US storage after approval of ${file}`, async (context) => {
     const temp = await mkdtemp(join(tmpdir(), 'studio-approved-residency-'));
-    context.after(() => rm(temp, { recursive: true, force: true }));
+    context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
     await copyReviewedEstate(temp);
     const before = await readFile(join(temp, file), 'utf8');
     const after = before.replace(pattern, replacement);
@@ -491,7 +492,7 @@ test('scopes geography claims and preserves unqualified provider geography', asy
 
 test('required unqualified geography metadata cannot be removed after review', async (context) => {
   const temp = await mkdtemp(join(tmpdir(), 'studio-subprocessor-geography-'));
-  context.after(() => rm(temp, { recursive: true, force: true }));
+  context.onTestFinished(() => rm(temp, { recursive: true, force: true }));
   await copyReviewedEstate(temp);
   const path = join(temp, 'subprocessor-estate.json');
   const source = JSON.parse(await readFile(path, 'utf8'));

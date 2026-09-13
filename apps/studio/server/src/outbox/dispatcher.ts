@@ -36,7 +36,8 @@ export type OutboxAdapter<Claim extends OutboxClaim> = {
   remainsDeliverable(claim: Claim, lease: OutboxLease): Promise<boolean>;
   suppressClaim(claim: Claim, lease: OutboxLease): Promise<boolean>;
   renewLease(claim: Claim, lease: OutboxLease): Promise<boolean>;
-  deliver(claim: Claim): Promise<void>;
+  // A final authorization check may suppress work after its initial claim.
+  deliver(claim: Claim): Promise<void | 'suppressed'>;
   failureDisposition(error: unknown): 'retryable' | 'permanent' | 'uncertain';
   recordFailure(
     claim: Claim,
@@ -201,7 +202,14 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
 
     const heartbeat = this.startLeaseHeartbeat(claim);
     try {
-      await this.adapter.deliver(claim);
+      const outcome = await this.adapter.deliver(claim);
+      if (outcome === 'suppressed') {
+        await heartbeat.stop();
+        if (await this.adapter.suppressClaim(claim, this.lease))
+          result.suppressed += 1;
+        else result.leaseLost = 1;
+        return result;
+      }
     } catch (error) {
       const ownsLease = await heartbeat.stop();
       const disposition = this.adapter.failureDisposition(error);
@@ -238,8 +246,8 @@ export class OutboxDispatcher<Claim extends OutboxClaim> {
     // A renewal error does not establish that ownership changed. Always try
     // the ownership CAS after acceptance, without overwriting a new owner.
     // The provider accepted, but a failed commit must never become a normal
-    // retry. A process crash still leaves the lease reclaimable: this retains
-    // the invitation outbox's at-least-once crash semantics.
+    // retry. Each adapter owns crash recovery: audit alerts retain a durable
+    // handoff marker while invitations retain their existing crash semantics.
     let completionError: unknown;
     try {
       if (await this.adapter.recordComplete(claim, this.lease)) {

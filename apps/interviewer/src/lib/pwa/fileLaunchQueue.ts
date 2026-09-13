@@ -45,6 +45,9 @@ export const initFileLaunchCapture = (): void => {
 
       if (failures.length > 0) {
         for (const failure of failures) {
+          // Only the aggregate count below reaches the user (a toast); the
+          // reason a given handle failed to read is only visible here.
+          // oxlint-disable-next-line no-console -- only diagnostic for why a launched file handle failed to read; the user only sees an aggregate failure count
           console.error('Failed to read launched file', failure.reason);
         }
         pendingFailureCount += failures.length;
@@ -61,6 +64,9 @@ export const initFileLaunchCapture = (): void => {
       emit();
     })()
       .catch((error: unknown) => {
+        // Unlike the per-file read failures above, nothing surfaces this
+        // outer failure to the user at all — this is the only signal.
+        // oxlint-disable-next-line no-console -- only diagnostic for this outer failure; nothing else reports it, unlike the per-file failures above
         console.error('Failed to handle launched files', error);
       })
       .finally(() => {

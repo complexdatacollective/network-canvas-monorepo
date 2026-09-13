@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createApp } from '../app.ts';
 import { createDisabledAuthService } from '../auth/service.ts';
 import { readEnv } from '../env.ts';
+import { createObservability } from '../observability/runtime.ts';
 
 const INGRESS_SECRET =
   'synthetic-managed-ingress-secret-at-least-32-characters';
@@ -119,6 +120,46 @@ describe('managed ingress proof', () => {
     const health = await app.request('/healthz');
     expect(health.status).toBe(200);
     await expect(health.json()).resolves.toEqual({ status: 'ok' });
+  });
+
+  it('checks ingress proof before invoking the shared readiness handler', async () => {
+    const observability = createObservability({});
+    const check = vi.spyOn(observability.readiness, 'check');
+    try {
+      const app = createApp(
+        {
+          ...readEnv(),
+          db: undefined,
+          maintenanceDb: undefined,
+          auth: undefined,
+          managedIngressSecret: INGRESS_SECRET,
+          trustedProxies: TRUSTED_PROXIES,
+        },
+        { observability },
+      );
+      for (const proof of [undefined, 'wrong-proof']) {
+        const response = await app.request('/readyz', {
+          headers: proof
+            ? { 'x-studio-managed-ingress-proof': proof }
+            : undefined,
+        });
+        expect(response.status).toBe(404);
+        expect(response.headers.get('cache-control')).toBe('no-store');
+      }
+      expect(check).not.toHaveBeenCalled();
+      const admitted = await app.request('/readyz', {
+        headers: { 'x-studio-managed-ingress-proof': INGRESS_SECRET },
+      });
+      // This fixture has no database: an admitted probe reports not-ready.
+      expect(admitted.status).toBe(503);
+      await expect(admitted.json()).resolves.toMatchObject({
+        status: 'not_ready',
+      });
+      expect(check).toHaveBeenCalledOnce();
+    } finally {
+      check.mockRestore();
+      observability.stop();
+    }
   });
 
   it('keeps exact metrics behind its bearer gate without ingress proof', async () => {

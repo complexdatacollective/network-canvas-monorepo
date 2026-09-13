@@ -17,7 +17,8 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  teamIsolationPolicy,
+  teamIsolationPolicies,
+  backupReadPolicy,
   TEAM_GUC,
   tenantTablesSql,
   TENANT_ROLES,
@@ -149,6 +150,7 @@ const auditEvents = pgTable(
     // maintenance jobs. Unlike mutable tenant data, an accidental unscoped
     // maintenance query must not be able to enumerate every team's history.
     auditTeamIsolationPolicy(),
+    backupReadPolicy(),
   ],
 );
 
@@ -293,7 +295,7 @@ const auditExportJobs = pgTable(
     ),
     // The ordinary policy, with the maintenance escape — deliberately not the
     // strict audit policy above. See the note on AUDIT_SIDECAR_SQL.
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -322,6 +324,7 @@ const auditAlertOutbox = pgTable(
     leaseOwner: uuid('lease_owner'),
     leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
     deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+    uncertainAt: timestamp('uncertain_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     suppressedAt: timestamp('suppressed_at', { withTimezone: true }),
     lastError: text('last_error'),
@@ -331,6 +334,7 @@ const auditAlertOutbox = pgTable(
   },
   (table) => [
     // "Exactly one durable outbox row per alert-eligible committed event."
+    unique('audit_alert_outbox_id_team_unique').on(table.id, table.teamId),
     uniqueIndex('audit_alert_outbox_audit_event_id_idx').on(table.auditEventId),
     // Every denormalized column is bound to the event it was copied from, not
     // just the link: the alert policy decides from `event_type` and
@@ -359,7 +363,7 @@ const auditAlertOutbox = pgTable(
     index('audit_alert_outbox_dispatch_idx')
       .on(table.availableAt, table.leaseExpiresAt)
       .where(
-        sql`delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL`,
+        sql`delivered_at IS NULL AND failed_at IS NULL AND suppressed_at IS NULL AND uncertain_at IS NULL`,
       ),
     index('audit_alert_outbox_team_id_event_type_created_at_idx').on(
       table.teamId,
@@ -384,15 +388,15 @@ const auditAlertOutbox = pgTable(
     ),
     check(
       'audit_alert_outbox_terminal_state_check',
-      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}) <= 1
+      sql`num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) <= 1
           AND (
-            num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}) = 0
+            num_nonnulls(${table.deliveredAt}, ${table.failedAt}, ${table.suppressedAt}, ${table.uncertainAt}) = 0
             OR (${table.leaseOwner} IS NULL AND ${table.leaseExpiresAt} IS NULL)
           )`,
     ),
     // The ordinary policy, with the maintenance escape — deliberately not the
     // strict audit policy above. See the note on AUDIT_SIDECAR_SQL.
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 

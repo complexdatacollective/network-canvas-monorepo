@@ -14,6 +14,7 @@ import { SCHEMA_FINGERPRINT } from '../../db/fingerprint.generated.ts';
 import { readMigrations } from '../../db/migrations/artifact.ts';
 import { migrateDatabase } from '../../db/migrations/migrate.ts';
 import { readEnv } from '../../env.ts';
+import { encryptionEnvironment } from '../../pii/__tests__/fixtures.ts';
 
 const database = await reachableDb();
 const runtimePassword = 'startup-runtime-synthetic-only';
@@ -41,6 +42,7 @@ describe.skipIf(!database)('startup migration provenance', () => {
           ],
           {
             env: {
+              ...encryptionEnvironment(),
               NODE_ENV: development ? 'development' : 'production',
               STUDIO_DEV_DEFAULTS: String(development),
               DATABASE_URL: databaseUrl,

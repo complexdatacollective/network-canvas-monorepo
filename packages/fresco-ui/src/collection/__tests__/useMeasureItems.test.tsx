@@ -69,6 +69,10 @@ function Parent({
     return makeCollection(IDS);
   }, [version]);
   const layout = useMemo(() => new ListLayout<Item>(), []);
+  // Setting state from a layout effect IS the thing under test: it is the only
+  // way to land the second identity change in the commit that is recovering
+  // from the first. Deriving it during render would schedule the bump before
+  // the hook's own layout effect and reproduce nothing.
   useLayoutEffect(() => {
     if (hijack && version === 1) setVersion(2);
   }, [hijack, version]);

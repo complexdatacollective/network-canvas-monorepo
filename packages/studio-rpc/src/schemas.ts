@@ -23,6 +23,26 @@ export const TeamInvitationIdSchema = z
   .max(255)
   .regex(/^[A-Za-z0-9_-]+$/);
 
+/** Canonical base64url encoding of 32 cryptographically random bytes. */
+export const BootstrapTokenSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/);
+export const CompleteSetupInputSchema = z.strictObject({
+  token: BootstrapTokenSchema,
+  instanceName: z.string().min(1).max(120).regex(/\S/),
+  ownerName: z.string().min(1).max(120).regex(/\S/),
+  ownerEmail: z.email().max(254),
+  ownerPassword: z.string().min(12).max(128),
+});
+export type CompleteSetupInput = z.infer<typeof CompleteSetupInputSchema>;
+export const SetupStatusSchema = z.strictObject({
+  state: z.enum(['ready', 'complete', 'unavailable']),
+});
+export type SetupStatus = z.infer<typeof SetupStatusSchema>;
+export const CompleteSetupResultSchema = z.strictObject({
+  state: z.literal('complete'),
+});
+
 // Read through `StatusSchema`; the server's `DeploymentStatus` and the
 // client's view of it are both inferred from that one output type.
 const DeploymentSchema = z.object({
@@ -320,107 +340,9 @@ export const ProtocolDraftSchema = z.object({
   sections: z.record(z.string(), SectionDocumentSchema),
 });
 
-const SectionScopedSchema = ProtocolDraftInputSchema.extend({
-  sectionId: z.string().min(1).max(255),
-  clientId: z.uuid(),
-});
-
-export const AcquireSectionInputSchema = SectionScopedSchema;
-export const AcquireSectionResultSchema = z.discriminatedUnion('mode', [
-  z.object({
-    mode: z.literal('editable'),
-    leaseEpoch: DecimalSequenceSchema,
-    nextClientSequence: DecimalSequenceSchema,
-  }),
-  z.object({ mode: z.literal('readOnly') }),
-]);
-
-/**
- * Where a command applies: a top-level key, or a path of object keys reaching a
- * value nested inside the section document (`@codaco/studio-sync/apply`'s
- * `CommandTarget`).
- *
- * The path form is an array rather than a dotted string so that a server which
- * predates nested addressing refuses it here instead of reading it as a
- * top-level key that happens to contain a dot and writing the value somewhere
- * the document does not keep one. Depth is bounded for the same reason the
- * command count is: the commit work this describes has to stay predictable.
- * A prototype name is refused outright — the apply engine will not follow one,
- * and a command is better rejected at the boundary than part-way through a
- * transaction.
- *
- * Both rules — a segment must name something, and must not name a prototype —
- * apply to EVERY segment, and the bare string is a one-segment path rather
- * than a form of its own: `commandTarget` writes a one-segment path as the
- * plain string, so `""` and `"__proto__"` reach this schema in that shape and
- * in no other. Bounding only the array form let them through to `targetPath`,
- * which throws on them inside the commit — after the draft head is locked, and
- * as an unclassified server fault instead of the bad request it is.
- */
-const UNSAFE_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
-const PathSegmentSchema = z
-  .string()
-  .min(1)
-  .refine((segment) => !UNSAFE_PATH_SEGMENTS.has(segment), {
-    message: 'must not name a prototype',
-  });
-const CommandTargetSchema = z.union([
-  PathSegmentSchema,
-  z
-    .array(PathSegmentSchema)
-    .min(1)
-    .max(16)
-    // Readonly to match the apply engine's own `CommandTarget`: nothing
-    // downstream may rewrite an address after it has been validated.
-    .readonly(),
-]);
-
-const CommandSchema = z.discriminatedUnion('op', [
-  z.object({
-    op: z.literal('set'),
-    key: CommandTargetSchema,
-    value: z.unknown(),
-  }),
-  z.object({ op: z.literal('unset'), key: CommandTargetSchema }),
-  z.object({
-    op: z.literal('insertItem'),
-    key: CommandTargetSchema,
-    index: z.number().int().nonnegative(),
-    item: z.unknown(),
-  }),
-  z.object({
-    op: z.literal('removeItem'),
-    key: CommandTargetSchema,
-    index: z.number().int().nonnegative(),
-  }),
-  z.object({
-    op: z.literal('moveItem'),
-    key: CommandTargetSchema,
-    from: z.number().int().nonnegative(),
-    to: z.number().int().nonnegative(),
-  }),
-]);
-
-export const CommitSectionInputSchema = SectionScopedSchema.extend({
-  leaseEpoch: DecimalSequenceSchema,
-  clientSequence: DecimalSequenceSchema,
-  // Audit records the bounded operation count and kinds, never the command
-  // values. Keep that summary and the commit work itself predictably bounded.
-  commands: z.array(CommandSchema).min(1).max(1_000),
-});
-
 export const ManifestRevisionSchema = z.object({
   sequence: DecimalSequenceSchema,
   hash: z.string().min(1),
-});
-
-export const RenewSectionInputSchema = SectionScopedSchema.extend({
-  leaseEpoch: DecimalSequenceSchema,
-});
-
-export const RenewSectionResultSchema = z.object({ renewed: z.boolean() });
-export const ReleaseSectionInputSchema = SectionScopedSchema.extend({
-  leaseEpoch: DecimalSequenceSchema,
 });
 
 export const AddInformationStageInputSchema = ProtocolDraftInputSchema.extend({

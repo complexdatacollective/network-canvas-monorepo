@@ -1,0 +1,18 @@
+http:
+  routers:
+    studio:
+      entryPoints: [websecure]
+      rule: 'Host(`{{ env "STUDIO_DOMAIN" }}`)'
+      service: studio
+      tls:
+        certResolver: public
+  services:
+    studio:
+      loadBalancer:
+        # Exactly one web/both process: sync and denial summaries are local.
+        servers:
+          - url: http://studio:3000
+        healthCheck:
+          path: /readyz
+          interval: 5s
+          timeout: 3s

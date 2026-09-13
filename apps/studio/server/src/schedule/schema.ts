@@ -16,6 +16,7 @@
 // a fallback for participants with no recorded zone.
 import { sql } from 'drizzle-orm';
 import {
+  bytea,
   check,
   date,
   foreignKey,
@@ -33,7 +34,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  teamIsolationPolicy,
+  teamIsolationPolicies,
   TENANT_ROLES,
   tenantTablesSql,
 } from '@codaco/studio-sync/rls';
@@ -195,7 +196,7 @@ const studySchedules = pgTable(
       sql`char_length(${table.name}) BETWEEN 1 AND 120
           AND ${table.name} ~ '[^[:space:]]'`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -271,7 +272,7 @@ const scheduleOccurrences = pgTable(
           AND ${table.expiresAt} > ${table.scheduledFor}
           AND char_length(${table.resolvedTimeZone}) BETWEEN 1 AND 64`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -350,7 +351,7 @@ const messageTemplates = pgTable(
       'message_templates_locale_check',
       sql`char_length(${table.locale}) BETWEEN 2 AND 35 AND ${table.version} >= 1`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -381,7 +382,8 @@ const messageDeliveries = pgTable(
     // HMAC of the normalized recipient address under the deployment's
     // blind-index key (#1246 driver 2). Never reversible; joins the
     // suppression list without storing an address.
-    recipientBlindIndex: text('recipient_blind_index').notNull(),
+    recipientBlindIndex: bytea('recipient_blind_index').notNull(),
+    blindIndexKeyId: text('blind_index_key_id').notNull(),
     // sha256 hex of the exact rendered body: proves what was sent without
     // retaining the message (which carries a tokenized interview link).
     renderedBodyHash: text('rendered_body_hash').notNull(),
@@ -480,7 +482,8 @@ const messageDeliveries = pgTable(
     check(
       'message_deliveries_hash_check',
       sql`${table.renderedBodyHash} ~ '^[0-9a-f]{64}$'
-          AND ${table.recipientBlindIndex} ~ '^[0-9a-f]{64}$'`,
+          AND octet_length(${table.recipientBlindIndex}) = 32
+          AND char_length(${table.blindIndexKeyId}) BETWEEN 1 AND 64`,
     ),
     check(
       'message_deliveries_lease_check',
@@ -500,7 +503,7 @@ const messageDeliveries = pgTable(
           AND (${table.providerMessageId} IS NULL
                OR char_length(${table.providerMessageId}) BETWEEN 1 AND 255)`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -552,18 +555,19 @@ const messageDeliveryEvents = pgTable(
       'message_delivery_events_provider_event_id_check',
       sql`char_length(${table.providerEventId}) BETWEEN 1 AND 255`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
-// Opt-out and suppression, keyed by blind index so it survives participant
-// erasure and applies to every study in the team.
+// Deployment-wide opt-out and suppression, keyed by independently versioned
+// blind index. Participant/team erasure must not permit sending again.
+// Only the maintenance sender/provider boundary can inspect this global set.
 const participantContactOptouts = pgTable(
   'participant_contact_optouts',
   {
-    teamId: text('team_id').notNull(),
     channel: text('channel').notNull(),
-    recipientBlindIndex: text('recipient_blind_index').notNull(),
+    recipientBlindIndex: bytea('recipient_blind_index').notNull(),
+    blindIndexKeyId: text('blind_index_key_id').notNull(),
     source: text('source').notNull(),
     optedOutAt: timestamp('opted_out_at', { withTimezone: true })
       .notNull()
@@ -571,7 +575,11 @@ const participantContactOptouts = pgTable(
   },
   (table) => [
     primaryKey({
-      columns: [table.teamId, table.channel, table.recipientBlindIndex],
+      columns: [
+        table.channel,
+        table.blindIndexKeyId,
+        table.recipientBlindIndex,
+      ],
     }),
     check(
       'participant_contact_optouts_channel_check',
@@ -583,9 +591,9 @@ const participantContactOptouts = pgTable(
     ),
     check(
       'participant_contact_optouts_blind_index_check',
-      sql`${table.recipientBlindIndex} ~ '^[0-9a-f]{64}$'`,
+      sql`octet_length(${table.recipientBlindIndex}) = 32
+          AND char_length(${table.blindIndexKeyId}) BETWEEN 1 AND 64`,
     ),
-    teamIsolationPolicy(),
   ],
 );
 
@@ -751,6 +759,7 @@ CREATE OR REPLACE TRIGGER message_delivery_payload_immutable
     OR NEW.kind IS DISTINCT FROM OLD.kind
     OR NEW.channel IS DISTINCT FROM OLD.channel
     OR NEW.recipient_blind_index IS DISTINCT FROM OLD.recipient_blind_index
+    OR NEW.blind_index_key_id IS DISTINCT FROM OLD.blind_index_key_id
     OR NEW.rendered_body_hash IS DISTINCT FROM OLD.rendered_body_hash
     OR NEW.created_at IS DISTINCT FROM OLD.created_at
   )
@@ -824,8 +833,13 @@ ${tenantTablesSql([
   'message_templates',
   'message_deliveries',
   'message_delivery_events',
-  'participant_contact_optouts',
 ])}
+
+-- Suppression is global and never a team-visible directory. A maintenance
+-- sender checks it by exact blind index; the ordinary app cannot enumerate
+-- addresses suppressed by other teams or undo their suppression.
+REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON participant_contact_optouts FROM ${TENANT_ROLES.app};
+GRANT SELECT, INSERT, UPDATE, DELETE ON participant_contact_optouts TO ${TENANT_ROLES.maintenance};
 
 -- Commands enqueue inside their audited transaction; only the maintenance
 -- dispatcher advances send state, exactly as for invitation delivery.

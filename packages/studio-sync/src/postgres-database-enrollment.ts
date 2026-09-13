@@ -2,6 +2,11 @@ import type pg from 'pg';
 
 import { validateRoleNames } from './role-bootstrap.ts';
 
+export type PostgresDatabaseEnrollmentOptions = {
+  /** Backup capture may verify an enrollment after writers are quarantined. */
+  allowClosedEnrolledLogins?: boolean;
+};
+
 export class UnsafePostgresDatabaseEnrollmentError extends Error {
   readonly reason: 'configuration' | 'grants' | 'outsider' | 'sessions';
 
@@ -38,20 +43,45 @@ export function copyPostgresAdministrativeLogins(
   }
 }
 
+/** Snapshot the one backup-only exception before any database operation. */
+export function copyPostgresDatabaseEnrollmentOptions(
+  options: PostgresDatabaseEnrollmentOptions = {},
+): Required<PostgresDatabaseEnrollmentOptions> {
+  try {
+    if (
+      options === null ||
+      typeof options !== 'object' ||
+      Array.isArray(options) ||
+      !Object.keys(options).every((key) => key === 'allowClosedEnrolledLogins')
+    )
+      throw new Error();
+    const allowClosed = options.allowClosedEnrolledLogins;
+    if (allowClosed !== undefined && typeof allowClosed !== 'boolean')
+      throw new Error();
+    return { allowClosedEnrolledLogins: allowClosed ?? false };
+  } catch {
+    throw new UnsafePostgresDatabaseEnrollmentError('configuration');
+  }
+}
+
 /** Recheck the administrator's explicit, committed database admission policy.
  * Shared cluster roles do not identify which deployment a LOGIN belongs to.
  * This is read-only; the caller owns the pinned connection and transaction. */
 export async function assertSafePostgresDatabaseEnrollment(
   client: pg.PoolClient,
   allowedLogins: readonly string[],
+  options: PostgresDatabaseEnrollmentOptions = {},
 ): Promise<void> {
   let logins: string[];
+  let allowClosedEnrolledLogins: boolean;
   try {
     if (!Array.isArray(allowedLogins)) throw new Error();
     const copied: unknown[] = [...allowedLogins];
     if (!copied.every((login): login is string => typeof login === 'string'))
       throw new Error();
     validateRoleNames(copied);
+    ({ allowClosedEnrolledLogins } =
+      copyPostgresDatabaseEnrollmentOptions(options));
     logins = copied;
   } catch {
     throw new UnsafePostgresDatabaseEnrollmentError('configuration');
@@ -66,7 +96,7 @@ export async function assertSafePostgresDatabaseEnrollment(
         pg_catalog.aclexplode(COALESCE(database.datacl, pg_catalog.acldefault('d', database.datdba))) acl
       WHERE acl.privilege_type = 'CONNECT'
     ) SELECT
-      (SELECT count(*) FROM enrolled WHERE rolcanlogin) = pg_catalog.cardinality($1::pg_catalog.text[])
+      (SELECT count(*) FROM enrolled WHERE rolcanlogin OR $2::pg_catalog.bool) = pg_catalog.cardinality($1::pg_catalog.text[])
       AND EXISTS (SELECT 1 FROM enrolled, database WHERE enrolled.oid = database.datdba)
       AND NOT EXISTS (
         SELECT 1 FROM access LEFT JOIN pg_catalog.pg_roles grantee ON grantee.oid = access.grantee
@@ -74,7 +104,7 @@ export async function assertSafePostgresDatabaseEnrollment(
       ) AND NOT EXISTS (
         SELECT 1 FROM enrolled WHERE NOT EXISTS (SELECT 1 FROM access WHERE grantee = enrolled.oid)
       ) AS valid`,
-    [logins],
+    [logins, allowClosedEnrolledLogins],
   );
   if (enrollment.rows[0]?.valid !== true)
     throw new UnsafePostgresDatabaseEnrollmentError('grants');

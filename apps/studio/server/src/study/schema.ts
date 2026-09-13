@@ -15,7 +15,10 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-import { teamIsolationPolicy, tenantTablesSql } from '@codaco/studio-sync/rls';
+import {
+  teamIsolationPolicies,
+  tenantTablesSql,
+} from '@codaco/studio-sync/rls';
 
 import { teams } from '../db/auth-schema.ts';
 import { PROTOCOL_TABLES } from '../protocol/schema.ts';
@@ -145,7 +148,7 @@ const studies = pgTable(
       'studies_went_live_at_check',
       sql`${table.state} = 'draft' OR ${table.wentLiveAt} IS NOT NULL`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -202,7 +205,7 @@ const studyWaves = pgTable(
           OR ${table.closesAt} IS NULL
           OR ${table.closesAt} > ${table.opensAt}`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -230,6 +233,9 @@ const participants = pgTable(
     emailIndex: bytea('email_index'),
     phoneCiphertext: bytea('phone_ciphertext'),
     phoneIndex: bytea('phone_index'),
+    // Index rotation is independent of encryption rotation and must rebuild
+    // all suppression consumers. A row's two address indexes share this ID.
+    blindIndexKeyId: text('blind_index_key_id'),
     nameCiphertext: bytea('name_ciphertext'),
     // The researcher-defined attribute bag, encrypted whole. Not JSONB: a
     // ciphertext is opaque, and storing it as JSONB would invite a
@@ -290,7 +296,10 @@ const participants = pgTable(
     check(
       'participants_blind_index_pairing_check',
       sql`(${table.emailCiphertext} IS NULL) = (${table.emailIndex} IS NULL)
-          AND (${table.phoneCiphertext} IS NULL) = (${table.phoneIndex} IS NULL)`,
+          AND (${table.phoneCiphertext} IS NULL) = (${table.phoneIndex} IS NULL)
+          AND (${table.blindIndexKeyId} IS NULL) = (num_nonnulls(${table.emailIndex}, ${table.phoneIndex}) = 0)
+          AND (${table.emailIndex} IS NULL OR octet_length(${table.emailIndex}) = 32)
+          AND (${table.phoneIndex} IS NULL OR octet_length(${table.phoneIndex}) = 32)`,
     ),
     // Every ciphertext names the key and algorithm that produced it, so
     // rotation is a per-row property rather than an instance-wide flag day.
@@ -309,7 +318,7 @@ const participants = pgTable(
       'participants_source_check',
       sql`(${table.sourceParticipantId} IS NULL) = (${table.sourceStudyId} IS NULL)`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -384,7 +393,7 @@ const interviewLinks = pgTable(
       'interview_links_token_hash_check',
       sql`octet_length(${table.tokenHash}) = 32`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -540,7 +549,7 @@ const interviewSessions = pgTable(
           AND (${table.egoSecureAttributes} IS NULL
                OR jsonb_typeof(${table.egoSecureAttributes}) = 'object')`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -791,6 +800,14 @@ BEGIN
     RAISE EXCEPTION 'closed studies are read-only';
   END IF;
 
+  -- Rotation changes representation, not the closed study's collected data.
+  -- Only the actual maintenance role may rewrite this exact encrypted tier;
+  -- participant identity, handles, scheduling, and provenance stay frozen.
+  IF TG_OP = 'UPDATE' AND current_user = 'studio_maintenance'
+     AND (to_jsonb(NEW) - ARRAY['email_ciphertext', 'phone_ciphertext', 'name_ciphertext', 'attributes_ciphertext', 'email_index', 'phone_index', 'blind_index_key_id', 'pii_key_id', 'pii_algorithm', 'updated_at'])
+       = (to_jsonb(OLD) - ARRAY['email_ciphertext', 'phone_ciphertext', 'name_ciphertext', 'attributes_ciphertext', 'email_index', 'phone_index', 'blind_index_key_id', 'pii_key_id', 'pii_algorithm', 'updated_at']) THEN
+    RETURN NEW;
+  END IF;
   IF study_is_closed(NEW.study_id, NEW.team_id) THEN
     RAISE EXCEPTION 'closed studies are read-only';
   END IF;

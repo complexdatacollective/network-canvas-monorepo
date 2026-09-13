@@ -78,7 +78,7 @@ const iconForRequirement = (requirement: string) => {
 };
 
 const RequiresPill = ({ requirement }: { requirement: string }) => (
-  <span className="bg-primary text-primary-contrast inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm font-semibold">
+  <span className="bg-primary text-primary-contrast inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-sm font-semibold">
     {iconForRequirement(requirement)}
     {requirement}
   </span>
@@ -114,7 +114,7 @@ export const InterfaceMeta = ({
         <SpecField label="Uses Prompts">{usesPromptsLabel}</SpecField>
         {compatibility && (
           <SpecField label="Schema">
-            <span className="bg-primary text-primary-contrast inline-block rounded-md px-3 py-1 text-sm font-semibold">
+            <span className="bg-primary text-primary-contrast inline-block rounded-lg px-3 py-1 text-sm font-semibold">
               v{compatibility.introducedIn}+
             </span>
           </SpecField>
@@ -127,7 +127,7 @@ export const InterfaceMeta = ({
               <span
                 key={app.id}
                 title={`${app.role === 'configure' ? 'Configure' : 'Run'} in ${app.label}`}
-                className="bg-primary text-primary-contrast inline-block rounded-md px-3 py-1 text-sm font-semibold"
+                className="bg-primary text-primary-contrast inline-block rounded-lg px-3 py-1 text-sm font-semibold"
               >
                 {app.label}
               </span>

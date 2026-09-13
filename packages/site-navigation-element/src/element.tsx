@@ -53,6 +53,7 @@ function parseAttribute<T extends string>(
   if (value === null) return fallback;
   const match = allowed.find((candidate) => candidate === value);
   if (match !== undefined) return match;
+  // oxlint-disable-next-line no-console -- only way a host page embedding this custom element learns its attribute value was invalid
   console.warn(
     `<${TAG_NAME}>: ignoring invalid ${name}="${value}" (expected one of: ${allowed.join(', ')})`,
   );
@@ -73,6 +74,7 @@ function parseIdAttribute(
   if (value === null) return fallback;
   const trimmed = value.trim();
   if (trimmed !== '') return trimmed;
+  // oxlint-disable-next-line no-console -- only way a host page embedding this custom element learns its attribute value was invalid
   console.warn(
     `<${TAG_NAME}>: ignoring empty ${name} (expected the id of an element on the page)`,
   );

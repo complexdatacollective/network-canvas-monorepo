@@ -35,12 +35,12 @@
 // candidate basically works, end to end, on real deployed bits. It is NOT
 // an exhaustive behaviour suite; per-feature coverage belongs to the app's
 // unit and Playwright e2e suites. Two journeys run committed walkers:
-// conduct-offline (scripts/interviewer-release-smoke-walker.mjs — the
+// conduct-offline (scripts/release-test/interviewer-release-smoke-walker.mjs — the
 // six-stage release-smoke fixture protocol conducted ENTIRELY OFFLINE;
 // interfaces are imported eagerly into one engine chunk, so broader
 // stage-type coverage adds no deployment risk coverage and belongs to the
 // e2e and Storybook suites) and security-vault
-// (scripts/interviewer-security-vault-walker.mjs — the full vault
+// (scripts/release-test/interviewer-security-vault-walker.mjs — the full vault
 // lifecycle, cutting a ~90-minute agent-scripted journey to ~5 minutes). Documented harness limits (each has been evaluated and
 // declined with reasons in PR #1471/#1502 review threads):
 // native OS dialogs (showSaveFilePicker) and OS file-handler launches do
@@ -554,7 +554,7 @@ rebuild its driving logic yourself (its interactions are maintained in step
 with the e2e fixtures, and ad-hoc reimplementation is where this gate's
 past false failures came from):
 
-  cd ${ctx.repoRoot} && node scripts/interviewer-release-smoke-walker.mjs \\
+  cd ${ctx.repoRoot} && node scripts/release-test/interviewer-release-smoke-walker.mjs \\
     --url ${url} --artifacts ${ctx.workDir}/conduct-offline
 
 Give that Bash call an explicit timeout of ~6 minutes — the walker enforces
@@ -787,7 +787,7 @@ driving logic yourself (its interactions are maintained in step with the
 app's e2e fixtures, and ad-hoc reimplementation is where this gate's past
 false failures and multi-hour runtimes came from):
 
-  cd ${ctx.repoRoot} && node scripts/interviewer-security-vault-walker.mjs \\
+  cd ${ctx.repoRoot} && node scripts/release-test/interviewer-security-vault-walker.mjs \\
     --url ${url} --artifacts ${ctx.workDir}/security-vault
 
 Give that Bash call an explicit timeout of ~11 minutes — the walker enforces

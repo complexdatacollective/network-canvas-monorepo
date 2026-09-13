@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription } from '@codaco/fresco-ui/Alert';
@@ -14,6 +16,8 @@ const messages = defineMessages({
   },
 });
 
+const renderCodeChunks = (chunks: ReactNode[]) => <code>{chunks}</code>;
+
 export default function ReadOnlyEnvAlert() {
   const intl = useAppIntl();
 
@@ -21,7 +25,7 @@ export default function ReadOnlyEnvAlert() {
     <Alert variant="info">
       <AlertDescription>
         {intl.formatMessage(messages.thisSettingIsControlledByYourEnv, {
-          tag1: (chunks) => <code>{chunks}</code>,
+          tag1: renderCodeChunks,
         })}
       </AlertDescription>
     </Alert>

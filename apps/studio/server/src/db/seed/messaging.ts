@@ -11,9 +11,10 @@
 import { faker } from '@faker-js/faker';
 import type pg from 'pg';
 
+import { createContactBlindIndex } from '../../pii/contacts.ts';
+import type { EncryptionKeys } from '../../pii/keys.ts';
 import { insertRows, type SeedRowValue } from './insert.ts';
 import {
-  contactBlindIndex,
   seedHex,
   seedTime,
   seedUuid,
@@ -473,7 +474,10 @@ async function seedDeliveries(
   study: SeedStudy,
   templates: SeededTemplate[],
   occurrences: SeededOccurrence[],
+  encryptionKeys: EncryptionKeys,
 ): Promise<void> {
+  const blindIndexFor = (address: string) =>
+    createContactBlindIndex(encryptionKeys, { kind: 'email', value: address });
   const optedOut = study.participants.slice(0, 2);
   // When each opted out: a delivery enqueued before that moment went out
   // normally, and only the ones after it are suppressed, so the outbox and
@@ -482,7 +486,7 @@ async function seedDeliveries(
     shiftDays(participant.enrolledAt, 20);
   const optOutAtByIndex = new Map(
     optedOut.map((participant) => [
-      contactBlindIndex(participant.contactAddress),
+      blindIndexFor(participant.contactAddress).value.toString('hex'),
       optOutMoment(participant),
     ]),
   );
@@ -494,9 +498,9 @@ async function seedDeliveries(
   for (const participant of optedOut) {
     for (const channel of CHANNELS) {
       optOutRows.push([
-        team.id,
         channel,
-        contactBlindIndex(participant.contactAddress),
+        blindIndexFor(participant.contactAddress).keyId,
+        blindIndexFor(participant.contactAddress).value,
         faker.helpers.arrayElement([
           'participant_reply',
           'provider',
@@ -538,8 +542,8 @@ async function seedDeliveries(
     channel: string;
     createdAt: Date;
   }) => {
-    const blindIndex = contactBlindIndex(input.participant.contactAddress);
-    const optOutAt = optOutAtByIndex.get(blindIndex);
+    const blindIndex = blindIndexFor(input.participant.contactAddress);
+    const optOutAt = optOutAtByIndex.get(blindIndex.value.toString('hex'));
     const drawn = outcomeFor(ordinal++);
     // A delivery behind a dispatched occurrence was attempted: the schedule
     // says the prompt went out, so the outbox cannot still be waiting to try.
@@ -571,7 +575,8 @@ async function seedDeliveries(
       template.id,
       input.kind,
       input.channel,
-      blindIndex,
+      blindIndex.value,
+      blindIndex.keyId,
       sha256Hex(render(template, input.participant)),
       provider,
       outcome === 'sent' ? `msg_${seedHex(8)}` : null,
@@ -665,6 +670,7 @@ async function seedDeliveries(
       'kind',
       'channel',
       'recipient_blind_index',
+      'blind_index_key_id',
       'rendered_body_hash',
       'provider',
       'provider_message_id',
@@ -698,7 +704,13 @@ async function seedDeliveries(
   await insertRows(
     client,
     'participant_contact_optouts',
-    ['team_id', 'channel', 'recipient_blind_index', 'source', 'opted_out_at'],
+    [
+      'channel',
+      'blind_index_key_id',
+      'recipient_blind_index',
+      'source',
+      'opted_out_at',
+    ],
     optOutRows,
   );
 }
@@ -707,11 +719,19 @@ export async function seedScheduling(
   client: pg.PoolClient,
   team: SeedTeam,
   studies: SeedStudy[],
+  encryptionKeys: EncryptionKeys,
 ): Promise<void> {
   const templates = await seedMessageTemplates(client, team);
   const live = studies.find((study) => study.key === 'live');
   if (live === undefined) return;
   const schedule = await seedSchedule(client, team, live);
   const occurrences = await seedOccurrences(client, team, live, schedule);
-  await seedDeliveries(client, team, live, templates, occurrences);
+  await seedDeliveries(
+    client,
+    team,
+    live,
+    templates,
+    occurrences,
+    encryptionKeys,
+  );
 }

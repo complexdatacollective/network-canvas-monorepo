@@ -12,7 +12,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import {
-  teamIsolationPolicy,
+  teamIsolationPolicies,
   tenantTablesSql,
   TENANT_ROLES,
 } from '@codaco/studio-sync/rls';
@@ -67,7 +67,7 @@ const experiments = pgTable(
       sql`${table.key} ~ '^[a-z][a-z0-9_.-]{1,63}$'
           AND char_length(${table.name}) BETWEEN 1 AND 200`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -106,7 +106,7 @@ const experimentAssignments = pgTable(
       sql`char_length(${table.subjectId}) BETWEEN 1 AND 255
           AND ${table.variantKey} ~ '^[a-z][a-z0-9_.-]{0,63}$'`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 
@@ -164,7 +164,7 @@ const experimentExposures = pgTable(
       sql`char_length(${table.surfaceKey}) BETWEEN 1 AND 128
           AND ${table.variantKey} ~ '^[a-z][a-z0-9_.-]{0,63}$'`,
     ),
-    teamIsolationPolicy(),
+    ...teamIsolationPolicies(),
   ],
 );
 

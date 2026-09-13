@@ -2,10 +2,26 @@ import { oc } from '@orpc/contract';
 import { z } from 'zod';
 
 import {
+  AuditAlertAcknowledgeInputSchema,
+  AuditAlertListInputSchema,
+  AuditAlertListSchema,
+  AuditAlertReadInputSchema,
+  AuditAlertSettingsSchema,
+  UpdateAuditAlertSettingsSchema,
+} from './alerts.ts';
+import { protocolBuilderContract } from './protocolBuilder.ts';
+export {
+  AUDIT_ALERT_MAX_RECIPIENTS,
+  AuditAlertPolicySchema,
+  AuditAlertRecipientsSchema,
+  type AuditAlertItem,
+  type AuditAlertRecipient,
+  type AuditAlertSettings,
+} from './alerts.ts';
+
+import {
   AcceptTeamInvitationInputSchema,
   AcceptTeamInvitationResultSchema,
-  AcquireSectionInputSchema,
-  AcquireSectionResultSchema,
   AddInformationStageInputSchema,
   AuditEventDetailSchema,
   AuditFilterOptionsSchema,
@@ -14,7 +30,8 @@ import {
   AuditListOutputSchema,
   CancelTeamInvitationInputSchema,
   CancelTeamInvitationResultSchema,
-  CommitSectionInputSchema,
+  CompleteSetupInputSchema,
+  CompleteSetupResultSchema,
   CreateTeamInvitationInputSchema,
   CreateTeamInvitationResultSchema,
   CreateProtocolInputSchema,
@@ -27,10 +44,8 @@ import {
   ProtocolDraftInputSchema,
   ProtocolDraftSchema,
   ProtocolSummarySchema,
-  ReleaseSectionInputSchema,
-  RenewSectionInputSchema,
-  RenewSectionResultSchema,
   StatusSchema,
+  SetupStatusSchema,
   StudyCountsInputSchema,
   StudyCountsSchema,
   StudyDetailSchema,
@@ -52,14 +67,13 @@ export {
   AUDIT_CATEGORIES,
   AUDIT_FACET_LIMIT,
   AUDIT_OUTCOMES,
+  BootstrapTokenSchema,
+  CompleteSetupInputSchema,
+  type CompleteSetupInput,
+  type SetupStatus,
   AuditActorKindSchema,
   AuditCategorySchema,
   AuditOutcomeSchema,
-  // Named here as well as used in the contract below, so the wire shape of a
-  // command can be tested directly. What a server built before nested command
-  // addressing accepts is a fact about this schema, and it is checked against
-  // a frozen copy of the version that predates it.
-  CommitSectionInputSchema,
   SOCIAL_PROVIDERS,
   STUDY_PARTICIPATION_MODES,
   STUDY_STATES,
@@ -100,6 +114,13 @@ export {
 
 export const contract = {
   status: oc.output(StatusSchema),
+  /** Self-host first-run setup; both procedures are absent in managed mode. */
+  setup: {
+    status: oc.output(SetupStatusSchema),
+    complete: oc
+      .input(CompleteSetupInputSchema)
+      .output(CompleteSetupResultSchema),
+  },
   /** The signed-in researcher; refuses UNAUTHORIZED without a session. */
   me: oc.output(MeSchema),
   /**
@@ -177,27 +198,34 @@ export const contract = {
       .output(CreateProtocolResultSchema),
     draft: oc.input(ProtocolDraftInputSchema).output(ProtocolDraftSchema),
     list: oc.input(TeamScopedSchema).output(z.array(ProtocolSummarySchema)),
-    acquireSection: oc
-      .input(AcquireSectionInputSchema)
-      .output(AcquireSectionResultSchema),
-    commitSection: oc
-      .input(CommitSectionInputSchema)
-      .output(ManifestRevisionSchema),
-    renewSection: oc
-      .input(RenewSectionInputSchema)
-      .output(RenewSectionResultSchema),
-    releaseSection: oc.input(ReleaseSectionInputSchema).output(z.void()),
     addInformationStage: oc
       .input(AddInformationStageInputSchema)
       .output(ManifestRevisionSchema),
     moveStage: oc.input(MoveStageInputSchema).output(ManifestRevisionSchema),
   },
   /**
+   * The editing host `@codaco/protocol-builder-core` defines, nested
+   * whole so a Studio router client exposes it as `client.protocolBuilder`
+   * typed by the package's own contract. Its inputs name a protocol and never
+   * a team or a draft: the server derives both from the caller's memberships,
+   * the way a `/study/$studyId` URL is resolved.
+   */
+  protocolBuilder: protocolBuilderContract,
+  /**
    * The team's immutable activity record. Reads require the audit.read
    * permission (built-in owner/admin until #1257); ordering and cursors are
    * per-team sequences, never timestamps.
    */
   audit: {
+    alerts: {
+      settings: oc.input(TeamScopedSchema).output(AuditAlertSettingsSchema),
+      updateSettings: oc
+        .input(UpdateAuditAlertSettingsSchema)
+        .output(z.object({ revision: z.uuid() })),
+      list: oc.input(AuditAlertListInputSchema).output(AuditAlertListSchema),
+      markRead: oc.input(AuditAlertReadInputSchema).output(z.void()),
+      acknowledge: oc.input(AuditAlertAcknowledgeInputSchema).output(z.void()),
+    },
     list: oc.input(AuditListInputSchema).output(AuditListOutputSchema),
     get: oc.input(AuditGetInputSchema).output(AuditEventDetailSchema),
     /**
