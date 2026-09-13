@@ -361,6 +361,9 @@ docker compose run --rm --no-deps encryption-verify
 # Any failure closes and drains every enrolled identity before investigation.
 docker compose up -d studio
 docker compose run --rm --no-deps studio diagnostics
+# A successful validation closes the same admission boundary before the
+# authorization procedure. The EXIT trap repeats this closure if it fails.
+close_restore_validation
 trap - EXIT HUP INT TERM
 )
 ```
@@ -392,7 +395,9 @@ quarantine overlay runs only the web role on the private data network, with mail
 and optional telemetry disabled. The process has no external network route. Do
 not start the production proxy or workers until validation finishes.
 
-Before reopening, complete the two-stage current-authority procedure in
+The validation shell above stops Studio, sets every enrolled writer to
+`NOLOGIN`, and drains their sessions on both success and failure. Before
+reopening, complete the two-stage current-authority procedure in
 [RECOVERY_AUTHORIZATION.md](RECOVERY_AUTHORIZATION.md). It leaves database-role,
 HTTP, and worker admission closed for a separate operator decision.
 

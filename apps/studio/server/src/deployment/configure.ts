@@ -38,6 +38,7 @@ const optionsSchema = z.object({
 const TEMPLATE_FILES = [
   'docker-compose.yml',
   'SELF_HOSTING.md',
+  'RECOVERY_AUTHORIZATION.md',
   'MIGRATIONS.md',
   'BACKUPS.md',
   'deployment/traefik.yml',

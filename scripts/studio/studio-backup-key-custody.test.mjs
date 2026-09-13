@@ -55,6 +55,7 @@ async function makeHarness({
     writeFile(join(root, '.env'), 'FIXTURE=1\n'),
     writeFile(join(root, 'docker-compose.yml'), 'services: {}\n'),
     writeFile(join(root, 'SELF_HOSTING.md'), 'fixture\n'),
+    writeFile(join(root, 'RECOVERY_AUTHORIZATION.md'), 'fixture\n'),
     writeFile(join(root, 'MIGRATIONS.md'), 'fixture\n'),
     writeFile(join(root, 'BACKUPS.md'), 'fixture\n'),
     writeFile(join(deployment, 'encryption.env'), 'FIXTURE_ROOT=key-a\n'),
