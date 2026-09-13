@@ -35,6 +35,7 @@ import type { RegistryAuth } from './auth/service.ts';
 import type { RegistryBlobStore } from './blob-store.ts';
 import {
   EntrySchema,
+  EntrySummarySchema,
   ListEntriesSchema,
   type ListEntries,
   type RegistryEntry,
@@ -72,10 +73,18 @@ type EntryRow = {
   metadata: TemplateMetadata | null;
   license: string | null;
 };
+type EntrySummaryRow = Omit<EntryRow, 'metadata'>;
 const ENTRY_QUERY = `SELECT e.id, e.sequence::text AS sequence, e.publisher_id,
   p.name AS publisher_name, p.orcid AS publisher_orcid,
   e.artifact_root, e.created_at, e.yanked_at, e.curated_at, a.blocked_at, a.deleted_at,
   c.template, c.metadata, c.license
+  FROM registry_entries e JOIN registry_publishers p ON p.id = e.publisher_id
+  JOIN registry_artifacts a ON a.root = e.artifact_root
+  LEFT JOIN registry_artifact_content c ON c.root = a.root`;
+const ENTRY_SUMMARY_QUERY = `SELECT e.id, e.sequence::text AS sequence, e.publisher_id,
+  p.name AS publisher_name, p.orcid AS publisher_orcid,
+  e.artifact_root, e.created_at, e.yanked_at, e.curated_at, a.blocked_at, a.deleted_at,
+  c.template, c.license
   FROM registry_entries e JOIN registry_publishers p ON p.id = e.publisher_id
   JOIN registry_artifacts a ON a.root = e.artifact_root
   LEFT JOIN registry_artifact_content c ON c.root = a.root`;
@@ -444,6 +453,27 @@ export class RegistryStore {
     });
   }
 
+  #summary(row: EntrySummaryRow) {
+    if (row.deleted_at || row.blocked_at)
+      throw new RegistryError('CONTENT_REMOVED');
+    if (!row.template || !row.license)
+      throw new RegistryError('SERVICE_UNAVAILABLE');
+    return EntrySummarySchema.parse({
+      id: row.id,
+      publisher: {
+        id: row.publisher_id,
+        name: row.publisher_name,
+        orcid: row.publisher_orcid,
+      },
+      root: row.artifact_root,
+      template: row.template,
+      license: row.license,
+      curated: row.curated_at !== null,
+      yanked: row.yanked_at !== null,
+      published_at: row.created_at.toISOString(),
+    });
+  }
+
   async #readEntry(
     client: Pick<pg.PoolClient, 'query'>,
     id: string,
@@ -508,23 +538,15 @@ export class RegistryStore {
       );
     }
     const rows = (
-      await this.#pool.query<EntryRow>(
-        `${ENTRY_QUERY} WHERE ${where.join(' AND ')} ORDER BY e.sequence DESC LIMIT ${bind(limit + 1)}`,
+      await this.#pool.query<EntrySummaryRow>(
+        `${ENTRY_SUMMARY_QUERY} WHERE ${where.join(' AND ')} ORDER BY e.sequence DESC LIMIT ${bind(limit + 1)}`,
         parameters,
       )
     ).rows;
     const selected = rows.slice(0, limit);
     const last = selected.at(-1);
     return {
-      data: selected.map((row) => {
-        const {
-          metadata: _metadata,
-          artifact_url: _artifact,
-          report_url: _report,
-          ...summary
-        } = this.#entry(row);
-        return summary;
-      }),
+      data: selected.map((row) => this.#summary(row)),
       next_cursor:
         rows.length > limit && last
           ? Buffer.from(
@@ -803,6 +825,11 @@ export class RegistryStore {
       const row = result.rows[0];
       if (!row) throw new RegistryError('NOT_FOUND');
       if (row.deleted_at) throw new RegistryError('CONTENT_REMOVED');
+      await client.query(
+        `UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL
+         AND entry_id IN (SELECT id FROM registry_entries WHERE artifact_root=$1)`,
+        [row.artifact_root],
+      );
       if ((row.blocked_at !== null) === removed) return;
       await client.query(
         `UPDATE registry_artifacts SET blocked_at = ${removed ? 'statement_timestamp()' : 'NULL'} WHERE root = $1`,
@@ -833,9 +860,14 @@ export class RegistryStore {
       ]);
       const publisher = current.rows[0];
       if (!publisher) throw new RegistryError('NOT_FOUND');
-      if ((publisher.suspended_at !== null) === suspended) return;
       if (suspended && actor.kind === 'operator' && actor.id === publisher.id)
         throw new RegistryError('CONFLICT');
+      await client.query(
+        `UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL
+         AND entry_id IN (SELECT id FROM registry_entries WHERE publisher_id=$1)`,
+        [publisher.id],
+      );
+      if ((publisher.suspended_at !== null) === suspended) return;
       const result = await client.query(
         `UPDATE registry_publishers SET suspended_at = ${suspended ? 'statement_timestamp()' : 'NULL'} WHERE id = $1 RETURNING id`,
         [id],
@@ -859,13 +891,17 @@ export class RegistryStore {
   ): Promise<void> {
     await this.#moderate(credential, async (client, actor) => {
       const entry = await this.#readEntry(client, id);
-      if (entry.curated === curated) return;
       if (
         curated &&
         (entry.yanked ||
           !hasCuratedMetadata(TemplateMetadataSchema.parse(entry.metadata)))
       )
         throw new RegistryError('CURATION_METADATA_REQUIRED');
+      await client.query(
+        'UPDATE registry_reports SET details=NULL WHERE details IS NOT NULL AND entry_id=$1',
+        [id],
+      );
+      if (entry.curated === curated) return;
       await client.query(
         `UPDATE registry_entries SET curated_at = ${curated ? 'statement_timestamp()' : 'NULL'} WHERE id = $1`,
         [id],
@@ -939,7 +975,8 @@ export class RegistryStore {
           created_at: Date;
         }>(
           `SELECT id, sequence::text AS sequence, entry_id, category, details, created_at FROM registry_reports
-        WHERE ($1::bigint IS NULL OR sequence < $1::bigint) ORDER BY sequence DESC LIMIT $2`,
+        WHERE details IS NOT NULL AND ($1::bigint IS NULL OR sequence < $1::bigint)
+        ORDER BY sequence DESC LIMIT $2`,
           [after ?? null, limit + 1],
         )
       ).rows;

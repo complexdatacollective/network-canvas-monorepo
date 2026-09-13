@@ -342,6 +342,7 @@ export function parseBoundedJson(text: string): unknown {
       (item.value.includes('\0') || !item.value.isWellFormed())
     )
       fail();
+    if (typeof item.value === 'number' && !Number.isFinite(item.value)) fail();
     if (item.value !== null && typeof item.value === 'object') {
       for (const [key, child] of Object.entries(item.value)) {
         if (key.includes('\0') || !key.isWellFormed()) fail();

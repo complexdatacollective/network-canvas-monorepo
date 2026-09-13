@@ -23,7 +23,9 @@ const text = (maximum: number) =>
 const link = z
   .url()
   .max(2048)
-  .refine((value) => new URL(value).protocol === 'https:');
+  .regex(/^[Hh][Tt][Tt][Pp][Ss]:\/\//)
+  .refine((value) => new URL(value).protocol === 'https:')
+  .meta({ format: 'uri' });
 
 // ORCID is a format-validated identifier, not a claim that the registry has
 // verified ownership. Authentication never relies on this author-editable field.

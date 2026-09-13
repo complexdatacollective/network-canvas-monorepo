@@ -26,6 +26,7 @@ import {
   ReportsPageSchema,
   TokenDescriptionSchema,
 } from './account-contract.ts';
+import { PaginationCursorSchema } from './pagination.ts';
 import {
   REGISTRY_PROBLEMS,
   RegistryProblemSchema,
@@ -39,12 +40,7 @@ export type RegistryEntry = z.infer<typeof EntrySchema>;
 
 export const ListEntriesSchema = z
   .strictObject({
-    cursor: z
-      .string()
-      .min(1)
-      .max(1024)
-      .regex(/^[A-Za-z0-9_-]+$/)
-      .optional(),
+    cursor: PaginationCursorSchema.optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
     query: z.string().min(1).max(200).optional(),
     kind: TemplateKindSchema.optional(),
@@ -227,7 +223,7 @@ export const registryContract = {
     .output(
       z.strictObject({
         data: z.array(EntrySummarySchema),
-        next_cursor: z.string().nullable(),
+        next_cursor: PaginationCursorSchema.nullable(),
         has_more: z.boolean(),
       }),
     ),
@@ -390,7 +386,9 @@ export const registryContract = {
   accountReports: accountModeration.reports,
 };
 
-export async function generateRegistryOpenApi() {
+export async function generateRegistryOpenApi(options: {
+  secureSessionCookie: boolean;
+}) {
   const converter = new ZodToJsonSchemaConverter();
   const generator = new OpenAPIGenerator({ converters: [converter] });
   const doc = await generator.generate(registryContract, {
@@ -415,7 +413,9 @@ export async function generateRegistryOpenApi() {
           registrySession: {
             type: 'apiKey',
             in: 'cookie',
-            name: '__Secure-registry.session_token',
+            name: options.secureSessionCookie
+              ? '__Secure-registry.session_token'
+              : 'registry.session_token',
             description:
               'Verified email session issued by this registry. Account writes also require the registry Origin header.',
           },

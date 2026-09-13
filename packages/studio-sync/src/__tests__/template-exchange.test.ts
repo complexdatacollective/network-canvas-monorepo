@@ -290,6 +290,12 @@ describe('template exchange metadata', () => {
     const parsed = TemplateMetadataSchema.parse(metadata);
     expect(parsed).toEqual(metadata);
     expect(hasCuratedMetadata(parsed)).toBe(true);
+    expect(
+      TemplateMetadataSchema.safeParse({
+        ...metadata,
+        related_links: [{ url: 'HTTPS://example.org/study' }],
+      }).success,
+    ).toBe(true);
     for (const invalid of [
       {
         ...metadata,
@@ -306,6 +312,9 @@ describe('template exchange metadata', () => {
         ],
       },
       { ...metadata, related_links: [{ url: 'javascript:alert(1)' }] },
+      { ...metadata, related_links: [{ url: 'http://example.org/study' }] },
+      { ...metadata, related_links: [{ url: 'ftp://example.org/study' }] },
+      { ...metadata, related_links: [{ url: 'mailto:study@example.org' }] },
       {
         ...metadata,
         publications: [{ citation: 'Paper', relation: 'endorses' }],
@@ -587,6 +596,19 @@ describe('portable template artifact', () => {
     });
   });
 
+  it('rejects reusable artifacts with more than one qualifying subject', async () => {
+    const input = fixture();
+    input.template.kind = 'stage';
+    input.sections = {
+      'stage:first': { ...input.sections['stage:welcome']!, id: 'first' },
+      'stage:second': { ...input.sections['stage:welcome']!, id: 'second' },
+      'assets': input.sections.assets!,
+    };
+    await expect(createTemplateArtifact(input)).rejects.toMatchObject({
+      code: 'TEMPLATE_SECTIONS_INVALID',
+    });
+  });
+
   it('screens actual media bytes, rejects executable classes and never exports embedded API keys', async () => {
     for (const [mediaType, bytes] of [
       ['image/png', encode('<svg><script>alert(1)</script></svg>')],
@@ -637,6 +659,9 @@ describe('portable template artifact', () => {
     ).toBe('dataset');
     for (const bytes of [
       encode('<html>executable document</html>'),
+      encode('<body onload="alert(1)">'),
+      encode('<!--comment--><script>alert(1)</script>'),
+      encode('<?xml version="1.0"?><data/>'),
       Uint8Array.from([0xff, 0xfe, 0x80]),
       encode('name\0,age'),
     ]) {
@@ -645,6 +670,28 @@ describe('portable template artifact', () => {
           ...input,
           assets: [{ ...input.assets[0]!, bytes }],
         }),
+      ).rejects.toMatchObject({ code: 'TEMPLATE_ASSET_DISALLOWED' });
+    }
+  });
+
+  it('rejects non-finite decoded numbers throughout JSON datasets', async () => {
+    for (const [type, mediaType, source, text] of [
+      ['network', 'application/json', 'network.json', '{"value":1e400}'],
+      [
+        'geojson',
+        'application/geo+json',
+        'features.geojson',
+        '{"type":"Feature","properties":{"value":1e400},"geometry":null}',
+      ],
+      [
+        'geojson',
+        'application/geo+json',
+        'features.geojson',
+        '{"type":"Point","coordinates":[1,2],"foreign":{"value":1e400}}',
+      ],
+    ] as const) {
+      await expect(
+        createTemplateArtifact(datasetFixture(type, mediaType, source, text)),
       ).rejects.toMatchObject({ code: 'TEMPLATE_ASSET_DISALLOWED' });
     }
   });

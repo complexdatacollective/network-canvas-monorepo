@@ -419,6 +419,7 @@
                     "url": {
                       "type": "string",
                       "maxLength": 2048,
+                      "pattern": "^[Hh][Tt][Tt][Pp][Ss]:\\/\\/",
                       "format": "uri"
                     },
                     "label": {
@@ -581,7 +582,17 @@
                       }
                     },
                     "next_cursor": {
-                      "type": ["string", "null"]
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1024,
+                          "pattern": "^[A-Za-z0-9_-]+$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "has_more": {
                       "type": "boolean"
@@ -3693,7 +3704,17 @@
                       }
                     },
                     "next_cursor": {
-                      "type": ["string", "null"]
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1024,
+                          "pattern": "^[A-Za-z0-9_-]+$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "has_more": {
                       "type": "boolean"
@@ -4839,7 +4860,17 @@
                       }
                     },
                     "next_cursor": {
-                      "type": ["string", "null"]
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1024,
+                          "pattern": "^[A-Za-z0-9_-]+$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     },
                     "has_more": {
                       "type": "boolean"

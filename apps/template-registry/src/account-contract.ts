@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { OrcidSchema } from '@codaco/studio-sync/template-metadata';
 import { RegistryPublisherSchema } from '@codaco/studio-sync/template-registry-contract';
 
+import { PaginationCursorSchema } from './pagination.ts';
+
 const nonblank = z
   .string()
   .min(1)
@@ -74,6 +76,6 @@ export const ReportsPageSchema = z.strictObject({
       created_at: stamp,
     }),
   ),
-  next_cursor: z.string().nullable(),
+  next_cursor: PaginationCursorSchema.nullable(),
   has_more: z.boolean(),
 });
