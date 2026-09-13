@@ -422,10 +422,34 @@ export const AsACanvasBackground: Story = {
     // The picture is fitted inside the canvas, never cropped to it or
     // stretched: a background is chosen on what it looks like whole.
     await expect(getComputedStyle(preview).objectFit).toBe('contain');
-    // And the canvas is the interview's own ground, not the editor's card.
-    await expect(
-      frame === null ? '' : getComputedStyle(frame).backgroundColor,
-    ).not.toBe(getComputedStyle(canvasElement).backgroundColor);
+    /*
+      And the canvas is painted the interview's own ground, not left to
+      whatever is behind it.
+
+      Compared against that ground READ WHERE THE FRAME IS rather than against
+      the page around it: `bg-background` compiles to
+      `background-color: var(--background)` and the interview theme redeclares
+      that token on its own region, so a probe inside the frame is the only
+      thing that resolves to the colour the frame is claiming. Differing from
+      the page proves nothing on its own — a frame with no background of its
+      own is transparent, and transparent differs from everything.
+    */
+    const painted =
+      frame === null ? '' : getComputedStyle(frame).backgroundColor;
+
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = 'var(--background)';
+    frame?.append(probe);
+    const interviewGround = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+
+    // The theme has to have answered, or the comparison below is two blanks.
+    await expect(interviewGround).not.toBe('rgba(0, 0, 0, 0)');
+    await expect(painted).toBe(interviewGround);
+    // Which is not the editor's card the field sits on.
+    await expect(painted).not.toBe(
+      getComputedStyle(canvasElement).backgroundColor,
+    );
   },
 };
 
