@@ -142,6 +142,105 @@ const readOfferedIds = (dialog: HTMLElement): string[] =>
     (row) => row.getAttribute('data-attribute-id') ?? row.textContent ?? '',
   );
 
+const offeredRows = (dialog: HTMLElement): HTMLElement[] => [
+  ...dialog.querySelectorAll<HTMLElement>('[role="option"]'),
+];
+
+/**
+ * Whether this row is one the window draws for this search term.
+ *
+ * An attribute row is, when its name contains the term — which is the window's
+ * own filter. A create row is, when it is about exactly the term typed: its
+ * key is the term, so every keystroke replaces it with another. An empty term
+ * produces no create row at all, so any row that names one is a leftover.
+ *
+ * Read from the markers rather than from the row's words, which are
+ * translated: the locale suites search the same window in Spanish.
+ */
+const rowIsFor = (row: HTMLElement, term: string): boolean => {
+  const created = row.dataset.createName;
+  if (created !== undefined) return term !== '' && created === term;
+  const name = row.querySelector('data[value]')?.getAttribute('value') ?? '';
+  return name.toLowerCase().includes(term.toLowerCase());
+};
+
+const describeRow = (row: HTMLElement): string =>
+  row.dataset.createName === undefined
+    ? (row.querySelector('data[value]')?.getAttribute('value') ?? '(unnamed)')
+    : `create “${row.dataset.createName}”`;
+
+/**
+ * Waits until the list is the one this term produces, and nothing else.
+ *
+ * A row the term no longer produces does not leave the DOM in the keystroke
+ * that replaced it: the window's list animates, and `AnimatePresence` keeps an
+ * exiting row mounted until its exit finishes — one frame later, with
+ * animations skipped. So immediately after typing, the list can hold BOTH the
+ * row the last keystroke made and the one the keystroke before it made, and a
+ * test reading the list by position reads the leftover. On an idle machine the
+ * frame lands inside `type()`; under a loaded CI runner it lands after it,
+ * which is what made this window's tests fail there and pass here.
+ *
+ * Waiting on the leftovers rather than on a count, because a count is a claim
+ * about what the term produces — which is what the tests are here to assert.
+ */
+const listSettledOn = async (
+  dialog: HTMLElement,
+  term: string,
+): Promise<void> => {
+  await waitFor(() => {
+    const leftovers = offeredRows(dialog).filter((row) => !rowIsFor(row, term));
+    if (leftovers.length > 0) {
+      throw new Error(
+        `the list is still showing ${leftovers.length} row(s) from before “${term}” was typed: ${leftovers
+          .map(describeRow)
+          .join(', ')}`,
+      );
+    }
+  });
+};
+
+const typeSearchTerm = async (
+  user: HarnessUser,
+  box: HTMLElement,
+  dialog: HTMLElement,
+  term: string,
+): Promise<void> => {
+  await user.type(box, term);
+  await listSettledOn(dialog, term);
+};
+
+/**
+ * Types a term into the open window's search box, and hands the box back once
+ * the list below it is the one that term produces.
+ *
+ * Clears first, so the term is what the box holds rather than what it holds
+ * appended to whatever was there.
+ */
+export async function searchAttributes(
+  user: HarnessUser,
+  dialog: HTMLElement,
+  term: string,
+): Promise<HTMLElement> {
+  const box = await clearAttributeSearch(user, dialog);
+  await typeSearchTerm(user, box, dialog, term);
+  return box;
+}
+
+/**
+ * Empties the open window's search box, and hands it back once the list below
+ * it is the whole list again.
+ */
+export async function clearAttributeSearch(
+  user: HarnessUser,
+  dialog: HTMLElement,
+): Promise<HTMLElement> {
+  const box = within(dialog).getByRole('searchbox', { name: isSearchBox });
+  await user.clear(box);
+  await listSettledOn(dialog, '');
+  return box;
+}
+
 /**
  * Every attribute the window offers, by the id choosing it would store, in the
  * order it offers them. Leaves the window as it found it: closed.
@@ -153,10 +252,7 @@ export async function offeredAttributes(
 ): Promise<string[]> {
   const dialog = await openAttributePicker(user, field);
   if (term !== undefined) {
-    await user.type(
-      within(dialog).getByRole('searchbox', { name: isSearchBox }),
-      term,
-    );
+    await searchAttributes(user, dialog, term);
   }
   const offered = readOfferedIds(dialog);
   await closeAttributePicker(user);
@@ -205,10 +301,12 @@ export async function inventAttribute(
   attributeName: string,
 ): Promise<HTMLElement> {
   const dialog = await openAttributePicker(user, field);
-  await user.type(
+  await typeSearchTerm(
+    user,
     within(dialog).getByRole('searchbox', {
       name: 'Find or create an attribute',
     }),
+    dialog,
     attributeName,
   );
   await user.click(createRow(dialog, attributeName));
@@ -241,10 +339,7 @@ export async function offersCreation(
   const dialog = await openAttributePicker(user, field);
   // Either name: this is asked at the sites that cannot create as well, and
   // the box says which of the two it is.
-  await user.type(
-    within(dialog).getByRole('searchbox', { name: isSearchBox }),
-    term,
-  );
+  await searchAttributes(user, dialog, term);
   const offered =
     within(dialog).queryByRole('option', {
       name: `Create new attribute called “${term}”.`,
@@ -273,8 +368,10 @@ export async function createRowIn(
   term = 'nuevo',
 ): Promise<HTMLElement | null> {
   const dialog = await openAttributePicker(user, field);
-  await user.type(
+  await typeSearchTerm(
+    user,
     within(dialog).getByRole('searchbox', { name: searchLabel }),
+    dialog,
     term,
   );
   const row = within(dialog).queryByRole('option', { name: rowName(term) });

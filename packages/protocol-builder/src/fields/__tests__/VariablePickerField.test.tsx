@@ -32,7 +32,9 @@ import { useProtocolContext } from '../../state/protocolContext.ts';
 import {
   attributeField,
   chooseAttribute,
+  clearAttributeSearch,
   openAttributePicker,
+  searchAttributes,
 } from '../../testing/attributePicker.ts';
 import { renderStageEditor } from '../../testing/renderStageEditor.tsx';
 import {
@@ -251,34 +253,19 @@ const trigger = (name: 'Select attribute' | 'Change attribute') =>
   within(picker()).getByRole('button', { name });
 
 /**
- * The two names the window's search box goes by.
+ * Types a name into the open window's search box, and comes back once the list
+ * is the one that name produces.
  *
- * It says whether this window can invent an attribute, the way the trigger
- * says whether one has been chosen — so a helper that knew only one of the two
- * would find the box at the sites that create and lose it at the sites that
- * only choose. Which name is drawn where is asserted by the tests that are
- * about it.
- */
-const isSearchBox = (name: string) =>
-  name === 'Find or create an attribute' || name === 'Find an attribute';
-
-/**
- * Types a name into the open window's search box.
- *
- * `paste` rather than `type`: what is asserted below is the list the term
- * produces, not the keystrokes, and a search box that filters with no debounce
- * answers a paste exactly as it answers the last keystroke of the same word.
+ * The wait is not decoration: a row the term no longer produces stays mounted
+ * until its exit animation finishes a frame later, so a list read in the same
+ * breath as the typing can hold the row the keystroke BEFORE the last one made
+ * — and every assertion below is about which row the list puts first.
  */
 const search = async (
   harness: ReturnType<typeof renderRows>,
   dialog: HTMLElement,
   term: string,
-) => {
-  const box = within(dialog).getByRole('searchbox', { name: isSearchBox });
-  await harness.user.clear(box);
-  await harness.user.type(box, term);
-  return box;
-};
+) => searchAttributes(harness.user, dialog, term);
 
 const createRow = (dialog: HTMLElement, name: string) =>
   within(dialog).getByRole('option', {
@@ -380,14 +367,14 @@ describe('the attribute picker', () => {
     const dialog = await openAttributePicker(harness.user, picker());
     const all = within(dialog).getAllByRole('option').length;
 
-    const box = await search(harness, dialog, 'AG');
+    await search(harness, dialog, 'AG');
     const narrowed = within(dialog).getAllByRole('option');
     expect(narrowed.length).toBeLessThan(all);
     for (const row of narrowed) {
       expect(row.textContent?.toLowerCase()).toContain('ag');
     }
 
-    await harness.user.clear(box);
+    await clearAttributeSearch(harness.user, dialog);
     expect(within(dialog).getAllByRole('option')).toHaveLength(all);
   });
 
