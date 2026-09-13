@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import {
   type CSSProperties,
   useCallback,
@@ -725,8 +726,9 @@ function EntityTypeCodebookControls({
           <Button
             ref={createTrigger}
             type="button"
-            variant="outline"
+            color="primary"
             size="sm"
+            icon={<Plus aria-hidden="true" />}
             onClick={() =>
               setSession({ key: uuid(), typeId: uuid(), mode: 'create' })
             }
@@ -741,7 +743,7 @@ function EntityTypeCodebookControls({
             <Button
               ref={editTrigger}
               type="button"
-              variant="outline"
+              color="primary"
               size="sm"
               onClick={() =>
                 setSession({

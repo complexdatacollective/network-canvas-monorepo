@@ -174,23 +174,34 @@ export const ALL_CONTROLS: readonly Readonly<{
 );
 
 /**
- * The kind of answer an attribute collected with this control holds.
+ * The kind of answer an input control collects — the inverse of
+ * {@link controlsForType}.
  *
- * Every control belongs to exactly one type — `VARIABLE_TYPE_COMPONENTS`'
- * lists are disjoint, and the variable schemas are keyed on that — so the
- * question has one answer, and the schema is what guarantees it rather than a
- * second table written here. `undefined` for a `component` the schema does not
- * know, which is what a protocol authored against a later schema arrives
- * holding.
+ * Total and unambiguous, and not a convenience: every control in
+ * `VARIABLE_TYPE_COMPONENTS` appears under exactly ONE type, because the
+ * variable schemas are split on `component` and a control offered for two
+ * kinds of answer would make a saved field mean two things. So a caller that
+ * knows which control the participant answers with already knows what the
+ * attribute holds — which is what lets a field preview the control it is being
+ * given before the attribute it collects into exists, and what lets the
+ * network composer's row invent an attribute from the control alone.
+ *
+ * `undefined` for a control nobody has chosen yet, and for a `component` the
+ * schema does not know — which is what a protocol authored against a later
+ * schema arrives holding.
  */
+const TYPE_FOR_CONTROL: ReadonlyMap<string, VariableType> = new Map(
+  TYPE_OPTIONS.flatMap(({ value }) =>
+    VARIABLE_TYPE_COMPONENTS[value].map(
+      (component): readonly [string, VariableType] => [component, value],
+    ),
+  ),
+);
+
 export const typeForControl = (
-  component: string | undefined,
+  control: string | undefined,
 ): VariableType | undefined =>
-  component === undefined
-    ? undefined
-    : TYPE_OPTIONS.find(({ value }) =>
-        controlsForType(value).some((control) => control.value === component),
-      )?.value;
+  control === undefined ? undefined : TYPE_FOR_CONTROL.get(control);
 
 /**
  * The attribute types that ARE a list of answers.

@@ -86,9 +86,10 @@ test('creates a valid TieStrengthCensus stage from scratch', async ({
   //
   // - "Participant prompt": the family's shared `PromptTextField`
   //   (`label: 'Prompt text'`).
-  // - "Edge creation": the same `CreateEdgeField` the two dyad censuses
-  //   use, so the connection type is invented through the codebook entity
-  //   editor ("Edge type name", committed by "Save entity").
+  // - "Edge creation": the same `EdgeTypeSection` the two dyad censuses
+  //   use, whose picker offers "Create new edge type", so the connection type
+  //   is invented through the codebook entity editor ("Edge type name",
+  //   committed by "Save entity").
   // - "Response attribute": an ordinal attribute OF that connection type. `ScaleField`
   //   renders nothing at all until `createEdge` holds a real type id
   //   (`edgeSubjectOf` answers `undefined` for anything that is not a

@@ -1329,3 +1329,56 @@ describe('what a composer field’s control accepts', () => {
     ).toBeUndefined();
   });
 });
+
+/**
+ * The live preview beside a composer field's own controls.
+ *
+ * The same pane as the shared form family's, in the other of its two modes: a
+ * composer field labels one box of a form the participant is filling in rather
+ * than asking a question, and the control it renders with is the STAGE's
+ * rather than the attribute's.
+ */
+describe('the live preview beside a composer form field', () => {
+  const fieldOnAge = () =>
+    composerHolding({
+      nodeForm: {
+        fields: [{ id: 'field-1', variable: 'age', component: 'Number' }],
+      },
+    });
+
+  it('offers the controls and the preview as two named regions', async () => {
+    const harness = renderStageEditor(fieldOnAge());
+
+    await openRow(harness, 'Edit form field');
+    const dialog = within(
+      screen.getByRole('dialog', { name: 'Edit form field' }),
+    );
+
+    expect(dialog.getByRole('form', { name: 'Configuration' })).toBeVisible();
+    expect(
+      dialog.getByRole('region', { name: 'Interactive preview' }),
+    ).toBeVisible();
+  });
+
+  it('names the previewed box by the label being typed, and follows the control', async () => {
+    const harness = renderStageEditor(fieldOnAge());
+
+    const dialog = await openRow(harness, 'Edit form field');
+    const preview = within(
+      dialog.getByRole('region', { name: 'Interactive preview' }),
+    );
+    // No label authored yet, so the attribute's own name stands in — the
+    // composer's rule, and never the form family's placeholder question.
+    expect(preview.getByRole('spinbutton', { name: 'age' })).toBeVisible();
+
+    await harness.user.type(
+      dialog.getByRole('textbox', { name: 'Question' }),
+      'How old are they?',
+    );
+    await waitFor(() =>
+      expect(
+        preview.getByRole('spinbutton', { name: 'How old are they?' }),
+      ).toBeVisible(),
+    );
+  });
+});

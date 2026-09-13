@@ -27,9 +27,9 @@ test('creates a valid OneToManyDyadCensus stage from scratch', async ({
 
   // The shared prompts section's row dialog, filled with what a One-to-Many
   // prompt is made of (OneToManyDyadCensusPromptsSection.tsx): the family's
-  // `PromptTextField` (`label: 'Prompt text'`) and the same `CreateEdgeField`
+  // `PromptTextField` (`label: 'Prompt text'`) and the same `EdgeTypeSection`
   // DyadCensus uses — rendered bare inside the "Prompt configuration" group,
-  // with a "Create a new connection type" button opening the codebook entity
+  // whose picker offers "Create new edge type", opening the codebook entity
   // editor ("Edge type name", then "Save entity"). The dialog also renders the
   // two `SortOrderRows` groups ("Bucket order" / "Bin order", the bins' own
   // two sections, which Architect mounts here unchanged), both disabled until a
