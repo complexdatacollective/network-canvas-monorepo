@@ -6,13 +6,13 @@ This directory is the reviewable source for the public Network Canvas Template
 Registry specifications. Publication copies the files below without semantic
 rewriting:
 
-| Monorepo source           | Public repository path                      | Role                                                               |
-| ------------------------- | ------------------------------------------- | ------------------------------------------------------------------ |
-| `LICENSE`                 | `template-registry/v1/LICENSE`              | CC0 1.0 legal text for the specifications.                         |
-| `README.md`               | `template-registry/v1/README.md`            | Entry point, status, and artifact provenance.                      |
-| `openapi.json`            | `template-registry/v1/openapi.json`         | Normative OpenAPI 3.1 contract generated from runtime Zod schemas. |
-| `openapi-3.0.json`        | `template-registry/v1/openapi-3.0.json`     | Generated compatibility document for OpenAPI 3.0 tooling.          |
-| `template-exchange-v1.md` | `template-registry/v1/template-exchange.md` | Normative version 1 exchange format.                               |
+| Monorepo source           | Public repository path                         | Role                                                               |
+| ------------------------- | ---------------------------------------------- | ------------------------------------------------------------------ |
+| `LICENSE`                 | `template-registry/v1/LICENSE`                 | CC0 1.0 legal text for the specifications.                         |
+| `README.md`               | `template-registry/v1/README.md`               | Entry point, status, and artifact provenance.                      |
+| `openapi.json`            | `template-registry/v1/openapi.json`            | Normative OpenAPI 3.1 contract generated from runtime Zod schemas. |
+| `openapi-3.0.json`        | `template-registry/v1/openapi-3.0.json`        | Generated compatibility document for OpenAPI 3.0 tooling.          |
+| `template-exchange-v1.md` | `template-registry/v1/template-exchange-v1.md` | Normative version 1 exchange format.                               |
 
 The public repository does not yet exist. As of 2026-09-13, the Complex Data
 Collective organization has no repository named `network-canvas-specifications`

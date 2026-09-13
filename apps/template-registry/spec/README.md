@@ -27,7 +27,6 @@ Registry entries locate an artifact. The artifact's Merkle root identifies its
 immutable content independently of any registry. A registry-issued publisher
 credential authenticates writes; a Studio instance API token does not.
 
-These files are the publication source. No dedicated public specification
-repository exists yet. Release qualification must separately record creation
-of that repository and publication from an exact monorepo commit; a local build
-or this directory alone does not satisfy that requirement.
+These files are the publication source. Each published revision records the
+exact monorepo source commit. Runtime deployment and operational qualification
+remain separate from specification publication.
