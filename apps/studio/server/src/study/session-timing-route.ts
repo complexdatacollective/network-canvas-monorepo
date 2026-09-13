@@ -3,8 +3,10 @@ import type pg from 'pg';
 import { z } from 'zod';
 
 import {
+  openInterviewSession,
   SessionTimingError,
   StageTimingSchema,
+  StageTimingValidationError,
   writeInterviewTiming,
 } from './session-timing.ts';
 
@@ -22,6 +24,10 @@ const BodySchema = z.object({
     .regex(/^[A-Za-z0-9_-]+$/)
     .nullable()
     .optional(),
+});
+
+const OpenBodySchema = z.object({
+  writerId: z.string().trim().min(1).max(128),
 });
 
 function bearerToken(header: string | undefined): string | undefined {
@@ -78,6 +84,56 @@ export function createSessionTimingRoute(pool: pg.Pool): Handler {
       }
       if (error instanceof z.ZodError) {
         return context.json({ error: 'Invalid timing payload' }, 400);
+      }
+      if (error instanceof StageTimingValidationError) {
+        return context.json({ error: 'Invalid timing payload' }, 400);
+      }
+      throw error;
+    }
+  };
+}
+
+/** Claims the participant writer fence before the first timing sync. */
+export function createSessionTimingOpenRoute(pool: pg.Pool): Handler {
+  return async (context) => {
+    const accessToken = bearerToken(context.req.header('Authorization'));
+    const sessionId = context.req.param('sessionId');
+    if (!accessToken || !sessionId) {
+      return context.json({ error: 'Not found' }, 404);
+    }
+    let body: unknown;
+    try {
+      body = await context.req.json();
+    } catch {
+      return context.json({ error: 'Invalid timing payload' }, 400);
+    }
+    const parsed = OpenBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return context.json({ error: 'Invalid timing payload' }, 400);
+    }
+    try {
+      const opened = await openInterviewSession(pool, {
+        sessionId,
+        accessToken,
+        writerId: parsed.data.writerId,
+      });
+      return context.json({
+        success: true,
+        holderEpoch: opened.holderEpoch,
+        syncRevision: opened.syncRevision,
+        stageTiming: opened.stageTiming,
+      });
+    } catch (error) {
+      if (error instanceof SessionTimingError) {
+        return context.json(
+          {
+            error:
+              error.code === 'HOLDER_CONFLICT'
+                ? 'Session writer is no longer active'
+                : 'Not found',
+          },
+          error.code === 'HOLDER_CONFLICT' ? 409 : 404,
+        );
       }
       throw error;
     }

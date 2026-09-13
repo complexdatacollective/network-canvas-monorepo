@@ -61,12 +61,16 @@ const shapes = {
     uncertain: 'uncertain_at',
   },
   study_wave_rollups: {
-    pending: 'stale_at IS NOT NULL',
+    pending: 'stale_at IS NOT NULL AND failed_at IS NULL',
     available: 'stale_at',
+    lease: 'lease_expires_at',
+    failed: 'failed_at',
   },
   study_stage_rollups: {
-    pending: 'stale_at IS NOT NULL',
+    pending: 'stale_at IS NOT NULL AND failed_at IS NULL',
     available: 'stale_at',
+    lease: 'lease_expires_at',
+    failed: 'failed_at',
   },
   template_registry_intents: {
     table: `(SELECT available_at, lease_expires_at, completed_at, quarantined_at

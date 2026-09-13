@@ -42,9 +42,10 @@ export type StageTimingExitDirection =
   | 'abandoned';
 
 /**
- * A privacy-safe completed stage interval. The fields are structural or
- * numeric so hosts can persist them for monitoring without carrying protocol
- * author content or participant answers.
+ * A runtime-reported completed stage interval. It carries no protocol author
+ * content or participant answers, but `stageType` is only a client hint: a
+ * server must validate it against the immutable protocol version before
+ * persisting or aggregating the interval.
  */
 export type StageTimingExit = {
   stageIndex: number;
@@ -60,8 +61,9 @@ export type PromptTimingExit = StageTimingExit;
 
 /**
  * Runtime timing accumulated in the session payload. `stageExits` is ordered
- * by observation, including abandoned final stages; hosts may roll it up by
- * stage type/index without reconstructing the interview UI state.
+ * by observation, including abandoned final stages. Hosts must resolve the
+ * index against the pinned protocol before grouping; the reported type is not
+ * an authoritative stage identity.
  */
 export type StageTimingPayload = {
   stageExits: StageTimingExit[];

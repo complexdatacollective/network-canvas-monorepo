@@ -1,9 +1,21 @@
 import type pg from 'pg';
 
-import type { OutboxObserver } from '../outbox/instrumentation.ts';
+import {
+  OutboxDispatcher,
+  type OutboxAdapter,
+  type OutboxLease,
+  type OutboxRetryOptions,
+} from '../outbox/dispatcher.ts';
+import type { OutboxObserver, OutboxQueue } from '../outbox/instrumentation.ts';
 import { startOutboxWorker, type OutboxWorker } from '../outbox/worker.ts';
 
-type RollupClaim = { waveId: string };
+type RollupClaim = {
+  waveId: string;
+  stageId?: string;
+  attemptCount: number;
+  leaseOwner: string;
+};
+type RollupQueue = 'study_wave_rollups' | 'study_stage_rollups';
 
 /**
  * Rebuilds one wave and all of its stage rows from source tables. Stage
@@ -26,7 +38,7 @@ async function recomputeWave(
        stale_at, recomputed_at)
      with timing as (
        select s.team_id, s.study_id, s.wave_id, s.id as session_id, s.status,
-              exit_item->>'stageType' as stage_id,
+              exit_item->>'stageId' as stage_id,
               (exit_item->>'durationMs')::bigint as duration_ms
        from interview_sessions s
        cross join lateral jsonb_array_elements(
@@ -122,66 +134,302 @@ async function recomputeWave(
   );
 }
 
-async function claimWave(client: pg.PoolClient): Promise<RollupClaim | null> {
-  const wave = await client.query<{ wave_id: string }>(
-    `select wave_id
-       from study_wave_rollups
-      where stale_at is not null
-      order by stale_at, wave_id
-      for update skip locked
-      limit 1`,
-  );
-  if (wave.rows[0]) return { waveId: wave.rows[0].wave_id };
-
-  // A legacy erasure or a manually repaired stage row may have marked only a
-  // stage stale. Claiming it still rebuilds the complete wave, which restores
-  // the wave and stage worklists to one consistent point.
-  const stage = await client.query<{ wave_id: string }>(
-    `select wave_id
-       from study_stage_rollups
-      where stale_at is not null
-      order by stale_at, wave_id
-      for update skip locked
-      limit 1`,
-  );
-  return stage.rows[0] ? { waveId: stage.rows[0].wave_id } : null;
+function tableFor(
+  queue: RollupQueue,
+): 'study_wave_rollups' | 'study_stage_rollups' {
+  return queue;
 }
 
-/** Claims and recomputes at most one stale wave. A rollback leaves it stale. */
-export async function runMonitoringRollupOnce(
-  pool: pg.Pool,
-): Promise<{ claimed: number }> {
-  const client = await pool.connect();
-  try {
-    await client.query('begin');
-    const claim = await claimWave(client);
-    if (!claim) {
+class MonitoringRollupAdapter implements OutboxAdapter<RollupClaim> {
+  readonly queue: OutboxQueue;
+  private readonly pool: pg.Pool;
+  private readonly table: 'study_wave_rollups' | 'study_stage_rollups';
+
+  constructor(pool: pg.Pool, queue: RollupQueue) {
+    this.pool = pool;
+    this.queue = queue;
+    this.table = tableFor(queue);
+  }
+
+  async suppressUndeliverable(): Promise<number> {
+    return 0;
+  }
+
+  async failExhaustedLeases(maxAttempts: number): Promise<number> {
+    const result = await this.pool.query(
+      `update ${this.table}
+          set failed_at = clock_timestamp(),
+              lease_owner = null,
+              lease_expires_at = null,
+              stale_at = null,
+              last_error = coalesce(last_error, 'rollup worker stopped during the final attempt')
+        where stale_at is not null
+          and failed_at is null
+          and attempt_count >= $1
+          and (lease_expires_at is null or lease_expires_at <= clock_timestamp())`,
+      [maxAttempts],
+    );
+    return result.rowCount ?? 0;
+  }
+
+  async claim(
+    lease: OutboxLease,
+    maxAttempts: number,
+  ): Promise<RollupClaim | null> {
+    const stageColumns =
+      this.table === 'study_stage_rollups' ? ', stage_id' : '';
+    const stageReturn =
+      this.table === 'study_stage_rollups' ? ', r.stage_id' : '';
+    const result = await this.pool.query<{
+      wave_id: string;
+      stage_id?: string;
+      attempt_count: number;
+    }>(
+      `with candidate as (
+         select r.wave_id${stageColumns}
+           from ${this.table} r
+          where r.stale_at is not null
+            and r.failed_at is null
+            and r.attempt_count < $3
+            and (r.lease_expires_at is null or r.lease_expires_at <= clock_timestamp())
+            and pg_try_advisory_xact_lock(hashtext('monitoring-rollup'), hashtext(r.wave_id::text))
+          order by r.stale_at, r.wave_id${this.table === 'study_stage_rollups' ? ', r.stage_id' : ''}
+          for update skip locked
+          limit 1
+       )
+       update ${this.table} r
+          set lease_owner = $1,
+              lease_expires_at = clock_timestamp() + make_interval(secs => $2::float / 1000),
+              attempt_count = r.attempt_count + 1
+         from candidate c
+        where r.wave_id = c.wave_id
+          ${this.table === 'study_stage_rollups' ? 'and r.stage_id = c.stage_id' : ''}
+        returning r.wave_id${stageReturn}, r.attempt_count`,
+      [lease.owner, lease.durationMs, maxAttempts],
+    );
+    const row = result.rows[0];
+    return row
+      ? {
+          waveId: row.wave_id,
+          ...(row.stage_id ? { stageId: row.stage_id } : {}),
+          attemptCount: row.attempt_count,
+          leaseOwner: lease.owner,
+        }
+      : null;
+  }
+
+  async remainsDeliverable(
+    claim: RollupClaim,
+    lease: OutboxLease,
+  ): Promise<boolean> {
+    const result = await this.pool.query(
+      `select 1 from ${this.table}
+        where wave_id = $1
+          ${claim.stageId ? 'and stage_id = $2' : ''}
+          and lease_owner = $${claim.stageId ? 3 : 2}
+          and stale_at is not null and failed_at is null`,
+      claim.stageId
+        ? [claim.waveId, claim.stageId, lease.owner]
+        : [claim.waveId, lease.owner],
+    );
+    return result.rowCount === 1;
+  }
+
+  async suppressClaim(): Promise<boolean> {
+    return false;
+  }
+
+  async renewLease(claim: RollupClaim, lease: OutboxLease): Promise<boolean> {
+    const stage = claim.stageId !== undefined;
+    const result = await this.pool.query(
+      `update ${this.table}
+          set lease_expires_at = clock_timestamp() + make_interval(secs => $${stage ? 4 : 3}::float / 1000)
+        where wave_id = $1
+          ${stage ? 'and stage_id = $2' : ''}
+          and lease_owner = $${stage ? 3 : 2}
+          and stale_at is not null and failed_at is null`,
+      stage
+        ? [claim.waveId, claim.stageId, lease.owner, lease.durationMs]
+        : [claim.waveId, lease.owner, lease.durationMs],
+    );
+    return result.rowCount === 1;
+  }
+
+  async deliver(claim: RollupClaim): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      await client.query(
+        `select pg_advisory_xact_lock(hashtext('monitoring-rollup'), hashtext($1))`,
+        [claim.waveId],
+      );
+      const owned = await client.query(
+        `select 1 from ${this.table}
+          where wave_id = $1
+            ${claim.stageId ? 'and stage_id = $2' : ''}
+            and lease_owner = $${claim.stageId ? 3 : 2}
+            and stale_at is not null and failed_at is null`,
+        claim.stageId
+          ? [claim.waveId, claim.stageId, claim.leaseOwner]
+          : [claim.waveId, claim.leaseOwner],
+      );
+      if (owned.rowCount === 0) {
+        if (claim.stageId) {
+          await client.query('commit');
+          return;
+        }
+        throw new Error('rollup lease was lost before recompute');
+      }
+      await recomputeWave(client, claim.waveId, new Date());
       await client.query('commit');
-      return { claimed: 0 };
+    } catch (error) {
+      await client.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
     }
-    await recomputeWave(client, claim.waveId, new Date());
-    await client.query('commit');
-    return { claimed: 1 };
-  } catch (error) {
-    await client.query('rollback').catch(() => undefined);
-    throw error;
-  } finally {
-    client.release();
+  }
+
+  failureDisposition(): 'retryable' {
+    return 'retryable';
+  }
+
+  completionFailureDisposition(): 'retryable' {
+    return 'retryable';
+  }
+
+  async recordFailure(
+    claim: RollupClaim,
+    lease: OutboxLease,
+    error: unknown,
+    retryDelayMs: number | null,
+  ): Promise<boolean> {
+    const terminal = retryDelayMs === null;
+    const stage = claim.stageId !== undefined;
+    const result = await this.pool.query(
+      `update ${this.table}
+          set lease_owner = null,
+              lease_expires_at = null,
+              stale_at = case when $${stage ? 5 : 4}::boolean then null
+                              else clock_timestamp() + make_interval(secs => $${stage ? 6 : 5}::float / 1000) end,
+              failed_at = case when $${stage ? 5 : 4}::boolean then clock_timestamp() else null end,
+              last_error = $${stage ? 4 : 3}
+        where wave_id = $1
+          ${stage ? 'and stage_id = $2' : ''}
+          and lease_owner = $${stage ? 3 : 2}`,
+      stage
+        ? [
+            claim.waveId,
+            claim.stageId,
+            lease.owner,
+            String(error).slice(0, 1000),
+            terminal,
+            retryDelayMs ?? 0,
+          ]
+        : [
+            claim.waveId,
+            lease.owner,
+            String(error).slice(0, 1000),
+            terminal,
+            retryDelayMs ?? 0,
+          ],
+    );
+    return result.rowCount === 1;
+  }
+
+  async recordComplete(
+    claim: RollupClaim,
+    lease: OutboxLease,
+  ): Promise<boolean> {
+    const result = await this.pool.query(
+      `update ${this.table}
+          set lease_owner = null, lease_expires_at = null, last_error = null
+        where wave_id = $1
+          ${claim.stageId ? 'and stage_id = $2' : ''}
+          and lease_owner = $${claim.stageId ? 3 : 2}`,
+      claim.stageId
+        ? [claim.waveId, claim.stageId, lease.owner]
+        : [claim.waveId, lease.owner],
+    );
+    if (result.rowCount === 1) return true;
+    if (!claim.stageId) return false;
+    const pending = await this.pool.query(
+      `select 1 from study_stage_rollups where wave_id = $1 and stage_id = $2 and stale_at is not null and failed_at is null`,
+      [claim.waveId, claim.stageId],
+    );
+    return pending.rowCount === 0;
+  }
+
+  async recordUncertain(
+    claim: RollupClaim,
+    lease: OutboxLease,
+    error: unknown,
+  ): Promise<boolean> {
+    return this.recordFailure(claim, lease, error, null);
   }
 }
 
-/** One shared maintenance worker handles both the wave and stage worklists. */
+function rollupDispatcher(
+  pool: pg.Pool,
+  queue: RollupQueue,
+  options: OutboxRetryOptions & { observer?: OutboxObserver },
+) {
+  return new OutboxDispatcher({
+    ...options,
+    pool,
+    adapter: new MonitoringRollupAdapter(pool, queue),
+  });
+}
+
+/** Claims and recomputes at most one stale wave through shared dispatch semantics. */
+export async function runMonitoringRollupOnce(
+  pool: pg.Pool,
+): Promise<{ claimed: number }> {
+  const result = await rollupDispatcher(
+    pool,
+    'study_wave_rollups',
+    {},
+  ).runOnce();
+  return { claimed: result.claimed };
+}
+
+export async function runMonitoringStageRollupOnce(
+  pool: pg.Pool,
+): Promise<{ claimed: number }> {
+  const result = await rollupDispatcher(
+    pool,
+    'study_stage_rollups',
+    {},
+  ).runOnce();
+  return { claimed: result.claimed };
+}
+
+/** Both derived worklists use the shared lease, retry and observer machinery. */
 export function startMonitoringRollupWorker(options: {
   pool: pg.Pool;
   observer?: OutboxObserver;
   onError?: (error: unknown) => void | Promise<void>;
   pollIntervalMs?: number;
 }): OutboxWorker {
-  return startOutboxWorker({
+  const wave = rollupDispatcher(options.pool, 'study_wave_rollups', options);
+  const stage = rollupDispatcher(options.pool, 'study_stage_rollups', options);
+  const waveWorker = startOutboxWorker({
     queue: 'study_wave_rollups',
     pollIntervalMs: options.pollIntervalMs,
     observer: options.observer,
     onError: options.onError,
-    runOnce: () => runMonitoringRollupOnce(options.pool),
+    runOnce: async () => wave.runOnce(),
   });
+  const stageWorker = startOutboxWorker({
+    queue: 'study_stage_rollups',
+    pollIntervalMs: options.pollIntervalMs,
+    observer: options.observer,
+    onError: options.onError,
+    runOnce: async () => stage.runOnce(),
+  });
+  return {
+    stop: async () => {
+      await Promise.all([waveWorker.stop(), stageWorker.stop()]);
+    },
+  };
 }

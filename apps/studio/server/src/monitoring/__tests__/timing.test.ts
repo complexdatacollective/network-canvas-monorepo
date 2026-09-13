@@ -17,12 +17,21 @@ import {
   SessionTimingError,
   writeInterviewTiming,
 } from '../../study/session-timing.ts';
-import { runMonitoringRollupOnce } from '../recompute.ts';
+import {
+  runMonitoringRollupOnce,
+  runMonitoringStageRollupOnce,
+} from '../recompute.ts';
 
 const db = await reachableDb();
 
 const TEAM = 'timing-team-a';
 const OTHER_TEAM = 'timing-team-b';
+const PROTOCOL_STAGES = [
+  ['info-1', 'Information'],
+  ['info-2', 'Information'],
+  ['ego-1', 'Ego'],
+  ['edge-1', 'Edge'],
+] as const;
 
 type Row = Record<string, unknown>;
 
@@ -40,9 +49,13 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
   let writerId: string;
   let holderEpoch: number;
 
-  const insert = (table: string, row: Row) => {
+  const insert = (
+    table: string,
+    row: Row,
+    target: pg.Pool | pg.PoolClient = pool,
+  ) => {
     const columns = Object.keys(row);
-    return pool.query(
+    return target.query(
       `insert into ${table} (${columns.map((name) => `"${name}"`).join(', ')})
        values (${columns.map((_, index) => `$${index + 1}`).join(', ')})`,
       Object.values(row),
@@ -71,16 +84,70 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
       team_id: TEAM,
       name: 'timing protocol',
     });
-    await insert('protocol_versions', {
-      id: versionId,
-      protocol_id: protocolId,
-      team_id: TEAM,
-      version_number: 1,
-      version_hash: 'timing-version-hash',
-      manifest: JSON.stringify({ name: 'timing protocol' }),
-      schema_version: 8,
-      source_manifest_hash: 'timing-source-hash',
-    });
+    const protocolClient = await pool.connect();
+    try {
+      await protocolClient.query('begin');
+      await insert(
+        'protocol_versions',
+        {
+          id: versionId,
+          protocol_id: protocolId,
+          team_id: TEAM,
+          version_number: 1,
+          version_hash: 'timing-version-hash',
+          manifest: JSON.stringify({ name: 'timing protocol' }),
+          schema_version: 8,
+          source_manifest_hash: 'timing-source-hash',
+        },
+        protocolClient,
+      );
+      await insert(
+        'sections',
+        {
+          team_id: TEAM,
+          hash: 'timing-stage-order-hash',
+          doc: JSON.stringify({ stages: PROTOCOL_STAGES.map(([id]) => id) }),
+        },
+        protocolClient,
+      );
+      await insert(
+        'version_sections',
+        {
+          version_id: versionId,
+          team_id: TEAM,
+          section_id: 'stageOrder',
+          section_hash: 'timing-stage-order-hash',
+        },
+        protocolClient,
+      );
+      for (const [id, type] of PROTOCOL_STAGES) {
+        await insert(
+          'sections',
+          {
+            team_id: TEAM,
+            hash: `timing-${id}-hash`,
+            doc: JSON.stringify({ id, type }),
+          },
+          protocolClient,
+        );
+        await insert(
+          'version_sections',
+          {
+            version_id: versionId,
+            team_id: TEAM,
+            section_id: `stage:${id}`,
+            section_hash: `timing-${id}-hash`,
+          },
+          protocolClient,
+        );
+      }
+      await protocolClient.query('commit');
+    } catch (error) {
+      await protocolClient.query('rollback').catch(() => undefined);
+      throw error;
+    } finally {
+      protocolClient.release();
+    }
     await insert('studies', {
       id: studyId,
       team_id: TEAM,
@@ -127,7 +194,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
       session_id: missingTimingSession,
       node_id: 'missing-timing-node',
       type: 'person',
-      stage_id: 'Information',
+      stage_id: 'info-1',
     });
   });
 
@@ -156,6 +223,14 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
         },
         {
           stageIndex: 1,
+          stageType: 'Information',
+          promptIndex: 0,
+          promptCount: 1,
+          durationMs: 275,
+          exitDirection: 'forward' as const,
+        },
+        {
+          stageIndex: 2,
           stageType: 'Ego',
           promptIndex: 0,
           promptCount: 2,
@@ -163,7 +238,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
           exitDirection: 'forward' as const,
         },
         {
-          stageIndex: 2,
+          stageIndex: 3,
           stageType: 'Edge',
           promptIndex: 1,
           promptCount: 2,
@@ -172,7 +247,7 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
         },
       ],
       promptExits: [],
-      totalDurationMs: 1110,
+      totalDurationMs: 1385,
     };
     await expect(
       writeInterviewTiming(app, {
@@ -182,8 +257,8 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
         holderEpoch,
         syncRevision: 1,
         stageTiming,
-        currentStageIndex: 2,
-        currentStageId: 'edge-stage',
+        currentStageIndex: 3,
+        currentStageId: 'edge-1',
       }),
     ).resolves.toEqual({ kind: 'applied', applied: true, syncRevision: 1 });
 
@@ -198,8 +273,14 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     );
     expect(stored.rows[0]).toMatchObject({
       sync_revision: 1,
-      stage_timing: stageTiming,
-      current_stage_id: 'edge-stage',
+      stage_timing: {
+        ...stageTiming,
+        stageExits: stageTiming.stageExits.map((exit) => ({
+          ...exit,
+          stageId: PROTOCOL_STAGES[exit.stageIndex]![0],
+        })),
+      },
+      current_stage_id: 'edge-1',
     });
     await expect(
       writeInterviewTiming(app, {
@@ -256,13 +337,13 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
     );
     expect(rows.rows).toEqual([
       {
-        stage_id: 'Edge',
+        stage_id: 'edge-1',
         entered_count: 1,
         duration_ms_sum: '35',
         duration_ms_count: 1,
       },
       {
-        stage_id: 'Ego',
+        stage_id: 'ego-1',
         entered_count: 1,
         duration_ms_sum: '950',
         duration_ms_count: 1,
@@ -270,12 +351,28 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
       {
         // The second session produced a node but no timing payload. It counts
         // as observed for drop-off, without inventing any elapsed duration.
-        stage_id: 'Information',
+        stage_id: 'info-1',
         entered_count: 2,
         duration_ms_sum: '125',
         duration_ms_count: 1,
       },
+      {
+        stage_id: 'info-2',
+        entered_count: 1,
+        duration_ms_sum: '275',
+        duration_ms_count: 1,
+      },
     ]);
+    await pool.query(
+      `update study_stage_rollups set stale_at = clock_timestamp() where wave_id = $1 and stage_id = $2`,
+      [waveId, 'info-1'],
+    );
+    await expect(runMonitoringStageRollupOnce(maintenance)).resolves.toEqual({
+      claimed: 1,
+    });
+    await expect(runMonitoringStageRollupOnce(maintenance)).resolves.toEqual({
+      claimed: 0,
+    });
   });
 
   it('rejects implausible timing at the server boundary before writing', async () => {
@@ -306,6 +403,49 @@ describe.skipIf(!db)('Studio timing ingestion and rollups', () => {
       [sessionId],
     );
     expect(row.rows[0]?.sync_revision).toBe(1);
+    await expect(
+      writeInterviewTiming(app, {
+        sessionId,
+        accessToken: token,
+        writerId,
+        holderEpoch,
+        syncRevision: 2,
+        stageTiming: {
+          stageExits: [
+            {
+              stageIndex: 0,
+              stageType: 'Information',
+              promptIndex: 0,
+              promptCount: 1,
+              durationMs: 125,
+              exitDirection: 'forward',
+            },
+          ],
+          totalDurationMs: 124,
+        },
+      }),
+    ).rejects.toThrow('totalDurationMs');
+    await expect(
+      writeInterviewTiming(app, {
+        sessionId,
+        accessToken: token,
+        writerId,
+        holderEpoch,
+        syncRevision: 2,
+        stageTiming: {
+          stageExits: [
+            {
+              stageIndex: 0,
+              stageType: 'InventedStage',
+              promptIndex: 0,
+              promptCount: 1,
+              durationMs: 125,
+              exitDirection: 'forward',
+            },
+          ],
+        },
+      }),
+    ).rejects.toThrow('pinned protocol');
   });
 
   it('does not expose another tenant through the maintenance rollup path', async () => {

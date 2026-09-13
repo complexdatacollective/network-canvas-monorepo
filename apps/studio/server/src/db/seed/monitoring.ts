@@ -76,7 +76,7 @@ export async function seedMonitoringRollups(
        stale_at, recomputed_at)
      with timing as (
        select s.team_id, s.study_id, s.wave_id, s.id as session_id, s.status,
-              exit_item->>'stageType' as stage_id,
+              exit_item->>'stageId' as stage_id,
               (exit_item->>'durationMs')::bigint as duration_ms
        from interview_sessions s
        cross join lateral jsonb_array_elements(

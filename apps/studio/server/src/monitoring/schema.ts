@@ -50,6 +50,11 @@ const studyWaveRollups = pgTable(
     // Set by participant erasure and by any operation this rollup cannot be
     // incrementally corrected for; cleared by the recompute job.
     staleAt: timestamp('stale_at', { withTimezone: true }),
+    leaseOwner: text('lease_owner'),
+    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    lastError: text('last_error'),
     recomputedAt: timestamp('recomputed_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -70,7 +75,7 @@ const studyWaveRollups = pgTable(
       sql`${table.invitedCount} >= 0 AND ${table.onboardingStartedCount} >= 0
           AND ${table.consentedCount} >= 0 AND ${table.sessionStartedCount} >= 0
           AND ${table.sessionCompletedCount} >= 0 AND ${table.sessionAbandonedCount} >= 0
-          AND ${table.deliveryFailedCount} >= 0`,
+          AND ${table.deliveryFailedCount} >= 0 AND ${table.attemptCount} >= 0`,
     ),
     ...teamIsolationPolicies(),
   ],
@@ -95,6 +100,11 @@ const studyStageRollups = pgTable(
     durationMsCount: integer('duration_ms_count').notNull().default(0),
     missingItemCount: integer('missing_item_count').notNull().default(0),
     staleAt: timestamp('stale_at', { withTimezone: true }),
+    leaseOwner: text('lease_owner'),
+    leaseExpiresAt: timestamp('lease_expires_at', { withTimezone: true }),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    lastError: text('last_error'),
     recomputedAt: timestamp('recomputed_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -114,6 +124,7 @@ const studyStageRollups = pgTable(
       sql`${table.enteredCount} >= 0 AND ${table.completedCount} >= 0
           AND ${table.abandonedCount} >= 0 AND ${table.durationMsSum} >= 0
           AND ${table.durationMsCount} >= 0 AND ${table.missingItemCount} >= 0
+          AND ${table.attemptCount} >= 0
           AND char_length(${table.stageId}) BETWEEN 1 AND 128`,
     ),
     ...teamIsolationPolicies(),

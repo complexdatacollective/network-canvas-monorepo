@@ -3,7 +3,10 @@ import { createHash } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
 
-import type { StageTimingPayload } from '@codaco/interview/contract';
+import type {
+  StageTimingExit,
+  StageTimingPayload,
+} from '@codaco/interview/contract';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 /** A revision may advance only by a bounded amount in one unauthenticated write. */
@@ -113,7 +116,25 @@ export class SessionTimingError extends Error {
   }
 }
 
+export class StageTimingValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StageTimingValidationError';
+  }
+}
+
 type TokenParts = { teamId: string; tokenHash: Buffer };
+
+type AuthoritativeStage = { id: string; type: string };
+type StoredStageExit = StageTimingExit & { stageId: string };
+type StoredPromptExit = StageTimingExit & { stageId?: string };
+type StoredStageTiming = Omit<
+  StageTimingPayload,
+  'stageExits' | 'promptExits'
+> & {
+  stageExits: StoredStageExit[];
+  promptExits?: StoredPromptExit[];
+};
 
 function tokenParts(accessToken: string): TokenParts {
   const separator = accessToken.indexOf('.');
@@ -159,6 +180,98 @@ function validateWrite(input: SessionTimingWrite): SessionTimingWrite {
   return parsed;
 }
 
+function record(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function authoritativeStages(
+  client: pg.PoolClient,
+  versionId: string,
+): Promise<AuthoritativeStage[]> {
+  const result = await client.query<{ section_id: string; doc: unknown }>(
+    `select vs.section_id, s.doc
+       from version_sections vs
+       join sections s
+         on s.team_id = vs.team_id and s.hash = vs.section_hash
+      where vs.version_id = $1
+      order by vs.section_id`,
+    [versionId],
+  );
+  const docs = new Map(result.rows.map((row) => [row.section_id, row.doc]));
+  const stageOrderDoc = docs.get('stageOrder');
+  const order = record(stageOrderDoc) ? stageOrderDoc.stages : undefined;
+  if (!Array.isArray(order) || !order.every((id) => typeof id === 'string')) {
+    throw new Error('published protocol has no valid stage order');
+  }
+  return order.map((id) => {
+    const stageDoc = docs.get(`stage:${id}`);
+    const type = record(stageDoc) ? stageDoc.type : undefined;
+    if (typeof type !== 'string' || type.length === 0) {
+      throw new Error(`published protocol stage ${id} has no type`);
+    }
+    return { id, type };
+  });
+}
+
+function resolveExit(
+  exit: StageTimingExit,
+  stages: readonly AuthoritativeStage[],
+  allowFinish: boolean,
+): StoredStageExit | StoredPromptExit {
+  const stage = stages[exit.stageIndex];
+  if (stage !== undefined) {
+    if (exit.stageType !== stage.type) {
+      throw new StageTimingValidationError(
+        `stage ${exit.stageIndex} does not match the pinned protocol`,
+      );
+    }
+    return { ...exit, stageId: stage.id, stageType: stage.type };
+  }
+  if (
+    allowFinish &&
+    exit.stageIndex === stages.length &&
+    exit.stageType === 'FinishSession'
+  ) {
+    return { ...exit, stageType: 'FinishSession' };
+  }
+  throw new StageTimingValidationError(
+    `stage ${exit.stageIndex} is not present in the pinned protocol`,
+  );
+}
+
+function normalizeTiming(
+  timing: StageTimingPayload,
+  stages: readonly AuthoritativeStage[],
+): StoredStageTiming {
+  const parsed = StageTimingSchema.parse(timing);
+  const stageExits = parsed.stageExits.map((exit) => {
+    const resolved = resolveExit(exit, stages, false);
+    if (!('stageId' in resolved) || resolved.stageId === undefined) {
+      throw new StageTimingValidationError('authored stage has no id');
+    }
+    return { ...resolved, stageId: resolved.stageId };
+  });
+  const promptExits = parsed.promptExits?.map((exit) =>
+    resolveExit(exit, stages, true),
+  );
+  const stageTotal = stageExits.reduce((sum, exit) => sum + exit.durationMs, 0);
+  if (
+    parsed.totalDurationMs !== undefined &&
+    parsed.totalDurationMs !== stageTotal
+  ) {
+    throw new StageTimingValidationError(
+      'totalDurationMs must equal retained authored stage intervals',
+    );
+  }
+  return {
+    stageExits,
+    ...(promptExits === undefined ? {} : { promptExits }),
+    ...(parsed.totalDurationMs === undefined
+      ? {}
+      : { totalDurationMs: parsed.totalDurationMs }),
+  };
+}
+
 async function lockedLinkedSession(
   client: pg.PoolClient,
   sessionId: string,
@@ -167,6 +280,7 @@ async function lockedLinkedSession(
   teamId: string;
   studyId: string;
   waveId: string;
+  protocolVersionId: string;
   status: 'in_progress' | 'completed' | 'abandoned';
   holderId: string | null;
   holderEpoch: string;
@@ -177,13 +291,14 @@ async function lockedLinkedSession(
     team_id: string;
     study_id: string;
     wave_id: string;
+    protocol_version_id: string;
     status: 'in_progress' | 'completed' | 'abandoned';
     holder_id: string | null;
     holder_epoch: string;
     sync_revision: number;
     stage_timing: StageTimingPayload | null;
   }>(
-    `select s.team_id, s.study_id, s.wave_id, s.status, s.holder_id,
+    `select s.team_id, s.study_id, s.wave_id, s.protocol_version_id, s.status, s.holder_id,
             s.holder_epoch, s.sync_revision, s.stage_timing
        from interview_sessions s
        join interview_links l
@@ -201,6 +316,7 @@ async function lockedLinkedSession(
     teamId: row.team_id,
     studyId: row.study_id,
     waveId: row.wave_id,
+    protocolVersionId: row.protocol_version_id,
     status: row.status,
     holderId: row.holder_id,
     holderEpoch: row.holder_epoch,
@@ -288,9 +404,36 @@ export async function writeInterviewTiming(
       };
     }
 
+    const stages = await authoritativeStages(client, row.protocolVersionId);
     const timing = input.stageTiming
-      ? StageTimingSchema.parse(input.stageTiming)
+      ? normalizeTiming(input.stageTiming, stages)
       : undefined;
+    if (
+      input.currentStageId !== undefined &&
+      input.currentStageIndex === undefined
+    ) {
+      throw new StageTimingValidationError(
+        'current stage id requires its protocol index',
+      );
+    }
+    if (input.currentStageIndex !== undefined) {
+      const stage = stages[input.currentStageIndex];
+      const isFinish = input.currentStageIndex === stages.length;
+      if (stage === undefined && !isFinish) {
+        throw new StageTimingValidationError(
+          'current stage is not in protocol',
+        );
+      }
+      if (
+        input.currentStageId !== undefined &&
+        input.currentStageId !== null &&
+        input.currentStageId !== (isFinish ? 'FinishSession' : stage?.id)
+      ) {
+        throw new StageTimingValidationError(
+          'current stage does not match the pinned protocol',
+        );
+      }
+    }
     const values: unknown[] = [
       input.sessionId,
       input.syncRevision,
