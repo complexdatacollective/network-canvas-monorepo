@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -38,6 +39,7 @@ import {
   isValidationMap,
   rulesSurvivingTypeChange,
   type ValidationMap,
+  type VariableOverlay,
 } from '../codebook/variableValidation.ts';
 import { useCodebookSectionWrite } from '../codebook/writes.ts';
 import { createdUnassigned } from '../fields/VariablePickerField.tsx';
@@ -52,6 +54,9 @@ import {
 
 /** Where a row that binds an attribute usually keeps the attribute it binds. */
 const DEFAULT_VARIABLE_FIELD = 'variable';
+
+/** Where a row that keeps its own control's settings usually keeps them. */
+const DEFAULT_PARAMETERS_FIELD = 'parameters';
 
 /**
  * No rules were taken off the draft — held as one value so that saying so
@@ -218,6 +223,40 @@ export type AttributeCodebookControlsProps = Readonly<{
    */
   componentField: string;
   /**
+   * Where in the row the settings that control takes live, for a caller whose
+   * row keeps them (`offerParameters` false).
+   *
+   * Read only to be handed to the rules editor, which judges a rule against
+   * what the field will actually render: the two date pickers' windows, and a
+   * boolean's domain, are the field's `component` and `parameters` rather than
+   * the codebook's. Never written here — that is what `offerParameters` is
+   * about.
+   */
+  parametersField?: string;
+  /**
+   * How the rest of the same form renders ITS attributes, for a caller whose
+   * rows keep their own control and settings (`offerParameters` false).
+   *
+   * Keyed by the attribute each of those rows records into. A rule comparing
+   * this answer with another one the same form asks for is satisfiable or not
+   * in the renderings BOTH arrive with — two codebook dates that overlap can
+   * be pulled apart by a window one FIELD puts on one of them, and two
+   * booleans the codebook leaves open can be pinned to one value each by the
+   * controls the fields choose. Judged against the codebook's renderings for
+   * the comparison target, the editor accepted rules the saved form makes
+   * impossible and blocked rules it makes fine.
+   */
+  siblingRenderings?: VariableOverlay;
+  /**
+   * Attributes whose rendering neither this form nor this row decides —
+   * overridden by a form somewhere else, at a control this surface cannot see.
+   *
+   * See `StageRendering.unknownRenderings`: judged at the codebook's control
+   * they would be judged at one nothing renders them with, which can refuse a
+   * comparison the protocol accepts.
+   */
+  unknownRenderings?: ReadonlySet<string>;
+  /**
    * The attribute this row is inventing, while it is inventing one.
    *
    * One prop rather than three, because the three are one fact about the row
@@ -301,6 +340,9 @@ export default function AttributeCodebookControls({
   committedVariable,
   variableField = DEFAULT_VARIABLE_FIELD,
   componentField,
+  parametersField = DEFAULT_PARAMETERS_FIELD,
+  siblingRenderings,
+  unknownRenderings,
   inventing,
   offerParameters = true,
   offerRules = true,
@@ -322,6 +364,7 @@ export default function AttributeCodebookControls({
   const chosen =
     asString(useRowValue(variableField) ?? committedVariable) ?? '';
   const liveComponent = useRowValue(componentField);
+  const liveParameters = useRowValue(parametersField);
   /**
    * The rules the row is holding for an attribute it has not created yet.
    *
@@ -530,6 +573,35 @@ export default function AttributeCodebookControls({
     offerParameters &&
     picked !== undefined &&
     parameterShapeFor(pickedType, pickedComponent) !== null;
+  /**
+   * What the rules editor judges this attribute's rules against: this row's
+   * own control and settings, and the renderings the rest of the form gives
+   * the attributes those rules can compare this one with.
+   *
+   * Only where the STAGE owns the rendering: everywhere else the codebook's
+   * own pair is already on the attribute the editor reads, and restating it
+   * here would say nothing.
+   */
+  const stageRendering = useMemo(
+    () =>
+      offerParameters
+        ? undefined
+        : {
+            component: pickedComponent,
+            parameters: liveParameters,
+            ...(siblingRenderings === undefined
+              ? {}
+              : { overlay: siblingRenderings }),
+            ...(unknownRenderings === undefined ? {} : { unknownRenderings }),
+          },
+    [
+      liveParameters,
+      offerParameters,
+      pickedComponent,
+      siblingRenderings,
+      unknownRenderings,
+    ],
+  );
   /**
    * The kind of answer the row is inventing, once the researcher has said what
    * it is. Everything below is decided by it.
@@ -1179,6 +1251,7 @@ export default function AttributeCodebookControls({
               allVariables={variables}
               value={openEditor.draftRules}
               readOnly={readOnly}
+              {...(stageRendering === undefined ? {} : { stageRendering })}
               onSave={(validation) => {
                 // What this writes is the draft as the researcher has just
                 // seen it, against the kind the row holds now — so whatever an
@@ -1208,6 +1281,7 @@ export default function AttributeCodebookControls({
               authoritativeEntityDocument={openEditor.document}
               allSubjectVariables={editorVariables}
               readOnly={editorReadOnly}
+              {...(stageRendering === undefined ? {} : { stageRendering })}
               onSubmitDocument={submitEdit(
                 openEditor.subject,
                 openEditor.variableId,

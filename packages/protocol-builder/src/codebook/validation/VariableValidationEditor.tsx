@@ -9,14 +9,15 @@ import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import { missingComparisonTargetMessage } from '../codebookMessages.ts';
 import {
   completeRuleValues,
-  findLegalReferenceTargets,
+  findOfferableReferenceTargets,
   formatCommitted,
   getGroupedValidationsForVariableType,
   isValidationWithListValue,
   isValidationWithNumberValue,
   isValidationWithoutValue,
   parseForRule,
-  ruleMapIssue,
+  ruleMapIssueForWrite,
+  type StageRendering,
   type ValidationMap,
   type ValidationValue,
 } from '../variableValidation.ts';
@@ -71,6 +72,16 @@ type VariableValidationEditorProps = Readonly<{
    * message is added to it while the editor is stating one.
    */
   'aria-describedby'?: string;
+  /**
+   * How the STAGE renders the attributes this rule map compares, where the
+   * codebook does not decide it — see `StageRendering`.
+   *
+   * Judged against the codebook's renderings instead, a contradiction this one
+   * dialog is able to author went unreported, and a comparison the form's own
+   * renderings make satisfiable was blocked. Omitted wherever the codebook's
+   * own control is what the interview renders, which is every other caller.
+   */
+  'stageRendering'?: StageRendering;
 }>;
 
 const messages = defineMessages({
@@ -190,6 +201,7 @@ export default function VariableValidationEditor({
   'aria-invalid': ariaInvalid,
   fieldIssue,
   'aria-describedby': fieldDescribedBy,
+  stageRendering,
 }: VariableValidationEditorProps) {
   const intl = useAppIntl();
   const editorId = useId();
@@ -244,6 +256,10 @@ export default function VariableValidationEditor({
     () => candidates.map(({ id }) => id),
     [candidates],
   );
+  // Offered against the same readings the verdict below is given against: a
+  // target the field's own rendering cannot satisfy is not a choice, and
+  // neither is one the codebook record this rule is saved on cannot hold —
+  // offering either made the researcher pick it to be told so.
   const legalTargets = useMemo(() => {
     const completeValidation = completeRuleValues(value);
     return new Map(
@@ -252,14 +268,17 @@ export default function VariableValidationEditor({
         .filter(({ value: ruleKey }) => isValidationWithListValue(ruleKey))
         .map(({ value: ruleKey }) => [
           ruleKey,
-          findLegalReferenceTargets({
-            allVariables: { ...allVariables },
-            currentVariableId,
-            variableType,
-            validation: completeValidation,
-            ruleKey,
-            candidateIds,
-          }),
+          findOfferableReferenceTargets(
+            {
+              allVariables: { ...allVariables },
+              currentVariableId,
+              variableType,
+              validation: completeValidation,
+              ruleKey,
+              candidateIds,
+            },
+            stageRendering,
+          ),
         ]),
     );
   }, [
@@ -267,6 +286,7 @@ export default function VariableValidationEditor({
     candidateIds,
     currentVariableId,
     groups,
+    stageRendering,
     value,
     variableType,
   ]);
@@ -284,11 +304,15 @@ export default function VariableValidationEditor({
   const issue =
     missingTargetRule === undefined
       ? readIssue(
-          ruleMapIssue(value, {
-            allVariables: { ...allVariables },
-            currentVariableId,
-            variableType,
-          }),
+          ruleMapIssueForWrite(
+            value,
+            {
+              allVariables: { ...allVariables },
+              currentVariableId,
+              variableType,
+            },
+            stageRendering,
+          ),
           intl,
         )
       : intl.formatMessage(missingComparisonTargetMessage);

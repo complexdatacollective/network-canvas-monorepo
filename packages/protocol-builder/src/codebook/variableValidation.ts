@@ -109,6 +109,13 @@ const messages = defineMessages({
     description:
       'Refusal shown when a counting rule was given a number below what it allows. rule is the schema’s own name for the rule, such as maxSelected, and is not translated; floor is the smallest number it accepts.',
   },
+  codebookRenderingContradiction: {
+    id: 'protocolBuilder.variableValidation.codebookRenderingContradiction',
+    defaultMessage:
+      'These rules are saved on the attribute itself, so the codebook’s own input controls decide whether they can be met — not this form’s. {contradiction}',
+    description:
+      'Refusal shown in a stage’s rules editor when a comparison the form’s own input controls would allow cannot be saved, because the rules are stored on the codebook attribute and the controls the codebook gives those attributes cannot satisfy the comparison. contradiction is the sentence the protocol’s own validation writes about it, already translated.',
+  },
   validatedElsewhere: {
     id: 'protocolBuilder.variableValidation.validatedElsewhere',
     defaultMessage:
@@ -1010,6 +1017,176 @@ const withOverlay = (
     });
   }
   return Object.fromEntries(entries);
+};
+
+const NO_UNKNOWN_RENDERINGS: ReadonlySet<string> = new Set();
+
+/**
+ * What a STAGE decides about how the attributes it renders are asked for,
+ * where the codebook does not decide it.
+ *
+ * A network composer's form field keeps its own `component` and `parameters`,
+ * and the analyser reads both: a date window is the picker's own
+ * `before`/`after`, and a boolean's domain is the control's options. The field
+ * being edited hands its own pair; `overlay` is every OTHER field of the same
+ * form, keyed by the attribute it renders, because a rule comparing two
+ * answers is satisfiable or not in the renderings BOTH of them arrive with.
+ */
+export type StageRendering = Readonly<{
+  component?: unknown;
+  parameters?: unknown;
+  overlay?: VariableOverlay;
+  /**
+   * Attributes whose rendering THIS form does not decide and some other form
+   * does — a composer form elsewhere in the protocol overriding the same
+   * attribute's control.
+   *
+   * Left in, they would be judged at a codebook control nothing renders them
+   * with: a boolean the codebook declares as a choice of one value, rendered
+   * as a toggle by the form that actually asks for it, would pin a comparison
+   * this form can never see. Dropped from the judged set instead, which is
+   * what protocol validation does with them (`schema.ts`'s
+   * `unknownRenderingFor`) and for the same reason — an accept-direction gap
+   * is preferred to a refusal of something satisfiable.
+   */
+  unknownRenderings?: ReadonlySet<string>;
+}>;
+
+/**
+ * The part of a rule check the stage's own renderings decide, for an editor to
+ * spread over the rest of its context.
+ *
+ * One helper for `ruleMapIssue` and `findLegalReferenceTargets` alike, so the
+ * rules a surface OFFERS and the verdict it gives are read from one view. The
+ * view is resolved rather than guessed — every attribute this form renders
+ * carries the form's own pair — which is what earns
+ * `stageEffectiveComponents`: the analyser reads a `Boolean` control's
+ * `options` as the participant-facing domain only from a caller that has
+ * settled each variable's rendering, and it is exactly the reading protocol
+ * validation makes of the saved form (`schema.ts`'s composer overlay). Absent
+ * where the codebook's own control is what the interview renders, which is
+ * every other caller.
+ *
+ * Never the only reading, though: a validation rule is written to the CODEBOOK
+ * attribute, so `bothRenderingViews` pairs this one with the codebook's own —
+ * see there.
+ */
+const stageRenderingContext = (
+  allVariables: UnknownRecord,
+  stageRendering: StageRendering | undefined,
+): Readonly<{
+  allVariables: UnknownRecord;
+  component?: unknown;
+  parameters?: unknown;
+  stageEffectiveComponents?: boolean;
+}> =>
+  stageRendering === undefined
+    ? { allVariables }
+    : {
+        allVariables: withOverlay(
+          withoutUnknownRenderings(
+            allVariables,
+            stageRendering.unknownRenderings ?? NO_UNKNOWN_RENDERINGS,
+            NO_UNKNOWN_RENDERINGS,
+          ),
+          stageRendering.overlay,
+        ),
+        component: stageRendering.component,
+        parameters: stageRendering.parameters,
+        stageEffectiveComponents: true,
+      };
+
+/**
+ * The two readings a rule set on a composer field has to pass.
+ *
+ * A validation rule is authored on a stage, but it is SAVED on the codebook
+ * attribute, and each of those is judged by something different. Protocol
+ * validation reads the saved stage through the form's own controls
+ * (`stageRenderingContext`), and reads the codebook record through the
+ * attribute's own — `rejectValidationContradictions` in
+ * `protocol-validation`'s `variables/variable.ts`, over the entity's variables
+ * with no stage overlay at all. A rule the form makes satisfiable is still
+ * refused by the write when the codebook's own controls cannot hold it, which
+ * is why the form's reading may only ever take a target away, never add one.
+ *
+ * So both readings are run and a target is offered, and a rule accepted, only
+ * where both accept. `undefined` in the second slot for a caller whose surface
+ * IS the codebook: there is one reading there, and running it twice would say
+ * the same thing twice.
+ */
+const bothRenderingViews = (
+  allVariables: UnknownRecord,
+  stageRendering: StageRendering | undefined,
+): readonly [
+  ReturnType<typeof stageRenderingContext>,
+  ReturnType<typeof stageRenderingContext> | undefined,
+] =>
+  stageRendering === undefined
+    ? [stageRenderingContext(allVariables, undefined), undefined]
+    : [
+        stageRenderingContext(allVariables, stageRendering),
+        stageRenderingContext(allVariables, undefined),
+      ];
+
+/** What a caller brings to a rule check, less what the renderings decide. */
+type RenderingFree<T> = Omit<
+  T,
+  'allVariables' | 'component' | 'parameters' | 'stageEffectiveComponents'
+> &
+  Readonly<{ allVariables: UnknownRecord }>;
+
+/**
+ * The comparison targets a surface may offer: legal in BOTH readings.
+ *
+ * The codebook run is given the targets the form's reading already accepted
+ * rather than the whole list, so what comes back is the intersection and the
+ * second analyser pass costs only what the first left standing.
+ */
+export const findOfferableReferenceTargets = (
+  input: RenderingFree<ReferenceTargetLegalityInput>,
+  stageRendering: StageRendering | undefined,
+): Set<string> => {
+  const [stageView, codebookView] = bothRenderingViews(
+    input.allVariables,
+    stageRendering,
+  );
+  const legal = findLegalReferenceTargets({ ...input, ...stageView });
+  if (codebookView === undefined || legal.size === 0) return legal;
+  return findLegalReferenceTargets({
+    ...input,
+    ...codebookView,
+    candidateIds: [...legal],
+  });
+};
+
+/**
+ * What stands in the way of WRITING this rule map, in the reader's own terms.
+ *
+ * The form's own reading first, because a contradiction between the controls
+ * the researcher is looking at is the one they can act on where they are
+ * standing. A rule those controls make satisfiable but the codebook record
+ * cannot hold is reported too — it is the save that would fail otherwise, with
+ * nothing said about why — and it says which of the two refused it, because
+ * "these dates cannot overlap" in front of two fields that plainly do overlap
+ * reads as the application being wrong.
+ */
+export const ruleMapIssueForWrite = (
+  value: unknown,
+  context: RenderingFree<RuleMapContext>,
+  stageRendering: StageRendering | undefined,
+): string | undefined => {
+  const [stageView, codebookView] = bothRenderingViews(
+    context.allVariables,
+    stageRendering,
+  );
+  const stageIssue = ruleMapIssue(value, { ...context, ...stageView });
+  if (stageIssue !== undefined || codebookView === undefined) return stageIssue;
+  const codebookIssue = ruleMapIssue(value, { ...context, ...codebookView });
+  return codebookIssue === undefined
+    ? undefined
+    : createMessageError(messages.codebookRenderingContradiction, {
+        contradiction: { messageError: codebookIssue },
+      });
 };
 
 const withoutUnknownRenderings = (

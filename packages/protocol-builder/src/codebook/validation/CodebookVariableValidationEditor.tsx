@@ -32,7 +32,8 @@ import { codebookRefusalMessage } from '../compoundFailureCopy.ts';
 import { documentWithUpdatedVariable } from '../editing.ts';
 import {
   isValidationWithListValue,
-  ruleMapIssue,
+  ruleMapIssueForWrite,
+  type StageRendering,
   type ValidationMap,
   type ValidationValue,
 } from '../variableValidation.ts';
@@ -177,6 +178,13 @@ export type CodebookVariableValidationEditorProps = Readonly<{
   onComplete?(
     outcome: Extract<CodebookWriteOutcome, { status: 'applied' }>,
   ): void;
+  /**
+   * How the STAGE renders the attributes these rules compare, where the
+   * codebook does not decide it — see `StageRendering`. Handed on to
+   * `VariableValidationEditor`, so the save gate and the rules in front of the
+   * researcher judge one view between them.
+   */
+  stageRendering?: StageRendering;
 }>;
 
 /**
@@ -234,6 +242,7 @@ export default function CodebookVariableValidationEditor({
   readOnly = false,
   onSubmitDocument,
   onComplete,
+  stageRendering,
 }: CodebookVariableValidationEditorProps) {
   const intl = useAppIntl();
   const authoritativeVariable = variableFromDocument(
@@ -300,13 +309,22 @@ export default function CodebookVariableValidationEditor({
     : attributeTypeChanged
       ? intl.formatMessage(messages.typeChangedIssue)
       : (missingTargetIssue(validation, variablesForValidation, intl) ??
-        ruleMapIssue(validation, {
-          allVariables: Object.fromEntries(
-            Object.entries(variablesForValidation),
-          ),
-          currentVariableId: variableId,
-          variableType: openedOnType,
-        }));
+        ruleMapIssueForWrite(
+          validation,
+          {
+            allVariables: Object.fromEntries(
+              Object.entries(variablesForValidation),
+            ),
+            currentVariableId: variableId,
+            variableType: openedOnType,
+            // The values from the document this editor was opened against,
+            // which is the freshest the host has: a rule about how many of
+            // them an answer may hold is judged against the list the attribute
+            // actually carries now.
+            options: authoritativeVariable?.options,
+          },
+          stageRendering,
+        ));
   const dirty = canonicalize(validation) !== canonicalize(committedValidation);
   const variableName =
     authoritativeVariable !== undefined &&
@@ -429,6 +447,7 @@ export default function CodebookVariableValidationEditor({
                 value={validation}
                 onChange={setValidation}
                 readOnly={readOnly || busy || attributeTypeChanged}
+                {...(stageRendering === undefined ? {} : { stageRendering })}
               />
             )}
 
@@ -461,6 +480,16 @@ export type DraftVariableValidationEditorProps = Readonly<{
   /** The rules the row is already holding for it. */
   value: Readonly<ValidationMap>;
   readOnly?: boolean;
+  /**
+   * The same fact its twin above takes, for the same reason: a network
+   * composer's row keeps its own `component` and `parameters`, and the
+   * contradiction analyser reads both, for this row and for the siblings it
+   * compares itself with. An attribute the row is INVENTING has no codebook
+   * entry at all, so the field's pair is the only rendering there is — judged
+   * without it, a rule this one dialog is able to contradict was reported
+   * nowhere.
+   */
+  stageRendering?: StageRendering;
   /** Takes the rules onto the row, to be written with the create. */
   onSave(validation: ValidationMap): void;
 }>;
@@ -490,6 +519,7 @@ export function DraftVariableValidationEditor({
   allVariables,
   value,
   readOnly = false,
+  stageRendering,
   onSave,
 }: DraftVariableValidationEditorProps) {
   const intl = useAppIntl();
@@ -508,14 +538,18 @@ export function DraftVariableValidationEditor({
 
   const issue =
     missingTargetIssue(validation, allVariables, intl) ??
-    ruleMapIssue(validation, {
-      allVariables: Object.fromEntries(Object.entries(allVariables)),
-      // Nothing to exclude from the comparison targets: the attribute these
-      // rules belong to has no record key yet, so no rule can point at it.
-      currentVariableId: '',
-      variableType,
-      draftVariableName: variableName,
-    });
+    ruleMapIssueForWrite(
+      validation,
+      {
+        allVariables: Object.fromEntries(Object.entries(allVariables)),
+        // Nothing to exclude from the comparison targets: the attribute these
+        // rules belong to has no record key yet, so no rule can point at it.
+        currentVariableId: '',
+        variableType,
+        draftVariableName: variableName,
+      },
+      stageRendering,
+    );
   const headingTag = useSurfaceHeadingTag();
 
   return (
@@ -545,6 +579,7 @@ export function DraftVariableValidationEditor({
               value={validation}
               onChange={setValidation}
               readOnly={readOnly}
+              {...(stageRendering === undefined ? {} : { stageRendering })}
             />
 
             <div className="flex flex-wrap justify-end gap-3">
