@@ -25,7 +25,10 @@ import {
   type VerifiedStudioRecoveryAuthorizationEvidence,
   verifyStudioRecoveryAuthorizationEvidence,
 } from '../authorization-reconciliation.ts';
-import { authorizeCurrentStudioRecovery } from '../authorization.ts';
+import {
+  authorizeCurrentStudioRecovery,
+  pauseRestoredScheduleActivity,
+} from '../authorization.ts';
 
 const sha = '1'.repeat(64);
 const runFile = promisify(execFile);
@@ -66,6 +69,38 @@ function evidence() {
 }
 
 describe('Studio recovery authorization reconciliation evidence', () => {
+  it('pauses every restored schedule and cancels every pending occurrence', async () => {
+    const schedules = new Map([
+      ['active-schedule', 'active'],
+      ['already-paused', 'paused'],
+    ]);
+    const occurrences = new Map([
+      ['pending-occurrence', 'scheduled'],
+      ['already-dispatched', 'dispatched'],
+    ]);
+    const query = async (text: string): Promise<pg.QueryResult> => {
+      if (
+        text.includes('UPDATE study_schedules') &&
+        text.includes("WHERE state = 'active'")
+      ) {
+        for (const [id, state] of schedules)
+          if (state === 'active') schedules.set(id, 'paused');
+      } else if (text.includes('UPDATE schedule_occurrences')) {
+        for (const [id, state] of occurrences)
+          if (state === 'scheduled') occurrences.set(id, 'cancelled');
+      }
+      return { command: 'UPDATE', rowCount: 1, oid: 0, rows: [], fields: [] };
+    };
+    const client: Pick<pg.PoolClient, 'query'> = {
+      query: query as pg.PoolClient['query'],
+    };
+
+    await pauseRestoredScheduleActivity(client);
+
+    expect([...schedules.values()]).toEqual(['paused', 'paused']);
+    expect([...occurrences.values()]).toEqual(['cancelled', 'dispatched']);
+  });
+
   it('verifies exact canonical bytes with an independently identified Ed25519 key', () => {
     const { publicKey, privateKey } = generateKeyPairSync('ed25519');
     const bytes = Buffer.from(canonicalize(evidence()));

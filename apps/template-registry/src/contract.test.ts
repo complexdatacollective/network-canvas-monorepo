@@ -667,6 +667,48 @@ describe('generated registry OpenAPI', () => {
       for (const parameter of freeTextParameters) {
         expect(parameter.allowReserved).toBe(false);
       }
+      for (const path of Object.values(candidate.paths ?? {})) {
+        if (!path) continue;
+        for (const method of ['get', 'post', 'put', 'delete'] as const) {
+          const operation = path[method];
+          for (const parameter of operation?.parameters ?? []) {
+            if (record(parameter).in === 'query')
+              expect(record(parameter).allowEmptyValue).toBe(false);
+          }
+        }
+      }
+
+      const accountWriteOperations = [
+        ['post', '/account/publisher'],
+        ['post', '/account/tokens'],
+        ['delete', '/account/tokens/{id}'],
+        ['post', '/account/moderation/entries/{id}/takedown'],
+        ['post', '/account/moderation/entries/{id}/restore'],
+        ['delete', '/account/moderation/artifacts/{root}'],
+        ['put', '/account/moderation/publishers/{id}/suspension'],
+        ['put', '/account/moderation/entries/{id}/curation'],
+        ['post', '/account/moderation/reports'],
+      ] as const;
+      for (const [method, path] of accountWriteOperations) {
+        const operation = record(record(record(candidate.paths)[path])[method]);
+        const operationParameters = Array.isArray(operation.parameters)
+          ? operation.parameters
+          : [];
+        const originParameters = operationParameters
+          .map(record)
+          .filter(
+            (parameter) =>
+              parameter.in === 'header' && parameter.name === 'Origin',
+          );
+        expect(originParameters).toEqual([
+          expect.objectContaining({
+            name: 'Origin',
+            in: 'header',
+            required: true,
+            schema: { type: 'string' },
+          }),
+        ]);
+      }
       const metadata = record(
         record(record(record(candidate.components).schemas).Entry).properties,
       );

@@ -738,6 +738,7 @@ describe.skipIf(!db)('invitation delivery outbox', () => {
         claimed: 1,
         completed: 0,
         retried: 1,
+        recovered: 0,
         failed: 0,
         suppressed: 0,
         uncertain: 0,

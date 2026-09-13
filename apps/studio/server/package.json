@@ -31,7 +31,8 @@
     "typecheck": "tsc --build --noEmit",
     "test": "vitest run",
     "test:qualification": "vitest run --config vitest.qualification.config.ts",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "recovery:evidence": "node src/recovery-evidence.ts"
   },
   "dependencies": {
     "@aws-sdk/client-kms": "3.1102.0",

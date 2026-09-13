@@ -61,6 +61,39 @@ resource "cloudflare_r2_bucket" "primary" {
   }
 }
 
+# Runtime tombstones perform prompt, attempt-specific cleanup. R2 lifecycle is
+# the independent backstop for effects that outlive a client abort or a worker
+# outage; ready export handles expire after fifteen minutes, well before this
+# seven-day provider retention boundary.
+resource "cloudflare_r2_bucket_lifecycle" "audit_export_backstop" {
+  for_each = {
+    for purpose, bucket in cloudflare_r2_bucket.primary : purpose => bucket
+    if startswith(purpose, "studio-")
+  }
+
+  account_id  = var.cloudflare_account_id
+  bucket_name = each.value.name
+  rules = [{
+    id      = "audit-export-backstop"
+    enabled = true
+    conditions = {
+      prefix = "audit-exports/"
+    }
+    abort_multipart_uploads_transition = {
+      condition = {
+        max_age = 604800
+        type    = "Age"
+      }
+    }
+    delete_objects_transition = {
+      condition = {
+        max_age = 604800
+        type    = "Age"
+      }
+    }
+  }]
+}
+
 data "crunchybridge_cloudprovider" "aws" {
   provider_id = "aws"
 }

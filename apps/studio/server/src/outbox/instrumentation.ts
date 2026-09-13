@@ -6,12 +6,15 @@ export type OutboxQueue =
   | 'message_deliveries'
   | 'webhook_deliveries'
   | 'study_wave_rollups'
-  | 'study_stage_rollups';
+  | 'study_stage_rollups'
+  | 'template_registry_intents';
 
 export type OutboxDispatchResult = {
   claimed: number;
   completed: number;
   retried: number;
+  /** Rows recovered from an expired post-handoff lease for another attempt. */
+  recovered: number;
   failed: number;
   suppressed: number;
   uncertain: number;

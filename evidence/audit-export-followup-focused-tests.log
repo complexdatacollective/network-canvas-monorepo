@@ -1,0 +1,13 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server
+
+{"level":30,"time":"2026-09-13T13:02:24.391Z","event":"http_request","request_id":"38b55972-cee5-4490-8b72-c94bb63345be","route":"client","method":"GET","status":200,"duration_ms":5.985}
+{"level":30,"time":"2026-09-13T13:02:28.856Z","event":"http_request","request_id":"ed929a58-6edd-47e6-9518-5da527b3738c","route":"/storage","method":"POST","status":401,"duration_ms":0.706}
+{"level":30,"time":"2026-09-13T13:02:28.858Z","event":"http_request","request_id":"f2a5a5b7-8c42-46ee-9d93-f841606d6620","route":"/storage","method":"POST","status":403,"duration_ms":0.157}
+{"level":30,"time":"2026-09-13T13:02:28.861Z","event":"http_request","request_id":"1616b0a6-7aa3-419b-83b4-bf095fbc08a1","route":"/storage","method":"POST","status":503,"duration_ms":0.161}
+
+ Test Files  7 passed (7)
+      Tests  74 passed | 8 skipped (82)
+   Start at  15:02:22
+   Duration  15.01s (transform 998ms, setup 0ms, import 6.79s, tests 18.66s, environment 0ms)
+

@@ -525,6 +525,34 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     ).not.toContain('Private operational report text');
   });
 
+  it('does not charge the global report quota for nonexistent targets', async () => {
+    const account = await fixture.account();
+    const created = await fixture.published(account.token);
+    const app = fixture.createReplica({ reportsPerHour: 1 }).app;
+    await problem(
+      await fixture.request(
+        'POST',
+        `/entries/${randomUUID()}/reports`,
+        { category: 'other', details: 'Nonexistent target' },
+        undefined,
+        app,
+      ),
+      404,
+      'NOT_FOUND',
+    );
+    expect(
+      (
+        await fixture.request(
+          'POST',
+          `/entries/${created.entry.id}/reports`,
+          { category: 'other', details: 'Valid target' },
+          undefined,
+          app,
+        )
+      ).status,
+    ).toBe(202);
+  });
+
   it('refuses app-role moderation fields on insert and protects immutable audit from every runtime role', async () => {
     const account = await fixture.account();
     const created = await fixture.published(account.token);
@@ -612,6 +640,19 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     const first = await fixture.published(account.token, 'Network alpha');
     const second = await fixture.published(account.token, 'Network beta');
     const third = await fixture.published(account.token, 'Network gamma');
+    const exact = list.parse(
+      await (
+        await fixture.request(
+          'GET',
+          `/entries?root=${third.entry.root}&publisher_id=${account.publisher.id}`,
+        )
+      ).json(),
+    );
+    expect(exact).toMatchObject({
+      data: [{ id: third.entry.id }],
+      next_cursor: null,
+      has_more: false,
+    });
     const query =
       '/entries?limit=1&query=network&kind=protocol&license=CC0-1.0&keyword=NETWORKS&author=research';
     const page = list.parse(await (await fixture.request('GET', query)).json());
@@ -651,6 +692,17 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     );
     expect(yanked.status).toBe(200);
     expect(EntrySchema.parse(await yanked.json()).yanked).toBe(true);
+    const recoveredPublication = list.parse(
+      await (
+        await fixture.request(
+          'GET',
+          `/entries?root=${third.entry.root}&publisher_id=${account.publisher.id}`,
+        )
+      ).json(),
+    );
+    expect(recoveredPublication.data).toMatchObject([
+      { id: third.entry.id, yanked: true },
+    ]);
     expect(
       list
         .parse(await (await fixture.request('GET', '/entries')).json())
@@ -979,6 +1031,24 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     },
   );
 
+  it('verifies storage before returning an idempotent publication', async () => {
+    const account = await fixture.account();
+    for (const condition of ['missing', 'corrupt'] as const) {
+      const created = await fixture.published(
+        account.token,
+        `Repair ${condition}`,
+      );
+      const rawHash = templateBytesHash(created.bytes);
+      if (condition === 'missing') fixture.objects.delete(rawHash);
+      else fixture.objects.set(rawHash, new Uint8Array([0, 1, 2]));
+      await problem(
+        await fixture.publish(account.token, created.bytes),
+        503,
+        'SERVICE_UNAVAILABLE',
+      );
+    }
+  });
+
   it('refuses publication while an artifact download retains memory and admits it after cancellation', async () => {
     const account = await fixture.account();
     const created = await fixture.published(account.token);
@@ -1169,6 +1239,28 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
       (await fixture.request('GET', '/publisher', undefined, account.bearer))
         .status,
     ).toBe(200);
+  });
+
+  it('prevents an operator from suspending their own publisher', async () => {
+    const operator = await fixture.account('operator-self@example.test', true);
+    await problem(
+      await fixture.request(
+        'PUT',
+        `/moderation/publishers/${operator.publisher.id}/suspension`,
+        { suspended: true },
+        operator.bearer,
+      ),
+      409,
+      'CONFLICT',
+    );
+    expect(
+      (
+        await fixture.owner.query(
+          'SELECT suspended_at FROM registry_publishers WHERE id = $1',
+          [operator.publisher.id],
+        )
+      ).rows,
+    ).toEqual([{ suspended_at: null }]);
   });
 
   it('caps auth bodies before calling the mail provider even when Content-Length is omitted', async () => {

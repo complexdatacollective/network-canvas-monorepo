@@ -138,6 +138,41 @@ export function createApiV1(
         // base, tooling would resolve /status against the host root and
         // miss the API.
         servers: [{ url: '/api/v1' }],
+        components: {
+          schemas: {
+            StudyCreatedWebhookEvent: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                type: { type: 'string', const: 'study.created' },
+                teamId: { type: 'string', minLength: 1, maxLength: 255 },
+                studyId: { type: 'string', format: 'uuid' },
+                resourceId: { type: 'string', format: 'uuid' },
+              },
+              required: ['type', 'teamId', 'studyId', 'resourceId'],
+            },
+          },
+        },
+        webhooks: {
+          studyCreated: {
+            post: {
+              summary: 'A study was created',
+              requestBody: {
+                required: true,
+                content: {
+                  'application/json': {
+                    schema: {
+                      $ref: '#/components/schemas/StudyCreatedWebhookEvent',
+                    },
+                  },
+                },
+              },
+              responses: {
+                '2XX': { description: 'Webhook accepted' },
+              },
+            },
+          },
+        },
       },
     });
     return c.json(doc);

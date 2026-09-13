@@ -1,0 +1,9 @@
+{
+  "format": 1,
+  "id": "0015_message_delivery_authority",
+  "previous": "0014_webhook_dispatch_runtime",
+  "fingerprint": "10c99f74fd4ebaef91ff2ee155c65ef769382532abf836d0f00d2a67c4c4de9d",
+  "snapshotHash": "7e02183cc797d9f2d5a58427f3fc5b09af6afec3537ad42a7a3f7f62d2b06278",
+  "sqlHash": "216d26c61a251cc0e33a9ad34f3a826c743e947850b041ee6aaa94d2245806d0",
+  "sidecarsHash": "d553eff2dd06c779cb2f70a189340395a3616bc20e606eb0b4f4f4d24d8180d2"
+}

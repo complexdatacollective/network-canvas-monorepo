@@ -1,0 +1,38 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server
+
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > does not retry a provider outcome classified as permanent 3ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > does not retry a provider outcome classified as uncertain 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > refuses a non-maintenance role before touching work 1ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > reports aggregate outcomes without forwarding the claim or provider error 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > schedules attempt 1 with the established retry policy 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > schedules attempt 2 with the established retry policy 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > schedules attempt 7 with the established retry policy 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > schedules attempt 8 with the established retry policy 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > caps exponential retry delays 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > preserves sweep counts and suppresses a claim that became undeliverable 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > never schedules a retry after provider acceptance when finalization throws 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > never schedules a retry after provider acceptance when finalization loses ownership 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > uses the retry policy for an explicitly retry-safe completion failure at attempt 1 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > uses the retry policy for an explicitly retry-safe completion failure at attempt 8 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > does not claim that uncertainty committed after ownership moved 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > waits for the active renewal before finalizing and never overlaps renewals 1ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > does not finalize after renewal 'lost' when the provider 'rejects' 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > does not finalize after renewal 'error' when the provider 'rejects' 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > does not finalize after renewal 'throws' when the provider 'rejects' 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > records acceptance after heartbeat 'lost' only if ownership is retained: true 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > records acceptance after heartbeat 'error' only if ownership is retained: true 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > records acceptance after heartbeat 'throws' only if ownership is retained: true 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > records acceptance after heartbeat 'lost' only if ownership is retained: false 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > records acceptance after heartbeat 'error' only if ownership is retained: false 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > records acceptance after heartbeat 'throws' only if ownership is retained: false 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > attempts the uncertainty ownership CAS after heartbeat 'error' 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > attempts the uncertainty ownership CAS after heartbeat 'lost' 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > continues renewing and finalizing when its observer throws 0ms
+ ✓ src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > continues renewing and finalizing when its observer rejects 0ms
+
+ Test Files  1 passed (1)
+      Tests  29 passed (29)
+   Start at  15:31:55
+   Duration  435ms (transform 30ms, setup 0ms, import 331ms, tests 11ms, environment 0ms)
+

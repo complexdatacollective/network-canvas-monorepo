@@ -1,0 +1,69 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server
+
+ ❯ src/audit/__tests__/export.test.ts (15 tests | 3 failed | 12 skipped) 1364ms
+     × cancels an opened body when the consumption transaction throws 1078ms
+     × fences expired-owner renewal and completion while cleanup owns the row 83ms
+     × recovers a persisted attempt key after a crash immediately after upload 49ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/audit/__tests__/export.test.ts > staged audit export > cancels an opened body when the consumption transaction throws
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/audit/__tests__/export.test.ts:308:50
+    306|       ),
+    307|     ).rejects.toThrow('synthetic consume failure');
+    308|     await vi.waitFor(() => expect(cancellations).toBe(1));
+       |                                                  ^
+    309|     expect(source.locked).toBe(false);
+    310|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/audit/__tests__/export.test.ts > staged audit export > fences expired-owner renewal and completion while cleanup owns the row
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/audit/__tests__/export.test.ts:521:26
+    519|     releaseDelete?.();
+    520|     await expect(cleanup).resolves.toBe(1);
+    521|     await expect(renewal).resolves.toBe(false);
+       |                          ^
+    522|     await expect(completion).rejects.toThrow('audit export lease lost'…
+    523|     await expect(
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/audit/__tests__/export.test.ts > staged audit export > recovers a persisted attempt key after a crash immediately after upload
+Error: expected persisted artifact key
+ ❯ src/audit/__tests__/export.test.ts:568:32
+    566|     );
+    567|     const interruptedKey = interrupted.rows[0]?.artifact_key;
+    568|     if (!interruptedKey) throw new Error('expected persisted artifact …
+       |                                ^
+    569|     expect(interruptedKey).toContain(claim.id);
+    570|     expect(objects.has(interruptedKey)).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 12 skipped (15)
+   Start at  14:59:50
+   Duration  2.72s (transform 522ms, setup 0ms, import 1.27s, tests 1.36s, environment 0ms)
+
+undefined
+/Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/audit/__tests__/export.test.ts -t 'cancels an opened body when the consumption transaction throws|fences expired-owner renewal|recovers a persisted attempt key'

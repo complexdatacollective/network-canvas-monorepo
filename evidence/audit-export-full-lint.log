@@ -1,0 +1,8 @@
+Command: CI=true PATH=/Users/jmh629/.local/share/fnm/node-versions/v24.18.0/installation/bin:$PATH pnpm lint
+
+Exit: 0
+
+Checking formatting...
+
+All matched files use the correct format.
+Finished in 1777ms on 6666 files using 18 threads.

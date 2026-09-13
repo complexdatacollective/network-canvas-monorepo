@@ -107,6 +107,22 @@ describe('shared PostgreSQL pool configuration', () => {
     }
   });
 
+  it('can parse an owner URL before callers apply additional pool bounds', async () => {
+    const url = `${connectionString}?options=-c%20application_name%3Downer_probe`;
+    const pool = createPostgresPool({
+      connectionString: url,
+      parseConnectionString: true,
+      onIdleError,
+    });
+    try {
+      expect(pool.options.connectionString).toBeUndefined();
+      expect(pool.options.options).toBe('-c application_name=owner_probe');
+      expect(pool.options.connectionTimeoutMillis).toBe(10_000);
+    } finally {
+      await pool.end();
+    }
+  });
+
   it('passes no exception or client contents to the idle-error callback', async () => {
     const log = vi.fn<() => void>();
     const pool = createPostgresPool({ connectionString, onIdleError: log });

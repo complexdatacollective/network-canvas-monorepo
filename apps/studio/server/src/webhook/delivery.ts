@@ -4,8 +4,8 @@ import { request } from 'node:https';
 
 import ipaddr from 'ipaddr.js';
 import type pg from 'pg';
-import { z } from 'zod';
 
+import { StudyCreatedWebhookEventSchema } from '@codaco/studio-rpc/webhooks';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import {
@@ -23,7 +23,10 @@ import type { OutboxObserver } from '../outbox/instrumentation.ts';
 import { startOutboxWorker, type OutboxWorker } from '../outbox/worker.ts';
 import type { EncryptionKeys } from '../pii/keys.ts';
 import { ProtectedDataError } from '../pii/protection.ts';
-import { readWebhookSecret } from '../pii/webhooks.ts';
+import {
+  readWebhookSecretForDelivery,
+  type WebhookSecretRead,
+} from '../pii/webhooks.ts';
 
 const QUEUE = 'webhook_deliveries';
 const PENDING =
@@ -31,12 +34,7 @@ const PENDING =
 const OWNED = `id = $1 AND lease_owner = $2 AND ${PENDING}`;
 const FAILURE_DISABLE_THRESHOLD = 5;
 
-const WebhookPayloadSchema = z.strictObject({
-  type: z.literal('study.created'),
-  teamId: z.string().min(1).max(255),
-  studyId: z.uuid(),
-  resourceId: z.uuid(),
-});
+const WebhookPayloadSchema = StudyCreatedWebhookEventSchema;
 
 export type ClaimedWebhookDelivery = {
   id: string;
@@ -79,6 +77,16 @@ export type WebhookSender = {
   send(input: WebhookRequest): Promise<number>;
 };
 
+export function consumeWebhookResponse(response: {
+  statusCode?: number;
+  destroy(error?: Error): unknown;
+}): number {
+  const status = response.statusCode;
+  response.destroy();
+  if (status === undefined) throw new WebhookDeliveryError('retryable');
+  return status;
+}
+
 function isPublicAddress(address: string): boolean {
   try {
     return ipaddr.process(address).range() === 'unicast';
@@ -88,8 +96,19 @@ function isPublicAddress(address: string): boolean {
 }
 
 /** Resolve once, reject any mixed/private answer, and pin the selected address. */
-async function resolvePublicAddress(hostname: string) {
-  const addresses = await lookup(hostname, { all: true, verbatim: true });
+type AddressLookup = (
+  hostname: string,
+  options: { all: true; verbatim: true },
+) => Promise<{ address: string; family: number }[]>;
+
+async function resolvePublicAddress(
+  hostname: string,
+  lookupAddress: AddressLookup,
+) {
+  const addresses = await lookupAddress(hostname, {
+    all: true,
+    verbatim: true,
+  });
   if (
     addresses.length === 0 ||
     addresses.some(({ address }) => !isPublicAddress(address))
@@ -99,13 +118,15 @@ async function resolvePublicAddress(hostname: string) {
 }
 
 export function createStandardWebhookSender(
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; lookupAddress?: AddressLookup } = {},
 ): WebhookSender {
   const timeoutMs = options.timeoutMs ?? 10_000;
+  const lookupAddress = options.lookupAddress ?? lookup;
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)
     throw new Error('webhook timeout must be a positive finite number');
   return {
     async send(input) {
+      const deadline = Date.now() + timeoutMs;
       let url: URL;
       try {
         url = new URL(input.url);
@@ -121,12 +142,40 @@ export function createStandardWebhookSender(
         throw new WebhookDeliveryError('permanent');
       let pinned: Awaited<ReturnType<typeof resolvePublicAddress>>;
       try {
-        pinned = await resolvePublicAddress(url.hostname);
+        pinned = await new Promise((resolve, reject) => {
+          const timer = setTimeout(
+            () => reject(new WebhookDeliveryError('retryable')),
+            timeoutMs,
+          );
+          timer.unref();
+          void resolvePublicAddress(url.hostname, lookupAddress).then(
+            (address) => {
+              clearTimeout(timer);
+              resolve(address);
+              return undefined;
+            },
+            (error: unknown) => {
+              clearTimeout(timer);
+              reject(error);
+              return undefined;
+            },
+          );
+        });
       } catch (error) {
         if (error instanceof WebhookDeliveryError) throw error;
         throw new WebhookDeliveryError('retryable');
       }
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) throw new WebhookDeliveryError('retryable');
       return new Promise<number>((resolve, reject) => {
+        let settled = false;
+        let timer: NodeJS.Timeout;
+        const settle = (work: () => void) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          work();
+        };
         const outgoing = request(
           url,
           {
@@ -142,20 +191,21 @@ export function createStandardWebhookSender(
               callback(null, pinned.address, pinned.family),
           },
           (response) => {
-            const status = response.statusCode;
-            response.resume();
-            if (status === undefined) {
-              reject(new WebhookDeliveryError('uncertain'));
-              return;
+            try {
+              const status = consumeWebhookResponse(response);
+              settle(() => resolve(status));
+            } catch (error) {
+              settle(() => reject(error));
             }
-            resolve(status);
           },
         );
-        outgoing.setTimeout(timeoutMs, () =>
-          outgoing.destroy(new WebhookDeliveryError('uncertain')),
+        timer = setTimeout(
+          () => outgoing.destroy(new WebhookDeliveryError('retryable')),
+          remainingMs,
         );
+        timer.unref();
         outgoing.once('error', () =>
-          reject(new WebhookDeliveryError('uncertain')),
+          settle(() => reject(new WebhookDeliveryError('retryable'))),
         );
         outgoing.end(input.body);
       });
@@ -171,6 +221,79 @@ type Options = OutboxRetryOptions & {
 };
 
 class LeaseLostError extends Error {}
+
+export async function beginWebhookHandoff(
+  pool: pg.Pool,
+  claim: Pick<
+    ClaimedWebhookDelivery,
+    'id' | 'teamId' | 'subscriptionId' | 'eventType' | 'leaseOwner'
+  >,
+  snapshot: WebhookSecretRead['snapshot'],
+): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Lock in the same order as terminal finalization (delivery, then
+    // subscription). The lock is held only through this database handoff,
+    // never across the outbound request. This gives disable/rotation a clear
+    // linearization point: a mutation committed before this check wins, while
+    // one that follows the handoff is explicitly an in-flight send.
+    const delivery = await client.query<{
+      teamId: string;
+      subscriptionId: string;
+    }>(
+      `SELECT team_id AS "teamId", subscription_id AS "subscriptionId"
+       FROM webhook_deliveries
+       WHERE id = $1 AND team_id = $2 AND subscription_id = $3
+         AND lease_owner = $4 AND ${PENDING}
+         AND send_started_at IS NULL
+         AND lease_expires_at > statement_timestamp()
+       FOR UPDATE`,
+      [claim.id, claim.teamId, claim.subscriptionId, claim.leaseOwner],
+    );
+    const row = delivery.rows[0];
+    if (!row) {
+      await client.query('COMMIT');
+      return false;
+    }
+    const subscription = await client.query(
+      `SELECT id
+       FROM webhook_subscriptions
+       WHERE id = $1 AND team_id = $2 AND state = 'active'
+         AND $3 = ANY(event_types)
+         AND secret_key_id = $4 AND secret_algorithm = $5
+         AND secret_ciphertext = $6
+       FOR UPDATE`,
+      [
+        row.subscriptionId,
+        row.teamId,
+        claim.eventType,
+        snapshot.secretKeyId,
+        snapshot.secretAlgorithm,
+        snapshot.secretCiphertext,
+      ],
+    );
+    if (subscription.rowCount !== 1) {
+      await client.query('COMMIT');
+      return false;
+    }
+    const handoff = await client.query(
+      `UPDATE webhook_deliveries
+       SET send_started_at = clock_timestamp()
+       WHERE id = $1 AND lease_owner = $2 AND ${PENDING}
+         AND send_started_at IS NULL
+         AND lease_expires_at > statement_timestamp()`,
+      [claim.id, claim.leaseOwner],
+    );
+    await client.query('COMMIT');
+    return handoff.rowCount === 1;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 function deliveryEvent(
   context: SystemAuditEventContext<'Webhook delivery'>,
@@ -213,33 +336,31 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
   }
 
   failureDisposition(error: unknown) {
-    return error instanceof WebhookDeliveryError
-      ? error.disposition
-      : 'uncertain';
+    if (!(error instanceof WebhookDeliveryError)) return 'retryable';
+    return error.disposition === 'uncertain' ? 'retryable' : error.disposition;
+  }
+
+  completionFailureDisposition(): 'retryable' {
+    return 'retryable';
   }
 
   async suppressUndeliverable(): Promise<number> {
     return 0;
   }
 
-  async reconcileExpiredUncertainLeases(): Promise<number> {
-    const candidates = await this.options.pool.query<ClaimedWebhookDelivery>(
-      `SELECT d.id, d.team_id AS "teamId", d.subscription_id AS "subscriptionId",
-              d.webhook_id AS "webhookId", d.event_type AS "eventType",
-              d.payload, s.url, d.attempt_count AS "attemptCount",
-              d.lease_owner AS "leaseOwner", d.send_started_at AS "sendStartedAt"
-       FROM webhook_deliveries d
-       JOIN webhook_subscriptions s ON s.id = d.subscription_id AND s.team_id = d.team_id
-       WHERE ${PENDING} AND d.lease_expires_at <= clock_timestamp()
-         AND d.send_started_at IS NOT NULL
-       ORDER BY d.created_at, d.id LIMIT 100`,
+  /**
+   * Replay with the current configured key; the stable webhook id is the
+   * receiver's deduplication boundary when the previous POST was ambiguous.
+   */
+  async reconcileExpiredRetries(): Promise<number> {
+    const reconciled = await this.options.pool.query(
+      `UPDATE webhook_deliveries SET send_started_at=NULL,lease_owner=NULL,lease_expires_at=NULL,
+         available_at=clock_timestamp(),last_error='delivery_retryable'
+       WHERE ${PENDING} AND lease_expires_at<=clock_timestamp() AND send_started_at IS NOT NULL
+         AND attempt_count < $1`,
+      [this.options.maxAttempts ?? 8],
     );
-    let uncertain = 0;
-    for (const claim of candidates.rows) {
-      if (await this.finishTerminal(claim, 'uncertain', null, 'expired'))
-        uncertain += 1;
-    }
-    return uncertain;
+    return reconciled.rowCount ?? 0;
   }
 
   async failExhaustedLeases(maxAttempts: number): Promise<number> {
@@ -251,7 +372,7 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
        FROM webhook_deliveries d
        JOIN webhook_subscriptions s ON s.id = d.subscription_id AND s.team_id = d.team_id
        WHERE ${PENDING} AND d.lease_expires_at <= clock_timestamp()
-         AND d.send_started_at IS NULL AND d.attempt_count >= $1
+         AND d.attempt_count >= $1
        ORDER BY d.created_at, d.id LIMIT 100`,
       [maxAttempts],
     );
@@ -343,7 +464,7 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
     const renewed = await this.options.pool.query(
       `UPDATE webhook_deliveries
        SET lease_expires_at = clock_timestamp() + make_interval(secs => $3::float / 1000)
-       WHERE ${OWNED}`,
+       WHERE ${OWNED} AND lease_expires_at > statement_timestamp()`,
       [claim.id, lease.owner, lease.durationMs],
     );
     return renewed.rowCount === 1;
@@ -351,7 +472,6 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
 
   async deliver(claim: ClaimedWebhookDelivery): Promise<void | 'suppressed'> {
     let secret: Buffer | undefined;
-    let handedOff = false;
     try {
       const parsed = WebhookPayloadSchema.safeParse(claim.payload);
       if (!parsed.success) throw new WebhookDeliveryError('permanent');
@@ -362,7 +482,7 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
         payload.resourceId !== payload.studyId
       )
         throw new WebhookDeliveryError('permanent');
-      secret = await readWebhookSecret(
+      const secretRead = await readWebhookSecretForDelivery(
         this.options.encryptionKeys,
         claim.subscriptionId,
         {
@@ -373,16 +493,13 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
           leaseOwner: claim.leaseOwner,
         },
       );
-      const handoff = await this.options.pool.query(
-        `UPDATE webhook_deliveries d SET send_started_at = clock_timestamp()
-         FROM webhook_subscriptions s
-         WHERE d.${OWNED} AND d.send_started_at IS NULL
-           AND s.id = d.subscription_id AND s.team_id = d.team_id
-           AND s.state = 'active' AND d.event_type = ANY(s.event_types)`,
-        [claim.id, claim.leaseOwner],
+      secret = secretRead.secret;
+      const handedOff = await beginWebhookHandoff(
+        this.options.pool,
+        claim,
+        secretRead.snapshot,
       );
-      if (handoff.rowCount !== 1) return 'suppressed';
-      handedOff = true;
+      if (!handedOff) return 'suppressed';
       const body = JSON.stringify(payload, Object.keys(payload).toSorted());
       const timestamp = String(Math.floor(Date.now() / 1000));
       const signature = `v1,${createHmac('sha256', secret)
@@ -406,7 +523,7 @@ export class WebhookDeliveryAdapter implements OutboxAdapter<ClaimedWebhookDeliv
     } catch (error) {
       if (error instanceof ProtectedDataError) return 'suppressed';
       if (error instanceof WebhookDeliveryError) throw error;
-      throw new WebhookDeliveryError(handedOff ? 'uncertain' : 'retryable');
+      throw new WebhookDeliveryError('retryable');
     } finally {
       secret?.fill(0);
     }

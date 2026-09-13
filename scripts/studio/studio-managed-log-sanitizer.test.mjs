@@ -84,7 +84,7 @@ test('rejects inherited catalog names and missing diagnostic severity', () => {
 test('publishes a pinned exact output schema over the emitter-owned catalogs', () => {
   assert.equal(
     MANAGED_OPERATIONAL_LOG_SCHEMA_IDENTITY,
-    'sha256:f420ca3357a4d0235df59b88c02c08b4f70a5eb9362ba3589ad3ae74d3a1e0cc',
+    'sha256:d7dcff80eb57d52f5fb050f8b06d47b4f279e75a97de6bd2630052195d9885be',
   );
   assert.deepEqual(
     MANAGED_OPERATIONAL_LOG_SCHEMA.services.map(({ service }) => service),

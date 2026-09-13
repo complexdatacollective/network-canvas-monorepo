@@ -1,0 +1,147 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server
+
+ ✓ src/recovery/__tests__/authorization.test.ts > Studio recovery authorization > rechecks recovery evidence freshness directly before reconcile commit 251ms
+{"level":30,"time":"2026-09-13T14:33:09.895Z","event":"http_request","request_id":"2e7efbbe-bf48-4504-b47e-7d2eaad80ab9","route":"client","method":"GET","status":200,"duration_ms":8.7}
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > commits producer, streams below high-water, finalizes, and consumes once 182ms
+ ✓ src/recovery/__tests__/authorization.test.ts > Studio recovery authorization > rechecks recovery evidence freshness directly before authorize commit 410ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > releases its lease and retains a retryable job after storage failure 38ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > rejects an invalid handle before opening an object stream 71ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > rechecks administrator authority after opening and releases a refused stream 81ms
+ ✓ src/recovery/__tests__/authorization.test.ts > Studio recovery authorization > invalidates a writer commit completed before the first locked snapshot 180ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > cancels an opened body when the consumption transaction throws 81ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > releases a size-mismatched body without consuming the handle 79ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > releases the source reader after EOF and consumer cancellation 142ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > cancels a stream that exceeds its recorded size while downloading 76ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > uses a fresh durable attempt key for every retry under one dispatcher owner 50ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > retains cleanup through two empty scans and removes a later remote effect after restart 68ms
+ ✓ src/recovery/__tests__/authorization.test.ts > Studio recovery authorization > enables only signed current identities and is idempotent under quarantine 457ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > sweeps an old retired attempt without deleting the newer ready artifact 81ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > retains cleanup responsibility after its job and team are deleted 41ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > leases retired cleanup to one owner and backs off retained tombstones 47ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > neutralizes whitespace-prefixed spreadsheet formulas 7ms
+ ✓ src/recovery/__tests__/authorization.test.ts > Studio recovery authorization > refuses changed authority after revocation without enabling a user 275ms
+ ✓ src/audit/__tests__/export.test.ts > staged audit export > deletes consumed artifacts in a bounded audited cleanup pass 141ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > migrates as a non-superuser database owner (CREATEROLE=true) 1902ms
+ ✓ src/recovery/__tests__/authorization.test.ts > Studio recovery authorization > refuses a surviving runtime session before current-user authorization 270ms
+ ✓ src/recovery/__tests__/authorization.test.ts > Studio recovery authorization > refuses a runtime LOGIN reopened after the initial quarantine snapshot 263ms
+ ✓ src/recovery/__tests__/authorization.test.ts > Studio recovery authorization > refuses expired, wrong-instance and extra-enabled evidence atomically 535ms
+ ✓ src/recovery/__tests__/authorization.test.ts > Studio recovery authorization > atomically revokes stale authority and holds restored credentials and delivery 297ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > migrates as a non-superuser database owner (CREATEROLE=false) 1268ms
+ ✓ src/recovery/__tests__/authorization.test.ts > Studio recovery authorization > rolls every invalidation back when required current authority is absent 131ms
+ ✓ src/recovery/__tests__/authorization.test.ts > Studio recovery authorization > refuses a surviving runtime session before changing restored state 147ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > applies the documented defaults 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a ready job that is missing handle_hash 2ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a ready job that is missing handle_ciphertext 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a ready job that is missing handle_key_id 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a ready job that is missing handle_algorithm 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a ready job that is missing handle_expires_at 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a ready job that is missing artifact_attempt_id 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a ready job that is missing artifact_key 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a ready job that is missing artifact_row_count 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a ready job that is missing artifact_byte_count 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a ready job that is missing completion_event_id 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a ready job that is missing ready_at 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a complete artifact on a job that is not ready 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > accepts a job that carries the whole ready shape 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a failed job with no failure event 1ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a failed job with no failure timestamp 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses failure evidence on a job that has not failed 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > accepts a failure recorded with both halves and no artifact 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses an attempt id without an artifact key 1ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses an artifact key without an attempt id 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses an unknown status 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses an unknown actor kind 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a zero row budget 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a zero byte budget 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a negative preflight count 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a negative attempt count 8ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a start sequence before the first event 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a negative high-water mark 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses scalar filters 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a malformed handle digest 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a consumption stamp with no handle 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses half a lease 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a terminal job still holding a lease 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses a blank actor id 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > refuses an over-long last error 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_jobs > admits at most one live handle across all jobs 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the owning team 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the requesting actor 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the actor kind 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the start event 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the start sequence 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the high-water mark 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the filters 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the row budget 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the byte budget 6ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the preflight row count 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the preflight byte count 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > refuses to rewrite the creation stamp 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_request_immutable > lets the worker advance generation state 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_artifact_attempts > keeps immutable cleanup identity outside the application role 12ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_artifact_attempts > requires retirement time, sweep schedule and lease pairs 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_handle_single_use > admits the first consumption and refuses every later one 8ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_export_handle_single_use > refuses to re-issue a handle on a job that already published one 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > applies the documented defaults 6ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > keeps exactly one durable row per committed event 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses an alert citing another team's event 7ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses an alert citing no event at all 1ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses an alert copying another event’s sequence 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses an alert copying another event type 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses an alert copying another event version 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > accepts the copy the key exists to admit 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses a sequence before the first event 1ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses a zero event version 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses a negative attempt count 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses a blank event type 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses a blank policy key 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses an over-long last error 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses half a lease 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses two terminal states at once 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_outbox > refuses a terminal row still holding a lease 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_link_immutable > refuses to rewrite the owning team 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_link_immutable > refuses to rewrite the event link 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_link_immutable > refuses to rewrite the event sequence 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_link_immutable > refuses to rewrite the event type 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_link_immutable > refuses to rewrite the event version 6ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_link_immutable > refuses to rewrite the policy key 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_link_immutable > refuses to rewrite the creation stamp 5ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > audit_alert_link_immutable > lets the dispatcher advance delivery state 9ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > the event and its alert commit together > leaves neither row behind when the transaction rolls back 3ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > the event and its alert commit together > keeps both rows when it commits 2ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > the deliberate policy divergence > lets maintenance claim alerts across teams but never enumerate history 6ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > the deliberate policy divergence > still scopes the outbox to one team for the application role 4ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > the application role privileges > may consume a download handle and change nothing else 7ms
+ ✓ src/audit/__tests__/outbox-schema.test.ts > audit outbox schema > the application role privileges > may enqueue an alert but never advance or retract one 4ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > provisions actual tables, roles, RLS and ordered sidecar privileges on a fresh database 1261ms
+ ✓ src/audit/__tests__/policy.test.ts > audit mutation policy > classifies every internal RPC mutation and only mutations 2ms
+ ✓ src/audit/__tests__/policy.test.ts > audit mutation policy > classifies the exact configured Better Auth organization route inventory 7ms
+ ✓ src/audit/__tests__/policy.test.ts > audit mutation policy > keeps every unaudited Better Auth team mutation blocked 14ms
+ ✓ src/audit/__tests__/policy.test.ts > audit mutation policy > keeps the writable team store behind audited commands 18ms
+ ✓ src/audit/__tests__/policy.test.ts > audit mutation policy > recognizes transaction aliases, computed access, and raw query mutations 1ms
+ ✓ src/audit/__tests__/policy.test.ts > audit mutation policy > allows raw tenant writes only inside the two executors or schema bootstrap 52ms
+ ✓ src/audit/__tests__/policy.test.ts > audit mutation policy > keeps every no-audit transaction exact, reasoned, and in use 27ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > upgrades populated 0010 users and webhook deliveries into recovery authorization 803ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > upgrades populated 0011 templates without inventing Registry provenance 849ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > upgrades a populated predecessor without rewriting existing audit-alert evidence 946ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > applies a generated schema upgrade without changing existing users 564ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > is idempotent without rewriting history or fingerprint timestamps 941ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > serializes separate migration command processes 1571ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > refuses developer reconciliation of a versioned database without changing its evidence 983ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > rejects changed applied history and a newer database before applying anything 397ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > refuses a pre-release database even when it claims the current fingerprint 180ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > refuses a fingerprint inconsistent with otherwise correct history 883ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > rolls back schema changes, data changes and evidence when SQL fails 313ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > refuses a pre-created runtime role with SUPERUSER privileges before stamping the migration 166ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > refuses a pre-created runtime role with BYPASSRLS privileges before stamping the migration 275ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > refuses a pre-created runtime role with LOGIN privileges before stamping the migration 161ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > contains authored 'COMMIT' in 'sql' so it cannot escape the migration transaction 318ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > contains authored 'ROLLBACK' in 'sql' so it cannot escape the migration transaction 300ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > contains authored 'COMMIT' in 'sidecars' so it cannot escape the migration transaction 343ms
+ ✓ src/db/migrations/__tests__/migrate.test.ts > explicit Studio migrations > contains authored 'DO $$ BEGIN COMMIT; END $$' in 'sql' so it cannot escape the migration transaction 317ms
+
+ Test Files  5 passed (5)
+      Tests  138 passed (138)
+   Start at  16:33:06
+   Duration  17.31s (transform 1.38s, setup 0ms, import 6.05s, tests 24.77s, environment 0ms)

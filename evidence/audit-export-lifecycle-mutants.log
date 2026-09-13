@@ -1,0 +1,121 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server
+
+ ❯ src/outbox/__tests__/dispatcher.test.ts (29 tests | 3 failed | 26 skipped) 6ms
+     × does not finalize after renewal 'lost' when the provider 'rejects' 4ms
+     × does not finalize after renewal 'error' when the provider 'rejects' 1ms
+     × does not finalize after renewal 'throws' when the provider 'rejects' 0ms
+ ❯ src/audit/__tests__/export.test.ts (17 tests | 2 failed | 15 skipped) 500ms
+     × recovers a persisted attempt key after a crash immediately after upload 87ms
+     × fences cleanup before a delayed multipart create can begin 41ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/audit/__tests__/export.test.ts > staged audit export > recovers a persisted attempt key after a crash immediately after upload
+AssertionError: expected null to be 'upload-aca07694-6e76-4334-aa7c-13cdb6…' // Object.is equality
+
+- Expected:
+"upload-aca07694-6e76-4334-aa7c-13cdb628315d"
+
++ Received:
+null
+
+ ❯ src/audit/__tests__/export.test.ts:592:53
+    590|     if (!interruptedKey) throw new Error('expected persisted artifact …
+    591|     expect(interruptedKey).toContain(claim.id);
+    592|     expect(interrupted.rows[0]?.artifact_upload_id).toBe(
+       |                                                     ^
+    593|       `upload-${claim.leaseOwner}`,
+    594|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  src/audit/__tests__/export.test.ts > staged audit export > fences cleanup before a delayed multipart create can begin
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/audit/__tests__/export.test.ts:680:26
+    678|     );
+    679|     await expect(adapter.suppressUndeliverable()).resolves.toBe(1);
+    680|     expect(cleanupCalls).toBe(0);
+       |                          ^
+    681|     const fenced = await owner.query<{
+    682|       artifact_key: string;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > does not finalize after renewal 'lost' when the provider 'rejects'
+ FAIL  src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > does not finalize after renewal 'error' when the provider 'rejects'
+ FAIL  src/outbox/__tests__/dispatcher.test.ts > shared outbox execution > does not finalize after renewal 'throws' when the provider 'rejects'
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/outbox/__tests__/dispatcher.test.ts:398:31
+    396|       const signal = work.deliver.mock.calls[0]?.[1];
+    397|       expect(signal).toBeInstanceOf(AbortSignal);
+    398|       expect(signal?.aborted).toBe(true);
+       |                               ^
+    399|       expect(observer).toHaveBeenCalledWith({
+    400|         queue: 'message_deliveries',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  5 failed | 41 skipped (46)
+   Start at  15:27:31
+   Duration  1.87s (transform 539ms, setup 0ms, import 1.60s, tests 506ms, environment 0ms)
+
+undefined
+/Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/audit/__tests__/export.test.ts src/outbox/__tests__/dispatcher.test.ts -t 'fences cleanup before a delayed multipart create|recovers a persisted attempt key|does not finalize after renewal'
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server
+
+ ❯ src/audit/__tests__/export.test.ts (17 tests | 1 failed | 16 skipped) 498ms
+     × recovers a persisted attempt key after a crash immediately after upload 113ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/audit/__tests__/export.test.ts > staged audit export > recovers a persisted attempt key after a crash immediately after upload
+AssertionError: expected { claimed: 1, completed: 1, …(5) } to match object { completed: +0, suppressed: 1 }
+(5 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "completed": 0,
++   "completed": 1,
+    "suppressed": 1,
+  }
+
+ ❯ src/audit/__tests__/export.test.ts:610:26
+    608|     });
+    609|     const firstCleanup = await restartedDispatcher.runOnce();
+    610|     expect(firstCleanup).toMatchObject({ completed: 0, suppressed: 1 }…
+       |                          ^
+    611|     await expect(
+    612|       owner.query<{ artifact_cleanup_observed_at: Date; artifact_key: …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 skipped (17)
+   Start at  15:27:51
+   Duration  1.84s (transform 511ms, setup 0ms, import 1.26s, tests 498ms, environment 0ms)
+
+undefined
+/Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/audit-export-runtime/apps/studio/server:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/audit/__tests__/export.test.ts -t 'recovers a persisted attempt key'

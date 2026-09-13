@@ -43,7 +43,8 @@
     "./postgres-recovery-quarantine": "./src/postgres-recovery-quarantine.ts",
     "./operational-http": "./src/operational-http.ts",
     "./operational-metrics": "./src/operational-metrics.ts",
-    "./proxy-trust": "./src/proxy-trust.ts"
+    "./proxy-trust": "./src/proxy-trust.ts",
+    "./template-archive": "./src/template-archive.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

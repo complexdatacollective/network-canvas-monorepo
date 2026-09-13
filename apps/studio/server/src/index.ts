@@ -20,6 +20,7 @@ import {
   type AuditAlertWorker,
 } from './audit/alert-delivery.ts';
 import { flushDeniedAuditSummaries } from './audit/denial-rate-limit.ts';
+import { startAuditExportWorker } from './audit/export.ts';
 import { createMailer } from './auth/email.ts';
 import { mountClient } from './client-assets.ts';
 import {
@@ -35,6 +36,7 @@ import { logOperational } from './observability/logger.ts';
 import { createOperationalApp } from './observability/operational-app.ts';
 import { observeWebSocketServer } from './observability/requests.ts';
 import { createObservability } from './observability/runtime.ts';
+import type { OutboxWorker } from './outbox/worker.ts';
 import type { EncryptionKeys } from './pii/keys.ts';
 import {
   DatabaseRuntimeAdmissionError,
@@ -50,6 +52,8 @@ import {
   startInvitationDeliveryWorker,
 } from './team/invitation-delivery-dispatcher.ts';
 import { createServerTelemetry, type ServerTelemetry } from './telemetry.ts';
+import { startTemplateRegistryIntentWorker } from './template/registry-intent-worker.ts';
+import { reconcileClaimedTemplateRegistryIntent } from './template/registry.ts';
 import { STUDIO_VERSION } from './version.ts';
 import {
   startWebhookDeliveryWorker,
@@ -118,6 +122,10 @@ let webhookDeliveryWorker: WebhookDeliveryWorker | undefined;
 let messageDeliveryWorker: MessageDeliveryWorker | undefined;
 let messageEmailSender: EmailSender | undefined;
 let messageSmsSender: SmsSender | undefined;
+let auditExportWorker: OutboxWorker | undefined;
+let templateRegistryIntentWorker:
+  | ReturnType<typeof startTemplateRegistryIntentWorker>
+  | undefined;
 
 function startDatabaseWorkers(): void {
   if (env.role === 'web' || !maintenancePool) return;
@@ -170,8 +178,34 @@ function startDatabaseWorkers(): void {
       });
     }
   }
+  if (assetStore && encryptionKeys) {
+    auditExportWorker ??= startAuditExportWorker({
+      pool: maintenancePool,
+      store: assetStore,
+      keys: encryptionKeys,
+      observer: observability.metrics.observer,
+      reportError: (error) => telemetry?.capture('server_worker', error),
+    });
+  }
   if (!env.auth) return;
   const emailMailer = env.auth.mailer.kind === 'refuse' ? undefined : mailer;
+  const registryOrigin = env.templateRegistryOrigin;
+  if (!templateRegistryIntentWorker) {
+    templateRegistryIntentWorker = startTemplateRegistryIntentWorker({
+      pool: maintenancePool,
+      process: (claim) =>
+        reconcileClaimedTemplateRegistryIntent(
+          {
+            origin: registryOrigin,
+            assetStore,
+            maintenancePool,
+          },
+          claim,
+        ),
+      onError: (error) => telemetry?.capture('server_worker', error),
+      observer: observability.metrics.observer,
+    });
+  }
   auditAlertWorker ??= startAuditAlertWorker({
     pool: maintenancePool,
     observer: observability.metrics.observer,
@@ -306,6 +340,7 @@ const app = servesWeb
             },
           }
         : {}),
+      maintenancePool,
     })
   : createOperationalApp(env, observability, undefined, (error) =>
       telemetry?.capture('server_request', error),
@@ -344,6 +379,8 @@ stopServing = () => {
   void messageDeliveryWorker?.stop();
   messageEmailSender?.close();
   messageSmsSender?.close();
+  void auditExportWorker?.stop();
+  void templateRegistryIntentWorker?.stop();
   mailer?.close();
   observability.stop();
 };
@@ -367,6 +404,8 @@ function shutdown() {
     auditAlertWorker?.stop(),
     webhookDeliveryWorker?.stop(),
     messageDeliveryWorker?.stop(),
+    auditExportWorker?.stop(),
+    templateRegistryIntentWorker?.stop(),
   ]);
   messageEmailSender?.close();
   messageSmsSender?.close();

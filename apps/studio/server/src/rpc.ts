@@ -26,6 +26,7 @@ import {
 } from './audit/denial-rate-limit.ts';
 import { createDeniedAuditSummaryWriter } from './audit/denial-summary.ts';
 import type { AuditEventInput } from './audit/events.ts';
+import { readAuditExportStatus, requestAuditExport } from './audit/export.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
   authorizeAuditRead,
@@ -85,6 +86,7 @@ import {
   publishTemplateVersion,
   readRegistryAccount,
   TemplateRegistryCommandError,
+  readRegistryIntentStatuses,
 } from './template/registry.ts';
 import {
   createWebhookSubscription,
@@ -388,10 +390,11 @@ export function createRpcRouter(
     invitationDeliveryAvailable: boolean;
     bootstrapToken?: string;
     pool?: pg.Pool;
+    maintenancePool?: pg.Pool;
     protocolBuilder: ProtocolBuilderRuntime;
     assetStore?: AssetStore;
-    templateRegistryOrigin?: string;
     encryptionKeys?: EncryptionKeys;
+    templateRegistryOrigin?: string;
   },
 ) {
   const {
@@ -400,9 +403,10 @@ export function createRpcRouter(
     invitationDeliveryAvailable,
     bootstrapToken,
     pool,
+    maintenancePool,
     assetStore,
-    templateRegistryOrigin,
     encryptionKeys,
+    templateRegistryOrigin,
   } = deps;
   // Tenancy is checked per request against an explicit teamId in the
   // procedure input — never the session's active team. A non-member and a
@@ -599,6 +603,23 @@ export function createRpcRouter(
         }),
     },
     templates: {
+      registryIntents: os.templates.registryIntents
+        .use(requireTeamAdministration)
+        .handler(async ({ context, input }) => {
+          try {
+            return await readRegistryIntentStatuses(
+              auditedContextFor(context),
+              input.intents,
+            );
+          } catch (error) {
+            if (
+              error instanceof TemplateRegistryCommandError &&
+              error.code === 'FORBIDDEN'
+            )
+              throw new ORPCError('FORBIDDEN');
+            throw error;
+          }
+        }),
       list: os.templates.list
         .use(requireTeam)
         .handler(({ context }) =>
@@ -615,6 +636,7 @@ export function createRpcRouter(
               {
                 origin: templateRegistryOrigin,
                 assetStore,
+                maintenancePool,
               },
               input,
             );
@@ -635,7 +657,7 @@ export function createRpcRouter(
           try {
             return await importRegistryTemplate(
               auditedContextFor(context),
-              { origin: templateRegistryOrigin, assetStore },
+              { origin: templateRegistryOrigin, assetStore, maintenancePool },
               input.entryId,
             );
           } catch (error) {
@@ -976,6 +998,30 @@ export function createRpcRouter(
         if (!event) throw new ORPCError('NOT_FOUND');
         return renderAuditEventDetail(event);
       }),
+      export: os.audit.export.use(requireTeam).handler(({ context, input }) =>
+        guardAuditRead(context, 'audit.export', () =>
+          requestAuditExport(auditedContextFor(context), {
+            categories: input.categories,
+            eventTypes: input.eventTypes,
+            actor: input.actor,
+            outcomes: input.outcomes,
+            from: input.from,
+            to: input.to,
+          }),
+        ),
+      ),
+      exportStatus: os.audit.exportStatus
+        .use(requireTeam)
+        .handler(({ context, input }) => {
+          if (!encryptionKeys) throw new ORPCError('SERVICE_UNAVAILABLE');
+          return guardAuditRead(context, 'audit.exportStatus', () =>
+            readAuditExportStatus(
+              auditedContextFor(context),
+              input.jobId,
+              encryptionKeys,
+            ),
+          );
+        }),
       // The same rows as audit.list through the same read surface, so it takes
       // the same locked-membership authorization inside the read's own
       // transaction, and the same committed, rate-limited denial.
