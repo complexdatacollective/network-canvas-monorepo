@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import {
   packageSource,
@@ -30,6 +31,36 @@ const pedigreeOnAProtocolWithNoNodeTypes = () => ({
   stage: familyPedigreeStageWithout(['nodeConfig']),
   sections: <PedigreeNodeConfigurationSection />,
 });
+
+const FAMILY_MEMBER_SECTION = sectionId({
+  kind: 'codebookNode',
+  typeId: 'family_member',
+});
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * An attribute another editor adds to the held type, on the host only.
+ *
+ * `receiveCodebookUpdate` would render it here first, which is the state after
+ * the window this is about: written straight to the store, the change is on
+ * the host when the lock is taken and had not reached this editor's last
+ * render — which is the only state a write computed before the lock can be
+ * caught in.
+ */
+const collaboratorAddsFamilyMemberVariable = (
+  harness: ReturnType<typeof renderStageEditor>,
+  variableId: string,
+  variable: Readonly<Record<string, unknown>>,
+): void => {
+  const current = harness.host.store.read(FAMILY_MEMBER_SECTION).document;
+  const variables = isRecord(current.variables) ? current.variables : {};
+  harness.host.store.applyAsCollaborator(FAMILY_MEMBER_SECTION, {
+    ...current,
+    variables: { ...variables, [variableId]: variable },
+  });
+};
 
 const clearNodeTypes = (
   harness: ReturnType<typeof renderStageEditor>,
@@ -225,6 +256,49 @@ describe('making and changing a codebook type from the control that names it', (
    * fourth written tomorrow would say something this suite has never heard of.
    * What they had in common is the editor they mounted.
    */
+  /**
+   * A type is more than the properties this form shows.
+   *
+   * `variables` belongs to the attribute editors, not to this one, so the
+   * write has to lay the form's own properties over the document the LOCK
+   * hands back rather than over the one the editor read — or an attribute a
+   * collaborator added while the save was taking the lock is deleted by a
+   * researcher who only changed a name.
+   */
+  it('keeps an attribute a collaborator added while the write was taking the lock', async () => {
+    const harness = renderStageEditor({
+      stageId: 'family-pedigree-1',
+      sections: <PedigreeNodeConfigurationSection />,
+    });
+    await harness.opened();
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit this node type' }),
+    );
+    const editor = within(
+      await screen.findByRole('dialog', { name: 'Edit this node type' }),
+    );
+    const name = await editor.findByRole('textbox', { name: 'Node type name' });
+    await harness.user.clear(name);
+    await harness.user.type(name, 'relative');
+
+    collaboratorAddsFamilyMemberVariable(harness, 'shoe_size', {
+      name: 'shoe_size',
+      type: 'number',
+      component: 'Number',
+    });
+    // Synchronous, so the save is raised from the render that has not seen the
+    // collaborator's attribute yet — the window the lock exists to close.
+    fireEvent.click(editor.getByRole('button', { name: 'Save entity' }));
+
+    await waitFor(() =>
+      expect(harness.hostCodebook().node?.family_member?.name).toBe('relative'),
+    );
+    expect(
+      Object.keys(harness.hostCodebook().node?.family_member?.variables ?? {}),
+    ).toContain('shoe_size');
+  });
+
   it('leaves no section mounting a codebook entity editor of its own', () => {
     const mounts = [
       ...sourceFiles(join(packageSource, 'editors')),
