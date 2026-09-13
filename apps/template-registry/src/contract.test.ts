@@ -571,7 +571,7 @@ const operationCases = [
 describe('generated registry OpenAPI', () => {
   let document: Awaited<ReturnType<typeof generateRegistryOpenApi>>;
   beforeAll(async () => {
-    document = await generateRegistryOpenApi();
+    document = await generateRegistryOpenApi({ secureSessionCookie: true });
   });
 
   it('keeps the published specification equal to the runtime Zod contract', async () => {
@@ -614,6 +614,24 @@ describe('generated registry OpenAPI', () => {
     expect(record(record(compatible.info).license)).toEqual({
       name: 'CC0-1.0',
       url: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    });
+    const compatibleAccountPublisher = record(
+      record(
+        record(
+          record(record(record(compatible.paths)['/account']).get).responses,
+        )['200'],
+      ).content,
+    );
+    const compatibleAccountSchema = record(
+      record(compatibleAccountPublisher['application/json']).schema,
+    );
+    expect(
+      record(record(compatibleAccountSchema.properties).publisher),
+    ).toMatchObject({
+      type: 'object',
+      nullable: true,
+      additionalProperties: false,
+      required: ['id', 'name', 'orcid'],
     });
     const entrySummary = record(
       record(record(document.components).schemas).EntrySummary,
@@ -715,7 +733,48 @@ describe('generated registry OpenAPI', () => {
       expect(
         record(record(metadata.metadata).properties).schema_version,
       ).toMatchObject({ type: 'integer', enum: [1] });
+      const relatedLink = record(
+        record(
+          record(record(record(metadata.metadata).properties).related_links)
+            .items,
+        ).properties,
+      );
+      expect(relatedLink.url).toMatchObject({
+        format: 'uri',
+        pattern: '^[Hh][Tt][Tt][Pp][Ss]:\\/\\/',
+      });
+      const listResponse = record(
+        record(
+          record(
+            record(record(record(candidate.paths)['/entries']).get).responses,
+          )['200'],
+        ).content,
+      );
+      const listSchema = record(
+        record(listResponse['application/json']).schema,
+      );
+      const nextCursor = record(record(listSchema.properties).next_cursor);
+      const cursorString = Array.isArray(nextCursor.anyOf)
+        ? nextCursor.anyOf
+            .map(record)
+            .find((schema) => schema.type === 'string')
+        : nextCursor;
+      expect(cursorString).toMatchObject({
+        minLength: 1,
+        maxLength: 1024,
+        pattern: '^[A-Za-z0-9_-]+$',
+      });
     }
+  });
+
+  it('advertises the cookie name used by supported HTTP localhost mode', async () => {
+    const local = await generateRegistryOpenApi({ secureSessionCookie: false });
+    const schemes = record(record(local.components).securitySchemes);
+    expect(schemes.registrySession).toMatchObject({
+      type: 'apiKey',
+      in: 'cookie',
+      name: 'registry.session_token',
+    });
   });
 
   it('covers every operation, path target and public problem code', () => {

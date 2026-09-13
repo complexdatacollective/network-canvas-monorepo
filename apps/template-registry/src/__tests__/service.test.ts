@@ -519,6 +519,29 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
       has_more: false,
     });
     expect(
+      (
+        await fixture.request(
+          'PUT',
+          `/moderation/entries/${created.entry.id}/curation`,
+          { curated: true },
+          operator.bearer,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      await (
+        await fixture.request(
+          'GET',
+          '/moderation/reports',
+          undefined,
+          operator.bearer,
+        )
+      ).json(),
+    ).toMatchObject({ data: [], next_cursor: null, has_more: false });
+    expect(
+      (await fixture.owner.query('SELECT details FROM registry_reports')).rows,
+    ).toEqual([{ details: null }]);
+    expect(
       JSON.stringify(
         (await fixture.owner.query('SELECT * FROM registry_audit')).rows,
       ),
@@ -739,6 +762,24 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
         )
       ).rows,
     ).toEqual([{ count: 1 }]);
+  });
+
+  it('selects only bounded summary columns for public list results', async () => {
+    const account = await fixture.account();
+    await fixture.published(account.token);
+    const query = vi.spyOn(fixture.pool, 'query');
+    const response = await fixture.request('GET', '/entries');
+    expect(response.status).toBe(200);
+    expect(list.parse(await response.json()).data).toHaveLength(1);
+    const listSql = query.mock.calls
+      .map(([statement]) => statement)
+      .find(
+        (statement): statement is string =>
+          typeof statement === 'string' &&
+          statement.includes('ORDER BY e.sequence DESC'),
+      );
+    expect(listSql).toBeDefined();
+    expect(listSql).not.toContain('c.metadata');
   });
 
   it('applies takedown and operator erasure across every locator without allowing publisher deletion', async () => {

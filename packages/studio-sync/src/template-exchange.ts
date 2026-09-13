@@ -32,6 +32,7 @@ import {
 } from './template-metadata.ts';
 
 export {
+  parseBoundedJson,
   TEMPLATE_ARTIFACT_LIMITS,
   TemplateArtifactError,
 } from './template-archive.ts';
@@ -384,7 +385,7 @@ async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
         invalid();
       if (asset.media_type === 'text/csv') {
         // CSV is inert dataset text, never an inline browser document.
-        admitted = !/^\s*<(?:!doctype|html|svg|script)\b/i.test(text);
+        admitted = !/^\s*</.test(text);
       } else {
         const value = parseBoundedJson(text);
         admitted = value !== null && typeof value === 'object';
@@ -411,13 +412,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** Presence only: destination reference mapping remains the insertion contract. */
+/** Exactly one reusable subject keeps import identity independent of importer choice. */
 function requireKindContent(
   kind: TemplateArtifactManifest['template']['kind'],
   sections: ReadonlyMap<string, SectionDoc>,
 ): void {
   if (kind === 'protocol') return;
-  const present = Array.from(sections).some(([id, doc]) => {
+  const subjects = Array.from(sections).filter(([id, doc]) => {
     const reference = parseSectionId(id);
     if (kind === 'stage') return reference.kind === 'stage';
     if (kind === 'entity_definition' || kind === 'variable_set') {
@@ -448,7 +449,8 @@ function requireKindContent(
         ('edges' in prompt && Boolean(prompt.edges?.create)),
     );
   });
-  if (!present) throw new TemplateArtifactError('TEMPLATE_SECTIONS_INVALID');
+  if (subjects.length !== 1)
+    throw new TemplateArtifactError('TEMPLATE_SECTIONS_INVALID');
 }
 
 async function verifyFiles(

@@ -171,7 +171,7 @@ Each member of `assets` MUST contain exactly:
 | ------------- | ------------ | ------------------------------------------------------------------------------------------------------- |
 | `source`      | string       | 1–255 characters; not `.`, `..`, or whitespace-only; no slash, backslash, NUL, or C0 control character. |
 | `hash`        | content hash | Hash of the raw asset bytes.                                                                            |
-| `byte_size`   | integer      | 1–10 MiB and equal to the actual byte length.                                                           |
+| `byte_size`   | integer      | 1–10,485,760 bytes inclusive and equal to the actual byte length.                                       |
 | `media_class` | string       | One of `image`, `audio`, `video`, or `dataset`.                                                         |
 | `media_type`  | string       | 1–127 characters and admitted for the declared class.                                                   |
 
@@ -275,7 +275,9 @@ The `stageOrder` section defines execution order; manifest ordering is only
 canonical section-ID order. For a `protocol` template, the assembled sections
 and all cross-section references MUST validate as a complete protocol. Other
 template kinds MAY carry only a reusable subset plus supporting sections, but
-MUST contain at least the following subject matter:
+MUST contain exactly one qualifying section with the following subject matter.
+That unique section is the reusable artifact's primary identity; other sections
+are supporting content:
 
 - `stage`: a stage section;
 - `entity_definition`: an ego, node, or edge codebook definition;
@@ -328,20 +330,21 @@ The following declarations are allowed:
 Dataset bytes MUST be valid UTF-8, non-empty, and contain no disallowed C0
 controls. The permitted C0 controls are only TAB (U+0009), LF (U+000A),
 and CR (U+000D); U+0000–U+0008, U+000B–U+000C, and U+000E–U+001F are
-forbidden. CSV whose first non-whitespace token begins an HTML, SVG, script, or
-doctype document is invalid. The CSV check MUST be the ECMAScript regular
-expression `/^\s*<(?:!doctype|html|svg|script)\b/i` applied to the decoded
-JavaScript string, without the Unicode (`u`) flag. Here `^` anchors the input,
-`\s*` consumes zero or more ECMAScript whitespace code points, the alternatives
-are ASCII case-insensitive under `i`, and `\b` is the ECMAScript word-boundary
-assertion using the non-Unicode `\w` set of ASCII letters, decimal digits, and
-underscore; the expression need not consume the remainder of the string. For
-this version, ECMAScript `\s` means exactly U+0009–U+000D, U+0020, U+00A0,
+forbidden. CSV whose first non-whitespace character is `<` is invalid. This
+rejects HTML, XML, SVG, comments, processing instructions, and other markup
+regardless of its first token. The CSV check MUST be the ECMAScript regular
+expression `/^\s*</` applied to the decoded JavaScript string, without the
+Unicode (`u`) flag. Here `^` anchors the input and `\s*` consumes zero or more
+ECMAScript whitespace code points. For this version, ECMAScript `\s` means
+exactly U+0009–U+000D, U+0020, U+00A0,
 U+1680, U+2000–U+200A, U+2028, U+2029, U+202F, U+205F, U+3000, and U+FEFF.
 JSON datasets MUST decode to an object or array. JSON and GeoJSON dataset
 objects MUST NOT contain duplicate member names, including names that become
 equal after decoding JSON escapes, at any nesting level. Their decoded member
 names and string values MUST NOT contain NUL or unpaired Unicode surrogates.
+Every decoded number at every depth MUST be finite under the ECMAScript
+`Number` model. This includes GeoJSON properties and foreign members, not only
+coordinates, bounding boxes, and feature IDs.
 Every decoded value MUST satisfy the same depth limit as canonical JSON above.
 Dataset JSON need not use canonical member ordering, escaping, or whitespace;
 its original bytes, including insignificant whitespace, remain the asset hash

@@ -89,6 +89,47 @@ it('verifies the exact private evidence bytes before parsing', async () => {
   }
 });
 
+it.each([
+  '{"format":"template-registry-recovery-reconciliation","version":2,"version":1,"users":[]}',
+  '{"format":"template-registry-recovery-reconciliation","version":1,"users":[{"id":"one","email":"one@example.test","emailVerified":true,"publisher":"active","publisherId":"00000000-0000-4000-8000-000000000001","operator":false,"operator":true}]}',
+])(
+  'rejects duplicate recovery evidence members before parsing: %s',
+  async (text) => {
+    const directory = await mkdtemp(
+      join(tmpdir(), 'registry-evidence-duplicate-'),
+    );
+    const path = join(directory, 'current.json');
+    try {
+      const duplicateBytes = Buffer.from(text);
+      await writeFile(path, duplicateBytes, { mode: 0o600 });
+      await expect(
+        readRegistryRecoveryReconciliation(
+          path,
+          templateBytesHash(duplicateBytes),
+        ),
+      ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  },
+);
+
+it('rejects malformed UTF-8 recovery evidence before JSON parsing', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'registry-evidence-utf8-'));
+  const path = join(directory, 'current.json');
+  try {
+    const malformed = Buffer.from([
+      0x7b, 0x22, 0x78, 0x22, 0x3a, 0x22, 0xff, 0x22, 0x7d,
+    ]);
+    await writeFile(path, malformed, { mode: 0o600 });
+    await expect(
+      readRegistryRecoveryReconciliation(path, templateBytesHash(malformed)),
+    ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 it('normalizes evidence email domains and requires verified authority', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'registry-evidence-user-'));
   const path = join(directory, 'current.json');

@@ -4,7 +4,10 @@ import { lstat, open } from 'node:fs/promises';
 import { z } from 'zod';
 
 import { normalizeMailbox } from '@codaco/studio-sync/email-sender';
-import { templateBytesHash } from '@codaco/studio-sync/template-exchange';
+import {
+  parseBoundedJson,
+  templateBytesHash,
+} from '@codaco/studio-sync/template-exchange';
 
 const userId = z
   .string()
@@ -117,7 +120,8 @@ export async function readRegistryRecoveryReconciliation(
         templateBytesHash(bytes) !== expectedSha256
       )
         throw new Error();
-      return reconciliationSchema.parse(JSON.parse(bytes.toString('utf8')));
+      const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      return reconciliationSchema.parse(parseBoundedJson(text));
     } finally {
       await handle.close();
     }
