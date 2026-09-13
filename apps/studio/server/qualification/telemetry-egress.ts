@@ -498,8 +498,17 @@ export function assertKernelTelemetryReady(logs: string, now = Date.now()) {
 }
 
 export function assertNoKernelTelemetryEgress(logs: string) {
-  if (logs.includes(TELEMETRY_KERNEL_EGRESS_MARKER))
-    throw new Error('Kernel egress observer detected egress.');
+  if (logs.includes(TELEMETRY_KERNEL_EGRESS_MARKER)) {
+    // Observer records contain only transport, destination address and port.
+    // Preserve bounded evidence when CI tears down the isolated namespace.
+    const evidence = logs
+      .split('\n')
+      .filter((line) => line.startsWith(`${TELEMETRY_KERNEL_EGRESS_MARKER} `))
+      .slice(0, 16)
+      .map((line) => line.slice(0, 512))
+      .join('\n');
+    throw new Error(`Kernel egress observer detected egress.\n${evidence}`);
+  }
 }
 
 export function assertKernelTelemetryEgressProtocols(logs: string) {

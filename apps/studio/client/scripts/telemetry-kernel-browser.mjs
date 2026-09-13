@@ -305,7 +305,15 @@ export async function launchKernelObservedChromium({
       { address: detectorIp, port: 8443 },
     );
     await control.close();
-    await waitForObserver(observer);
+    const baselineLogs = await waitForObserver(observer);
+    try {
+      assertNoKernelTelemetryEgress(baselineLogs);
+    } catch (error) {
+      throw new Error(
+        'Kernel browser baseline emitted unexpected traffic before Studio started.',
+        { cause: error },
+      );
+    }
     return {
       browser,
       origin: (port) => `http://127.0.0.1:${port}`,
