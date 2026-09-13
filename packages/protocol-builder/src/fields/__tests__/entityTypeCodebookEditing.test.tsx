@@ -183,6 +183,55 @@ describe('making and changing a codebook type from the control that names it', (
   });
 
   /**
+   * A rename is judged against the other map's names as firmly as its own.
+   *
+   * Node and edge types share ONE namespace, and a record key belongs to one
+   * map — `VariableNameSchema`'s alphabet is the protocol author's, so an
+   * imported codebook may legally key a node type and an edge type the same.
+   * A collision list that dropped the edited entry by id alone would drop the
+   * OTHER map's entry with it, and the rename would be taken by the field and
+   * refused by the schema, on a screen with no name field left to act on.
+   */
+  it('refuses a node type the name an edge type keyed the same already has', async () => {
+    const harness = renderStageEditor({
+      stageId: 'family-pedigree-1',
+      sections: <PedigreeNodeConfigurationSection />,
+    });
+    await harness.opened();
+    // The same record key in both maps, which is what a codebook may hold.
+    harness.receiveCodebookUpdate({
+      edge: {
+        family_member: {
+          name: 'kinship',
+          color: 'edge-color-seq-1',
+          variables: {},
+        },
+      },
+    });
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit this node type' }),
+    );
+    const editor = within(
+      await screen.findByRole('dialog', { name: 'Edit this node type' }),
+    );
+    const name = await editor.findByRole('textbox', { name: 'Node type name' });
+    await harness.user.clear(name);
+    await harness.user.type(name, 'kinship');
+    await harness.user.click(
+      editor.getByRole('button', { name: 'Save entity' }),
+    );
+
+    expect(
+      await editor.findByText('A type named "kinship" already exists.'),
+    ).toBeVisible();
+    // Refused here, so nothing reached the codebook to be refused there.
+    expect(harness.hostCodebook().node?.family_member?.name).toBe(
+      'family member',
+    );
+  });
+
+  /**
    * And neither is offered where the caller says they must not be. Architect's
    * one such caller is the rule builder (`Query/Rules/RuleEditor.tsx:788`,
    * `allowCreation={false}`), whose picker sits inside a dialog inside a
