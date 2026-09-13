@@ -184,6 +184,100 @@ export const Editing: Story = {
     );
     await expect(heading.classList.contains('publish-colors')).toBe(false);
     await expect(first.classList.contains('publish-colors')).toBe(true);
+
+    /*
+      And where the picture rail is allowed beside the name, which is a fact
+      about the ROOM the heading has rather than about the window: this editor
+      is drawn in whatever column a host gives it.
+
+      Architect went two-column at `tablet-landscape` — 1024px of viewport
+      (`StageHeading.tsx:72`) — and from that width up its own column was
+      capped at `max-w-4xl`, so the 20rem rail never took room the stage name
+      had not got: the name block it drew beside the picture was the same width
+      at every viewport above the breakpoint. The container equivalent is
+      therefore the width at which THIS column reaches its cap, and the cap
+      here includes the column's own gutters: 896px of container, 848px of
+      heading, and a name block of 848 − 320 − 32 = 496px, unchanged above.
+
+      Below that the column is narrower than its cap, so splitting it would
+      draw a name block narrower than the widest this editor can give it — at
+      the 48rem this used to say, a 768px container left 368px of it. So the
+      heading stacks, and the name field keeps the whole column.
+
+      Measured by driving the room the editor is given, which is what the
+      `@container` on the shell's own root is answered about.
+    */
+    const nameField = canvas.getByRole('textbox', { name: 'Stage name' });
+    const column = heading.parentElement?.parentElement ?? null;
+    const container = column?.parentElement ?? null;
+    const host = canvasElement.querySelector('main');
+    await expect(container?.parentElement).toBe(host);
+
+    // The gutters are the column's own and sit inside its `max-w-4xl` cap,
+    // which is where the 848 above comes from. Read rather than assumed: the
+    // arithmetic below is only Architect's while this is 48.
+    const gutters =
+      column === null
+        ? 0
+        : Number.parseFloat(getComputedStyle(column).paddingLeft) +
+          Number.parseFloat(getComputedStyle(column).paddingRight);
+    await expect(gutters).toBe(48);
+
+    const hostStyle = host === null ? null : getComputedStyle(host);
+    const hostInset =
+      hostStyle === null
+        ? 0
+        : Number.parseFloat(hostStyle.paddingLeft) +
+          Number.parseFloat(hostStyle.paddingRight);
+    const initialWidth = host?.style.width ?? '';
+    const initialMaxWidth = host?.style.maxWidth ?? '';
+
+    const atContainerWidth = async (width: number) => {
+      if (host === null) throw new Error('the story host is not on the page');
+      host.style.maxWidth = 'none';
+      host.style.width = `${width + hostInset}px`;
+      // A container query is resolved in layout, so the frame after the write
+      // is the first one that can have answered it.
+      await new Promise(requestAnimationFrame);
+      await new Promise(requestAnimationFrame);
+      await expect(container?.getBoundingClientRect().width).toBeCloseTo(
+        width,
+        0,
+      );
+      return {
+        heading: getComputedStyle(heading).display,
+        name: nameField.getBoundingClientRect().width,
+      };
+    };
+
+    // Narrower than the cap: one column, and the name field has all of it.
+    const narrow = await atContainerWidth(800);
+    await expect(narrow.heading).toBe('flex');
+    await expect(narrow.name).toBeCloseTo(752, 0);
+    // Never narrower beside a picture than Architect's own heading drew it.
+    await expect(narrow.name).toBeGreaterThanOrEqual(544);
+
+    // One pixel below the cap is still one column: the threshold is the cap.
+    await expect((await atContainerWidth(895)).heading).toBe('flex');
+
+    // At the cap, the picture rail arrives and the name block is the widest
+    // this column can give it…
+    const atCap = await atContainerWidth(896);
+    await expect(atCap.heading).toBe('grid');
+    await expect(atCap.name).toBeCloseTo(496, 0);
+
+    // …and stays exactly that wide however much room the host has, as
+    // Architect's did above its breakpoint.
+    const wide = await atContainerWidth(1400);
+    await expect(wide.heading).toBe('grid');
+    await expect(wide.name).toBeCloseTo(496, 0);
+
+    // Left as the story draws itself, so what Chromatic photographs is the
+    // editor rather than the last width this measured.
+    if (host !== null) {
+      host.style.width = initialWidth;
+      host.style.maxWidth = initialMaxWidth;
+    }
   },
 };
 

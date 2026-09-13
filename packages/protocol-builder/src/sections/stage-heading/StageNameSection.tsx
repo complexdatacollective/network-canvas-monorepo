@@ -132,7 +132,19 @@ export default function StageNameSection({
       // breakpoint: this editor is drawn inside whatever panel a host gives
       // it, and a heading that read the window would go two-column in a narrow
       // pane on a wide screen.
-      className="mb-14 flex w-full flex-col gap-5 pt-7 outline-none @min-[48rem]:grid @min-[48rem]:grid-cols-[20rem_auto] @min-[48rem]:gap-8 @min-[48rem]:pt-10"
+      //
+      // It splits at `56rem` because that is where the column the shell draws
+      // reaches its own `max-w-4xl` cap, which is the state Architect's
+      // heading was always in when it went two-column: Architect split at
+      // `tablet-landscape` (1024px of viewport, `StageHeading.tsx:72`) and its
+      // column was capped from that width up, so the picture rail never took
+      // room the name did not have. The cap here is 896px INCLUDING the
+      // column's own gutters, so from 56rem of container the heading is 848px
+      // and the name block is 848 − 20rem − `gap-8` = 496px, the widest this
+      // column can give it and the same at every width above. Splitting
+      // earlier spends room the name has not got: at the 48rem this used to
+      // say, a 768px container left the name block 368px.
+      className="mb-14 flex w-full flex-col gap-5 pt-7 outline-none @min-[56rem]:grid @min-[56rem]:grid-cols-[20rem_auto] @min-[56rem]:gap-8 @min-[56rem]:pt-10"
     >
       <div className="flex items-center justify-center">
         {/*

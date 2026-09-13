@@ -495,7 +495,12 @@ export default function AssetPickerField({
                 (canvasBackgroundPreview ? (
                   <ThemedRegion
                     theme="interview"
-                    className="bg-background aspect-video w-full overflow-hidden rounded"
+                    // The ground is the region's own: `theme-base` paints
+                    // `bg-background`, which inside `[data-theme-interview]`
+                    // is the colour a participant sees behind the canvas. A
+                    // `bg-background` repeated here said the same thing twice
+                    // and read as though the frame were painting itself.
+                    className="aspect-video w-full overflow-hidden rounded"
                   >
                     <ResourcePreview
                       resourceId={descriptor.id}
