@@ -18,6 +18,21 @@ test('recovery operator wrapper opens only the migrator and recloses on every ex
     /# BEGIN RECOVERY_AUTHORIZATION_GUARD\n([\s\S]+?)# END RECOVERY_AUTHORIZATION_GUARD/,
   )?.[1];
   assert.ok(source, 'documented recovery guard is missing');
+  assert.match(
+    guide,
+    /RECOVERY_COMPOSE_FILE="\$\{COMPOSE_FILE:-docker-compose\.yml\}"[\s\S]*deployment\/recovery-images\.yml[\s\S]*deployment\/quarantine\.yml/,
+    'the guide must retain the verified recovery-images compose overlay',
+  );
+  assert.match(
+    guide,
+    /run --user "\$\(id -u\):\$\(id -g\)" \\\n+/,
+    'the one-shot command must map the operator UID/GID for private mounts',
+  );
+  assert.doesNotMatch(
+    guide,
+    /-f docker-compose\.yml -f deployment\/quarantine\.yml/,
+    'an explicit -f list would discard COMPOSE_FILE overlays',
+  );
 
   const root = mkdtempSync(join(tmpdir(), 'studio-recovery-guide-'));
   t.onTestFinished(() => rmSync(root, { recursive: true, force: true }));
