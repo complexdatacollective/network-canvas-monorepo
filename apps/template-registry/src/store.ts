@@ -28,6 +28,7 @@ import {
   CreateTokenSchema,
   PublisherSchema,
   ReportSchema,
+  RegistrySequenceSchema,
   TokenDescriptionSchema,
   type RegistryReport,
 } from './account-contract.ts';
@@ -90,13 +91,9 @@ const ENTRY_SUMMARY_QUERY = `SELECT e.id, e.sequence::text AS sequence, e.publis
   LEFT JOIN registry_artifact_content c ON c.root = a.root`;
 const hash = (value: string) =>
   createHash('sha256').update(value).digest('hex');
-const SequenceSchema = z
-  .string()
-  .regex(/^[1-9][0-9]{0,18}$/)
-  .refine((value) => BigInt(value) <= 9_223_372_036_854_775_807n);
 const CursorSchema = z.strictObject({
   version: z.literal(1),
-  after: SequenceSchema,
+  after: RegistrySequenceSchema,
   filter: z.string().regex(/^[0-9a-f]{64}$/),
 });
 
@@ -968,7 +965,7 @@ export class RegistryStore {
     after: string | undefined,
     limit: number,
   ) {
-    if (after && !SequenceSchema.safeParse(after).success)
+    if (after && !RegistrySequenceSchema.safeParse(after).success)
       throw new RegistryError('INVALID_REQUEST');
     if (!Number.isInteger(limit) || limit < 1 || limit > 100)
       throw new RegistryError('INVALID_REQUEST');

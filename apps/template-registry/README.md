@@ -10,10 +10,13 @@ not included in this image.
 
 The Zod/oRPC source in `src/contract.ts` generates the OpenAPI 3.1 contract in
 `spec/openapi.json` and at `/api/v1/openapi.json`. The wire API uses `/api/v1`,
-RFC 9457 problems and opaque cursor pagination. The shared exchange validator
-and normative format live in `@codaco/studio-sync/template-exchange` and
-`specifications/template-registry/`. Specification publication under CC0 is a
-separate release requirement; these local files are its reviewed source.
+RFC 9457 problems and opaque entry cursors; moderation reports use bounded
+decimal sequence cursors. The shared exchange validator lives in
+`@codaco/studio-sync/template-exchange`. Its sole normative format is
+[spec/template-exchange-v1.md](spec/template-exchange-v1.md). The former
+`specifications/template-registry/v1/template-format.md` redirects to that
+document; it does not define a second contract. Specification publication under
+CC0 is a separate release requirement; `spec/` contains its reviewed source.
 
 A publisher belongs to a verified registry email account, with an optional
 ORCID. The registry stores only hashes of its random `ncr1_` bearer tokens.
@@ -52,7 +55,7 @@ docker build --file apps/template-registry/Dockerfile \
 ```
 
 The Docker build prunes only this package's dependency closure and imports all
-four final production entry points before succeeding. The image runs as a
+five final production entry points before succeeding. The image runs as a
 non-root user. `dist/index.js` starts HTTP, `dist/migrate.js` applies versioned
 migrations, `dist/operator.js` grants or revokes an existing verified account's
 operator status, and `dist/backup.js` verifies the restricted backup identity.

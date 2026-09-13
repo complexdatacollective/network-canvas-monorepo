@@ -203,6 +203,17 @@ export function Credentials({
               <div className="min-w-0 break-words">
                 <strong>{credential.name}</strong>
                 <Paragraph>
+                  {intl.formatList(
+                    credential.scopes.map((scope) =>
+                      intl.formatMessage(
+                        scope === 'publish'
+                          ? messages.publishScope
+                          : messages.moderateScope,
+                      ),
+                    ),
+                  )}
+                </Paragraph>
+                <Paragraph>
                   {intl.formatMessage(messages.expires, {
                     date: new Date(credential.expires_at),
                   })}

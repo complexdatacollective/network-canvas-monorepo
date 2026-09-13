@@ -709,6 +709,33 @@ describe('portable template artifact', () => {
     }
   });
 
+  it('removes exactly one initial UTF-8 BOM for JSON parsing while retaining hashed bytes', async () => {
+    for (const [type, mediaType, source, text] of [
+      ['network', 'application/json', 'network.json', '{"nodes":[]}'],
+      [
+        'geojson',
+        'application/geo+json',
+        'places.geojson',
+        '{"type":"FeatureCollection","features":[]}',
+      ],
+    ] as const) {
+      const original = `\uFEFF${text}`;
+      const built = await createTemplateArtifact(
+        datasetFixture(type, mediaType, source, original),
+      );
+      expect(built.artifact.assets[0]?.bytes).toEqual(encode(original));
+      expect(built.artifact.assets[0]?.hash).toBe(
+        createHash('sha256').update(encode(original)).digest('hex'),
+      );
+      for (const prefix of ['\uFEFF\uFEFF', ' \uFEFF'])
+        await expect(
+          createTemplateArtifact(
+            datasetFixture(type, mediaType, source, `${prefix}${text}`),
+          ),
+        ).rejects.toMatchObject({ code: 'TEMPLATE_ASSET_DISALLOWED' });
+    }
+  });
+
   it('rejects non-finite decoded numbers throughout JSON datasets', async () => {
     for (const [type, mediaType, source, text] of [
       ['network', 'application/json', 'network.json', '{"value":1e400}'],

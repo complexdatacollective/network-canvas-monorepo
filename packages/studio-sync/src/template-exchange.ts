@@ -435,9 +435,12 @@ async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
     )
   ) {
     try {
-      const text = new TextDecoder('utf-8', { fatal: true }).decode(
-        asset.bytes,
-      );
+      // Consume exactly one initial UTF-8 BOM for parsing; asset hashes and
+      // archive bytes above retain the original sequence unchanged.
+      const text = new TextDecoder('utf-8', {
+        fatal: true,
+        ignoreBOM: false,
+      }).decode(asset.bytes);
       // oxlint-disable-next-line no-control-regex -- Dataset controls cannot hide active/binary payloads.
       if (!text.trim() || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text))
         invalid();
