@@ -293,7 +293,10 @@ describe('template exchange metadata', () => {
     expect(
       TemplateMetadataSchema.safeParse({
         ...metadata,
-        related_links: [{ url: 'HTTPS://example.org/study' }],
+        related_links: [
+          { url: 'HTTPS://example.org/study' },
+          { url: 'https://例え.テスト/path' },
+        ],
       }).success,
     ).toBe(true);
     for (const invalid of [

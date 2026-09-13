@@ -37,6 +37,7 @@ import type { RegistryBlobStore } from './blob-store.ts';
 import {
   EntrySchema,
   EntrySummarySchema,
+  YankedEntrySchema,
   ListEntriesSchema,
   type ListEntries,
   type RegistryEntry,
@@ -750,7 +751,7 @@ export class RegistryStore {
           requestId,
         );
       }
-      return this.#readEntry(client, id);
+      return YankedEntrySchema.parse(await this.#readEntry(client, id));
     });
   }
 

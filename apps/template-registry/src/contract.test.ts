@@ -23,6 +23,7 @@ import {
   generateRegistryOpenApi,
   ListEntriesSchema,
   registryContract,
+  YankedEntrySchema,
 } from './contract.ts';
 import { toOpenApi30 } from './openapi-compatibility.ts';
 import {
@@ -354,7 +355,9 @@ function codec(errorCode?: RegistryProblemCode) {
           }),
         }),
       ),
-      yank: os.yank.handler(({ input }) => respond('yank', input, entry)),
+      yank: os.yank.handler(({ input }) =>
+        respond('yank', input, { ...entry, yanked: true as const }),
+      ),
       report: os.report.handler(({ input }) =>
         respond('report', input, { id: OTHER_ID }),
       ),
@@ -696,6 +699,40 @@ describe('generated registry OpenAPI', () => {
     document = await generateRegistryOpenApi({ secureSessionCookie: true });
   });
 
+  it('publishes nonblank entry names and a confirmed withdrawal response', () => {
+    expect(YankedEntrySchema.safeParse(entry).success).toBe(false);
+    expect(
+      YankedEntrySchema.safeParse({ ...entry, yanked: true }).success,
+    ).toBe(true);
+    for (const candidate of [document, toOpenApi30(document)]) {
+      const schemas = record(record(candidate.components).schemas);
+      for (const name of ['Entry', 'EntrySummary']) {
+        const template = record(
+          record(record(schemas[name]).properties).template,
+        );
+        const pattern = record(record(template.properties).name).pattern;
+        expect(typeof pattern).toBe('string');
+        expect(new RegExp(String(pattern)).test('   ')).toBe(false);
+        expect(new RegExp(String(pattern)).test('Valid name')).toBe(true);
+      }
+      const response = record(
+        record(record(record(candidate.paths)['/entries/{id}/yank']).post)
+          .responses,
+      );
+      const output = record(
+        record(record(response['200']).content)['application/json'],
+      ).schema;
+      expect(output).toEqual({ $ref: '#/components/schemas/YankedEntry' });
+      expect(
+        record(record(record(schemas.YankedEntry).properties).yanked),
+      ).toMatchObject(
+        candidate.openapi.startsWith('3.0')
+          ? { type: 'boolean', enum: [true] }
+          : { type: 'boolean', const: true },
+      );
+    }
+  });
+
   it('keeps the published specification equal to the runtime Zod contract', async () => {
     const published = JSON.parse(
       await readFile(new URL('../spec/openapi.json', import.meta.url), 'utf8'),
@@ -868,9 +905,9 @@ describe('generated registry OpenAPI', () => {
         ).properties,
       );
       expect(relatedLink.url).toMatchObject({
-        format: 'uri',
         pattern: '^[Hh][Tt][Tt][Pp][Ss]:\\/\\/',
       });
+      expect(relatedLink.url).not.toHaveProperty('format');
       const publisher = record(
         record(record(candidate.components).schemas).Publisher,
       );

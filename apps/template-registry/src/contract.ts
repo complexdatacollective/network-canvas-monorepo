@@ -39,6 +39,9 @@ import {
 
 export const EntrySummarySchema = RegistryEntrySummarySchema;
 export const EntrySchema = RegistryEntrySchema;
+export const YankedEntrySchema = EntrySchema.extend({
+  yanked: z.literal(true),
+}).meta({ id: 'YankedEntry' });
 export type RegistryEntry = z.infer<typeof EntrySchema>;
 
 const codePointLimitedText = (maxLength: number) =>
@@ -331,7 +334,7 @@ export const registryContract = {
       }),
     )
     .input(entryTarget)
-    .output(EntrySchema),
+    .output(YankedEntrySchema),
   report: route
     .meta(
       openapi({

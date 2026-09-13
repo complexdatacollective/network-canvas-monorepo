@@ -110,7 +110,8 @@
               "name": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 200
+                "maxLength": 200,
+                "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
               },
               "kind": {
                 "type": "string",
@@ -303,7 +304,8 @@
               "name": {
                 "type": "string",
                 "minLength": 1,
-                "maxLength": 200
+                "maxLength": 200,
+                "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
               },
               "kind": {
                 "type": "string",
@@ -428,7 +430,202 @@
                       "type": "string",
                       "maxLength": 2048,
                       "pattern": "^[Hh][Tt][Tt][Pp][Ss]:\\/\\/",
-                      "format": "uri"
+                      "description": "WHATWG HTTPS URL with a nonempty authority and no username, password, or backslash; internationalized hostnames are permitted."
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "required": ["url"],
+                  "additionalProperties": false
+                }
+              },
+              "funding": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4000
+              }
+            },
+            "required": ["schema_version"],
+            "additionalProperties": false
+          },
+          "artifact_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "report_url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "id",
+          "publisher",
+          "root",
+          "template",
+          "license",
+          "curated",
+          "yanked",
+          "published_at",
+          "metadata",
+          "artifact_url",
+          "report_url"
+        ],
+        "additionalProperties": false
+      },
+      "YankedEntry": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])",
+            "description": "Publication UUID for this registry entry."
+          },
+          "publisher": {
+            "$ref": "#/components/schemas/Publisher"
+          },
+          "root": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
+            "description": "Artifact identity: the merkle_root from the template manifest."
+          },
+          "template": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "protocol",
+                  "stage",
+                  "entity_definition",
+                  "variable_set",
+                  "generator_prompt_set"
+                ]
+              },
+              "version": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            },
+            "required": ["name", "kind", "version"],
+            "additionalProperties": false
+          },
+          "license": {
+            "type": "string",
+            "enum": ["CC-BY-4.0", "CC0-1.0"]
+          },
+          "curated": {
+            "type": "boolean"
+          },
+          "yanked": {
+            "type": "boolean",
+            "const": true
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "schema_version": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1,
+                "enum": [1]
+              },
+              "authors": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "affiliation": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "orcid": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$"
+                    }
+                  },
+                  "required": ["name"],
+                  "additionalProperties": false
+                }
+              },
+              "keywords": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                }
+              },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 20000
+              },
+              "publications": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "doi": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 255,
+                      "pattern": "^10\\.\\d{4,9}\\/[^\\s]+$"
+                    },
+                    "citation": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4000
+                    },
+                    "relation": {
+                      "type": "string",
+                      "enum": ["describes", "validates", "uses"]
+                    }
+                  },
+                  "required": ["citation", "relation"],
+                  "additionalProperties": false
+                }
+              },
+              "related_links": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "maxLength": 2048,
+                      "pattern": "^[Hh][Tt][Tt][Pp][Ss]:\\/\\/",
+                      "description": "WHATWG HTTPS URL with a nonempty authority and no username, password, or backslash; internationalized hostnames are permitted."
                     },
                     "label": {
                       "type": "string",
@@ -1891,7 +2088,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Entry"
+                  "$ref": "#/components/schemas/YankedEntry"
                 }
               }
             }

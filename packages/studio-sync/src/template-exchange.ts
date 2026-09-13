@@ -72,7 +72,8 @@ export const TemplateArtifactManifestSchema = z.strictObject({
       .string()
       .min(1)
       .max(200)
-      .refine((value) => value.trim().length > 0),
+      .refine((value) => value.trim().length > 0)
+      .meta({ pattern: '^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])' }),
     kind: TemplateKindSchema,
     version: z.number().int().positive().max(2_147_483_647),
     summary: z.string().min(1).max(2000).optional(),

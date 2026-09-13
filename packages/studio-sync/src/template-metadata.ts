@@ -32,21 +32,27 @@ const text = (maximum: number) =>
         value.isWellFormed(),
     );
 const link = z
-  .url()
+  .string()
   .max(2048)
   .regex(/^[Hh][Tt][Tt][Pp][Ss]:\/\//)
   .refine((value) => {
-    const parsed = new URL(value);
-    return (
-      parsed.protocol === 'https:' &&
-      /^https:\/\/[^/?#]+(?:[/?#]|$)/i.test(value) &&
-      parsed.hostname.length > 0 &&
-      parsed.username.length === 0 &&
-      parsed.password.length === 0 &&
-      !value.includes('\\')
-    );
+    try {
+      const parsed = new URL(value);
+      return (
+        parsed.protocol === 'https:' &&
+        /^https:\/\/[^/?#]+(?:[/?#]|$)/i.test(value) &&
+        parsed.hostname.length > 0 &&
+        parsed.username.length === 0 &&
+        parsed.password.length === 0 &&
+        !value.includes('\\')
+      );
+    } catch {
+      return false;
+    }
   })
-  .meta({ format: 'uri' });
+  .describe(
+    'WHATWG HTTPS URL with a nonempty authority and no username, password, or backslash; internationalized hostnames are permitted.',
+  );
 
 // ORCID is a format-validated identifier, not a claim that the registry has
 // verified ownership. Authentication never relies on this author-editable field.
