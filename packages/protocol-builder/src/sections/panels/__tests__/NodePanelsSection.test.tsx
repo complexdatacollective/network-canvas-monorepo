@@ -153,8 +153,7 @@ const panelsOf = (
  * refusal this section decided says its own sentence instead, which is why a
  * test that means the section's refusal also says this one is absent.
  */
-const SCHEMA_REFUSAL =
-  'This stage is not finished, so it was not saved. The sections below say what is missing.';
+const SCHEMA_REFUSAL = 'This stage is not finished, so it was not saved.';
 
 describe('the side panels a name generator shows', () => {
   it('shows the panels a stage arrives with, and saves them unchanged', async () => {
