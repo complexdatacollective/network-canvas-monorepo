@@ -131,6 +131,16 @@ export async function generatePostgresMigrationFiles({
     schema,
     previous ? oldSnapshot.id : undefined,
   );
+  // The schema object can change while the existing history is read. Verify
+  // the actual snapshot being written, rather than attaching a fingerprint
+  // calculated from an earlier rendering of caller-owned table definitions.
+  if (
+    fingerprintPostgresSchema(
+      await generateMigration(emptySnapshot, snapshot),
+      copiedSidecarStatements,
+    ) !== fingerprint
+  )
+    throw new Error('Schema changed during migration authoring.');
   // Pinned rc.4 needs the repository patch to expose a noninteractive policy.
   // Never guess a rename: copying existing data belongs in reviewed before/
   // after SQL, especially when a new column changes its storage format.
