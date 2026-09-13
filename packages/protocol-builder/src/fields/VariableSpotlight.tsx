@@ -22,7 +22,10 @@ import ModalPopup from '@codaco/fresco-ui/Modal/ModalPopup';
 import { NativeLink } from '@codaco/fresco-ui/NativeLink';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 import { cx } from '@codaco/fresco-ui/utils/cva';
-import { VariableNameSchema } from '@codaco/shared-consts';
+import {
+  normalizeForComparison,
+  VariableNameSchema,
+} from '@codaco/shared-consts';
 
 import { protocolAuthoringLinks } from '../interfaces/documentation.ts';
 import AttributePill from './AttributePill.tsx';
@@ -126,6 +129,18 @@ const ROW_CLASSES = cx(
   'data-focused:bg-surface-2',
   'data-disabled:cursor-not-allowed data-disabled:opacity-60 data-disabled:hover:bg-transparent',
 );
+
+/**
+ * What an attribute's row is keyed under.
+ *
+ * An id the protocol minted and the two keys this list makes up for itself
+ * share one key space, and a protocol may file an attribute under an id
+ * holding a colon — so an attribute stored as `create:nick` would be the same
+ * key as the offer to create `nick`, and the collection keeps only the first
+ * of two rows that share one. Prefixed, no id can name a row this list
+ * invented.
+ */
+const ATTRIBUTE_KEY_PREFIX = 'attribute:';
 
 /**
  * One row of the list, which is one of three things.
@@ -278,10 +293,21 @@ export default function VariableSpotlight({
    * schema's own name rule rather than a second opinion about it: the codebook
    * is what refuses the write, and a row that offered a create the codebook
    * would refuse would spend a round trip to say so.
+   *
+   * Which is why the names are compared through `normalizeForComparison`, the
+   * helper `assertVariableNameAvailable` judges a write with: it case-folds
+   * and canonicalises, so `AGE` is the name `age` and a decomposed `café` is
+   * the precomposed one. A raw comparison here would offer to create a name
+   * the codebook holds, and answer with a duplicate-name refusal about a name
+   * the researcher believed was free.
    */
   const refusal = useMemo(() => {
     if (term === '') return undefined;
-    if (namesInUse?.includes(term) === true) {
+    const typed = normalizeForComparison(term);
+    if (
+      namesInUse?.some((held) => normalizeForComparison(held) === typed) ===
+      true
+    ) {
       return intl.formatMessage(messages.nameTaken);
     }
     if (!VariableNameSchema.safeParse(term).success) {
@@ -290,12 +316,24 @@ export default function VariableSpotlight({
     return undefined;
   }, [intl, namesInUse, term]);
 
-  const exactMatch = options.some((option) => option.label === term);
+  /**
+   * Whether an attribute on offer already goes by the typed name — asked the
+   * codebook's way, so `Name` finds `name` and a decomposed `café` finds the
+   * precomposed one. There is nothing to create under a name that is already
+   * in the list, and the row that offered it would be a row above its own
+   * answer.
+   */
+  const exactMatch = useMemo(() => {
+    const typed = normalizeForComparison(term);
+    return options.some(
+      (option) => normalizeForComparison(option.label) === typed,
+    );
+  }, [options, term]);
   const offersCreate = onCreate !== undefined && term !== '' && !exactMatch;
 
   const rows = useMemo<SpotlightRow[]>(() => {
     const attributes = matching.map((option): SpotlightRow => ({
-      id: option.value,
+      id: `${ATTRIBUTE_KEY_PREFIX}${option.value}`,
       kind: 'attribute',
       option,
     }));

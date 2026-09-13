@@ -346,17 +346,38 @@ export default function VariablePickerField({
     !held && offerable.length === 0 && onCreateOption === undefined;
 
   /**
+   * Whether the act now closing the window was made with the KEYBOARD.
+   *
+   * Read while the window closes, so it is a ref; written from the wrapper
+   * below, which sees the window's events because a portal's React events
+   * still travel the owner tree. Whichever of the two fired last is the one
+   * that produced the answer: a key press precedes the selection it makes,
+   * and a pointer press precedes the click it makes.
+   */
+  const answeredFromKeyboardRef = useRef(false);
+  /**
    * Where focus RETURNS when the window closes.
    *
-   * Dismissal only. A window closed by actually choosing changes the field
-   * underneath it — a new pill, and for a stage-level picker a whole section
-   * that mounts below — and focus belongs with that new content. Putting it
-   * back on the trigger also parks it inside this field's wrapper, whose blur
-   * then fires on the researcher's next click anywhere in the form, and the
-   * re-render that follows swallows that click.
+   * A window closed by actually choosing with a POINTER leaves focus where it
+   * fell: the field underneath has changed — a new pill, and for a stage-level
+   * picker a whole section that mounts below — and focus belongs with that new
+   * content. Putting it back on the trigger also parks it inside this field's
+   * wrapper, whose blur then fires on the researcher's next click anywhere in
+   * the form, and the re-render that follows swallows that click — an
+   * end-to-end run caught exactly that in Architect, on the first click after
+   * a quick-add attribute was created.
+   *
+   * A researcher who answered from the KEYBOARD has no next click to swallow,
+   * and everything to lose by being left on `<body>`: this window is opened
+   * from inside another dialog, and a Tab from nowhere restarts a document
+   * walk that steps straight out of it. So they are put back on the trigger,
+   * which is where the attribute they just chose is now named.
    */
   const finalFocus = useCallback(
-    () => (answeredRef.current ? false : triggerRef.current),
+    () =>
+      answeredRef.current && !answeredFromKeyboardRef.current
+        ? false
+        : triggerRef.current,
     [],
   );
 
@@ -470,6 +491,14 @@ export default function VariablePickerField({
       data-name={name}
       onBlur={handleBlur}
       onFocus={onFocus}
+      // Capture, so the window's own handlers cannot stop these from being
+      // read: all they record is which kind of press is in flight.
+      onKeyDownCapture={() => {
+        answeredFromKeyboardRef.current = true;
+      }}
+      onPointerDownCapture={() => {
+        answeredFromKeyboardRef.current = false;
+      }}
       className={cx('flex w-full flex-col items-start gap-4', className)}
     >
       {nothingToDo ? (

@@ -209,6 +209,31 @@ function UnsortedPicker() {
   );
 }
 
+/**
+ * One picker over an attribute the protocol filed under an id that reads
+ * exactly like a row this window makes up for itself.
+ *
+ * An id is minted rather than typed, so no researcher authored this one — but
+ * ids travel between protocols and hosts, and the schema puts nothing in the
+ * way of a colon. Mounted directly, because what is being read is the window's
+ * own key space rather than anything a row does with it.
+ */
+function CollidingIds() {
+  return (
+    <Section title="What this question records">
+      <Field<typeof VariablePickerField>
+        name="nodeConfig.egoVariable"
+        component={VariablePickerField}
+        label={DIRECT_PICKER}
+        options={[{ value: 'create:nick', label: 'nickname', type: 'text' }]}
+        onCreateOption={async (): Promise<CreateOptionOutcome> =>
+          Promise.resolve({ status: 'refused' })
+        }
+      />
+    </Section>
+  );
+}
+
 const renderRows = (sections: ReactNode) =>
   renderStageEditor({ stageId: 'name-generator-1', sections });
 
@@ -448,6 +473,33 @@ describe('the attribute picker', () => {
     expect(trigger('Change attribute')).not.toHaveFocus();
   });
 
+  /**
+   * A researcher who answered from the keyboard has no next click to swallow,
+   * and everything to lose by being left on `<body>`: this window is opened
+   * from inside another dialog, and a Tab from nowhere restarts a document
+   * walk that steps straight out of it. So the trigger — which now names the
+   * attribute they chose — takes focus back.
+   */
+  it('returns focus to the trigger when the pick was made from the keyboard', async () => {
+    const harness = renderRows(<SelectableAttributes />);
+    await addRow(harness);
+
+    // Enter on the row the arrows walked to.
+    await openAttributePicker(harness.user, picker());
+    await harness.user.keyboard('{ArrowDown}');
+    await harness.user.keyboard('{Enter}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(trigger('Change attribute')).toHaveFocus();
+
+    // Enter in the search box, on the one result left.
+    const reopened = await openAttributePicker(harness.user, picker());
+    await search(harness, reopened, 'flagged');
+    await harness.user.keyboard('{Enter}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(heldVariableName()).toBe('flagged');
+    expect(trigger('Change attribute')).toHaveFocus();
+  });
+
   /** The trigger says which act pressing it is. */
   it('says it changes the attribute once one is held', async () => {
     const harness = renderRows(<SelectableAttributes />);
@@ -545,6 +597,35 @@ describe('inventing an attribute from the picker', () => {
     expect(createRow(dialog, 'age_')).not.toHaveAttribute('aria-disabled');
   });
 
+  /**
+   * The codebook asks whether a name is free through `normalizeForComparison`
+   * — case-folded and Unicode-canonical — so this row has to ask it the same
+   * way. Asked case-sensitively it offered `AGE` as a name nobody held, and
+   * the codebook answered the press with a duplicate-name refusal about a name
+   * the researcher had just been told was free.
+   */
+  it('reads a case variant as the name the type already has', async () => {
+    const harness = renderRows(<StampedAttributes />);
+    await addRow(harness);
+    const dialog = await openAttributePicker(harness.user, picker());
+
+    await search(harness, dialog, 'AGE');
+    expect(
+      within(dialog).getByRole('option', {
+        name: 'Cannot create attribute named “AGE”: this type already has an attribute called that',
+      }),
+    ).toHaveAttribute('aria-disabled', 'true');
+
+    // One this picker DOES offer: a name already in the list is not a new name
+    // whichever case it was typed in, so the list says what it says for the
+    // name typed exactly — the attribute, and nothing above it. Not even the
+    // refused row: there is nothing to refuse, because nothing was offered.
+    await search(harness, dialog, 'Flagged');
+    const offered = within(dialog).getAllByRole('option');
+    expect(offered).toHaveLength(1);
+    expect(offered[0]).toHaveAccessibleName('flagged');
+  });
+
   it('switches off the create row for a name the codebook cannot store', async () => {
     const harness = renderRows(<StampedAttributes />);
     await addRow(harness);
@@ -629,6 +710,30 @@ describe('inventing an attribute from the picker', () => {
    * — and the reason has to be inside the window, because the section that
    * refused it is behind a modal while the window is open.
    */
+  /**
+   * The rows a search produces are keyed for a collection that keeps only the
+   * first of two rows sharing a key — so the offer to create `nick` and an
+   * attribute the protocol filed under the id `create:nick` were one key, and
+   * the attribute silently left the list a researcher was searching it in.
+   */
+  it('offers an attribute whose id reads like the row it invents', async () => {
+    const harness = renderStageEditor({
+      stageId: 'name-generator-1',
+      sections: <CollidingIds />,
+    });
+    await harness.opened();
+    const dialog = await openAttributePicker(
+      harness.user,
+      attributeField(DIRECT_PICKER),
+    );
+
+    await search(harness, dialog, 'nick');
+    expect(createRow(dialog, 'nick')).toBeVisible();
+    expect(
+      within(dialog).getByRole('option', { name: 'nickname' }),
+    ).toBeVisible();
+  });
+
   it('keeps the window open on a name the codebook refused, and says why', async () => {
     const harness = renderRows(
       <StampedAttributes
