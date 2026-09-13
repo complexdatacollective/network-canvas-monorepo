@@ -1570,6 +1570,63 @@ describe('the rules a composer field authors', () => {
       screen.getByRole('button', { name: 'Save validation' }),
     ).toBeDisabled();
   });
+
+  /**
+   * The same, for an attribute the row has not created yet.
+   *
+   * An invented attribute has no codebook entry at all, so the field's own
+   * control and settings are the ONLY rendering it has — and its rules are
+   * authored in the row's draft surface rather than the codebook's. Judged
+   * without them, the analyser read the invented answer as accepting any date
+   * and reported nothing.
+   */
+  it('judges an invented field’s rules against that field too', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ nodeForm: { fields: [] } }),
+    );
+    // The comparison target, bounded in the CODEBOOK: the two windows can only
+    // be judged against each other once the invented one is read from the row.
+    addPersonVariable(harness, 'bornOn', {
+      name: 'bornOn',
+      type: 'datetime',
+      component: 'DatePicker',
+      parameters: { type: 'full', min: '1990-01-01', max: '1995-12-31' },
+    });
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute');
+    await inventAttribute(harness.user, picker('Attribute'), 'metOn');
+    await harness.user.selectOptions(
+      await dialog.findByRole('combobox', { name: 'Input control' }),
+      'DatePicker',
+    );
+    fireEvent.change(dialog.getByLabelText('Earliest date'), {
+      target: { value: '2020-01-01' },
+    });
+    fireEvent.change(dialog.getByLabelText('Latest date'), {
+      target: { value: '2025-12-31' },
+    });
+
+    await harness.user.click(
+      await dialog.findByRole('button', { name: 'Set rules for this answer' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Same as another attribute',
+      }),
+    );
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Same as another attribute' }),
+      'bornOn',
+    );
+
+    expect(
+      await screen.findByText(
+        'The comparisons for bornOn and this attribute cannot be satisfied within their allowed ranges. Adjust the ranges, comparisons, or input controls.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
 });
 
 /**

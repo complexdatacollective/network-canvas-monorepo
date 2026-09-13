@@ -1195,6 +1195,7 @@ export default function AttributeCodebookControls({
               allVariables={variables}
               value={openEditor.draftRules}
               readOnly={readOnly}
+              {...(stageRendering === undefined ? {} : { stageRendering })}
               onSave={(validation) => {
                 // What this writes is the draft as the researcher has just
                 // seen it, against the kind the row holds now — so whatever an
