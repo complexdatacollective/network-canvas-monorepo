@@ -20,11 +20,7 @@ import { parseEnv } from 'node:util';
 
 import { Pool } from 'pg';
 
-import { CURRENT_SCHEMA_VERSION } from '@codaco/protocol-validation';
-import {
-  createTemplateArtifact,
-  templateBytesHash,
-} from '@codaco/studio-sync/template-exchange';
+import { templateBytesHash } from '@codaco/studio-sync/template-exchange';
 
 import { privateDirectory } from '../../deployment/installer/files.mjs';
 import { executeOperation } from '../../deployment/installer/operation.mjs';
@@ -32,6 +28,11 @@ import { sha256 } from '../../deployment/installer/release.mjs';
 import { createMaintenancePool, createPool } from '../src/db/pool.ts';
 import recoveryFixture from './combined-recovery.fixture.json' with { type: 'json' };
 import { owner, populate, rpc, signIn } from './data.ts';
+import {
+  createRegistryRecoveryArtifact,
+  registryRecoveryReconciliation,
+  seedRegistryRecoveryFixture,
+} from './registry-recovery-fixture.ts';
 import {
   assertKernelTelemetryControls,
   assertKernelTelemetryReady,
@@ -932,41 +933,7 @@ async function exerciseCombinedRecovery(
   fixture: Awaited<ReturnType<typeof scenario>>,
   configuration: string,
 ) {
-  const artifact = await createTemplateArtifact({
-    template: { name: 'Recovery qualification', kind: 'protocol', version: 1 },
-    metadata: {
-      schema_version: 1,
-      authors: [{ name: 'Qualification operator' }],
-      description: 'Synthetic local distribution recovery evidence.',
-      keywords: ['recovery'],
-    },
-    license: 'CC0-1.0',
-    sections: {
-      'settings': {
-        schemaVersion: CURRENT_SCHEMA_VERSION,
-        name: 'Recovery qualification',
-      },
-      'stageOrder': { stages: ['welcome'] },
-      'stage:welcome': {
-        id: 'welcome',
-        type: 'Information',
-        label: 'Welcome',
-        title: 'Welcome',
-        items: [{ id: 'text', type: 'text', content: 'Synthetic recovery.' }],
-      },
-    },
-    assets: [
-      {
-        source: recoveryFixture.registry.object.key,
-        media_type: 'application/octet-stream',
-        media_class: 'dataset',
-        bytes: Buffer.from(
-          recoveryFixture.registry.object.bytesBase64,
-          'base64',
-        ),
-      },
-    ],
-  });
+  const artifact = await createRegistryRecoveryArtifact();
   const rawHash = templateBytesHash(artifact.bytes);
   const artifactRoot = artifact.artifact.manifest.merkle_root;
   const registryEnv = parseEnv(
@@ -977,40 +944,7 @@ async function exerciseCombinedRecovery(
     connectionTimeoutMillis: 10_000,
   });
   try {
-    await registryAdmin.query(
-      `INSERT INTO registry_auth_user(id, name, email, email_verified)
-         VALUES ($1, $2, $3, true);
-       INSERT INTO registry_publishers(id, user_id, name) VALUES ($4, $1, $5);
-       INSERT INTO registry_auth_session(id, expires_at, token, updated_at, user_id)
-         VALUES ('recovery-session', statement_timestamp() + interval '1 hour',
-           'synthetic-recovery-session', statement_timestamp(), $1);
-       INSERT INTO registry_auth_verification(id, identifier, value, expires_at)
-         VALUES ('recovery-magic-link', $3, 'synthetic-magic-link',
-           statement_timestamp() + interval '1 hour');
-       INSERT INTO registry_credentials(id, publisher_id, token_hash, name, scopes, expires_at)
-         VALUES ('66666666-6666-4666-8666-666666666666', $4, $12,
-           'Recovery PAT', ARRAY['publish'], statement_timestamp() + interval '1 hour');
-       INSERT INTO registry_artifacts(root, raw_hash, byte_size)
-         VALUES ($6, $7, $8);
-       INSERT INTO registry_artifact_content(root, template, metadata, license)
-         VALUES ($6, $9, $10, $11);
-       INSERT INTO registry_entries(id, publisher_id, artifact_root)
-         VALUES ('55555555-5555-4555-8555-555555555555', $4, $6)`,
-      [
-        recoveryFixture.registry.userId,
-        'Recovery publisher',
-        recoveryFixture.registry.email,
-        recoveryFixture.registry.publisherId,
-        recoveryFixture.registry.publisherName,
-        artifactRoot,
-        rawHash,
-        artifact.bytes.byteLength,
-        artifact.artifact.manifest.template,
-        artifact.artifact.metadata,
-        artifact.artifact.license,
-        sha256('synthetic-recovery-pat'),
-      ],
-    );
+    await seedRegistryRecoveryFixture(registryAdmin, artifact);
   } finally {
     await registryAdmin.end();
   }
@@ -1069,17 +1003,7 @@ async function exerciseCombinedRecovery(
   cpSync(dataBackup, restored, { recursive: true });
   const reconciliation = join(fixture.keys, 'reconciliation.json');
   const reconciliationBytes = Buffer.from(
-    `${JSON.stringify({
-      format: 'template-registry-recovery-reconciliation',
-      version: 1,
-      users: [
-        {
-          id: recoveryFixture.registry.userId,
-          publisher: 'active',
-          operator: false,
-        },
-      ],
-    })}\n`,
+    `${JSON.stringify(registryRecoveryReconciliation)}\n`,
   );
   writeFileSync(reconciliation, reconciliationBytes, {
     flag: 'wx',
