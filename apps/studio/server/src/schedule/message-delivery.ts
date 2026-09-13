@@ -37,6 +37,10 @@ import {
 } from '../pii/message-deliveries.ts';
 import { ProtectedDataError } from '../pii/protection.ts';
 import {
+  createContactSuppressionIndexes,
+  type ContactSuppressionIndex,
+} from '../pii/suppression.ts';
+import {
   lockMessageRecipientAuthority,
   lockParticipantMessageAuthority,
   tryLockParticipantMessageAuthority,
@@ -86,6 +90,7 @@ type ClaimedMessageDelivery = {
   leaseOwner: string;
   sendStartedAt: Date | null;
   providerMessageId?: string;
+  recipientSuppressionIndexes?: readonly ContactSuppressionIndex[];
 };
 
 type ProviderOptions = {
@@ -641,6 +646,8 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
     return result.rowCount === 1;
   }
   suppressClaim(claim: ClaimedMessageDelivery, lease: OutboxLease) {
+    if (claim.recipientSuppressionIndexes)
+      return this.suppressProviderOptOut(claim, lease);
     return this.finish(claim, 'suppressed', 'owned', lease.owner);
   }
   async renewLease(claim: ClaimedMessageDelivery, lease: OutboxLease) {
@@ -654,6 +661,7 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
   private async beginProviderHandoff(
     claim: ClaimedMessageDelivery,
     provider: 'postmark' | 'smtp' | 'twilio',
+    recipientIndexes: readonly ContactSuppressionIndex[],
   ): Promise<'authorized' | 'suppressed' | 'lease-lost'> {
     const client = await this.options.pool.connect();
     try {
@@ -670,12 +678,13 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
         claim.teamId,
         claim.participantId,
       );
-      await lockMessageRecipientAuthority(
-        client,
-        claim.channel,
-        claim.blindIndexKeyId,
-        claim.recipientBlindIndex,
-      );
+      for (const index of recipientIndexes)
+        await lockMessageRecipientAuthority(
+          client,
+          claim.channel,
+          index.keyId,
+          index.value,
+        );
       const participant = await client.query(
         `SELECT 1 FROM participants WHERE id=$1 AND study_id=$2 AND team_id=$3
            AND blind_index_key_id=$4
@@ -776,14 +785,15 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
            EXISTS (SELECT 1 FROM participant_consents
              WHERE team_id=$1 AND study_id=$2 AND participant_id=$3 AND withdrawn_at IS NOT NULL) AS withdrawn,
            EXISTS (SELECT 1 FROM participant_contact_optouts
-             WHERE channel=$4 AND blind_index_key_id=$5 AND recipient_blind_index=$6) AS opted_out`,
+             WHERE channel=$4 AND (blind_index_key_id,recipient_blind_index)
+               IN (SELECT * FROM unnest($5::text[],$6::bytea[]))) AS opted_out`,
         [
           claim.teamId,
           claim.studyId,
           claim.participantId,
           claim.channel,
-          claim.blindIndexKeyId,
-          claim.recipientBlindIndex,
+          recipientIndexes.map((index) => index.keyId),
+          recipientIndexes.map((index) => index.value),
         ],
       );
       if (denied.rows[0]?.withdrawn || denied.rows[0]?.opted_out)
@@ -844,7 +854,15 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
       );
       if (!currentIndex.value.equals(claim.recipientBlindIndex))
         throw new ProtectedDataError();
-      const handoff = await this.beginProviderHandoff(claim, provider.provider);
+      const recipientIndexes = createContactSuppressionIndexes(
+        this.options.encryptionKeys,
+        { kind: contactKind, value: address },
+      );
+      const handoff = await this.beginProviderHandoff(
+        claim,
+        provider.provider,
+        recipientIndexes,
+      );
       if (handoff !== 'authorized') return handoff;
       if (claim.channel === 'email') {
         if (!rendered.subject || !this.options.email)
@@ -862,16 +880,90 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
       } else {
         if (rendered.subject || !this.options.sms)
           throw new SmsDeliveryError('permanent');
-        claim.providerMessageId = (
-          await this.options.sms.sender.send({
-            to: address,
-            body: rendered.body,
-            deliveryId: claim.id,
-          })
-        ).providerMessageId;
+        try {
+          claim.providerMessageId = (
+            await this.options.sms.sender.send({
+              to: address,
+              body: rendered.body,
+              deliveryId: claim.id,
+            })
+          ).providerMessageId;
+        } catch (error) {
+          if (
+            error instanceof SmsDeliveryError &&
+            error.reason === 'recipient-opt-out'
+          ) {
+            claim.recipientSuppressionIndexes = recipientIndexes;
+            return 'suppressed';
+          }
+          throw error;
+        }
       }
     } finally {
       contact?.fill(0);
+    }
+  }
+  private async suppressProviderOptOut(
+    claim: ClaimedMessageDelivery,
+    lease: OutboxLease,
+  ): Promise<boolean> {
+    const indexes = claim.recipientSuppressionIndexes;
+    if (!indexes) return false;
+    const writableIndexes = indexes.filter((index) =>
+      this.options.encryptionKeys.has('pii-index', index.keyId),
+    );
+    try {
+      return await runAuditedSystemMutation(
+        {
+          tenantDb: createTenantDb(this.options.pool, claim.teamId),
+          actorLabel: 'Message delivery',
+          requestId: randomUUID(),
+        },
+        async (client, context) => {
+          for (const index of indexes)
+            await lockMessageRecipientAuthority(
+              client,
+              claim.channel,
+              index.keyId,
+              index.value,
+            );
+          const result = await client.query(
+            `UPDATE message_deliveries
+             SET sent_at=NULL,failed_at=NULL,suppressed_at=clock_timestamp(),uncertain_at=NULL,
+                 lease_owner=NULL,lease_expires_at=NULL,last_error='delivery_suppressed'
+             WHERE ${OWNED}`,
+            [claim.id, lease.owner],
+          );
+          if (result.rowCount !== 1) throw new LeaseLost();
+          await client.query(
+            `INSERT INTO participant_contact_optouts
+               (channel,blind_index_key_id,recipient_blind_index,source)
+             SELECT $1,item.key_id,item.value,'provider'
+             FROM unnest($2::text[],$3::bytea[]) AS item(key_id,value)
+             ON CONFLICT(channel,blind_index_key_id,recipient_blind_index) DO NOTHING`,
+            [
+              claim.channel,
+              writableIndexes.map((index) => index.keyId),
+              writableIndexes.map((index) => index.value),
+            ],
+          );
+          return {
+            result: true,
+            events: [
+              messageEvent(
+                context,
+                claim.id,
+                'message_delivery',
+                'message.delivery.suppressed',
+                claim.channel,
+              ),
+            ],
+          };
+        },
+      );
+    } catch (error) {
+      if (error instanceof LeaseLost) return false;
+      throw error;
     }
   }
   async recordFailure(

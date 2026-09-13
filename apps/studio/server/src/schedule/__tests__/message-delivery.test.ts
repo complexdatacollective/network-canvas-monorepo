@@ -6,14 +6,17 @@ import {
   EmailDeliveryError,
   type EmailMessage,
 } from '@codaco/studio-sync/email-sender';
+import { SmsDeliveryError } from '@codaco/studio-sync/sms-sender';
 
 import { stubAuthService } from '../../__tests__/support/auth.ts';
 import { createHttpTestApp } from '../../__tests__/support/http-app.ts';
 import { readEnv } from '../../env.ts';
+import { configuration, loadTestKeys } from '../../pii/__tests__/fixtures.ts';
 import {
   participantFixture,
   contacts,
 } from '../../pii/__tests__/integration-fixture.ts';
+import { createContactBlindIndex } from '../../pii/contacts.ts';
 import { readInterviewLinkCapability } from '../../pii/interview-links.ts';
 import { updateParticipantPii } from '../../pii/participants.ts';
 import { issueParticipantInterviewLink } from '../../study/interview-links.ts';
@@ -996,6 +999,145 @@ describe('message delivery runtime', () => {
     });
   });
 
+  it('rechecks every retained blind-index key at the final provider handoff', async () => {
+    await participantFixture(async (fixture) => {
+      const due = await occurrence(fixture, false, 'sms');
+      const oldIndex = createContactBlindIndex(
+        fixture.keys,
+        { kind: 'phone', value: contacts.phone },
+        'index-1',
+      );
+      const rotatedConfiguration = configuration();
+      rotatedConfiguration.blindIndex.current = 'index-2';
+      const rotatedKeys = await loadTestKeys(rotatedConfiguration);
+      await updateParticipantPii(rotatedKeys, fixture.context, fixture.target, {
+        email: contacts.email,
+        phone: contacts.phone,
+        name: null,
+        attributes: null,
+      });
+      await enqueueOccurrenceMessages(
+        { pool: fixture.scratch.maintenance, encryptionKeys: rotatedKeys },
+        due.occurrenceId,
+        [
+          {
+            channel: 'sms',
+            templateId: due.templateId,
+            kind: 'prompt',
+            subject: null,
+            body: 'Never sent',
+          },
+        ],
+      );
+      await fixture.scratch.pool.query(
+        'UPDATE message_deliveries SET available_at=clock_timestamp()',
+      );
+      let sends = 0;
+      const dispatcher = createMessageDeliveryDispatcher({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: rotatedKeys,
+        sms: {
+          provider: 'twilio',
+          sender: {
+            async send() {
+              sends += 1;
+              throw new Error('must not send');
+            },
+            close() {},
+          },
+        },
+      });
+      const writer = await fixture.scratch.maintenance.connect();
+      await writer.query('BEGIN');
+      await lockMessageRecipientAuthority(
+        writer,
+        'sms',
+        oldIndex.keyId,
+        oldIndex.value,
+      );
+      const run = dispatcher.runOnce();
+      try {
+        await waitForAudit(fixture, 'message.contact.read');
+        await writer.query(
+          `INSERT INTO participant_contact_optouts(channel,blind_index_key_id,recipient_blind_index,source)
+           VALUES('sms',$1,$2,'provider')`,
+          [oldIndex.keyId, oldIndex.value],
+        );
+        await writer.query('COMMIT');
+        await expect(run).resolves.toMatchObject({
+          claimed: 1,
+          suppressed: 1,
+        });
+        expect(sends).toBe(0);
+      } finally {
+        await writer.query('ROLLBACK').catch(() => undefined);
+        writer.release();
+        await run.catch(() => undefined);
+      }
+    });
+  });
+
+  it('durably suppresses every retained index after a Twilio 21610 creation rejection', async () => {
+    await participantFixture(async (fixture) => {
+      const due = await occurrence(fixture, false, 'sms');
+      await enqueueOccurrenceMessages(
+        { pool: fixture.scratch.maintenance, encryptionKeys: fixture.keys },
+        due.occurrenceId,
+        [
+          {
+            channel: 'sms',
+            templateId: due.templateId,
+            kind: 'prompt',
+            subject: null,
+            body: 'Opted out',
+          },
+        ],
+      );
+      await fixture.scratch.pool.query(
+        'UPDATE message_deliveries SET available_at=clock_timestamp()',
+      );
+      const dispatcher = createMessageDeliveryDispatcher({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        sms: {
+          provider: 'twilio',
+          sender: {
+            async send() {
+              throw new SmsDeliveryError('permanent', 'recipient-opt-out');
+            },
+            close() {},
+          },
+        },
+      });
+      await expect(dispatcher.runOnce()).resolves.toMatchObject({
+        claimed: 1,
+        suppressed: 1,
+        failed: 0,
+      });
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT suppressed_at IS NOT NULL AS suppressed,
+                    failed_at IS NOT NULL AS failed
+             FROM message_deliveries`,
+          )
+        ).rows[0],
+      ).toEqual({ suppressed: true, failed: false });
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT blind_index_key_id FROM participant_contact_optouts
+             WHERE channel='sms' ORDER BY blind_index_key_id`,
+          )
+        ).rows,
+      ).toEqual([
+        { blind_index_key_id: 'index-1' },
+        { blind_index_key_id: 'index-2' },
+        { blind_index_key_id: 'same-root-new-index' },
+      ]);
+    });
+  });
+
   it('retries a proven provider rejection but never retries an ambiguous handoff', async () => {
     await participantFixture(async (fixture) => {
       const first = await occurrence(fixture);
@@ -1283,7 +1425,7 @@ describe('message delivery runtime', () => {
         ],
       );
       const delivery = await fixture.scratch.pool.query<{ id: string }>(
-        "UPDATE message_deliveries SET provider='twilio',provider_message_id=NULL,send_started_at=clock_timestamp(),sent_at=clock_timestamp() WHERE occurrence_id=$1 RETURNING id",
+        "UPDATE message_deliveries SET provider='twilio',provider_message_id=NULL,send_started_at=clock_timestamp(),uncertain_at=clock_timestamp() WHERE occurrence_id=$1 RETURNING id",
         [sms.occurrenceId],
       );
       const deliveryId = delivery.rows[0]!.id;
@@ -1343,6 +1485,25 @@ describe('message delivery runtime', () => {
           deliveryId,
         }),
       ).resolves.toBe(false);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT uncertain_at IS NOT NULL AS uncertain,
+                    sent_at IS NOT NULL AS accepted
+             FROM message_deliveries WHERE id=$1`,
+            [deliveryId],
+          )
+        ).rows[0],
+      ).toEqual({ uncertain: false, accepted: true });
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            `SELECT count(*)::int AS n FROM audit_events
+             WHERE resource_id=$1 AND event_type='message.delivery.accepted'`,
+            [deliveryId],
+          )
+        ).rows[0],
+      ).toEqual({ n: 1 });
       expect(
         (
           await fixture.scratch.pool.query(

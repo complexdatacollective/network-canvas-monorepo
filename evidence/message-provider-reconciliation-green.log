@@ -1,0 +1,19 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/message-runtime
+
+{"level":30,"time":"2026-09-13T19:07:08.291Z","event":"http_request","request_id":"883ab9cb-6658-4c2c-9355-b575a33ee2d6","route":"unmatched","method":"POST","status":503,"duration_ms":1.723}
+{"level":30,"time":"2026-09-13T19:07:08.291Z","event":"http_request","request_id":"747dc657-c0a6-4902-bfa2-430ed2fba613","route":"unmatched","method":"POST","status":401,"duration_ms":0.15}
+{"level":30,"time":"2026-09-13T19:07:08.293Z","event":"http_request","request_id":"5024e0d7-30ba-4ec0-af68-2fb8bd711d4f","route":"unmatched","method":"POST","status":503,"duration_ms":0.199}
+{"level":30,"time":"2026-09-13T19:07:08.293Z","event":"http_request","request_id":"ab0ee019-0a9f-4b10-9214-93592a5e47e5","route":"unmatched","method":"POST","status":400,"duration_ms":0.179}
+{"level":30,"time":"2026-09-13T19:07:08.293Z","event":"http_request","request_id":"50048aaf-a6bd-48a2-844f-c7ab720dc538","route":"unmatched","method":"POST","status":413,"duration_ms":0.078}
+{"level":30,"time":"2026-09-13T19:07:08.293Z","event":"http_request","request_id":"e49e21d9-0d74-4ed8-a717-4a7c98f3f61e","route":"unmatched","method":"POST","status":413,"duration_ms":0.103}
+{"level":30,"time":"2026-09-13T19:07:08.300Z","event":"http_request","request_id":"97d38ba8-df59-43a2-80a7-7740ae542ad9","route":"unmatched","method":"POST","status":204,"duration_ms":6.793}
+{"level":30,"time":"2026-09-13T19:07:08.316Z","event":"http_request","request_id":"72502532-a819-4288-a261-d2401466fdb5","route":"unmatched","method":"POST","status":204,"duration_ms":5.394}
+{"level":30,"time":"2026-09-13T19:07:08.322Z","event":"http_request","request_id":"10bc2149-bff7-416a-b584-25003655d3ff","route":"unmatched","method":"POST","status":204,"duration_ms":5.637}
+{"level":30,"time":"2026-09-13T19:07:08.363Z","event":"http_request","request_id":"39bc381c-9b29-4963-a77d-5b2e714bca4e","route":"unmatched","method":"POST","status":503,"duration_ms":0.486}
+{"level":30,"time":"2026-09-13T19:07:08.370Z","event":"http_request","request_id":"ace10595-eb76-4c2e-bf84-9fba176d6107","route":"unmatched","method":"POST","status":204,"duration_ms":6.007}
+
+ Test Files  2 passed (2)
+      Tests  22 passed (22)
+   Start at  21:06:59
+   Duration  11.53s (transform 641ms, setup 0ms, import 1.52s, tests 9.99s, environment 0ms)

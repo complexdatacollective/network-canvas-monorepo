@@ -91,6 +91,27 @@ function deliveredEvent(
   };
 }
 
+function acceptedEvent(
+  context: SystemAuditEventContext<'Message delivery'>,
+  deliveryId: string,
+  channel: 'email' | 'sms',
+): AuditEventInput {
+  return {
+    ...context,
+    eventVersion: 1,
+    eventType: 'message.delivery.accepted',
+    category: 'participant_data',
+    outcome: 'succeeded',
+    subjectType: null,
+    subjectId: null,
+    subjectLabel: null,
+    resourceType: 'message_delivery',
+    resourceId: deliveryId,
+    resourceLabel: null,
+    details: { channel },
+  };
+}
+
 async function store(
   pool: pg.Pool,
   input: {
@@ -130,12 +151,15 @@ async function store(
           participant_id: string;
           recipient_blind_index: Buffer;
           blind_index_key_id: string;
+          uncertain: boolean;
         }>(
           input.deliveryId
-            ? `SELECT id,team_id,channel,participant_id,recipient_blind_index,blind_index_key_id FROM message_deliveries
+            ? `SELECT id,team_id,channel,participant_id,recipient_blind_index,blind_index_key_id,
+                      uncertain_at IS NOT NULL AS uncertain FROM message_deliveries
                WHERE id=$1 AND team_id=$2 AND provider=$3 AND send_started_at IS NOT NULL
                  AND (provider_message_id IS NULL OR provider_message_id=$4) FOR UPDATE`
-            : `SELECT id,team_id,channel,participant_id,recipient_blind_index,blind_index_key_id FROM message_deliveries
+            : `SELECT id,team_id,channel,participant_id,recipient_blind_index,blind_index_key_id,
+                      uncertain_at IS NOT NULL AS uncertain FROM message_deliveries
                WHERE team_id=$1 AND provider=$2 AND provider_message_id=$3 FOR UPDATE`,
           input.deliveryId
             ? [
@@ -160,7 +184,11 @@ async function store(
           row.recipient_blind_index,
         );
         await client.query(
-          `UPDATE message_deliveries SET provider_message_id=coalesce(provider_message_id,$2)
+          `UPDATE message_deliveries
+           SET provider_message_id=coalesce(provider_message_id,$2),
+               sent_at=CASE WHEN uncertain_at IS NOT NULL THEN clock_timestamp() ELSE sent_at END,
+               uncertain_at=NULL,
+               last_error=CASE WHEN uncertain_at IS NOT NULL THEN NULL ELSE last_error END
            WHERE id=$1`,
           [row.id, input.providerMessageId],
         );
@@ -188,12 +216,20 @@ async function store(
         }
         return {
           result: true,
-          events: [
-            statusEvent(context, row.id, row.channel),
-            ...(input.kind === 'delivered'
-              ? [deliveredEvent(context, row.id, row.channel)]
-              : []),
-          ],
+          events: row.uncertain
+            ? [
+                acceptedEvent(context, row.id, row.channel),
+                statusEvent(context, row.id, row.channel),
+                ...(input.kind === 'delivered'
+                  ? [deliveredEvent(context, row.id, row.channel)]
+                  : []),
+              ]
+            : [
+                statusEvent(context, row.id, row.channel),
+                ...(input.kind === 'delivered'
+                  ? [deliveredEvent(context, row.id, row.channel)]
+                  : []),
+              ],
         };
       },
     );

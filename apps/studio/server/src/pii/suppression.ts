@@ -5,6 +5,28 @@ import type { EncryptionKeys } from './keys.ts';
 import { createClassifiedLegacyContactIndex } from './legacy-indexes.ts';
 import { credentialTransaction } from './oauth.ts';
 
+export type ContactSuppressionIndex = Readonly<{
+  keyId: string;
+  value: Buffer;
+}>;
+
+/** Every durable index by which this normalized deployment-wide contact is known. */
+export function createContactSuppressionIndexes(
+  keys: EncryptionKeys,
+  contact: Contact,
+): readonly ContactSuppressionIndex[] {
+  return [
+    ...keys
+      .ids('pii-index')
+      .map((id) => createContactBlindIndex(keys, contact, id)),
+    createClassifiedLegacyContactIndex(contact),
+  ].toSorted(
+    (left, right) =>
+      left.keyId.localeCompare(right.keyId) ||
+      Buffer.compare(left.value, right.value),
+  );
+}
+
 /**
  * Worker-only global suppression. Historical indexes must remain queryable:
  * an erased address cannot be reindexed from its HMAC, so changing the current
@@ -15,12 +37,7 @@ export function isContactSuppressed(
   keys: EncryptionKeys,
   contact: Contact,
 ): Promise<boolean> {
-  const indexes = [
-    ...keys
-      .ids('pii-index')
-      .map((id) => createContactBlindIndex(keys, contact, id)),
-    createClassifiedLegacyContactIndex(contact),
-  ];
+  const indexes = createContactSuppressionIndexes(keys, contact);
   return credentialTransaction(
     maintenancePool,
     async (client) => {

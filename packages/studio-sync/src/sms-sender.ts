@@ -4,14 +4,17 @@ import { request } from 'node:https';
 import { z } from 'zod';
 
 export type SmsFailureDisposition = 'retryable' | 'permanent' | 'uncertain';
+export type SmsFailureReason = 'recipient-opt-out';
 
 export class SmsDeliveryError extends Error {
   readonly disposition: SmsFailureDisposition;
+  readonly reason: SmsFailureReason | undefined;
 
-  constructor(outcome: SmsFailureDisposition) {
+  constructor(outcome: SmsFailureDisposition, reason?: SmsFailureReason) {
     super(`SMS_DELIVERY_${outcome.toUpperCase()}`);
     this.name = 'SmsDeliveryError';
     this.disposition = outcome;
+    this.reason = reason;
   }
 }
 
@@ -49,6 +52,9 @@ const message = z.strictObject({
   deliveryId: z.uuid(),
 });
 const acceptance = z.object({ sid: z.string().regex(/^SM[0-9a-f]{32}$/i) });
+const rejection = z.object({
+  code: z.union([z.literal(21610), z.literal('21610')]),
+});
 const RESPONSE_LIMIT = 16 * 1024;
 
 function httpDisposition(status = 0): SmsFailureDisposition | undefined {
@@ -124,7 +130,24 @@ export function createTwilioSmsSender(
             response.once('end', () => {
               try {
                 const rejected = httpDisposition(response.statusCode);
-                if (rejected) throw new SmsDeliveryError(rejected);
+                if (rejected) {
+                  if (rejected === 'permanent') {
+                    let recipientOptOut = false;
+                    try {
+                      recipientOptOut = rejection.safeParse(
+                        JSON.parse(Buffer.concat(chunks).toString('utf8')),
+                      ).success;
+                    } catch {
+                      // A malformed rejection remains a proven HTTP 4xx.
+                    }
+                    if (recipientOptOut)
+                      throw new SmsDeliveryError(
+                        'permanent',
+                        'recipient-opt-out',
+                      );
+                  }
+                  throw new SmsDeliveryError(rejected);
+                }
                 const accepted = acceptance.safeParse(
                   JSON.parse(Buffer.concat(chunks).toString('utf8')),
                 );
