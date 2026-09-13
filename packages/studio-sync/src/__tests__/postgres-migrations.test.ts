@@ -1,5 +1,11 @@
+import type pg from 'pg';
 import { describe, expect, it } from 'vitest';
 
+import {
+  jsonHash,
+  sha256,
+  type Migration,
+} from '../postgres-migration-artifacts.ts';
 import {
   createPostgresMigrator,
   type PostgresMigrationConfig,
@@ -90,4 +96,39 @@ describe('PostgreSQL migration configuration', () => {
       expect(() => createPostgresMigrator({ ...config, ...invalid })).toThrow();
     },
   );
+
+  it('validates complete migration artifacts before attempting a connection', async () => {
+    const sql = 'SELECT 1';
+    const sidecars = 'SELECT 2';
+    const fingerprint = sha256('registry schema');
+    const manifest = {
+      format: 1 as const,
+      id: '0001_initial',
+      previous: null,
+      fingerprint,
+      snapshotHash: jsonHash({}),
+      sqlHash: sha256(sql),
+      sidecarsHash: sha256(sidecars),
+    };
+    const migration: Migration = {
+      manifest,
+      checksum: jsonHash(manifest),
+      snapshot: {},
+      sql: `${sql} -- edited`,
+      sidecars,
+    };
+    let connected = false;
+    const pool = {
+      connect: () => {
+        connected = true;
+        return Promise.reject(new Error('database connection attempted'));
+      },
+    } as unknown as pg.Pool;
+    await expect(
+      createPostgresMigrator(config).migrate(pool, [migration], fingerprint, [
+        'registry_owner',
+      ]),
+    ).rejects.toThrow('checksum mismatch');
+    expect(connected).toBe(false);
+  });
 });

@@ -145,3 +145,39 @@ it('preserves authored SQL bytes and rejects duplicate, missing or unknown CLI o
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+it('snapshots caller-owned sidecars before authoring awaits', async () => {
+  const directory = await mkdtemp(
+    join(tmpdir(), 'migration-sidecar-snapshot-'),
+  );
+  const root = join(directory, 'migrations');
+  const schema = {
+    item: pgTable('sidecar_snapshot_item', {
+      id: text('id').primaryKey(),
+    }),
+  };
+  const sidecarStatements = ['SELECT 1;'];
+  const expectedFingerprint = fingerprintPostgresSchema(
+    await renderPostgresSchemaStatements(schema),
+    sidecarStatements,
+  );
+  try {
+    const pending = generatePostgresMigrationFiles({
+      schema,
+      sidecarStatements,
+      expectedFingerprint,
+      root,
+      name: 'initial',
+    });
+    sidecarStatements.splice(0, sidecarStatements.length, 'SELECT 2;');
+    await expect(pending).resolves.toEqual({
+      id: '0001_initial',
+      statements: 1,
+    });
+    expect(
+      await readFile(join(root, '0001_initial', 'sidecars.sql'), 'utf8'),
+    ).toBe('SELECT 1;\n');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});

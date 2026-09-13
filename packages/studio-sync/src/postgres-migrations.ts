@@ -2,7 +2,10 @@ import { escapeIdentifier, escapeLiteral } from 'pg';
 import type pg from 'pg';
 
 import { copyPostgresAdministrativeLogins } from './postgres-database-enrollment.ts';
-import type { Migration } from './postgres-migration-artifacts.ts';
+import {
+  copyPostgresMigrations,
+  type Migration,
+} from './postgres-migration-artifacts.ts';
 import {
   enforceMigrationSecurity,
   enforceMigrationQuiescence,
@@ -114,13 +117,14 @@ export function createPostgresMigrator(input: PostgresMigrationConfig) {
       allowedLogins: readonly string[],
       administrativeLogins?: readonly string[],
     ) => {
+      const copiedMigrations = copyPostgresMigrations(migrations);
       const logins = copyPostgresMigrationLogins(
         allowedLogins,
         administrativeLogins,
       );
       return migrateDatabase(
         pool,
-        migrations,
+        copiedMigrations,
         expectedFingerprint,
         logins.allowedLogins,
         logins.administrativeLogins,
