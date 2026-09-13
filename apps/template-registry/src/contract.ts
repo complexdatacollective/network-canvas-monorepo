@@ -11,6 +11,7 @@ import {
 import {
   TemplateKindSchema,
   TemplateLicenseSchema,
+  StrictUuidSchema,
 } from '@codaco/studio-sync/template-metadata';
 import {
   RegistryEntrySchema,
@@ -43,16 +44,30 @@ export const ListEntriesSchema = z
   .strictObject({
     cursor: PaginationCursorSchema.optional(),
     limit: z.coerce.number().int().min(1).max(100).default(20),
-    query: z.string().min(1).max(200).optional(),
+    query: z
+      .string()
+      .min(1)
+      .max(200)
+      .describe(
+        'Search text, limited to 200 ECMAScript UTF-16 code units. Clients must count UTF-16 code units rather than Unicode code points.',
+      )
+      .optional(),
     kind: TemplateKindSchema.optional(),
     license: TemplateLicenseSchema.optional(),
     keyword: z.string().min(1).max(100).optional(),
-    author: z.string().min(1).max(200).optional(),
+    author: z
+      .string()
+      .min(1)
+      .max(200)
+      .describe(
+        'Author text, limited to 200 ECMAScript UTF-16 code units. Clients must count UTF-16 code units rather than Unicode code points.',
+      )
+      .optional(),
     curated: z.enum(['true', 'false']).optional(),
     root: TemplateContentHashSchema.describe(
       'Exact artifact root. Combined with publisher_id, includes yanked publications while still excluding removed content.',
     ).optional(),
-    publisher_id: z.uuid().optional(),
+    publisher_id: StrictUuidSchema.optional(),
   })
   .meta({ id: 'ListEntries' });
 export type ListEntries = z.infer<typeof ListEntriesSchema>;
@@ -71,7 +86,7 @@ const route = oc.errors({
 const bearer = [{ registryToken: [] }];
 const cookie = [{ registrySession: [] }];
 type TokenScope = 'publish' | 'moderate';
-const entryId = z.strictObject({ id: z.uuid() });
+const entryId = z.strictObject({ id: StrictUuidSchema });
 const artifactRoot = z.strictObject({ root: TemplateContentHashSchema });
 const empty = z.strictObject({});
 // Keep transport namespaces separate. Compact decoding merges body/query fields
@@ -318,6 +333,8 @@ export const registryContract = {
         method: 'POST',
         path: '/entries/{id}/yank',
         summary: 'Withdraw an entry from browsing',
+        description:
+          'Requires a publish-scoped credential whose publisher owns the targeted entry.',
         inputStructure: 'detailed',
         spec: (operation) => tokenOperation(operation, 'publish'),
       }),
@@ -335,7 +352,7 @@ export const registryContract = {
       }),
     )
     .input(z.object({ params: entryId, query: empty, body: ReportSchema }))
-    .output(z.strictObject({ id: z.uuid() })),
+    .output(z.strictObject({ id: StrictUuidSchema })),
   me: route
     .meta(
       openapi({
@@ -512,6 +529,18 @@ export async function generateRegistryOpenApi(options: {
       }
     }
   }
+  const strictUuidPattern =
+    '^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])';
+  const hardenUuidPatterns = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(hardenUuidPatterns);
+      return;
+    }
+    if (!isRecord(value)) return;
+    if (value.format === 'uuid') value.pattern = strictUuidPattern;
+    Object.values(value).forEach(hardenUuidPatterns);
+  };
+  hardenUuidPatterns(doc);
   return doc;
 }
 

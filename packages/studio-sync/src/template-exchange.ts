@@ -39,7 +39,9 @@ export {
 
 export const TEMPLATE_ARTIFACT_MEDIA_TYPE =
   'application/vnd.networkcanvas.template+zip';
-export const TemplateContentHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
+export const TemplateContentHashSchema = z
+  .string()
+  .regex(/^[0-9a-f]{64}$(?![\s\S])/);
 const filename = z
   .string()
   .min(1)
