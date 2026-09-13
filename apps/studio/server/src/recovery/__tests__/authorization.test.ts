@@ -363,8 +363,28 @@ async function seedActiveScheduleWithPendingOccurrence() {
          now(), CURRENT_DATE, 600, 'UTC', now() + interval '1 hour', 'scheduled')`,
       [occurrenceId, studyId, scheduleId, participantId],
     );
-    return { scheduleId, occurrenceId };
+    return { studyId, participantId, scheduleId, occurrenceId };
   });
+}
+
+async function seedPendingOccurrenceForPausedSchedule(input: {
+  studyId: string;
+  participantId: string;
+  scheduleId: string;
+}) {
+  const occurrenceId = randomUUID();
+  await withTargetAdministrator(async (pool) => {
+    await pool.query(
+      `INSERT INTO schedule_occurrences (
+         id, team_id, study_id, schedule_id, participant_id, occurrence_index,
+         scheduled_for, scheduled_local_date, scheduled_local_minute,
+         resolved_time_zone, expires_at, state)
+       VALUES ($1, 'current-team', $2, $3, $4, 2,
+         now(), CURRENT_DATE, 600, 'UTC', now() + interval '1 hour', 'scheduled')`,
+      [occurrenceId, input.studyId, input.scheduleId, input.participantId],
+    );
+  });
+  return occurrenceId;
 }
 
 beforeAll(async () => {
@@ -725,6 +745,24 @@ describe.skipIf(!database)('Studio recovery authorization', () => {
 
     const reviewed = await currentEvidence();
     expect(reviewed.activeScheduleIds).toEqual([]);
+    await expect(run(evidence)).resolves.toMatchObject({
+      format: 'studio-recovery-authorization-receipt',
+    });
+
+    const lateOccurrenceId =
+      await seedPendingOccurrenceForPausedSchedule(seeded);
+    await expect(authorize(reviewed)).resolves.toMatchObject({
+      format: 'studio-recovery-current-authorization-receipt',
+    });
+    await withTargetAdministrator(async (pool) => {
+      await expect(
+        pool.query(
+          `SELECT state FROM schedule_occurrences
+           WHERE id = $1`,
+          [lateOccurrenceId],
+        ),
+      ).resolves.toHaveProperty('rows', [{ state: 'cancelled' }]);
+    });
     await expect(authorize(reviewed)).resolves.toMatchObject({
       format: 'studio-recovery-current-authorization-receipt',
     });

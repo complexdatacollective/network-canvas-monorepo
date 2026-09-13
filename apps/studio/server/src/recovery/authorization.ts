@@ -370,9 +370,27 @@ async function reconcileInventories(
       );
       if (pendingOccurrences.rows[0]?.count !== 0) throw new Error(MISMATCH);
     } else {
+      const expectedSchedules = await client.query<{
+        id: string;
+        state: string;
+      }>(
+        `SELECT id, state FROM study_schedules
+         WHERE id = ANY($1::uuid[]) ORDER BY id`,
+        [evidence.activeScheduleIds],
+      );
+      if (
+        expectedSchedules.rows.length !== evidence.activeScheduleIds.length ||
+        expectedSchedules.rows.some(
+          ({ state }) => state !== 'active' && state !== 'paused',
+        )
+      )
+        throw new Error(MISMATCH);
       const activeScheduleIds = new Set(activeSchedules);
-      for (const id of evidence.activeScheduleIds)
-        if (!activeScheduleIds.has(id)) throw new Error(MISMATCH);
+      if (
+        mode === 'require-exact' &&
+        evidence.activeScheduleIds.some((id) => !activeScheduleIds.has(id))
+      )
+        throw new Error(MISMATCH);
       if (
         mode === 'require-exact' &&
         activeSchedules.length !== evidence.activeScheduleIds.length
