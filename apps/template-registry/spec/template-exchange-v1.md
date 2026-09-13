@@ -137,8 +137,22 @@ The `template` object MUST contain exactly:
 | `summary` | string  | Optional; 1–2,000 characters.                                                               |
 
 Each member of `sections` MUST contain exactly an `id` string of 1–255
-characters and a `hash`. The array MUST be sorted by ascending section ID and
-MUST NOT contain duplicate IDs. Its file is `sections/<hash>.json`.
+characters and a `hash`. The array MUST be sorted with the comparator
+`a < b ? -1 : a > b ? 1 : 0`, where the comparisons are ECMAScript string
+comparisons over UTF-16 code units. It MUST NOT contain duplicate IDs. Its file
+is `sections/<hash>.json`.
+
+For example, the exact order of this non-BMP pair is:
+
+```text
+input:  ["stage:\u{10000}", "stage:\uE000"]
+output: ["stage:\u{10000}", "stage:\uE000"]
+```
+
+U+10000 is numerically greater than U+E000 as a Unicode scalar value, but its
+leading UTF-16 code unit (U+D800) sorts before U+E000. Implementations MUST
+apply the specified UTF-16 comparison rather than a locale or code-point
+collator.
 
 Each member of `assets` MUST contain exactly:
 
@@ -150,19 +164,20 @@ Each member of `assets` MUST contain exactly:
 | `media_class` | string       | One of `image`, `audio`, `video`, or `dataset`.                                                         |
 | `media_type`  | string       | 1–127 characters and admitted for the declared class.                                                   |
 
-The `assets` array MUST be sorted by ascending `source` and MUST NOT contain
-duplicate sources. Its file is `assets/<hash>`.
+The `assets` array MUST use the same UTF-16 comparator on `source` and MUST NOT
+contain duplicate sources. Its file is `assets/<hash>`.
 
 All manifest objects are closed: a reader MUST reject additional members.
 
 ## Metadata document
 
 `metadata.json` is the authored metadata document. It MUST be an object with
-`schema_version: 1` and only the optional members below. Importers MUST preserve
+`schema_version` equal to the integer `1` and only the optional members below. Importers MUST preserve
 the document and MUST NOT add machine provenance to it.
 
 | Member          | Shape and limits                                                                                                                   |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `schema_version` | Integer; MUST equal `1`.                                                                                                           |
 | `authors`       | Up to 100 objects with required `name` (1–200), optional `affiliation` (1–500), and optional `orcid`.                              |
 | `keywords`      | Up to 100 strings, each 1–100 characters.                                                                                          |
 | `description`   | String of 1–20,000 characters.                                                                                                     |
@@ -200,9 +215,34 @@ not replace the artifact's declared license.
 
 ## Sections
 
+### Protocol schema mapping
+
+`format_version` 1 and `protocol_schema_version` are independent. This
+revision emits `protocol_schema_version: 8`. The value is the exact
+`CURRENT_SCHEMA_VERSION` supported by `@codaco/protocol-validation` 13.0.1;
+an implementation MUST reject another value until it has the corresponding
+validator. The authoritative source snapshot for this mapping is commit
+[`08fa2a22b2fab5132d1bf6f2fd5c6a6285848701`](https://github.com/complexdatacollective/network-canvas-monorepo/tree/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701).
+
+The section wrappers and their authoritative schema entry points are:
+
+| Section ID | Schema for `protocol_schema_version: 8` |
+| --- | --- |
+| `settings` | `SettingsSectionSchema` in [`packages/studio-sync/src/section-validation.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/studio-sync/src/section-validation.ts) |
+| `stageOrder` | `StageOrderSectionSchema` in [`packages/studio-sync/src/section-validation.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/studio-sync/src/section-validation.ts) |
+| `stage:<id>` | `stageSchema` in [`packages/protocol-validation/src/schemas/8/stages/index.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/protocol-validation/src/schemas/8/stages/index.ts) |
+| `codebook:node:<id>` | `NodeDefinitionSchema` in [`packages/protocol-validation/src/schemas/8/codebook/definitions.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/protocol-validation/src/schemas/8/codebook/definitions.ts) |
+| `codebook:edge:<id>` | `EdgeDefinitionSchema` in [`packages/protocol-validation/src/schemas/8/codebook/definitions.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/protocol-validation/src/schemas/8/codebook/definitions.ts) |
+| `codebook:ego` | `EgoDefinitionSchema` in [`packages/protocol-validation/src/schemas/8/codebook/definitions.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/protocol-validation/src/schemas/8/codebook/definitions.ts) |
+| `assets` | `assetSchema` in [`packages/protocol-validation/src/schemas/8/assets/assets.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/protocol-validation/src/schemas/8/assets/assets.ts) |
+
+For a complete protocol template, the assembled sections MUST additionally
+validate against `ProtocolSchemaV8`, the default export of
+[`packages/protocol-validation/src/schemas/8/schema.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/protocol-validation/src/schemas/8/schema.ts). These immutable source references are normative version pins for independent implementations; this document does not copy the validator source. The validator packages retain their own software license. The files in this `spec/` directory, including these schema references, are dedicated under CC0 as stated in [`README.md`](README.md) and [`LICENSE`](LICENSE); that dedication does not relicense validator source or template artifacts.
+
 Each section file MUST contain a canonical JSON object that validates as the
-section named by its section ID under `protocol_schema_version`. Version 1
-recognizes these section IDs:
+section named by its section ID under `protocol_schema_version`. For
+`protocol_schema_version: 8`, the recognized section IDs are:
 
 ```text
 settings

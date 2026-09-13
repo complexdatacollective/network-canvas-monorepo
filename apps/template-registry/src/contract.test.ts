@@ -640,6 +640,39 @@ describe('generated registry OpenAPI', () => {
       TEMPLATE_ARTIFACT_MEDIA_TYPE,
     ]);
     expect(artifactContent[TEMPLATE_ARTIFACT_MEDIA_TYPE]).toBeDefined();
+
+    for (const candidate of [document, compatible]) {
+      const listEntries = record(
+        record(record(candidate.paths)['/entries']).get,
+      );
+      const parameters = Array.isArray(listEntries.parameters)
+        ? listEntries.parameters
+        : [];
+      expect(parameters.length).toBeGreaterThan(0);
+      const freeTextNames = ['query', 'keyword', 'author'];
+      const freeTextParameters = parameters
+        .map(record)
+        .filter(
+          (parameter) =>
+            parameter.in === 'query' &&
+            typeof parameter.name === 'string' &&
+            freeTextNames.includes(parameter.name),
+        );
+      expect(
+        freeTextParameters
+          .map((parameter) => parameter.name)
+          .toSorted((left, right) => left.localeCompare(right)),
+      ).toEqual(['author', 'keyword', 'query']);
+      for (const parameter of freeTextParameters) {
+        expect(parameter.allowReserved).toBe(false);
+      }
+      const metadata = record(
+        record(record(record(candidate.components).schemas).Entry).properties,
+      );
+      expect(
+        record(record(metadata.metadata).properties).schema_version,
+      ).toMatchObject({ type: 'integer', enum: [1] });
+    }
   });
 
   it('covers every operation, path target and public problem code', () => {
