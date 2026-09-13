@@ -29,6 +29,7 @@ import type { AuditEventInput } from './audit/events.ts';
 import { readAuditExportStatus, requestAuditExport } from './audit/export.ts';
 import { renderAuditFilterOptions } from './audit/facets.ts';
 import {
+  AuditReadDeniedError,
   authorizeAuditRead,
   grantsAuditRead,
 } from './audit/read-authorization.ts';
@@ -127,18 +128,6 @@ type AuditReadProcedure = Extract<
   AuditEventInput,
   { eventType: 'audit.read_denied' }
 >['details']['procedure'];
-
-/**
- * Thrown from inside the read transaction when the caller's locked membership
- * no longer grants audit.read, so the transaction rolls back before the denial
- * event is appended in its own transaction.
- */
-class AuditReadDeniedError extends Error {
-  constructor() {
-    super('audit read actor no longer holds audit.read');
-    this.name = 'AuditReadDeniedError';
-  }
-}
 
 /** A reservation the denial rate limiter has already let through. */
 type AdmittedDeniedAuditReservation = Extract<

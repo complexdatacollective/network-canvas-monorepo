@@ -12,6 +12,18 @@ import { rolesGrantAuditPermission } from './permissions.ts';
 // lock the actor's membership row, authorize its committed role — so the RPC
 // router never takes the writable team store as a dependency.
 
+/**
+ * Thrown from inside the read transaction when the caller's locked membership
+ * no longer grants audit.read, so the transaction rolls back before the denial
+ * event is appended in its own transaction.
+ */
+export class AuditReadDeniedError extends Error {
+  constructor() {
+    super('audit read actor no longer holds audit.read');
+    this.name = 'AuditReadDeniedError';
+  }
+}
+
 const teamStore = new TeamStore();
 
 /**
