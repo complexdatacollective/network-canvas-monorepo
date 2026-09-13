@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import type { CodebookSubject } from '../../../protocol-context.ts';
+import type { InMemoryClient } from '../../../testing/host/createInMemoryHost.ts';
 import {
   renderStageEditor,
   type StageEditorHarness,
@@ -74,6 +75,15 @@ const egoValidation = (
 ): unknown =>
   Reflect.get(
     harness.hostCodebook().ego?.variables?.[variableId] ?? {},
+    'validation',
+  );
+
+const personValidation = (
+  harness: StageEditorHarness,
+  variableId: string,
+): unknown =>
+  Reflect.get(
+    harness.hostCodebook().node?.person?.variables?.[variableId] ?? {},
     'validation',
   );
 
@@ -253,6 +263,34 @@ describe('rules written while the codebook is moving', () => {
   });
 
   /**
+   * The rebased map is what the codebook now holds, so it is what the screen
+   * has to show — and what the NEXT edit is diffed against. A screen left on
+   * the map the researcher clicked would carry the collaborator's rule as a
+   * removal the moment they touched another rule, deleting it.
+   */
+  it('brings the rebased rule to the screen, so the next edit keeps it', async () => {
+    const harness = open(EGO, 'ego_name');
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Validation' }),
+    );
+    collaboratorRules(harness, { minLength: 3 });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'Minimum text length' }),
+      ).toBeChecked(),
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+
+    await waitFor(() =>
+      expect(egoValidation(harness, 'ego_name')).toEqual({ minLength: 3 }),
+    );
+  });
+
+  /**
    * Rebasing can make a map nothing can satisfy, and the researcher never saw
    * the rule it contradicts. Refused with the sentence the row would have said
    * had they been looking at it, and nothing is written.
@@ -291,12 +329,44 @@ describe('rules written while the codebook is moving', () => {
   });
 
   /**
-   * Two edits made before the first has come back take the same lock, and
-   * whichever releases first leaves the other's submit refused — a valid edit
-   * silently unapplied. They are written one after the other instead.
+   * Two edits made before the first has come back are two writes over one
+   * section, each laying its map over the document the host held when IT
+   * asked. Left to race, the first edit's write reads a document without the
+   * second's rule in it and settles last, so the protocol ends up holding the
+   * older map and the second edit is silently gone. They are written one after
+   * the other instead, each rebased when its turn comes.
+   *
+   * The first write is held open, because that is the whole of the claim: a
+   * suite fast enough to settle the first write before the second is made
+   * proves nothing about two that overlap.
    */
   it('lands both of two edits made before the first came back', async () => {
-    const harness = open(EGO, 'ego_name');
+    const first = Promise.withResolvers<void>();
+    let held = true;
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      client: (host) => {
+        const submit: InMemoryClient['submit'] = async (
+          ...args: Parameters<InMemoryClient['submit']>
+        ) => {
+          if (held) {
+            held = false;
+            await first.promise;
+          }
+          return host.client.submit(...args);
+        };
+        return new Proxy(host.client, {
+          get: (target, property) =>
+            property === 'submit' ? submit : Reflect.get(target, property),
+        });
+      },
+      sections: (
+        <CodebookVariableValidationSection
+          subject={EGO}
+          variableId="ego_name"
+        />
+      ),
+    });
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
@@ -305,6 +375,7 @@ describe('rules written while the codebook is moving', () => {
     fireEvent.click(
       screen.getByRole('checkbox', { name: 'Minimum text length' }),
     );
+    first.resolve();
 
     await waitFor(() =>
       expect(egoValidation(harness, 'ego_name')).toEqual({
@@ -474,6 +545,167 @@ describe('a refusal the researcher has moved on from', () => {
           'Robin is currently editing a section needed for this change.',
         ),
       ).not.toBeInTheDocument(),
+    );
+  });
+});
+
+/**
+ * Only SOME of the maps the researcher can see are written: one refused for
+ * the lock, and one held back as half-set, both leave the screen ahead of the
+ * codebook. The next edit that does write has to carry them, or the rules on
+ * screen are dropped from the write, rebased away, and then wiped off the
+ * screen by the re-seed with nothing said about any of it.
+ */
+describe('a rule on screen that the codebook has not taken yet', () => {
+  it('is written by the next edit after a collaborator’s lock refused it', async () => {
+    const harness = open(EGO, 'ego_name');
+    await harness.opened();
+    const robin = harness.host.asCollaborator({
+      sessionId: 'session-2',
+      userId: 'user-2',
+      displayName: 'Robin',
+    });
+    await robin.acquireLock({
+      protocolId: harness.host.protocolId,
+      sectionId: EGO_SECTION,
+    });
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Validation' }),
+    );
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required answer' }),
+    );
+    expect(
+      await screen.findByText(
+        'Robin is currently editing a section needed for this change.',
+      ),
+    ).toBeInTheDocument();
+    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
+
+    await robin.releaseLock({
+      protocolId: harness.host.protocolId,
+      sectionId: EGO_SECTION,
+    });
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Minimum text length' }),
+    );
+
+    await waitFor(() =>
+      expect(egoValidation(harness, 'ego_name')).toEqual({
+        required: true,
+        minLength: 1,
+      }),
+    );
+    // And still on screen, because the codebook now holds it: a rule the write
+    // left behind is unticked by the re-seed a moment later, silently.
+    expect(
+      screen.getByRole('checkbox', { name: 'Required answer' }),
+    ).toBeChecked();
+  });
+
+  it('is written by the edit that finishes it, without a collaborator at all', async () => {
+    const harness = open(PERSON, 'story');
+    harness.receiveCodebookUpdate(personHolding('number'));
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Validation' }),
+    );
+    // Switched on with no target yet, so it is held on screen and not written.
+    await harness.user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Less than another attribute',
+      }),
+    );
+    // Still unanswerable with the comparison open, so this is not written
+    // either — and it is the edit the map on screen is now ahead by.
+    await harness.user.click(
+      await screen.findByRole('checkbox', { name: 'Required answer' }),
+    );
+    expect(personValidation(harness, 'story')).toBeUndefined();
+
+    await harness.user.selectOptions(
+      screen.getByRole('combobox', { name: 'Less than another attribute' }),
+      'retelling',
+    );
+
+    await waitFor(() =>
+      expect(personValidation(harness, 'story')).toEqual({
+        lessThanVariable: 'retelling',
+        required: true,
+      }),
+    );
+  });
+});
+
+/**
+ * The codebook moving because THIS section moved it is not news to the
+ * researcher, and the switch is not re-seeded for it. A write that was refused
+ * moved nothing, so the map it asked for is not an echo to wait for — and a
+ * collaborator who then makes that very change is not this section's own work.
+ */
+describe('the marker a refused write leaves behind', () => {
+  it('does not make a collaborator’s identical change read as ours', async () => {
+    let drop = true;
+    const harness = renderStageEditor({
+      stageId: 'ego-form-1',
+      client: (host) => {
+        const submit: InMemoryClient['submit'] = async (
+          ...args: Parameters<InMemoryClient['submit']>
+        ) => {
+          if (drop) {
+            drop = false;
+            // What a dropped socket is: the host took the lock and handed back
+            // the document, and the answer to the write never arrived.
+            throw new Error('the connection dropped');
+          }
+          return host.client.submit(...args);
+        };
+        return new Proxy(host.client, {
+          get: (target, property) =>
+            property === 'submit' ? submit : Reflect.get(target, property),
+        });
+      },
+      sections: (
+        <CodebookVariableValidationSection
+          subject={EGO}
+          variableId="ego_name"
+        />
+      ),
+    });
+    harness.receiveCodebookUpdate({
+      ego: {
+        variables: {
+          ego_name: {
+            name: 'ego_name',
+            type: 'text',
+            validation: { required: true },
+          },
+        },
+      },
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked(),
+    );
+
+    // Refused, so the rules are still there and the panel stays open over
+    // them — but the section has asked for an empty map.
+    await harness.user.click(
+      screen.getByRole('switch', { name: 'Validation' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('switch', { name: 'Validation' })).toBeChecked(),
+    );
+    expect(egoValidation(harness, 'ego_name')).toEqual({ required: true });
+
+    harness.receiveCodebookUpdate({
+      ego: { variables: { ego_name: { name: 'ego_name', type: 'text' } } },
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('switch', { name: 'Validation' }),
+      ).not.toBeChecked(),
     );
   });
 });
