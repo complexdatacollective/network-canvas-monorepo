@@ -46,13 +46,22 @@ async function registryRecoveryEvidence(
     id: string;
     publisher_id: string;
     artifact_root: string;
+    yanked: boolean;
   }>(
-    'SELECT id, publisher_id, artifact_root FROM registry_entries ORDER BY id',
+    'SELECT id, publisher_id, artifact_root, yanked_at IS NOT NULL AS yanked FROM registry_entries ORDER BY id',
+  );
+  const artifacts = await pool.query<{
+    root: string;
+    blocked: boolean;
+    deleted: boolean;
+  }>(
+    'SELECT root,blocked_at IS NOT NULL AS blocked,deleted_at IS NOT NULL AS deleted FROM registry_artifacts ORDER BY root',
   );
   return {
     format: 'template-registry-recovery-reconciliation',
     version: 3,
     inventories: {
+      artifacts: createRegistryRecoveryInventory('artifacts', artifacts.rows),
       users: createRegistryRecoveryInventory(
         'users',
         users.rows.map((user) => ({
@@ -79,6 +88,7 @@ async function registryRecoveryEvidence(
           id: entry.id,
           publisherId: entry.publisher_id,
           artifactRoot: entry.artifact_root,
+          yanked: entry.yanked,
         })),
       ),
     },
@@ -180,7 +190,10 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
               'SELECT id, user_id, suspended_at IS NOT NULL AS suspended FROM registry_publishers',
             ) ||
             event.sql.startsWith(
-              'SELECT id, publisher_id, artifact_root FROM registry_entries',
+              'SELECT id, publisher_id, artifact_root, yanked_at IS NOT NULL AS yanked FROM registry_entries',
+            ) ||
+            event.sql.startsWith(
+              'SELECT root, blocked_at IS NOT NULL AS blocked, deleted_at IS NOT NULL AS deleted FROM registry_artifacts',
             )),
       );
     expect(
@@ -196,6 +209,11 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
     expect(
       inventoryPages.filter(({ event }) =>
         event.sql.includes('registry_entries'),
+      ),
+    ).toHaveLength(1);
+    expect(
+      inventoryPages.filter(({ event }) =>
+        event.sql.includes('FROM registry_artifacts'),
       ),
     ).toHaveLength(1);
     for (const { index } of inventoryPages) {
@@ -755,3 +773,86 @@ it('refuses recovery while an enrolled runtime can still reconnect', async () =>
     await fixture.dispose();
   }
 });
+
+it.each([
+  ['blocked', true],
+  ['deleted', true],
+  ['withdrawn', true],
+  ['blocked', false],
+  ['deleted', false],
+  ['withdrawn', false],
+] as const)(
+  'requires current %s moderation state during recovery (older backup: %s)',
+  async (state, olderBackup) => {
+    const installation = await createRegistryInstallation();
+    const fixture = await createRegistryFixture({}, installation);
+    try {
+      const migrations = await readMigrations(
+        fileURLToPath(new URL('../migrations', import.meta.url)),
+        'Template Registry',
+      );
+      await registryMigrator.migrate(
+        fixture.owner,
+        migrations,
+        REGISTRY_SCHEMA_FINGERPRINT,
+        installation.allowedLogins,
+      );
+      const account = await fixture.account('safety@example.test');
+      const published = await fixture.published(
+        account.token,
+        'Safety transition',
+      );
+      const root = published.artifact.manifest.merkle_root;
+      if (state === 'withdrawn') {
+        await fixture.owner.query(
+          'UPDATE registry_entries SET yanked_at=now() WHERE id=$1',
+          [published.entry.id],
+        );
+      } else {
+        await fixture.owner.query(
+          'UPDATE registry_artifacts SET blocked_at=now(),deleted_at=CASE WHEN $2 THEN now() ELSE NULL END WHERE root=$1',
+          [root, state === 'deleted'],
+        );
+      }
+      // Capture reviewed current facts, then simulate an older intact DB+object backup.
+      const reconciliation = await registryRecoveryEvidence(fixture.owner);
+      if (olderBackup) {
+        await fixture.owner.query(
+          'UPDATE registry_entries SET yanked_at=NULL WHERE id=$1',
+          [published.entry.id],
+        );
+        await fixture.owner.query(
+          'UPDATE registry_artifacts SET blocked_at=NULL,deleted_at=NULL WHERE root=$1',
+          [root],
+        );
+      }
+      await installation.closeRuntimePools();
+      await installation.withAdministrator((administrator) =>
+        administrator.query(
+          `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN; ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
+        ),
+      );
+      const recovery = reconcileRegistryRecovery({
+        pool: fixture.owner,
+        backupPool: installation.backupPool,
+        blobs: fixture.blobs,
+        admission: { allowedLogins: installation.allowedLogins },
+        reconciliation,
+      });
+      if (olderBackup)
+        await expect(recovery).rejects.toThrow(
+          'REGISTRY_RECOVERY_RECONCILIATION_MISMATCH',
+        );
+      else await expect(recovery).resolves.toBeUndefined();
+      expect(
+        (
+          await fixture.owner.query(
+            'SELECT count(*)::int AS count FROM registry_credentials WHERE revoked_at IS NULL',
+          )
+        ).rows,
+      ).toEqual([{ count: olderBackup ? 1 : 0 }]);
+    } finally {
+      await fixture.dispose();
+    }
+  },
+);

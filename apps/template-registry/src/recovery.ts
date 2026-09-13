@@ -193,6 +193,27 @@ export async function reconcileRegistryRecovery({
     }
     if (!isDeepStrictEqual(usersInventory.finish(), evidence.inventories.users))
       throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    const artifactsInventory =
+      createRegistryRecoveryInventoryAccumulator('artifacts');
+    for await (const artifacts of recoveryPages<{
+      root: string;
+      blocked: boolean;
+      deleted: boolean;
+    }>(
+      client,
+      backup,
+      'SELECT root, blocked_at IS NOT NULL AS blocked, deleted_at IS NOT NULL AS deleted FROM registry_artifacts WHERE ($1::text IS NULL OR root > $1) ORDER BY root LIMIT $2',
+      'root',
+    )) {
+      for (const artifact of artifacts) artifactsInventory.add(artifact);
+    }
+    if (
+      !isDeepStrictEqual(
+        artifactsInventory.finish(),
+        evidence.inventories.artifacts,
+      )
+    )
+      throw new Error('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
     await verifyRegistryRecoveryArtifacts(client, backup, blobs);
     const publishersInventory =
       createRegistryRecoveryInventoryAccumulator('publishers');
@@ -258,10 +279,11 @@ export async function reconcileRegistryRecovery({
       id: string;
       publisher_id: string;
       artifact_root: string;
+      yanked: boolean;
     }>(
       client,
       backup,
-      'SELECT id, publisher_id, artifact_root FROM registry_entries WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
+      'SELECT id, publisher_id, artifact_root, yanked_at IS NOT NULL AS yanked FROM registry_entries WHERE ($1::uuid IS NULL OR id > $1) ORDER BY id LIMIT $2',
       'id',
     )) {
       for (const entry of entries)
@@ -269,6 +291,7 @@ export async function reconcileRegistryRecovery({
           id: entry.id,
           publisherId: entry.publisher_id,
           artifactRoot: entry.artifact_root,
+          yanked: entry.yanked,
         });
     }
     if (
