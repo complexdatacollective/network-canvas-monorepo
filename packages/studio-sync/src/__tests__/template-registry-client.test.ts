@@ -218,6 +218,38 @@ describe('TemplateRegistryClient', () => {
     }
   });
 
+  it.each([404, 410])(
+    'marks immutable entry and artifact HTTP %s as unavailable',
+    async (status) => {
+      const client = new TemplateRegistryClient({
+        origin: ORIGIN,
+        fetch: async () => new Response(null, { status }),
+      });
+      await expect(client.entry(ENTRY_ID)).rejects.toMatchObject({
+        code: 'TEMPLATE_REGISTRY_RESOURCE_UNAVAILABLE',
+      });
+      await expect(client.fetchArtifact('a'.repeat(64))).rejects.toMatchObject({
+        code: 'TEMPLATE_REGISTRY_RESOURCE_UNAVAILABLE',
+      });
+    },
+  );
+
+  it.each([403, 408, 429, 500, 503])(
+    'keeps immutable resource HTTP %s retryable',
+    async (status) => {
+      const client = new TemplateRegistryClient({
+        origin: ORIGIN,
+        fetch: async () => new Response(null, { status }),
+      });
+      await expect(client.entry(ENTRY_ID)).rejects.toMatchObject({
+        code: 'TEMPLATE_REGISTRY_RESPONSE_INVALID',
+      });
+      await expect(client.fetchArtifact('a'.repeat(64))).rejects.toMatchObject({
+        code: 'TEMPLATE_REGISTRY_RESPONSE_INVALID',
+      });
+    },
+  );
+
   it.each([400, 401, 403, 409, 429])(
     'classifies publication HTTP %s as a definitive rejection',
     async (status) => {

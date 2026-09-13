@@ -315,7 +315,11 @@ const TemplateRegistryIntentQuarantinedV1EventSchema =
     eventType: z.literal('template.registry_intent_quarantined'),
     details: z.strictObject({
       kind: z.enum(['publication', 'import']),
-      reason: z.enum(['publication_rejected', 'registry_changed']),
+      reason: z.enum([
+        'publication_rejected',
+        'registry_changed',
+        'resource_unavailable',
+      ]),
     }),
   }).strict();
 

@@ -321,6 +321,7 @@ describe.skipIf(!db)(
         'study_stage_rollups',
         'study_wave_rollups',
         'team_invitation_deliveries',
+        'template_registry_intents',
         'webhook_deliveries',
       ]);
       for (const row of result.value)
@@ -456,6 +457,13 @@ describe.skipIf(!db)(
           CANARY,
         ],
       );
+      expected.set('template_registry_intents', {
+        pending: 0,
+        ready: 0,
+        leased: 0,
+        failed: 0,
+        uncertain: 0,
+      });
       expected.set('team_invitation_deliveries', {
         pending: 0,
         ready: 0,

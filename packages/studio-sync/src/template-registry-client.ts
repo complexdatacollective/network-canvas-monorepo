@@ -28,6 +28,7 @@ export type TemplateRegistryClientErrorCode =
   | 'TEMPLATE_REGISTRY_CONFIGURATION_INVALID'
   | 'TEMPLATE_REGISTRY_REQUEST_FAILED'
   | 'TEMPLATE_REGISTRY_PUBLICATION_REJECTED'
+  | 'TEMPLATE_REGISTRY_RESOURCE_UNAVAILABLE'
   | 'TEMPLATE_REGISTRY_RESPONSE_INVALID'
   | 'TEMPLATE_REGISTRY_SCHEMA_UNSUPPORTED'
   | 'TEMPLATE_REGISTRY_ARTIFACT_INVALID';
@@ -358,6 +359,8 @@ export class TemplateRegistryClient {
       context.setCancellation(async () => await response.body?.cancel());
       let complete = false;
       try {
+        if (response.status === 404 || response.status === 410)
+          failure('TEMPLATE_REGISTRY_RESOURCE_UNAVAILABLE');
         const entry = await parseEntry(response, 200, this.#origin, context);
         if (entry.id.toLowerCase() !== parsedId.data.toLowerCase())
           failure('TEMPLATE_REGISTRY_RESPONSE_INVALID');
@@ -448,6 +451,8 @@ export class TemplateRegistryClient {
       context.setCancellation(async () => await response.body?.cancel());
       let complete = false;
       try {
+        if (response.status === 404 || response.status === 410)
+          failure('TEMPLATE_REGISTRY_RESOURCE_UNAVAILABLE');
         if (
           response.status !== 200 ||
           mediaType(response) !== TEMPLATE_ARTIFACT_MEDIA_TYPE ||
