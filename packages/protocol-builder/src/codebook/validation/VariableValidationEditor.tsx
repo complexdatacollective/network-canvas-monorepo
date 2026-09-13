@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type KeyboardEvent } from 'react';
+import { useId, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
 import { defineMessages, formatMessageError } from '@codaco/app-i18n/messages';
 import type { IntlShape } from '@codaco/app-i18n/messages';
@@ -204,6 +204,25 @@ export default function VariableValidationEditor({
    * always settles a complete value.
    */
   const [drafts, setDrafts] = useState<Readonly<Record<string, string>>>({});
+  /**
+   * The map these boxes are typing over.
+   *
+   * Every commit this editor makes clears the drafts before it hands the map
+   * on, so a `value` that changes while a draft is still held is a value
+   * somebody ELSE replaced — a collaborator's change to the same attribute, a
+   * restore. The typing was about a number that is no longer there: left in
+   * place it shows text the map does not hold, and the next commit writes it
+   * over the replacement.
+   *
+   * Cleared during render rather than in an effect, for the reason the section
+   * above resets its own draft during render: a frame of the old text over the
+   * new value is a frame of something untrue.
+   */
+  const seenValue = useRef(value);
+  if (seenValue.current !== value) {
+    seenValue.current = value;
+    setDrafts((current) => (Object.keys(current).length > 0 ? {} : current));
+  }
   const groups = useMemo(
     () => getGroupedValidationsForVariableType(variableType, entity, intl),
     [entity, intl, variableType],

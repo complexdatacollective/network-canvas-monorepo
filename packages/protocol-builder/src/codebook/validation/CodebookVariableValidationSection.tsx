@@ -138,6 +138,51 @@ const typeOf = (variable: unknown): string => {
 /** What a refused write says, and in which register it says it. */
 type Refusal = Readonly<{ message: string; held: boolean }>;
 
+/**
+ * What one edit asks of the rules, said as keys rather than as a whole map.
+ *
+ * A map computed when the researcher clicked is a map that does not know about
+ * a rule a COLLABORATOR added while the write was taking the lock, and writing
+ * it whole deletes theirs. So an edit travels as the keys it touched — each set
+ * to a value, or taken off — and those are laid over the rules the
+ * authoritative document holds at the moment the lock is granted. Switching the
+ * section off is the one edit that is about the whole map, and says so.
+ */
+type RuleChange =
+  | Readonly<{ kind: 'keys'; set: ValidationMap; removed: readonly string[] }>
+  | Readonly<{ kind: 'clear' }>;
+
+/** The keys one edit moved, read from the map before it and the map after. */
+const ruleChangeBetween = (
+  before: Readonly<ValidationMap>,
+  after: Readonly<ValidationMap>,
+): RuleChange => {
+  const set: ValidationMap = {};
+  for (const [ruleKey, value] of Object.entries(after)) {
+    if (!Object.hasOwn(before, ruleKey) || !isEqual(before[ruleKey], value)) {
+      set[ruleKey] = value;
+    }
+  }
+  return {
+    kind: 'keys',
+    set,
+    removed: Object.keys(before).filter(
+      (ruleKey) => !Object.hasOwn(after, ruleKey),
+    ),
+  };
+};
+
+/** The edit laid over the rules the codebook holds now. */
+const rulesAfter = (
+  authoritative: Readonly<ValidationMap>,
+  change: RuleChange,
+): ValidationMap => {
+  if (change.kind === 'clear') return {};
+  const next: ValidationMap = { ...authoritative, ...change.set };
+  for (const ruleKey of change.removed) delete next[ruleKey];
+  return next;
+};
+
 function VariableValidationSection({
   subject,
   variableId,
@@ -170,6 +215,39 @@ function VariableValidationSection({
    */
   const [draft, setDraft] = useState<ValidationMap>(committed);
   const [refusal, setRefusal] = useState<Refusal | undefined>(undefined);
+  /**
+   * Bumped to re-seed the switch from the codebook, and nothing else.
+   *
+   * `Section` takes `defaultOpen` as an initial value and ignores later ones,
+   * which is right for a panel the researcher opened — an ordinary re-render
+   * must not reopen one they closed. It is wrong for a change a COLLABORATOR
+   * made: a rule they added would sit behind a switch saying there are none,
+   * and rules they cleared would leave the switch on over nothing. So the
+   * panel is re-seeded, and only for changes this section did not make.
+   */
+  const [switchGeneration, setSwitchGeneration] = useState(0);
+  /**
+   * The rules this section's last write asked for.
+   *
+   * The codebook moving because this section wrote to it is not news to the
+   * researcher, and re-seeding the switch on it would close the panel the
+   * moment they took the last rule off — mid-edit, over a section they still
+   * have open.
+   */
+  const asked = useRef<ValidationMap | undefined>(undefined);
+  /**
+   * One write at a time, in the order the edits were made.
+   *
+   * Every committable edit writes, and the controls stay live while it is in
+   * flight: typing a number and clicking its stepper commits twice, and two
+   * writes over one section take the same lock — whichever releases first
+   * leaves the other's submit refused, with a valid edit silently unapplied.
+   * So an edit waits for the one before it, and is rebased on the document the
+   * lock hands back when its turn comes.
+   */
+  const writes = useRef<Promise<unknown>>(Promise.resolve());
+  /** How many edits are waiting or in flight, which the switch has to know. */
+  const pending = useRef(0);
   // Adjusted during render rather than in an effect: a change a collaborator
   // made is the codebook moving under the editor, and showing the rules it
   // replaced for a frame first is showing the researcher something untrue.
@@ -189,62 +267,112 @@ function VariableValidationSection({
    */
   const seenType = useRef(variableType);
   if (!isEqual(seen.current, committed)) {
+    const ours =
+      asked.current !== undefined && isEqual(asked.current, committed);
+    asked.current = undefined;
     seen.current = committed;
     seenType.current = variableType;
     setDraft(committed);
+    // Not while this researcher's own edits are still settling: re-seeding the
+    // switch under a gesture in progress takes the panel away mid-edit.
+    if (!ours && pending.current === 0) {
+      setSwitchGeneration((generation) => generation + 1);
+    }
   } else if (seenType.current !== variableType) {
     seenType.current = variableType;
     setDraft((held) => rulesSurvivingTypeChange(held, variableType).kept);
   }
 
-  const commit = async (next: ValidationMap): Promise<boolean> => {
-    setRefusal(undefined);
-    const outcome = await write(subject, (authoritativeDocument) =>
-      documentWithUpdatedVariable({
-        subject,
-        authoritativeDocument,
-        variableId,
-        // An empty map REMOVES the key rather than storing `{}`: absence is
-        // how the protocol schema spells "no rules", and a stored empty object
-        // would go on saying something about an attribute nothing constrains.
-        draft: Object.keys(next).length === 0 ? {} : { validation: next },
-        replaceProperties: ['validation'],
-      }),
-    );
-    if (outcome.status !== 'applied') {
-      setRefusal({
-        message: outcome.message,
-        held: outcome.refusal.kind === 'held',
-      });
-      return false;
-    }
-    return true;
+  /** What is wrong with a rule map, in the words the rows state it in. */
+  const ruleMapRefusal = (map: Readonly<ValidationMap>): string | undefined =>
+    ruleMapIssue(map, {
+      allVariables: { ...variables },
+      currentVariableId: variableId,
+      variableType,
+      options: propertyOf(variable, 'options'),
+      component: propertyOf(variable, 'component'),
+      parameters: propertyOf(variable, 'parameters'),
+    });
+
+  /** Runs one write after every write asked for before it. */
+  const enqueue = (work: () => Promise<boolean>): Promise<boolean> => {
+    pending.current += 1;
+    const settled = writes.current.then(work).finally(() => {
+      pending.current -= 1;
+    });
+    // The chain must survive a rejection, or one failed write drops every
+    // edit made after it.
+    writes.current = settled.catch(() => undefined);
+    return settled;
   };
 
+  const commit = (change: RuleChange): Promise<boolean> =>
+    enqueue(async () => {
+      setRefusal(undefined);
+      /**
+       * What the rebased map is refused for, when it is.
+       *
+       * Raised inside the callback, where the rules the codebook actually
+       * holds are known, and stated out here: a throw is answered with the
+       * last-resort sentence, and this refusal has words of its own — the same
+       * ones the row would have said had the researcher been looking at the
+       * collaborator's rule when they made the edit.
+       */
+      let rebasedIssue: string | undefined;
+      const outcome = await write(subject, (authoritativeDocument) => {
+        const next = rulesAfter(
+          validationOf(
+            propertyOf(
+              propertyOf(authoritativeDocument, 'variables'),
+              variableId,
+            ),
+          ),
+          change,
+        );
+        rebasedIssue = ruleMapRefusal(next);
+        if (rebasedIssue !== undefined) throw new Error(rebasedIssue);
+        asked.current = next;
+        return documentWithUpdatedVariable({
+          subject,
+          authoritativeDocument,
+          variableId,
+          // An empty map REMOVES the key rather than storing `{}`: absence is
+          // how the protocol schema spells "no rules", and a stored empty
+          // object would go on saying something about an attribute nothing
+          // constrains.
+          draft: Object.keys(next).length === 0 ? {} : { validation: next },
+          replaceProperties: ['validation'],
+        });
+      });
+      if (outcome.status !== 'applied') {
+        setRefusal({
+          message: rebasedIssue ?? outcome.message,
+          held: rebasedIssue === undefined && outcome.refusal.kind === 'held',
+        });
+        return false;
+      }
+      return true;
+    });
+
   const handleChange = (next: ValidationMap) => {
+    // Cleared for every edit, not only for one that writes: a refusal is about
+    // the map that was refused, and an edit that reverts it or leaves it
+    // half-set is a map the standing sentence no longer describes.
+    setRefusal(undefined);
+    const change = ruleChangeBetween(draft, next);
     setDraft(next);
     if (isEqual(next, committed)) return;
     // Written only while the whole map is answerable. Architect's section has
     // no submit to refuse a half-set or contradictory map with either, so the
     // map simply does not reach the codebook and the row that is wrong says
     // what is wrong with it.
-    if (
-      ruleMapIssue(next, {
-        allVariables: { ...variables },
-        currentVariableId: variableId,
-        variableType,
-        options: propertyOf(variable, 'options'),
-        component: propertyOf(variable, 'component'),
-        parameters: propertyOf(variable, 'parameters'),
-      }) !== undefined
-    ) {
-      return;
-    }
-    void commit(next);
+    if (ruleMapRefusal(next) !== undefined) return;
+    void commit(change);
   };
 
   return (
     <Section
+      key={switchGeneration}
       title={title}
       description={description}
       disabled={disabled}
@@ -257,11 +385,16 @@ function VariableValidationSection({
         // refused write has removed nothing, so the panel stays open over the
         // rules the codebook still holds and the switch stays where the
         // researcher left it.
-        if (Object.keys(committed).length === 0) {
+        //
+        // Decided from the rules ON SCREEN and the writes still in flight, not
+        // from the codebook's answer to the last one: an addition that has not
+        // come back yet leaves `committed` empty, and a switch that read it
+        // would close over a rule the protocol is about to hold.
+        if (Object.keys(draft).length === 0 && pending.current === 0) {
           setDraft({});
           return true;
         }
-        return await commit({});
+        return await commit({ kind: 'clear' });
       }}
     >
       {refusal !== undefined && (
