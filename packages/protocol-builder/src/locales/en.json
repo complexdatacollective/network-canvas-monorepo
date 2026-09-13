@@ -76,7 +76,7 @@
     "description": "Accessible name of one node type’s group of checkboxes in the encrypted-attributes section — read aloud rather than shown, because the type’s name is already a heading above it. typeName is the researcher’s own name for the node type, such as \"person\"."
   },
   "protocolBuilder.anonymisation.clearTypeConfirmDescription": {
-    "defaultMessage": "Every encrypted attribute of the {typeName} type will stop being encrypted. Do you want to continue?",
+    "defaultMessage": "This will deselect all encrypted attributes for the {typeName} node type. Do you want to continue?",
     "description": "Body of the confirmation shown when a researcher switches encryption off for a whole node type. typeName is the researcher’s own name for the type, such as \"person\"."
   },
   "protocolBuilder.anonymisation.clearTypeConfirmLabel": {

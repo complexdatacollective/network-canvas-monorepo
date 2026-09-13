@@ -1,8 +1,9 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
 import { anonymisationStageEditor } from '../AnonymisationStageEditor.ts';
+import { alreadyProtecting } from './anonymisationFixtures.tsx';
 
 const openEditor = () =>
   renderStageEditor({
@@ -91,6 +92,45 @@ describe('the anonymisation sections, read in Spanish', () => {
     ).toHaveAccessibleDescription(
       'Activar el cifrado de atributos pertenecientes a este tipo de nodo.',
     );
+  });
+
+  /**
+   * The three parts of the clear confirmation, in Architect's own Spanish.
+   *
+   * Read off the screen rather than out of the catalog: the title and the
+   * button travel as plain strings through `useDialog().confirm()`, so a
+   * section that formatted them once and held the result would still read
+   * English here, and the description carries the researcher's own type name
+   * spliced into the translated sentence rather than into the English one.
+   */
+  it('asks in Spanish before it un-encrypts a whole type', async () => {
+    const harness = renderStageEditor({
+      stageId: 'anonymisation-1',
+      locale: 'es',
+      registry: anonymisationStageEditor,
+      client: alreadyProtecting('name'),
+    });
+    await waitFor(() =>
+      expect(
+        within(
+          screen.getByRole('group', { name: 'Atributos cifrados de person' }),
+        ).getByRole('checkbox', { name: 'name' }),
+      ).toBeChecked(),
+    );
+
+    await harness.user.click(screen.getByRole('switch', { name: 'person' }));
+
+    expect(
+      await screen.findByText('Se borrará la selección de atributos'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Se desmarcarán todos los atributos cifrados del tipo de nodo person. ¿Quieres continuar?',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Borrar atributos cifrados' }),
+    ).toBeInTheDocument();
   });
 
   /**

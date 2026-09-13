@@ -18,6 +18,7 @@ import type { SectionDoc } from '@codaco/studio-sync/apply';
 import { codebookEditingMessages } from '../../../codebook/codebookMessages.ts';
 import { documentWithUpdatedVariable } from '../../../codebook/editing.ts';
 import { useCodebookSectionWrite } from '../../../codebook/writes.ts';
+import { READ_ONLY_MESSAGE } from '../../../form/readOnlyRefusal.ts';
 import { useStageEditorForm } from '../../../form/stageEditorContext.ts';
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
@@ -83,11 +84,24 @@ const encryptedVariableIds = (document: SectionDoc): readonly string[] => {
  */
 function NodeTypeAttributes({
   view,
+  switchGeneration,
   disabled,
   onChange,
   onRequestOpenChange,
 }: Readonly<{
   view: NodeTypeView;
+  /**
+   * Bumped to re-seed this type's switch from the codebook, and nothing else.
+   *
+   * `Section` takes `defaultOpen` as an initial value and ignores later ones,
+   * which is right for a panel the researcher opened — an ordinary re-render
+   * must not close one they opened over a type that protects nothing yet. It
+   * is wrong for a change a COLLABORATOR made: an attribute they encrypted
+   * would sit behind a switch saying the type protects nothing, with the only
+   * affordance that could clear it behind that switch, and a type they cleared
+   * would leave the switch standing over nothing.
+   */
+  switchGeneration: number;
   disabled: boolean;
   onChange: (next: readonly unknown[]) => void;
   onRequestOpenChange: (open: boolean) => Promise<boolean>;
@@ -96,6 +110,7 @@ function NodeTypeAttributes({
 
   return (
     <Section
+      key={switchGeneration}
       title={view.name}
       description={intl.formatMessage(
         anonymisationMessages.typeSwitchDescription,
@@ -148,7 +163,10 @@ function NodeTypeAttributes({
  * Nothing here is mirrored locally. The list, the checkboxes and their state
  * are read from the authoritative codebook every render, so a type or an
  * attribute a collaborator changes — including one that stops being text —
- * is reflected here without this section issuing anything of its own.
+ * is reflected here without this section issuing anything of its own. Each
+ * type's switch is the one thing a component underneath holds state for, and
+ * it is re-seeded from the codebook whenever a collaborator moves what the
+ * type protects; see `switchGenerations` below.
  *
  * Each type is a switch of its own, and switching one off un-encrypts every
  * attribute of that type at once, as Architect's does: saying "this type is
@@ -214,6 +232,58 @@ export default function EncryptedAttributesSection() {
       .toSorted((left, right) => left.name.localeCompare(right.name));
   }, [protocolContext]);
 
+  /**
+   * How many times each type's switch has been re-seeded from the codebook.
+   *
+   * A switch is a projection of the authoritative document — "this type
+   * protects something" — but `Section` holds `open` itself and takes
+   * `defaultOpen` only as it mounts, so once mounted it stops following the
+   * codebook. Re-mounting the one type whose protection moved is what puts it
+   * back, and it is done only for a move this section did not make: re-seeding
+   * under a gesture in progress takes the panel away mid-edit, and a
+   * researcher who opened a type that protects nothing yet must keep the empty
+   * panel they opened.
+   */
+  const [switchGenerations, setSwitchGenerations] = useState<
+    ReadonlyMap<string, number>
+  >(() => new Map());
+  /** What each type's switch was last seeded from. */
+  const seenProtection = useRef(new Map<string, boolean>());
+  /**
+   * What this section's own write will leave each type protecting.
+   *
+   * The codebook moving because this section wrote to it is not news to the
+   * researcher: re-seeding on it would close the panel the moment they untick
+   * the last attribute, mid-edit, over a section they still have open.
+   */
+  const askedProtection = useRef(new Map<string, boolean>());
+  /** How many writes of this section's own are waiting or in flight. */
+  const pending = useRef(0);
+
+  // Adjusted during render rather than in an effect: a collaborator's change
+  // is the codebook moving under the editor, and showing the switch it
+  // replaced for a frame first is showing the researcher something untrue.
+  const reseeded: string[] = [];
+  for (const view of nodeTypes) {
+    const seen = seenProtection.current.get(view.typeId);
+    if (seen === view.hasEncrypted) continue;
+    seenProtection.current.set(view.typeId, view.hasEncrypted);
+    const ours = askedProtection.current.get(view.typeId) === view.hasEncrypted;
+    askedProtection.current.delete(view.typeId);
+    // A type met for the first time is seeded by mounting, not by re-mounting.
+    if (seen === undefined || ours || pending.current > 0) continue;
+    reseeded.push(view.typeId);
+  }
+  if (reseeded.length > 0) {
+    setSwitchGenerations((generations) => {
+      const next = new Map(generations);
+      for (const typeId of reseeded) {
+        next.set(typeId, (next.get(typeId) ?? 0) + 1);
+      }
+      return next;
+    });
+  }
+
   const setEncrypted = async (
     view: NodeTypeView,
     variableId: string,
@@ -226,9 +296,10 @@ export default function EncryptedAttributesSection() {
 
     setFailure(undefined);
     setBusy(true);
+    pending.current += 1;
     try {
-      const outcome = await writeCodebookSection(subject, (authoritative) =>
-        documentWithUpdatedVariable({
+      const outcome = await writeCodebookSection(subject, (authoritative) => {
+        const next = documentWithUpdatedVariable({
           subject,
           authoritativeDocument: authoritative,
           variableId,
@@ -238,9 +309,20 @@ export default function EncryptedAttributesSection() {
           // about an attribute nobody is protecting.
           draft: encrypted ? { encrypted: true } : {},
           replaceProperties: ['encrypted'],
-        }),
-      );
+        });
+        // Read off the document being written rather than predicted from the
+        // checkbox: unticking the last TEXT attribute leaves the type
+        // protecting whatever a stranded flag elsewhere in it still protects.
+        askedProtection.current.set(
+          view.typeId,
+          encryptedVariableIds(next).length > 0,
+        );
+        return next;
+      });
       if (outcome.status !== 'applied') {
+        // Nothing landed, so the codebook has not moved and the marker would
+        // otherwise swallow the next change a collaborator makes.
+        askedProtection.current.delete(view.typeId);
         setFailure({
           message: outcome.message,
           held: outcome.refusal.kind === 'held',
@@ -256,6 +338,7 @@ export default function EncryptedAttributesSection() {
         ),
       );
     } finally {
+      pending.current -= 1;
       setBusy(false);
     }
   };
@@ -272,9 +355,11 @@ export default function EncryptedAttributesSection() {
     const subject: CodebookSubject = { entity: 'node', type: view.typeId };
     setFailure(undefined);
     setBusy(true);
+    pending.current += 1;
     try {
-      const outcome = await writeCodebookSection(subject, (authoritative) =>
-        encryptedVariableIds(authoritative).reduce(
+      const outcome = await writeCodebookSection(subject, (authoritative) => {
+        askedProtection.current.set(view.typeId, false);
+        return encryptedVariableIds(authoritative).reduce(
           (document, variableId) =>
             documentWithUpdatedVariable({
               subject,
@@ -284,9 +369,10 @@ export default function EncryptedAttributesSection() {
               replaceProperties: ['encrypted'],
             }),
           authoritative,
-        ),
-      );
+        );
+      });
       if (outcome.status !== 'applied') {
+        askedProtection.current.delete(view.typeId);
         setFailure({
           message: outcome.message,
           held: outcome.refusal.kind === 'held',
@@ -300,6 +386,7 @@ export default function EncryptedAttributesSection() {
       );
       return true;
     } finally {
+      pending.current -= 1;
       setBusy(false);
     }
   };
@@ -332,7 +419,14 @@ export default function EncryptedAttributesSection() {
       onConfirm: () => undefined,
     });
     if (confirmed !== true) return false;
-    if (!writable.current) return false;
+    if (!writable.current) {
+      // Said rather than silently refused. Every other way this section
+      // declines a change puts a sentence above it, and a switch that simply
+      // sprang back would be the one refusal the researcher is left to guess
+      // at — over a type they had just been asked to confirm.
+      setFailure({ message: READ_ONLY_MESSAGE, held: true });
+      return false;
+    }
     return clearType(view);
   };
 
@@ -381,6 +475,7 @@ export default function EncryptedAttributesSection() {
         <NodeTypeAttributes
           key={view.typeId}
           view={view}
+          switchGeneration={switchGenerations.get(view.typeId) ?? 0}
           disabled={readOnly || busy}
           onChange={(next) => handleChange(view, next)}
           onRequestOpenChange={(open) => requestOpenChange(view, open)}
