@@ -165,6 +165,40 @@ export const addPersonVariable = (
 };
 
 /**
+ * One of this type's attributes given a narrower window in the CODEBOOK, put
+ * there by a collaborator while this editor is open.
+ *
+ * The codebook is what a validation rule is saved on, so narrowing an
+ * attribute there can make a comparison the stage's own controls still render
+ * as satisfiable into one the write cannot hold — which is the one way the two
+ * readings a rules editor makes come apart without the researcher touching the
+ * form.
+ */
+export const narrowPersonVariable = (
+  harness: StageEditorHarness,
+  variableId: string,
+  parameters: Readonly<Record<string, unknown>>,
+): void => {
+  const section = harness.protocolSections()[PERSON_SECTION];
+  if (section === undefined) {
+    throw new Error('the fixture protocol has no person node type');
+  }
+  const variables = isRecord(section.variables) ? section.variables : {};
+  const held = variables[variableId];
+  if (!isRecord(held)) {
+    throw new Error(`"person" has no "${variableId}" attribute to narrow.`);
+  }
+  harness.receiveCodebookUpdate({
+    node: {
+      person: {
+        ...section,
+        variables: { ...variables, [variableId]: { ...held, parameters } },
+      },
+    },
+  });
+};
+
+/**
  * One of this type's attributes given a different kind of answer, put there by
  * a collaborator while this editor is open.
  *

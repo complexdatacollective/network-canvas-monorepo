@@ -1507,6 +1507,7 @@
   "protocolBuilder.variableValidation.attributeMissingIssue": "El atributo ya no existe en esta entidad.",
   "protocolBuilder.variableValidation.attributeUnavailableDescription": "Los datos de entidad más recientes ya no contienen este atributo.",
   "protocolBuilder.variableValidation.attributeUnavailableTitle": "Atributo no disponible",
+  "protocolBuilder.variableValidation.codebookRenderingContradiction": "Estas reglas se guardan en el propio atributo, así que son los controles de entrada del libro de códigos —y no los de este formulario— los que deciden si pueden cumplirse. {contradiction}",
   "protocolBuilder.variableValidation.comparisonsHeading": "Comparar con otro atributo",
   "protocolBuilder.variableValidation.decreaseRuleValue": "Reducir {label}",
   "protocolBuilder.variableValidation.deletedTarget": "Atributo eliminado ({id})",
