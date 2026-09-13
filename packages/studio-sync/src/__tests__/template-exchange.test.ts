@@ -712,6 +712,14 @@ describe('portable template artifact', () => {
           type: 'Feature',
           id: 'all-geometries',
           properties: { label: 'Valid collection' },
+          centerline: {
+            type: 'LineString',
+            coordinates: [
+              [-170, 10],
+              [170, 11],
+            ],
+            properties: { retained: 'arbitrary foreign descendant' },
+          },
           geometry: {
             type: 'GeometryCollection',
             geometries: [
@@ -778,6 +786,35 @@ describe('portable template artifact', () => {
         ),
       ),
     ).resolves.toBeDefined();
+
+    await expect(
+      createTemplateArtifact(
+        datasetFixture(
+          'geojson',
+          'application/geo+json',
+          'features.geojson',
+          JSON.stringify({
+            type: 'Point',
+            coordinates: [1, 2, 3],
+            bbox: [0, 1, 2, 3, 4, 5],
+          }),
+        ),
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      createTemplateArtifact(
+        datasetFixture(
+          'geojson',
+          'application/geo+json',
+          'features.geojson',
+          JSON.stringify({
+            type: 'Point',
+            coordinates: [],
+            bbox: [0, 1, 2, 3, 4, 5],
+          }),
+        ),
+      ),
+    ).resolves.toBeDefined();
   });
 
   it.each([
@@ -815,6 +852,100 @@ describe('portable template artifact', () => {
     ],
     ['non-numeric position', { type: 'Point', coordinates: ['1', 2] }],
     ['invalid bbox', { type: 'Point', coordinates: [1, 2], bbox: [0, 1, 2] }],
+    [
+      'bbox dimension does not match its geometry',
+      { type: 'Point', coordinates: [1, 2], bbox: [0, 1, 2, 3, 4, 5] },
+    ],
+    [
+      'Feature bbox dimension does not match its geometry',
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'Point', coordinates: [1, 2, 3] },
+        bbox: [0, 1, 2, 3],
+      },
+    ],
+    [
+      'FeatureCollection bbox dimension does not match contained geometries',
+      {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: { type: 'Point', coordinates: [1, 2] },
+          },
+        ],
+        bbox: [0, 1, 2, 3, 4, 5],
+      },
+    ],
+    [
+      'mixed coordinate dimensions',
+      {
+        type: 'MultiPoint',
+        coordinates: [
+          [1, 2],
+          [1, 2, 3],
+        ],
+      },
+    ],
+    [
+      'mixed coordinate dimensions in a GeometryCollection',
+      {
+        type: 'GeometryCollection',
+        geometries: [
+          { type: 'Point', coordinates: [1, 2] },
+          { type: 'Point', coordinates: [1, 2, 3] },
+        ],
+      },
+    ],
+    [
+      'Feature with a coordinates member',
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: null,
+        coordinates: [1, 2],
+      },
+    ],
+    [
+      'FeatureCollection with a geometries member',
+      { type: 'FeatureCollection', features: [], geometries: [] },
+    ],
+    [
+      'FeatureCollection with Feature members',
+      {
+        type: 'FeatureCollection',
+        features: [],
+        geometry: null,
+        properties: {},
+      },
+    ],
+    [
+      'Geometry with Feature members',
+      {
+        type: 'Point',
+        coordinates: [1, 2],
+        geometry: null,
+        properties: {},
+      },
+    ],
+    [
+      'Feature with a features member',
+      { type: 'Feature', properties: {}, geometry: null, features: [] },
+    ],
+    [
+      'Geometry with a features member',
+      { type: 'Point', coordinates: [1, 2], features: [] },
+    ],
+    [
+      'GeometryCollection with coordinates',
+      { type: 'GeometryCollection', geometries: [], coordinates: [] },
+    ],
+    [
+      'coordinate Geometry with geometries',
+      { type: 'Point', coordinates: [1, 2], geometries: [] },
+    ],
   ])('rejects invalid RFC 7946 GeoJSON: %s', async (_label, value) => {
     await expect(
       createTemplateArtifact(
