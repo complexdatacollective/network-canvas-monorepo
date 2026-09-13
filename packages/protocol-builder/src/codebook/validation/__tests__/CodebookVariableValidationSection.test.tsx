@@ -1,7 +1,10 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { sectionId } from '@codaco/studio-sync/taxonomy';
+import {
+  sectionId,
+  type ProtocolSectionId,
+} from '@codaco/studio-sync/taxonomy';
 
 import type { CodebookSubject } from '../../../protocol-context.ts';
 import type { InMemoryClient } from '../../../testing/host/createInMemoryHost.ts';
@@ -14,6 +17,7 @@ import CodebookVariableValidationSection from '../CodebookVariableValidationSect
 const EGO: CodebookSubject = { entity: 'ego' };
 const EGO_SECTION = sectionId({ kind: 'codebookEgo' });
 const PERSON: CodebookSubject = { entity: 'node', type: 'person' };
+const PERSON_SECTION = sectionId({ kind: 'codebookNode', typeId: 'person' });
 
 /**
  * The section over one attribute, inside a stage editor.
@@ -37,6 +41,66 @@ const open = (
       />
     ),
   });
+
+/**
+ * The section with the codebook's answer to its FIRST write held back, and the
+ * release that lets it through.
+ *
+ * Every claim about two edits that overlap needs them to overlap: a suite fast
+ * enough to settle the first write before the second is made proves nothing
+ * about a researcher who clicks twice.
+ */
+const openWithHeldWrite = (
+  subject: CodebookSubject,
+  variableId: string,
+): Readonly<{ harness: StageEditorHarness; release: () => void }> => {
+  const first = Promise.withResolvers<void>();
+  let held = true;
+  const harness = renderStageEditor({
+    stageId: 'ego-form-1',
+    client: (host) => {
+      const submit: InMemoryClient['submit'] = async (
+        ...args: Parameters<InMemoryClient['submit']>
+      ) => {
+        if (held) {
+          held = false;
+          await first.promise;
+        }
+        return host.client.submit(...args);
+      };
+      return new Proxy(host.client, {
+        get: (target, property) =>
+          property === 'submit' ? submit : Reflect.get(target, property),
+      });
+    },
+    sections: (
+      <CodebookVariableValidationSection
+        subject={subject}
+        variableId={variableId}
+      />
+    ),
+  });
+  return {
+    harness,
+    release: () => {
+      first.resolve();
+    },
+  };
+};
+
+/**
+ * Where the protocol has got to, which is what says a write has landed.
+ *
+ * A reversal ends on the rules it started from, so nothing about the codebook's
+ * own contents can tell a test that the write taking the rule back off has been
+ * made — only that it has not been made YET. The protocol's revision counts
+ * every change it takes, and two are expected: the rule, and the taking of it
+ * back.
+ */
+const changesTaken = (
+  harness: StageEditorHarness,
+  section: ProtocolSectionId = EGO_SECTION,
+): bigint => harness.host.store.read(section).revision.sequence;
 
 const COMPONENTS: Readonly<Record<string, string>> = {
   text: 'Text',
@@ -341,32 +405,7 @@ describe('rules written while the codebook is moving', () => {
    * proves nothing about two that overlap.
    */
   it('lands both of two edits made before the first came back', async () => {
-    const first = Promise.withResolvers<void>();
-    let held = true;
-    const harness = renderStageEditor({
-      stageId: 'ego-form-1',
-      client: (host) => {
-        const submit: InMemoryClient['submit'] = async (
-          ...args: Parameters<InMemoryClient['submit']>
-        ) => {
-          if (held) {
-            held = false;
-            await first.promise;
-          }
-          return host.client.submit(...args);
-        };
-        return new Proxy(host.client, {
-          get: (target, property) =>
-            property === 'submit' ? submit : Reflect.get(target, property),
-        });
-      },
-      sections: (
-        <CodebookVariableValidationSection
-          subject={EGO}
-          variableId="ego_name"
-        />
-      ),
-    });
+    const { harness, release } = openWithHeldWrite(EGO, 'ego_name');
 
     await harness.user.click(
       await screen.findByRole('switch', { name: 'Validation' }),
@@ -375,7 +414,7 @@ describe('rules written while the codebook is moving', () => {
     fireEvent.click(
       screen.getByRole('checkbox', { name: 'Minimum text length' }),
     );
-    first.resolve();
+    release();
 
     await waitFor(() =>
       expect(egoValidation(harness, 'ego_name')).toEqual({
@@ -383,6 +422,76 @@ describe('rules written while the codebook is moving', () => {
         minLength: 1,
       }),
     );
+  });
+
+  /**
+   * A rule switched on and straight back off is two edits, and the codebook has
+   * heard about neither: the second is a change from the map the first is about
+   * to leave, not from the one the codebook last confirmed. Read against the
+   * confirmed map it is no change at all — so nothing takes the rule back off,
+   * the first write lands it, and the researcher is left with a rule they
+   * turned off and a box that ticks itself over it.
+   */
+  it('takes a rule back off when it is switched off before its own write came back', async () => {
+    const { harness, release } = openWithHeldWrite(EGO, 'ego_name');
+
+    await harness.user.click(
+      await screen.findByRole('switch', { name: 'Validation' }),
+    );
+    const before = changesTaken(harness);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Required answer' }));
+    release();
+
+    await waitFor(() => expect(changesTaken(harness)).toBe(before + 2n));
+    expect(egoValidation(harness, 'ego_name')).toBeUndefined();
+    expect(
+      screen.getByRole('checkbox', { name: 'Required answer' }),
+    ).not.toBeChecked();
+  });
+
+  /**
+   * The same reversal made of a number rather than of a rule: the stepper takes
+   * the minimum up and the researcher puts it straight back, before the raise
+   * has been acknowledged.
+   */
+  it('puts a number back when it is reverted before its own write came back', async () => {
+    const { harness, release } = openWithHeldWrite(PERSON, 'story');
+    const numbers = personHolding('number');
+    harness.receiveCodebookUpdate({
+      node: {
+        person: {
+          ...numbers.node.person,
+          variables: {
+            ...numbers.node.person.variables,
+            story: {
+              ...numbers.node.person.variables.story,
+              validation: { minValue: 4 },
+            },
+          },
+        },
+      },
+    });
+
+    expect(
+      await screen.findByRole('spinbutton', { name: 'Minimum value' }),
+    ).toHaveValue(4);
+    const before = changesTaken(harness, PERSON_SECTION);
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Increase Minimum value' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Decrease Minimum value' }),
+    );
+    release();
+
+    await waitFor(() =>
+      expect(changesTaken(harness, PERSON_SECTION)).toBe(before + 2n),
+    );
+    expect(personValidation(harness, 'story')).toEqual({ minValue: 4 });
+    expect(
+      screen.getByRole('spinbutton', { name: 'Minimum value' }),
+    ).toHaveValue(4);
   });
 
   /**

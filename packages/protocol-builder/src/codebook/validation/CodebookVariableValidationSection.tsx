@@ -248,6 +248,21 @@ function VariableValidationSection({
   const writes = useRef<Promise<unknown>>(Promise.resolve());
   /** How many edits are waiting or in flight, which the switch has to know. */
   const pending = useRef(0);
+  /**
+   * The rules the writes already asked for will leave in the codebook.
+   *
+   * Read only while one of them is still waiting, which is the whole of its
+   * use: an edit made before the codebook has answered the one before it is a
+   * change FROM what that one is about to leave, not from what the codebook
+   * confirmed last. Diffed against the confirmed map instead, a rule switched
+   * on and straight back off — or a number changed and put back — is no
+   * difference at all, and the reversal is dropped while the write it reverses
+   * goes on to land, against the researcher's final choice.
+   */
+  const queued = useRef<ValidationMap>({});
+  /** What an edit made now is a change from. */
+  const rulesBefore = (): Readonly<ValidationMap> =>
+    pending.current > 0 ? queued.current : committed;
   // Adjusted during render rather than in an effect: a change a collaborator
   // made is the codebook moving under the editor, and showing the rules it
   // replaced for a frame first is showing the researcher something untrue.
@@ -369,22 +384,25 @@ function VariableValidationSection({
     // the map that was refused, and an edit that reverts it or leaves it
     // half-set is a map the standing sentence no longer describes.
     setRefusal(undefined);
-    // Against the map the codebook last CONFIRMED, not against the one on
-    // screen: only some drafts are written — a map refused for the lock, and a
-    // half-set map deliberately held back, both leave the screen ahead of the
-    // codebook — and a write carrying only the last gesture's keys would rebase
-    // onto a document that never received the earlier ones, dropping rules the
-    // researcher can see and then wiping them off the screen with nothing said.
-    // Every on-screen difference travels, and is still laid over the
-    // authoritative map rather than replacing it.
-    const change = ruleChangeBetween(committed, next);
+    // Against the map the writes so far will LEAVE — the codebook's confirmed
+    // one when none are waiting — and not against the one on screen: only some
+    // drafts are written, a map refused for the lock and a half-set map
+    // deliberately held back both leave the screen ahead of the codebook, and a
+    // write carrying only the last gesture's keys would rebase onto a document
+    // that never received the earlier ones, dropping rules the researcher can
+    // see and then wiping them off the screen with nothing said. Every
+    // difference the codebook has not been asked for travels, and is still laid
+    // over the authoritative map rather than replacing it.
+    const before = rulesBefore();
+    const change = ruleChangeBetween(before, next);
     setDraft(next);
-    if (isEqual(next, committed)) return;
+    if (isEqual(next, before)) return;
     // Written only while the whole map is answerable. Architect's section has
     // no submit to refuse a half-set or contradictory map with either, so the
     // map simply does not reach the codebook and the row that is wrong says
     // what is wrong with it.
     if (ruleMapRefusal(next) !== undefined) return;
+    queued.current = next;
     void commit(change);
   };
 
@@ -412,6 +430,7 @@ function VariableValidationSection({
           setDraft({});
           return true;
         }
+        queued.current = {};
         return await commit({ kind: 'clear' });
       }}
     >
