@@ -663,6 +663,19 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     const first = await fixture.published(account.token, 'Network alpha');
     const second = await fixture.published(account.token, 'Network beta');
     const third = await fixture.published(account.token, 'Network gamma');
+    const exact = list.parse(
+      await (
+        await fixture.request(
+          'GET',
+          `/entries?root=${third.entry.root}&publisher_id=${account.publisher.id}`,
+        )
+      ).json(),
+    );
+    expect(exact).toMatchObject({
+      data: [{ id: third.entry.id }],
+      next_cursor: null,
+      has_more: false,
+    });
     const query =
       '/entries?limit=1&query=network&kind=protocol&license=CC0-1.0&keyword=NETWORKS&author=research';
     const page = list.parse(await (await fixture.request('GET', query)).json());
@@ -702,6 +715,17 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     );
     expect(yanked.status).toBe(200);
     expect(EntrySchema.parse(await yanked.json()).yanked).toBe(true);
+    const recoveredPublication = list.parse(
+      await (
+        await fixture.request(
+          'GET',
+          `/entries?root=${third.entry.root}&publisher_id=${account.publisher.id}`,
+        )
+      ).json(),
+    );
+    expect(recoveredPublication.data).toMatchObject([
+      { id: third.entry.id, yanked: true },
+    ]);
     expect(
       list
         .parse(await (await fixture.request('GET', '/entries')).json())
