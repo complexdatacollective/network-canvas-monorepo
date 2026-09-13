@@ -1,0 +1,4 @@
+$ SKIP_ENV_VALIDATION=true knip
+Configuration hints (2)
+scripts/agent-hooks/stop-check.mjs               knip.json  Remove redundant entry pattern
+scripts/dead-links/dead-link-refresh-gate.mjs    knip.json  Remove redundant entry pattern

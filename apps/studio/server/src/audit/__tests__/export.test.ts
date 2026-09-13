@@ -16,6 +16,7 @@ import type { AuditExportArtifactStore } from '../../assets.ts';
 import { loadTestKeys } from '../../pii/__tests__/fixtures.ts';
 import type { AuditedCommandContext } from '../command.ts';
 import {
+  AuditExportAdapter,
   createAuditExportDispatcher,
   openAuditExportDownload,
   readAuditExportStatus,
@@ -268,6 +269,46 @@ describe.skipIf(!db)('staged audit export', () => {
     }
   });
 
+  it('cancels an opened body when the consumption transaction throws', async () => {
+    const { requested, status } = await createReadyExport();
+    let cancellations = 0;
+    const source = new ReadableStream<Uint8Array>({
+      cancel() {
+        cancellations += 1;
+      },
+    });
+    const throwingStore: AuditExportArtifactStore = {
+      ...store,
+      async getAuditExport(key) {
+        const stored = await store.getAuditExport(key);
+        return stored ? { ...stored, body: source } : null;
+      },
+    };
+    let transactions = 0;
+    const failingContext: AuditedCommandContext = {
+      ...context,
+      tenantDb: {
+        ...context.tenantDb,
+        transaction(work, options) {
+          transactions += 1;
+          if (transactions === 2)
+            return Promise.reject(new Error('synthetic consume failure'));
+          return context.tenantDb.transaction(work, options);
+        },
+      },
+    };
+    await expect(
+      openAuditExportDownload(
+        failingContext,
+        requested.jobId,
+        status.handle,
+        throwingStore,
+      ),
+    ).rejects.toThrow('synthetic consume failure');
+    await vi.waitFor(() => expect(cancellations).toBe(1));
+    expect(source.locked).toBe(false);
+  });
+
   it('releases a size-mismatched body without consuming the handle', async () => {
     const { requested, status } = await createReadyExport();
     let cancellations = 0;
@@ -300,25 +341,66 @@ describe.skipIf(!db)('staged audit export', () => {
     ).resolves.toMatchObject({ size: expect.any(Number) });
   });
 
+  it('releases the source reader after EOF and consumer cancellation', async () => {
+    const completed = await createReadyExport();
+    let completedSource: ReadableStream<Uint8Array> | undefined;
+    const completedStore: AuditExportArtifactStore = {
+      ...store,
+      async getAuditExport(key) {
+        const stored = await store.getAuditExport(key);
+        if (stored) completedSource = stored.body;
+        return stored;
+      },
+    };
+    const opened = await openAuditExportDownload(
+      context,
+      completed.requested.jobId,
+      completed.status.handle,
+      completedStore,
+    );
+    await new Response(opened.body).text();
+    expect(completedSource?.locked).toBe(false);
+
+    const canceled = await createReadyExport();
+    const canceledSource = new ReadableStream<Uint8Array>();
+    const canceledStore: AuditExportArtifactStore = {
+      ...store,
+      async getAuditExport(key) {
+        const stored = await store.getAuditExport(key);
+        return stored ? { ...stored, body: canceledSource } : null;
+      },
+    };
+    const cancelable = await openAuditExportDownload(
+      context,
+      canceled.requested.jobId,
+      canceled.status.handle,
+      canceledStore,
+    );
+    await cancelable.body.cancel();
+    expect(canceledSource.locked).toBe(false);
+  });
+
   it('cancels a stream that exceeds its recorded size while downloading', async () => {
     const { requested, status } = await createReadyExport();
     let cancellations = 0;
+    let source: ReadableStream<Uint8Array> | undefined;
     const overflowingStore: AuditExportArtifactStore = {
       ...store,
       async getAuditExport(key) {
         const stored = await store.getAuditExport(key);
         const size = stored?.size;
         if (!size) return null;
+        source = new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(Buffer.alloc(size + 1));
+          },
+          cancel() {
+            cancellations += 1;
+          },
+        });
         return {
           size,
-          body: new ReadableStream<Uint8Array>({
-            start(controller) {
-              controller.enqueue(Buffer.alloc(size + 1));
-            },
-            cancel() {
-              cancellations += 1;
-            },
-          }),
+          body: source,
         };
       },
     };
@@ -332,6 +414,7 @@ describe.skipIf(!db)('staged audit export', () => {
       'stored audit export exceeds limit',
     );
     await vi.waitFor(() => expect(cancellations).toBe(1));
+    expect(source?.locked).toBe(false);
   });
 
   it('uses per-attempt keys and a stale owner cleans only its own artifact', async () => {
@@ -395,6 +478,117 @@ describe.skipIf(!db)('staged audit export', () => {
     ).toEqual([row.rows[0]!.artifact_key]);
   });
 
+  it('fences expired-owner renewal and completion while cleanup owns the row', async () => {
+    const requested = await requestAuditExport(
+      { ...context, requestId: randomUUID() },
+      {},
+    );
+    if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
+    const keys = await loadTestKeys();
+    let deleting: (() => void) | undefined;
+    const deleteStarted = new Promise<void>((resolve) => {
+      deleting = resolve;
+    });
+    let releaseDelete: (() => void) | undefined;
+    const mayDelete = new Promise<void>((resolve) => {
+      releaseDelete = resolve;
+    });
+    const blockingStore: AuditExportArtifactStore = {
+      ...store,
+      async deleteAuditExport(key) {
+        deleting?.();
+        await mayDelete;
+        await store.deleteAuditExport(key);
+      },
+    };
+    const adapter = new AuditExportAdapter(maintenance, blockingStore, keys, 0);
+    const ownerId = randomUUID();
+    const lease = { owner: ownerId, durationMs: 30_000 };
+    const claim = await adapter.claim(lease, 8);
+    if (!claim) throw new Error('expected claim');
+    await adapter.deliver(claim);
+    await owner.query(
+      `UPDATE audit_export_jobs SET lease_expires_at=statement_timestamp()-interval '1 second'
+       WHERE id=$1`,
+      [claim.id],
+    );
+    const cleanup = adapter.suppressUndeliverable();
+    await deleteStarted;
+    const renewal = adapter.renewLease(claim, lease);
+    const completion = adapter.recordComplete(claim, lease);
+    releaseDelete?.();
+    await expect(cleanup).resolves.toBe(1);
+    await expect(renewal).resolves.toBe(false);
+    await expect(completion).rejects.toThrow('audit export lease lost');
+    await expect(
+      owner.query<{ artifact_key: string | null; status: string }>(
+        'SELECT artifact_key,status FROM audit_export_jobs WHERE id=$1',
+        [claim.id],
+      ),
+    ).resolves.toHaveProperty('rows', [
+      { artifact_key: null, status: 'generating' },
+    ]);
+    await owner.query('DELETE FROM audit_export_jobs WHERE id=$1', [claim.id]);
+  });
+
+  it('recovers a persisted attempt key after a crash immediately after upload', async () => {
+    const requested = await requestAuditExport(
+      { ...context, requestId: randomUUID() },
+      {},
+    );
+    if (requested.deliveryMode !== 'staged') throw new Error('expected staged');
+    const keys = await loadTestKeys();
+    const crashingStore: AuditExportArtifactStore = {
+      ...store,
+      async putAuditExport(jobId, attemptId, chunks) {
+        await store.putAuditExport(jobId, attemptId, chunks);
+        throw new Error('synthetic crash after upload');
+      },
+    };
+    const crashedOwner = randomUUID();
+    const crashedAdapter = new AuditExportAdapter(
+      maintenance,
+      crashingStore,
+      keys,
+      0,
+    );
+    const claim = await crashedAdapter.claim(
+      { owner: crashedOwner, durationMs: 30_000 },
+      8,
+    );
+    if (!claim) throw new Error('expected claim');
+    await expect(crashedAdapter.deliver(claim)).rejects.toThrow(
+      'synthetic crash after upload',
+    );
+    const interrupted = await owner.query<{ artifact_key: string }>(
+      'SELECT artifact_key FROM audit_export_jobs WHERE id=$1',
+      [claim.id],
+    );
+    const interruptedKey = interrupted.rows[0]?.artifact_key;
+    if (!interruptedKey) throw new Error('expected persisted artifact key');
+    expect(interruptedKey).toContain(claim.id);
+    expect(objects.has(interruptedKey)).toBe(true);
+
+    await owner.query(
+      `UPDATE audit_export_jobs SET lease_expires_at=statement_timestamp()-interval '1 second'
+       WHERE id=$1`,
+      [claim.id],
+    );
+    const restarted = await createAuditExportDispatcher({
+      pool: maintenance,
+      store,
+      keys,
+    }).runOnce();
+    expect(restarted).toMatchObject({ completed: 1, suppressed: 1 });
+    const ready = await owner.query<{ artifact_key: string; status: string }>(
+      'SELECT artifact_key,status FROM audit_export_jobs WHERE id=$1',
+      [claim.id],
+    );
+    expect(ready.rows[0]?.status).toBe('ready');
+    expect(ready.rows[0]?.artifact_key).not.toBe(interruptedKey);
+    expect(objects.has(interruptedKey)).toBe(false);
+  });
+
   it('cleans an uploaded artifact when handle sealing fails', async () => {
     const requested = await requestAuditExport(
       { ...context, requestId: randomUUID() },
@@ -432,7 +626,7 @@ describe.skipIf(!db)('staged audit export', () => {
     const failingCleanupStore: AuditExportArtifactStore = {
       ...store,
       async deleteAuditExport(key) {
-        if (refuseDelete) {
+        if (key.includes(requested.jobId) && refuseDelete) {
           refuseDelete = false;
           throw new Error('synthetic cleanup outage');
         }

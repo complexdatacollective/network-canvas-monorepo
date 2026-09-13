@@ -505,6 +505,12 @@ function boundedDownloadStream(
 ): ReadableStream<Uint8Array> {
   const reader = source.getReader();
   let bytes = 0;
+  let released = false;
+  const releaseReader = () => {
+    if (released) return;
+    released = true;
+    reader.releaseLock();
+  };
   return new ReadableStream<Uint8Array>({
     async pull(controller) {
       try {
@@ -513,6 +519,7 @@ function boundedDownloadStream(
           if (bytes !== expectedBytes)
             throw new Error('stored audit export size mismatch');
           controller.close();
+          releaseReader();
           return;
         }
         bytes += chunk.value.byteLength;
@@ -521,11 +528,14 @@ function boundedDownloadStream(
         controller.enqueue(chunk.value);
       } catch (error) {
         void reader.cancel().catch(() => undefined);
+        releaseReader();
         controller.error(error);
       }
     },
     cancel() {
-      return reader.cancel().catch(() => undefined);
+      const cancellation = reader.cancel().catch(() => undefined);
+      void cancellation.finally(releaseReader);
+      return cancellation;
     },
   });
 }
@@ -566,47 +576,50 @@ export async function openAuditExportDownload(
   if (!available) throw new Error('audit export unavailable');
   const stored = await store.getAuditExport(available.artifact_key);
   if (!stored) throw new Error('audit export unavailable');
-  if (
-    available.artifact_byte_count > STAGED_BYTES ||
-    (stored.size !== undefined && stored.size !== available.artifact_byte_count)
-  ) {
-    releaseStream(stored.body);
-    throw new Error('audit export unavailable');
-  }
-  const consumed = await runNoAuditTenantTransaction(
-    context.tenantDb,
-    'audit.export.consume',
-    async (client) => {
-      const actor = await teamStore.lockActor(
-        client,
-        context.tenantDb.teamId,
-        context.principal.userId,
-      );
-      if (!actor || !roleGrantsTeamAdministration(actor.role))
-        return { rowCount: 0 };
-      return client.query(
-        `UPDATE audit_export_jobs SET handle_consumed_at=statement_timestamp()
+  let handedOff = false;
+  try {
+    if (
+      available.artifact_byte_count > STAGED_BYTES ||
+      (stored.size !== undefined &&
+        stored.size !== available.artifact_byte_count)
+    )
+      throw new Error('audit export unavailable');
+    const consumed = await runNoAuditTenantTransaction(
+      context.tenantDb,
+      'audit.export.consume',
+      async (client) => {
+        const actor = await teamStore.lockActor(
+          client,
+          context.tenantDb.teamId,
+          context.principal.userId,
+        );
+        if (!actor || !roleGrantsTeamAdministration(actor.role))
+          return { rowCount: 0 };
+        return client.query(
+          `UPDATE audit_export_jobs SET handle_consumed_at=statement_timestamp()
      WHERE id=$1 AND team_id=$2 AND actor_id=$3 AND status='ready'
        AND artifact_key=$4 AND handle_hash=$5 AND handle_consumed_at IS NULL
        AND handle_expires_at>statement_timestamp() RETURNING id`,
-        [
-          jobId,
-          context.tenantDb.teamId,
-          context.principal.userId,
-          available.artifact_key,
-          hash,
-        ],
-      );
-    },
-  );
-  if (consumed.rowCount !== 1) {
-    releaseStream(stored.body);
-    throw new Error('audit export unavailable');
+          [
+            jobId,
+            context.tenantDb.teamId,
+            context.principal.userId,
+            available.artifact_key,
+            hash,
+          ],
+        );
+      },
+    );
+    if (consumed.rowCount !== 1) throw new Error('audit export unavailable');
+    const body = boundedDownloadStream(
+      stored.body,
+      available.artifact_byte_count,
+    );
+    handedOff = true;
+    return { body, size: available.artifact_byte_count };
+  } finally {
+    if (!handedOff) releaseStream(stored.body);
   }
-  return {
-    body: boundedDownloadStream(stored.body, available.artifact_byte_count),
-    size: available.artifact_byte_count,
-  };
 }
 
 type Claim = {
@@ -639,11 +652,13 @@ type CleanupClaim = {
   reason: 'consumed' | 'expired';
 };
 
+class CleanupClaimLostError extends Error {}
+
 function generatedId(claim: Pick<Claim, 'id' | 'leaseOwner'>): string {
   return `${claim.id}:${claim.leaseOwner}`;
 }
 
-class AuditExportAdapter implements OutboxAdapter<Claim> {
+export class AuditExportAdapter implements OutboxAdapter<Claim> {
   readonly queue = 'audit_export_jobs' as const;
   private generated = new Map<string, Generated>();
   private pool: pg.Pool;
@@ -713,6 +728,39 @@ class AuditExportAdapter implements OutboxAdapter<Claim> {
       client.release();
     }
   }
+  private async cleanupDetachedArtifact(): Promise<boolean> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const detached = (
+        await client.query<{ id: string; artifact_key: string }>(
+          `SELECT id,artifact_key FROM audit_export_jobs
+           WHERE artifact_key IS NOT NULL AND (
+             status IN ('pending','failed') OR
+             (status='generating' AND lease_expires_at<=statement_timestamp())
+           ) ORDER BY available_at,id FOR UPDATE SKIP LOCKED LIMIT 1`,
+        )
+      ).rows[0];
+      if (!detached) {
+        await client.query('COMMIT');
+        return false;
+      }
+      await this.store.deleteAuditExport(detached.artifact_key);
+      const cleared = await client.query(
+        `UPDATE audit_export_jobs SET artifact_key=NULL
+         WHERE id=$1 AND artifact_key=$2 AND status<>'ready'`,
+        [detached.id, detached.artifact_key],
+      );
+      if (cleared.rowCount !== 1) throw new CleanupClaimLostError();
+      await client.query('COMMIT');
+      return true;
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
   async suppressUndeliverable() {
     const detachedEntry = this.generated.entries().next().value;
     if (detachedEntry) {
@@ -724,26 +772,7 @@ class AuditExportAdapter implements OutboxAdapter<Claim> {
         return 1;
       }
     }
-    const detachedRow = await this.pool.query<{
-      id: string;
-      artifactKey: string;
-    }>(
-      `SELECT id,artifact_key AS "artifactKey" FROM audit_export_jobs
-       WHERE artifact_key IS NOT NULL AND (
-         status IN ('pending','failed') OR
-         (status='generating' AND lease_expires_at<=statement_timestamp())
-       ) ORDER BY available_at,id LIMIT 1`,
-    );
-    const detachedClaim = detachedRow.rows[0];
-    if (detachedClaim) {
-      await this.store.deleteAuditExport(detachedClaim.artifactKey);
-      await this.pool.query(
-        `UPDATE audit_export_jobs SET artifact_key=NULL
-         WHERE id=$1 AND artifact_key=$2 AND status<>'ready'`,
-        [detachedClaim.id, detachedClaim.artifactKey],
-      );
-      return 1;
-    }
+    if (await this.cleanupDetachedArtifact()) return 1;
     const selected = await this.pool.query<CleanupClaim>(
       `SELECT id,team_id AS "teamId",actor_id AS "actorId",
         start_event_id AS "startEventId",artifact_key AS "artifactKey",
@@ -753,53 +782,69 @@ class AuditExportAdapter implements OutboxAdapter<Claim> {
          (handle_consumed_at IS NULL AND handle_expires_at<=statement_timestamp())
          OR (handle_consumed_at IS NOT NULL
            AND handle_consumed_at<=statement_timestamp()-($1*interval '1 millisecond'))
-       ) ORDER BY COALESCE(handle_consumed_at,handle_expires_at),id
-       FOR UPDATE SKIP LOCKED LIMIT 1`,
+       ) ORDER BY COALESCE(handle_consumed_at,handle_expires_at),id LIMIT 1`,
       [this.cleanupConsumedAfterMs],
     );
     const claim = selected.rows[0];
     if (!claim) return 0;
-    await this.store.deleteAuditExport(claim.artifactKey);
     const tenant = createTenantDb(this.pool, claim.teamId);
-    await runAuditedSystemMutation(
-      { tenantDb: tenant, actorLabel: 'Audit export', requestId: randomUUID() },
-      async (_client, ctx) => ({
-        result: undefined,
-        events: [
-          {
-            ...ctx,
-            eventVersion: 1,
-            eventType: 'audit.export.cleaned',
-            category: 'audit',
-            outcome: 'succeeded',
-            subjectType: 'audit_export',
-            subjectId: claim.id,
-            subjectLabel: null,
-            resourceType: null,
-            resourceId: null,
-            resourceLabel: null,
-            details: {
-              startEventId: claim.startEventId,
-              requestedByActorId: claim.actorId,
-              reason: claim.reason,
-            },
-          },
-        ],
-        afterEventsStored: async (client) => {
-          const deleted = await client.query(
-            `DELETE FROM audit_export_jobs WHERE id=$1 AND status='ready'
+    try {
+      await runAuditedSystemMutation(
+        {
+          tenantDb: tenant,
+          actorLabel: 'Audit export',
+          requestId: randomUUID(),
+        },
+        async (client, ctx) => {
+          const locked = await client.query(
+            `SELECT 1 FROM audit_export_jobs WHERE id=$1 AND status='ready'
              AND artifact_key=$2 AND (
                (handle_consumed_at IS NULL AND handle_expires_at<=statement_timestamp())
                OR (handle_consumed_at IS NOT NULL
-                 AND handle_consumed_at<=statement_timestamp()-($3*interval '1 millisecond')))`,
+                 AND handle_consumed_at<=statement_timestamp()-($3*interval '1 millisecond')))
+             FOR UPDATE`,
             [claim.id, claim.artifactKey, this.cleanupConsumedAfterMs],
           );
-          if (deleted.rowCount !== 1)
-            throw new Error('audit export cleanup claim lost');
+          if (locked.rowCount !== 1) throw new CleanupClaimLostError();
+          await this.store.deleteAuditExport(claim.artifactKey);
+          return {
+            result: undefined,
+            events: [
+              {
+                ...ctx,
+                eventVersion: 1,
+                eventType: 'audit.export.cleaned',
+                category: 'audit',
+                outcome: 'succeeded',
+                subjectType: 'audit_export',
+                subjectId: claim.id,
+                subjectLabel: null,
+                resourceType: null,
+                resourceId: null,
+                resourceLabel: null,
+                details: {
+                  startEventId: claim.startEventId,
+                  requestedByActorId: claim.actorId,
+                  reason: claim.reason,
+                },
+              },
+            ],
+            afterEventsStored: async (eventClient) => {
+              const deleted = await eventClient.query(
+                `DELETE FROM audit_export_jobs WHERE id=$1 AND status='ready'
+                 AND artifact_key=$2`,
+                [claim.id, claim.artifactKey],
+              );
+              if (deleted.rowCount !== 1) throw new CleanupClaimLostError();
+            },
+          };
         },
-      }),
-    );
-    return 1;
+      );
+      return 1;
+    } catch (error) {
+      if (error instanceof CleanupClaimLostError) return 0;
+      throw error;
+    }
   }
   async failExhaustedLeases(max: number) {
     const owner = randomUUID();
@@ -861,7 +906,7 @@ class AuditExportAdapter implements OutboxAdapter<Claim> {
     const r = await this.pool.query(
       `UPDATE audit_export_jobs SET lease_expires_at=
       statement_timestamp()+($3*interval '1 millisecond') WHERE id=$1 AND lease_owner=$2
-      AND status='generating' RETURNING id`,
+      AND lease_expires_at>statement_timestamp() AND status='generating' RETURNING id`,
       [c.id, l.owner, l.durationMs],
     );
     return r.rowCount === 1;
@@ -907,6 +952,16 @@ class AuditExportAdapter implements OutboxAdapter<Claim> {
       byteCount: 0,
     };
     this.generated.set(generatedId(c), generated);
+    const recordedArtifact = await this.pool.query(
+      `UPDATE audit_export_jobs SET artifact_key=$3 WHERE id=$1 AND lease_owner=$2
+       AND lease_expires_at>statement_timestamp() AND status='generating'
+       RETURNING id`,
+      [c.id, c.leaseOwner, generated.key],
+    );
+    if (recordedArtifact.rowCount !== 1) {
+      this.generated.delete(generatedId(c));
+      throw new Error('audit export lease lost');
+    }
     const artifact = await this.store.putAuditExport(
       c.id,
       c.leaseOwner,
@@ -916,14 +971,6 @@ class AuditExportAdapter implements OutboxAdapter<Claim> {
       throw new Error('audit export store returned unexpected key');
     generated.rowCount = count;
     generated.byteCount = bytes;
-    const recordedArtifact = await this.pool.query(
-      `UPDATE audit_export_jobs SET artifact_key=$3 WHERE id=$1 AND lease_owner=$2
-       AND lease_expires_at>statement_timestamp() AND status='generating'
-       RETURNING id`,
-      [c.id, c.leaseOwner, generated.key],
-    );
-    if (recordedArtifact.rowCount !== 1)
-      throw new Error('audit export lease lost');
     const handleBytes = randomBytes(32);
     try {
       const handle = handleBytes.toString('base64url');

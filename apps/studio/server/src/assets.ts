@@ -8,6 +8,7 @@ import {
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  ListMultipartUploadsCommand,
   PutObjectCommand,
   S3Client,
   UploadPartCommand,
@@ -228,6 +229,27 @@ export function createAssetStore(
     async deleteAuditExport(key) {
       if (!/^audit-exports\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.csv$/i.test(key))
         throw new Error('invalid export key');
+      const uploads = await client.send(
+        new ListMultipartUploadsCommand({
+          Bucket: env.bucket,
+          Prefix: key,
+          MaxUploads: 100,
+        }),
+      );
+      for (const upload of uploads.Uploads ?? []) {
+        if (upload.Key !== key || !upload.UploadId) continue;
+        await client.send(
+          new AbortMultipartUploadCommand({
+            Bucket: env.bucket,
+            Key: key,
+            UploadId: upload.UploadId,
+          }),
+        );
+      }
+      // Keep the database cleanup pointer when more abandoned uploads remain;
+      // the next bounded worker pass resumes the same exact-key cleanup.
+      if (uploads.IsTruncated)
+        throw new Error('audit export multipart cleanup incomplete');
       await client.send(
         new DeleteObjectCommand({ Bucket: env.bucket, Key: key }),
       );

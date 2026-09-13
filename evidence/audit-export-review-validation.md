@@ -9,8 +9,14 @@ recorded here or in the test logs.
   whitespace formula neutralization, and omitting the post-storage
   administrator check. The production sources were restored before the passing
   runs.
+- `audit-export-followup-mutants.log` records three expected failures after
+  temporarily removing the post-open stream release, the expired-lease renewal
+  predicate, and the pre-upload artifact-key fence. The production sources were
+  restored before the passing runs.
 - `audit-export-review-focused-tests.log` records the focused export, event,
   audit-policy, recovery, migration-artifact, and migration-upgrade suite.
+- `audit-export-followup-focused-tests.log` records the expanded focused suite:
+  7 files passed, with 74 tests passed and 8 environment-gated tests skipped.
 - `audit-export-migration-provenance.txt` records the regenerated unpublished
   0013 artifact hashes and confirms migrations 0001 through 0012 were not
   modified from the review base.
@@ -22,6 +28,5 @@ Static validation:
 - Changed TypeScript files pass Oxlint; `app.ts` reports five existing warnings
   in unchanged surrounding code.
 - Changed files pass Oxfmt and Studio schema documentation is current.
-- Full Knip remains blocked by 24 unresolved Fresco generated-Prisma imports
-  under `~/lib/db/generated/client`; the audit-export changes add no Knip
-  finding.
+- Full Knip passed after the parent workspace generated Fresco's Prisma client;
+  it reports only two existing redundant-entry configuration hints.
