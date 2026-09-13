@@ -214,7 +214,7 @@ export async function localDeployment(label: string) {
       ),
     };
   }
-  async function configure() {
+  async function configure(templateRoot?: string) {
     // Local image qualification is independent of the signed installer gate.
     // The fictional immutable references cannot be used outside this harness;
     // Docker receives the explicit local image override above.
@@ -229,6 +229,12 @@ export async function localDeployment(label: string) {
         `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`,
         '--mount',
         `type=bind,source=${directory},target=/configuration`,
+        ...(templateRoot
+          ? [
+              '--mount',
+              `type=bind,source=${templateRoot},target=/app/deployment-bundle,readonly`,
+            ]
+          : []),
         image!,
         'configure',
         '--domain',

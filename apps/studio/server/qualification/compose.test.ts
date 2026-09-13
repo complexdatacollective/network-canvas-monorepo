@@ -2,10 +2,13 @@ import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { createReadStream } from 'node:fs';
 import {
+  appendFile,
   cp,
+  mkdir,
   readFile,
   readdir,
   rename,
+  rm,
   stat,
   writeFile,
 } from 'node:fs/promises';
