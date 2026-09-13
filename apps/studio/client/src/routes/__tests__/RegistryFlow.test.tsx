@@ -117,7 +117,12 @@ beforeEach(() => {
     publication,
     replayed: false,
   });
-  calls.import.mockResolvedValue({ templateId, versionId, replayed: false });
+  calls.import.mockResolvedValue({
+    status: 'completed',
+    templateId,
+    versionId,
+    replayed: false,
+  });
 });
 
 describe('Studio Registry forms', () => {
@@ -339,6 +344,23 @@ describe('Studio Registry forms', () => {
       await screen.findByText('The Registry template was imported.'),
     ).toBeInTheDocument();
     expect(calls.import).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports a durable import that will resume in the background', async () => {
+    calls.import.mockResolvedValueOnce({
+      status: 'pending',
+      intentId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+      templateId,
+      versionId,
+    });
+    renderPage(<Templates />);
+    fireEvent.change(await screen.findByLabelText(/Registry entry ID/), {
+      target: { value: entryId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Import template' }));
+    expect(
+      await screen.findByText('Import is pending Registry reconciliation.'),
+    ).toBeInTheDocument();
   });
 
   it('clears the team-scoped forms and removes mutation controls for a member team', async () => {

@@ -129,6 +129,11 @@ const messages = defineMessages({
     defaultMessage: 'This Studio instance has no Template Registry configured.',
     description: 'Registry unavailable message.',
   },
+  importPending: {
+    id: 'studio.templates.importPending',
+    defaultMessage: 'Import is pending Registry reconciliation.',
+    description: 'Durable Registry import pending announcement.',
+  },
   imported: {
     id: 'studio.templates.imported',
     defaultMessage: 'The Registry template was imported.',
@@ -205,8 +210,17 @@ function TeamTemplates({
                 return { success: false };
               setNotice(null);
               try {
-                await rpcClient.templates.import({ teamId, entryId });
-                setNotice(intl.formatMessage(messages.imported));
+                const result = await rpcClient.templates.import({
+                  teamId,
+                  entryId,
+                });
+                setNotice(
+                  intl.formatMessage(
+                    result.status === 'pending'
+                      ? messages.importPending
+                      : messages.imported,
+                  ),
+                );
                 void refresh().catch(() => undefined);
                 return { success: true };
               } catch (error) {

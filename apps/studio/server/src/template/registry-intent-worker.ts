@@ -4,6 +4,9 @@ import type pg from 'pg';
 
 import { TENANT_ROLES } from '@codaco/studio-sync/rls';
 
+import type { OutboxObserver } from '../outbox/instrumentation.ts';
+import { startOutboxWorker, type OutboxWorker } from '../outbox/worker.ts';
+
 const DEFAULT_LEASE_MS = 5 * 60_000;
 const DEFAULT_RETRY_MS = 5_000;
 
@@ -22,6 +25,7 @@ type Options = {
     intent: ClaimedTemplateRegistryIntent,
   ): Promise<TemplateRegistryIntentDisposition>;
   onError?: (error: unknown) => void | Promise<void>;
+  observer?: OutboxObserver;
   pollIntervalMs?: number;
   drainLimit?: number;
   leaseMs?: number;
@@ -212,4 +216,17 @@ export async function reconcileNextTemplateRegistryIntent(
   } finally {
     clearInterval(renewal);
   }
+}
+
+export function startTemplateRegistryIntentWorker(
+  options: Options,
+): OutboxWorker {
+  return startOutboxWorker({
+    queue: 'template_registry_intents',
+    runOnce: () => reconcileNextTemplateRegistryIntent(options),
+    onError: options.onError,
+    observer: options.observer,
+    pollIntervalMs: options.pollIntervalMs,
+    drainLimit: options.drainLimit,
+  });
 }

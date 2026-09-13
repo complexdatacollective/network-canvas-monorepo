@@ -12,6 +12,7 @@ import {
 import {
   claimTemplateRegistryIntent,
   reconcileNextTemplateRegistryIntent,
+  startTemplateRegistryIntentWorker,
 } from '../registry-intent-worker.ts';
 
 const db = await reachableDb();
@@ -240,5 +241,44 @@ describe.skipIf(!db)('Template Registry intent worker', () => {
       [id],
     );
     expect(row.rows).toEqual([{ lease_owner: null, delayed: true }]);
+  });
+
+  it('starts a polling worker that resumes a persisted intent', async () => {
+    const id = await intent();
+    const completed = deferred();
+    const worker = startTemplateRegistryIntentWorker({
+      pool: maintenance,
+      pollIntervalMs: 10,
+      drainLimit: 1,
+      process: async (claim) => {
+        const updated = await maintenance.query(
+          `UPDATE template_registry_import_intents
+           SET completed_at=clock_timestamp(),lease_owner=NULL,
+               lease_expires_at=NULL
+           WHERE id=$1 AND lease_owner=$2`,
+          [claim.id, claim.leaseOwner],
+        );
+        expect(updated.rowCount).toBe(1);
+        completed.resolve();
+        return 'completed';
+      },
+    });
+    try {
+      await Promise.race([
+        completed.promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('worker did not resume')), 1_000),
+        ),
+      ]);
+    } finally {
+      await worker.stop();
+    }
+    await expect(
+      owner.query(
+        `SELECT completed_at IS NOT NULL AS completed
+         FROM template_registry_import_intents WHERE id=$1`,
+        [id],
+      ),
+    ).resolves.toHaveProperty('rows', [{ completed: true }]);
   });
 });

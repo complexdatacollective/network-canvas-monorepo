@@ -24,12 +24,18 @@ import {
 } from '../../__tests__/support/postgres.ts';
 import type { AssetStore } from '../../assets.ts';
 import type { SessionPrincipal } from '../../auth/service.ts';
-import { importRegistryTemplate, publishTemplateVersion } from '../registry.ts';
+import { claimSpecificTemplateRegistryIntent } from '../registry-intent-worker.ts';
+import {
+  importRegistryTemplate,
+  publishTemplateVersion,
+  reconcileClaimedTemplateRegistryIntent,
+} from '../registry.ts';
 
 const db = await reachableDb();
 const ORIGIN = 'https://registry.example';
 const PUBLISHER_ID = '22222222-2222-4222-8222-222222222222';
 const CREDENTIAL = `ncr1_${'a'.repeat(43)}`;
+const REPLACEMENT_CREDENTIAL = `ncr1_${'b'.repeat(43)}`;
 const png = Uint8Array.from(
   Buffer.from(
     '89504e470d0a1a0a0000000d49484452000000010000000108000000003a7e9b55' +
@@ -170,8 +176,10 @@ function registryClient(options: {
   handoffStarted?: () => void;
   releaseHandoff?: Promise<void>;
   publishedRoots?: string[];
+  failAfterAcceptance?: boolean;
 }) {
   const entryId = randomUUID();
+  let acceptedEntry: Record<string, unknown> | undefined;
   return new TemplateRegistryClient({
     origin: ORIGIN,
     fetch: async (input, init) => {
@@ -184,7 +192,24 @@ function registryClient(options: {
         });
       }
       if (url.pathname === '/api/v1/entries' && init?.method === 'GET')
-        return Response.json({ data: [], next_cursor: null, has_more: false });
+        return Response.json({
+          data: acceptedEntry
+            ? [
+                {
+                  id: acceptedEntry.id,
+                  publisher: acceptedEntry.publisher,
+                  root: acceptedEntry.root,
+                  template: acceptedEntry.template,
+                  license: acceptedEntry.license,
+                  curated: acceptedEntry.curated,
+                  yanked: acceptedEntry.yanked,
+                  published_at: acceptedEntry.published_at,
+                },
+              ]
+            : [],
+          next_cursor: null,
+          has_more: false,
+        });
       if (url.pathname !== '/api/v1/entries' || init?.method !== 'POST')
         throw new Error('unexpected Registry request');
       const request = new Request(input, init);
@@ -198,26 +223,26 @@ function registryClient(options: {
       options.handoffStarted?.();
       await options.releaseHandoff;
       const root = verified.manifest.merkle_root;
-      return Response.json(
-        {
-          id: entryId,
-          publisher: {
-            id: PUBLISHER_ID,
-            name: 'Original Publisher',
-            orcid: null,
-          },
-          root,
-          template: verified.manifest.template,
-          license: verified.license,
-          curated: false,
-          yanked: false,
-          published_at: '2026-09-08T00:00:00.000Z',
-          metadata: verified.metadata,
-          artifact_url: `${ORIGIN}/api/v1/artifacts/${root}`,
-          report_url: `${ORIGIN}/api/v1/entries/${entryId}/reports`,
+      acceptedEntry = {
+        id: entryId,
+        publisher: {
+          id: PUBLISHER_ID,
+          name: 'Original Publisher',
+          orcid: null,
         },
-        { status: 201 },
-      );
+        root,
+        template: verified.manifest.template,
+        license: verified.license,
+        curated: false,
+        yanked: false,
+        published_at: '2026-09-08T00:00:00.000Z',
+        metadata: verified.metadata,
+        artifact_url: `${ORIGIN}/api/v1/artifacts/${root}`,
+        report_url: `${ORIGIN}/api/v1/entries/${entryId}/reports`,
+      };
+      if (options.failAfterAcceptance)
+        throw new Error('simulated lost Registry response');
+      return Response.json(acceptedEntry, { status: 201 });
     },
   });
 }
@@ -652,7 +677,28 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     expect(reads).toBe(2);
   });
 
-  it('retries a remote success after a local rollback by Registry content identity', async () => {
+  it('finalizes an accepted publication when the Registry response is lost', async () => {
+    const seeded = await seedPublication('registry-ambiguous');
+    const publishedRoots: string[] = [];
+    await expect(
+      publishTemplateVersion(
+        seeded.context,
+        {
+          origin: ORIGIN,
+          assetStore,
+          maintenancePool: maintenance,
+          client: registryClient({
+            publishedRoots,
+            failAfterAcceptance: true,
+          }),
+        },
+        { versionId: seeded.versionId, credential: CREDENTIAL },
+      ),
+    ).resolves.toMatchObject({ status: 'completed', replayed: false });
+    expect(publishedRoots).toHaveLength(1);
+  });
+
+  it('lets a new administrator finalize a remote success after the original administrator is revoked', async () => {
     const seeded = await seedPublication('registry-retry');
     await pool.query(`
       CREATE SEQUENCE registry_test_record_attempt;
@@ -671,25 +717,66 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
     `);
     const publishedRoots: string[] = [];
     const client = registryClient({ publishedRoots });
-    const publish = () =>
+    const publish = (context = seeded.context, credential = CREDENTIAL) =>
       publishTemplateVersion(
-        { ...seeded.context, requestId: randomUUID() },
+        { ...context, requestId: randomUUID() },
         { origin: ORIGIN, assetStore, maintenancePool: maintenance, client },
-        { versionId: seeded.versionId, credential: CREDENTIAL },
+        { versionId: seeded.versionId, credential },
       );
 
-    await expect(publish()).rejects.toThrow(
-      'simulated local publication record failure',
+    await expect(publish()).resolves.toMatchObject({ status: 'pending' });
+    await pool.query(
+      `UPDATE team_members SET role='member' WHERE team_id='registry-retry'`,
     );
-    await expect(publish()).resolves.toMatchObject({ replayed: false });
-    await expect(publish()).resolves.toMatchObject({ replayed: true });
-    expect(publishedRoots).toHaveLength(2);
+    const replacementId = 'registry-retry-replacement-admin';
+    await pool.query(
+      `INSERT INTO "user" (id,name,email,"emailVerified")
+       VALUES ($1,'Replacement Admin',$2,true)`,
+      [replacementId, `${replacementId}@example.com`],
+    );
+    await pool.query(
+      `INSERT INTO team_members (id,team_id,user_id,role)
+       VALUES ($1,'registry-retry',$2,'admin')`,
+      [randomUUID(), replacementId],
+    );
+    await pool.query(
+      `INSERT INTO template_registry_accounts
+       (user_id,registry_url,publisher_id,publisher_name)
+       VALUES ($1,$2,$3,'Original Publisher')`,
+      [replacementId, ORIGIN, PUBLISHER_ID],
+    );
+    await pool.query(
+      `UPDATE template_registry_publication_intents SET available_at=now()
+       WHERE team_id='registry-retry'`,
+    );
+    const replacementContext = {
+      tenantDb: createTenantDb(app, 'registry-retry'),
+      principal: principal(replacementId),
+      requestId: randomUUID(),
+    };
+    await expect(
+      publish(replacementContext, REPLACEMENT_CREDENTIAL),
+    ).resolves.toMatchObject({ status: 'completed', replayed: false });
+    await expect(publish(replacementContext)).resolves.toMatchObject({
+      status: 'completed',
+      replayed: true,
+    });
+    expect(publishedRoots).toHaveLength(1);
     expect(new Set(publishedRoots).size).toBe(1);
     const rows = await pool.query<{ count: string }>(
       'SELECT count(*) FROM template_registry_publications WHERE team_id = $1',
       ['registry-retry'],
     );
     expect(rows.rows).toEqual([{ count: '1' }]);
+    await expect(
+      pool.query(
+        `SELECT actor_kind,event_version FROM audit_events
+         WHERE team_id='registry-retry'
+           AND event_type='template.registry_published'`,
+      ),
+    ).resolves.toHaveProperty('rows', [
+      { actor_kind: 'system', event_version: 2 },
+    ]);
   });
 
   it('imports verified Registry bytes with asset and machine origin stamps', async () => {
@@ -704,7 +791,7 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       `INSERT INTO team_members (id, team_id, user_id, role) VALUES ($1, $2, $3, 'admin')`,
       [randomUUID(), teamId, userId],
     );
-    const built = await createTemplateArtifact(importFixture());
+    const built = await createTemplateArtifact(twoAssetFixture());
     const root = built.artifact.manifest.merkle_root;
     const entryId = randomUUID();
     const entry = {
@@ -740,12 +827,27 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       },
     });
     const stored = new Map<string, Uint8Array>();
+    let failNextPut = true;
+    let invalidateLeaseAfterNextPut = false;
     const importAssetStore: AssetStore = {
       checkHealth: async () => undefined,
       get: async () => null,
       put: async (bytes, mediaType) => {
+        if (failNextPut) {
+          failNextPut = false;
+          throw new Error('simulated mid-upload interruption');
+        }
         const hash = createHash('sha256').update(bytes).digest('hex');
         stored.set(hash, bytes);
+        if (invalidateLeaseAfterNextPut) {
+          invalidateLeaseAfterNextPut = false;
+          await pool.query(
+            `UPDATE template_registry_import_intents
+             SET lease_owner=NULL,lease_expires_at=NULL
+             WHERE team_id=$1`,
+            [teamId],
+          );
+        }
         return { hash, size: bytes.byteLength, mediaType };
       },
     };
@@ -756,7 +858,12 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
           principal: principal(userId),
           requestId: randomUUID(),
         },
-        { origin: ORIGIN, assetStore: importAssetStore, client: registry },
+        {
+          origin: ORIGIN,
+          assetStore: importAssetStore,
+          maintenancePool: maintenance,
+          client: registry,
+        },
         entryId,
       );
     for (const changed of [
@@ -783,13 +890,101 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       ).toBe(0);
     }
     entryResponse = entry;
-    const result = await executeImport();
-    expect(result.replayed).toBe(false);
+    await expect(executeImport()).resolves.toMatchObject({
+      status: 'pending',
+    });
+    await expect(
+      pool.query(
+        `SELECT id, target_template_id, target_version_id, completed_at, lease_owner
+        FROM template_registry_import_intents
+        WHERE team_id = $1`,
+        [teamId],
+      ),
+    ).resolves.toMatchObject({
+      rows: [{ completed_at: null, lease_owner: null }],
+    });
+    const pending = await pool.query<{
+      id: string;
+      target_template_id: string;
+      target_version_id: string;
+    }>(
+      `SELECT id,target_template_id,target_version_id
+       FROM template_registry_import_intents WHERE team_id=$1`,
+      [teamId],
+    );
+    const intent = pending.rows[0];
+    if (!intent) throw new Error('durable import intent was not persisted');
+    const runtime = {
+      origin: ORIGIN,
+      assetStore: importAssetStore,
+      maintenancePool: maintenance,
+      client: registry,
+    };
+    invalidateLeaseAfterNextPut = true;
+    await pool.query(
+      `UPDATE template_registry_import_intents SET available_at=now()
+      WHERE team_id=$1`,
+      [teamId],
+    );
+    const lostLeaseClaim = await claimSpecificTemplateRegistryIntent(
+      maintenance,
+      'import',
+      intent.id,
+    );
+    if (!lostLeaseClaim) throw new Error('lease test did not claim import');
+    await expect(
+      reconcileClaimedTemplateRegistryIntent(runtime, lostLeaseClaim),
+    ).rejects.toThrow('Registry import intent lease is not owned');
     expect(stored.size).toBe(1);
+    await pool.query(
+      `UPDATE template_registry_import_intents SET available_at=now()
+       WHERE id=$1`,
+      [intent.id],
+    );
+    await pool.query(`CREATE SEQUENCE registry_import_finalize_attempt;
+      GRANT USAGE, SELECT, UPDATE ON SEQUENCE registry_import_finalize_attempt
+        TO studio_maintenance;
+      CREATE FUNCTION registry_import_fail_first_finalize() RETURNS trigger AS $$
+      BEGIN
+        IF nextval('registry_import_finalize_attempt') = 1 THEN
+          RAISE EXCEPTION 'simulated import finalization failure';
+        END IF;
+        RETURN NEW;
+      END; $$ LANGUAGE plpgsql;
+      CREATE TRIGGER registry_import_fail_first_finalize BEFORE INSERT ON templates
+        FOR EACH ROW EXECUTE FUNCTION registry_import_fail_first_finalize();`);
+    const firstRestartClaim = await claimSpecificTemplateRegistryIntent(
+      maintenance,
+      'import',
+      intent.id,
+    );
+    if (!firstRestartClaim) throw new Error('restart did not claim import');
+    await expect(
+      reconcileClaimedTemplateRegistryIntent(runtime, firstRestartClaim),
+    ).rejects.toThrow('simulated import finalization failure');
+    await pool.query(
+      `UPDATE template_registry_import_intents
+       SET lease_owner=NULL,lease_expires_at=NULL,available_at=now()
+       WHERE id=$1 AND lease_owner=$2`,
+      [intent.id, firstRestartClaim.leaseOwner],
+    );
+    await expect(
+      pool.query('SELECT id FROM templates WHERE team_id=$1', [teamId]),
+    ).resolves.toHaveProperty('rowCount', 0);
+    const secondRestartClaim = await claimSpecificTemplateRegistryIntent(
+      maintenance,
+      'import',
+      intent.id,
+    );
+    if (!secondRestartClaim) throw new Error('resumed import was not claimed');
+    await expect(
+      reconcileClaimedTemplateRegistryIntent(runtime, secondRestartClaim),
+    ).resolves.toBe('completed');
+    expect(stored.size).toBe(2);
     const version = await pool.query<{
       registry_origin: Record<string, string>;
     }>('SELECT registry_origin FROM template_versions WHERE id = $1', [
-      result.versionId,
+      intent.target_version_id,
     ]);
     expect(version.rows[0]?.registry_origin).toMatchObject({
       registry_url: ORIGIN,
@@ -800,6 +995,9 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       `SELECT origin FROM assets WHERE team_id = $1`,
       [teamId],
     );
-    expect(assets.rows).toEqual([{ origin: 'registry_import' }]);
+    expect(assets.rows).toHaveLength(2);
+    expect(
+      assets.rows.every(({ origin }) => origin === 'registry_import'),
+    ).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { isDeepStrictEqual } from 'node:util';
 
 import type pg from 'pg';
 
@@ -15,7 +16,9 @@ import {
   assertRegistryEntryArtifact,
   TemplateRegistryClient,
   TemplateRegistryClientError,
+  type FetchedRegistryArtifact,
 } from '@codaco/studio-sync/template-registry-client';
+import type { RegistryEntry } from '@codaco/studio-sync/template-registry-contract';
 import { createTenantDb } from '@codaco/studio-sync/tenant';
 
 import type { AssetStore } from '../assets.ts';
@@ -51,7 +54,7 @@ export class TemplateRegistryCommandError extends Error {
   }
 }
 
-type RegistryConfig = {
+export type RegistryConfig = {
   origin: string;
   assetStore: AssetStore;
   maintenancePool?: pg.Pool;
@@ -429,6 +432,28 @@ async function finalizePublicationIntent(
           publishedAt,
         ],
       );
+      const receipt = await client.query<{
+        registry_entry_id: string;
+        registry_root: string;
+        publisher_id: string;
+        publisher_name: string;
+        publisher_orcid: string | null;
+        published_at: Date;
+      }>(
+        `SELECT registry_entry_id,registry_root,publisher_id,publisher_name,
+                publisher_orcid,published_at
+         FROM template_registry_publications
+         WHERE team_id=$1 AND template_version_id=$2 AND registry_url=$3`,
+        [claim.teamId, row.template_version_id, row.registry_url],
+      );
+      const recorded = receipt.rows[0];
+      if (
+        !recorded ||
+        recorded.registry_entry_id !== entry.id ||
+        recorded.registry_root !== entry.root ||
+        recorded.publisher_id !== entry.publisher.id
+      )
+        throw new TemplateRegistryCommandError('PUBLISHER_MISMATCH');
       const completed = await client.query(
         `UPDATE template_registry_publication_intents
          SET registry_entry_id = $4, completed_at = clock_timestamp(),
@@ -463,11 +488,15 @@ async function finalizePublicationIntent(
       } satisfies AuditEventInput;
       return {
         result: {
-          entryId: entry.id,
+          entryId: recorded.registry_entry_id,
           registryUrl: row.registry_url,
-          root: entry.root,
-          publisher: entry.publisher,
-          publishedAt,
+          root: recorded.registry_root,
+          publisher: {
+            id: recorded.publisher_id,
+            name: recorded.publisher_name,
+            orcid: recorded.publisher_orcid,
+          },
+          publishedAt: recorded.published_at,
         },
         events: [event],
       };
@@ -630,8 +659,29 @@ export async function publishTemplateVersion(
       prepared.artifact.artifact.manifest.merkle_root,
       prepared.publisher.id,
     );
-    if (!entry)
-      entry = await registry.publish(prepared.artifact.bytes, input.credential);
+    if (!entry) {
+      try {
+        entry = await registry.publish(
+          prepared.artifact.bytes,
+          input.credential,
+        );
+      } catch (handoffError) {
+        entry = await registry.findEntry(
+          prepared.artifact.artifact.manifest.merkle_root,
+          prepared.publisher.id,
+        );
+        if (!entry) {
+          await deferTemplateRegistryIntent(
+            config.maintenancePool,
+            claim,
+            5_000,
+          );
+          if (handoffError instanceof TemplateRegistryClientError)
+            return { status: 'pending', intentId: prepared.intentId };
+          throw handoffError;
+        }
+      }
+    }
     const publication = await finalizePublicationIntent(
       config.maintenancePool,
       claim,
@@ -641,150 +691,437 @@ export async function publishTemplateVersion(
   } catch (error) {
     await deferTemplateRegistryIntent(config.maintenancePool, claim, 5_000);
     if (error instanceof TemplateRegistryCommandError) throw error;
-    return translateRegistryError(error);
+    return { status: 'pending', intentId: prepared.intentId };
   }
+}
+
+type ImportResult =
+  | {
+      status: 'completed';
+      templateId: string;
+      versionId: string;
+      replayed: boolean;
+    }
+  | {
+      status: 'pending';
+      intentId: string;
+      templateId: string;
+      versionId: string;
+    };
+
+type PreparedImport = {
+  intentId: string;
+  templateId: string;
+  versionId: string;
+  entry: RegistryEntry;
+  fetched: FetchedRegistryArtifact;
+};
+
+function assetManifest(artifact: VerifiedTemplateArtifact) {
+  return artifact.assets.map(
+    ({ hash, media_type, media_class, byte_size, source }) => ({
+      hash,
+      media_type,
+      media_class,
+      byte_size,
+      source,
+    }),
+  );
+}
+
+async function uploadImportAssets(
+  store: AssetStore,
+  fetched: FetchedRegistryArtifact,
+  pool: pg.Pool,
+  claim: ClaimedTemplateRegistryIntent,
+) {
+  for (const asset of fetched.artifact.assets) {
+    const owned = await pool.query(
+      `SELECT 1 FROM template_registry_import_intents
+       WHERE id=$1 AND team_id=$2 AND lease_owner=$3
+         AND lease_expires_at > clock_timestamp()
+         AND completed_at IS NULL AND quarantined_at IS NULL`,
+      [claim.id, claim.teamId, claim.leaseOwner],
+    );
+    if (owned.rowCount !== 1)
+      throw new Error('Registry import intent lease is not owned');
+    const stored = await store.put(asset.bytes, asset.media_type);
+    if (
+      stored.hash !== asset.hash ||
+      stored.size !== asset.byte_size ||
+      stored.mediaType !== asset.media_type
+    )
+      throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
+  }
+}
+
+async function finalizeImportIntent(
+  pool: pg.Pool,
+  claim: ClaimedTemplateRegistryIntent,
+  entry: RegistryEntry,
+  fetched: FetchedRegistryArtifact,
+): Promise<{ templateId: string; versionId: string }> {
+  return await runAuditedSystemMutation(
+    {
+      tenantDb: createTenantDb(pool, claim.teamId),
+      actorLabel: 'Template Registry reconciliation',
+      requestId: claim.id,
+    },
+    async (client, auditContext) => {
+      const found = await client.query<{
+        registry_url: string;
+        registry_entry_id: string;
+        registry_root: string;
+        entry_snapshot: RegistryEntry;
+        asset_manifest: ReturnType<typeof assetManifest>;
+        target_template_id: string;
+        target_version_id: string;
+        initiating_actor_id: string;
+        initiating_actor_label: string;
+        initiating_request_id: string;
+      }>(
+        `SELECT registry_url, registry_entry_id, registry_root, entry_snapshot,
+      asset_manifest, target_template_id, target_version_id,
+      initiating_actor_id, initiating_actor_label, initiating_request_id
+      FROM template_registry_import_intents
+      WHERE id=$1 AND team_id=$2 AND lease_owner=$3
+        AND lease_expires_at > clock_timestamp()
+        AND completed_at IS NULL AND quarantined_at IS NULL FOR UPDATE`,
+        [claim.id, claim.teamId, claim.leaseOwner],
+      );
+      const row = found.rows[0];
+      if (!row) throw new Error('Registry import intent lease is not owned');
+      if (
+        row.registry_entry_id !== entry.id ||
+        row.registry_root !== entry.root ||
+        !isDeepStrictEqual(row.entry_snapshot, entry) ||
+        !isDeepStrictEqual(row.asset_manifest, assetManifest(fetched.artifact))
+      )
+        throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');
+      const manifest = Object.fromEntries(
+        fetched.artifact.manifest.sections.map(({ id, hash }) => [id, hash]),
+      );
+      await client.query(
+        `INSERT INTO templates
+      (id,team_id,kind,name,summary,license,state,metadata,author_user_id)
+      VALUES ($1,$2,$3,$4,$5,$6,'published',$7,$8) ON CONFLICT (id) DO NOTHING`,
+        [
+          row.target_template_id,
+          claim.teamId,
+          entry.template.kind,
+          entry.template.name,
+          entry.template.summary ?? null,
+          entry.license,
+          fetched.artifact.metadata,
+          row.initiating_actor_id,
+        ],
+      );
+      await client.query(
+        `INSERT INTO template_versions
+      (id,team_id,template_id,version_number,manifest,manifest_hash,schema_version,
+       published_at,registry_origin) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      ON CONFLICT (id) DO NOTHING`,
+        [
+          row.target_version_id,
+          claim.teamId,
+          row.target_template_id,
+          entry.template.version,
+          manifest,
+          manifestHash(manifest, null),
+          fetched.artifact.manifest.protocol_schema_version,
+          new Date(entry.published_at),
+          {
+            registry_url: row.registry_url,
+            entry_id: entry.id,
+            source_version_hash: entry.root,
+            fetched_at: new Date().toISOString(),
+          },
+        ],
+      );
+      for (const { id, hash } of fetched.artifact.manifest.sections) {
+        const doc = fetched.artifact.sections[id];
+        if (!doc) throw new TemplateRegistryCommandError('NOT_FOUND');
+        await client.query(
+          `INSERT INTO sections (team_id,hash,doc) VALUES ($1,$2,$3)
+        ON CONFLICT (team_id,hash) DO NOTHING`,
+          [claim.teamId, hash, doc],
+        );
+        await client.query(
+          `INSERT INTO template_version_sections
+        (version_id,team_id,section_id,section_hash) VALUES ($1,$2,$3,$4)
+        ON CONFLICT (version_id,section_id) DO NOTHING`,
+          [row.target_version_id, claim.teamId, id, hash],
+        );
+      }
+      for (const asset of fetched.artifact.assets) {
+        await client.query(
+          `INSERT INTO assets
+        (team_id,hash,media_type,media_class,byte_size,original_filename,origin,
+         uploaded_by_user_id) VALUES ($1,$2,$3,$4,$5,$6,'registry_import',NULL)
+        ON CONFLICT (team_id,hash) DO NOTHING`,
+          [
+            claim.teamId,
+            asset.hash,
+            asset.media_type,
+            asset.media_class,
+            asset.byte_size,
+            asset.source,
+          ],
+        );
+        await client.query(
+          `INSERT INTO asset_references
+        (team_id,asset_hash,referrer_kind,referrer_id)
+        VALUES ($1,$2,'template_version',$3) ON CONFLICT DO NOTHING`,
+          [claim.teamId, asset.hash, row.target_version_id],
+        );
+      }
+      const completed = await client.query(
+        `UPDATE template_registry_import_intents
+      SET completed_at=clock_timestamp(),lease_owner=NULL,lease_expires_at=NULL
+      WHERE id=$1 AND team_id=$2 AND lease_owner=$3 AND completed_at IS NULL
+        AND quarantined_at IS NULL`,
+        [claim.id, claim.teamId, claim.leaseOwner],
+      );
+      if (completed.rowCount !== 1)
+        throw new Error('Registry import intent lease was lost');
+      const event = {
+        ...auditContext,
+        eventVersion: 2,
+        eventType: 'template.registry_imported',
+        category: 'integration',
+        outcome: 'succeeded',
+        subjectType: null,
+        subjectId: null,
+        subjectLabel: null,
+        resourceType: 'template',
+        resourceId: row.target_template_id,
+        resourceLabel: entry.template.name.slice(0, 320),
+        details: {
+          versionId: row.target_version_id,
+          registryEntryId: entry.id,
+          registryRoot: entry.root,
+          intentId: claim.id,
+          initiatingActorId: row.initiating_actor_id,
+          initiatingActorLabel: row.initiating_actor_label,
+          initiatingRequestId: row.initiating_request_id,
+        },
+      } satisfies AuditEventInput;
+      return {
+        result: {
+          templateId: row.target_template_id,
+          versionId: row.target_version_id,
+        },
+        events: [event],
+      };
+    },
+  );
 }
 
 export async function importRegistryTemplate(
   context: AuditedCommandContext,
   config: RegistryConfig,
   entryId: string,
-): Promise<{ templateId: string; versionId: string; replayed: boolean }> {
-  return await runAuditedCommand<{
-    templateId: string;
-    versionId: string;
-    replayed: boolean;
-  }>(context, async (client, auditContext) => {
+): Promise<ImportResult> {
+  if (!config.maintenancePool)
+    throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');
+  const prepared = await runAuditedCommand<
+    | PreparedImport
+    | {
+        replay: { templateId: string; versionId: string };
+      }
+  >(context, async (client, auditContext) => {
     await requireLockedAdministrator(client, context);
     const replay = await client.query<{ template_id: string; id: string }>(
-      `SELECT template_id, id FROM template_versions
-        WHERE team_id = $1 AND registry_origin->>'registry_url' = $2
-          AND registry_origin->>'entry_id' = $3`,
+      `SELECT template_id,id FROM template_versions WHERE team_id=$1
+         AND registry_origin->>'registry_url'=$2 AND registry_origin->>'entry_id'=$3`,
       [context.tenantDb.teamId, config.origin, entryId],
     );
-    if (replay.rows[0]) {
+    if (replay.rows[0])
       return {
         status: 'unchanged',
         result: {
-          templateId: replay.rows[0].template_id,
-          versionId: replay.rows[0].id,
-          replayed: true,
+          replay: {
+            templateId: replay.rows[0].template_id,
+            versionId: replay.rows[0].id,
+          },
         },
       };
-    }
     const registry = clientFor(config);
-    let entry;
-    let fetched;
+    let entry: RegistryEntry;
+    let fetched: FetchedRegistryArtifact;
     try {
       entry = await registry.entry(entryId);
       fetched = await registry.fetchArtifact(entry.root);
       assertRegistryEntryArtifact(entry, fetched.artifact);
     } catch (error) {
-      translateRegistryError(error);
+      return translateRegistryError(error);
     }
     if (entry.id !== entryId || fetched.root !== entry.root)
       throw new TemplateRegistryCommandError('NOT_FOUND');
-
-    for (const asset of fetched.artifact.assets) {
-      const stored = await config.assetStore.put(asset.bytes, asset.media_type);
-      if (stored.hash !== asset.hash)
-        throw new TemplateRegistryCommandError('STORAGE_UNAVAILABLE');
-    }
-    const templateId = randomUUID();
-    const versionId = randomUUID();
-    const manifest = Object.fromEntries(
-      fetched.artifact.manifest.sections.map(({ id, hash }) => [id, hash]),
+    const prior = await client.query<{
+      id: string;
+      target_template_id: string;
+      target_version_id: string;
+      registry_root: string;
+    }>(
+      `SELECT id,
+        target_template_id,target_version_id,registry_root FROM template_registry_import_intents
+        WHERE team_id=$1 AND registry_url=$2 AND registry_entry_id=$3
+          AND completed_at IS NULL AND quarantined_at IS NULL FOR UPDATE`,
+      [context.tenantDb.teamId, config.origin, entryId],
     );
-    await client.query(
-      `INSERT INTO templates
-        (id, team_id, kind, name, summary, license, state, metadata, author_user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, 'published', $7, $8)`,
-      [
-        templateId,
-        context.tenantDb.teamId,
-        entry.template.kind,
-        entry.template.name,
-        entry.template.summary ?? null,
-        entry.license,
-        fetched.artifact.metadata,
-        context.principal.userId,
-      ],
-    );
-    await client.query(
-      `INSERT INTO template_versions
-        (id, team_id, template_id, version_number, manifest, manifest_hash,
-         schema_version, published_at, registry_origin)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [
-        versionId,
-        context.tenantDb.teamId,
-        templateId,
-        entry.template.version,
-        manifest,
-        manifestHash(manifest, null),
-        fetched.artifact.manifest.protocol_schema_version,
-        new Date(entry.published_at),
-        {
-          registry_url: config.origin,
-          entry_id: entry.id,
-          source_version_hash: entry.root,
-          fetched_at: new Date().toISOString(),
-        },
-      ],
-    );
-    for (const { id, hash } of fetched.artifact.manifest.sections) {
-      const doc = fetched.artifact.sections[id];
-      if (!doc) throw new TemplateRegistryCommandError('NOT_FOUND');
+    const intentId = prior.rows[0]?.id ?? randomUUID();
+    const templateId = prior.rows[0]?.target_template_id ?? randomUUID();
+    const versionId = prior.rows[0]?.target_version_id ?? randomUUID();
+    if (prior.rows[0] && prior.rows[0].registry_root !== entry.root)
+      throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');
+    if (!prior.rows[0])
       await client.query(
-        `INSERT INTO sections (team_id, hash, doc) VALUES ($1, $2, $3)
-         ON CONFLICT (team_id, hash) DO NOTHING`,
-        [context.tenantDb.teamId, hash, doc],
-      );
-      await client.query(
-        `INSERT INTO template_version_sections
-          (version_id, team_id, section_id, section_hash) VALUES ($1, $2, $3, $4)`,
-        [versionId, context.tenantDb.teamId, id, hash],
-      );
-    }
-    for (const asset of fetched.artifact.assets) {
-      await client.query(
-        `INSERT INTO assets
-          (team_id, hash, media_type, media_class, byte_size, original_filename,
-           origin, uploaded_by_user_id)
-         VALUES ($1, $2, $3, $4, $5, $6, 'registry_import', NULL)
-         ON CONFLICT (team_id, hash) DO NOTHING`,
+        `INSERT INTO template_registry_import_intents
+        (id,team_id,registry_url,registry_entry_id,registry_root,entry_snapshot,
+         asset_manifest,target_template_id,target_version_id,initiating_actor_id,
+         initiating_actor_label,initiating_request_id)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
         [
+          intentId,
           context.tenantDb.teamId,
-          asset.hash,
-          asset.media_type,
-          asset.media_class,
-          asset.byte_size,
-          asset.source,
+          config.origin,
+          entry.id,
+          entry.root,
+          entry,
+          JSON.stringify(assetManifest(fetched.artifact)),
+          templateId,
+          versionId,
+          auditActorEventContext(auditContext).actorId,
+          auditActorEventContext(auditContext).actorLabel,
+          auditContext.requestId,
         ],
       );
-      await client.query(
-        `INSERT INTO asset_references
-          (team_id, asset_hash, referrer_kind, referrer_id)
-         VALUES ($1, $2, 'template_version', $3)`,
-        [context.tenantDb.teamId, asset.hash, versionId],
-      );
-    }
+    if (prior.rows[0])
+      return {
+        status: 'unchanged',
+        result: {
+          intentId,
+          templateId,
+          versionId,
+          entry,
+          fetched,
+        },
+      };
     const event = {
       ...eventContext(auditContext, {
         id: templateId,
         name: entry.template.name,
       }),
-      eventType: 'template.registry_imported',
+      eventType: 'template.registry_import_requested',
       details: {
-        versionId,
+        intentId,
         registryEntryId: entry.id,
         registryRoot: entry.root,
       },
     } satisfies AuditEventInput;
     return {
       status: 'succeeded',
-      result: { templateId, versionId, replayed: false },
+      result: { intentId, templateId, versionId, entry, fetched },
       events: [event],
     };
   });
+  if ('replay' in prepared)
+    return { status: 'completed', ...prepared.replay, replayed: true };
+  const claim = await claimSpecificTemplateRegistryIntent(
+    config.maintenancePool,
+    'import',
+    prepared.intentId,
+  );
+  if (!claim)
+    return {
+      status: 'pending',
+      intentId: prepared.intentId,
+      templateId: prepared.templateId,
+      versionId: prepared.versionId,
+    };
+  try {
+    await uploadImportAssets(
+      config.assetStore,
+      prepared.fetched,
+      config.maintenancePool,
+      claim,
+    );
+    const result = await finalizeImportIntent(
+      config.maintenancePool,
+      claim,
+      prepared.entry,
+      prepared.fetched,
+    );
+    return { status: 'completed', ...result, replayed: false };
+  } catch (error) {
+    await deferTemplateRegistryIntent(config.maintenancePool, claim, 5_000);
+    if (error instanceof TemplateRegistryCommandError) throw error;
+    return {
+      status: 'pending',
+      intentId: prepared.intentId,
+      templateId: prepared.templateId,
+      versionId: prepared.versionId,
+    };
+  }
+}
+
+export async function reconcileClaimedTemplateRegistryIntent(
+  config: RegistryConfig,
+  claim: ClaimedTemplateRegistryIntent,
+): Promise<'completed' | 'deferred'> {
+  if (!config.maintenancePool)
+    throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');
+  const registry = clientFor(config);
+  if (claim.kind === 'publication') {
+    const found = await config.maintenancePool.query<{
+      registry_root: string;
+      publisher_id: string;
+    }>(
+      `SELECT registry_root,publisher_id
+      FROM template_registry_publication_intents
+      WHERE id=$1 AND team_id=$2 AND lease_owner=$3
+        AND completed_at IS NULL AND quarantined_at IS NULL`,
+      [claim.id, claim.teamId, claim.leaseOwner],
+    );
+    const intent = found.rows[0];
+    if (!intent)
+      throw new Error('Registry publication intent lease is not owned');
+    const entry = await registry.findEntry(
+      intent.registry_root,
+      intent.publisher_id,
+    );
+    if (!entry) return 'deferred';
+    await finalizePublicationIntent(config.maintenancePool, claim, entry);
+    return 'completed';
+  }
+  const found = await config.maintenancePool.query<{
+    registry_entry_id: string;
+    registry_root: string;
+    entry_snapshot: RegistryEntry;
+  }>(
+    `SELECT registry_entry_id,registry_root,entry_snapshot
+    FROM template_registry_import_intents
+    WHERE id=$1 AND team_id=$2 AND lease_owner=$3
+      AND completed_at IS NULL AND quarantined_at IS NULL`,
+    [claim.id, claim.teamId, claim.leaseOwner],
+  );
+  const intent = found.rows[0];
+  if (!intent) throw new Error('Registry import intent lease is not owned');
+  const entry = await registry.entry(intent.registry_entry_id);
+  const fetched = await registry.fetchArtifact(intent.registry_root);
+  assertRegistryEntryArtifact(entry, fetched.artifact);
+  if (
+    !isDeepStrictEqual(entry, intent.entry_snapshot) ||
+    fetched.root !== intent.registry_root
+  )
+    throw new TemplateRegistryCommandError('REGISTRY_UNAVAILABLE');
+  await uploadImportAssets(
+    config.assetStore,
+    fetched,
+    config.maintenancePool,
+    claim,
+  );
+  await finalizeImportIntent(config.maintenancePool, claim, entry, fetched);
+  return 'completed';
 }
