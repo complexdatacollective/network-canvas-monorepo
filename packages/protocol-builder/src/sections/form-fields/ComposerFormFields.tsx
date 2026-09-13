@@ -45,6 +45,7 @@ import {
   rowId,
   rowsOf,
   rowTemplate,
+  type RowAsideProps,
   type RowEditorProps,
   type RowListConfig,
   type RowPreviewProps,
@@ -69,6 +70,7 @@ import {
 import { asText } from '../canvas/rowValues.ts';
 import { controlsForType } from '../collectableTypes.ts';
 import { composerFormFieldMessages as messages } from './composerFormFieldMessages.ts';
+import FieldPreviewPane from './FieldPreviewPane.tsx';
 
 const VARIABLE_FIELD = 'variable';
 const COMPONENT_FIELD = 'component';
@@ -376,6 +378,7 @@ function ComposerFormRows({
     () => ({
       Preview: ComposerFormFieldPreview,
       Editor: ComposerFormFieldEditor,
+      Aside: ComposerFieldPreviewPane,
       addTitle,
       editTitle,
       formId,
@@ -442,6 +445,19 @@ function shapeOf(
  * from here through the shared attribute controls — with their settings half
  * withheld, because here the settings are the field's.
  */
+/**
+ * The preview beside a composer field's own controls.
+ *
+ * `mode="composer"`, because this family labels a box of a form the
+ * participant is filling in rather than asking a question, and because the
+ * control and its settings live on the STAGE here rather than on the
+ * attribute.
+ */
+function ComposerFieldPreviewPane({ item }: RowAsideProps) {
+  const { subject } = useComposerFormScope();
+  return <FieldPreviewPane subject={subject} mode="composer" item={item} />;
+}
+
 function ComposerFormFieldEditor({ item }: RowEditorProps) {
   const intl = useAppIntl();
   const protocolContext = useProtocolContext();

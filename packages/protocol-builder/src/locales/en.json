@@ -1343,6 +1343,10 @@
     "defaultMessage": "Choose the video this block plays.",
     "description": "Refusal shown under the file picker of a video block when nothing has been chosen."
   },
+  "protocolBuilder.dialogForm.configurationPane": {
+    "defaultMessage": "Configuration",
+    "description": "Accessible name of the half of a two-pane editing dialog that holds the controls, as opposed to the live preview of what they are describing."
+  },
   "protocolBuilder.dialogForm.discardConfirm": {
     "defaultMessage": "Discard changes",
     "description": "Button that closes an editing dialog and throws away the unsaved work in it."
@@ -1446,6 +1450,34 @@
   "protocolBuilder.field.required": {
     "defaultMessage": "This field is required.",
     "description": "Shown under any unanswered required control in a stage editor when the researcher tries to save the stage. Addresses the researcher authoring the protocol, not a participant answering it."
+  },
+  "protocolBuilder.fieldPreview.checkResponse": {
+    "defaultMessage": "Check response",
+    "description": "Button inside the preview of a form field that submits the researcher’s trial answer so the attribute’s validation rules run against it."
+  },
+  "protocolBuilder.fieldPreview.description": {
+    "defaultMessage": "Try the field as a participant. Use Check response to test its current validation rules.",
+    "description": "Explains what the preview beside a form field’s settings is for: it can be answered, and answering it runs the rules the attribute carries. \"Check response\" is the button below it, named by the checkResponse message."
+  },
+  "protocolBuilder.fieldPreview.empty": {
+    "defaultMessage": "Select an attribute and input control to preview this field.",
+    "description": "Shown in place of the preview of a form field while the two things it would need to render — which attribute the answer is recorded under, and which control collects it — have not both been chosen."
+  },
+  "protocolBuilder.fieldPreview.placeholderLabel": {
+    "defaultMessage": "Attribute label",
+    "description": "Stands in for the label of a network composer’s form field in its preview, while the researcher has authored none and the attribute it collects has no name to borrow."
+  },
+  "protocolBuilder.fieldPreview.placeholderQuestion": {
+    "defaultMessage": "Your question will appear here.",
+    "description": "Stands in for the question of a form field in its preview, while the researcher has not written one yet."
+  },
+  "protocolBuilder.fieldPreview.sharedAttribute": {
+    "defaultMessage": "When selecting an existing attribute, changes you make to the input control or validation options will also change other uses of this attribute.",
+    "description": "Notice shown in the preview of a form field bound to an attribute the codebook already holds, because the control and the rules belong to that attribute rather than to this one question."
+  },
+  "protocolBuilder.fieldPreview.title": {
+    "defaultMessage": "Interactive preview",
+    "description": "Accessible name and heading of the half of the form-field dialog that shows the question as the participant will meet it."
   },
   "protocolBuilder.formFields.addLabel": {
     "defaultMessage": "Create new form field",
@@ -3507,34 +3539,6 @@
     "defaultMessage": "Enter a value...",
     "description": "Placeholder in the empty field holding what this option is stored and exported as."
   },
-  "protocolBuilder.outline.completeStatus": {
-    "defaultMessage": "Finished",
-    "description": "Spoken state of one section of a stage editor: everything it asks for has been filled in and nothing in it is invalid. Read out after the section’s own name, and never shown on screen."
-  },
-  "protocolBuilder.outline.errorStatus": {
-    "defaultMessage": "Has a problem",
-    "description": "Spoken state of one section of a stage editor (a stage is one step of an interview): something the researcher has entered in it is not valid. Read out after the section’s own name, and never shown on screen — the same state is drawn as a color and an icon."
-  },
-  "protocolBuilder.outline.incompleteStatus": {
-    "defaultMessage": "Not finished",
-    "description": "Spoken state of one section of a stage editor: it still has required fields the researcher has not filled in. Read out after the section’s own name, and never shown on screen."
-  },
-  "protocolBuilder.outline.landmarkLabel": {
-    "defaultMessage": "Stage sections",
-    "description": "Accessible name of the navigation landmark listing the sections of the stage being edited. A stage is one step of an interview."
-  },
-  "protocolBuilder.outline.statusWithProblems": {
-    "defaultMessage": "{status}. {problems}",
-    "description": "Read out for a section of a stage editor whose only account of what is wrong is here. status is the section’s spoken state (\"Has a problem\"); problems is one or more whole sentences describing what the protocol refused, already in the reader’s language. Both are complete sentences, so this is only the punctuation that separates them."
-  },
-  "protocolBuilder.outline.switchedOffStatus": {
-    "defaultMessage": "Switched off",
-    "description": "Spoken state of one section of a stage editor: the researcher has turned this optional part of the stage off, so it asks for nothing. Read out after the section’s own name, and never shown on screen."
-  },
-  "protocolBuilder.outline.unavailableStatus": {
-    "defaultMessage": "Not available yet",
-    "description": "Spoken state of one section of a stage editor: it cannot be filled in until something else in the stage has been chosen. Read out after the section’s own name, and never shown on screen."
-  },
   "protocolBuilder.pageContent.atLeastOne": {
     "defaultMessage": "Add at least one block. A page with no content shows the participant nothing.",
     "description": "Refusal shown above the list of blocks when a researcher saves a page that shows nothing. A block is one piece of a page — a passage of text, a picture, a video."
@@ -5468,8 +5472,8 @@
     "description": "Shown at the top of a stage editor opened while somebody the host would not name holds it. A stage is one step of an interview."
   },
   "protocolBuilder.shell.invalidStageRefusal": {
-    "defaultMessage": "This stage is not finished, so it was not saved. The sections below say what is missing.",
-    "description": "Shown above a stage editor’s fields when the stage does not yet satisfy the protocol’s own rules for this interface, so the save was not attempted. A stage is one step of an interview."
+    "defaultMessage": "This stage is not finished, so it was not saved.",
+    "description": "Shown above a stage editor’s fields when the stage does not yet satisfy the protocol’s own rules for this interface, so the save was not attempted, and every fault is already stated beside the control that holds it. A stage is one step of an interview."
   },
   "protocolBuilder.shell.readOnlyRefusal": {
     "defaultMessage": "This stage is read-only, so your change was not made. Somebody else is editing it.",
@@ -5478,6 +5482,10 @@
   "protocolBuilder.shell.saveStage": {
     "defaultMessage": "Save stage",
     "description": "Action that saves the step of the interview a researcher is editing. Names the stage rather than saying only \"Save\", because a host may show its own controls beside this one."
+  },
+  "protocolBuilder.shell.sectionProblem": {
+    "defaultMessage": "{sectionTitle}: {problem}",
+    "description": "Shown above a stage editor’s fields, once for each thing the protocol refused about the stage, when the save was not attempted. sectionTitle is the name of the section of the editor that holds the value; problem is a whole sentence saying what is wrong with it, already in the reader’s language. Both are given, so this is only the punctuation that joins them."
   },
   "protocolBuilder.shell.stageUnavailable": {
     "defaultMessage": "This stage could not be opened. It may have been deleted while you were away. Go back to the interview and choose another one.",

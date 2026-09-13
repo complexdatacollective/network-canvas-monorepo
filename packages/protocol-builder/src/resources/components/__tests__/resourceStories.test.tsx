@@ -17,7 +17,24 @@ import * as uploadStories from '../ResourceUploadControl.stories.tsx';
 type ComposedStory = (() => ReactNode) &
   Readonly<{
     play?: (context: { canvasElement: HTMLElement }) => Promise<void>;
+    parameters?: Readonly<{ playsInJsdom?: boolean }>;
   }>;
+
+/**
+ * A play that reads what the browser PAINTED — a colour, a size, a ratio —
+ * rather than what the component rendered. jsdom resolves no stylesheet, so
+ * every such read answers with the empty string or zero and the assertion
+ * built on it passes whatever the component does. Those plays belong to the
+ * `storybook` project, which runs in a real browser; here the story is still
+ * mounted, so a story that cannot render at all still fails.
+ *
+ * Marked on the story with `parameters: { playsInJsdom: false }`, and the
+ * marked set is asserted below so it cannot quietly grow.
+ */
+const PAINTED_PLAYS = [
+  'Resource picker — Chosen',
+  'Resource picker — AsACanvasBackground',
+];
 
 function storiesIn(
   file: string,
@@ -47,11 +64,20 @@ describe('the resource picker stories', () => {
   it('has a story for every surface', () => {
     // A count rather than a list: it fails when a story is deleted, which is
     // the way this suite could silently stop covering something.
-    expect(RESOURCE_STORIES.length).toBe(23);
+    expect(RESOURCE_STORIES.length).toBe(24);
+  });
+
+  it('leaves only the painted plays to the browser', () => {
+    expect(
+      RESOURCE_STORIES.filter(
+        ([, story]) => story.parameters?.playsInJsdom === false,
+      ).map(([name]) => name),
+    ).toEqual(PAINTED_PLAYS);
   });
 
   it.each(RESOURCE_STORIES)('renders and plays %s', async (_name, Story) => {
     const { container } = render(<Story />);
+    if (Story.parameters?.playsInJsdom === false) return;
     await Story.play?.({ canvasElement: container });
   });
 });

@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -90,8 +91,9 @@ export default function CreateConnectionTypeButton({
         <Button
           ref={triggerRef}
           type="button"
-          variant="outline"
+          color="primary"
           size="sm"
+          icon={<Plus aria-hidden="true" />}
           onClick={() => setSession({ key: uuid(), typeId: uuid() })}
         >
           {intl.formatMessage(messages.createConnectionTypeLabel)}

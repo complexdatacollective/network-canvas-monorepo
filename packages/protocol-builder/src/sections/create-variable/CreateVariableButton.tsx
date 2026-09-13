@@ -1,3 +1,5 @@
+import { Plus } from 'lucide-react';
+
 import Button from '@codaco/fresco-ui/Button';
 import type { VariableOption, VariableType } from '@codaco/protocol-validation';
 
@@ -64,8 +66,9 @@ export default function CreateVariableButton({
       {launchable && (
         <Button
           type="button"
-          variant="outline"
+          color="primary"
           size="sm"
+          icon={<Plus aria-hidden="true" />}
           // Opened on an empty name: this control asks for an attribute
           // without one having been typed anywhere, and the editor's own name
           // box is where the researcher gives it one.

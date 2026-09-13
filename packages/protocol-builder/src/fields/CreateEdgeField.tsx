@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -139,8 +140,9 @@ export default function CreateEdgeField({
         <Button
           ref={trigger}
           type="button"
-          variant="outline"
+          color="primary"
           size="sm"
+          icon={<Plus aria-hidden="true" />}
           onClick={() => setSession({ key: uuid(), typeId: uuid() })}
         >
           {createLabel}

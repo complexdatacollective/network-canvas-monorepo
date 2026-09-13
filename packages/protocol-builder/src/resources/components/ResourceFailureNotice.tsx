@@ -52,7 +52,6 @@ export default function ResourceFailureNotice({
             type="button"
             size="sm"
             color="destructive"
-            variant="outline"
             disabled={busy}
             onClick={onRetry}
           >

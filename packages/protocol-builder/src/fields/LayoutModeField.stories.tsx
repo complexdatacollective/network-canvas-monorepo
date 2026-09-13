@@ -200,8 +200,10 @@ export const AValueThatIsNeitherMode: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'Save stage' }));
 
+    // Named by the section that answers for it: the refusal is read out above
+    // the form, whether or not the host draws a list of the sections.
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
-      'This stage is not finished, so it was not saved.',
+      'Node layout: Layout mode holds the wrong kind of value.',
     );
   },
 };

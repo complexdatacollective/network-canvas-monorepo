@@ -156,6 +156,29 @@ export const controlsForType = (
     : [];
 
 /**
+ * The kind of answer an input control collects — the inverse of
+ * {@link controlsForType}.
+ *
+ * Total and unambiguous, and not a convenience: every control in
+ * `VARIABLE_TYPE_COMPONENTS` appears under exactly ONE type, because the
+ * variable schemas are split on `component` and a control offered for two
+ * kinds of answer would make a saved field mean two things. So a caller that
+ * knows which control the participant answers with already knows what the
+ * attribute holds — which is what lets a field preview the control it is being
+ * given before the attribute it collects into exists.
+ */
+const TYPE_FOR_CONTROL: ReadonlyMap<string, VariableType> = new Map(
+  TYPE_OPTIONS.flatMap(({ value }) =>
+    VARIABLE_TYPE_COMPONENTS[value].map(
+      (component): readonly [string, VariableType] => [component, value],
+    ),
+  ),
+);
+
+export const typeForControl = (control: string): VariableType | undefined =>
+  TYPE_FOR_CONTROL.get(control);
+
+/**
  * The attribute types that ARE a list of answers.
  *
  * `categoricalOptionsSchema` requires at least two of them, so a categorical

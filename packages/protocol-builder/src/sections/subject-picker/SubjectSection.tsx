@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 
@@ -519,8 +520,9 @@ function CreateSubjectType({
         <Button
           ref={triggerRef}
           type="button"
-          variant="outline"
+          color="primary"
           size="sm"
+          icon={<Plus aria-hidden="true" />}
           onClick={() => setSession({ key: uuid(), typeId: uuid() })}
         >
           {intl.formatMessage(words.createLabel)}
