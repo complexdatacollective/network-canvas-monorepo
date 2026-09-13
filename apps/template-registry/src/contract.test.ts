@@ -45,6 +45,10 @@ it('counts search limits in Unicode code points', () => {
   expect(() =>
     ListEntriesSchema.parse({ query: `${EMOJI_150}${'😀'.repeat(51)}` }),
   ).toThrow();
+  for (const field of ['query', 'keyword', 'author'] as const)
+    expect(
+      ListEntriesSchema.safeParse({ [field]: 'unsafe\0filter' }).success,
+    ).toBe(false);
 });
 
 it('counts account text limits in Unicode code points and rejects unsafe names', () => {

@@ -46,7 +46,9 @@
           },
           "query": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[^\\u0000]+$(?![\\s\\S])"
           },
           "kind": {
             "type": "string",
@@ -64,11 +66,15 @@
           },
           "keyword": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 100,
+            "pattern": "^[^\\u0000]+$(?![\\s\\S])"
           },
           "author": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "^[^\\u0000]+$(?![\\s\\S])"
           },
           "curated": {
             "type": "string",
@@ -1299,7 +1305,8 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200
+              "maxLength": 200,
+              "pattern": "^[^\\u0000]+$(?![\\s\\S])"
             },
             "allowEmptyValue": false,
             "allowReserved": false
@@ -1336,7 +1343,8 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 100
+              "maxLength": 100,
+              "pattern": "^[^\\u0000]+$(?![\\s\\S])"
             },
             "allowEmptyValue": false,
             "allowReserved": false
@@ -1347,7 +1355,8 @@
             "schema": {
               "type": "string",
               "minLength": 1,
-              "maxLength": 200
+              "maxLength": 200,
+              "pattern": "^[^\\u0000]+$(?![\\s\\S])"
             },
             "allowEmptyValue": false,
             "allowReserved": false
@@ -4528,6 +4537,15 @@
                                 "format": "uuid",
                                 "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
                               },
+                              "artifact_root": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                              },
+                              "publisher_id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
                               "category": {
                                 "type": "string",
                                 "enum": [
@@ -4562,6 +4580,8 @@
                             "required": [
                               "id",
                               "entry_id",
+                              "artifact_root",
+                              "publisher_id",
                               "category",
                               "details",
                               "created_at"
@@ -4600,6 +4620,15 @@
                                 "format": "uuid",
                                 "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
                               },
+                              "artifact_root": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                              },
+                              "publisher_id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
                               "category": {
                                 "type": "string",
                                 "enum": [
@@ -4634,6 +4663,8 @@
                             "required": [
                               "id",
                               "entry_id",
+                              "artifact_root",
+                              "publisher_id",
                               "category",
                               "details",
                               "created_at"
@@ -5773,6 +5804,15 @@
                                 "format": "uuid",
                                 "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
                               },
+                              "artifact_root": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                              },
+                              "publisher_id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
                               "category": {
                                 "type": "string",
                                 "enum": [
@@ -5807,6 +5847,8 @@
                             "required": [
                               "id",
                               "entry_id",
+                              "artifact_root",
+                              "publisher_id",
                               "category",
                               "details",
                               "created_at"
@@ -5845,6 +5887,15 @@
                                 "format": "uuid",
                                 "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
                               },
+                              "artifact_root": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
+                              },
+                              "publisher_id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
                               "category": {
                                 "type": "string",
                                 "enum": [
@@ -5879,6 +5930,8 @@
                             "required": [
                               "id",
                               "entry_id",
+                              "artifact_root",
+                              "publisher_id",
                               "category",
                               "details",
                               "created_at"

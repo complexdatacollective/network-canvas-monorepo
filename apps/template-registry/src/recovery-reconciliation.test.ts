@@ -22,7 +22,7 @@ import {
 const emptyInventory = createRegistryRecoveryInventory('users', []);
 const evidence = {
   format: 'template-registry-recovery-reconciliation' as const,
-  version: 3 as const,
+  version: 4 as const,
   inventories: {
     users: emptyInventory,
     publishers: createRegistryRecoveryInventory('publishers', []),
@@ -83,6 +83,37 @@ it('builds canonical, ordered inventories that bind every authority field', () =
       version: 2 as never,
     }),
   ).toThrow();
+  const publisher = createRegistryRecoveryInventory('publishers', [
+    {
+      id: '00000000-0000-4000-8000-00000000000a',
+      userId: 'publisher',
+      name: 'Independent publisher',
+      orcid: '0000-0002-1825-0097',
+      suspended: false,
+    },
+  ]);
+  expect(
+    createRegistryRecoveryInventory('publishers', [
+      {
+        id: '00000000-0000-4000-8000-00000000000a',
+        userId: 'publisher',
+        name: 'Restored publisher',
+        orcid: '0000-0002-1825-0097',
+        suspended: false,
+      },
+    ]).sha256,
+  ).not.toBe(publisher.sha256);
+  expect(
+    createRegistryRecoveryInventory('publishers', [
+      {
+        id: '00000000-0000-4000-8000-00000000000a',
+        userId: 'publisher',
+        name: 'Independent publisher',
+        orcid: null,
+        suspended: false,
+      },
+    ]).sha256,
+  ).not.toBe(publisher.sha256);
 });
 
 it('rejects trailing bytes in canonical counts, hashes, and artifact roots', () => {
@@ -154,7 +185,7 @@ it('verifies the exact private evidence bytes before parsing', async () => {
     await expect(
       readRegistryRecoveryReconciliation(path, `${templateBytesHash(bytes)}\n`),
     ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
-    const legacy = Buffer.from(JSON.stringify({ ...evidence, version: 2 }));
+    const legacy = Buffer.from(JSON.stringify({ ...evidence, version: 3 }));
     await writeFile(path, legacy, { mode: 0o600 });
     await expect(
       readRegistryRecoveryReconciliation(path, templateBytesHash(legacy)),
@@ -165,8 +196,8 @@ it('verifies the exact private evidence bytes before parsing', async () => {
 });
 
 it.each([
-  `{ "format":"template-registry-recovery-reconciliation", "version":3, "version":2, "inventories":${JSON.stringify(evidence.inventories)} }`,
-  `{ "format":"template-registry-recovery-reconciliation", "version":3, "inventories":{ "users":${JSON.stringify(emptyInventory)}, "users":${JSON.stringify(emptyInventory)}, "publishers":${JSON.stringify(emptyInventory)}, "operators":${JSON.stringify(emptyInventory)}, "entries":${JSON.stringify(emptyInventory)} } }`,
+  `{ "format":"template-registry-recovery-reconciliation", "version":4, "version":3, "inventories":${JSON.stringify(evidence.inventories)} }`,
+  `{ "format":"template-registry-recovery-reconciliation", "version":4, "inventories":{ "users":${JSON.stringify(emptyInventory)}, "users":${JSON.stringify(emptyInventory)}, "publishers":${JSON.stringify(emptyInventory)}, "operators":${JSON.stringify(emptyInventory)}, "entries":${JSON.stringify(emptyInventory)} } }`,
 ])(
   'rejects duplicate recovery evidence members before parsing: %s',
   async (text) => {

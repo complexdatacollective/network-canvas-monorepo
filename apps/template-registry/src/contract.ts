@@ -48,9 +48,16 @@ const codePointLimitedText = (maxLength: number) =>
   z
     .string()
     .min(1)
-    .refine((value) => Array.from(value).length <= maxLength, {
-      message: `Must contain at most ${maxLength} Unicode code points`,
-    });
+    .refine(
+      (value) =>
+        value.isWellFormed() &&
+        !value.includes('\0') &&
+        Array.from(value).length <= maxLength,
+      {
+        message: `Must contain at most ${maxLength} Unicode code points`,
+      },
+    )
+    .meta({ maxLength, pattern: '^[^\\u0000]+$(?![\\s\\S])' });
 
 export const ListEntriesSchema = z
   .strictObject({
