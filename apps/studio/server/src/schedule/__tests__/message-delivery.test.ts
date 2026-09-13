@@ -14,11 +14,14 @@ import {
   participantFixture,
   contacts,
 } from '../../pii/__tests__/integration-fixture.ts';
+import { readInterviewLinkCapability } from '../../pii/interview-links.ts';
 import { updateParticipantPii } from '../../pii/participants.ts';
+import { issueParticipantInterviewLink } from '../../study/interview-links.ts';
 import {
   createMessageDeliveryDispatcher,
   enqueueOccurrenceMessages,
   MessageDeliveryAdapter,
+  produceDueOccurrenceMessage,
 } from '../message-delivery.ts';
 import {
   receivePostmarkStatus,
@@ -30,6 +33,7 @@ async function occurrence(
   fixture: Parameters<Parameters<typeof participantFixture>[0]>[0],
   expired = false,
   channel: 'email' | 'sms' = 'email',
+  waveId: string | null = null,
 ) {
   await updateParticipantPii(fixture.keys, fixture.context, fixture.target, {
     email: contacts.email,
@@ -42,13 +46,14 @@ async function occurrence(
   const templateId = randomUUID();
   await fixture.scratch.pool.query(
     `INSERT INTO study_schedules
-      (id,team_id,study_id,name,state,anchor_kind,recurrence_kind,window_start_minute,window_end_minute,days_of_week_mask,max_prompts_per_day,prompt_expiry_hours,catch_up_policy,fallback_time_zone,channels)
-     VALUES ($1,$2,$3,'Prompt','active','enrolment','one_off',0,1439,127,1,24,'skip','UTC',ARRAY[$4]::text[])`,
+      (id,team_id,study_id,wave_id,name,state,anchor_kind,recurrence_kind,window_start_minute,window_end_minute,days_of_week_mask,max_prompts_per_day,prompt_expiry_hours,catch_up_policy,fallback_time_zone,channels)
+     VALUES ($1,$2,$3,$5,'Prompt','active','enrolment','one_off',0,1439,127,1,24,'skip','UTC',ARRAY[$4]::text[])`,
     [
       scheduleId,
       fixture.context.tenantDb.teamId,
       fixture.target.studyId,
       channel,
+      waveId,
     ],
   );
   await fixture.scratch.pool.query(
@@ -80,6 +85,202 @@ async function occurrence(
 }
 
 describe('message delivery runtime', () => {
+  it('issues one encrypted wave capability and reuses it across due occurrence delivery', async () => {
+    await participantFixture(async (fixture) => {
+      await updateParticipantPii(
+        fixture.keys,
+        fixture.context,
+        fixture.target,
+        {
+          email: contacts.email,
+          phone: contacts.phone,
+          name: null,
+          attributes: null,
+        },
+      );
+      await fixture.scratch.pool.query(
+        "UPDATE studies SET state='live',went_live_at=statement_timestamp() WHERE id=$1",
+        [fixture.target.studyId],
+      );
+      await fixture.scratch.pool.query(
+        'UPDATE participants SET enrolled_at=statement_timestamp() WHERE id=$1',
+        [fixture.target.participantId],
+      );
+      const waveId = randomUUID();
+      await fixture.scratch.pool.query(
+        `INSERT INTO study_waves(id,study_id,team_id,wave_number)
+         VALUES($1,$2,$3,1)`,
+        [waveId, fixture.target.studyId, fixture.context.tenantDb.teamId],
+      );
+      const issued = await issueParticipantInterviewLink(
+        fixture.keys,
+        fixture.context,
+        { ...fixture.target, waveId },
+      );
+      const encodedSecret = issued.token.slice(issued.token.indexOf('.') + 1);
+      expect(encodedSecret).toMatch(/^[A-Za-z0-9_-]{43}$/);
+      expect(
+        (
+          await fixture.scratch.pool.query<{ token_hash: Buffer }>(
+            'SELECT token_hash FROM interview_links WHERE id=$1',
+            [issued.linkId],
+          )
+        ).rows[0]?.token_hash,
+      ).toEqual(createHash('sha256').update(encodedSecret).digest());
+      const first = await occurrence(fixture, false, 'email', waveId);
+      await expect(
+        produceDueOccurrenceMessage({
+          pool: fixture.scratch.maintenance,
+          encryptionKeys: fixture.keys,
+          publicBaseUrl: 'https://studio.example',
+        }),
+      ).resolves.toBe(true);
+      const atRest = await fixture.scratch.pool.query<{
+        interview_link_id: string;
+        rendered_ciphertext: Buffer;
+      }>(
+        'SELECT interview_link_id,rendered_ciphertext FROM message_deliveries WHERE occurrence_id=$1',
+        [first.occurrenceId],
+      );
+      expect(atRest.rows[0]?.interview_link_id).toBe(issued.linkId);
+      expect(atRest.rows[0]?.rendered_ciphertext.includes(issued.token)).toBe(
+        false,
+      );
+
+      const bodies: string[] = [];
+      const dispatcher = createMessageDeliveryDispatcher({
+        pool: fixture.scratch.maintenance,
+        encryptionKeys: fixture.keys,
+        email: {
+          provider: 'smtp',
+          from: 'studio@example.org',
+          sender: {
+            async send(message) {
+              bodies.push(message.text);
+              return {
+                status: 'accepted' as const,
+                messageId: `receipt-${bodies.length}`,
+              };
+            },
+            close() {},
+          },
+        },
+      });
+      await fixture.scratch.pool.query(
+        'UPDATE message_deliveries SET available_at=clock_timestamp()',
+      );
+      await expect(dispatcher.runOnce()).resolves.toMatchObject({ claimed: 1 });
+
+      const second = await occurrence(fixture, false, 'email', waveId);
+      await expect(
+        produceDueOccurrenceMessage({
+          pool: fixture.scratch.maintenance,
+          encryptionKeys: fixture.keys,
+          publicBaseUrl: 'https://studio.example',
+        }),
+      ).resolves.toBe(true);
+      await fixture.scratch.pool.query(
+        'UPDATE message_deliveries SET available_at=clock_timestamp() WHERE occurrence_id=$1',
+        [second.occurrenceId],
+      );
+      await expect(dispatcher.runOnce()).resolves.toMatchObject({ claimed: 1 });
+      expect(bodies).toHaveLength(2);
+      expect(bodies[0]).toContain(encodeURIComponent(issued.token));
+      expect(bodies[0]).toContain(`occurrence=${first.occurrenceId}`);
+      expect(bodies[1]).toContain(encodeURIComponent(issued.token));
+      expect(bodies[1]).toContain(`occurrence=${second.occurrenceId}`);
+
+      const revokedBeforeHandoff = await occurrence(
+        fixture,
+        false,
+        'email',
+        waveId,
+      );
+      await expect(
+        produceDueOccurrenceMessage({
+          pool: fixture.scratch.maintenance,
+          encryptionKeys: fixture.keys,
+          publicBaseUrl: 'https://studio.example',
+        }),
+      ).resolves.toBe(true);
+      const held = await readInterviewLinkCapability(
+        fixture.keys,
+        fixture.scratch.maintenance,
+        fixture.context.tenantDb.teamId,
+        issued.linkId,
+      );
+      const reissued = await issueParticipantInterviewLink(
+        fixture.keys,
+        fixture.context,
+        { ...fixture.target, waveId },
+      );
+      expect(reissued.linkId).not.toBe(issued.linkId);
+      await fixture.scratch.pool.query(
+        'UPDATE message_deliveries SET available_at=clock_timestamp() WHERE occurrence_id=$1',
+        [revokedBeforeHandoff.occurrenceId],
+      );
+      await dispatcher.runOnce();
+      expect(bodies).toHaveLength(2);
+      expect(
+        (
+          await fixture.scratch.pool.query<{ suppressed: boolean }>(
+            'SELECT suppressed_at IS NOT NULL AS suppressed FROM message_deliveries WHERE occurrence_id=$1',
+            [revokedBeforeHandoff.occurrenceId],
+          )
+        ).rows[0],
+      ).toEqual({ suppressed: true });
+
+      const raced = await occurrence(fixture, false, 'email', waveId);
+      await expect(
+        enqueueOccurrenceMessages(
+          {
+            pool: fixture.scratch.maintenance,
+            encryptionKeys: fixture.keys,
+            linkSnapshot: held.snapshot,
+          },
+          raced.occurrenceId,
+          [
+            {
+              channel: 'email',
+              templateId: raced.templateId,
+              kind: 'prompt',
+              subject: 'Race',
+              body: `Never ${held.secret.toString('utf8')}`,
+            },
+          ],
+        ),
+      ).resolves.toBe(false);
+      held.secret.fill(0);
+      await Promise.all([
+        issueParticipantInterviewLink(fixture.keys, fixture.context, {
+          ...fixture.target,
+          waveId,
+        }),
+        issueParticipantInterviewLink(fixture.keys, fixture.context, {
+          ...fixture.target,
+          waveId,
+        }),
+      ]);
+      expect(
+        (
+          await fixture.scratch.pool.query(
+            'SELECT count(*)::int AS n FROM interview_links WHERE wave_id=$1 AND participant_id=$2 AND revoked_at IS NULL',
+            [waveId, fixture.target.participantId],
+          )
+        ).rows[0],
+      ).toEqual({ n: 1 });
+      expect(
+        JSON.stringify(
+          (
+            await fixture.scratch.pool.query(
+              "SELECT event_type,details FROM audit_events WHERE event_type IN ('interview.link.issued','message.link.read')",
+            )
+          ).rows,
+        ),
+      ).not.toContain(encodedSecret);
+    });
+  });
+
   it('atomically produces one encrypted delivery and sends the exact body through the shared dispatcher', async () => {
     await participantFixture(async (fixture) => {
       const { occurrenceId, templateId } = await occurrence(fixture);

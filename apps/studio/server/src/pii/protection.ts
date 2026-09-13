@@ -48,6 +48,12 @@ export type IntegrationField =
       teamId: string;
       deliveryId: string;
       column: 'rendered_ciphertext';
+    }
+  | {
+      kind: 'interview-link';
+      teamId: string;
+      linkId: string;
+      column: 'token_ciphertext';
     };
 
 /**
@@ -99,7 +105,9 @@ function integrationContext(
   return Object.freeze(
     target.kind === 'webhook'
       ? { ...target, subscriptionId: canonicalUuid(target.subscriptionId) }
-      : { ...target },
+      : target.kind === 'interview-link'
+        ? { ...target, linkId: canonicalUuid(target.linkId) }
+        : { ...target },
   );
 }
 
@@ -127,6 +135,8 @@ function integrationAad(target: IntegrationField): Buffer {
       target.deliveryId,
       target.column,
     ]);
+  if (target.kind === 'interview-link')
+    return tuple([target.kind, target.teamId, target.linkId, target.column]);
   return tuple([
     target.kind,
     target.userId,
@@ -136,7 +146,9 @@ function integrationAad(target: IntegrationField): Buffer {
 }
 
 function integrationScope(target: IntegrationField): readonly string[] {
-  return target.kind === 'webhook' || target.kind === 'message'
+  return target.kind === 'webhook' ||
+    target.kind === 'message' ||
+    target.kind === 'interview-link'
     ? ['team', target.teamId]
     : ['account', target.userId, target.accountRowId];
 }

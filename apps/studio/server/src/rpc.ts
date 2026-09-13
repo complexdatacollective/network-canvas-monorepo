@@ -64,6 +64,10 @@ import {
 import { ProtocolStore } from './protocol/store.ts';
 import { createAuditedStudy, StudyCommandError } from './study/commands.ts';
 import { readStudyCounts } from './study/counts.ts';
+import {
+  InterviewLinkError,
+  issueParticipantInterviewLink,
+} from './study/interview-links.ts';
 import { StudyStore } from './study/store.ts';
 import { resolveStudy, seesEveryTeamStudy } from './study/tenancy.ts';
 import {
@@ -362,6 +366,15 @@ async function handleWebhookCommand<T>(work: () => Promise<T>): Promise<T> {
     return await work();
   } catch (error) {
     if (!(error instanceof WebhookSubscriptionError)) throw error;
+    throw new ORPCError(error.code);
+  }
+}
+
+async function handleInterviewLinkCommand<T>(work: () => Promise<T>) {
+  try {
+    return await work();
+  } catch (error) {
+    if (!(error instanceof InterviewLinkError)) throw error;
     throw new ORPCError(error.code);
   }
 }
@@ -774,6 +787,22 @@ export function createRpcRouter(
           ),
         ),
       ),
+      issueParticipantLink: os.studies.issueParticipantLink
+        .use(requireStudy)
+        .handler(({ context, input }) => {
+          if (!encryptionKeys) throw new ORPCError('SERVICE_UNAVAILABLE');
+          return handleInterviewLinkCommand(() =>
+            issueParticipantInterviewLink(
+              encryptionKeys,
+              {
+                tenantDb: context.tenantDb,
+                principal: context.principal,
+                requestId: context.requestId,
+              },
+              input,
+            ),
+          );
+        }),
     },
     // Every procedure below is addressed by a protocol line, and #1257's rule
     // decides which lines a caller has: `requireProtocol` refuses the rest,

@@ -142,10 +142,15 @@ function startDatabaseWorkers(): void {
         ...twilio,
         callbackBaseUrl: env.auth.baseUrl,
       });
-    if (!messageDeliveryWorker && (messageEmailSender || messageSmsSender)) {
+    if (
+      !messageDeliveryWorker &&
+      env.auth &&
+      (messageEmailSender || messageSmsSender)
+    ) {
       messageDeliveryWorker = startMessageDeliveryWorker({
         pool: maintenancePool,
         encryptionKeys,
+        publicBaseUrl: env.auth.baseUrl,
         observer: observability.metrics.observer,
         reportError: (error) => telemetry?.capture('server_worker', error),
         ...(messageEmailSender &&

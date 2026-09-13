@@ -49,16 +49,21 @@ their factual outcome.
 
 ## Schema and recovery contract
 
-The parent-sequenced migration after webhook adds non-null
+The parent-sequenced migration after webhook adds nullable
 `token_ciphertext bytea`, `token_key_id text`, and `token_algorithm text` to
 `interview_links`, plus `interview_link_id uuid` on occurrence-backed
-`message_deliveries`. Envelope completeness, key identity, link ownership and
+`message_deliveries`. The three envelope columns are all present or all absent;
+new issuance always writes all three. Null remains admissible only because an
+existing digest-only link cannot be backfilled without its secret. Such a link
+continues to redeem when presented but cannot drive scheduled delivery; reissue
+replaces it with an encrypted capability. Key identity, link ownership and
 delivery/link/occurrence consistency are database constraints. Existing
-`token_hash` remains the redemption lookup and never derives from ciphertext.
-No numbered migration is generated on this branch.
+`token_hash` remains the redemption lookup and is SHA-256 of the canonical
+base64url secret text, never of ciphertext. No numbered migration is generated
+on this branch.
 
 Recovery inventory counts link envelopes as protected integration data. Key
-rotation pages them by `(team_id, id)`, authenticates the old envelope, rewraps
+rotation pages them by immutable link ID, authenticates the old envelope, rewraps
 under the current integration key, and conditionally updates the exact old
 envelope tuple. Authorization reconciliation revokes live links as it does
 today; revoked ciphertext remains recoverable until ordinary retention removes

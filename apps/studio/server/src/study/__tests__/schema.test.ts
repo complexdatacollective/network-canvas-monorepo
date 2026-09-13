@@ -1505,6 +1505,20 @@ describe.skipIf(!db)('study spine schema', () => {
         { token_hash: randomBytes(31) },
         'interview_links_token_hash_check',
       ],
+      [
+        'an incomplete encrypted token envelope',
+        { token_ciphertext: Buffer.alloc(30) },
+        'interview_links_token_envelope_check',
+      ],
+      [
+        'an unknown encrypted token algorithm',
+        {
+          token_ciphertext: Buffer.alloc(30),
+          token_key_id: 'integration-v1',
+          token_algorithm: 'aes-256-gcm.v2',
+        },
+        'interview_links_token_envelope_check',
+      ],
     ])('rejects %s', async (_label, overrides, constraint) => {
       const { studyId, waveId } = await newTrio();
       await expect(
@@ -1648,6 +1662,25 @@ describe.skipIf(!db)('study spine schema', () => {
           row.id,
         ]),
       ).resolves.toMatchObject({ rowCount: 1 });
+    });
+
+    it('holds an encrypted participant capability immutable for application writers', async () => {
+      const { studyId, waveId, participantId } = await newTrio();
+      const row = linkRow(studyId, waveId, {
+        kind: 'participant',
+        participant_id: participantId,
+        token_ciphertext: Buffer.alloc(30, 7),
+        token_key_id: 'integration-v1',
+        token_algorithm: 'aes-256-gcm.v1',
+      });
+      await insert('interview_links', row);
+
+      await expect(
+        pool.query(
+          `UPDATE interview_links SET token_ciphertext = $2 WHERE id = $1`,
+          [row.id, Buffer.alloc(30, 8)],
+        ),
+      ).rejects.toThrow('interview link identity and token are immutable');
     });
   });
 });

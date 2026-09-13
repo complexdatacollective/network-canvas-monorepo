@@ -138,6 +138,17 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
     ...overrides,
   });
 
+  const interviewLinkRow = (waveId: string, overrides: Row = {}): Row => ({
+    id: randomUUID(),
+    team_id: TEAM_A,
+    study_id: studyOf[TEAM_A],
+    wave_id: waveId,
+    participant_id: participantOf[TEAM_A],
+    kind: 'participant',
+    token_hash: Buffer.from(hex(`link-${randomUUID()}`), 'hex'),
+    ...overrides,
+  });
+
   const eventRow = (deliveryId: string, overrides: Row = {}): Row => ({
     id: randomUUID(),
     team_id: TEAM_A,
@@ -1258,6 +1269,45 @@ describe.skipIf(!db)('schedule and messaging schema', () => {
           'is not present in table "schedule_occurrences"',
         ),
       });
+    });
+
+    it('binds a scheduled delivery link to the occurrence wave', async () => {
+      const scheduleId = await newSchedule({ wave_id: waveOf[TEAM_A]! });
+      const occurrenceId = await newOccurrence(scheduleId);
+      const templateId = await newTemplate();
+      const correctLink = interviewLinkRow(waveOf[TEAM_A]!);
+      await insert('interview_links', correctLink);
+
+      const otherWave = randomUUID();
+      await insert('study_waves', {
+        id: otherWave,
+        study_id: studyOf[TEAM_A],
+        team_id: TEAM_A,
+        wave_number: 999,
+      });
+      const wrongLink = interviewLinkRow(otherWave);
+      await insert('interview_links', wrongLink);
+      await expect(
+        insert(
+          'message_deliveries',
+          deliveryRow(templateId, {
+            occurrence_id: occurrenceId,
+            interview_link_id: wrongLink.id,
+          }),
+        ),
+      ).rejects.toThrow(
+        "an occurrence delivery link must name the occurrence schedule's wave and participant",
+      );
+
+      await expect(
+        insert(
+          'message_deliveries',
+          deliveryRow(templateId, {
+            occurrence_id: occurrenceId,
+            interview_link_id: correctLink.id,
+          }),
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
     });
 
     it('holds the addressing and content identity immutable', async () => {

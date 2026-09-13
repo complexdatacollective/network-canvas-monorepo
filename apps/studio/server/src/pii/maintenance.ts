@@ -22,6 +22,11 @@ import {
   registerAuthenticatedLegacyKeyProofTransaction,
   type UnverifiedLegacyKeyReference,
 } from './initialize.ts';
+import {
+  linkSnapshotMatches,
+  readInterviewLinkCapability,
+  type InterviewLinkCiphertext,
+} from './interview-links.ts';
 import type { EncryptionKeys } from './keys.ts';
 import {
   classifyLegacyContactIndexBatch,
@@ -51,7 +56,12 @@ import {
 } from './webhooks.ts';
 
 const limitSchema = z.number().int().min(1).max(100);
-const PHASES = ['participants', 'webhooks', 'oauth'] as const;
+const PHASES = [
+  'participants',
+  'webhooks',
+  'interview-links',
+  'oauth',
+] as const;
 const cursorSchema = z.strictObject({
   phase: z.enum(PHASES),
   afterId: z.string().min(1).max(255).nullable(),
@@ -877,6 +887,87 @@ async function migrateLegacyWebhookBatch(
   };
 }
 
+async function rotateInterviewLink(
+  pool: pg.Pool,
+  keys: EncryptionKeys,
+  row: InterviewLinkCiphertext,
+): Promise<void> {
+  const capability = await readInterviewLinkCapability(
+    keys,
+    pool,
+    row.team_id,
+    row.id,
+    { allowInactive: true },
+  );
+  try {
+    const sealed = createDataProtection(keys, {
+      participant: async () => {
+        throw new ProtectedDataError();
+      },
+      integration: async () => {
+        throw new ProtectedDataError();
+      },
+    }).encryptIntegration(
+      {
+        kind: 'interview-link',
+        teamId: row.team_id,
+        linkId: row.id,
+        column: 'token_ciphertext',
+      },
+      capability.secret,
+    );
+    await runAuditedSystemMutation(
+      {
+        tenantDb: createTenantDb(pool, row.team_id),
+        actorLabel: 'Encryption maintenance',
+        requestId: randomUUID(),
+      },
+      async (client, context) => {
+        const selected = await client.query<InterviewLinkCiphertext>(
+          `SELECT id,team_id,study_id,wave_id,participant_id,token_hash,
+                  token_ciphertext,token_key_id,token_algorithm
+           FROM interview_links WHERE id=$1 AND team_id=$2 FOR UPDATE`,
+          [row.id, row.team_id],
+        );
+        if (!linkSnapshotMatches(selected.rows[0], capability.snapshot))
+          throw new ProtectedDataError();
+        await client.query(
+          `UPDATE interview_links SET token_ciphertext=$3,token_key_id=$4,token_algorithm=$5
+           WHERE id=$1 AND team_id=$2`,
+          [
+            row.id,
+            row.team_id,
+            sealed.envelope,
+            sealed.keyId,
+            sealed.algorithm,
+          ],
+        );
+        return {
+          result: undefined,
+          events: [
+            {
+              ...context,
+              eventType: 'interview.link.rotated',
+              eventVersion: 1,
+              category: 'participant_data',
+              outcome: 'succeeded',
+              subjectType: null,
+              subjectId: null,
+              subjectLabel: null,
+              resourceType: 'interview_link',
+              resourceId: row.id,
+              resourceLabel: null,
+              details: { purpose: 'rotation' },
+            } satisfies AuditEventInput,
+          ],
+        };
+      },
+    );
+  } finally {
+    capability.secret.fill(0);
+  }
+}
+
 const OAUTH_SELECT = `id, "userId", ${OAUTH_FIELDS.map((spec) => `${spec.ciphertext} AS "${spec.field}", ${spec.keyColumn} AS "${spec.keyId}", ${spec.algorithmColumn} AS "${spec.algorithm}"`).join(', ')}`;
 type OAuthRow = Record<string, unknown> & { id: string; userId: string };
 
@@ -1087,6 +1178,22 @@ export async function rotateEncryptionBatch(
       for (const row of selected.rows) {
         if (row.secret_key_id !== cursor.integrationKeyId) {
           await rotateWebhook(pool, keys, row);
+          processed += 1;
+        }
+      }
+    } else if (cursor.phase === 'interview-links') {
+      const selected = await readMaintenancePage<InterviewLinkCiphertext>(
+        pool,
+        `SELECT id,team_id,study_id,wave_id,participant_id,token_hash,
+                token_ciphertext,token_key_id,token_algorithm
+         FROM interview_links WHERE token_ciphertext IS NOT NULL
+         ${cursor.afterId === null ? '' : 'AND id > $2'} ORDER BY id LIMIT $1`,
+        values,
+      );
+      ids = selected.rows.map((row) => row.id);
+      for (const row of selected.rows) {
+        if (row.token_key_id !== cursor.integrationKeyId) {
+          await rotateInterviewLink(pool, keys, row);
           processed += 1;
         }
       }

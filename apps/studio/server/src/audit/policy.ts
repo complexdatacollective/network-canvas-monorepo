@@ -33,6 +33,7 @@ export const RPC_MUTATION_AUDIT_POLICIES = {
   'team.createInvitation': { kind: 'required' },
   'team.cancelInvitation': { kind: 'required' },
   'studies.create': { kind: 'required' },
+  'studies.issueParticipantLink': { kind: 'required' },
   'protocols.create': { kind: 'required' },
   'protocols.addInformationStage': { kind: 'required' },
   'protocols.moveStage': { kind: 'required' },

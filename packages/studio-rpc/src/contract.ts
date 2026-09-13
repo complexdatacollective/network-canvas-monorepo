@@ -48,6 +48,8 @@ import {
   ManifestRevisionSchema,
   ImportRegistryTemplateInputSchema,
   ImportRegistryTemplateResultSchema,
+  IssueParticipantInterviewLinkInputSchema,
+  IssueParticipantInterviewLinkResultSchema,
   LinkRegistryAccountInputSchema,
   MeSchema,
   MoveStageInputSchema,
@@ -230,6 +232,9 @@ export const contract = {
      * the study alone.
      */
     create: oc.input(CreateStudyInputSchema).output(CreateStudyResultSchema),
+    issueParticipantLink: oc
+      .input(IssueParticipantInterviewLinkInputSchema)
+      .output(IssueParticipantInterviewLinkResultSchema),
   },
   /**
    * Team-scoped procedures: every input carries a teamId, checked against the

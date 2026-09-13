@@ -22,6 +22,11 @@ import {
 import type { OutboxObserver } from '../outbox/instrumentation.ts';
 import { startOutboxWorker, type OutboxWorker } from '../outbox/worker.ts';
 import { createContactBlindIndex, normalizeContact } from '../pii/contacts.ts';
+import {
+  linkSnapshotMatches,
+  readInterviewLinkCapability,
+  type InterviewLinkCiphertext,
+} from '../pii/interview-links.ts';
 import type { EncryptionKeys } from '../pii/keys.ts';
 import {
   readDeliveryContact,
@@ -41,6 +46,12 @@ export type OccurrenceMessage = RenderedMessage & {
   channel: Channel;
   templateId: string;
   kind: 'invitation' | 'prompt' | 'reminder' | 'custom';
+};
+
+type EnqueueOptions = {
+  pool: pg.Pool;
+  encryptionKeys: EncryptionKeys;
+  linkSnapshot?: InterviewLinkCiphertext;
 };
 
 type ClaimedMessageDelivery = {
@@ -105,7 +116,7 @@ function messageEvent(
 
 /** Atomically turns one due occurrence and #1306's already-rendered messages into durable encrypted work. */
 export async function enqueueOccurrenceMessages(
-  options: { pool: pg.Pool; encryptionKeys: EncryptionKeys },
+  options: EnqueueOptions,
   occurrenceId: string,
   messages: readonly OccurrenceMessage[],
 ): Promise<boolean> {
@@ -137,17 +148,23 @@ export async function enqueueOccurrenceMessages(
           expires_at: Date;
           state: string;
           schedule_state: string;
+          wave_id: string | null;
           due: boolean;
           expired: boolean;
           channels: Channel[];
           email_index: Buffer | null;
           phone_index: Buffer | null;
           blind_index_key_id: string | null;
+          withdrawn: boolean;
         }>(
           `SELECT o.study_id, o.participant_id, o.scheduled_for, o.expires_at, o.state,
-                s.state AS schedule_state, o.scheduled_for <= statement_timestamp() AS due,
+                s.state AS schedule_state, s.wave_id,
+                o.scheduled_for <= statement_timestamp() AS due,
                 o.expires_at <= statement_timestamp() AS expired, s.channels,
-                p.email_index, p.phone_index, p.blind_index_key_id
+                p.email_index, p.phone_index, p.blind_index_key_id,
+                EXISTS (SELECT 1 FROM participant_consents c
+                  WHERE c.team_id=o.team_id AND c.study_id=o.study_id
+                    AND c.participant_id=o.participant_id AND c.withdrawn_at IS NOT NULL) AS withdrawn
          FROM schedule_occurrences o JOIN study_schedules s ON s.id = o.schedule_id AND s.team_id = o.team_id
          JOIN participants p ON p.id = o.participant_id AND p.study_id = o.study_id AND p.team_id = o.team_id
          WHERE o.id = $1 AND o.team_id = $2 FOR UPDATE OF o, s, p`,
@@ -161,6 +178,7 @@ export async function enqueueOccurrenceMessages(
         )
           throw new NoOccurrenceChange();
         if (!row.due) throw new NoOccurrenceChange();
+        if (row.withdrawn) throw new NoOccurrenceChange();
         if (row.expired) {
           await client.query(
             "UPDATE schedule_occurrences SET state = 'expired' WHERE id = $1",
@@ -186,6 +204,25 @@ export async function enqueueOccurrenceMessages(
           throw new Error('MESSAGE_OCCURRENCE_CHANNELS_MISMATCH');
         if (!row.blind_index_key_id)
           throw new Error('MESSAGE_CONTACT_UNAVAILABLE');
+        if (options.linkSnapshot) {
+          const currentLink = await client.query<InterviewLinkCiphertext>(
+            `SELECT id,team_id,study_id,wave_id,participant_id,token_hash,
+                    token_ciphertext,token_key_id,token_algorithm
+             FROM interview_links WHERE id=$1 AND team_id=$2 AND study_id=$3
+               AND participant_id=$4 AND wave_id=$5 AND kind='participant' AND revoked_at IS NULL
+               AND (expires_at IS NULL OR expires_at>statement_timestamp())
+             FOR UPDATE`,
+            [
+              options.linkSnapshot.id,
+              teamId,
+              row.study_id,
+              row.participant_id,
+              row.wave_id,
+            ],
+          );
+          if (!linkSnapshotMatches(currentLink.rows[0], options.linkSnapshot))
+            throw new NoOccurrenceChange();
+        }
         for (const item of messages) {
           const body = Buffer.from(item.body);
           const deliveryId = randomUUID();
@@ -205,16 +242,17 @@ export async function enqueueOccurrenceMessages(
               .readUInt16BE(0) % 30_000;
           await client.query(
             `INSERT INTO message_deliveries
-             (id, team_id, study_id, participant_id, occurrence_id, template_id, kind, channel,
+             (id, team_id, study_id, participant_id, occurrence_id, interview_link_id, template_id, kind, channel,
               recipient_blind_index, blind_index_key_id, rendered_body_hash,
               rendered_ciphertext, rendered_key_id, rendered_algorithm, available_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,clock_timestamp() + make_interval(secs => $15::float / 1000))`,
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,clock_timestamp() + make_interval(secs => $16::float / 1000))`,
             [
               deliveryId,
               teamId,
               row.study_id,
               row.participant_id,
               occurrenceId,
+              options.linkSnapshot?.id ?? null,
               item.templateId,
               item.kind,
               item.channel,
@@ -253,6 +291,98 @@ export async function enqueueOccurrenceMessages(
   }
 }
 
+/** Resolves one due wave occurrence into the encrypted message outbox. */
+export async function produceDueOccurrenceMessage(options: {
+  pool: pg.Pool;
+  encryptionKeys: EncryptionKeys;
+  publicBaseUrl: string;
+}): Promise<boolean> {
+  const candidate = await options.pool.query<{
+    occurrence_id: string;
+    team_id: string;
+    link_id: string;
+  }>(
+    `SELECT o.id AS occurrence_id,o.team_id,l.id AS link_id
+     FROM schedule_occurrences o
+     JOIN study_schedules sc ON sc.id=o.schedule_id AND sc.study_id=o.study_id AND sc.team_id=o.team_id
+     JOIN studies s ON s.id=o.study_id AND s.team_id=o.team_id
+     JOIN participants p ON p.id=o.participant_id AND p.study_id=o.study_id AND p.team_id=o.team_id
+     JOIN interview_links l ON l.wave_id=sc.wave_id AND l.participant_id=o.participant_id
+       AND l.study_id=o.study_id AND l.team_id=o.team_id AND l.kind='participant'
+       AND l.revoked_at IS NULL AND (l.expires_at IS NULL OR l.expires_at>statement_timestamp())
+       AND l.token_ciphertext IS NOT NULL
+     WHERE o.state='scheduled' AND o.scheduled_for<=statement_timestamp()
+       AND o.expires_at>statement_timestamp() AND sc.state='active' AND sc.wave_id IS NOT NULL
+       AND s.participation_mode='managed' AND s.state='live'
+       AND p.enrolled_at IS NOT NULL
+       AND NOT EXISTS (SELECT 1 FROM participant_consents c WHERE c.team_id=o.team_id
+         AND c.study_id=o.study_id AND c.participant_id=o.participant_id AND c.withdrawn_at IS NOT NULL)
+     ORDER BY o.scheduled_for,o.id LIMIT 1`,
+  );
+  const row = candidate.rows[0];
+  if (!row) return false;
+  const source = await options.pool.query<{
+    study_name: string;
+    channels: Channel[];
+    template_id: string;
+    channel: Channel;
+    subject: string | null;
+    body: string;
+  }>(
+    `SELECT s.name AS study_name,sc.channels,t.id AS template_id,t.channel,t.subject,t.body
+     FROM schedule_occurrences o
+     JOIN study_schedules sc ON sc.id=o.schedule_id AND sc.team_id=o.team_id
+     JOIN studies s ON s.id=o.study_id AND s.team_id=o.team_id
+     CROSS JOIN LATERAL unnest(sc.channels) requested(channel)
+     JOIN LATERAL (
+       SELECT mt.id,mt.channel,mt.subject,mt.body
+       FROM message_templates mt
+       WHERE mt.team_id=o.team_id AND mt.kind='prompt' AND mt.locale='en'
+         AND mt.state='published' AND mt.channel=requested.channel
+         AND (mt.study_id=o.study_id OR mt.study_id IS NULL)
+       ORDER BY (mt.study_id IS NOT NULL) DESC,mt.version DESC LIMIT 1
+     ) t ON true
+     WHERE o.id=$1 AND o.team_id=$2
+     ORDER BY t.channel`,
+    [row.occurrence_id, row.team_id],
+  );
+  if (!source.rows[0] || source.rows.length !== source.rows[0].channels.length)
+    return false;
+  const capability = await readInterviewLinkCapability(
+    options.encryptionKeys,
+    options.pool,
+    row.team_id,
+    row.link_id,
+  );
+  try {
+    const origin = new URL(options.publicBaseUrl);
+    const token = `${row.team_id}.${capability.secret.toString('utf8')}`;
+    const link = new URL(`/interview/${encodeURIComponent(token)}`, origin);
+    link.searchParams.set('occurrence', row.occurrence_id);
+    return enqueueOccurrenceMessages(
+      {
+        pool: options.pool,
+        encryptionKeys: options.encryptionKeys,
+        linkSnapshot: capability.snapshot,
+      },
+      row.occurrence_id,
+      source.rows.map((template) => ({
+        channel: template.channel,
+        templateId: template.template_id,
+        kind: 'prompt',
+        subject:
+          template.subject?.replaceAll('{{studyName}}', template.study_name) ??
+          null,
+        body: template.body
+          .replaceAll('{{studyName}}', template.study_name)
+          .replaceAll('{{interviewLink}}', link.toString()),
+      })),
+    );
+  } finally {
+    capability.secret.fill(0);
+  }
+}
+
 export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDelivery> {
   readonly queue = QUEUE;
   private readonly options: Options;
@@ -271,7 +401,9 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
     const rows = await this.options.pool.query<ClaimedMessageDelivery>(
       `${this.select()} WHERE ${PENDING} AND d.send_started_at IS NULL AND (
          EXISTS (SELECT 1 FROM participant_contact_optouts o WHERE o.channel = d.channel AND o.blind_index_key_id = d.blind_index_key_id AND o.recipient_blind_index = d.recipient_blind_index)
-         OR EXISTS (SELECT 1 FROM schedule_occurrences so WHERE so.id = d.occurrence_id AND so.expires_at <= clock_timestamp()))
+         OR EXISTS (SELECT 1 FROM schedule_occurrences so WHERE so.id = d.occurrence_id AND so.expires_at <= clock_timestamp())
+         OR EXISTS (SELECT 1 FROM interview_links l WHERE l.id=d.interview_link_id
+           AND (l.revoked_at IS NOT NULL OR (l.expires_at IS NOT NULL AND l.expires_at<=clock_timestamp()))))
        ORDER BY d.created_at,d.id LIMIT 100`,
     );
     let count = 0;
@@ -421,6 +553,14 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
          AND EXISTS (SELECT 1 FROM participants p WHERE p.id=d.participant_id AND p.study_id=d.study_id AND p.team_id=d.team_id
            AND p.blind_index_key_id=d.blind_index_key_id
            AND CASE WHEN d.channel='email' THEN p.email_index ELSE p.phone_index END=d.recipient_blind_index)
+         AND (d.interview_link_id IS NULL OR EXISTS (
+           SELECT 1 FROM interview_links l JOIN studies linked_study
+             ON linked_study.id=l.study_id AND linked_study.team_id=l.team_id
+           WHERE l.id=d.interview_link_id
+             AND l.participant_id=d.participant_id AND l.study_id=d.study_id AND l.team_id=d.team_id
+             AND l.kind='participant' AND l.revoked_at IS NULL
+             AND linked_study.state='live'
+             AND (l.expires_at IS NULL OR l.expires_at>statement_timestamp())))
          AND (d.occurrence_id IS NULL OR EXISTS (
            SELECT 1 FROM schedule_occurrences o JOIN study_schedules s
              ON s.id=o.schedule_id AND s.study_id=o.study_id AND s.team_id=o.team_id
@@ -506,7 +646,9 @@ export class MessageDeliveryAdapter implements OutboxAdapter<ClaimedMessageDeliv
                 ? `id=$1 AND lease_owner=$2 AND lease_expires_at<=clock_timestamp() AND ${PENDING}`
                 : `id=$1 AND send_started_at IS NULL AND ${PENDING} AND (
                     EXISTS (SELECT 1 FROM participant_contact_optouts o WHERE o.channel=message_deliveries.channel AND o.blind_index_key_id=message_deliveries.blind_index_key_id AND o.recipient_blind_index=message_deliveries.recipient_blind_index)
-                    OR EXISTS (SELECT 1 FROM schedule_occurrences so WHERE so.id=message_deliveries.occurrence_id AND so.expires_at<=clock_timestamp()))`;
+                    OR EXISTS (SELECT 1 FROM schedule_occurrences so WHERE so.id=message_deliveries.occurrence_id AND so.expires_at<=clock_timestamp())
+                    OR EXISTS (SELECT 1 FROM interview_links l WHERE l.id=message_deliveries.interview_link_id
+                      AND (l.revoked_at IS NOT NULL OR (l.expires_at IS NOT NULL AND l.expires_at<=clock_timestamp()))))`;
           const outcomeParameter = ownership === 'suppressible' ? '$2' : '$3';
           const providerIdParameter =
             ownership === 'suppressible' ? '$3' : '$4';
@@ -552,6 +694,7 @@ export function createMessageDeliveryDispatcher(options: Options) {
 export type MessageDeliveryWorker = OutboxWorker;
 export function startMessageDeliveryWorker(
   options: Options & {
+    publicBaseUrl: string;
     pollIntervalMs?: number;
     drainLimit?: number;
     reportError?: (error: unknown) => void | Promise<void>;
@@ -564,6 +707,9 @@ export function startMessageDeliveryWorker(
     pollIntervalMs: options.pollIntervalMs,
     drainLimit: options.drainLimit,
     onError: options.reportError,
-    runOnce: () => dispatcher.runOnce(),
+    runOnce: async () => {
+      await produceDueOccurrenceMessage(options);
+      return dispatcher.runOnce();
+    },
   });
 }

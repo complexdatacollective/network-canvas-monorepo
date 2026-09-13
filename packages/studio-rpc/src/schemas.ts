@@ -372,6 +372,20 @@ export const CreateStudyResultSchema = z.object({
   draftId: z.uuid(),
 });
 
+export const IssueParticipantInterviewLinkInputSchema = z.object({
+  studyId: z.uuid(),
+  waveId: z.uuid(),
+  participantId: z.uuid(),
+});
+
+export const IssueParticipantInterviewLinkResultSchema = z.object({
+  linkId: z.uuid(),
+  token: z
+    .string()
+    .regex(/^.+\.[A-Za-z0-9_-]{43}$/)
+    .max(299),
+});
+
 export const CreateProtocolInputSchema = TeamScopedSchema.extend({
   name: ProtocolNameSchema,
   protocolId: z.uuid(),
