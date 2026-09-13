@@ -208,6 +208,30 @@ function writeManifest(
   });
 }
 
+function datasetFixture(
+  type: 'network' | 'geojson',
+  mediaType: 'application/json' | 'application/geo+json',
+  source: string,
+  text: string,
+): TemplateArtifactInput {
+  const input = fixture();
+  input.sections = {
+    ...input.sections,
+    assets: {
+      illustration: { type, name: 'Dataset', source },
+    },
+  };
+  input.assets = [
+    {
+      source,
+      media_class: 'dataset',
+      media_type: mediaType,
+      bytes: encode(text),
+    },
+  ];
+  return input;
+}
+
 function streamedArchive(
   entries: [string, Uint8Array][],
   compress = false,
@@ -292,6 +316,21 @@ describe('template exchange metadata', () => {
 });
 
 describe('portable template artifact', () => {
+  it('accepts large valid coordinate arrays within the asset byte limit', async () => {
+    const input = datasetFixture(
+      'geojson',
+      'application/geo+json',
+      'large.geojson',
+      JSON.stringify({
+        type: 'MultiPoint',
+        coordinates: Array.from({ length: 150_000 }, () => [1, 2]),
+      }),
+    );
+    const built = await createTemplateArtifact(input);
+    expect(built.artifact.assets[0]?.byte_size).toBe(
+      input.assets[0]?.bytes.byteLength,
+    );
+  });
   it('matches the independently generated public hash conformance fixture', async () => {
     const vector = JSON.parse(
       readFileSync(
@@ -608,6 +647,331 @@ describe('portable template artifact', () => {
         }),
       ).rejects.toMatchObject({ code: 'TEMPLATE_ASSET_DISALLOWED' });
     }
+  });
+
+  it('rejects duplicate JSON dataset members before parsing can overwrite them', async () => {
+    for (const [type, mediaType, source, text] of [
+      [
+        'network',
+        'application/json',
+        'network.json',
+        '{"kind":"first","kind":"second"}',
+      ],
+      [
+        'network',
+        'application/json',
+        'network.json',
+        '{"nested":{"name":1,"name":2}}',
+      ],
+      [
+        'network',
+        'application/json',
+        'network.json',
+        '{"na\\u006de":1,"name":2}',
+      ],
+      [
+        'geojson',
+        'application/geo+json',
+        'features.geojson',
+        '{"type":"Point","coordinates":[1,2],"coordinates":[3,4]}',
+      ],
+    ] as const) {
+      await expect(
+        createTemplateArtifact(datasetFixture(type, mediaType, source, text)),
+      ).rejects.toMatchObject({ code: 'TEMPLATE_ASSET_DISALLOWED' });
+    }
+
+    await expect(
+      createTemplateArtifact(
+        datasetFixture(
+          'network',
+          'application/json',
+          'network.json',
+          '{ "nodes": [{ "id": 1 }], "edges": [] }',
+        ),
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it('bounds JSON dataset nesting before recursive validation', async () => {
+    const nested = (depth: number) =>
+      `${'{"value":'.repeat(depth)}null${'}'.repeat(depth)}`;
+    await expect(
+      createTemplateArtifact(
+        datasetFixture(
+          'network',
+          'application/json',
+          'network.json',
+          nested(64),
+        ),
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      createTemplateArtifact(
+        datasetFixture(
+          'network',
+          'application/json',
+          'network.json',
+          nested(65),
+        ),
+      ),
+    ).rejects.toMatchObject({ code: 'TEMPLATE_ASSET_DISALLOWED' });
+  });
+
+  it('validates recursive RFC 7946 GeoJSON structures', async () => {
+    const geojson = {
+      type: 'FeatureCollection',
+      bbox: [-180, -90, 180, 90],
+      features: [
+        {
+          type: 'Feature',
+          id: 'all-geometries',
+          properties: { label: 'Valid collection' },
+          centerline: {
+            type: 'LineString',
+            coordinates: [
+              [-170, 10],
+              [170, 11],
+            ],
+            properties: { retained: 'arbitrary foreign descendant' },
+          },
+          geometry: {
+            type: 'GeometryCollection',
+            geometries: [
+              { type: 'Point', coordinates: [1, 2] },
+              { type: 'MultiPoint', coordinates: [[1, 2]] },
+              {
+                type: 'LineString',
+                coordinates: [
+                  [1, 2],
+                  [3, 4],
+                ],
+              },
+              {
+                type: 'MultiLineString',
+                coordinates: [
+                  [
+                    [1, 2],
+                    [3, 4],
+                  ],
+                ],
+              },
+              {
+                type: 'Polygon',
+                coordinates: [
+                  [
+                    [0, 0],
+                    [0, 1],
+                    [1, 1],
+                    [0, 0],
+                  ],
+                ],
+              },
+              {
+                type: 'MultiPolygon',
+                coordinates: [
+                  [
+                    [
+                      [0, 0],
+                      [0, 1],
+                      [1, 1],
+                      [0, 0],
+                    ],
+                  ],
+                ],
+              },
+            ],
+          },
+        },
+        { type: 'Feature', properties: null, geometry: null },
+        {
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'Point', coordinates: [] },
+        },
+      ],
+    };
+    await expect(
+      createTemplateArtifact(
+        datasetFixture(
+          'geojson',
+          'application/geo+json',
+          'features.geojson',
+          JSON.stringify(geojson),
+        ),
+      ),
+    ).resolves.toBeDefined();
+
+    await expect(
+      createTemplateArtifact(
+        datasetFixture(
+          'geojson',
+          'application/geo+json',
+          'features.geojson',
+          JSON.stringify({
+            type: 'Point',
+            coordinates: [1, 2, 3],
+            bbox: [0, 1, 2, 3, 4, 5],
+          }),
+        ),
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      createTemplateArtifact(
+        datasetFixture(
+          'geojson',
+          'application/geo+json',
+          'features.geojson',
+          JSON.stringify({
+            type: 'Point',
+            coordinates: [],
+            bbox: [0, 1, 2, 3, 4, 5],
+          }),
+        ),
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it.each([
+    ['Point without coordinates', { type: 'Point' }],
+    [
+      'FeatureCollection with a non-array features member',
+      { type: 'FeatureCollection', features: 'invalid' },
+    ],
+    [
+      'Feature without properties',
+      { type: 'Feature', geometry: { type: 'Point', coordinates: [1, 2] } },
+    ],
+    [
+      'Feature with an invalid geometry',
+      { type: 'Feature', properties: {}, geometry: { type: 'Point' } },
+    ],
+    [
+      'GeometryCollection with a non-geometry member',
+      { type: 'GeometryCollection', geometries: [null] },
+    ],
+    ['short LineString', { type: 'LineString', coordinates: [[1, 2]] }],
+    [
+      'unclosed Polygon ring',
+      {
+        type: 'Polygon',
+        coordinates: [
+          [
+            [0, 0],
+            [0, 1],
+            [1, 1],
+            [1, 0],
+          ],
+        ],
+      },
+    ],
+    ['non-numeric position', { type: 'Point', coordinates: ['1', 2] }],
+    ['invalid bbox', { type: 'Point', coordinates: [1, 2], bbox: [0, 1, 2] }],
+    [
+      'bbox dimension does not match its geometry',
+      { type: 'Point', coordinates: [1, 2], bbox: [0, 1, 2, 3, 4, 5] },
+    ],
+    [
+      'Feature bbox dimension does not match its geometry',
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: { type: 'Point', coordinates: [1, 2, 3] },
+        bbox: [0, 1, 2, 3],
+      },
+    ],
+    [
+      'FeatureCollection bbox dimension does not match contained geometries',
+      {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: { type: 'Point', coordinates: [1, 2] },
+          },
+        ],
+        bbox: [0, 1, 2, 3, 4, 5],
+      },
+    ],
+    [
+      'mixed coordinate dimensions',
+      {
+        type: 'MultiPoint',
+        coordinates: [
+          [1, 2],
+          [1, 2, 3],
+        ],
+      },
+    ],
+    [
+      'mixed coordinate dimensions in a GeometryCollection',
+      {
+        type: 'GeometryCollection',
+        geometries: [
+          { type: 'Point', coordinates: [1, 2] },
+          { type: 'Point', coordinates: [1, 2, 3] },
+        ],
+      },
+    ],
+    [
+      'Feature with a coordinates member',
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: null,
+        coordinates: [1, 2],
+      },
+    ],
+    [
+      'FeatureCollection with a geometries member',
+      { type: 'FeatureCollection', features: [], geometries: [] },
+    ],
+    [
+      'FeatureCollection with Feature members',
+      {
+        type: 'FeatureCollection',
+        features: [],
+        geometry: null,
+        properties: {},
+      },
+    ],
+    [
+      'Geometry with Feature members',
+      {
+        type: 'Point',
+        coordinates: [1, 2],
+        geometry: null,
+        properties: {},
+      },
+    ],
+    [
+      'Feature with a features member',
+      { type: 'Feature', properties: {}, geometry: null, features: [] },
+    ],
+    [
+      'Geometry with a features member',
+      { type: 'Point', coordinates: [1, 2], features: [] },
+    ],
+    [
+      'GeometryCollection with coordinates',
+      { type: 'GeometryCollection', geometries: [], coordinates: [] },
+    ],
+    [
+      'coordinate Geometry with geometries',
+      { type: 'Point', coordinates: [1, 2], geometries: [] },
+    ],
+  ])('rejects invalid RFC 7946 GeoJSON: %s', async (_label, value) => {
+    await expect(
+      createTemplateArtifact(
+        datasetFixture(
+          'geojson',
+          'application/geo+json',
+          'features.geojson',
+          JSON.stringify(value),
+        ),
+      ),
+    ).rejects.toMatchObject({ code: 'TEMPLATE_ASSET_DISALLOWED' });
   });
 
   it('rejects missing, extra, duplicate, traversal and disagreeing local/central ZIP entries', async () => {

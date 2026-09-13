@@ -157,8 +157,12 @@ names a private regular JSON file of at most 16 MiB; its exact-byte SHA-256 is
 supplied separately as `REGISTRY_RECOVERY_RECONCILIATION_SHA256`. This is an
 operator-approved inventory, not a signature or evidence of who approved it.
 Its users must exactly match the restored users by ID, normalized email and
-verified-email state, with current publisher and operator permissions
-independently reconciled before running the command. Recovery object storage
+verified-email state. Every user includes `publisherId`: the independently
+verified stable publisher UUID when `publisher` is `active` or `suspended`,
+or null when `publisher` is `none`. The command rejects missing or repeated
+publisher UUIDs and any changed user-to-publisher association. Current publisher
+and operator permissions must be independently reconciled before running the
+command. Recovery object storage
 uses the runtime HTTPS policy; a non-loopback HTTP endpoint requires the same
 explicit `REGISTRY_S3_INSECURE_PRIVATE_NETWORK=true` operator opt-in.
 `REGISTRY_S3_PROVIDER` selects the runtime `s3` or `r2` capability contract;

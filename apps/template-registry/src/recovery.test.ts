@@ -34,7 +34,7 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
       INSERT INTO registry_auth_user(id, name, email, email_verified, updated_at)
       VALUES ('Zulu', 'Zulu', 'zulu@example.test', true, now()),
         ('alpha', 'Alpha', 'alpha@example.test', true, now());
-      INSERT INTO registry_publishers(id, user_id, name) VALUES (gen_random_uuid(), 'Zulu', 'Zulu'), (gen_random_uuid(), 'alpha', 'Alpha')`);
+      INSERT INTO registry_publishers(id, user_id, name) VALUES ('00000000-0000-4000-8000-000000000001', 'Zulu', 'Zulu'), ('00000000-0000-4000-8000-000000000002', 'alpha', 'Alpha')`);
     const account = await fixture.account('restored@example.test', true);
     await fixture.published(account.token, 'Recovered template');
     await fixture.owner.query(
@@ -66,6 +66,7 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
             email: 'zulu@example.test',
             emailVerified: true,
             publisher: 'active',
+            publisherId: '00000000-0000-4000-8000-000000000001',
             operator: false,
           },
           {
@@ -73,6 +74,7 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
             email: 'alpha@example.test',
             emailVerified: true,
             publisher: 'active',
+            publisherId: '00000000-0000-4000-8000-000000000002',
             operator: false,
           },
           {
@@ -80,6 +82,7 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
             email: 'restored@example.test',
             emailVerified: true,
             publisher: 'active',
+            publisherId: account.publisher.id,
             operator: false,
           },
           {
@@ -87,6 +90,7 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
             email: 'inactive@example.test',
             emailVerified: false,
             publisher: 'none',
+            publisherId: null,
             operator: false,
           },
         ],
@@ -120,6 +124,83 @@ it('reconciles an isolated restored registry only after schema, backup, and arti
         publishers: 3,
       },
     ]);
+  } finally {
+    await fixture.dispose();
+  }
+});
+
+it('refuses swapped publisher UUID ownership before restoring authority', async () => {
+  const installation = await createRegistryInstallation();
+  const fixture = await createRegistryFixture({}, installation);
+  try {
+    const migrations = await readMigrations(
+      fileURLToPath(new URL('../migrations', import.meta.url)),
+      'Template Registry',
+    );
+    await registryMigrator.migrate(
+      fixture.owner,
+      migrations,
+      REGISTRY_SCHEMA_FINGERPRINT,
+      installation.allowedLogins,
+    );
+    const first = await fixture.account('first@example.test');
+    const second = await fixture.account('second@example.test');
+    const reconciliation = {
+      format: 'template-registry-recovery-reconciliation',
+      version: 1,
+      users: [first, second].map((account, index) => ({
+        id: account.session.userId,
+        email: index === 0 ? 'first@example.test' : 'second@example.test',
+        emailVerified: true,
+        publisher: 'active' as const,
+        publisherId: account.publisher.id,
+        operator: false,
+      })),
+    } as const;
+    // Both sets of IDs remain unchanged, but each account would acquire the
+    // other publisher's historical entries after issuing a new credential.
+    await fixture.owner.query(
+      `INSERT INTO registry_auth_user(id, name, email, email_verified, updated_at)
+       VALUES ('swap-temporary', 'Temporary', 'temporary@example.test', true, now())`,
+    );
+    await fixture.owner.query(
+      "UPDATE registry_publishers SET user_id='swap-temporary' WHERE user_id=$1",
+      [first.session.userId],
+    );
+    await fixture.owner.query(
+      'UPDATE registry_publishers SET user_id=$1 WHERE user_id=$2',
+      [first.session.userId, second.session.userId],
+    );
+    await fixture.owner.query(
+      "UPDATE registry_publishers SET user_id=$1 WHERE user_id='swap-temporary'",
+      [second.session.userId],
+    );
+    await fixture.owner.query(
+      "DELETE FROM registry_auth_user WHERE id='swap-temporary'",
+    );
+    await installation.closeRuntimePools();
+    await installation.withAdministrator((administrator) =>
+      administrator.query(
+        `ALTER ROLE ${escapeIdentifier(installation.logins.app)} NOLOGIN;
+       ALTER ROLE ${escapeIdentifier(installation.logins.operator)} NOLOGIN`,
+      ),
+    );
+    await expect(
+      reconcileRegistryRecovery({
+        pool: fixture.owner,
+        backupPool: installation.backupPool,
+        blobs: fixture.blobs,
+        admission: { allowedLogins: installation.allowedLogins },
+        reconciliation,
+      }),
+    ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_MISMATCH');
+    expect(
+      (
+        await fixture.owner.query(
+          'SELECT count(*)::int AS count FROM registry_credentials WHERE revoked_at IS NULL',
+        )
+      ).rows,
+    ).toEqual([{ count: 2 }]);
   } finally {
     await fixture.dispose();
   }
@@ -218,6 +299,7 @@ it.each(['email', 'verification'] as const)(
                 email: 'approved@EXAMPLE.TEST',
                 emailVerified: true,
                 publisher: 'active',
+                publisherId: account.publisher.id,
                 operator: false,
               },
             ],
@@ -299,6 +381,7 @@ it.each([
               email: 'quarantine@example.test',
               emailVerified: true,
               publisher: 'active',
+              publisherId: account.publisher.id,
               operator: false,
             },
           ],
@@ -368,6 +451,7 @@ it('rolls back credential invalidation when restored artifact bytes fail verific
               email: 'tampered@example.test',
               emailVerified: true,
               publisher: 'active',
+              publisherId: account.publisher.id,
               operator: false,
             },
           ],
@@ -417,6 +501,7 @@ it('refuses recovery while an enrolled runtime can still reconnect', async () =>
               email: 'still-serving@example.test',
               emailVerified: true,
               publisher: 'active',
+              publisherId: account.publisher.id,
               operator: false,
             },
           ],

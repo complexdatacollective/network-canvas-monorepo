@@ -35,6 +35,17 @@ const ActionSchema = z.enum([
 ]);
 type TargetKind = keyof typeof ACTIONS;
 
+const REPORT_CATEGORY_MESSAGES = {
+  privacy: messages.reportPrivacy,
+  copyright: messages.reportCopyright,
+  harmful_content: messages.reportHarmfulContent,
+  spam: messages.reportSpam,
+  other: messages.reportOther,
+} satisfies Record<
+  RegistryReports['data'][number]['category'],
+  typeof messages.reportPrivacy
+>;
+
 export function Moderation({ client }: { client: RegistryAccountClient }) {
   const intl = useAppIntl();
   const { run, cancel } = useRequests();
@@ -85,6 +96,11 @@ export function Moderation({ client }: { client: RegistryAccountClient }) {
                 <Heading level="h4" className="break-all">
                   {report.entry_id}
                 </Heading>
+                <Paragraph>
+                  {intl.formatMessage(
+                    REPORT_CATEGORY_MESSAGES[report.category],
+                  )}
+                </Paragraph>
                 <Paragraph>
                   <time dateTime={report.created_at}>
                     {intl.formatDate(report.created_at, {

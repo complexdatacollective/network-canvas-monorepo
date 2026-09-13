@@ -1,6 +1,31 @@
 import { defineMessages } from '@codaco/app-i18n/messages';
 
 export const messages = defineMessages({
+  reportPrivacy: {
+    id: 'registry.account.reportPrivacy',
+    defaultMessage: 'Privacy',
+    description: 'Category of a privacy report.',
+  },
+  reportCopyright: {
+    id: 'registry.account.reportCopyright',
+    defaultMessage: 'Copyright',
+    description: 'Category of a copyright report.',
+  },
+  reportHarmfulContent: {
+    id: 'registry.account.reportHarmfulContent',
+    defaultMessage: 'Harmful content',
+    description: 'Category of a harmful content report.',
+  },
+  reportSpam: {
+    id: 'registry.account.reportSpam',
+    defaultMessage: 'Spam',
+    description: 'Category of a spam report.',
+  },
+  reportOther: {
+    id: 'registry.account.reportOther',
+    defaultMessage: 'Other',
+    description: 'Category of a report with another reason.',
+  },
   title: {
     id: 'registry.account.title',
     defaultMessage: 'Template registry',
