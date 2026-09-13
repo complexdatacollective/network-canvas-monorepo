@@ -19,7 +19,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "ncr1_<256-bit secret>",
-        "description": "Registry-issued credentials. Operations declare their required publish or moderate scope with x-registry-token-scopes. Studio instance API tokens do not authenticate here."
+        "description": "Registry-issued credentials. Operations declare their required publish or moderate scope with x-registry-token-scopes. x-registry-operator-required requires the credential owner to be a current operator. Studio instance API tokens do not authenticate here."
       },
       "registrySession": {
         "type": "apiKey",
@@ -2153,6 +2153,7 @@
       "post": {
         "operationId": "createToken",
         "summary": "Issue a registry credential",
+        "description": "Requires a verified registry session with a claimed publisher. If requested scopes contain moderate, the account must be a current operator; otherwise the request returns 403. A moderate credential also requires its owner to remain a current operator when it is used.",
         "requestBody": {
           "required": true,
           "content": {
@@ -2392,7 +2393,8 @@
             },
             "description": "The exact registry origin. Required for cookie-authenticated account writes."
           }
-        ]
+        ],
+        "x-registry-operator-required-for-scopes": ["moderate"]
       },
       "get": {
         "operationId": "listTokens",
@@ -2949,7 +2951,8 @@
             "registryToken": []
           }
         ],
-        "x-registry-token-scopes": ["moderate"]
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/moderation/entries/{id}/restore": {
@@ -3124,7 +3127,8 @@
             "registryToken": []
           }
         ],
-        "x-registry-token-scopes": ["moderate"]
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/moderation/artifacts/{root}": {
@@ -3298,7 +3302,8 @@
             "registryToken": []
           }
         ],
-        "x-registry-token-scopes": ["moderate"]
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/moderation/publishers/{id}/suspension": {
@@ -3479,7 +3484,8 @@
             "registryToken": []
           }
         ],
-        "x-registry-token-scopes": ["moderate"]
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/moderation/entries/{id}/curation": {
@@ -3660,7 +3666,8 @@
             "registryToken": []
           }
         ],
-        "x-registry-token-scopes": ["moderate"]
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/moderation/reports": {
@@ -3673,8 +3680,8 @@
             "name": "after",
             "schema": {
               "type": "string",
-              "pattern": "^[1-9][0-9]{0,18}$",
-              "description": "Decimal report sequence returned by the preceding reports page."
+              "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
+              "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive."
             },
             "allowEmptyValue": false,
             "allowReserved": true
@@ -3748,8 +3755,8 @@
                       "anyOf": [
                         {
                           "type": "string",
-                          "pattern": "^[1-9][0-9]{0,18}$",
-                          "description": "Decimal report sequence returned by the preceding reports page."
+                          "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
+                          "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive."
                         },
                         {
                           "type": "null"
@@ -3892,7 +3899,8 @@
             "registryToken": []
           }
         ],
-        "x-registry-token-scopes": ["moderate"]
+        "x-registry-token-scopes": ["moderate"],
+        "x-registry-operator-required": true
       }
     },
     "/account/moderation/entries/{id}/takedown": {
@@ -4839,8 +4847,8 @@
                 "properties": {
                   "after": {
                     "type": "string",
-                    "pattern": "^[1-9][0-9]{0,18}$",
-                    "description": "Decimal report sequence returned by the preceding reports page."
+                    "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
+                    "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive."
                   },
                   "limit": {
                     "default": 20,
@@ -4910,8 +4918,8 @@
                       "anyOf": [
                         {
                           "type": "string",
-                          "pattern": "^[1-9][0-9]{0,18}$",
-                          "description": "Decimal report sequence returned by the preceding reports page."
+                          "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
+                          "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive."
                         },
                         {
                           "type": "null"

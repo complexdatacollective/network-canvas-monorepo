@@ -15,21 +15,26 @@ const userId = z
   .max(255)
   .refine((value) => value.isWellFormed() && !value.includes('\0'));
 
+const canonicalUuid = z.uuid().transform((value) => value.toLowerCase());
+
 const reconciliationSchema = z
   .strictObject({
     format: z.literal('template-registry-recovery-reconciliation'),
-    version: z.literal(1),
+    version: z.literal(2),
     users: z.array(
       z.strictObject({
         id: userId,
         email: z.email().max(254).transform(normalizeMailbox),
         emailVerified: z.boolean(),
         publisher: z.enum(['none', 'active', 'suspended']),
-        publisherId: z
-          .uuid()
-          .transform((value) => value.toLowerCase())
-          .nullable(),
+        publisherId: canonicalUuid.nullable(),
         operator: z.boolean(),
+      }),
+    ),
+    entries: z.array(
+      z.strictObject({
+        id: canonicalUuid,
+        publisherId: canonicalUuid,
       }),
     ),
   })
@@ -45,6 +50,21 @@ const reconciliationSchema = z
         code: 'custom',
         message: 'Repeated recovery publisher.',
       });
+    const entryIds = value.entries.map((entry) => entry.id);
+    if (new Set(entryIds).size !== entryIds.length)
+      context.addIssue({
+        code: 'custom',
+        message: 'Repeated recovery entry.',
+      });
+    const knownPublishers = new Set(publisherIds);
+    for (const [index, entry] of value.entries.entries()) {
+      if (!knownPublishers.has(entry.publisherId))
+        context.addIssue({
+          code: 'custom',
+          path: ['entries', index, 'publisherId'],
+          message: 'Entry authority requires an approved publisher UUID.',
+        });
+    }
     for (const [index, user] of value.users.entries()) {
       if ((user.publisher === 'none') !== (user.publisherId === null))
         context.addIssue({

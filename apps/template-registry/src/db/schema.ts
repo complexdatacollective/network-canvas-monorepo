@@ -214,7 +214,7 @@ const audit = pgTable(
     ),
     check(
       'registry_audit_action_check',
-      sql`${table.action} IN ('publisher.claimed', 'credential.created', 'credential.revoked', 'entry.published', 'entry.yanked', 'artifact.taken_down', 'artifact.restored', 'artifact.hard_delete_requested', 'artifact.hard_delete_completed', 'publisher.suspended', 'publisher.reinstated', 'entry.curated', 'entry.uncurated', 'operator.granted', 'operator.revoked')`,
+      sql`${table.action} IN ('publisher.claimed', 'publisher.updated', 'credential.created', 'credential.revoked', 'entry.published', 'entry.yanked', 'artifact.taken_down', 'artifact.restored', 'artifact.hard_delete_requested', 'artifact.hard_delete_completed', 'publisher.suspended', 'publisher.reinstated', 'entry.curated', 'entry.uncurated', 'operator.granted', 'operator.revoked')`,
     ),
   ],
 );

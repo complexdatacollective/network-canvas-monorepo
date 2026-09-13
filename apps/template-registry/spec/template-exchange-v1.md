@@ -327,7 +327,14 @@ The following declarations are allowed:
 | `video`   | `video/mp4`, `video/webm`, `video/ogg`                                           |
 | `dataset` | `text/csv`, `application/json`, `application/geo+json`                           |
 
-Dataset bytes MUST be valid UTF-8, non-empty, and contain no disallowed C0
+Dataset bytes MUST be valid UTF-8. Before validating decoded dataset text,
+readers MUST remove exactly one initial UTF-8 BOM byte sequence (`EF BB BF`),
+if present at byte offset zero. No other U+FEFF character is removed. In
+particular, JSON and GeoJSON with a second initial BOM or a BOM after leading
+whitespace are invalid JSON. The original bytes, including any initial BOM,
+MUST remain unchanged in the archive and in the asset hash input.
+
+The decoded dataset text MUST be non-empty and contain no disallowed C0
 controls. The permitted C0 controls are only TAB (U+0009), LF (U+000A),
 and CR (U+000D); U+0000–U+0008, U+000B–U+000C, and U+000E–U+001F are
 forbidden. CSV MUST consist of one or more records separated by LF or CRLF;
