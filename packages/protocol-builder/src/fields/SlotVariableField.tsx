@@ -11,6 +11,7 @@ import type {
   VariableType,
 } from '@codaco/protocol-validation';
 
+import CodebookVariableValidationSection from '../codebook/validation/CodebookVariableValidationSection.tsx';
 import type { WriterClass } from '../codebook/variableRoles.ts';
 import { usePedigreeVariableIndexes } from '../editors/family-pedigree/sections/entityTypeReset.ts';
 import { pedigreeMessages } from '../editors/family-pedigree/sections/pedigreeMessages.ts';
@@ -94,6 +95,17 @@ export type SlotVariableFieldProps = Readonly<{
   createLabel: MessageDescriptor;
   /** Said in place of the list when the codebook offers nothing usable. */
   emptyMessage: MessageDescriptor;
+  /**
+   * Whether the chosen attribute's own rules are edited under this picker.
+   *
+   * Only the display label: it is the one slot the PARTICIPANT types into, so
+   * its rules are what stand between them and a family member with no name,
+   * and Architect mounts the rule section under exactly that picker
+   * (`sections/FamilyPedigree/NodeConfiguration.tsx`). The structural slots
+   * beside it are stamped by the interface, which no rule of the researcher's
+   * governs.
+   */
+  offerValidation?: boolean;
 }>;
 
 /**
@@ -119,6 +131,7 @@ export default function SlotVariableField({
   lockedOptions,
   createLabel,
   emptyMessage,
+  offerValidation = false,
 }: SlotVariableFieldProps) {
   const intl = useAppIntl();
   const { committedFields, storeApi } = useStageEditorForm();
@@ -273,6 +286,12 @@ export default function SlotVariableField({
         {...createProps}
       />
       {editor}
+      {offerValidation && (
+        <CodebookVariableValidationSection
+          subject={subject ?? undefined}
+          variableId={currentValue}
+        />
+      )}
     </>
   );
 }

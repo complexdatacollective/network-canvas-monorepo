@@ -30,6 +30,21 @@ export type CreateAttributeForSlotOptions = Readonly<{
   lockedOptions?: readonly VariableOption[];
   /** Title of the editor's dialog, already formatted. */
   title: string;
+  /**
+   * Rules the SLOT requires of an attribute created here, written with it.
+   *
+   * A quick-add box is the one place a participant's typing becomes a network
+   * member, so the attribute behind it has to hold a value from the moment
+   * that member exists — Architect seeds the same rule where it creates one
+   * (`sections/NodeConfiguration/NodeConfiguration.tsx`). Neither create shape
+   * renders the rules, so this travels as an unrendered part of what is
+   * written, and the validation section beside the picker is where the
+   * researcher sees it and can take it off. The escalation path hands it to
+   * the editor's draft, where a kind of answer changed before the researcher
+   * presses Create drops whatever the new kind does not accept, exactly as it
+   * does for a rule they wrote themselves (`rulesSurvivingTypeChange`).
+   */
+  seedValidation?: Readonly<Record<string, unknown>>;
   onCreated(variableId: string): void;
 }>;
 
@@ -75,6 +90,7 @@ export function useCreateAttributeForSlot({
   variableType,
   lockedOptions,
   title,
+  seedValidation,
   onCreated,
 }: CreateAttributeForSlotOptions): CreateAttributeForSlot {
   const { readOnly } = useStageEditorForm();
@@ -86,6 +102,7 @@ export function useCreateAttributeForSlot({
     variableTypes: [variableType],
     ...(lockedOptions === undefined ? {} : { lockedOptions }),
     title,
+    ...(seedValidation === undefined ? {} : { seedValidation }),
     onCreated,
   });
 
@@ -114,6 +131,7 @@ export function useCreateAttributeForSlot({
       const outcome = await createVariable({
         name: variableName,
         type: variableType,
+        ...(seedValidation === undefined ? {} : { validation: seedValidation }),
       });
       if (outcome.status === 'refused') {
         return outcome.message === undefined
@@ -134,7 +152,7 @@ export function useCreateAttributeForSlot({
       onCreated(outcome.variableId);
       return { status: 'created' };
     },
-    [createVariable, onCreated, variableType],
+    [createVariable, onCreated, seedValidation, variableType],
   );
 
   const offered = escalates
