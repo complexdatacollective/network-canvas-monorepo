@@ -586,6 +586,44 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     ).toEqual([{ action: 'entry.curated', subject_id: created.entry.id }]);
   });
 
+  it('shares per-entry report quotas across UUID casing and replicas', async () => {
+    const account = await fixture.account();
+    const created = await fixture.published(account.token);
+    const id = 'abcdefab-1234-4abc-8abc-abcdefabcdef';
+    await fixture.owner.query(
+      'UPDATE registry_entries SET id = $1 WHERE id = $2',
+      [id, created.entry.id],
+    );
+    const first = fixture.createReplica({ reportsPerEntryPerHour: 1 });
+    const second = fixture.createReplica({ reportsPerEntryPerHour: 1 });
+    const report = { category: 'privacy', details: 'Private report' };
+    expect(
+      (
+        await fixture.request(
+          'POST',
+          `/entries/${id}/reports`,
+          report,
+          new Headers(),
+          first.app,
+        )
+      ).status,
+    ).toBe(202);
+    await problem(
+      await fixture.request(
+        'POST',
+        `/entries/${id.toUpperCase()}/reports`,
+        report,
+        new Headers(),
+        second.app,
+      ),
+      429,
+      'RATE_LIMITED',
+    );
+    expect(
+      (await fixture.owner.query('SELECT entry_id FROM registry_reports')).rows,
+    ).toEqual([{ entry_id: id }]);
+  });
+
   it('accepts reports without authentication and limits their private details to operators', async () => {
     const account = await fixture.account();
     const operator = await fixture.account('operator@example.test', true);
