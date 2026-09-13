@@ -139,20 +139,20 @@ const typeOf = (variable: unknown): string => {
 type Refusal = Readonly<{ message: string; held: boolean }>;
 
 /**
- * What one edit asks of the rules, said as keys rather than as a whole map.
+ * What one write asks of the rules, said as keys rather than as a whole map.
  *
  * A map computed when the researcher clicked is a map that does not know about
  * a rule a COLLABORATOR added while the write was taking the lock, and writing
- * it whole deletes theirs. So an edit travels as the keys it touched — each set
- * to a value, or taken off — and those are laid over the rules the
- * authoritative document holds at the moment the lock is granted. Switching the
- * section off is the one edit that is about the whole map, and says so.
+ * it whole deletes theirs. So a write travels as keys — each set to a value, or
+ * taken off — and those are laid over the rules the authoritative document
+ * holds at the moment the lock is granted. Switching the section off is the one
+ * edit that is about the whole map, and says so.
  */
 type RuleChange =
   | Readonly<{ kind: 'keys'; set: ValidationMap; removed: readonly string[] }>
   | Readonly<{ kind: 'clear' }>;
 
-/** The keys one edit moved, read from the map before it and the map after. */
+/** Every key two maps differ over, read from the one before and the one after. */
 const ruleChangeBetween = (
   before: Readonly<ValidationMap>,
   after: Readonly<ValidationMap>,
@@ -319,6 +319,8 @@ function VariableValidationSection({
        * collaborator's rule when they made the edit.
        */
       let rebasedIssue: string | undefined;
+      /** The map handed to the host, for the marker a refusal has to undo. */
+      let askedFor: ValidationMap | undefined;
       const outcome = await write(subject, (authoritativeDocument) => {
         const next = rulesAfter(
           validationOf(
@@ -331,6 +333,7 @@ function VariableValidationSection({
         );
         rebasedIssue = ruleMapRefusal(next);
         if (rebasedIssue !== undefined) throw new Error(rebasedIssue);
+        askedFor = next;
         asked.current = next;
         return documentWithUpdatedVariable({
           subject,
@@ -345,6 +348,13 @@ function VariableValidationSection({
         });
       });
       if (outcome.status !== 'applied') {
+        // The marker says the codebook moved because THIS section moved it, and
+        // a refused write moved nothing. Left standing, a collaborator who
+        // later makes the very change that was refused is taken for this
+        // section's own echo, and the panel is not re-seeded over their rules.
+        if (askedFor !== undefined && asked.current === askedFor) {
+          asked.current = undefined;
+        }
         setRefusal({
           message: rebasedIssue ?? outcome.message,
           held: rebasedIssue === undefined && outcome.refusal.kind === 'held',
@@ -359,7 +369,15 @@ function VariableValidationSection({
     // the map that was refused, and an edit that reverts it or leaves it
     // half-set is a map the standing sentence no longer describes.
     setRefusal(undefined);
-    const change = ruleChangeBetween(draft, next);
+    // Against the map the codebook last CONFIRMED, not against the one on
+    // screen: only some drafts are written — a map refused for the lock, and a
+    // half-set map deliberately held back, both leave the screen ahead of the
+    // codebook — and a write carrying only the last gesture's keys would rebase
+    // onto a document that never received the earlier ones, dropping rules the
+    // researcher can see and then wiping them off the screen with nothing said.
+    // Every on-screen difference travels, and is still laid over the
+    // authoritative map rather than replacing it.
+    const change = ruleChangeBetween(committed, next);
     setDraft(next);
     if (isEqual(next, committed)) return;
     // Written only while the whole map is answerable. Architect's section has
