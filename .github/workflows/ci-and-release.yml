@@ -521,6 +521,15 @@ jobs:
           # comparison and must not turn registry uncertainty into a pass.
           fetch-depth: 0
       - uses: ./.github/actions/turbo-ci-setup
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Verify the generated Registry Python client against localhost
+        id: registry-openapi
+        continue-on-error: true
+        run: |
+          python -m pip install openapi-python-client==0.29.0
+          pnpm --filter @codaco/template-registry test:openapi-client
       - name: Check unused files, exports, and dependencies
         id: knip
         continue-on-error: true
@@ -648,6 +657,7 @@ jobs:
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           STUDIO_TELEMETRY_OUTCOME: ${{ steps.studio-telemetry.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
+          REGISTRY_OPENAPI_OUTCOME: ${{ steps.registry-openapi.outcome }}
         run: |
           failed=false
           for result in \
@@ -661,7 +671,8 @@ jobs:
             "studio-managed=$STUDIO_MANAGED_OUTCOME" \
             "build=$BUILD_OUTCOME" \
             "studio-telemetry=$STUDIO_TELEMETRY_OUTCOME" \
-            "typecheck=$TYPECHECK_OUTCOME"; do
+            "typecheck=$TYPECHECK_OUTCOME" \
+            "registry-openapi=$REGISTRY_OPENAPI_OUTCOME"; do
             echo "$result"
             if [[ "${result#*=}" != "success" ]]; then
               failed=true

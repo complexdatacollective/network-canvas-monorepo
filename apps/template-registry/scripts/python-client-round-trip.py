@@ -1,0 +1,23 @@
+from pathlib import Path
+import sys
+
+
+generated_parent = Path(sys.argv[1])
+base_url = sys.argv[2]
+sys.path.insert(0, str(generated_parent))
+
+from registry_client.api.default import list_entries  # noqa: E402
+from registry_client.client import Client  # noqa: E402
+from registry_client.models.list_entries_response_200 import (  # noqa: E402
+    ListEntriesResponse200,
+)
+
+
+with Client(base_url=f"{base_url}/api/v1", raise_on_unexpected_status=True) as client:
+    response = list_entries.sync_detailed(client=client, limit=7)
+
+assert response.status_code == 200
+assert isinstance(response.parsed, ListEntriesResponse200)
+assert response.parsed.data == []
+assert response.parsed.next_cursor is None
+assert response.parsed.has_more is False

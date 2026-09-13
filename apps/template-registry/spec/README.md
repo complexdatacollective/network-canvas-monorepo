@@ -1,12 +1,19 @@
 # Template Registry API
 
 `openapi.json` is the normative OpenAPI 3.1 contract for the independent Network
-Canvas Template Registry. Regenerate it with
+Canvas Template Registry. `openapi-3.0.json` is a generated compatibility export
+for tooling that has not adopted OpenAPI 3.1. Regenerate both with
 `pnpm --filter @codaco/template-registry generate:openapi`. The running service
 serves the same generated contract at `/api/v1/openapi.json`.
 
+CI generates a client from `openapi-3.0.json` with
+`openapi-python-client==0.29.0` and uses that generated client against an actual
+Registry HTTP listener bound to localhost. Generation warnings fail the gate.
+
 The contract and the template exchange format specification are dedicated to
 the public domain under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+The canonical legal text is included in `LICENSE` so this directory can be
+published without inheriting the monorepo's software license.
 This dedication covers the specifications, not the licensed template artifacts
 that the registry serves. Each artifact declares its own license.
 
