@@ -1801,21 +1801,21 @@ describe('the groups a network composer divides its decisions into', () => {
       await screen.findByRole('region', { name: 'Quick add attribute' }),
     );
     expect(
-      quickAdd.getByRole('combobox', {
+      quickAdd.getByRole('group', {
         name: 'Create or select an attribute for the quick-add form',
       }),
     ).toBeInTheDocument();
     // And no hint of its own: the group's sentence is where the words are now,
     // so all the control still says about itself is that it must be answered.
     expect(
-      quickAdd.getByRole('combobox', {
+      quickAdd.getByRole('group', {
         name: 'Create or select an attribute for the quick-add form',
       }),
     ).toHaveAccessibleDescription(/^Required\s*$/);
 
     expect(
       within(screen.getByRole('region', { name: 'Node positions' })).getByRole(
-        'combobox',
+        'group',
         {
           name: 'Create or select an attribute to store node coordinates',
         },
@@ -1823,7 +1823,7 @@ describe('the groups a network composer divides its decisions into', () => {
     ).toBeInTheDocument();
     expect(
       within(screen.getByRole('region', { name: 'Group hulls' })).getByRole(
-        'combobox',
+        'group',
         { name: 'Create or select a categorical attribute for grouping' },
       ),
     ).toBeInTheDocument();

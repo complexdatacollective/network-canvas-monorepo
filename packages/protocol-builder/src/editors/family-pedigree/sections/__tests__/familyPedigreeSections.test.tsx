@@ -534,7 +534,7 @@ describe('the pedigree’s own configuration', () => {
       'Map the node attributes used to label family members and store pedigree relationships.',
     );
     expect(
-      within(members).getByRole('combobox', {
+      within(members).getByRole('group', {
         name: 'Participant identifier',
       }),
     ).toBeInTheDocument();
@@ -550,7 +550,7 @@ describe('the pedigree’s own configuration', () => {
       'Map the edge attributes used to describe family relationships and support inheritance tracing.',
     );
     expect(
-      within(relationships).getByRole('combobox', { name: 'Active status' }),
+      within(relationships).getByRole('group', { name: 'Active status' }),
     ).toBeInTheDocument();
     expect(
       within(relationships).queryByRole('radio', { name: 'family_edge' }),
@@ -1153,7 +1153,7 @@ describe('the pedigree’s nomination prompts', () => {
       'Write the question participants will answer and choose the boolean attribute that records who they nominate.',
     );
     expect(
-      within(group).getByRole('combobox', { name: 'Attribute' }),
+      within(group).getByRole('group', { name: 'Attribute' }),
     ).toBeInTheDocument();
   });
 

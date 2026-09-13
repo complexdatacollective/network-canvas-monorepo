@@ -421,9 +421,7 @@ describe('the places a geospatial stage asks about', () => {
     expect(group).toHaveAccessibleDescription(
       "Choose the location attribute that stores the participant's selection.",
     );
-    expect(
-      within(group).getByRole('combobox', { name: 'Location attribute' }),
-    ).toBeInTheDocument();
+    expect(group).toContainElement(attributeField('Location attribute', group));
     // The question itself is outside it, as Architect had it.
     expect(
       within(group).queryByRole('textbox', { name: 'Prompt text' }),
