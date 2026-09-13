@@ -192,6 +192,7 @@ export async function reconcileNextTemplateRegistryIntent(
   const started = performance.now();
   const result: OutboxDispatchResult = {
     claimed: 0,
+    recovered: 0,
     completed: 0,
     retried: 0,
     failed: 0,
