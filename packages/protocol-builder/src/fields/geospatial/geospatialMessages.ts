@@ -287,6 +287,19 @@ export const geospatialMessages = defineMessages({
     description:
       'Refusal shown under the prompt-text field when a researcher saves a geospatial prompt without writing its question.',
   },
+  locationResponseTitle: {
+    id: 'protocolBuilder.geospatial.locationResponseTitle',
+    defaultMessage: 'Location response',
+    description:
+      'Heading of the group in a geospatial prompt’s dialog holding the attribute the participant’s chosen place is stored in. Also names the group to assistive technology.',
+  },
+  locationResponseDescription: {
+    id: 'protocolBuilder.geospatial.locationResponseDescription',
+    defaultMessage:
+      "Choose the location attribute that stores the participant's selection.",
+    description:
+      'Description of the location-response group of a geospatial prompt. A location attribute holds a place on a map.',
+  },
   promptVariableLabel: {
     id: 'protocolBuilder.geospatial.promptVariableLabel',
     defaultMessage: 'Location attribute',

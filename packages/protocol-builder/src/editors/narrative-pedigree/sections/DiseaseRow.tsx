@@ -12,6 +12,7 @@ import ColorPickerField, {
 } from '@codaco/fresco-ui/form/fields/ColorPicker';
 import InputField from '@codaco/fresco-ui/form/fields/InputField';
 import NativeSelectField from '@codaco/fresco-ui/form/fields/Select/Native';
+import Section from '@codaco/fresco-ui/Section';
 import {
   INHERITANCE_PATTERNS,
   type InheritancePattern,
@@ -182,7 +183,12 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
   );
 
   return (
-    <>
+    <Section
+      title={intl.formatMessage(narrativePedigreeMessages.diseaseDetailsTitle)}
+      description={intl.formatMessage(
+        narrativePedigreeMessages.diseaseDetailsDescription,
+      )}
+    >
       <Field<typeof InputField>
         name={LABEL_FIELD}
         component={InputField}
@@ -241,7 +247,7 @@ export function DiseaseEditor({ item, editIndex }: RowEditorProps) {
           narrativePedigreeMessages.diseaseInheritanceRequired,
         )}
       />
-    </>
+    </Section>
   );
 }
 

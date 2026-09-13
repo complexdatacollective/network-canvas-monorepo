@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert, AlertDescription, AlertTitle } from '@codaco/fresco-ui/Alert';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import Section from '@codaco/fresco-ui/Section';
 import { INTERFACE_OWNED_OPTION_SETS } from '@codaco/protocol-validation';
 
 import EntityTypePickerField from '../../../fields/EntityTypePickerField.tsx';
@@ -294,67 +295,76 @@ export default function PedigreeNodeConfigurationSection() {
 
       {subject !== null && (
         <>
-          <SlotVariableField
-            name={LABEL_FIELD}
-            label={pedigreeMessages.nodeLabelLabel}
-            hint={pedigreeMessages.nodeLabelHint}
-            subject={subject}
-            options={textVariables}
-            writerClass="validated"
-            draftConflicting={draftUnvalidatedVariables}
-            variableType="text"
-            createLabel={pedigreeMessages.nodeLabelCreateLabel}
-            emptyMessage={pedigreeMessages.slotEmptyState}
-            offerValidation
-          />
-          <SlotVariableField
-            name={EGO_SLOT.path}
-            label={pedigreeMessages.nodeEgoLabel}
-            hint={pedigreeMessages.nodeEgoHint}
-            subject={subject}
-            options={booleanVariables}
-            writerClass="unvalidated"
-            ownSlot={EGO_SLOT.slot}
-            draftConflicting={draftFormVariables}
-            {...(draftLabelVariable === undefined
-              ? {}
-              : { draftLabelVariable })}
-            variableType="boolean"
-            createLabel={pedigreeMessages.nodeEgoCreateLabel}
-            emptyMessage={pedigreeMessages.slotEmptyState}
-          />
-          <SlotVariableField
-            name={RELATIONSHIP_SLOT.path}
-            label={pedigreeMessages.nodeRelationshipLabel}
-            hint={pedigreeMessages.nodeRelationshipHint}
-            subject={subject}
-            options={textVariables}
-            writerClass="unvalidated"
-            ownSlot={RELATIONSHIP_SLOT.slot}
-            draftConflicting={draftFormVariables}
-            {...(draftLabelVariable === undefined
-              ? {}
-              : { draftLabelVariable })}
-            variableType="text"
-            createLabel={pedigreeMessages.nodeRelationshipCreateLabel}
-            emptyMessage={pedigreeMessages.slotEmptyState}
-          />
-          <SlotVariableField
-            name={BIOLOGICAL_SEX_FIELD}
-            label={pedigreeMessages.nodeBiologicalSexLabel}
-            hint={pedigreeMessages.nodeBiologicalSexHint}
-            subject={subject}
-            options={categoricalVariables}
-            writerClass="unvalidated"
-            draftConflicting={draftFormVariables}
-            {...(draftLabelVariable === undefined
-              ? {}
-              : { draftLabelVariable })}
-            variableType="categorical"
-            lockedOptions={INTERFACE_OWNED_OPTION_SETS.biologicalSex.options}
-            createLabel={pedigreeMessages.nodeBiologicalSexCreateLabel}
-            emptyMessage={pedigreeMessages.slotEmptyState}
-          />
+          <Section
+            title={intl.formatMessage(
+              pedigreeMessages.familyMemberAttributesTitle,
+            )}
+            description={intl.formatMessage(
+              pedigreeMessages.familyMemberAttributesDescription,
+            )}
+          >
+            <SlotVariableField
+              name={LABEL_FIELD}
+              label={pedigreeMessages.nodeLabelLabel}
+              hint={pedigreeMessages.nodeLabelHint}
+              subject={subject}
+              options={textVariables}
+              writerClass="validated"
+              draftConflicting={draftUnvalidatedVariables}
+              variableType="text"
+              createLabel={pedigreeMessages.nodeLabelCreateLabel}
+              emptyMessage={pedigreeMessages.slotEmptyState}
+              offerValidation
+            />
+            <SlotVariableField
+              name={EGO_SLOT.path}
+              label={pedigreeMessages.nodeEgoLabel}
+              hint={pedigreeMessages.nodeEgoHint}
+              subject={subject}
+              options={booleanVariables}
+              writerClass="unvalidated"
+              ownSlot={EGO_SLOT.slot}
+              draftConflicting={draftFormVariables}
+              {...(draftLabelVariable === undefined
+                ? {}
+                : { draftLabelVariable })}
+              variableType="boolean"
+              createLabel={pedigreeMessages.nodeEgoCreateLabel}
+              emptyMessage={pedigreeMessages.slotEmptyState}
+            />
+            <SlotVariableField
+              name={RELATIONSHIP_SLOT.path}
+              label={pedigreeMessages.nodeRelationshipLabel}
+              hint={pedigreeMessages.nodeRelationshipHint}
+              subject={subject}
+              options={textVariables}
+              writerClass="unvalidated"
+              ownSlot={RELATIONSHIP_SLOT.slot}
+              draftConflicting={draftFormVariables}
+              {...(draftLabelVariable === undefined
+                ? {}
+                : { draftLabelVariable })}
+              variableType="text"
+              createLabel={pedigreeMessages.nodeRelationshipCreateLabel}
+              emptyMessage={pedigreeMessages.slotEmptyState}
+            />
+            <SlotVariableField
+              name={BIOLOGICAL_SEX_FIELD}
+              label={pedigreeMessages.nodeBiologicalSexLabel}
+              hint={pedigreeMessages.nodeBiologicalSexHint}
+              subject={subject}
+              options={categoricalVariables}
+              writerClass="unvalidated"
+              draftConflicting={draftFormVariables}
+              {...(draftLabelVariable === undefined
+                ? {}
+                : { draftLabelVariable })}
+              variableType="categorical"
+              lockedOptions={INTERFACE_OWNED_OPTION_SETS.biologicalSex.options}
+              createLabel={pedigreeMessages.nodeBiologicalSexCreateLabel}
+              emptyMessage={pedigreeMessages.slotEmptyState}
+            />
+          </Section>
 
           {/*
             The package's shared form-fields section, told where this

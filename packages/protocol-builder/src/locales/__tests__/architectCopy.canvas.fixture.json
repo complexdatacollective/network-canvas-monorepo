@@ -54,6 +54,36 @@
     "es": "Validación de la frase de contraseña",
     "from": "74a07e626 architect.sections.anonymisation.anonymisationValidation.passphraseValidation"
   },
+  "protocolBuilder.familyPedigree.familyMemberAttributesDescription": {
+    "en": "Map the node attributes used to label family members and store pedigree relationships.",
+    "es": "Asigna los atributos de nodo utilizados para etiquetar a los familiares y guardar las relaciones genealógicas.",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.mapTheNodeAttributesUsedTo"
+  },
+  "protocolBuilder.familyPedigree.familyMemberAttributesTitle": {
+    "en": "Family member attributes",
+    "es": "Atributos de familiares",
+    "from": "74a07e626 architect.sections.familyPedigree.nodeConfiguration.familyMemberAttributes"
+  },
+  "protocolBuilder.familyPedigree.nominationDetailsDescription": {
+    "en": "Write the question participants will answer and choose the boolean attribute that records who they nominate.",
+    "es": "Escribe la pregunta que responderán los participantes y elige el atributo booleano que registra a quién nominan.",
+    "from": "74a07e626 architect.sections.familyPedigree.nominationPromptFields.writeTheQuestionParticipantsWillAnswer"
+  },
+  "protocolBuilder.familyPedigree.nominationDetailsTitle": {
+    "en": "Nomination details",
+    "es": "Detalles de la nominación",
+    "from": "74a07e626 architect.sections.familyPedigree.nominationPromptFields.nominationDetails"
+  },
+  "protocolBuilder.familyPedigree.relationshipAttributesDescription": {
+    "en": "Map the edge attributes used to describe family relationships and support inheritance tracing.",
+    "es": "Asigna los atributos de vínculo utilizados para describir las relaciones familiares y seguir la herencia.",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.mapTheEdgeAttributesUsedTo"
+  },
+  "protocolBuilder.familyPedigree.relationshipAttributesTitle": {
+    "en": "Relationship attributes",
+    "es": "Atributos de la relación",
+    "from": "74a07e626 architect.sections.familyPedigree.edgeConfiguration.relationshipAttributes"
+  },
   "protocolBuilder.geospatial.accessDescription": {
     "en": "Provide the Mapbox API key required to display the map.",
     "es": "Proporciona la clave de API de Mapbox necesaria para mostrar el mapa.",
@@ -103,6 +133,16 @@
     "en": "Map layers",
     "es": "Capas del mapa",
     "from": "74a07e626 architect.sections.mapOptions.mapLayers"
+  },
+  "protocolBuilder.geospatial.locationResponseDescription": {
+    "en": "Choose the location attribute that stores the participant's selection.",
+    "es": "Elige el atributo de ubicación que guarda la selección del participante.",
+    "from": "74a07e626 architect.sections.geospatialPrompts.promptFields.chooseTheLocationAttributeThatStores"
+  },
+  "protocolBuilder.geospatial.locationResponseTitle": {
+    "en": "Location response",
+    "es": "Respuesta de ubicación",
+    "from": "74a07e626 architect.sections.geospatialPrompts.promptFields.locationResponse"
   },
   "protocolBuilder.geospatial.promptVariableLabel": {
     "en": "Location attribute",
@@ -208,6 +248,16 @@
     "en": "Color",
     "es": "Color",
     "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.color"
+  },
+  "protocolBuilder.narrativePedigree.diseaseDetailsDescription": {
+    "en": "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
+    "es": "Define cómo aparece esta enfermedad, asígnala al atributo de estado afectado de la genealogía de origen y elige cómo se interpreta su herencia.",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.defineHowThisDiseaseAppearsMap"
+  },
+  "protocolBuilder.narrativePedigree.diseaseDetailsTitle": {
+    "en": "Disease details",
+    "es": "Detalles de la enfermedad",
+    "from": "74a07e626 architect.sections.narrativePedigree.diseaseFields.diseaseDetails"
   },
   "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
     "en": "Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.",

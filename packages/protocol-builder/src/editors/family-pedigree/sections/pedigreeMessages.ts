@@ -620,6 +620,45 @@ export const pedigreeMessages = defineMessages({
     description:
       'Refusal shown above the nomination prompt list when a researcher saves a pedigree whose nomination section is switched on and empty. Switching the section off is the other way out, and is offered beside the list.',
   },
+  nominationDetailsTitle: {
+    id: 'protocolBuilder.familyPedigree.nominationDetailsTitle',
+    defaultMessage: 'Nomination details',
+    description:
+      'Heading of the group in a nomination prompt’s dialog holding the question and the attribute that records the answer. Also names the group to assistive technology.',
+  },
+  nominationDetailsDescription: {
+    id: 'protocolBuilder.familyPedigree.nominationDetailsDescription',
+    defaultMessage:
+      'Write the question participants will answer and choose the boolean attribute that records who they nominate.',
+    description:
+      'Description of the nomination-details group. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names.',
+  },
+  familyMemberAttributesTitle: {
+    id: 'protocolBuilder.familyPedigree.familyMemberAttributesTitle',
+    defaultMessage: 'Family member attributes',
+    description:
+      'Heading of the group holding the attributes a family pedigree writes onto each family member. Also names the group to assistive technology.',
+  },
+  familyMemberAttributesDescription: {
+    id: 'protocolBuilder.familyPedigree.familyMemberAttributesDescription',
+    defaultMessage:
+      'Map the node attributes used to label family members and store pedigree relationships.',
+    description:
+      'Description of the family-member attributes group. Mapping means choosing which codebook attribute each thing the interface records is kept in.',
+  },
+  relationshipAttributesTitle: {
+    id: 'protocolBuilder.familyPedigree.relationshipAttributesTitle',
+    defaultMessage: 'Relationship attributes',
+    description:
+      'Heading of the group holding the attributes a family pedigree writes onto each relationship it draws. Also names the group to assistive technology.',
+  },
+  relationshipAttributesDescription: {
+    id: 'protocolBuilder.familyPedigree.relationshipAttributesDescription',
+    defaultMessage:
+      'Map the edge attributes used to describe family relationships and support inheritance tracing.',
+    description:
+      'Description of the relationship-attributes group. Inheritance tracing is how the interface follows a condition down the family tree.',
+  },
   nominationTextLabel: {
     id: 'protocolBuilder.pedigree.nominationTextLabel',
     defaultMessage: 'Prompt text',

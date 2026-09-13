@@ -1471,6 +1471,30 @@
     "defaultMessage": "This data file could not be read",
     "description": "Warning heading shown when the chosen data file could not be opened. The reason underneath comes from the application hosting this editor."
   },
+  "protocolBuilder.familyPedigree.familyMemberAttributesDescription": {
+    "defaultMessage": "Map the node attributes used to label family members and store pedigree relationships.",
+    "description": "Description of the family-member attributes group. Mapping means choosing which codebook attribute each thing the interface records is kept in."
+  },
+  "protocolBuilder.familyPedigree.familyMemberAttributesTitle": {
+    "defaultMessage": "Family member attributes",
+    "description": "Heading of the group holding the attributes a family pedigree writes onto each family member. Also names the group to assistive technology."
+  },
+  "protocolBuilder.familyPedigree.nominationDetailsDescription": {
+    "defaultMessage": "Write the question participants will answer and choose the boolean attribute that records who they nominate.",
+    "description": "Description of the nomination-details group. A boolean attribute holds a yes-or-no answer, recorded here against each family member the participant names."
+  },
+  "protocolBuilder.familyPedigree.nominationDetailsTitle": {
+    "defaultMessage": "Nomination details",
+    "description": "Heading of the group in a nomination prompt’s dialog holding the question and the attribute that records the answer. Also names the group to assistive technology."
+  },
+  "protocolBuilder.familyPedigree.relationshipAttributesDescription": {
+    "defaultMessage": "Map the edge attributes used to describe family relationships and support inheritance tracing.",
+    "description": "Description of the relationship-attributes group. Inheritance tracing is how the interface follows a condition down the family tree."
+  },
+  "protocolBuilder.familyPedigree.relationshipAttributesTitle": {
+    "defaultMessage": "Relationship attributes",
+    "description": "Heading of the group holding the attributes a family pedigree writes onto each relationship it draws. Also names the group to assistive technology."
+  },
   "protocolBuilder.field.required": {
     "defaultMessage": "This field is required.",
     "description": "Shown under any unanswered required control in a stage editor when the researcher tries to save the stage. Addresses the researcher authoring the protocol, not a participant answering it."
@@ -1838,6 +1862,14 @@
   "protocolBuilder.geospatial.layerTitle": {
     "defaultMessage": "Map layers",
     "description": "Heading of the section where a researcher chooses the GeoJSON file whose areas a participant can select on the map."
+  },
+  "protocolBuilder.geospatial.locationResponseDescription": {
+    "defaultMessage": "Choose the location attribute that stores the participant's selection.",
+    "description": "Description of the location-response group of a geospatial prompt. A location attribute holds a place on a map."
+  },
+  "protocolBuilder.geospatial.locationResponseTitle": {
+    "defaultMessage": "Location response",
+    "description": "Heading of the group in a geospatial prompt’s dialog holding the attribute the participant’s chosen place is stored in. Also names the group to assistive technology."
   },
   "protocolBuilder.geospatial.longitudeDecrease": {
     "defaultMessage": "Decrease longitude",
@@ -2310,6 +2342,14 @@
   "protocolBuilder.narrativePedigree.diseaseColorRequired": {
     "defaultMessage": "Choose a color for this disease.",
     "description": "Refusal shown under the disease-colour control when the researcher saves the dialog without choosing one."
+  },
+  "protocolBuilder.narrativePedigree.diseaseDetailsDescription": {
+    "defaultMessage": "Define how this disease appears, map it to the source pedigree's affected-status attribute, and choose how its inheritance is interpreted.",
+    "description": "Description of the disease-details group. The source pedigree is the family-pedigree stage this one draws its family from; the affected-status attribute is the yes-or-no attribute that pedigree records the condition in."
+  },
+  "protocolBuilder.narrativePedigree.diseaseDetailsTitle": {
+    "defaultMessage": "Disease details",
+    "description": "Heading of the group in a disease’s dialog holding everything that decides how it appears and what it is read from. Also names the group to assistive technology."
   },
   "protocolBuilder.narrativePedigree.diseaseInheritanceHint": {
     "defaultMessage": "Choose how this disease is inherited. Mendelian patterns are used with biological relationships and recorded sex to infer carrier and possible at-risk statuses. Multifactorial and Unknown show affected status only and do not infer carrier or at-risk statuses.",

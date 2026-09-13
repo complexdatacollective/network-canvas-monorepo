@@ -363,6 +363,31 @@ describe('the places a geospatial stage asks about', () => {
     expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
   });
 
+  /**
+   * The dialog's fields sit in the titled group Architect gave them
+   * (`sections/GeospatialPrompts/PromptFields.tsx:111-128`): the question the
+   * participant is asked stands on its own, and what the answer is STORED in
+   * is a decision of its own, with a sentence saying so.
+   */
+  it('groups the answer’s attribute under Architect’s heading', async () => {
+    const harness = openEditor();
+    await harness.opened();
+    addLocationAttribute(harness, 'workplace');
+
+    const dialog = await openPrompt(harness, 'Create new prompt');
+    const group = dialog.getByRole('region', { name: 'Location response' });
+    expect(group).toHaveAccessibleDescription(
+      "Choose the location attribute that stores the participant's selection.",
+    );
+    expect(
+      within(group).getByRole('combobox', { name: 'Location attribute' }),
+    ).toBeInTheDocument();
+    // The question itself is outside it, as Architect had it.
+    expect(
+      within(group).queryByRole('textbox', { name: 'Prompt text' }),
+    ).toBeNull();
+  });
+
   it('adds a prompt recording an existing location attribute', async () => {
     const harness = openEditor();
     await harness.opened();

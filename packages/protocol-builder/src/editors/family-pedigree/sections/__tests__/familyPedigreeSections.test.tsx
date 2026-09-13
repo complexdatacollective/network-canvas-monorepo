@@ -442,6 +442,64 @@ describe('the pedigree’s own configuration', () => {
     );
   });
 
+  /**
+   * The two configuration sections divide into the titled groups Architect
+   * gave them (`FamilyPedigree/NodeConfiguration.tsx:770-878`,
+   * `EdgeConfiguration.tsx:422-526`): the type the stage works with is chosen
+   * on its own, and the attributes the interface writes onto what it builds
+   * are a mapping with a sentence of its own.
+   */
+  it('groups the mapped attributes under Architect’s headings', async () => {
+    const harness = renderStageEditor(openFixture());
+    await harness.opened();
+
+    const members = screen.getByRole('region', {
+      name: 'Family member attributes',
+    });
+    expect(members).toHaveAccessibleDescription(
+      'Map the node attributes used to label family members and store pedigree relationships.',
+    );
+    expect(
+      within(members).getByRole('combobox', {
+        name: 'Participant identifier',
+      }),
+    ).toBeInTheDocument();
+    // The node type is chosen above the group, not inside it.
+    expect(
+      within(members).queryByRole('radio', { name: 'family member' }),
+    ).toBeNull();
+
+    const relationships = screen.getByRole('region', {
+      name: 'Relationship attributes',
+    });
+    expect(relationships).toHaveAccessibleDescription(
+      'Map the edge attributes used to describe family relationships and support inheritance tracing.',
+    );
+    expect(
+      within(relationships).getByRole('combobox', { name: 'Active status' }),
+    ).toBeInTheDocument();
+    expect(
+      within(relationships).queryByRole('radio', { name: 'family_edge' }),
+    ).toBeNull();
+  });
+
+  /** Groups, not sections: neither reaches the host's list of the stage's. */
+  it('registers neither group as a section of the stage', async () => {
+    const harness = renderStageEditor(openFixture());
+
+    await waitFor(() =>
+      expect(harness.outline().map((section) => section.title)).toEqual([
+        'Pedigree framing',
+        'Pedigree boundaries',
+        'Family member data',
+        'Form configuration',
+        'Relationship data',
+        'Family-building prompt',
+        'Nomination prompts',
+      ]),
+    );
+  });
+
   it('saves the stage it opened, unchanged', async () => {
     const harness = renderStageEditor(openFixture());
 
@@ -996,6 +1054,26 @@ describe('a family member form the researcher edits', () => {
  * tests say exactly what they open.
  */
 describe('the pedigree’s nomination prompts', () => {
+  /**
+   * The dialog's two fields sit in the titled group Architect gave them
+   * (`FamilyPedigree/NominationPromptFields.tsx:125-155`).
+   */
+  it('groups the question and its attribute under Architect’s heading', async () => {
+    const harness = renderStageEditor(openWithNominationPrompts());
+
+    await harness.user.click(
+      await screen.findByRole('button', { name: 'Edit nomination prompt' }),
+    );
+    const dialog = within(await screen.findByRole('dialog'));
+    const group = dialog.getByRole('region', { name: 'Nomination details' });
+    expect(group).toHaveAccessibleDescription(
+      'Write the question participants will answer and choose the boolean attribute that records who they nominate.',
+    );
+    expect(
+      within(group).getByRole('combobox', { name: 'Attribute' }),
+    ).toBeInTheDocument();
+  });
+
   it('saves a list it opened, unchanged', async () => {
     const harness = renderStageEditor(openWithNominationPrompts());
 

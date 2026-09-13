@@ -6,6 +6,7 @@ import Field from '@codaco/fresco-ui/form/Field/Field';
 import useFormStore from '@codaco/fresco-ui/form/hooks/useFormStore';
 import { useFormValue } from '@codaco/fresco-ui/form/hooks/useFormValue';
 import { RenderMarkdown } from '@codaco/fresco-ui/RenderMarkdown';
+import Section from '@codaco/fresco-ui/Section';
 
 import RichTextField from '../../../fields/RichTextField.tsx';
 import VariablePickerField from '../../../fields/VariablePickerField.tsx';
@@ -111,7 +112,12 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
   );
 
   return (
-    <>
+    <Section
+      title={intl.formatMessage(pedigreeMessages.nominationDetailsTitle)}
+      description={intl.formatMessage(
+        pedigreeMessages.nominationDetailsDescription,
+      )}
+    >
       <Field
         name={TEXT_FIELD}
         component={RichTextField}
@@ -144,7 +150,7 @@ export function NominationPromptEditor({ item }: RowEditorProps) {
         label={intl.formatMessage(pedigreeMessages.nominationCreateLabel)}
         onCreated={(variableId) => setFieldValue(VARIABLE_FIELD, variableId)}
       />
-    </>
+    </Section>
   );
 }
 
