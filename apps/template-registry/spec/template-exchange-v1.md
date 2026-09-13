@@ -94,6 +94,12 @@ than 64 containers, NUL characters, and unpaired Unicode surrogates. Comparing
 the decoded value reserialized by the algorithm above with the original text
 is the final canonicality check.
 
+Unless a byte limit is stated, every character limit in this specification is
+measured in ECMAScript UTF-16 code units, the same measure used by the
+authoritative validators' JavaScript `String.length`. A supplementary Unicode
+scalar value therefore counts as two characters for these limits. UTF-8 byte
+limits and hash inputs continue to use encoded bytes.
+
 ## Hashes and artifact identity
 
 Every hash in this format is a 64-character lowercase hexadecimal SHA-256
@@ -172,8 +178,8 @@ All manifest objects are closed: a reader MUST reject additional members.
 ## Metadata document
 
 `metadata.json` is the authored metadata document. It MUST be an object with
-`schema_version` equal to the integer `1` and only the optional members below. Importers MUST preserve
-the document and MUST NOT add machine provenance to it.
+`schema_version` equal to the integer `1` and only the optional members below.
+Importers MUST preserve the document and MUST NOT add machine provenance to it.
 
 | Member          | Shape and limits                                                                                                                   |
 | --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -234,7 +240,7 @@ The section wrappers and their authoritative schema entry points are:
 | `codebook:node:<id>` | `NodeDefinitionSchema` in [`packages/protocol-validation/src/schemas/8/codebook/definitions.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/protocol-validation/src/schemas/8/codebook/definitions.ts) |
 | `codebook:edge:<id>` | `EdgeDefinitionSchema` in [`packages/protocol-validation/src/schemas/8/codebook/definitions.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/protocol-validation/src/schemas/8/codebook/definitions.ts) |
 | `codebook:ego` | `EgoDefinitionSchema` in [`packages/protocol-validation/src/schemas/8/codebook/definitions.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/protocol-validation/src/schemas/8/codebook/definitions.ts) |
-| `assets` | `assetSchema` in [`packages/protocol-validation/src/schemas/8/assets/assets.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/protocol-validation/src/schemas/8/assets/assets.ts) |
+| `assets` | `AssetsSectionSchema` in [`packages/studio-sync/src/section-validation.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/studio-sync/src/section-validation.ts), an asset-ID-keyed `z.record` whose values use `assetSchema` from [`packages/protocol-validation/src/schemas/8/assets/assets.ts`](https://github.com/complexdatacollective/network-canvas-monorepo/blob/08fa2a22b2fab5132d1bf6f2fd5c6a6285848701/packages/protocol-validation/src/schemas/8/assets/assets.ts) |
 
 For a complete protocol template, the assembled sections MUST additionally
 validate against `ProtocolSchemaV8`, the default export of
