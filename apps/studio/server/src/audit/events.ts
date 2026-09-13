@@ -305,6 +305,20 @@ const CommonTemplateRegistryV1EventSchema = CommonUserEventSchema.extend({
   resourceLabel: LabelSchema,
 }).strict();
 
+const TemplateRegistryIntentQuarantinedV1EventSchema =
+  CommonTemplateRegistryV1EventSchema.extend({
+    actorKind: z.literal('system'),
+    actorId: z.null(),
+    actorLabel: z.literal('Template Registry reconciliation'),
+    resourceType: z.literal('template_registry_intent'),
+    resourceLabel: z.null(),
+    eventType: z.literal('template.registry_intent_quarantined'),
+    details: z.strictObject({
+      kind: z.enum(['publication', 'import']),
+      reason: z.enum(['publication_rejected', 'registry_changed']),
+    }),
+  }).strict();
+
 const TemplateRegistryPublishRequestedV1EventSchema =
   CommonTemplateRegistryV1EventSchema.extend({
     eventType: z.literal('template.registry_publish_requested'),
@@ -566,6 +580,7 @@ export const AuditEventInputSchema = z.union([
   ProtocolCreatedV1EventSchema,
   ProtocolDraftCommittedV1EventSchema,
   TemplateRegistryPublishRequestedV1EventSchema,
+  TemplateRegistryIntentQuarantinedV1EventSchema,
   TemplateRegistryImportRequestedV1EventSchema,
   TemplateRegistryPublishedV1EventSchema,
   TemplateRegistryImportedV1EventSchema,
@@ -1148,6 +1163,23 @@ export const AUDIT_EVENT_REGISTRY = {
         operationTypes: ['set'],
         operationCount: 1,
       },
+    },
+  },
+  'template.registry_intent_quarantined@1': {
+    inputSchema: TemplateRegistryIntentQuarantinedV1EventSchema,
+    title: 'Template Registry operation quarantined',
+    detailFields: ['kind', 'reason'],
+    sensitiveFields: [],
+    createsAlert: false,
+    fixture: {
+      ...FIXTURE_TEMPLATE_REGISTRY_V1_COMMON,
+      actorKind: 'system',
+      actorId: null,
+      actorLabel: 'Template Registry reconciliation',
+      resourceType: 'template_registry_intent',
+      resourceLabel: null,
+      eventType: 'template.registry_intent_quarantined',
+      details: { kind: 'publication', reason: 'publication_rejected' },
     },
   },
   'template.registry_publish_requested@1': {

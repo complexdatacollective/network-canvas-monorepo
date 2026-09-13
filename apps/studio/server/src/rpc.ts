@@ -80,6 +80,7 @@ import {
   publishTemplateVersion,
   readRegistryAccount,
   TemplateRegistryCommandError,
+  readRegistryIntentStatuses,
 } from './template/registry.ts';
 
 // The SPA's internal surface: unpublished and free-moving within the
@@ -570,6 +571,23 @@ export function createRpcRouter(
         }),
     },
     templates: {
+      registryIntents: os.templates.registryIntents
+        .use(requireTeamAdministration)
+        .handler(async ({ context, input }) => {
+          try {
+            return await readRegistryIntentStatuses(
+              auditedContextFor(context),
+              input.intents,
+            );
+          } catch (error) {
+            if (
+              error instanceof TemplateRegistryCommandError &&
+              error.code === 'FORBIDDEN'
+            )
+              throw new ORPCError('FORBIDDEN');
+            throw error;
+          }
+        }),
       list: os.templates.list
         .use(requireTeam)
         .handler(({ context }) =>

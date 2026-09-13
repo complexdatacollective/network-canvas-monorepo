@@ -281,6 +281,7 @@ describe('audit mutation policy', () => {
       'studies.get',
       'studies.list',
       'templates.list',
+      'templates.registryIntents',
       'audit.list',
       'audit.get',
       'audit.filterOptions',
