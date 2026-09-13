@@ -421,6 +421,80 @@ describe('Registry deployment configuration', () => {
     });
   });
 
+  it('upgrades the complete pre-observability configuration without rotating existing credentials', async () => {
+    await fixture(async (previous) => {
+      await configureRegistryDeployment(
+        { ...options, output: previous },
+        templateRoot,
+      );
+      const current = await readFile(join(previous, 'registry.env'), 'utf8');
+      const legacy = current
+        .split('\n')
+        .filter(
+          (line) =>
+            !/^(REGISTRY_METRICS_TOKEN|REGISTRY_TRUSTED_PROXIES)=/.test(line),
+        )
+        .join('\n');
+      await writeFile(join(previous, 'registry.env'), legacy);
+      const before = await environment(previous);
+      await fixture(async (output) => {
+        await configureRegistryDeployment(
+          { ...options, output, previousConfigurationRoot: previous },
+          templateRoot,
+        );
+        const after = await environment(output);
+        for (const name of generatedNames.filter(
+          (candidate) => candidate !== 'REGISTRY_METRICS_TOKEN',
+        ))
+          expect(after[name]).toBe(before[name]);
+        expect(after.REGISTRY_METRICS_TOKEN).toMatch(/^[a-f0-9]{64}$/);
+        expect(Object.values(before)).not.toContain(
+          after.REGISTRY_METRICS_TOKEN,
+        );
+        expect(after.REGISTRY_TRUSTED_PROXIES).toBe('');
+        expect(await readFile(join(previous, 'registry.env'), 'utf8')).toBe(
+          legacy,
+        );
+        await configureRegistryDeployment({ ...options, output }, templateRoot);
+        expect((await environment(output)).REGISTRY_METRICS_TOKEN).toBe(
+          after.REGISTRY_METRICS_TOKEN,
+        );
+      });
+    });
+  });
+
+  it('does not mistake a partially missing current configuration for a legacy generation', async () => {
+    for (const missing of [
+      'REGISTRY_METRICS_TOKEN',
+      'REGISTRY_TRUSTED_PROXIES',
+      'REGISTRY_DATABASE_PASSWORD',
+    ]) {
+      await fixture(async (previous) => {
+        await configureRegistryDeployment(
+          { ...options, output: previous },
+          templateRoot,
+        );
+        const current = await readFile(join(previous, 'registry.env'), 'utf8');
+        await writeFile(
+          join(previous, 'registry.env'),
+          current
+            .split('\n')
+            .filter((line) => !line.startsWith(`${missing}=`))
+            .join('\n'),
+        );
+        await fixture(async (output) => {
+          await expect(
+            configureRegistryDeployment(
+              { ...options, output, previousConfigurationRoot: previous },
+              templateRoot,
+            ),
+          ).rejects.toThrow('Registry private configuration is incomplete');
+          expect(await readdir(output)).toEqual([]);
+        });
+      });
+    }
+  });
+
   it('refuses an unsafe previous Registry root without generating replacement credentials', async () => {
     const previous = await mkdtemp(
       join(tmpdir(), 'registry-configure-unsafe-'),

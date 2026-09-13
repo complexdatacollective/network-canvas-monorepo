@@ -200,7 +200,13 @@ function exactNames(values: Record<string, string | undefined>) {
 
 async function readRegistryConfiguration(
   root: string,
-  lockName?: string,
+  {
+    lockName,
+    allowLegacyObservabilityUpgrade = false,
+  }: {
+    lockName?: string;
+    allowLegacyObservabilityUpgrade?: boolean;
+  } = {},
 ): Promise<Record<string, string | undefined>> {
   await assertSecureConfigurationRoot(root);
   const rootInfo = await lstat(root);
@@ -223,7 +229,24 @@ async function readRegistryConfiguration(
     (environmentInfo.mode & 0o777) !== 0o600
   )
     throw new Error('Registry private configuration must be mode0600.');
-  const values = parseEnv(await readFile(environmentPath, 'utf8'));
+  let values = parseEnv(await readFile(environmentPath, 'utf8'));
+  // Only the complete previous format may gain these new fields. A missing
+  // field in the current format is corruption, not a credential-rotation request.
+  const legacyNames = [...publicEnvironmentNames, ...generatedNames].filter(
+    (name) =>
+      name !== 'REGISTRY_METRICS_TOKEN' && name !== 'REGISTRY_TRUSTED_PROXIES',
+  );
+  if (
+    allowLegacyObservabilityUpgrade &&
+    Object.keys(values).toSorted().join(',') ===
+      legacyNames.toSorted().join(',')
+  ) {
+    values = {
+      ...values,
+      REGISTRY_METRICS_TOKEN: secret(),
+      REGISTRY_TRUSTED_PROXIES: '',
+    };
+  }
   if (!exactNames(values))
     throw new Error('Registry private configuration is incomplete.');
   retainedGenerated(values);
@@ -427,7 +450,11 @@ export async function configureRegistryDeployment(
           throw new Error(
             'Registry transition requires separate configuration roots.',
           );
-        return retainedGenerated(await readRegistryConfiguration(previous));
+        return retainedGenerated(
+          await readRegistryConfiguration(previous, {
+            allowLegacyObservabilityUpgrade: true,
+          }),
+        );
       })()
     : null;
   if (outputExists) await assertSecureConfigurationRoot(output);
@@ -452,10 +479,9 @@ export async function configureRegistryDeployment(
     if (hasEnvironment) {
       // This is a dedicated Registry configuration root. A generation rerun is
       // idempotent only; a changed public deployment belongs in a new root.
-      const current = await readRegistryConfiguration(
-        output,
-        '.registry-configure.lock',
-      );
+      const current = await readRegistryConfiguration(output, {
+        lockName: '.registry-configure.lock',
+      });
       if (
         Object.entries(publicEnvironment).some(
           ([name, value]) => current[name] !== value,

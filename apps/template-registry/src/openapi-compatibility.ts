@@ -1,7 +1,6 @@
 import type { OpenAPIDocument } from '@orpc/openapi';
 
 const CC0_URL = 'https://creativecommons.org/publicdomain/zero/1.0/';
-const TEMPLATE_MEDIA_TYPE = 'application/vnd.networkcanvas.template+zip';
 
 /**
  * Derive the compatibility document from the normative OpenAPI 3.1 contract.
@@ -29,16 +28,6 @@ export function toOpenApi30(document: OpenAPIDocument): OpenApi30Document {
   const components = optionalRecord(compatible.components);
   const schemas = optionalRecord(components?.schemas);
   if (schemas) delete schemas.UndefinedError;
-  const paths = optionalRecord(compatible.paths);
-  const artifactPath = optionalRecord(paths?.['/artifacts/{root}']);
-  const artifact = optionalRecord(artifactPath?.get);
-  const responses = optionalRecord(artifact?.responses);
-  const response = optionalRecord(responses?.['200']);
-  if (response && !('$ref' in response)) {
-    const content = optionalRecord(response.content);
-    const media = optionalRecord(content?.[TEMPLATE_MEDIA_TYPE]);
-    if (media) response.content = { ...content, [TEMPLATE_MEDIA_TYPE]: media };
-  }
   return { ...compatible, openapi: '3.0.3', info };
 }
 
