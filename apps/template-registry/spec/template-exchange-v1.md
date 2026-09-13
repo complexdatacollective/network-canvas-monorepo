@@ -204,6 +204,13 @@ controls that ORCID. A DOI, when present, MUST match `10.` followed by 4–9
 digits, `/`, and one or more non-whitespace characters, with a maximum length
 of 255.
 
+Related-link URLs are parsed with the WHATWG URL parser. The source string
+MUST begin, case-insensitively, with `https://` followed by a non-empty
+authority before any `/`, `?`, or `#`; it MUST contain no reverse solidus
+(`\\`). The parsed URL MUST have protocol `https:`, a non-empty hostname, and
+empty username and password components. Paths, queries, fragments, ports, and
+internationalized hostnames accepted by that parser remain permitted.
+
 The metadata object and every nested object are closed. Registry curation can
 require an author, description, and keyword, but those fields are not required
 for a valid publication and curation does not change artifact identity.
@@ -376,8 +383,10 @@ GeoJSON MUST decode to an object whose `type` is one of `FeatureCollection`,
 `MultiPolygon`, or `GeometryCollection`. A type name alone is insufficient:
 the corresponding structure MUST validate recursively. Positions are arrays
 of at least two finite numbers; LineStrings contain at least two positions;
-linear rings contain at least four positions with identical first and last
-positions. MultiPoint, MultiLineString, Polygon, and MultiPolygon contain the
+linear rings contain at least four positions whose first and last positions
+have the same length and element-wise equal coordinates under ECMAScript
+Number strict equality (`===`); consequently `0` and `-0` are equal. MultiPoint,
+MultiLineString, Polygon, and MultiPolygon contain the
 corresponding arrays of positions, lines, rings, and non-empty ring arrays.
 A geometry's `coordinates` MAY be an empty array. GeometryCollections require
 a `geometries` array containing only geometry objects. Features require both
@@ -396,7 +405,11 @@ This profile requires all non-empty positions in a GeoJSON object's recursive
 geometry tree to have the same dimension count `n`. An optional `bbox` MUST
 contain exactly `2*n` finite numbers. For an entirely empty or null geometry
 tree, where `n` is unknown, `bbox` MAY contain any even number of finite
-numbers of at least four. The structural rules follow
+numbers of at least four. Each object's `bbox` uses dimensions from that
+object's own recursive geometry tree. An empty nested geometry does not inherit
+dimensions from a non-empty sibling or enclosing collection, so its own `bbox`
+uses the unknown-dimension rule even when the enclosing tree establishes `n`.
+The structural rules follow
 [RFC 7946 sections 3, 5, and 7.1](https://www.rfc-editor.org/rfc/rfc7946.html);
 the consistent-dimension rule is this exchange profile's portability constraint.
 

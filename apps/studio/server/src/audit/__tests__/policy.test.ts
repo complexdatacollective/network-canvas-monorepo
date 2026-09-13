@@ -3,8 +3,16 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  createSourceFile,
+  isStringLiteralLike,
+  isTemplateLiteralToken,
+  ScriptKind,
+  ScriptTarget,
+  SyntaxKind,
+  type Node,
+} from '@typescript/typescript6';
 import pg from 'pg';
-import { createScanner, SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 
 import { contract } from '@codaco/studio-rpc';
@@ -82,41 +90,48 @@ type SourceToken = {
   position: number;
 };
 
-// TS 7 exposes its tokenizer independently of the compiler process. Using it
-// here means comments and strings cannot spoof the source-policy inventory,
-// while keeping the test independent of a TypeScript program/typecheck.
-function sourceTokens(source: string): SourceToken[] {
-  const scanner = createScanner(true, undefined, source);
-  const tokens: SourceToken[] = [];
-  const templateBraceDepth: number[] = [];
-  let kind = scanner.scan();
-  while (kind !== SyntaxKind.EndOfFile) {
-    tokens.push({
-      kind,
-      raw: scanner.getTokenText(),
-      value: scanner.getTokenValue(),
-      position: scanner.getTokenStart(),
-    });
-
-    if (kind === SyntaxKind.TemplateHead) {
-      templateBraceDepth.push(0);
-    } else if (kind === SyntaxKind.TemplateTail) {
-      templateBraceDepth.pop();
-    } else if (templateBraceDepth.length > 0) {
-      const index = templateBraceDepth.length - 1;
-      if (kind === SyntaxKind.OpenBraceToken) {
-        templateBraceDepth[index] = (templateBraceDepth[index] ?? 0) + 1;
-      } else if (kind === SyntaxKind.CloseBraceToken) {
-        const depth = templateBraceDepth[index] ?? 0;
-        if (depth === 0) {
-          kind = scanner.reScanTemplateToken(false);
-          continue;
-        }
-        templateBraceDepth[index] = depth - 1;
-      }
-    }
-    kind = scanner.scan();
+// A parser supplies the context needed to distinguish regular expressions,
+// division, and template interpolation. Walking its token leaves keeps comments
+// and literal contents from spoofing the inventory without running a typecheck.
+function sourceTokens(
+  source: string,
+  fileName = 'policy-source.ts',
+): SourceToken[] {
+  const parsed = createSourceFile(
+    fileName,
+    source,
+    ScriptTarget.Latest,
+    false,
+    fileName.endsWith('.tsx') ? ScriptKind.TSX : ScriptKind.TS,
+  );
+  // TypeScript exposes parser diagnostics at runtime but omits this field from
+  // its public SourceFile type. Fail closed if that contract ever changes.
+  if (
+    !('parseDiagnostics' in parsed) ||
+    !Array.isArray(parsed.parseDiagnostics) ||
+    parsed.parseDiagnostics.length !== 0
+  ) {
+    throw new Error(`Cannot inventory invalid TypeScript: ${fileName}`);
   }
+  const tokens: SourceToken[] = [];
+  const visit = (node: Node): void => {
+    if (node.kind <= SyntaxKind.LastToken) {
+      if (node.kind !== SyntaxKind.EndOfFileToken) {
+        tokens.push({
+          kind: node.kind,
+          raw: node.getText(parsed),
+          value:
+            isStringLiteralLike(node) || isTemplateLiteralToken(node)
+              ? node.text
+              : '',
+          position: node.getStart(parsed),
+        });
+      }
+      return;
+    }
+    for (const child of node.getChildren(parsed)) visit(child);
+  };
+  visit(parsed);
   return tokens;
 }
 
@@ -178,8 +193,11 @@ function callArgumentIndex(
   return tokens[cursor]?.raw === '(' ? cursor + 1 : undefined;
 }
 
-function tenantBoundaryAccesses(source: string): TenantBoundaryAccess[] {
-  const tokens = sourceTokens(source);
+function tenantBoundaryAccesses(
+  source: string,
+  fileName?: string,
+): TenantBoundaryAccess[] {
+  const tokens = sourceTokens(source, fileName);
   const accesses: TenantBoundaryAccess[] = [];
   const record = (
     token: SourceToken,
@@ -237,8 +255,8 @@ function tenantBoundaryAccesses(source: string): TenantBoundaryAccess[] {
   return accesses;
 }
 
-function noAuditOperations(source: string): string[] {
-  const tokens = sourceTokens(source);
+function noAuditOperations(source: string, fileName?: string): string[] {
+  const tokens = sourceTokens(source, fileName);
   const operations: string[] = [];
   for (let index = 0; index < tokens.length; index++) {
     if (tokenName(tokens[index]) !== 'runNoAuditTenantTransaction') continue;
@@ -489,6 +507,42 @@ describe('audit mutation policy', () => {
     ).toEqual([]);
   });
 
+  it('parses regex, division, templates, and TSX without hiding real mutations', () => {
+    const urlPattern = String.raw`/^https:\/\/[^/?#]+(?:[/?#]|$)/i`;
+    expect(
+      tenantBoundaryAccesses(
+        `const valid = ${urlPattern}.test(value); tenant.transaction(work);`,
+      ),
+    ).toMatchObject([{ member: 'transaction', form: 'call' }]);
+    expect(
+      tenantBoundaryAccesses(
+        String.raw`const pattern = /tenant.transaction(work)/;`,
+      ),
+    ).toEqual([]);
+    expect(
+      tenantBoundaryAccesses(
+        'const ratio = numerator / tenant.transaction(work) / denominator;',
+      ),
+    ).toMatchObject([{ member: 'transaction', form: 'call' }]);
+    expect(
+      tenantBoundaryAccesses(
+        'tenant.query(`UPDATE rows SET value = ${/}/.test(value) ? `nested ${value}` : value}`);',
+      ),
+    ).toMatchObject([{ member: 'query', sqlVerb: 'UPDATE' }]);
+    expect(
+      tenantBoundaryAccesses(
+        '<div>tenant.transaction(work){tenant.transaction(work)}</div>',
+        'fixture.tsx',
+      ),
+    ).toMatchObject([{ member: 'transaction', form: 'call' }]);
+    expect(
+      tenantBoundaryAccesses('const value = <number>tenant.transaction(work);'),
+    ).toMatchObject([{ member: 'transaction', form: 'call' }]);
+    expect(() => tenantBoundaryAccesses('tenant.transaction(')).toThrow(
+      'Cannot inventory invalid TypeScript',
+    );
+  });
+
   it('allows raw tenant writes only inside the two executors or schema bootstrap', () => {
     const roots = [
       resolve(REPO_ROOT, 'apps/studio/server/src'),
@@ -496,7 +550,7 @@ describe('audit mutation policy', () => {
     ];
     const actual: Record<string, TenantBoundaryAccess[]> = {};
     for (const file of roots.flatMap(typescriptFiles)) {
-      const accesses = tenantBoundaryAccesses(readFileSync(file, 'utf8'));
+      const accesses = tenantBoundaryAccesses(readFileSync(file, 'utf8'), file);
       if (accesses.length > 0) {
         actual[relative(REPO_ROOT, file)] = accesses.map((access) => ({
           ...access,
@@ -525,7 +579,7 @@ describe('audit mutation policy', () => {
     ];
     const directOperations = roots
       .flatMap(typescriptFiles)
-      .flatMap((file) => noAuditOperations(readFileSync(file, 'utf8')));
+      .flatMap((file) => noAuditOperations(readFileSync(file, 'utf8'), file));
     const usedOperations = new Set([
       ...directOperations,
       ...Object.values(SYNC_TRANSACTION_POLICIES),

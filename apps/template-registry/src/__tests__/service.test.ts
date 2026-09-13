@@ -1425,6 +1425,69 @@ describe('independent registry HTTP behavior with PostgreSQL permissions', () =>
     },
   );
 
+  it('records canonical database UUIDs for uppercase command locators', async () => {
+    const author = await fixture.account('uppercase-audit@example.test');
+    const operator = await fixture.account(
+      'uppercase-audit-operator@example.test',
+      true,
+    );
+    const created = await fixture.published(author.token, 'Uppercase audit');
+    expect(
+      (
+        await fixture.request(
+          'PUT',
+          `/moderation/entries/${created.entry.id.toUpperCase()}/curation`,
+          { curated: true },
+          operator.bearer,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await fixture.request(
+          'POST',
+          `/entries/${created.entry.id.toUpperCase()}/yank`,
+          undefined,
+          author.bearer,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await fixture.request(
+          'DELETE',
+          `/account/tokens/${author.credential.id.toUpperCase()}`,
+          undefined,
+          author.headers,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await fixture.request(
+          'PUT',
+          `/moderation/publishers/${author.publisher.id.toUpperCase()}/suspension`,
+          { suspended: true },
+          operator.bearer,
+        )
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await fixture.owner.query(
+          `SELECT action, subject_id FROM registry_audit
+           WHERE action IN ('credential.revoked', 'entry.yanked', 'entry.curated', 'publisher.suspended')
+           ORDER BY action`,
+        )
+      ).rows,
+    ).toEqual([
+      { action: 'credential.revoked', subject_id: author.credential.id },
+      { action: 'entry.curated', subject_id: created.entry.id },
+      { action: 'entry.yanked', subject_id: created.entry.id },
+      { action: 'publisher.suspended', subject_id: author.publisher.id },
+    ]);
+  });
+
   it('caps auth bodies before calling the mail provider even when Content-Length is omitted', async () => {
     let canceled = false;
     const body = new ReadableStream<Uint8Array>({

@@ -36,7 +36,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 1024,
-            "pattern": "^[A-Za-z0-9_-]+$"
+            "pattern": "^[A-Za-z0-9_-]+$(?![\\s\\S])"
           },
           "limit": {
             "default": 20,
@@ -46,8 +46,7 @@
           },
           "query": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 200
+            "minLength": 1
           },
           "kind": {
             "type": "string",
@@ -65,13 +64,11 @@
           },
           "keyword": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 100
+            "minLength": 1
           },
           "author": {
             "type": "string",
-            "minLength": 1,
-            "maxLength": 200
+            "minLength": 1
           },
           "curated": {
             "type": "string",
@@ -79,13 +76,13 @@
           },
           "root": {
             "type": "string",
-            "pattern": "^[0-9a-f]{64}$",
+            "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
             "description": "Exact artifact root. Combined with publisher_id, includes yanked publications while still excluding removed content."
           },
           "publisher_id": {
             "type": "string",
             "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
           }
         },
         "additionalProperties": false
@@ -96,7 +93,7 @@
           "id": {
             "type": "string",
             "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])",
             "description": "Publication UUID for this registry entry."
           },
           "publisher": {
@@ -104,7 +101,7 @@
           },
           "root": {
             "type": "string",
-            "pattern": "^[0-9a-f]{64}$",
+            "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
             "description": "Artifact identity: the merkle_root from the template manifest."
           },
           "template": {
@@ -174,17 +171,26 @@
           "id": {
             "type": "string",
             "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
           },
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 200
+            "maxLength": 200,
+            "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
           },
           "orcid": {
-            "type": "string",
-            "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$",
-            "nullable": true
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$"
+              },
+              {
+                "type": "string",
+                "nullable": true,
+                "enum": [null]
+              }
+            ]
           }
         },
         "required": ["id", "name", "orcid"],
@@ -228,7 +234,7 @@
           "request_id": {
             "type": "string",
             "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
           },
           "context": {
             "type": "object",
@@ -264,7 +270,7 @@
           "id": {
             "type": "string",
             "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])",
             "description": "Publication UUID for this registry entry."
           },
           "publisher": {
@@ -272,7 +278,7 @@
           },
           "root": {
             "type": "string",
-            "pattern": "^[0-9a-f]{64}$",
+            "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
             "description": "Artifact identity: the merkle_root from the template manifest."
           },
           "template": {
@@ -451,6 +457,611 @@
           "report_url"
         ],
         "additionalProperties": false
+      },
+      "RegistryProblem400": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [400]
+          },
+          "code": {
+            "type": "string",
+            "enum": ["INVALID_REQUEST"]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "RegistryProblem401": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [401]
+          },
+          "code": {
+            "type": "string",
+            "enum": ["AUTHENTICATION_REQUIRED"]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "RegistryProblem403": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [403]
+          },
+          "code": {
+            "type": "string",
+            "enum": ["FORBIDDEN"]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "RegistryProblem404": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [404]
+          },
+          "code": {
+            "type": "string",
+            "enum": ["NOT_FOUND"]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "RegistryProblem408": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [408]
+          },
+          "code": {
+            "type": "string",
+            "enum": ["REQUEST_TIMEOUT"]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "RegistryProblem409": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [409]
+          },
+          "code": {
+            "type": "string",
+            "enum": ["CONFLICT", "STORAGE_LIMIT_REACHED"]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "RegistryProblem410": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [410]
+          },
+          "code": {
+            "type": "string",
+            "enum": ["CONTENT_REMOVED"]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "RegistryProblem413": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [413]
+          },
+          "code": {
+            "type": "string",
+            "enum": ["CONTENT_TOO_LARGE"]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "RegistryProblem422": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [422]
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "ARTIFACT_INVALID",
+              "FORMAT_UNSUPPORTED",
+              "SCHEMA_UNSUPPORTED",
+              "CURATION_METADATA_REQUIRED"
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "RegistryProblem429": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [429]
+          },
+          "code": {
+            "type": "string",
+            "enum": ["RATE_LIMITED"]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "RegistryProblem500": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [500]
+          },
+          "code": {
+            "type": "string",
+            "enum": ["INTERNAL_SERVER_ERROR"]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
+      },
+      "RegistryProblem503": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "enum": [503]
+          },
+          "code": {
+            "type": "string",
+            "enum": ["SERVICE_UNAVAILABLE"]
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+          },
+          "context": {
+            "type": "object",
+            "properties": {
+              "supported_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "artifact_schema_version": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 9007199254740991
+              },
+              "retry_after_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 86400
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": ["type", "title", "status", "code", "request_id"],
+        "additionalProperties": false
       }
     }
   },
@@ -467,7 +1078,7 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 1024,
-              "pattern": "^[A-Za-z0-9_-]+$"
+              "pattern": "^[A-Za-z0-9_-]+$(?![\\s\\S])"
             },
             "allowEmptyValue": false,
             "allowReserved": true
@@ -558,7 +1169,7 @@
             "name": "root",
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-f]{64}$",
+              "pattern": "^[0-9a-f]{64}$(?![\\s\\S])",
               "description": "Exact artifact root. Combined with publisher_id, includes yanked publications while still excluding removed content."
             },
             "allowEmptyValue": false,
@@ -570,7 +1181,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             },
             "allowEmptyValue": false,
             "allowReserved": true
@@ -582,27 +1193,53 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/EntrySummary"
-                      }
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/EntrySummary"
+                          }
+                        },
+                        "next_cursor": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 1024,
+                          "pattern": "^[A-Za-z0-9_-]+$(?![\\s\\S])"
+                        },
+                        "has_more": {
+                          "type": "boolean",
+                          "enum": [true]
+                        }
+                      },
+                      "required": ["data", "next_cursor", "has_more"],
+                      "additionalProperties": false
                     },
-                    "next_cursor": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 1024,
-                      "pattern": "^[A-Za-z0-9_-]+$",
-                      "nullable": true
-                    },
-                    "has_more": {
-                      "type": "boolean"
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/EntrySummary"
+                          }
+                        },
+                        "next_cursor": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [null]
+                        },
+                        "has_more": {
+                          "type": "boolean",
+                          "enum": [false]
+                        }
+                      },
+                      "required": ["data", "next_cursor", "has_more"],
+                      "additionalProperties": false
                     }
-                  },
-                  "required": ["data", "next_cursor", "has_more"],
-                  "additionalProperties": false
+                  ]
                 }
               }
             }
@@ -612,7 +1249,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -622,7 +1259,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -632,7 +1269,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -642,7 +1279,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -652,7 +1289,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -662,7 +1299,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -672,7 +1309,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -682,7 +1319,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -692,7 +1329,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -702,7 +1339,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -712,7 +1349,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -722,7 +1359,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -772,7 +1409,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -782,7 +1419,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -792,7 +1429,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -802,7 +1439,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -812,7 +1449,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -822,7 +1459,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -832,7 +1469,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -842,7 +1479,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -852,7 +1489,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -862,7 +1499,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -872,7 +1509,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -882,7 +1519,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -908,21 +1545,10 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {},
-                "additionalProperties": false
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "OK",
@@ -939,7 +1565,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -949,7 +1575,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -959,7 +1585,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -969,7 +1595,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -979,7 +1605,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -989,7 +1615,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -999,7 +1625,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -1009,7 +1635,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -1019,7 +1645,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -1029,7 +1655,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -1039,7 +1665,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -1049,7 +1675,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -1068,21 +1694,10 @@
             "name": "root",
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-f]{64}$"
+              "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {},
-                "additionalProperties": false
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "OK",
@@ -1126,7 +1741,7 @@
                 "required": true,
                 "schema": {
                   "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
+                  "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
                 }
               },
               "x-registry-yanked": {
@@ -1144,7 +1759,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -1154,7 +1769,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -1164,7 +1779,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -1174,7 +1789,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -1184,7 +1799,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -1194,7 +1809,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -1204,7 +1819,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -1214,7 +1829,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -1224,7 +1839,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -1234,7 +1849,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -1244,7 +1859,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -1254,7 +1869,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -1266,6 +1881,7 @@
       "post": {
         "operationId": "yank",
         "summary": "Withdraw an entry from browsing",
+        "description": "Requires a publish-scoped credential whose publisher owns the targeted entry.",
         "parameters": [
           {
             "in": "path",
@@ -1274,7 +1890,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           }
         ],
@@ -1305,7 +1921,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -1315,7 +1931,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -1325,7 +1941,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -1335,7 +1951,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -1345,7 +1961,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -1355,7 +1971,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -1365,7 +1981,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -1375,7 +1991,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -1385,7 +2001,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -1395,7 +2011,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -1405,7 +2021,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -1415,7 +2031,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -1441,7 +2057,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           }
         ],
@@ -1465,7 +2081,8 @@
                   "details": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 2000
+                    "maxLength": 2000,
+                    "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
                   }
                 },
                 "required": ["category", "details"],
@@ -1485,7 +2102,7 @@
                     "id": {
                       "type": "string",
                       "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
                     }
                   },
                   "required": ["id"],
@@ -1499,7 +2116,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -1509,7 +2126,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -1519,7 +2136,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -1529,7 +2146,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -1539,7 +2156,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -1549,7 +2166,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -1559,7 +2176,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -1569,7 +2186,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -1579,7 +2196,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -1589,7 +2206,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -1599,7 +2216,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -1609,7 +2226,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -1637,7 +2254,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -1647,7 +2264,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -1657,7 +2274,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -1667,7 +2284,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -1677,7 +2294,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -1687,7 +2304,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -1697,7 +2314,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -1707,7 +2324,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -1717,7 +2334,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -1727,7 +2344,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -1737,7 +2354,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -1747,7 +2364,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -1789,17 +2406,26 @@
                         "id": {
                           "type": "string",
                           "format": "uuid",
-                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
                         },
                         "name": {
                           "type": "string",
                           "minLength": 1,
-                          "maxLength": 200
+                          "maxLength": 200,
+                          "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
                         },
                         "orcid": {
-                          "type": "string",
-                          "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$",
-                          "nullable": true
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$"
+                            },
+                            {
+                              "type": "string",
+                              "nullable": true,
+                              "enum": [null]
+                            }
+                          ]
                         }
                       },
                       "required": ["id", "name", "orcid"],
@@ -1830,7 +2456,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -1840,7 +2466,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -1850,7 +2476,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -1860,7 +2486,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -1870,7 +2496,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -1880,7 +2506,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -1890,7 +2516,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -1900,7 +2526,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -1910,7 +2536,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -1920,7 +2546,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -1930,7 +2556,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -1940,7 +2566,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -1967,7 +2593,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
                   },
                   "orcid": {
                     "type": "string",
@@ -1996,7 +2623,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -2006,7 +2633,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -2016,7 +2643,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -2026,7 +2653,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -2036,7 +2663,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -2046,7 +2673,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -2056,7 +2683,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -2066,7 +2693,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -2076,7 +2703,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -2086,7 +2713,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -2096,7 +2723,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -2106,7 +2733,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -2145,7 +2772,8 @@
                   "name": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 100
+                    "maxLength": 100,
+                    "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
                   },
                   "scopes": {
                     "minItems": 1,
@@ -2178,7 +2806,8 @@
                   "type": "object",
                   "properties": {
                     "token": {
-                      "type": "string"
+                      "type": "string",
+                      "pattern": "^ncr1_[A-Za-z0-9_-]{43}$(?![\\s\\S])"
                     },
                     "credential": {
                       "type": "object",
@@ -2186,12 +2815,17 @@
                         "id": {
                           "type": "string",
                           "format": "uuid",
-                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
                         },
                         "name": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100,
+                          "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
                         },
                         "scopes": {
+                          "minItems": 1,
+                          "maxItems": 2,
                           "type": "array",
                           "items": {
                             "type": "string",
@@ -2210,9 +2844,8 @@
                         },
                         "revoked_at": {
                           "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
-                          "nullable": true
+                          "nullable": true,
+                          "enum": [null]
                         }
                       },
                       "required": [
@@ -2237,7 +2870,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -2247,7 +2880,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -2257,7 +2890,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -2267,7 +2900,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -2277,7 +2910,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -2287,7 +2920,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -2297,7 +2930,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -2307,7 +2940,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -2317,7 +2950,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -2327,7 +2960,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -2337,7 +2970,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -2347,7 +2980,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -2390,12 +3023,17 @@
                           "id": {
                             "type": "string",
                             "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
                           },
                           "name": {
-                            "type": "string"
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100,
+                            "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
                           },
                           "scopes": {
+                            "minItems": 1,
+                            "maxItems": 2,
                             "type": "array",
                             "items": {
                               "type": "string",
@@ -2414,9 +3052,8 @@
                           },
                           "revoked_at": {
                             "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
-                            "nullable": true
+                            "nullable": true,
+                            "enum": [null]
                           }
                         },
                         "required": [
@@ -2442,7 +3079,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -2452,7 +3089,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -2462,7 +3099,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -2472,7 +3109,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -2482,7 +3119,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -2492,7 +3129,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -2502,7 +3139,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -2512,7 +3149,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -2522,7 +3159,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -2532,7 +3169,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -2542,7 +3179,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -2552,7 +3189,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -2577,7 +3214,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           },
           {
@@ -2625,7 +3262,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -2635,7 +3272,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -2645,7 +3282,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -2655,7 +3292,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -2665,7 +3302,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -2675,7 +3312,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -2685,7 +3322,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -2695,7 +3332,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -2705,7 +3342,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -2715,7 +3352,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -2725,7 +3362,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -2735,7 +3372,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -2760,7 +3397,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           }
         ],
@@ -2799,7 +3436,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -2809,7 +3446,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -2819,7 +3456,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -2829,7 +3466,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -2839,7 +3476,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -2849,7 +3486,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -2859,7 +3496,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -2869,7 +3506,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -2879,7 +3516,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -2889,7 +3526,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -2899,7 +3536,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -2909,7 +3546,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -2936,7 +3573,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           }
         ],
@@ -2975,7 +3612,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -2985,7 +3622,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -2995,7 +3632,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -3005,7 +3642,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -3015,7 +3652,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -3025,7 +3662,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -3035,7 +3672,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -3045,7 +3682,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -3055,7 +3692,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -3065,7 +3702,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -3075,7 +3712,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -3085,7 +3722,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -3111,7 +3748,7 @@
             "name": "root",
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-f]{64}$"
+              "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
             }
           }
         ],
@@ -3150,7 +3787,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -3160,7 +3797,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -3170,7 +3807,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -3180,7 +3817,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -3190,7 +3827,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -3200,7 +3837,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -3210,7 +3847,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -3220,7 +3857,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -3230,7 +3867,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -3240,7 +3877,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -3250,7 +3887,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -3260,7 +3897,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -3287,7 +3924,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           }
         ],
@@ -3332,7 +3969,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -3342,7 +3979,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -3352,7 +3989,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -3362,7 +3999,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -3372,7 +4009,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -3382,7 +4019,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -3392,7 +4029,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -3402,7 +4039,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -3412,7 +4049,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -3422,7 +4059,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -3432,7 +4069,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -3442,7 +4079,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -3469,7 +4106,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           }
         ],
@@ -3514,7 +4151,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -3524,7 +4161,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -3534,7 +4171,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -3544,7 +4181,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -3554,7 +4191,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -3564,7 +4201,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -3574,7 +4211,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -3584,7 +4221,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -3594,7 +4231,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -3604,7 +4241,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -3614,7 +4251,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -3624,7 +4261,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -3674,65 +4311,152 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                          },
-                          "entry_id": {
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                          },
-                          "category": {
-                            "type": "string",
-                            "enum": [
-                              "privacy",
-                              "copyright",
-                              "harmful_content",
-                              "spam",
-                              "other"
-                            ]
-                          },
-                          "details": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "created_at": {
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
+                              "entry_id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
+                              "category": {
+                                "type": "string",
+                                "enum": [
+                                  "privacy",
+                                  "copyright",
+                                  "harmful_content",
+                                  "spam",
+                                  "other"
+                                ]
+                              },
+                              "details": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000,
+                                    "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "enum": [null]
+                                  }
+                                ]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "entry_id",
+                              "category",
+                              "details",
+                              "created_at"
+                            ],
+                            "additionalProperties": false
                           }
                         },
-                        "required": [
-                          "id",
-                          "entry_id",
-                          "category",
-                          "details",
-                          "created_at"
-                        ],
-                        "additionalProperties": false
-                      }
+                        "next_cursor": {
+                          "type": "string",
+                          "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
+                          "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive."
+                        },
+                        "has_more": {
+                          "type": "boolean",
+                          "enum": [true]
+                        }
+                      },
+                      "required": ["data", "next_cursor", "has_more"],
+                      "additionalProperties": false
                     },
-                    "next_cursor": {
-                      "type": "string",
-                      "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
-                      "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive.",
-                      "nullable": true
-                    },
-                    "has_more": {
-                      "type": "boolean"
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
+                              "entry_id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
+                              "category": {
+                                "type": "string",
+                                "enum": [
+                                  "privacy",
+                                  "copyright",
+                                  "harmful_content",
+                                  "spam",
+                                  "other"
+                                ]
+                              },
+                              "details": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000,
+                                    "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "enum": [null]
+                                  }
+                                ]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "entry_id",
+                              "category",
+                              "details",
+                              "created_at"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "next_cursor": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [null]
+                        },
+                        "has_more": {
+                          "type": "boolean",
+                          "enum": [false]
+                        }
+                      },
+                      "required": ["data", "next_cursor", "has_more"],
+                      "additionalProperties": false
                     }
-                  },
-                  "required": ["data", "next_cursor", "has_more"],
-                  "additionalProperties": false
+                  ]
                 }
               }
             }
@@ -3742,7 +4466,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -3752,7 +4476,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -3762,7 +4486,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -3772,7 +4496,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -3782,7 +4506,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -3792,7 +4516,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -3802,7 +4526,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -3812,7 +4536,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -3822,7 +4546,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -3832,7 +4556,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -3842,7 +4566,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -3852,7 +4576,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -3879,7 +4603,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           },
           {
@@ -3927,7 +4651,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -3937,7 +4661,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -3947,7 +4671,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -3957,7 +4681,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -3967,7 +4691,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -3977,7 +4701,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -3987,7 +4711,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -3997,7 +4721,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -4007,7 +4731,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -4017,7 +4741,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -4027,7 +4751,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -4037,7 +4761,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -4063,7 +4787,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           },
           {
@@ -4111,7 +4835,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -4121,7 +4845,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -4131,7 +4855,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -4141,7 +4865,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -4151,7 +4875,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -4161,7 +4885,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -4171,7 +4895,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -4181,7 +4905,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -4191,7 +4915,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -4201,7 +4925,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -4211,7 +4935,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -4221,7 +4945,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -4246,7 +4970,7 @@
             "name": "root",
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-f]{64}$"
+              "pattern": "^[0-9a-f]{64}$(?![\\s\\S])"
             }
           },
           {
@@ -4294,7 +5018,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -4304,7 +5028,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -4314,7 +5038,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -4324,7 +5048,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -4334,7 +5058,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -4344,7 +5068,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -4354,7 +5078,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -4364,7 +5088,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -4374,7 +5098,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -4384,7 +5108,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -4394,7 +5118,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -4404,7 +5128,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -4430,7 +5154,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           },
           {
@@ -4484,7 +5208,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -4494,7 +5218,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -4504,7 +5228,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -4514,7 +5238,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -4524,7 +5248,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -4534,7 +5258,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -4544,7 +5268,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -4554,7 +5278,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -4564,7 +5288,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -4574,7 +5298,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -4584,7 +5308,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -4594,7 +5318,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -4620,7 +5344,7 @@
             "schema": {
               "type": "string",
               "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
             }
           },
           {
@@ -4674,7 +5398,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -4684,7 +5408,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -4694,7 +5418,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -4704,7 +5428,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -4714,7 +5438,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -4724,7 +5448,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -4734,7 +5458,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -4744,7 +5468,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -4754,7 +5478,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -4764,7 +5488,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -4774,7 +5498,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -4784,7 +5508,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }
@@ -4832,65 +5556,152 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                          },
-                          "entry_id": {
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                          },
-                          "category": {
-                            "type": "string",
-                            "enum": [
-                              "privacy",
-                              "copyright",
-                              "harmful_content",
-                              "spam",
-                              "other"
-                            ]
-                          },
-                          "details": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "created_at": {
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
+                              "entry_id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
+                              "category": {
+                                "type": "string",
+                                "enum": [
+                                  "privacy",
+                                  "copyright",
+                                  "harmful_content",
+                                  "spam",
+                                  "other"
+                                ]
+                              },
+                              "details": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000,
+                                    "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "enum": [null]
+                                  }
+                                ]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "entry_id",
+                              "category",
+                              "details",
+                              "created_at"
+                            ],
+                            "additionalProperties": false
                           }
                         },
-                        "required": [
-                          "id",
-                          "entry_id",
-                          "category",
-                          "details",
-                          "created_at"
-                        ],
-                        "additionalProperties": false
-                      }
+                        "next_cursor": {
+                          "type": "string",
+                          "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
+                          "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive."
+                        },
+                        "has_more": {
+                          "type": "boolean",
+                          "enum": [true]
+                        }
+                      },
+                      "required": ["data", "next_cursor", "has_more"],
+                      "additionalProperties": false
                     },
-                    "next_cursor": {
-                      "type": "string",
-                      "pattern": "^(?:[1-9][0-9]{0,17}|[1-8][0-9]{18}|9[0-1][0-9]{17}|92[0-1][0-9]{16}|922[0-2][0-9]{15}|9223[0-2][0-9]{14}|92233[0-6][0-9]{13}|922337[0-1][0-9]{12}|92233720[0-2][0-9]{10}|922337203[0-5][0-9]{9}|9223372036[0-7][0-9]{8}|92233720368[0-4][0-9]{7}|922337203685[0-3][0-9]{6}|9223372036854[0-6][0-9]{5}|92233720368547[0-6][0-9]{4}|922337203685477[0-4][0-9]{3}|9223372036854775[0-7][0-9]{2}|922337203685477580[0-6][0-9]{0}|9223372036854775807)$(?![\\s\\S])",
-                      "description": "Decimal report sequence returned by the preceding reports page, from 1 through 9223372036854775807 inclusive.",
-                      "nullable": true
-                    },
-                    "has_more": {
-                      "type": "boolean"
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
+                              "entry_id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$(?![\\s\\S])"
+                              },
+                              "category": {
+                                "type": "string",
+                                "enum": [
+                                  "privacy",
+                                  "copyright",
+                                  "harmful_content",
+                                  "spam",
+                                  "other"
+                                ]
+                              },
+                              "details": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000,
+                                    "pattern": "^(?=[\\s\\S]*\\S)[\\s\\S]+$(?![\\s\\S])"
+                                  },
+                                  {
+                                    "type": "string",
+                                    "nullable": true,
+                                    "enum": [null]
+                                  }
+                                ]
+                              },
+                              "created_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "entry_id",
+                              "category",
+                              "details",
+                              "created_at"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "next_cursor": {
+                          "type": "string",
+                          "nullable": true,
+                          "enum": [null]
+                        },
+                        "has_more": {
+                          "type": "boolean",
+                          "enum": [false]
+                        }
+                      },
+                      "required": ["data", "next_cursor", "has_more"],
+                      "additionalProperties": false
                     }
-                  },
-                  "required": ["data", "next_cursor", "has_more"],
-                  "additionalProperties": false
+                  ]
                 }
               }
             }
@@ -4900,7 +5711,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem400"
                 }
               }
             }
@@ -4910,7 +5721,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem401"
                 }
               }
             }
@@ -4920,7 +5731,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem403"
                 }
               }
             }
@@ -4930,7 +5741,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem404"
                 }
               }
             }
@@ -4940,7 +5751,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem408"
                 }
               }
             }
@@ -4950,7 +5761,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem409"
                 }
               }
             }
@@ -4960,7 +5771,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem410"
                 }
               }
             }
@@ -4970,7 +5781,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem413"
                 }
               }
             }
@@ -4980,7 +5791,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem422"
                 }
               }
             }
@@ -4990,7 +5801,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem429"
                 }
               }
             }
@@ -5000,7 +5811,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem500"
                 }
               }
             }
@@ -5010,7 +5821,7 @@
             "content": {
               "application/problem+json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RegistryProblem"
+                  "$ref": "#/components/schemas/RegistryProblem503"
                 }
               }
             }

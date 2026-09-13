@@ -3,6 +3,7 @@ import { execFile, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
 import { chmod, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { isAbsolute, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
@@ -20,6 +21,24 @@ import {
 
 const execute = promisify(execFile);
 const DEADLINE = 30_000;
+
+// Match Playwright's default headless executable. chromium.executablePath()
+// selects full Chrome for Testing, whose browser-owned time/component services
+// emit network requests even with Playwright's default background flags.
+// Resolve through our installed Playwright dependency and its pinned registry;
+// never guess a cache layout or silently fall back to a different browser.
+const playwrightRequire = createRequire(import.meta.resolve('playwright'));
+const {
+  registry: { registry: browserRegistry },
+} = playwrightRequire('playwright-core/lib/coreBundle');
+export function kernelHeadlessExecutablePath() {
+  const executable = browserRegistry.findExecutable('chromium-headless-shell');
+  assert(
+    executable,
+    'Installed Playwright does not expose Chromium Headless Shell.',
+  );
+  return executable.executablePathOrDie('javascript');
+}
 
 function environmentAssignment(name, value) {
   assert(value && !value.includes('\0'), `${name} is required.`);
@@ -245,6 +264,12 @@ export async function launchKernelObservedChromium({
       'ALL',
       '--cap-add',
       'NET_ADMIN',
+      '--cap-add',
+      'NET_RAW',
+      '--cap-add',
+      'SETUID',
+      '--cap-add',
+      'SETGID',
       '--env',
       `STUDIO_QUALIFICATION_KERNEL_ENDPOINTS=${endpoints}`,
       '--entrypoint',
@@ -276,15 +301,59 @@ export async function launchKernelObservedChromium({
         namespacePid,
         browserUid,
         browserGid,
-        executablePath: chromium.executablePath(),
+        executablePath: kernelHeadlessExecutablePath(),
       }),
       { mode: 0o700 },
     );
     await chmod(wrapper, 0o700);
+    // Capture only this disposable namespace's synthetic DNS traffic. Keep the
+    // ordinary conntrack verdict authoritative; these bounded diagnostics do
+    // not exempt a resolver or change any browser networking behavior.
+    await docker([
+      'exec',
+      '--detach',
+      observer,
+      'sh',
+      '-c',
+      'timeout 30 tcpdump -i lo -nn -l -s 256 -c 32 port 53 > /tmp/browser-dns.log 2>&1',
+    ]);
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const diagnostic = await docker([
+        'exec',
+        observer,
+        'cat',
+        '/tmp/browser-dns.log',
+      ]);
+      if (diagnostic.includes('listening on lo')) break;
+      if (attempt === 49)
+        throw new Error(
+          `Browser DNS diagnostic did not start: ${diagnostic.slice(-4096)}`,
+        );
+      await delay(100);
+    }
+    const assertBaseline = async (phase) => {
+      const logs = await waitForObserver(observer);
+      try {
+        assertNoKernelTelemetryEgress(logs);
+      } catch (error) {
+        const diagnostic = await docker([
+          'exec',
+          observer,
+          'cat',
+          '/tmp/browser-dns.log',
+        ]);
+        throw new Error(
+          `Kernel browser baseline emitted unexpected traffic ${phase}. DNS diagnostic: ${diagnostic.slice(-4096)}`,
+          { cause: error },
+        );
+      }
+    };
     const browser = await chromium.launch({
       executablePath: wrapper,
       headless: true,
     });
+    await delay(500);
+    await assertBaseline('after Chromium launch, before controls or Studio');
     const control = await browser.newPage();
     await control
       .goto(`http://${detectorIp}:8443/`, { waitUntil: 'commit' })
@@ -305,7 +374,7 @@ export async function launchKernelObservedChromium({
       { address: detectorIp, port: 8443 },
     );
     await control.close();
-    await waitForObserver(observer);
+    await assertBaseline('after controls, before Studio');
     return {
       browser,
       origin: (port) => `http://127.0.0.1:${port}`,

@@ -15,105 +15,126 @@ import { templateBytesHash } from '@codaco/studio-sync/template-exchange';
 
 import {
   copyRegistryRecoveryReconciliation,
+  createRegistryRecoveryInventory,
   readRegistryRecoveryReconciliation,
 } from './recovery-reconciliation.ts';
 
+const emptyInventory = createRegistryRecoveryInventory('users', []);
 const evidence = {
-  format: 'template-registry-recovery-reconciliation',
-  version: 2,
-  users: [],
-  entries: [],
+  format: 'template-registry-recovery-reconciliation' as const,
+  version: 3 as const,
+  inventories: {
+    users: emptyInventory,
+    publishers: createRegistryRecoveryInventory('publishers', []),
+    operators: createRegistryRecoveryInventory('operators', []),
+    entries: createRegistryRecoveryInventory('entries', []),
+    artifacts: createRegistryRecoveryInventory('artifacts', []),
+  },
 };
 const bytes = Buffer.from(JSON.stringify(evidence) + '\n');
 
-it('requires a unique stable publisher UUID for every publishing account', () => {
-  const publisher = {
-    id: 'first',
-    email: 'first@example.test',
-    emailVerified: true,
-    publisher: 'active' as const,
-    publisherId: '00000000-0000-4000-8000-00000000000A',
-    operator: false,
-  };
-  const input = {
-    format: 'template-registry-recovery-reconciliation' as const,
-    version: 2 as const,
-    users: [publisher],
-    entries: [],
-  };
-  expect(copyRegistryRecoveryReconciliation(input).users[0]?.publisherId).toBe(
-    publisher.publisherId.toLowerCase(),
+it('builds canonical, ordered inventories that bind every authority field', () => {
+  const entry = createRegistryRecoveryInventory('entries', [
+    {
+      id: '00000000-0000-4000-8000-00000000000A',
+      publisherId: '00000000-0000-4000-8000-00000000000B',
+      artifactRoot: 'c'.repeat(64),
+      yanked: false,
+    },
+  ]);
+  expect(entry.count).toBe('1');
+  expect(entry.sha256).toMatch(/^[0-9a-f]{64}$/);
+  expect(
+    createRegistryRecoveryInventory('entries', [
+      {
+        id: '00000000-0000-4000-8000-00000000000a',
+        publisherId: '00000000-0000-4000-8000-00000000000b',
+        artifactRoot: 'd'.repeat(64),
+        yanked: false,
+      },
+    ]).sha256,
+  ).not.toBe(entry.sha256);
+  expect(() =>
+    createRegistryRecoveryInventory('users', [
+      { id: 'z', email: 'z@example.test', emailVerified: true },
+      { id: 'a', email: 'a@example.test', emailVerified: true },
+    ]),
+  ).toThrow('strictly ordered');
+  expect(
+    createRegistryRecoveryInventory('users', [
+      {
+        id: 'publisher',
+        email: 'Researcher@EXAMPLE.TEST',
+        emailVerified: true,
+      },
+    ]),
+  ).toEqual(
+    createRegistryRecoveryInventory('users', [
+      {
+        id: 'publisher',
+        email: 'Researcher@example.test',
+        emailVerified: true,
+      },
+    ]),
   );
   expect(() =>
     copyRegistryRecoveryReconciliation({
-      ...input,
-      users: [{ ...publisher, publisherId: null }],
-    }),
-  ).toThrow();
-  expect(() =>
-    copyRegistryRecoveryReconciliation({
-      ...input,
-      users: [{ ...publisher, publisher: 'none' }],
-    }),
-  ).toThrow();
-  expect(() =>
-    copyRegistryRecoveryReconciliation({
-      ...input,
-      users: [
-        publisher,
-        {
-          ...publisher,
-          id: 'second',
-          email: 'second@example.test',
-          publisherId: publisher.publisherId.toLowerCase(),
-        },
-      ],
+      ...evidence,
+      version: 2 as never,
     }),
   ).toThrow();
 });
 
-it('requires unique entry ownership bound to an approved publisher', () => {
-  const publisher = {
-    id: 'publisher',
-    email: 'publisher@example.test',
-    emailVerified: true,
-    publisher: 'active' as const,
-    publisherId: '00000000-0000-4000-8000-00000000000A',
-    operator: false,
-  };
-  const entry = {
-    id: '00000000-0000-4000-8000-00000000000B',
-    publisherId: publisher.publisherId,
-  };
-  const input = {
-    format: 'template-registry-recovery-reconciliation' as const,
-    version: 2 as const,
-    users: [publisher],
-    entries: [entry],
-  };
-  expect(copyRegistryRecoveryReconciliation(input).entries).toEqual([
-    {
-      id: entry.id.toLowerCase(),
-      publisherId: publisher.publisherId.toLowerCase(),
+it('rejects trailing bytes in canonical counts, hashes, and artifact roots', () => {
+  expect(() =>
+    copyRegistryRecoveryReconciliation({
+      ...evidence,
+      inventories: {
+        ...evidence.inventories,
+        users: { ...emptyInventory, count: '0\n' },
+      },
+    }),
+  ).toThrow();
+  expect(() =>
+    copyRegistryRecoveryReconciliation({
+      ...evidence,
+      inventories: {
+        ...evidence.inventories,
+        users: { ...emptyInventory, sha256: `${emptyInventory.sha256}\n` },
+      },
+    }),
+  ).toThrow();
+  expect(() =>
+    createRegistryRecoveryInventory('entries', [
+      {
+        id: '00000000-0000-4000-8000-000000000001',
+        publisherId: '00000000-0000-4000-8000-000000000002',
+        artifactRoot: `${'a'.repeat(64)}\n`,
+        yanked: false,
+      },
+    ]),
+  ).toThrow();
+});
+
+it('keeps independently prepared evidence bounded for large populations', () => {
+  function* entries() {
+    for (let index = 0; index < 200_000; index += 1)
+      yield {
+        id: `00000000-0000-4000-8000-${index.toString(16).padStart(12, '0')}`,
+        publisherId: '00000000-0000-4000-8000-000000000001',
+        artifactRoot: index.toString(16).padStart(64, '0'),
+        yanked: false,
+      };
+  }
+  const large = {
+    ...evidence,
+    inventories: {
+      ...evidence.inventories,
+      entries: createRegistryRecoveryInventory('entries', entries()),
     },
-  ]);
-  expect(() =>
-    copyRegistryRecoveryReconciliation({
-      ...input,
-      entries: [entry, entry],
-    }),
-  ).toThrow();
-  expect(() =>
-    copyRegistryRecoveryReconciliation({
-      ...input,
-      entries: [
-        {
-          ...entry,
-          publisherId: '00000000-0000-4000-8000-00000000000C',
-        },
-      ],
-    }),
-  ).toThrow();
+  };
+  expect(large.inventories.entries.count).toBe('200000');
+  expect(Buffer.byteLength(JSON.stringify(large))).toBeLessThan(1024);
 });
 
 it('verifies the exact private evidence bytes before parsing', async () => {
@@ -130,9 +151,10 @@ it('verifies the exact private evidence bytes before parsing', async () => {
         templateBytesHash(bytes.subarray(0, -1)),
       ),
     ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
-    const legacy = Buffer.from(
-      JSON.stringify({ ...evidence, version: 1, entries: undefined }),
-    );
+    await expect(
+      readRegistryRecoveryReconciliation(path, `${templateBytesHash(bytes)}\n`),
+    ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
+    const legacy = Buffer.from(JSON.stringify({ ...evidence, version: 2 }));
     await writeFile(path, legacy, { mode: 0o600 });
     await expect(
       readRegistryRecoveryReconciliation(path, templateBytesHash(legacy)),
@@ -143,8 +165,8 @@ it('verifies the exact private evidence bytes before parsing', async () => {
 });
 
 it.each([
-  '{"format":"template-registry-recovery-reconciliation","version":3,"version":2,"users":[],"entries":[]}',
-  '{"format":"template-registry-recovery-reconciliation","version":2,"users":[{"id":"one","email":"one@example.test","emailVerified":true,"publisher":"active","publisherId":"00000000-0000-4000-8000-000000000001","operator":false,"operator":true}],"entries":[]}',
+  `{ "format":"template-registry-recovery-reconciliation", "version":3, "version":2, "inventories":${JSON.stringify(evidence.inventories)} }`,
+  `{ "format":"template-registry-recovery-reconciliation", "version":3, "inventories":{ "users":${JSON.stringify(emptyInventory)}, "users":${JSON.stringify(emptyInventory)}, "publishers":${JSON.stringify(emptyInventory)}, "operators":${JSON.stringify(emptyInventory)}, "entries":${JSON.stringify(emptyInventory)} } }`,
 ])(
   'rejects duplicate recovery evidence members before parsing: %s',
   async (text) => {
@@ -178,71 +200,6 @@ it('rejects malformed UTF-8 recovery evidence before JSON parsing', async () => 
     await expect(
       readRegistryRecoveryReconciliation(path, templateBytesHash(malformed)),
     ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-it('normalizes evidence email domains and requires verified authority', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'registry-evidence-user-'));
-  const path = join(directory, 'current.json');
-  try {
-    const input = {
-      ...evidence,
-      users: [
-        {
-          id: 'publisher',
-          email: 'Researcher@EXAMPLE.TEST',
-          emailVerified: true,
-          publisher: 'active',
-          publisherId: '00000000-0000-4000-8000-000000000001',
-          operator: true,
-        },
-      ],
-    };
-    const userBytes = Buffer.from(JSON.stringify(input));
-    await writeFile(path, userBytes, { mode: 0o600 });
-    await expect(
-      readRegistryRecoveryReconciliation(path, templateBytesHash(userBytes)),
-    ).resolves.toMatchObject({
-      users: [{ email: 'Researcher@example.test', emailVerified: true }],
-    });
-    const unverifiedBytes = Buffer.from(
-      JSON.stringify({
-        ...input,
-        users: [{ ...input.users[0], emailVerified: false }],
-      }),
-    );
-    await writeFile(path, unverifiedBytes, { mode: 0o600 });
-    await expect(
-      readRegistryRecoveryReconciliation(
-        path,
-        templateBytesHash(unverifiedBytes),
-      ),
-    ).rejects.toThrow('REGISTRY_RECOVERY_RECONCILIATION_INVALID');
-    const inactiveBytes = Buffer.from(
-      JSON.stringify({
-        ...input,
-        users: [
-          {
-            ...input.users[0],
-            emailVerified: false,
-            publisher: 'none',
-            publisherId: null,
-            operator: false,
-          },
-        ],
-      }),
-    );
-    await writeFile(path, inactiveBytes, { mode: 0o600 });
-    await expect(
-      readRegistryRecoveryReconciliation(
-        path,
-        templateBytesHash(inactiveBytes),
-      ),
-    ).resolves.toMatchObject({
-      users: [{ emailVerified: false, publisher: 'none', operator: false }],
-    });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

@@ -1,0 +1,56 @@
+
+ RUN  v4.1.11 /Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/registry-recovery-review/apps/template-registry
+
+ ❯ src/__tests__/service.test.ts (37 tests | 1 failed | 36 skipped) 214ms
+     × records canonical database UUIDs for uppercase command locators 213ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/service.test.ts > independent registry HTTP behavior with PostgreSQL permissions > records canonical database UUIDs for uppercase command locators
+AssertionError: expected [ { …(2) }, …(3) ] to deeply equal [ { …(2) }, …(3) ]
+
+- Expected
++ Received
+
+  [
+    {
+      "action": "credential.revoked",
+-     "subject_id": "daee1388-ab5b-42d4-84c5-b5a9feaf5f83",
++     "subject_id": "DAEE1388-AB5B-42D4-84C5-B5A9FEAF5F83",
+    },
+    {
+      "action": "entry.curated",
+-     "subject_id": "582d8902-fc47-4451-b56d-d6ba18fd8fda",
++     "subject_id": "582D8902-FC47-4451-B56D-D6BA18FD8FDA",
+    },
+    {
+      "action": "entry.yanked",
+-     "subject_id": "582d8902-fc47-4451-b56d-d6ba18fd8fda",
++     "subject_id": "582D8902-FC47-4451-B56D-D6BA18FD8FDA",
+    },
+    {
+      "action": "publisher.suspended",
+-     "subject_id": "c885f0e4-bcd6-40cc-b084-62c85cc599d9",
++     "subject_id": "C885F0E4-BCD6-40CC-B084-62C85CC599D9",
+    },
+  ]
+
+ ❯ src/__tests__/service.test.ts:1483:7
+    1481|         )
+    1482|       ).rows,
+    1483|     ).toEqual([
+       |       ^
+    1484|       { action: 'credential.revoked', subject_id: author.credential.id…
+    1485|       { action: 'entry.curated', subject_id: created.entry.id },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 36 skipped (37)
+   Start at  18:37:38
+   Duration  2.12s (transform 313ms, setup 0ms, import 1.83s, tests 214ms, environment 0ms)
+
+undefined
+/Users/jmh629/.codex/worktrees/afe1/network-canvas-monorepo/.claude/worktrees/studio-1243/registry-recovery-review/apps/template-registry:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/__tests__/service.test.ts -t 'canonical database UUIDs'

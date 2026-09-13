@@ -39,7 +39,9 @@ export {
 
 export const TEMPLATE_ARTIFACT_MEDIA_TYPE =
   'application/vnd.networkcanvas.template+zip';
-export const TemplateContentHashSchema = z.string().regex(/^[0-9a-f]{64}$/);
+export const TemplateContentHashSchema = z
+  .string()
+  .regex(/^[0-9a-f]{64}$(?![\s\S])/);
 const filename = z
   .string()
   .min(1)
@@ -441,8 +443,11 @@ async function screenAsset(asset: TemplateArtifactAsset): Promise<void> {
         fatal: true,
         ignoreBOM: false,
       }).decode(asset.bytes);
-      // oxlint-disable-next-line no-control-regex -- Dataset controls cannot hide active/binary payloads.
-      if (!text.trim() || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text))
+      if (
+        text.length === 0 ||
+        // oxlint-disable-next-line no-control-regex -- Dataset controls cannot hide active/binary payloads.
+        /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(text)
+      )
         invalid();
       if (asset.media_type === 'text/csv') {
         // CSV is inert dataset text, never an inline browser document.
