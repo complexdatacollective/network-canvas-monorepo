@@ -26,7 +26,10 @@ import {
   type Variable,
 } from '@codaco/protocol-validation';
 
-import { completeRuleValues } from '../../codebook/variableValidation.ts';
+import {
+  completeRuleValues,
+  variableTypeForComponent,
+} from '../../codebook/variableValidation.ts';
 import type { RowValues } from '../../form/rowDialog.tsx';
 import {
   type CodebookSubject,
@@ -38,7 +41,6 @@ import {
   controlsForType,
   isCollectableType,
   isOptionType,
-  typeForControl,
 } from '../collectableTypes.ts';
 import { NEW_VARIABLE } from './inventedAttribute.ts';
 
@@ -114,12 +116,35 @@ const PREVIEW_DRAFT_FIELDS = [
   'showValidationHints',
 ] as const;
 
+/** Stands for the one attribute a row is inventing, whatever it is called yet. */
+const INVENTED_ATTRIBUTE = '#invented-attribute';
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const isInputControl = (value: unknown): value is ComponentType =>
   typeof value === 'string' &&
   ComponentTypesKeys.some((control) => control === value);
+
+/**
+ * What the researcher has actually written, by the interview's own rule.
+ *
+ * `@codaco/interview`'s `authoredFieldLabel` TRIMS before deciding whether
+ * anything was authored, so a caption of nothing but spaces is nothing
+ * authored and the participant meets the fallback — the attribute's name in a
+ * composer, the stand-in sentence in a form. Read through `asText` first,
+ * because a row may hold anything at all here.
+ *
+ * Replicated rather than imported: that helper is internal to the runtime and
+ * its root entry does not export it. `FieldPreviewPane.test.tsx` pins the
+ * three cases the runtime's own rule turns on — whitespace-only, empty, and
+ * ordinary text — so the preview cannot caption a field the interview would
+ * not.
+ */
+const authoredText = (value: unknown): string | undefined => {
+  const text = asText(value)?.trim();
+  return text === undefined || text === '' ? undefined : text;
+};
 
 /**
  * A trial answer is checked against the attribute's own rules and nothing
@@ -238,13 +263,18 @@ export default function FieldPreviewPane({
   // deleted from under it, or absent from an imported codebook — is not a
   // field the interview would render at all (`createFieldMetadata` throws on
   // it), so it previews nothing rather than a working field assembled from the
-  // control the row happens to still carry.
+  // control the row happens to still carry. That is the composer's own case
+  // (its picker offers only attributes the codebook holds, so a row naming a
+  // missing one is a row pointing at nothing) reached by the question that
+  // also answers the composer row which IS inventing one.
   const inventing = variableId === NEW_VARIABLE;
   const variableType: string | undefined =
     codebookVariable?.type ??
     (inventing
       ? (asText(draft._newVariableType) ??
-        (draftControl === undefined ? undefined : typeForControl(draftControl)))
+        (draftControl === undefined
+          ? undefined
+          : variableTypeForComponent(draftControl)))
       : undefined);
 
   // The control has to be one this kind of answer allows. A row being rebound
@@ -262,8 +292,8 @@ export default function FieldPreviewPane({
         ? attributeControl
         : undefined;
 
-  const authoredLabel = asText(draft.label);
-  const prompt = asText(draft.prompt);
+  const authoredLabel = authoredText(draft.label);
+  const prompt = authoredText(draft.prompt);
   const label =
     mode === 'composer'
       ? (authoredLabel ??
@@ -279,6 +309,14 @@ export default function FieldPreviewPane({
     codebookVariable === undefined
       ? (inventedName ?? 'preview-field')
       : (variableId ?? 'preview-field');
+
+  // WHICH attribute is being previewed, for the remount key below. Not
+  // `previewVariableId`, which is the name being typed while one is invented:
+  // an attribute the researcher is still naming is one attribute throughout,
+  // so it answers with a sentinel rather than losing the trial answer on every
+  // keystroke.
+  const previewIdentity =
+    codebookVariable === undefined ? INVENTED_ATTRIBUTE : previewVariableId;
 
   const validationContext = useMemo(
     () =>
@@ -379,11 +417,16 @@ export default function FieldPreviewPane({
               </Paragraph>
             </div>
           ) : (
-            // Keyed on the pairing the interview resolves a control from, so
-            // switching either starts the trial answer again rather than
-            // handing a value authored for one control to another.
+            // Keyed on the attribute being previewed and the pairing the
+            // interview resolves a control from, so switching any of them
+            // starts the trial answer again rather than handing a value
+            // authored for one field to another. The pairing alone cannot tell
+            // one attribute from another: two numbers collected by the same
+            // control resolve to the same field, and the answer typed for the
+            // first would be checked against the second's rules under the
+            // second's label.
             <Form
-              key={`${field.type}:${field.component}`}
+              key={`${previewIdentity}:${field.type}:${field.component}`}
               onSubmit={passPreviewValidation}
             >
               <InterviewI18nProvider requestedLocale={intl.locale}>

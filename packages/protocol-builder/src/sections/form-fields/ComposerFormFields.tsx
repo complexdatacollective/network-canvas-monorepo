@@ -45,6 +45,7 @@ import { variableTypeLabel } from '../../codebook/variableTypeLabels.ts';
 import {
   isValidationMap,
   unvalidatedElsewhereMessage,
+  variableTypeForComponent,
 } from '../../codebook/variableValidation.ts';
 import ComposerParametersField, {
   type ComposerParameters,
@@ -91,7 +92,6 @@ import {
   controlsForType,
   isOptionType,
   needsCodebookEditorToCreate,
-  typeForControl,
 } from '../collectableTypes.ts';
 import { composerFormFieldMessages as messages } from './composerFormFieldMessages.ts';
 import FieldPreviewPane from './FieldPreviewPane.tsx';
@@ -356,7 +356,10 @@ function ComposerFormRows({
   const inventAttribute = useCallback(
     async (row: RowValues): Promise<RowSaveOutcome> => {
       const component = asText(row[COMPONENT_FIELD]);
-      const type = typeForControl(component);
+      const type =
+        component === undefined
+          ? undefined
+          : variableTypeForComponent(component);
       // The control is a `required` field of this dialog, so this is the belt
       // for a row that arrives already broken — and it is what narrows `type`
       // for the create below.
@@ -708,7 +711,9 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
    * inverse, and it is the inverse in Architect too.
    */
   const attributeType = inventing
-    ? typeForControl(control)
+    ? control === undefined
+      ? undefined
+      : variableTypeForComponent(control)
     : chosen === undefined
       ? undefined
       : variables[chosen]?.type;
