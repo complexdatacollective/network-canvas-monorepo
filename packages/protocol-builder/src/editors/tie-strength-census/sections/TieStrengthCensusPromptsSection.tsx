@@ -21,11 +21,6 @@ import {
   variableRoleKey,
 } from '../../../codebook/variableRoles.ts';
 import { LockedOptions } from '../../../fields/BinAttributeField.tsx';
-import CreateEdgeField, {
-  CREATE_EDGE_FIELD,
-  edgeSubjectOf,
-  missingEdgeTypeIssue,
-} from '../../../fields/CreateEdgeField.tsx';
 import {
   PromptTextField,
   PromptTextPreview,
@@ -49,6 +44,11 @@ import { useCreateAttributeForSlot } from '../../../sections/create-variable/use
 import PromptsSection from '../../../sections/PromptsSection.tsx';
 import { useProtocolContext } from '../../../state/protocolContext.ts';
 import { censusMessages } from '../../dyad-census/sections/censusMessages.ts';
+import EdgeTypeSection, {
+  CREATE_EDGE_FIELD,
+  edgeSubjectOf,
+  missingEdgeTypeIssue,
+} from '../../dyad-census/sections/EdgeTypeSection.tsx';
 
 const SCALE_FIELD = 'edgeVariable';
 const DECLINE_FIELD = 'negativeLabel';
@@ -436,7 +436,7 @@ function TieStrengthCensusPromptEditor({ item }: RowEditorProps) {
         title={intl.formatMessage(messages.responseTitle)}
         description={intl.formatMessage(messages.responseDescription)}
       >
-        <CreateEdgeField
+        <EdgeTypeSection
           title={intl.formatMessage(messages.edgeTitle)}
           description={intl.formatMessage(messages.edgeDescription)}
           label={intl.formatMessage(messages.edgeLabel)}

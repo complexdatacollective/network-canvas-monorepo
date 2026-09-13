@@ -7,7 +7,9 @@ import { sectionId } from '@codaco/studio-sync/taxonomy';
 
 import { REQUIRED } from '../form/requiredField.ts';
 import { FieldStoryHost } from '../testing/FieldStoryHost.tsx';
-import { EntitySubjectPickerField } from './EntityTypePickerField.tsx';
+import EntityTypePickerField, {
+  EntitySubjectPickerField,
+} from './EntityTypePickerField.tsx';
 
 const meta = {
   title: 'Protocol Builder/Fields/Entity type picker',
@@ -135,5 +137,165 @@ export const ATypeThatWasDeleted: Story = {
     // Said by the control itself. Nothing was interrupted: the researcher has
     // not asked for anything yet, so there is nothing to refuse in a dialog.
     await expect(screen.queryByRole('dialog')).toBeNull();
+  },
+};
+
+/**
+ * Making the type a stage needs, without leaving the stage.
+ *
+ * Inside the field itself, which is what Architect has always done
+ * (`EntitySelectField`: its create button and the dialog it opens are part of
+ * the control). The type is written to the codebook on its own, and the stage
+ * is then pointed at it — two acts, because a stage just given a brand-new
+ * type has no prompts, no form and no panels for it, and a host keeping the
+ * stored protocol valid would be right to refuse the pair as one edit.
+ */
+export const MakingAType: Story = {
+  args: { stageId: 'anonymisation-1' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Create new node type' }),
+    );
+    const editor = within(
+      await screen.findByRole('dialog', { name: 'Create new node type' }),
+    );
+    await userEvent.type(
+      await editor.findByRole('textbox', { name: 'Node type name' }),
+      'organisation',
+    );
+    await userEvent.click(editor.getByRole('button', { name: 'Save entity' }));
+
+    // Chosen on the stage as it is created: finding it in a list that has just
+    // grown is not what the researcher asked for.
+    await expect(
+      await canvas.findByRole('radio', { name: 'organisation' }),
+    ).toBeChecked();
+  },
+};
+
+/**
+ * Changing the type the stage already holds — its name, its colour, the shape
+ * a participant sees it drawn as — from the control that names it.
+ */
+export const EditingTheHeldType: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Edit this node type' }),
+    );
+
+    // Open on the type the stage holds, not on an empty draft.
+    await expect(
+      await within(
+        await screen.findByRole('dialog', { name: 'Edit this node type' }),
+      ).findByRole('textbox', { name: 'Node type name' }),
+    ).toHaveValue('person');
+  },
+};
+
+/** The same control for a kind of relationship rather than a kind of member. */
+export const ChoosingAnEdgeType: Story = {
+  args: {
+    stageId: 'dyad-census-1',
+    sectionTitle: 'What this stage records',
+    children: (
+      <Field<typeof EntityTypePickerField>
+        name="edgeType"
+        component={EntityTypePickerField}
+        entityType="edge"
+        label="Type of connection"
+        hint="Answering this stage records a connection of this kind."
+      />
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      await canvas.findByRole('button', { name: 'Create new edge type' }),
+    ).toBeInTheDocument();
+  },
+};
+
+/**
+ * A caller that must not offer either. Architect's one such caller is the rule
+ * builder, whose picker sits inside a dialog inside a dialog and where
+ * inventing a type to write a rule about is a study nobody described.
+ */
+export const WithoutCodebookEditing: Story = {
+  args: {
+    children: (
+      <Field<typeof EntityTypePickerField>
+        name="entityTypeId"
+        component={EntityTypePickerField}
+        entityType="node"
+        allowCodebookEditing={false}
+        label="Type of person or thing"
+        hint="The rule is about what this type already records."
+      />
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      await canvas.findByRole('radio', { name: 'person' }),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: 'Create new node type' }),
+    ).toBeNull();
+    await expect(
+      canvas.queryByRole('button', { name: 'Edit this node type' }),
+    ).toBeNull();
+  },
+};
+
+/**
+ * A protocol with no node types at all — a fresh one, which is where a
+ * researcher meets this control first.
+ *
+ * The empty state is not a dead end: the way out of "no types" is to make one,
+ * and that is offered here rather than on a screen the researcher has to find.
+ */
+export const OnAProtocolWithNoTypes: Story = {
+  args: {
+    // A control holding nothing, because the shared fixture's stages all name
+    // a type: the dangling reference a deleted one leaves is kept and shown,
+    // which is a different state from having none to offer.
+    children: (
+      <Field<typeof EntityTypePickerField>
+        name="entityTypeId"
+        component={EntityTypePickerField}
+        entityType="node"
+        label="Type of person or thing"
+        hint="Every person this stage collects is recorded as this type."
+      />
+    ),
+    seedEdit: (host) => {
+      for (const typeId of ['person', 'family_member']) {
+        host.store.applyAsCollaborator(
+          sectionId({ kind: 'codebookNode', typeId }),
+          undefined,
+        );
+      }
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await awaitPassiveEffects();
+
+    await expect(
+      await canvas.findByText('No node types currently defined'),
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole('button', { name: 'Create new node type' }),
+    ).toBeInTheDocument();
   },
 };
