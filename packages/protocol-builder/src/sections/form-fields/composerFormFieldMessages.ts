@@ -24,12 +24,6 @@ export const composerFormFieldMessages = defineMessages({
     description:
       'Guidance under the attribute control of a network composer form field. A position is where a node sits on the canvas; a location is a point on a map. Both are written by the participant moving something rather than by answering a question, so no control can collect them.',
   },
-  variableCreateTitle: {
-    id: 'protocolBuilder.networkCanvas.formFieldVariableCreateTitle',
-    defaultMessage: 'Create a new attribute',
-    description:
-      'Titles the codebook editor that the attribute picker’s create row opens for a network composer form field. The researcher is asked for the kind of answer there, because this row does not decide it.',
-  },
   variableRequired: {
     id: 'protocolBuilder.networkCanvas.formFieldVariableRequired',
     defaultMessage: 'Choose the attribute this field records.',
@@ -48,6 +42,13 @@ export const composerFormFieldMessages = defineMessages({
       'How the participant answers. Only controls that can render this attribute are listed, and the choice belongs to this field alone — the same attribute can be asked for differently on another stage.',
     description:
       'Guidance under the input-control chooser of a network composer form field. A stage is one step of an interview. Says both which controls are offered and that the choice is not written back to the codebook, which is what makes this interface different from every other form in the protocol.',
+  },
+  controlInventsHint: {
+    id: 'protocolBuilder.networkCanvas.formFieldControlInventsHint',
+    defaultMessage:
+      'How the participant answers, and what kind of answer the new attribute will hold. Every control a form can offer is listed, because the attribute does not exist yet — the one chosen here decides what kind of answer it records.',
+    description:
+      'Guidance under the input-control chooser of a network composer form field while the field is inventing the attribute it records into. Replaces the ordinary guidance, which says the list is narrowed to the attribute’s kind: there is no attribute yet to narrow it by, and the choice made here is what decides the kind.',
   },
   controlRequired: {
     id: 'protocolBuilder.networkCanvas.formFieldControlRequired',
