@@ -24,12 +24,11 @@ export const composerFormFieldMessages = defineMessages({
     description:
       'Guidance under the attribute control of a network composer form field. A position is where a node sits on the canvas; a location is a point on a map. Both are written by the participant moving something rather than by answering a question, so no control can collect them.',
   },
-  variableEmpty: {
-    id: 'protocolBuilder.networkCanvas.formFieldVariableEmpty',
-    defaultMessage:
-      'This type has no attributes a form can collect yet. Create one in the codebook to continue.',
+  variableCreateTitle: {
+    id: 'protocolBuilder.networkCanvas.formFieldVariableCreateTitle',
+    defaultMessage: 'Create a new attribute',
     description:
-      'Shown in place of the attribute list when the type this form is about has nothing a form could ask for. The codebook is where a protocol defines the kinds of member its network holds and the attributes recorded about each.',
+      'Titles the codebook editor that the attribute picker’s create row opens for a network composer form field. The researcher is asked for the kind of answer there, because this row does not decide it.',
   },
   variableRequired: {
     id: 'protocolBuilder.networkCanvas.formFieldVariableRequired',

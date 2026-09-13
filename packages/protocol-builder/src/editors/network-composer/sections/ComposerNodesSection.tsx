@@ -4,6 +4,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
 
+import CodebookVariableValidationSection from '../../../codebook/validation/CodebookVariableValidationSection.tsx';
 import {
   buildVariableRoleMap,
   hasConflictingUse,
@@ -22,13 +23,16 @@ import { useStageValue } from '../../../form/stageFormHooks.ts';
 import { variablesForSubject } from '../../../protocol-context.ts';
 import BuilderSection from '../../../sections/BuilderSection.tsx';
 import {
+  CATEGORICAL_TYPE,
   CATEGORICAL_TYPES,
+  LAYOUT_TYPE,
   LAYOUT_TYPES,
+  TEXT_TYPE,
   TEXT_TYPES,
   useVariableChoices,
 } from '../../../sections/canvas/codebookChoices.ts';
 import { asText } from '../../../sections/canvas/rowValues.ts';
-import CreateVariableButton from '../../../sections/create-variable/CreateVariableButton.tsx';
+import { useCreateAttributeForSlot } from '../../../sections/create-variable/useCreateAttributeForSlot.ts';
 import { composerFormFieldMessages } from '../../../sections/form-fields/composerFormFieldMessages.ts';
 import { ComposerFormFieldsField } from '../../../sections/form-fields/ComposerFormFields.tsx';
 import { useStageSubject } from '../../../sections/useStageSubject.ts';
@@ -40,6 +44,14 @@ const QUICK_ADD_FIELD = 'quickAdd';
 const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
 const CONVEX_HULL_FIELD = 'convexHullVariable';
 const NODE_FORM_FIELD = 'nodeForm.fields';
+
+/**
+ * A quick-add attribute must hold a value from the moment the node exists:
+ * that value is the only thing the participant gave, and a node created
+ * without it has no name at all. Architect seeds the same rule here
+ * (`sections/NodeConfiguration/NodeConfiguration.tsx`).
+ */
+const QUICK_ADD_VALIDATION = Object.freeze({ required: true });
 
 /**
  * What switching the node form off means, in the composer's own words.
@@ -247,6 +259,26 @@ export default function ComposerNodesSection() {
     [setStageValue],
   );
 
+  const quickAddCreate = useCreateAttributeForSlot({
+    subject,
+    variableType: TEXT_TYPE,
+    title: intl.formatMessage(messages.quickAddCreateLabel),
+    seedValidation: QUICK_ADD_VALIDATION,
+    onCreated: bindQuickAdd,
+  });
+  const layoutCreate = useCreateAttributeForSlot({
+    subject,
+    variableType: LAYOUT_TYPE,
+    title: intl.formatMessage(messages.layoutCreateLabel),
+    onCreated: bindLayout,
+  });
+  const hullCreate = useCreateAttributeForSlot({
+    subject,
+    variableType: CATEGORICAL_TYPE,
+    title: intl.formatMessage(messages.hullCreateLabel),
+    onCreated: bindHull,
+  });
+
   return (
     <BuilderSection
       title={intl.formatMessage(messages.nodesTitle)}
@@ -264,12 +296,12 @@ export default function ComposerNodesSection() {
         emptyMessage={intl.formatMessage(messages.quickAddEmpty)}
         required={REQUIRED}
         {...quickAddValidation}
+        {...quickAddCreate.createProps}
       />
-      <CreateVariableButton
-        subject={subject ?? null}
-        variableType="text"
-        label={intl.formatMessage(messages.quickAddCreateLabel)}
-        onCreated={bindQuickAdd}
+      {quickAddCreate.editor}
+      <CodebookVariableValidationSection
+        subject={subject}
+        variableId={quickAdd}
       />
 
       <Field<typeof VariablePickerField>
@@ -280,13 +312,9 @@ export default function ComposerNodesSection() {
         options={layoutOptions}
         emptyMessage={intl.formatMessage(messages.layoutEmpty)}
         required={REQUIRED}
+        {...layoutCreate.createProps}
       />
-      <CreateVariableButton
-        subject={subject ?? null}
-        variableType="layout"
-        label={intl.formatMessage(messages.layoutCreateLabel)}
-        onCreated={bindLayout}
-      />
+      {layoutCreate.editor}
 
       <Field<typeof VariablePickerField>
         name={CONVEX_HULL_FIELD}
@@ -296,13 +324,9 @@ export default function ComposerNodesSection() {
         options={hullOptions}
         emptyMessage={intl.formatMessage(messages.hullEmpty)}
         {...hullValidation}
+        {...hullCreate.createProps}
       />
-      <CreateVariableButton
-        subject={subject ?? null}
-        variableType="categorical"
-        label={intl.formatMessage(messages.hullCreateLabel)}
-        onCreated={bindHull}
-      />
+      {hullCreate.editor}
 
       <BuilderSection
         title={intl.formatMessage(messages.nodeFormTitle)}
