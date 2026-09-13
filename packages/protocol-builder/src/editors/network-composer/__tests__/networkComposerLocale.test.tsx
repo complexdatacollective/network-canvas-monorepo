@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderStageEditor } from '../../../testing/renderStageEditor.tsx';
@@ -58,12 +58,10 @@ describe('the network composer sections, read in Spanish', () => {
   });
 
   /**
-   * The two sentences this interface writes for the SHARED layout control,
-   * which the editor hands over as descriptors. Resolved to English where the
-   * editor declares them, they would sit in English under a control named in
-   * Spanish — which is exactly the seam a replacement sentence crosses.
+   * The titled groups inside the two sections, which the outline never lists —
+   * so nothing else in this file would catch one of them left in English.
    */
-  it('reads the composer’s own layout sentences in Spanish', async () => {
+  it('names the groups inside the node and edge sections', async () => {
     renderStageEditor({
       stageId: 'network-composer-1',
       locale: 'es',
@@ -71,15 +69,30 @@ describe('the network composer sections, read in Spanish', () => {
     });
 
     expect(
-      await screen.findByText(
-        'Coloca cada nodo donde hay sitio para él a medida que el participante lo añade, y deja que lo arrastre a donde quiera.',
-      ),
+      await screen.findByRole('region', {
+        name: 'Atributo de adición rápida',
+      }),
+    ).toHaveAccessibleDescription(
+      'El atributo que completa el campo de adición rápida al añadir un nodo desde la barra de herramientas, normalmente un nombre o una etiqueta.',
+    );
+    expect(
+      screen.getByRole('region', { name: 'Posiciones de nodos' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        'Inicia la etapa con la simulación en marcha. El participante puede apagarla y encenderla mientras trabaja, y la etapa se reabre tal como la dejó.',
-      ),
+      screen.getByRole('region', { name: 'Envolventes de grupos' }),
     ).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole('region', { name: 'Disposición automática' }),
+      ).getByRole('switch', {
+        name: 'Iniciar con la disposición automática activada',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Tipos de conexiones' }),
+    ).toHaveAccessibleDescription(
+      'Selecciona los tipos de vínculos que los participantes pueden crear en el lienzo. Cada tipo seleccionado tendrá su propio conjunto de atributos editables abajo.',
+    );
   });
 
   /**

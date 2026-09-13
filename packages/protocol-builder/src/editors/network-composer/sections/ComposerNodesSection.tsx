@@ -2,7 +2,9 @@ import { useCallback, useMemo, useRef } from 'react';
 
 import { useAppIntl } from '@codaco/app-i18n/react';
 import Field from '@codaco/fresco-ui/form/Field/Field';
+import ToggleField from '@codaco/fresco-ui/form/fields/ToggleField';
 import { messageRuleValidation } from '@codaco/fresco-ui/form/validation/helpers';
+import Section from '@codaco/fresco-ui/Section';
 
 import CodebookVariableValidationSection from '../../../codebook/validation/CodebookVariableValidationSection.tsx';
 import {
@@ -41,6 +43,12 @@ const QUICK_ADD_FIELD = 'quickAdd';
 const LAYOUT_VARIABLE_FIELD = 'layoutVariable';
 const CONVEX_HULL_FIELD = 'convexHullVariable';
 const NODE_FORM_FIELD = 'nodeForm.fields';
+/**
+ * Where the canvas STARTS, not how it behaves: the participant has a switch
+ * of their own, and the interview remembers which way they left it
+ * (`NetworkComposerStageMetadataSchema`).
+ */
+const AUTOMATIC_LAYOUT_FIELD = 'behaviours.automaticLayout';
 
 /**
  * A quick-add attribute must hold a value from the moment the node exists:
@@ -264,59 +272,87 @@ export default function ComposerNodesSection() {
       )}
       disabled={waiting}
     >
-      <Field<typeof VariablePickerField>
-        name={QUICK_ADD_FIELD}
-        component={VariablePickerField}
-        label={intl.formatMessage(messages.quickAddLabel)}
-        hint={intl.formatMessage(messages.quickAddHint)}
-        options={quickAddOptions}
-        emptyMessage={intl.formatMessage(messages.quickAddEmpty)}
-        required={REQUIRED}
-        {...quickAddValidation}
-      />
-      <CreateVariableButton
-        subject={subject ?? null}
-        variableType="text"
-        label={intl.formatMessage(messages.quickAddCreateLabel)}
-        seedValidation={QUICK_ADD_VALIDATION}
-        onCreated={bindQuickAdd}
-      />
-      <CodebookVariableValidationSection
-        subject={subject}
-        variableId={quickAdd}
-      />
+      <Section
+        title={intl.formatMessage(messages.quickAddSectionTitle)}
+        description={intl.formatMessage(messages.quickAddSectionDescription)}
+      >
+        <Field<typeof VariablePickerField>
+          name={QUICK_ADD_FIELD}
+          component={VariablePickerField}
+          label={intl.formatMessage(messages.quickAddLabel)}
+          options={quickAddOptions}
+          emptyMessage={intl.formatMessage(messages.quickAddEmpty)}
+          required={REQUIRED}
+          {...quickAddValidation}
+        />
+        <CreateVariableButton
+          subject={subject ?? null}
+          variableType="text"
+          label={intl.formatMessage(messages.quickAddCreateLabel)}
+          seedValidation={QUICK_ADD_VALIDATION}
+          onCreated={bindQuickAdd}
+        />
+        <CodebookVariableValidationSection
+          subject={subject}
+          variableId={quickAdd}
+        />
+      </Section>
 
-      <Field<typeof VariablePickerField>
-        name={LAYOUT_VARIABLE_FIELD}
-        component={VariablePickerField}
-        label={intl.formatMessage(messages.layoutLabel)}
-        hint={intl.formatMessage(messages.layoutHint)}
-        options={layoutOptions}
-        emptyMessage={intl.formatMessage(messages.layoutEmpty)}
-        required={REQUIRED}
-      />
-      <CreateVariableButton
-        subject={subject ?? null}
-        variableType="layout"
-        label={intl.formatMessage(messages.layoutCreateLabel)}
-        onCreated={bindLayout}
-      />
+      <Section
+        title={intl.formatMessage(messages.nodePositionsSectionTitle)}
+        description={intl.formatMessage(
+          messages.nodePositionsSectionDescription,
+        )}
+      >
+        <Field<typeof VariablePickerField>
+          name={LAYOUT_VARIABLE_FIELD}
+          component={VariablePickerField}
+          label={intl.formatMessage(messages.layoutLabel)}
+          options={layoutOptions}
+          emptyMessage={intl.formatMessage(messages.layoutEmpty)}
+          required={REQUIRED}
+        />
+        <CreateVariableButton
+          subject={subject ?? null}
+          variableType="layout"
+          label={intl.formatMessage(messages.layoutCreateLabel)}
+          onCreated={bindLayout}
+        />
+      </Section>
 
-      <Field<typeof VariablePickerField>
-        name={CONVEX_HULL_FIELD}
-        component={VariablePickerField}
-        label={intl.formatMessage(messages.hullLabel)}
-        hint={intl.formatMessage(messages.hullHint)}
-        options={hullOptions}
-        emptyMessage={intl.formatMessage(messages.hullEmpty)}
-        {...hullValidation}
-      />
-      <CreateVariableButton
-        subject={subject ?? null}
-        variableType="categorical"
-        label={intl.formatMessage(messages.hullCreateLabel)}
-        onCreated={bindHull}
-      />
+      <Section
+        title={intl.formatMessage(messages.automaticLayoutSectionTitle)}
+        description={intl.formatMessage(
+          messages.automaticLayoutSectionDescription,
+        )}
+      >
+        <Field<typeof ToggleField>
+          name={AUTOMATIC_LAYOUT_FIELD}
+          component={ToggleField}
+          label={intl.formatMessage(messages.automaticLayoutToggleLabel)}
+          inline
+        />
+      </Section>
+
+      <Section
+        title={intl.formatMessage(messages.groupHullsSectionTitle)}
+        description={intl.formatMessage(messages.groupHullsSectionDescription)}
+      >
+        <Field<typeof VariablePickerField>
+          name={CONVEX_HULL_FIELD}
+          component={VariablePickerField}
+          label={intl.formatMessage(messages.hullLabel)}
+          options={hullOptions}
+          emptyMessage={intl.formatMessage(messages.hullEmpty)}
+          {...hullValidation}
+        />
+        <CreateVariableButton
+          subject={subject ?? null}
+          variableType="categorical"
+          label={intl.formatMessage(messages.hullCreateLabel)}
+          onCreated={bindHull}
+        />
+      </Section>
 
       <BuilderSection
         title={intl.formatMessage(messages.nodeFormTitle)}

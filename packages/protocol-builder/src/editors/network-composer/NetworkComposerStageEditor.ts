@@ -1,6 +1,4 @@
 import { background } from '../../sections/background/background.tsx';
-import { canvasBehavioursMessages } from '../../sections/canvas-behaviours/canvasBehavioursMessages.ts';
-import { nodeLayout } from '../../sections/canvas-behaviours/nodeLayout.tsx';
 import { interviewerGuidance } from '../../sections/interviewer-guidance/interviewerGuidance.tsx';
 import { skipLogic } from '../../sections/skip-logic/skipLogic.tsx';
 import { stageHeading } from '../../sections/stage-heading/stageHeading.tsx';
@@ -22,13 +20,10 @@ import { composerNodes } from './sections/composerNodes.tsx';
  * No stage filter: the schema gives this interface none, because the network
  * is built here rather than drawn from one built earlier.
  *
- * The layout mode is the shared canvas one with both of its sentences
- * replaced. Manual mode elsewhere leaves every node in a bucket at the foot of
- * the canvas; here a node appears where there is room for it as it is added.
- * And automatic mode elsewhere is how the stage arranges nodes, while here it
- * is only how the stage OPENS: the participant has a switch of their own, and
- * the interview remembers which way they left it
- * (`NetworkComposerStageMetadataSchema`).
+ * Automatic layout is not a section of its own here. It is one of the
+ * decisions about the nodes the participant adds — how the canvas arranges
+ * them as the stage opens — so it sits inside the node configuration beside
+ * the attributes those nodes carry, which is where Architect put it.
  */
 export const networkComposerStageEditor = defineStageEditor('NetworkComposer', [
   stageHeading({ documentation: 'network-composer' }),
@@ -36,12 +31,6 @@ export const networkComposerStageEditor = defineStageEditor('NetworkComposer', [
   composerNodes(),
   composerConnections(),
   background(),
-  nodeLayout({
-    manualDescription:
-      canvasBehavioursMessages.layoutModeManualComposerDescription,
-    automaticDescription:
-      canvasBehavioursMessages.layoutModeAutomaticComposerDescription,
-  }),
   skipLogic(),
   interviewerGuidance(),
 ]);

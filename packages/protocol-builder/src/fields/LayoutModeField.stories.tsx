@@ -13,23 +13,8 @@ import LayoutModeField from './LayoutModeField.tsx';
 /** Where every canvas stage keeps this decision. */
 const AUTOMATIC_LAYOUT_FIELD = 'behaviours.automaticLayout';
 
-/** Which interface's wording the cards carry. */
-type Wording =
-  /** The sentences the control itself supplies, which most canvases use. */
-  | 'shared'
-  /**
-   * A narrative stage's own. It is shown a network that has already been
-   * built rather than collecting positions, so both cards promise something
-   * different from the shared sentences.
-   */
-  | 'narrative';
-
-/**
- * The control as `NodeLayoutSection` mounts it: the section names the field and
- * formats the words, and passes an interface's own sentences only where it has
- * them. Absent, the cards keep the wording the control itself carries.
- */
-function LayoutMode({ wording = 'shared' }: Readonly<{ wording?: Wording }>) {
+/** The control as `NodeLayoutSection` mounts it: the section names it. */
+function LayoutMode() {
   const intl = useAppIntl();
   return (
     <Field<typeof LayoutModeField>
@@ -37,16 +22,6 @@ function LayoutMode({ wording = 'shared' }: Readonly<{ wording?: Wording }>) {
       component={LayoutModeField}
       label={intl.formatMessage(canvasBehavioursMessages.layoutModeLabel)}
       hint={intl.formatMessage(canvasBehavioursMessages.layoutModeHint)}
-      {...(wording === 'narrative'
-        ? {
-            manualDescription: intl.formatMessage(
-              canvasBehavioursMessages.layoutModeManualNarrativeDescription,
-            ),
-            automaticDescription: intl.formatMessage(
-              canvasBehavioursMessages.layoutModeAutomaticNarrativeDescription,
-            ),
-          }
-        : {})}
     />
   );
 }
@@ -59,7 +34,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'How a canvas stage arranges nodes when it opens. The protocol stores one switch, and the researcher is asked it as a choice between two named modes: “automatic layout is off” is not a decision anybody recognises making, while “manual mode” is — and each card can then say what the participant will actually see. What they see is not the same on every canvas, so an interface whose behaviour differs passes its own sentence for a card and the rest keep the shared one. Nothing stored is manual mode: opting a protocol into a force simulation nobody asked for would change what its participants see.',
+          'How a canvas stage arranges nodes when it opens. The protocol stores one switch, and the researcher is asked it as a choice between two named modes: “automatic layout is off” is not a decision anybody recognises making, while “manual mode” is — and each card can then say what the participant will actually see. Nothing stored is manual mode: opting a protocol into a force simulation nobody asked for would change what its participants see.',
       },
     },
   },
@@ -127,29 +102,6 @@ export const ChoosingTheOtherMode: Story = {
     await expect(
       canvas.getByRole('option', { name: /^Manual mode/ }),
     ).toHaveAttribute('aria-selected', 'false');
-  },
-};
-
-/**
- * An interface whose own behaviour the shared sentences do not describe. The
- * narrative stage draws a network that was built elsewhere, so manual mode
- * shows the positions its preset's attribute already holds rather than a bucket
- * of nodes to place — and the card says so instead.
- */
-export const AnInterfaceWithItsOwnWording: Story = {
-  args: {
-    stageId: 'narrative-1',
-    children: <LayoutMode wording="narrative" />,
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await awaitPassiveEffects();
-
-    const manual = await canvas.findByRole('option', { name: /^Manual mode/ });
-    await expect(manual).toHaveAccessibleName(/left off the canvas/);
-    // The shared sentence is replaced rather than added to: a card promising
-    // both a bucket and a stored position promises something no stage does.
-    await expect(manual).not.toHaveAccessibleName(/bucket/);
   },
 };
 

@@ -2531,6 +2531,18 @@
     "defaultMessage": "{stageName} — this stage can no longer be used",
     "description": "How the stored choice is labelled inside the source-stage list once it can no longer be used, so the researcher can still see what this stage points at. stageName is the researcher’s own name for that stage and is not translated, or — where the stage has left the interview and there is no name left to read — its identifier."
   },
+  "protocolBuilder.networkCanvas.automaticLayoutSectionDescription": {
+    "defaultMessage": "When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.",
+    "description": "Description of the automatic-layout sub-section of a network composer. A force-directed layout is a simulation that spreads members of the network out on the canvas."
+  },
+  "protocolBuilder.networkCanvas.automaticLayoutSectionTitle": {
+    "defaultMessage": "Automatic layout",
+    "description": "Heading of the sub-section of a network composer deciding whether the canvas arranges members of the network by itself when the stage opens. Also names the group to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.automaticLayoutToggleLabel": {
+    "defaultMessage": "Start with automatic layout switched on",
+    "description": "Label of the switch deciding whether a network composer opens with its automatic layout running. The participant can switch it the other way during the interview."
+  },
   "protocolBuilder.networkCanvas.backgroundCirclesLabel": {
     "defaultMessage": "Number of concentric circles",
     "description": "Label of the box holding how many rings are drawn behind the nodes."
@@ -2627,12 +2639,8 @@
     "defaultMessage": "The participant cannot draw connections on this canvas yet. Add a connection type to let them.",
     "description": "Shown in place of the list of connection types while a network composer allows none."
   },
-  "protocolBuilder.networkCanvas.composerEdgeFieldHint": {
-    "defaultMessage": "The participant can draw a connection of any kind listed here. Leave the list empty to build a network of nodes alone.",
-    "description": "Guidance under the list of connection types a network composer lets the participant draw."
-  },
   "protocolBuilder.networkCanvas.composerEdgeFieldLabel": {
-    "defaultMessage": "Connection types",
+    "defaultMessage": "Edge types",
     "description": "Label of the list holding the kinds of connection a network composer lets the participant draw."
   },
   "protocolBuilder.networkCanvas.composerEdgeNoun": {
@@ -2663,10 +2671,6 @@
     "defaultMessage": "This type has no position attributes yet. Create one to store where the participant puts each node.",
     "description": "Shown in place of the position-attribute list when the node type this stage builds has no attribute that can hold a position."
   },
-  "protocolBuilder.networkCanvas.composerLayoutHint": {
-    "defaultMessage": "The attribute that stores each node’s position. Stages sharing an attribute carry the participant’s placements between them.",
-    "description": "Guidance under the position-attribute control of a network composer. A stage is one step of an interview."
-  },
   "protocolBuilder.networkCanvas.composerLayoutLabel": {
     "defaultMessage": "Create or select an attribute to store node coordinates",
     "description": "Label of the control choosing which codebook attribute stores where each node sits on a composer canvas."
@@ -2682,6 +2686,14 @@
   "protocolBuilder.networkCanvas.composerNodeWaitingDescription": {
     "defaultMessage": "Choose what this stage works with before configuring how its nodes behave.",
     "description": "Description of the node section while the stage has no node type yet, so nothing here can be configured. A stage is one step of an interview."
+  },
+  "protocolBuilder.networkCanvas.connectionTypesSectionDescription": {
+    "defaultMessage": "Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.",
+    "description": "Description of the connection-types sub-section of a network composer. The editable attributes for each chosen kind are asked for in the sections below this one."
+  },
+  "protocolBuilder.networkCanvas.connectionTypesSectionTitle": {
+    "defaultMessage": "Connection types",
+    "description": "Heading of the sub-section of a network composer holding the kinds of connection the participant may draw. Also names the group to assistive technology."
   },
   "protocolBuilder.networkCanvas.createHullLabel": {
     "defaultMessage": "Create a new grouping attribute",
@@ -2823,21 +2835,21 @@
     "defaultMessage": "Free-draw",
     "description": "Label of the switch letting the participant draw on the canvas."
   },
+  "protocolBuilder.networkCanvas.groupHullsSectionDescription": {
+    "defaultMessage": "Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once.",
+    "description": "Description of the group-hulls sub-section of a network composer. The Groups tool and the lasso are the two ways the participant puts members of the network into a group on the canvas."
+  },
+  "protocolBuilder.networkCanvas.groupHullsSectionTitle": {
+    "defaultMessage": "Group hulls",
+    "description": "Heading of the sub-section of a network composer holding the attribute the participant groups members of the network by. Also names the group to assistive technology."
+  },
   "protocolBuilder.networkCanvas.hullEmpty": {
     "defaultMessage": "This type has no attributes with a fixed set of values, so there is nothing to group nodes by.",
     "description": "Shown in place of the grouping-attribute list when the node type this stage builds has no categorical attribute this stage may take."
   },
-  "protocolBuilder.networkCanvas.hullHint": {
-    "defaultMessage": "Nodes sharing a value of this attribute are drawn inside a shaded outline. The participant sets those values on the canvas, so they are written without being checked against the attribute’s rules.",
-    "description": "Guidance under the grouping-attribute control of a network composer. The shaded outline is drawn around every node that shares a value; the participant assigns those values by lassoing or tapping nodes, which does not run the codebook’s validation."
-  },
   "protocolBuilder.networkCanvas.hullLabel": {
     "defaultMessage": "Create or select a categorical attribute for grouping",
     "description": "Label of the control choosing which codebook attribute the participant groups nodes by on a composer canvas."
-  },
-  "protocolBuilder.networkCanvas.layoutModeAutomaticComposerDescription": {
-    "defaultMessage": "Starts the stage with the simulation running. The participant can switch it off and on as they work, and the stage reopens the way they left it.",
-    "description": "Says what the participant sees in automatic layout mode on a network composer stage, where the setting decides only how the stage starts because the participant has a switch of their own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the wordings of one control together."
   },
   "protocolBuilder.networkCanvas.layoutModeAutomaticDescription": {
     "defaultMessage": "Positions nodes when the stage first opens by simulating physical forces such as attraction and repulsion. The participant can pause and resume the simulation, and reposition nodes by hand while it is paused.",
@@ -2847,10 +2859,6 @@
     "defaultMessage": "Automatic mode",
     "description": "Name of the choice where the stage arranges the nodes itself before the participant touches them. Offered as one of two cards; the sentence under it is layoutModeAutomaticDescription."
   },
-  "protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription": {
-    "defaultMessage": "Arranges the nodes by simulating physical forces such as attraction and repulsion. Only the nodes the attribute the preset positions by holds a position for are arranged; the rest are left off the canvas, as in manual mode. The participant can pause and resume the simulation, and can move nodes by hand only if “Allow repositioning” is switched on.",
-    "description": "Says what the participant sees in automatic layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeAutomaticDescription there, and is declared beside it so a translator reads the two wordings of one control together. “Allow repositioning” is the switch named by repositioningLabel, and is quoted because it is being named as a control the researcher can go and find."
-  },
   "protocolBuilder.networkCanvas.layoutModeHint": {
     "defaultMessage": "How the stage arranges nodes before the participant moves any of them.",
     "description": "Guidance under the layout-mode control."
@@ -2858,10 +2866,6 @@
   "protocolBuilder.networkCanvas.layoutModeLabel": {
     "defaultMessage": "Layout mode",
     "description": "Label of the control choosing between manual and automatic node layout."
-  },
-  "protocolBuilder.networkCanvas.layoutModeManualComposerDescription": {
-    "defaultMessage": "Places each node where there is room for it as the participant adds it, leaving them to drag it wherever they want.",
-    "description": "Says what the participant sees in manual layout mode on a network composer stage, where they add the nodes themselves rather than being given a set of them to place. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the wordings of one control together."
   },
   "protocolBuilder.networkCanvas.layoutModeManualDescription": {
     "defaultMessage": "Places all nodes in a \"bucket\" at the bottom of the screen, from which the participant drags each one to where they want it.",
@@ -2871,9 +2875,13 @@
     "defaultMessage": "Manual mode",
     "description": "Name of the choice where the stage does not arrange nodes at all and the participant places every one of them by hand. Offered as one of two cards; the sentence under it is layoutModeManualDescription."
   },
-  "protocolBuilder.networkCanvas.layoutModeManualNarrativeDescription": {
-    "defaultMessage": "Shows every node at the position already stored in the attribute the preset positions by. A node that attribute holds no position for is left off the canvas.",
-    "description": "Says what the participant sees in manual layout mode on a narrative stage, which is shown a network that has already been built rather than collecting positions of its own. Replaces layoutModeManualDescription there, and is declared beside it so a translator reads the two wordings of one control together."
+  "protocolBuilder.networkCanvas.narrativeAutomaticLayoutHint": {
+    "defaultMessage": "Position nodes automatically using a force-directed layout",
+    "description": "Guidance under the automatic-layout switch on a narrative stage. A force-directed layout is a simulation that spreads members of the network out on the canvas."
+  },
+  "protocolBuilder.networkCanvas.narrativeAutomaticLayoutLabel": {
+    "defaultMessage": "Automatic layout",
+    "description": "Label of the switch deciding whether a narrative canvas arranges the network it shows by itself."
   },
   "protocolBuilder.networkCanvas.nodeFormAddLabel": {
     "defaultMessage": "Create new node attribute",
@@ -2914,6 +2922,14 @@
   "protocolBuilder.networkCanvas.nodeLayoutTitle": {
     "defaultMessage": "Node layout",
     "description": "Heading of the section deciding how a canvas arranges its nodes when the stage opens. Also names the section in the editor outline and to assistive technology."
+  },
+  "protocolBuilder.networkCanvas.nodePositionsSectionDescription": {
+    "defaultMessage": "Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks.",
+    "description": "Description of the node-positions sub-section of a network composer. A stage is one step of an interview, so reusing one attribute carries the participant’s placements from one step to the next."
+  },
+  "protocolBuilder.networkCanvas.nodePositionsSectionTitle": {
+    "defaultMessage": "Node positions",
+    "description": "Heading of the sub-section of a network composer holding the attribute that stores where each member of the network sits on the canvas. Also names the group to assistive technology."
   },
   "protocolBuilder.networkCanvas.presetConnectionsDescription": {
     "defaultMessage": "Select the edge types shown in this visualization preset.",
@@ -3183,13 +3199,17 @@
     "defaultMessage": "This type has no free-text attributes available, so there is nothing for the quick-add box to fill in.",
     "description": "Shown in place of the quick-add attribute list when the node type this stage builds has no text attribute this stage may take."
   },
-  "protocolBuilder.networkCanvas.quickAddHint": {
-    "defaultMessage": "The participant types one thing to add a node — usually a name. It is stored in this attribute, and checked against that attribute’s own rules.",
-    "description": "Guidance under the quick-add attribute control of a network composer. The rules are the validation the codebook records for the attribute."
-  },
   "protocolBuilder.networkCanvas.quickAddLabel": {
     "defaultMessage": "Create or select an attribute for the quick-add form",
     "description": "Label of the control choosing which codebook attribute the participant fills in as they add a member to the network — usually a name."
+  },
+  "protocolBuilder.networkCanvas.quickAddSectionDescription": {
+    "defaultMessage": "The attribute populated by the inline quick-add field when a node is added from the toolbar — typically a name or label.",
+    "description": "Description of the quick-add sub-section of a network composer. The quick-add field is the box the participant types into on the canvas toolbar to add a member to the network."
+  },
+  "protocolBuilder.networkCanvas.quickAddSectionTitle": {
+    "defaultMessage": "Quick add attribute",
+    "description": "Heading of the sub-section of a network composer holding the attribute the participant fills in as they add a member to the network. Also names the group to assistive technology."
   },
   "protocolBuilder.networkCanvas.repositioningHint": {
     "defaultMessage": "Allow nodes to be repositioned",

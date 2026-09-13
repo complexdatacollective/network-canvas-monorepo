@@ -16,10 +16,8 @@ import {
  * its English `defaultMessage` and the existing English assertions stand
  * unchanged. This is the file that mounts one, and it exists to prove the
  * wiring rather than the words: that a section formats through `useAppIntl()`
- * rather than holding a string, that the sentence this interface writes for
- * the shared layout-mode card travels to it as a descriptor and is translated
- * too, and that a value the protocol supplied is spliced into the translated
- * sentence rather than into the English one.
+ * rather than holding a string, and that a value the protocol supplied is
+ * spliced into the translated sentence rather than into the English one.
  *
  * The words are asserted as literals rather than by re-formatting the same
  * descriptor the component read: `esIntl.formatMessage(messages.x)` would pass
@@ -71,12 +69,11 @@ describe('the narrative sections, read in Spanish', () => {
   });
 
   /**
-   * The sentence this interface hands the shared layout-mode card, which is
-   * where a descriptor passed across that seam as a resolved string would show
-   * up: the shared section would render the generic wording in Spanish beside
-   * the narrative's English.
+   * The switch this interface offers instead of the shared layout-mode cards,
+   * which is where a descriptor held as a string rather than formatted through
+   * `useAppIntl()` would show up: an English label beside Spanish siblings.
    */
-  it('reads the narrative’s own manual-mode sentence in Spanish', async () => {
+  it('reads the narrative’s automatic-layout switch in Spanish', async () => {
     renderStageEditor({
       stageId: 'narrative-1',
       locale: 'es',
@@ -84,25 +81,13 @@ describe('the narrative sections, read in Spanish', () => {
     });
 
     expect(
-      await screen.findByText(
-        'Muestra cada nodo en la posición ya guardada en el atributo con el que la vista predefinida los coloca. Un nodo para el que ese atributo no tenga posición se queda fuera del lienzo.',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  /** The same seam, for the automatic-mode card's own sentence. */
-  it('reads the narrative’s own automatic-mode sentence in Spanish', async () => {
-    renderStageEditor({
-      stageId: 'narrative-1',
-      locale: 'es',
-      editor: narrativeEditor,
-    });
-
-    expect(
-      await screen.findByText(
-        'Organiza los nodos mediante una simulación de fuerzas físicas, como atracción y repulsión. Solo se organizan los nodos para los que el atributo con el que la vista predefinida los coloca tenga posición; el resto se queda fuera del lienzo, igual que en el modo manual. El participante puede pausar y reanudar la simulación, y solo puede mover los nodos manualmente si «Permitir cambiar la posición» está activado.',
-      ),
-    ).toBeInTheDocument();
+      await screen.findByRole('switch', { name: 'Disposición automática' }),
+      // Anchored, so a sentence with anything else in it fails. The trailing
+      // gap is the field's own empty error slot, which every hinted control in
+      // the package carries.
+    ).toHaveAccessibleDescription(
+      /^Colocar los nodos automáticamente mediante una disposición dirigida por fuerzas\s*$/,
+    );
   });
 
   /**

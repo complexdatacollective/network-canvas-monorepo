@@ -5,6 +5,7 @@ import { useAppIntl } from '@codaco/app-i18n/react';
 import { Badge } from '@codaco/fresco-ui/Badge';
 import Field from '@codaco/fresco-ui/form/Field/Field';
 import ArrayField from '@codaco/fresco-ui/form/fields/ArrayField/ArrayField';
+import Section from '@codaco/fresco-ui/Section';
 
 import { EntitySubjectPickerField } from '../../../fields/EntityTypePickerField.tsx';
 import {
@@ -163,23 +164,31 @@ export default function ComposerConnectionsSection() {
       title={intl.formatMessage(messages.connectionsTitle)}
       description={intl.formatMessage(messages.connectionsDescription)}
     >
-      <RowList config={rowList}>
-        <Field<typeof ArrayField<RowValues>>
-          name={EDGES_FIELD}
-          component={ArrayField}
-          label={intl.formatMessage(messages.connectionsLabel)}
-          hint={intl.formatMessage(messages.connectionsHint)}
-          getId={rowId}
-          addButtonLabel={intl.formatMessage(messages.connectionsAddLabel)}
-          itemLabel={messages.connectionNoun}
-          emptyStateMessage={intl.formatMessage(messages.connectionsEmptyState)}
-          itemComponent={RowListItem}
-          editorComponent={RowDialog}
-          itemTemplate={rowTemplate()}
-          sortable
-        />
-      </RowList>
-      <CreateConnectionTypeButton onCreated={drawCreatedType} />
+      <Section
+        title={intl.formatMessage(messages.connectionTypesSectionTitle)}
+        description={intl.formatMessage(
+          messages.connectionTypesSectionDescription,
+        )}
+      >
+        <RowList config={rowList}>
+          <Field<typeof ArrayField<RowValues>>
+            name={EDGES_FIELD}
+            component={ArrayField}
+            label={intl.formatMessage(messages.connectionsLabel)}
+            getId={rowId}
+            addButtonLabel={intl.formatMessage(messages.connectionsAddLabel)}
+            itemLabel={messages.connectionNoun}
+            emptyStateMessage={intl.formatMessage(
+              messages.connectionsEmptyState,
+            )}
+            itemComponent={RowListItem}
+            editorComponent={RowDialog}
+            itemTemplate={rowTemplate()}
+            sortable
+          />
+        </RowList>
+        <CreateConnectionTypeButton onCreated={drawCreatedType} />
+      </Section>
       <ConnectionForms entries={entries} />
     </BuilderSection>
   );

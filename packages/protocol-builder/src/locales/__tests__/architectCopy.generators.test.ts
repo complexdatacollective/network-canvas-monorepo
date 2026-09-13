@@ -141,11 +141,6 @@ const SENTENCES_THAT_NAME_A_CONTROL = [
     sentence: 'protocolBuilder.cardDisplay.clearConfirm',
     names: ['protocolBuilder.cardDisplay.title'],
   },
-  {
-    sentence:
-      'protocolBuilder.networkCanvas.layoutModeAutomaticNarrativeDescription',
-    names: ['protocolBuilder.networkCanvas.repositioningLabel'],
-  },
 ] as const;
 
 // Lower-cased on both sides: a label is capitalised as a heading and these

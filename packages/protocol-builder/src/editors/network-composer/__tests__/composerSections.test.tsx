@@ -1311,3 +1311,140 @@ describe('the rules a composer field authors', () => {
     ).toBeDisabled();
   });
 });
+
+/**
+ * The titled groups inside the two sections, as released Architect had them
+ * (`sections/NodeConfiguration/NodeConfiguration.tsx:453-561`,
+ * `sections/EdgeConfiguration/EdgeConfiguration.tsx:241-261`).
+ *
+ * Each group's sentence is what the researcher is given to decide on. Folded
+ * into a hint under one control, as the rebuild had them, a sentence describes
+ * the box rather than the decision — and the decision about automatic layout
+ * had no sentence at all here, because it was a section of its own.
+ */
+describe('the groups a network composer divides its decisions into', () => {
+  it('divides the node configuration into Architect’s four groups, in order', async () => {
+    renderStageEditor(composerHolding({}));
+
+    const nodes = within(
+      await screen.findByRole('region', { name: 'Node configuration' }),
+    );
+    // The whole list, in order, so a group added or reordered fails here.
+    expect(
+      nodes
+        .getAllByRole('region')
+        .map(
+          (region) => within(region).getAllByRole('heading')[0]?.textContent,
+        ),
+    ).toEqual([
+      'Quick add attribute',
+      // Architect's own nesting: the attribute's rules are edited under the
+      // picker that binds it (`NodeConfiguration.tsx:481-488`).
+      'Validation',
+      'Node positions',
+      'Automatic layout',
+      'Group hulls',
+      'Editable attributes',
+    ]);
+  });
+
+  it('gives each group Architect’s own sentence', async () => {
+    renderStageEditor(composerHolding({}));
+
+    expect(
+      await screen.findByRole('region', { name: 'Quick add attribute' }),
+    ).toHaveAccessibleDescription(
+      'The attribute populated by the inline quick-add field when a node is added from the toolbar — typically a name or label.',
+    );
+    expect(
+      screen.getByRole('region', { name: 'Node positions' }),
+    ).toHaveAccessibleDescription(
+      "Stores each node's position on the canvas. Reusing the same attribute across stages preserves positions as the participant moves between tasks.",
+    );
+    expect(
+      screen.getByRole('region', { name: 'Automatic layout' }),
+    ).toHaveAccessibleDescription(
+      'When on, nodes are arranged by a force-directed layout. Participants can toggle this during the interview; this sets the starting state.',
+    );
+    expect(
+      screen.getByRole('region', { name: 'Group hulls' }),
+    ).toHaveAccessibleDescription(
+      'Draw shaded outlines around groups of nodes that share a value of a categorical attribute. Choose (or create) the attribute whose values participants can group nodes into — by tapping nodes with the Groups tool, or by lasso-selecting several at once.',
+    );
+  });
+
+  /**
+   * Each control inside the group whose sentence explains it — the point of
+   * the groups, and what a flat section could not say.
+   */
+  it('puts each control inside the group that describes it', async () => {
+    renderStageEditor(composerHolding({}));
+
+    const quickAdd = within(
+      await screen.findByRole('region', { name: 'Quick add attribute' }),
+    );
+    expect(
+      quickAdd.getByRole('combobox', {
+        name: 'Create or select an attribute for the quick-add form',
+      }),
+    ).toBeInTheDocument();
+    // And no hint of its own: the group's sentence is where the words are now,
+    // so all the control still says about itself is that it must be answered.
+    expect(
+      quickAdd.getByRole('combobox', {
+        name: 'Create or select an attribute for the quick-add form',
+      }),
+    ).toHaveAccessibleDescription(/^Required\s*$/);
+
+    expect(
+      within(screen.getByRole('region', { name: 'Node positions' })).getByRole(
+        'combobox',
+        {
+          name: 'Create or select an attribute to store node coordinates',
+        },
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: 'Group hulls' })).getByRole(
+        'combobox',
+        { name: 'Create or select a categorical attribute for grouping' },
+      ),
+    ).toBeInTheDocument();
+  });
+
+  /**
+   * A group is a group and not a section: nothing here reaches the host's list
+   * of the stage's sections, which is what a researcher navigates by.
+   */
+  it('registers none of them as a section of the stage', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+
+    await waitFor(() => expect(harness.outline()).toHaveLength(3));
+    expect(harness.outline().map((section) => section.title)).toEqual([
+      'Node configuration',
+      'Editable attributes',
+      'Edge configuration',
+    ]);
+  });
+
+  /** The edge half: one group around the list of types the participant draws. */
+  it('wraps the edge types in Architect’s connection-types group', async () => {
+    renderStageEditor(composerHolding({}));
+
+    const edges = within(
+      await screen.findByRole('region', { name: 'Edge configuration' }),
+    );
+    const connectionTypes = edges.getByRole('region', {
+      name: 'Connection types',
+    });
+    expect(connectionTypes).toHaveAccessibleDescription(
+      'Select the edge types participants can create on the canvas. Each selected type gets its own set of editable attributes below.',
+    );
+    // Architect's own label for the list, with no hint under it: the sentence
+    // above is the group's.
+    const list = within(connectionTypes).getByRole('list', {
+      name: 'Edge types',
+    });
+    expect(list).toHaveAccessibleDescription('');
+  });
+});
