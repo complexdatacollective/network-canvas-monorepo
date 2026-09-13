@@ -313,6 +313,12 @@ for (const [path, value] of [
     'apps/studio/deployment/installer/configuration-files.json',
     '["docker-compose.yml","deployment/backup.sh"]\n',
   ],
+  [
+    'apps/studio/deployment/installer/operation.mjs',
+    'export const operation = "changed";\n',
+  ],
+  ['apps/studio/deployment/restore.sh', '#!/bin/sh\nexit 0\n'],
+  ['apps/studio/docker-compose.yml', 'services:\n  studio: {}\n'],
 ])
   test(`Studio image runtime input ${path} changes select the backend and composite image`, async (t) => {
     const f = fixture(t);
@@ -396,9 +402,7 @@ test('shared Docker context filtering selects both backend images without changi
 });
 
 for (const path of [
-  'apps/studio/docker-compose.yml',
   'scripts/studio-install.mjs',
-  'apps/studio/deployment/restore.sh',
   'apps/template-registry/deployment/compose.yml',
 ])
   test(`distribution-only ${path} changes require a new artifact without fabricated package versions`, async (t) => {

@@ -99,6 +99,8 @@ services:
         -c,
         work_mem=256MB,
         -c,
+        max_prepared_transactions=16,
+        -c,
         max_connections=50,
       ]
     shm_size: 1gb

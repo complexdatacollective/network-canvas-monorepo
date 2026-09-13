@@ -1,4 +1,6 @@
+import { spawnSync } from 'node:child_process';
 import {
+  cp,
   mkdtemp,
   readFile,
   readdir,
@@ -12,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { BootstrapTokenSchema } from '@codaco/studio-rpc';
 
@@ -93,43 +96,87 @@ describe('explicit deployment configuration', () => {
       expect(env.STUDIO_IMAGE).toBe(options.image);
       expect(env.MINIO_IMAGE).toBe(options.minioImage);
       expect(env.STUDIO_TELEMETRY).toBe('on');
-      expect(JSON.parse(env.STUDIO_DATABASE_ALLOWED_LOGINS!)).toEqual([
+      expect(env.STUDIO_DATABASE_ALLOWED_LOGINS).toContain(
+        'studio_maintenance_runtime',
+      );
+      expect(
+        await readFile(join(output, 'deployment/encryption.yml'), 'utf8'),
+      ).toContain('studio_maintenance_runtime');
+      expect(await readdir(output)).not.toContain('.configure.lock');
+      expect(await readFile(join(output, 'docker-compose.yml'), 'utf8')).toBe(
+        await readFile(join(templateRoot, 'docker-compose.yml'), 'utf8'),
+      );
+    });
+  });
+
+  it('renders the complete singleton login inventory into actual Compose services', async () => {
+    await fixture(async (output) => {
+      await configureDeployment({ ...options, output }, templateRoot);
+      const env = await readConfiguration(output);
+      const rendered = spawnSync(
+        'docker',
+        [
+          'compose',
+          '--profile',
+          '*',
+          '-f',
+          'docker-compose.yml',
+          '-f',
+          'deployment/encryption.yml',
+          'config',
+          '--format',
+          'json',
+        ],
+        {
+          cwd: output,
+          encoding: 'utf8',
+          timeout: 15_000,
+          maxBuffer: 1024 * 1024,
+        },
+      );
+      expect(rendered.error).toBeUndefined();
+      expect(rendered.status).toBe(0);
+      const services = z
+        .object({
+          services: z.record(
+            z.string(),
+            z.object({
+              environment: z.record(z.string(), z.string()).optional(),
+            }),
+          ),
+        })
+        .parse(JSON.parse(rendered.stdout)).services;
+      const inventory = JSON.stringify([
         'studio_migrator',
         'studio_runtime',
         'studio_maintenance_runtime',
         'studio_backup_login',
       ]);
-      expect(await readdir(output)).not.toContain('.configure.lock');
-      expect(await readFile(join(output, 'docker-compose.yml'), 'utf8')).toBe(
-        await readFile(join(templateRoot, 'docker-compose.yml'), 'utf8'),
-      );
-      expect(
-        await readFile(join(output, 'deployment/encryption.yml'), 'utf8'),
-      ).toBe(
-        await readFile(join(templateRoot, 'deployment/encryption.yml'), 'utf8'),
-      );
-      const postgresInit = await readFile(
-        join(output, 'deployment/postgres-init.sql'),
-        'utf8',
-      );
-      expect(postgresInit).not.toContain('/* STUDIO_');
-      expect(postgresInit).toContain(
-        'GRANT studio_app TO studio_runtime WITH SET TRUE, INHERIT FALSE',
-      );
-      expect(postgresInit).toContain(
-        'GRANT studio_maintenance TO studio_maintenance_runtime WITH SET TRUE, INHERIT FALSE',
-      );
-      expect(postgresInit).toContain(
-        'REVOKE EXECUTE ON FUNCTION pg_catalog.lo_create(oid)',
-      );
-      const postgresPrivileges = await readFile(
-        join(output, 'deployment/postgres-privileges.sql'),
-        'utf8',
-      );
-      expect(postgresPrivileges).not.toContain('/* STUDIO_');
-      expect(postgresPrivileges).toContain(
-        'REVOKE EXECUTE ON FUNCTION pg_catalog.lo_create(oid)',
-      );
+      const appUrl = `postgresql://studio_runtime:${env.STUDIO_DATABASE_PASSWORD}@postgres:5432/studio`;
+      const maintenanceUrl = `postgresql://studio_maintenance_runtime:${env.STUDIO_MAINTENANCE_DATABASE_PASSWORD}@postgres:5432/studio`;
+      expect(services.studio?.environment).toMatchObject({
+        DATABASE_URL: appUrl,
+        STUDIO_MAINTENANCE_DATABASE_URL: maintenanceUrl,
+        STUDIO_DATABASE_ALLOWED_LOGINS: inventory,
+      });
+      expect(services.worker?.environment).toMatchObject({
+        DATABASE_URL: '',
+        STUDIO_MAINTENANCE_DATABASE_URL: maintenanceUrl,
+        STUDIO_DATABASE_ALLOWED_LOGINS: inventory,
+      });
+      expect(services['encryption-verify']?.environment).toMatchObject({
+        DATABASE_URL: maintenanceUrl,
+        STUDIO_DATABASE_ALLOWED_LOGINS: inventory,
+      });
+      for (const name of ['worker', 'encryption-verify', 'backup-verify']) {
+        expect(Object.values(services[name]?.environment ?? {})).not.toContain(
+          appUrl,
+        );
+      }
+      expect(services['backup-verify']?.environment).toEqual({
+        DATABASE_URL: `postgresql://studio_backup_login:${env.STUDIO_BACKUP_PASSWORD}@postgres:5432/studio`,
+        STUDIO_DATABASE_ALLOWED_LOGINS: inventory,
+      });
     });
   });
 
@@ -144,6 +191,56 @@ describe('explicit deployment configuration', () => {
       expect(await readdir(output)).not.toContain('.configure.lock');
     });
   });
+
+  it('removes an owned partial file when its write fails', async () => {
+    await fixture(async (output) => {
+      await expect(
+        configureDeployment({ ...options, output }, templateRoot, {
+          write: async (file, bytes) => {
+            await file.write(bytes.subarray(0, 7));
+            throw new Error('synthetic partial write');
+          },
+        }),
+      ).rejects.toThrow('synthetic partial write');
+      expect(await readdir(output)).toEqual([]);
+    });
+  });
+
+  it.each([
+    ['deployment/postgres-init.sql', '/* STUDIO_RUNTIME_ROLES */'],
+    ['deployment/postgres-init.sql', '/* STUDIO_LARGE_OBJECT_PRIVILEGES */'],
+    [
+      'deployment/postgres-privileges.sql',
+      '/* STUDIO_LARGE_OBJECT_PRIVILEGES */',
+    ],
+  ])(
+    'refuses a missing or repeated provisioning marker in %s before writing credentials',
+    async (name, marker) => {
+      await fixture(async (output) => {
+        await fixture(async (templates) => {
+          await cp(templateRoot, templates, {
+            recursive: true,
+            filter: (source) =>
+              !source.includes('node_modules') &&
+              !source.includes('/.git') &&
+              !source.includes('/client') &&
+              !source.includes('/server'),
+          });
+          const original = await readFile(join(templates, name), 'utf8');
+          for (const replacement of ['', `${marker}\n${marker}`]) {
+            await writeFile(
+              join(templates, name),
+              original.replace(marker, replacement),
+            );
+            await expect(
+              configureDeployment({ ...options, output }, templates),
+            ).rejects.toThrow('Invalid database provisioning template');
+            expect(await readdir(output)).toEqual([]);
+          }
+        });
+      });
+    },
+  );
 
   it('allows exactly one concurrent initialization and preserves its returned token', async () => {
     await fixture(async (output) => {

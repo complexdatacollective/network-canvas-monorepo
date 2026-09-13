@@ -112,6 +112,7 @@ export async function buildStudioReleaseManifest({
           name,
           validateCycloneDx({
             image: images[name].reference,
+            configurations: images[name].configurations,
             bytes: sboms.get(name),
           }),
         ]),

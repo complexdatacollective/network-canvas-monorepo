@@ -17,6 +17,10 @@ import {
   releaseLaneForProduct,
   renderChangelogSection,
 } from './changeset-app-utils.mjs';
+import {
+  recordStudioSourceBaseline,
+  STUDIO_SOURCE_BASELINE,
+} from './studio-release-policy.mjs';
 
 export function planProductReleases(
   cwd,
@@ -160,6 +164,8 @@ function formatGeneratedFiles(cwd, plans) {
     join(cwd, p.dir, 'CHANGELOG.md'),
     join(cwd, p.dir, 'package.json'),
   ]);
+  if (plans.some(({ pkg }) => GATED_PRODUCT_RELEASE_LANES.studio.includes(pkg)))
+    files.push(join(cwd, STUDIO_SOURCE_BASELINE));
   if (files.length === 0) return;
   const result = spawnSync('pnpm', ['exec', 'oxfmt', '--write', ...files], {
     cwd,
@@ -196,6 +202,7 @@ function main() {
   }
   const outPath = outIdx !== -1 ? process.argv[outIdx + 1] : null;
   const { plans, consumed } = planProductReleases(cwd, selectedPackages);
+  recordStudioSourceBaseline(cwd, plans);
   applyProductReleases(cwd, plans, consumed);
   formatGeneratedFiles(cwd, plans);
   const body = renderPrBody(plans);

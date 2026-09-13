@@ -82,7 +82,7 @@ export async function smoke(input, request = fetch) {
   return { ready: true, setup: 'completed', authenticated: true };
 }
 
-export async function registrySmoke(request = fetch) {
+async function registrySmoke(request = fetch) {
   const response = await request('http://127.0.0.1:3000/readyz', {
     redirect: 'error',
     signal: AbortSignal.timeout(5000),

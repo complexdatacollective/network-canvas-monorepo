@@ -3,6 +3,34 @@ import {
   readRelease,
   sha256,
 } from '../../apps/studio/deployment/installer/release.mjs';
+import { buildMultiPlatformCycloneDx } from '../studio-image-evidence.mjs';
+
+export function studioSbom(image) {
+  const reports = new Map(
+    Object.entries(image.configurations).map(([platform, configuration]) => [
+      platform,
+      Buffer.from(
+        JSON.stringify({
+          bomFormat: 'CycloneDX',
+          specVersion: '1.6',
+          metadata: {
+            component: {
+              'type': 'container',
+              'bom-ref': 'opaque-syft-id',
+              'name': `${image.reference}#${platform}`,
+              'version': configuration,
+            },
+          },
+        }),
+      ),
+    ]),
+  );
+  return buildMultiPlatformCycloneDx({
+    image: image.reference,
+    configurations: image.configurations,
+    reports,
+  });
+}
 
 export function releasedDistribution(generation = 1, previous = []) {
   const source = generation.toString(16).padStart(40, '0');

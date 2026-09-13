@@ -16,7 +16,13 @@ const FAMILIES = new Map([
 ]);
 const PLATFORMS = new Set(['linux/amd64', 'linux/arm64']);
 const MAX_JSON_BYTES = 1024 * 1024;
+const MAX_PLATFORM_SBOM_BYTES = 8 * 1024 * 1024;
+const MAX_SBOM_BYTES = 40 * 1024 * 1024;
 const MINIO_REPOSITORY = 'https://github.com/minio/minio';
+const PLATFORM_PROPERTY = 'org.networkcanvas.studio.platform';
+const CONFIGURATION_PROPERTY = 'org.networkcanvas.studio.configuration-digest';
+const REPORT_HASH_PROPERTY = 'org.networkcanvas.studio.syft-report-sha256';
+const REPORT_PROPERTY = 'org.networkcanvas.studio.syft-report-base64';
 
 function ociDigest(bytes) {
   return `sha256:${sha256(bytes)}`;
@@ -29,8 +35,8 @@ function requireDigest(value, message) {
   return value;
 }
 
-function parseJson(bytes, message) {
-  if (!Buffer.isBuffer(bytes) || bytes.length > MAX_JSON_BYTES) {
+function parseJson(bytes, message, maximum = MAX_JSON_BYTES) {
+  if (!Buffer.isBuffer(bytes) || bytes.length > maximum) {
     throw new Error(message);
   }
   try {
@@ -38,6 +44,115 @@ function parseJson(bytes, message) {
   } catch {
     throw new Error(message);
   }
+}
+
+function imageIdentity(image) {
+  const at = image?.lastIndexOf('@');
+  const repository =
+    typeof at === 'number' && at > 0 ? image.slice(0, at) : undefined;
+  const digest =
+    typeof at === 'number' && at > 0 ? image.slice(at + 1) : undefined;
+  if (
+    !Object.values(IMAGE_REPOSITORIES).includes(repository) ||
+    !requireDigest(
+      digest,
+      'SBOM subject is not an immutable controlled image reference.',
+    )
+  ) {
+    throw new Error(
+      'SBOM subject is not an immutable controlled image reference.',
+    );
+  }
+  return { digest, repository };
+}
+
+function validateSyftReport({ bytes, image, platform, configuration }) {
+  const report = parseJson(
+    bytes,
+    'Invalid platform CycloneDX report.',
+    MAX_PLATFORM_SBOM_BYTES,
+  );
+  const component = report.metadata?.component;
+  if (
+    report.bomFormat !== 'CycloneDX' ||
+    !/^1\.[5-9]$/.test(String(report.specVersion)) ||
+    component?.type !== 'container' ||
+    component.name !== `${image}#${platform}` ||
+    component.version !== configuration
+  ) {
+    throw new Error(
+      'Platform CycloneDX report does not bind its image configuration.',
+    );
+  }
+  return report;
+}
+
+export function buildMultiPlatformCycloneDx({
+  image,
+  configurations,
+  reports,
+}) {
+  const { digest, repository } = imageIdentity(image);
+  if (
+    !configurations ||
+    !(reports instanceof Map) ||
+    Object.keys(configurations).toSorted().join('\n') !==
+      [...PLATFORMS].toSorted().join('\n') ||
+    reports.size !== PLATFORMS.size
+  ) {
+    throw new Error('Incomplete platform CycloneDX evidence.');
+  }
+  const components = [...PLATFORMS].toSorted().map((platform) => {
+    const configuration = requireDigest(
+      configurations[platform],
+      'Invalid platform image configuration.',
+    );
+    const report = reports.get(platform);
+    const platformReport = validateSyftReport({
+      bytes: report,
+      image,
+      platform,
+      configuration,
+    });
+    return {
+      'type': 'container',
+      'bom-ref': `${image}#${platform}`,
+      'name': `${repository}#${platform}`,
+      'version': configuration,
+      'components': Array.isArray(platformReport.components)
+        ? platformReport.components
+        : [],
+      'properties': [
+        { name: PLATFORM_PROPERTY, value: platform },
+        { name: CONFIGURATION_PROPERTY, value: configuration },
+        { name: REPORT_HASH_PROPERTY, value: sha256(report) },
+        { name: REPORT_PROPERTY, value: report.toString('base64') },
+      ],
+    };
+  });
+  return Buffer.from(
+    JSON.stringify({
+      bomFormat: 'CycloneDX',
+      specVersion: '1.6',
+      version: 1,
+      metadata: {
+        component: {
+          'type': 'container',
+          'bom-ref': image,
+          'name': repository,
+          'version': digest,
+          'hashes': [{ alg: 'SHA-256', content: digest.slice(7) }],
+        },
+      },
+      components,
+      dependencies: [
+        {
+          ref: image,
+          dependsOn: components.map((component) => component['bom-ref']),
+        },
+      ],
+    }),
+  );
 }
 
 function requireBlob(blobs, descriptor, message) {
@@ -138,24 +253,15 @@ export function deriveImageEvidence({ name, reference, manifestBytes, blobs }) {
   };
 }
 
-export function validateCycloneDx({ image, bytes }) {
-  const at = image?.lastIndexOf('@');
-  const repository =
-    typeof at === 'number' && at > 0 ? image.slice(0, at) : undefined;
-  const digest =
-    typeof at === 'number' && at > 0 ? image.slice(at + 1) : undefined;
+export function validateCycloneDx({ image, configurations, bytes }) {
+  const { digest, repository } = imageIdentity(image);
   if (
-    !Object.values(IMAGE_REPOSITORIES).includes(repository) ||
-    !requireDigest(
-      digest,
-      'SBOM subject is not an immutable controlled image reference.',
-    )
-  ) {
-    throw new Error(
-      'SBOM subject is not an immutable controlled image reference.',
-    );
-  }
-  const sbom = parseJson(bytes, 'Invalid CycloneDX SBOM.');
+    !configurations ||
+    Object.keys(configurations).toSorted().join('\n') !==
+      [...PLATFORMS].toSorted().join('\n')
+  )
+    throw new Error('Incomplete platform CycloneDX evidence.');
+  const sbom = parseJson(bytes, 'Invalid CycloneDX SBOM.', MAX_SBOM_BYTES);
   const component = sbom.metadata?.component;
   const hasImageHash = component?.hashes?.some(
     (hash) =>
@@ -166,12 +272,74 @@ export function validateCycloneDx({ image, bytes }) {
     !/^1\.[5-9]$/.test(String(sbom.specVersion)) ||
     component?.type !== 'container' ||
     component['bom-ref'] !== image ||
-    !hasImageHash
+    component.name !== repository ||
+    component.version !== digest ||
+    !hasImageHash ||
+    !Array.isArray(sbom.components) ||
+    sbom.components.length !== PLATFORMS.size
   ) {
     throw new Error(
       'CycloneDX SBOM does not bind the immutable image reference.',
     );
   }
+  const seen = new Set();
+  for (const platformComponent of sbom.components) {
+    const rawProperties = Array.isArray(platformComponent?.properties)
+      ? platformComponent.properties
+      : [];
+    const properties = new Map(
+      rawProperties.map((property) => [property?.name, property?.value]),
+    );
+    const platform = properties.get(PLATFORM_PROPERTY);
+    const configuration = properties.get(CONFIGURATION_PROPERTY);
+    const encoded = properties.get(REPORT_PROPERTY);
+    if (
+      !PLATFORMS.has(platform) ||
+      seen.has(platform) ||
+      rawProperties.length !== 4 ||
+      properties.size !== 4 ||
+      ![
+        PLATFORM_PROPERTY,
+        CONFIGURATION_PROPERTY,
+        REPORT_HASH_PROPERTY,
+        REPORT_PROPERTY,
+      ].every((name) => properties.has(name)) ||
+      platformComponent.type !== 'container' ||
+      platformComponent['bom-ref'] !== `${image}#${platform}` ||
+      platformComponent.name !== `${repository}#${platform}` ||
+      platformComponent.version !== configuration ||
+      configuration !== configurations[platform] ||
+      typeof encoded !== 'string'
+    ) {
+      throw new Error('Invalid platform CycloneDX evidence.');
+    }
+    const report = Buffer.from(encoded, 'base64');
+    if (
+      report.toString('base64') !== encoded ||
+      sha256(report) !== properties.get(REPORT_HASH_PROPERTY)
+    ) {
+      throw new Error('Invalid platform CycloneDX evidence.');
+    }
+    requireDigest(configuration, 'Invalid platform CycloneDX evidence.');
+    const platformReport = validateSyftReport({
+      bytes: report,
+      image,
+      platform,
+      configuration,
+    });
+    if (
+      JSON.stringify(platformComponent.components) !==
+      JSON.stringify(
+        Array.isArray(platformReport.components)
+          ? platformReport.components
+          : [],
+      )
+    )
+      throw new Error('Invalid platform CycloneDX evidence.');
+    seen.add(platform);
+  }
+  if (seen.size !== PLATFORMS.size)
+    throw new Error('Incomplete platform CycloneDX evidence.');
   return { sha256: sha256(bytes), format: 'cyclonedx-json', subject: image };
 }
 

@@ -27,6 +27,8 @@
     ".": {
       "entry": [
         "scripts/interviewer-*-walker.mjs",
+        // Loaded only by the Studio image build's verified stage.
+        "scripts/verify-deployed-lock.mjs",
         // Invoked by the CI workflow through POSTHOG_CLI_BINARY_PATH.
         "scripts/posthog-cli-upload-stub.mjs"
       ],

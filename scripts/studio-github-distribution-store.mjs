@@ -1,5 +1,10 @@
 import { spawn } from 'node:child_process';
 
+import {
+  IMAGE_REPOSITORIES,
+  sha256,
+} from '../apps/studio/deployment/installer/release.mjs';
+
 const REPOSITORY = 'complexdatacollective/network-canvas-monorepo';
 const API = `repos/${REPOSITORY}`;
 const ASSET_LIMIT = 64 * 1024 * 1024;
@@ -7,6 +12,16 @@ const PAGE_LIMIT = 10;
 const REQUEST_TIMEOUT_MS = 30_000;
 const STDERR_LIMIT = 64 * 1024;
 const OUTPUT_LIMIT = ASSET_LIMIT + 1024 * 1024;
+const PREPARATION_ASSETS = new Set([
+  'image-preparation.checkpoint.json',
+  'release.json',
+  'release.sigstore.json',
+  'installer.tar',
+  'installer.sigstore.json',
+  ...Object.keys(IMAGE_REPOSITORIES).map(
+    (name) => `${name}.image.sigstore.json`,
+  ),
+]);
 
 export class GitHubRequestError extends Error {
   constructor(status, message) {
@@ -576,15 +591,27 @@ export function createGitHubDistributionStore({
             'Preparation checkpoint has different immutable evidence.',
           );
         releaseId(release);
+        const assets = await listAssets(release);
+        const names = assets.map(({ name }) => name);
+        if (
+          new Set(names).size !== names.length ||
+          names.some((name) => !PREPARATION_ASSETS.has(name))
+        )
+          throw new Error('Preparation checkpoint asset inventory is invalid.');
         return release;
       }
       await retained(true);
       return {
         async read(name) {
-          return readAssetFromRelease(await retained(), name);
+          const release = await retained();
+          if (!PREPARATION_ASSETS.has(name))
+            throw new Error('Preparation checkpoint asset name is invalid.');
+          return readAssetFromRelease(release, name);
         },
         async write(name, bytes) {
           const release = await retained();
+          if (!PREPARATION_ASSETS.has(name))
+            throw new Error('Preparation checkpoint asset name is invalid.');
           const previous = await readAssetFromRelease(release, name);
           if (previous !== null) {
             if (!Buffer.isBuffer(bytes) || !previous.equals(bytes))
@@ -610,6 +637,62 @@ export function createGitHubDistributionStore({
     async readAsset(releaseTag, name) {
       tag(releaseTag);
       return readAssetFromRelease(await findRelease(releaseTag), name);
+    },
+
+    /** Publication history excludes interrupted drafts. A final annotated tag
+     * without its release is incomplete evidence, not an empty history. The
+     * caller must still authenticate the returned bytes with Cosign. */
+    async readPublishedManifest({ tag: releaseTag, source: commit }) {
+      exactTag(releaseTag, commit);
+      const release = await findRelease(releaseTag);
+      if (!release)
+        throw new Error('A tagged distribution release is missing.');
+      releaseId(release);
+      if (release.draft) return null;
+      if (release.prerelease !== false)
+        throw new Error(
+          'A prerelease cannot supply supported distribution history.',
+        );
+      const bytes = await readAssetFromRelease(release, 'release.json');
+      const bundle = await readAssetFromRelease(
+        release,
+        'release.sigstore.json',
+      );
+      if (!bytes?.length || !bundle?.length)
+        throw new Error(
+          'Published release authentication evidence is missing.',
+        );
+      const manifestSha256 = sha256(bytes);
+      const sboms = new Map();
+      for (const name of Object.keys(IMAGE_REPOSITORIES)) {
+        const sbom = await readAssetFromRelease(release, `${name}.cdx.json`);
+        if (!sbom?.length || sbom.length > 40 * 1024 * 1024)
+          throw new Error(
+            'Published distribution SBOM evidence is missing or invalid.',
+          );
+        sboms.set(name, sbom);
+      }
+      if (
+        !(await verifyTag({ tag: releaseTag, source: commit, manifestSha256 }))
+      )
+        throw new Error('A published distribution tag is missing.');
+      const confirmed = await exactRelease({
+        tag: releaseTag,
+        source: commit,
+        manifestSha256,
+        create: false,
+      });
+      releaseId(confirmed);
+      if (
+        confirmed.id !== release.id ||
+        confirmed.draft !== false ||
+        confirmed.prerelease !== false ||
+        !Number.isFinite(Date.parse(confirmed.published_at))
+      )
+        throw new Error(
+          'Distribution publication state changed during history authentication.',
+        );
+      return { bytes, bundle, manifestSha256, sboms };
     },
 
     async uploadAsset(releaseTag, name, bytes) {

@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict';
 import {
   chmodSync,
-  mkdirSync,
-  mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
@@ -10,11 +8,9 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import test from 'node:test';
 
-import configurationFiles from '../apps/studio/deployment/installer/configuration-files.json' with { type: 'json' };
 import {
   loadState,
   privateDirectory,
@@ -34,59 +30,28 @@ import {
   pullVerifiedImages,
   verifyOperation,
 } from '../apps/studio/deployment/installer/verify.mjs';
+import { installerFixture } from './test-support/studio-installer.mjs';
 import { releasedDistribution } from './test-support/studio-release.mjs';
 
 function fixture(t, release = releasedDistribution()) {
-  const root = mkdtempSync(join(tmpdir(), 'studio-installer-trust-'));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const installer = installerFixture(t, false, release);
+  const { root, directory: bundleDirectory, contents: files } = installer;
   const controlDirectory = privateDirectory(join(root, 'control'));
-  const bundleDirectory = join(root, 'bundle');
-  mkdirSync(bundleDirectory);
   // These byte fixtures are never executed. The fake verifier below qualifies
   // the command/effect boundary; the release workflow must separately exercise
   // real Cosign signatures, wrong identities and tampering before publication.
-  const files = Object.fromEntries(
-    [
-      'install.mjs',
-      'operation.mjs',
-      'files.mjs',
-      'release.mjs',
-      'verify.mjs',
-      'smoke.mjs',
-    ].map((name) => [name, '// inert trust-test fixture\n']),
-  );
-  Object.assign(files, {
-    'configuration-files.json': JSON.stringify(configurationFiles),
-    'release.json': JSON.stringify(release.value),
-    'release.sigstore.json': '{}',
-    ...Object.fromEntries(
-      configurationFiles.map((name) => [
-        `templates/${name}`,
-        `# raw ${name}\n`,
-      ]),
-    ),
-    ...Object.fromEntries(
-      configurationFiles.map((name) => [
-        `configuration/${name}`,
-        `# ${name}\n`,
-      ]),
-    ),
-  });
   const metadata = {
     format: 1,
     source: release.current.source,
     manifestSha256: release.current.digest,
     files: Object.fromEntries(
-      Object.entries(files).map(([name, bytes]) => [name, sha256(bytes)]),
+      [...files].map(([name, bytes]) => [name, sha256(bytes)]),
     ),
   };
-  for (const [name, bytes] of Object.entries({
-    ...files,
-    'installer.json': JSON.stringify(metadata),
-  })) {
-    mkdirSync(dirname(join(bundleDirectory, name)), { recursive: true });
-    writeFileSync(join(bundleDirectory, name), bytes);
-  }
+  writeFileSync(
+    join(bundleDirectory, 'installer.json'),
+    JSON.stringify(metadata),
+  );
   const calls = [];
   const run = (program, args) => {
     calls.push([program, args]);
@@ -119,6 +84,16 @@ function fixture(t, release = releasedDistribution()) {
     run,
   };
 }
+
+test('a missing required Registry operator member refuses before verification', (t) => {
+  const f = fixture(t);
+  rmSync(join(f.bundleDirectory, 'registry-configuration/recovery.yml'));
+  assert.throws(
+    () => verifyOperation(f, f.run),
+    /Installer bundle is incomplete/,
+  );
+  assert.deepEqual(f.calls, []);
+});
 
 test('verifies the bound manifest and every image before pulls; actual local configuration IDs must then match', (t) => {
   const f = fixture(t);

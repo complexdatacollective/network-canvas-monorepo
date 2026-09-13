@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import { sha256 } from '../apps/studio/deployment/installer/release.mjs';
 import {
+  buildMultiPlatformCycloneDx,
   deriveImageEvidence,
   deriveMinioSourceEvidence,
   validateCycloneDx,
@@ -205,41 +206,86 @@ test('rejects wrong schema, media type, configuration, and oversized JSON blobs'
 });
 
 test('checks CycloneDX container identity, image hash, and controlled subject', () => {
-  const image = derive().reference;
-  const bytes = Buffer.from(
-    JSON.stringify({
-      bomFormat: 'CycloneDX',
-      specVersion: '1.6',
-      metadata: {
-        component: {
-          'bom-ref': image,
-          'hashes': [
-            {
-              alg: 'SHA-256',
-              content: image.slice(image.lastIndexOf(':') + 1),
+  const evidence = derive();
+  const image = evidence.reference;
+  const reports = new Map(
+    Object.entries(evidence.configurations).map(([platform, configuration]) => [
+      platform,
+      Buffer.from(
+        JSON.stringify({
+          bomFormat: 'CycloneDX',
+          specVersion: '1.6',
+          metadata: {
+            component: {
+              'type': 'container',
+              'bom-ref': 'opaque-syft-id',
+              'name': `${image}#${platform}`,
+              'version': configuration,
             },
-          ],
-          'type': 'container',
-        },
-      },
-    }),
+          },
+        }),
+      ),
+    ]),
   );
-  assert.deepEqual(validateCycloneDx({ image, bytes }), {
-    format: 'cyclonedx-json',
-    sha256: sha256(bytes),
-    subject: image,
+  const bytes = buildMultiPlatformCycloneDx({
+    image,
+    configurations: evidence.configurations,
+    reports,
   });
+  assert.deepEqual(
+    validateCycloneDx({
+      image,
+      configurations: evidence.configurations,
+      bytes,
+    }),
+    {
+      format: 'cyclonedx-json',
+      sha256: sha256(bytes),
+      subject: image,
+    },
+  );
   assert.throws(
     () =>
       validateCycloneDx({
         image: image.replace(studio, 'ghcr.io/example/studio'),
+        configurations: evidence.configurations,
         bytes,
       }),
     /controlled image reference/,
   );
   assert.throws(
-    () => validateCycloneDx({ image, bytes: Buffer.from('{}') }),
+    () =>
+      validateCycloneDx({
+        image,
+        configurations: evidence.configurations,
+        bytes: Buffer.from('{}'),
+      }),
     /does not bind/,
+  );
+  const corrupted = JSON.parse(bytes);
+  corrupted.components[0].properties.find((property) =>
+    property.name.endsWith('syft-report-base64'),
+  ).value = Buffer.from('{}').toString('base64');
+  assert.throws(
+    () =>
+      validateCycloneDx({
+        image,
+        configurations: evidence.configurations,
+        bytes: Buffer.from(JSON.stringify(corrupted)),
+      }),
+    /platform CycloneDX evidence/,
+  );
+  assert.throws(
+    () =>
+      validateCycloneDx({
+        image,
+        configurations: {
+          ...evidence.configurations,
+          'linux/amd64': 'sha256:' + 'f'.repeat(64),
+        },
+        bytes,
+      }),
+    /platform CycloneDX evidence/,
   );
 });
 

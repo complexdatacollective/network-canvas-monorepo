@@ -106,9 +106,11 @@ const IMAGE_RUNTIME_PATHS = {
     '.dockerignore',
     'apps/studio/Dockerfile',
     'apps/studio/Dockerfile.dockerignore',
+    'apps/studio/BACKUPS.md',
+    'apps/studio/MIGRATIONS.md',
+    'apps/studio/SELF_HOSTING.md',
+    'apps/studio/docker-compose.yml',
     'apps/studio/docker-entrypoint.sh',
-    // The configure entrypoint bundles this shared template inventory.
-    'apps/studio/deployment/installer/configuration-files.json',
     'scripts/verify-deployed-lock.mjs',
   ],
   registry: [
@@ -125,7 +127,11 @@ export function imageRuntimeInputs(candidate, image) {
   const paths = IMAGE_RUNTIME_PATHS[image];
   if (!paths) throw new Error('Unknown Studio release image.');
   return candidate.files
-    .filter(({ path }) => paths.includes(path))
+    .filter(
+      ({ path }) =>
+        paths.includes(path) ||
+        (image === 'studio' && path.startsWith('apps/studio/deployment/')),
+    )
     .map(({ path, mode, oid }) => [path, mode, oid]);
 }
 

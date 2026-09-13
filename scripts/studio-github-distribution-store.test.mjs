@@ -5,10 +5,15 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import {
+  IMAGE_REPOSITORIES,
+  sha256,
+} from '../apps/studio/deployment/installer/release.mjs';
+import {
   createGhRequest,
   createGitHubDistributionStore,
   GitHubRequestError,
 } from './studio-github-distribution-store.mjs';
+import { githubDistributionFixture as fixture } from './test-support/github-distribution.mjs';
 
 const source = 'a'.repeat(40);
 const other = 'b'.repeat(40);
@@ -16,119 +21,139 @@ const manifestSha256 = 'c'.repeat(64);
 const tag = `studio/${source}`;
 const api = 'repos/complexdatacollective/network-canvas-monorepo';
 
-function missing() {
-  throw new GitHubRequestError(404, 'HTTP 404 Not Found');
-}
-
-function response(value) {
-  return { bytes: Buffer.from(JSON.stringify(value)), status: 200 };
-}
-
-function fixture() {
-  const refs = new Map();
-  const tags = new Map();
-  const releases = new Map();
-  const assets = new Map();
-  const calls = [];
-  let next = 1;
-  const request = async (options) => {
-    calls.push(options);
-    const method = options.method ?? 'GET';
-    const path = options.path;
-    const body = options.body;
-    if (path === 'user') return response({ login: 'studio-bot' });
-    if (method === 'GET' && path.startsWith(`${api}/git/ref/tags/`)) {
-      const name = decodeURIComponent(
-        path.slice(`${api}/git/ref/tags/`.length),
-      );
-      if (!refs.has(name)) missing();
-      return response({ object: refs.get(name) });
-    }
-    if (method === 'POST' && path === `${api}/git/refs`) {
-      const name = body.ref.slice('refs/tags/'.length);
-      if (refs.has(name)) throw new GitHubRequestError(422, 'HTTP 422 exists');
-      refs.set(name, {
-        sha: body.sha,
-        type: name.startsWith('studio/') ? 'tag' : 'commit',
-      });
-      return response({});
-    }
-    if (method === 'POST' && path === `${api}/git/tags`) {
-      const sha = `tag-${next++}`;
-      tags.set(sha, {
-        tag: body.tag,
-        message: body.message,
-        object: { type: body.type, sha: body.object },
-      });
-      return response({ sha });
-    }
-    if (method === 'GET' && path.startsWith(`${api}/git/tags/`)) {
-      const object = tags.get(path.slice(`${api}/git/tags/`.length));
-      if (!object) missing();
-      return response(object);
-    }
-    if (method === 'GET' && path.startsWith(`${api}/releases/tags/`)) {
-      const name = decodeURIComponent(
-        path.slice(`${api}/releases/tags/`.length),
-      );
-      if (!releases.has(name)) missing();
-      return response(releases.get(name));
-    }
-    if (method === 'POST' && path === `${api}/releases`) {
-      if (releases.has(body.tag_name))
-        throw new GitHubRequestError(422, 'HTTP 422 exists');
-      const release = { ...body, id: next++, published_at: null };
-      releases.set(body.tag_name, release);
-      assets.set(release.id, []);
-      return response(release);
-    }
-    if (method === 'GET' && path.match(/\/releases\/\d+\/assets$/)) {
-      const id = Number(path.split('/')[4]);
-      return response(
-        (assets.get(id) ?? []).slice(
-          (options.query.page - 1) * 100,
-          options.query.page * 100,
-        ),
-      );
-    }
-    if (method === 'GET' && path.match(/\/releases\/assets\/\d+$/)) {
-      const id = Number(path.split('/').at(-1));
-      for (const list of assets.values()) {
-        const asset = list.find((item) => item.id === id);
-        if (asset) return { bytes: asset.bytes, status: 200 };
-      }
-      missing();
-    }
-    if (method === 'POST' && path.startsWith('https://uploads.github.com/')) {
-      const id = Number(path.split('/')[7]);
-      const list = assets.get(id);
-      if (list.some((item) => item.name === options.query.name))
-        throw new GitHubRequestError(422, 'HTTP 422 exists');
-      list.push({
-        id: next++,
-        name: options.query.name,
-        bytes: options.bytes,
-        size: options.bytes.length,
-      });
-      return response({});
-    }
-    if (method === 'PATCH' && path.match(/\/releases\/\d+$/)) {
-      const id = Number(path.split('/').at(-1));
-      const release = [...releases.values()].find((item) => item.id === id);
-      Object.assign(release, body, { published_at: '2026-09-07T00:00:00Z' });
-      return response(release);
-    }
-    throw new Error(`Unexpected request ${options.method ?? 'GET'} ${path}`);
-  };
-  return { assets, calls, refs, releases, request, tags };
-}
-
 function store(f) {
   return createGitHubDistributionStore({
     request: f.request,
     tagger: { name: 'Joshua Melville', email: 'joshua@northwestern.edu' },
   });
 }
+
+async function publishedFixture() {
+  const f = fixture();
+  const distribution = store(f);
+  const bytes = Buffer.from('exact manifest bytes');
+  const bundle = Buffer.from('retained signature bundle');
+  const input = { tag, source, manifestSha256: sha256(bytes) };
+  await distribution.ensureDraft(input);
+  await distribution.uploadAsset(tag, 'release.json', bytes);
+  await distribution.uploadAsset(tag, 'release.sigstore.json', bundle);
+  const sboms = new Map();
+  for (const name of Object.keys(IMAGE_REPOSITORIES)) {
+    const contents = Buffer.from(`exact ${name} SBOM bytes`);
+    sboms.set(name, contents);
+    await distribution.uploadAsset(tag, `${name}.cdx.json`, contents);
+  }
+  return { f, distribution, bytes, bundle, input, sboms };
+}
+
+test('reads only published manifests bound to both the annotated tag and release', async () => {
+  const p = await publishedFixture();
+  assert.equal(
+    await p.distribution.readPublishedManifest({ tag, source }),
+    null,
+  );
+  await p.distribution.publish(p.input);
+  assert.deepEqual(
+    await p.distribution.readPublishedManifest({ tag, source }),
+    {
+      bytes: p.bytes,
+      bundle: p.bundle,
+      manifestSha256: sha256(p.bytes),
+      sboms: p.sboms,
+    },
+  );
+});
+
+test('prereleases cannot supply supported distribution history', async () => {
+  const p = await publishedFixture();
+  await p.distribution.publish(p.input);
+  p.f.releases.get(tag).prerelease = true;
+  await assert.rejects(
+    () => p.distribution.readPublishedManifest({ tag, source }),
+    /prerelease cannot supply/,
+  );
+});
+
+test('withdrawal during asset reads cannot return published evidence', async () => {
+  const p = await publishedFixture();
+  await p.distribution.publish(p.input);
+  const original = p.f.request;
+  let releaseReads = 0;
+  p.f.request = async (input) => {
+    if (
+      input.path === `${api}/releases/tags/${encodeURIComponent(tag)}` &&
+      ++releaseReads === 2
+    )
+      Object.assign(p.f.releases.get(tag), { draft: true, published_at: null });
+    return original(input);
+  };
+  await assert.rejects(
+    () => store(p.f).readPublishedManifest({ tag, source }),
+    /publication state changed/,
+  );
+  assert.equal(releaseReads, 2);
+});
+
+test('a published manifest without a complete SBOM inventory is refused', async () => {
+  const p = await publishedFixture();
+  await p.distribution.publish(p.input);
+  const assets = p.f.assets.get(p.f.releases.get(tag).id);
+  assets.splice(
+    assets.findIndex(({ name }) => name === 'registry.cdx.json'),
+    1,
+  );
+  await assert.rejects(
+    () => p.distribution.readPublishedManifest({ tag, source }),
+    /SBOM evidence is missing/,
+  );
+});
+
+test('replacement during asset reads cannot borrow a deleted release inventory', async () => {
+  const p = await publishedFixture();
+  await p.distribution.publish(p.input);
+  const original = p.f.request;
+  const initialId = p.f.releases.get(tag).id;
+  let releaseReads = 0;
+  p.f.request = async (input) => {
+    if (
+      input.path === `${api}/releases/tags/${encodeURIComponent(tag)}` &&
+      ++releaseReads === 2
+    ) {
+      const replacement = { ...p.f.releases.get(tag), id: initialId + 1000 };
+      p.f.releases.set(tag, replacement);
+      p.f.assets.delete(initialId);
+      p.f.assets.set(replacement.id, []);
+    }
+    return original(input);
+  };
+  await assert.rejects(
+    () => store(p.f).readPublishedManifest({ tag, source }),
+    /publication state changed/,
+  );
+  assert.equal(releaseReads, 2);
+  assert.deepEqual(p.f.assets.get(initialId + 1000), []);
+});
+
+for (const defect of [
+  'missing-release',
+  'missing-bundle',
+  'tag-binding',
+  'release-binding',
+])
+  test(`refuses ${defect} when reading published authentication evidence`, async () => {
+    const p = await publishedFixture();
+    await p.distribution.publish(p.input);
+    if (defect === 'missing-release') p.f.releases.delete(tag);
+    if (defect === 'missing-bundle')
+      p.f.assets.get(p.f.releases.get(tag).id).splice(1, 1);
+    if (defect === 'tag-binding')
+      p.f.tags.get(p.f.refs.get(tag).sha).message = 'substituted';
+    if (defect === 'release-binding')
+      p.f.releases.get(tag).body = 'substituted';
+    await assert.rejects(() =>
+      p.distribution.readPublishedManifest({ tag, source }),
+    );
+  });
 
 test('does not create a release if its newly written final tag cannot be read back', async () => {
   const f = fixture();
@@ -302,6 +327,27 @@ test('preparation rereads its private identity before every operation', async ()
   assert.equal(f.calls.filter((call) => call.method === 'POST').length, writes);
 });
 
+test('preparation refuses unsigned legacy or unexpected checkpoint assets', async () => {
+  const f = fixture();
+  const distribution = store(f);
+  await distribution.reserve(source);
+  const preparation = await distribution.ensurePreparation({
+    source,
+    artifactSha256: manifestSha256,
+  });
+  const release = f.releases.get(`studio-distribution-${source}`);
+  f.assets.get(release.id).push({
+    id: 999,
+    name: 'image-preparation.json',
+    bytes: Buffer.from('unsigned'),
+    size: 8,
+  });
+  await assert.rejects(
+    preparation.read('image-preparation.checkpoint.json'),
+    /asset inventory is invalid/,
+  );
+});
+
 test('preparation reads back exact bytes and refuses a corrupt retained upload', async () => {
   const f = fixture();
   const request = f.request;
@@ -318,7 +364,7 @@ test('preparation reads back exact bytes and refuses a corrupt retained upload',
     artifactSha256: manifestSha256,
   });
   await assert.rejects(
-    preparation.write('image.json', Buffer.from('good')),
+    preparation.write('image-preparation.checkpoint.json', Buffer.from('good')),
     /failed exact readback/,
   );
   assert.ok([...f.releases.values()].every((release) => release.draft));

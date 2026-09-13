@@ -59,7 +59,7 @@ function validateArtifacts(artifacts, gate) {
       throw new Error('Invalid distribution asset.');
     total += bytes.length;
   }
-  if (total > 256 * 1024 * 1024)
+  if (total > 384 * 1024 * 1024)
     throw new Error('Distribution assets are too large.');
   const manifest = readRelease(artifacts.get('release.json'));
   const { release, current } = manifest;
@@ -92,7 +92,11 @@ function validateArtifacts(artifacts, gate) {
     const bytes = artifacts.get(`${name}.cdx.json`);
     if (sha256(bytes) !== release.evidence.sboms[name].sha256)
       throw new Error('Distribution SBOM differs from its signed identity.');
-    validateCycloneDx({ image: release.images[name].reference, bytes });
+    validateCycloneDx({
+      image: release.images[name].reference,
+      configurations: release.images[name].configurations,
+      bytes,
+    });
   }
   const archive = readInstallerArchive(
     artifacts.get('installer.tar'),
@@ -126,7 +130,12 @@ export async function publishStudioDistribution({ source }, adapter) {
   await adapter.verify(artifacts);
   const finalGate = await admission(adapter, source);
   const manifest = validateArtifacts(artifacts, finalGate);
-  await adapter.qualify(manifest, artifacts);
+  // Qualification may consume or annotate its inputs. Keep the authenticated
+  // publication bytes and identity private to this state machine.
+  await adapter.qualify(
+    structuredClone(manifest),
+    new Map([...artifacts].map(([name, bytes]) => [name, Buffer.from(bytes)])),
+  );
   // Qualification can be long-running. Re-check publication and ancestry after
   // it, including a dependency publication that was withdrawn in the meantime.
   validateArtifacts(artifacts, await admission(adapter, source));

@@ -15,7 +15,10 @@ import {
   IMAGE_REPOSITORIES,
   sha256,
 } from '../apps/studio/deployment/installer/release.mjs';
-import { acquireImageEvidence } from './studio-image-registry.mjs';
+import {
+  acquireImageEvidence,
+  probeImageTag,
+} from './studio-image-registry.mjs';
 
 const OCI_INDEX = 'application/vnd.oci.image.index.v1+json';
 const OCI_MANIFEST = 'application/vnd.oci.image.manifest.v1+json';
@@ -109,6 +112,107 @@ test('reads exact immutable crane bytes and derives the existing evidence contra
       ['manifest', `${repository}@${JSON.parse(f.index).manifests[1].digest}`],
       ['blob', `${repository}@${f.configurations['linux/arm64']}`],
     ],
+  );
+});
+
+test('only an authenticated 404 authorizes creation of a controlled source tag', async (t) => {
+  const f = fixture(t);
+  const tagged = `${repository}:sha-${'a'.repeat(40)}`;
+  f.replies[`auth token -H ${repository}`] = Buffer.from(
+    'Authorization: Bearer test-token\n',
+  ).toString('base64');
+  writeCrane(f.crane, f.log, f.replies);
+  const requests = [];
+  const request = async (input) => {
+    requests.push(input);
+    return { status: 404, digest: null, registry: 'registry/2.0' };
+  };
+  assert.equal(
+    await probeImageTag({
+      name: 'studio',
+      reference: tagged,
+      crane: f.crane,
+      request,
+      timeoutMs: 2_000,
+    }),
+    null,
+  );
+  assert.deepEqual(requests, [
+    {
+      url: `https://ghcr.io/v2/complexdatacollective/studio/manifests/sha-${'a'.repeat(40)}`,
+      authorization: 'Bearer test-token',
+      timeoutMs: 2_000,
+    },
+  ]);
+  assert.equal(
+    await probeImageTag({
+      name: 'studio',
+      reference: tagged,
+      crane: f.crane,
+      request: async () => ({
+        status: 200,
+        digest: 'sha256:' + 'b'.repeat(64),
+        registry: 'registry/2.0',
+      }),
+    }),
+    'sha256:' + 'b'.repeat(64),
+  );
+});
+
+for (const { label, response } of [
+  {
+    label: 'forbidden',
+    response: { status: 403, digest: null, registry: 'registry/2.0' },
+  },
+  {
+    label: 'malformed success',
+    response: {
+      status: 200,
+      digest: 'not-a-digest',
+      registry: 'registry/2.0',
+    },
+  },
+  {
+    label: 'unattributed missing',
+    response: { status: 404, digest: null, registry: null },
+  },
+])
+  test(`refuses ${label} tag evidence as absence`, async (t) => {
+    const f = fixture(t);
+    f.replies[`auth token -H ${repository}`] = Buffer.from(
+      'Authorization: Bearer test-token\n',
+    ).toString('base64');
+    writeCrane(f.crane, f.log, f.replies);
+    await assert.rejects(
+      () =>
+        probeImageTag({
+          name: 'studio',
+          reference: `${repository}:sha-${'a'.repeat(40)}`,
+          crane: f.crane,
+          request: async () => response,
+        }),
+      /did not return authenticated evidence/,
+    );
+  });
+
+test('propagates a registry probe timeout as failure rather than absence', async (t) => {
+  const f = fixture(t);
+  f.replies[`auth token -H ${repository}`] = Buffer.from(
+    'Authorization: Bearer test-token\n',
+  ).toString('base64');
+  writeCrane(f.crane, f.log, f.replies);
+  const timeout = new Error('registry timeout');
+  await assert.rejects(
+    () =>
+      probeImageTag({
+        name: 'studio',
+        reference: `${repository}:sha-${'a'.repeat(40)}`,
+        crane: f.crane,
+        request: async () => {
+          throw timeout;
+        },
+      }),
+    (error) => error === timeout,
   );
 });
 

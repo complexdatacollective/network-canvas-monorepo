@@ -1,12 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import {
-  mkdir,
-  open,
-  readFile,
-  readdir,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdir, open, readFile, readdir, rm } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 
 import { z } from 'zod';
@@ -15,6 +9,8 @@ import {
   revokeLargeObjectPrivilegesSql,
   runtimeRolesSql,
 } from '@codaco/studio-sync/role-bootstrap';
+
+import configurationFiles from '../../../deployment/installer/configuration-files.json' with { type: 'json' };
 
 const image = z
   .string()
@@ -35,67 +31,79 @@ const optionsSchema = z.object({
   output: z.string().min(1),
 });
 
-const TEMPLATE_FILES = [
-  'docker-compose.yml',
-  'SELF_HOSTING.md',
-  'MIGRATIONS.md',
-  'BACKUPS.md',
-  'deployment/traefik.yml',
-  'deployment/migrate.yml',
-  'deployment/encryption.yml',
-  'deployment/postgres-init.sql',
-  'deployment/postgres-privileges.sql',
-  'deployment/minio-init.sh',
-  'deployment/minio-policy.json',
-  'deployment/backup.sh',
-  'deployment/restore.sh',
-  'deployment/checksum.sh',
-  'deployment/quarantine.yml',
-] as const;
-
-const DATABASE_ROLES = ['studio_app', 'studio_maintenance', 'studio_backup'];
-const DATABASE_LOGINS = [
+const databaseRoles = ['studio_app', 'studio_maintenance', 'studio_backup'];
+const databaseLogins = [
   'studio_migrator',
   'studio_runtime',
   'studio_maintenance_runtime',
   'studio_backup_login',
 ];
 
+/** The signed installer and offline configure command share these public bytes.
+ * This renderer never generates or reads deployment secrets. */
+export function renderDeploymentTemplate(name: string, input: Buffer): Buffer {
+  if (!configurationFiles.includes(name))
+    throw new Error('Unknown deployment template.');
+  let bytes = Buffer.from(input);
+  if (name.startsWith('deployment/postgres-')) {
+    let sql = bytes.toString();
+    const substitutions = new Map([
+      [
+        '/* STUDIO_LARGE_OBJECT_PRIVILEGES */',
+        revokeLargeObjectPrivilegesSql([...databaseRoles, ...databaseLogins]),
+      ],
+    ]);
+    if (name === 'deployment/postgres-init.sql')
+      substitutions.set(
+        '/* STUDIO_RUNTIME_ROLES */',
+        runtimeRolesSql(databaseRoles),
+      );
+    for (const [marker, replacement] of substitutions) {
+      if (sql.split(marker).length !== 2)
+        throw new Error('Invalid database provisioning template.');
+      sql = sql.replace(marker, replacement);
+    }
+    bytes = Buffer.from(sql);
+  }
+  return bytes;
+}
+
+async function writeOwned(
+  path: string,
+  bytes: Buffer,
+  mode: number,
+  owned: string[],
+  write: (file: FileHandle, bytes: Buffer) => Promise<void>,
+) {
+  const file = await open(path, 'wx', mode);
+  owned.push(path);
+  try {
+    await write(file, bytes);
+    await file.sync();
+  } finally {
+    await file.close();
+  }
+}
+
 /** Offline only: no environment, listener, database or external service access. */
 export async function configureDeployment(
   input: z.input<typeof optionsSchema>,
   templateRoot: string,
+  {
+    write = (file, bytes) => file.writeFile(bytes),
+  }: { write?: (file: FileHandle, bytes: Buffer) => Promise<void> } = {},
 ): Promise<{ setupUrl: string; bootstrapToken: string }> {
   const options = optionsSchema.parse(input);
   // Validate inputs and read the complete shipped bundle before writing anything.
   const templates = await Promise.all(
-    TEMPLATE_FILES.map(async (name) => {
-      let bytes = await readFile(join(templateRoot, name));
-      if (name.startsWith('deployment/postgres-')) {
-        const sql = bytes.toString();
-        const substitutions = new Map([
-          [
-            '/* STUDIO_LARGE_OBJECT_PRIVILEGES */',
-            revokeLargeObjectPrivilegesSql([
-              ...DATABASE_ROLES,
-              ...DATABASE_LOGINS,
-            ]),
-          ],
-        ]);
-        if (name === 'deployment/postgres-init.sql')
-          substitutions.set(
-            '/* STUDIO_RUNTIME_ROLES */',
-            runtimeRolesSql(DATABASE_ROLES),
-          );
-        let rendered = sql;
-        for (const [marker, replacement] of substitutions) {
-          if (rendered.split(marker).length !== 2)
-            throw new Error('Invalid database provisioning template.');
-          rendered = rendered.replace(marker, replacement);
-        }
-        bytes = Buffer.from(rendered);
-      }
-      return { name, bytes };
+    configurationFiles.map(async (name) => {
+      return {
+        name,
+        bytes: renderDeploymentTemplate(
+          name,
+          await readFile(join(templateRoot, name)),
+        ),
+      };
     }),
   );
   const output = resolve(options.output);
@@ -141,7 +149,7 @@ export async function configureDeployment(
       STUDIO_IMAGE: options.image,
       MINIO_IMAGE: options.minioImage,
       STUDIO_ROLE: 'both',
-      STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(DATABASE_LOGINS),
+      STUDIO_DATABASE_ALLOWED_LOGINS: JSON.stringify(databaseLogins),
       POSTGRES_PASSWORD: secret(),
       STUDIO_MIGRATION_PASSWORD: secret(),
       STUDIO_DATABASE_PASSWORD: secret(),
@@ -168,20 +176,21 @@ export async function configureDeployment(
     // All generated fields exclude single quotes/newlines. Literal dotenv values
     // avoid Compose interpolation of credentials and the keyset's JSON.
     const dotenv = (values: Record<string, string>) =>
-      Object.entries(values)
-        .map(([name, value]) => `${name}='${value}'`)
-        .join('\n') + '\n';
+      Buffer.from(
+        Object.entries(values)
+          .map(([name, value]) => `${name}='${value}'`)
+          .join('\n') + '\n',
+      );
     for (const { name, bytes } of templates) {
       const target = join(output, name);
       if (dirname(target) !== output) {
         await mkdir(dirname(target), { recursive: true, mode: 0o700 });
         directories.add(dirname(target));
       }
-      await writeFile(target, bytes, { flag: 'wx', mode: 0o644 });
-      written.push(target);
+      await writeOwned(target, bytes, 0o644, written, write);
     }
     const encryptionPath = join(output, 'deployment/encryption.env');
-    await writeFile(
+    await writeOwned(
       encryptionPath,
       dotenv({
         STUDIO_ENCRYPTION_KEYSET: JSON.stringify(keyset),
@@ -192,13 +201,13 @@ export async function configureDeployment(
           ]),
         ),
       }),
-      { flag: 'wx', mode: 0o600 },
+      0o600,
+      written,
+      write,
     );
-    written.push(encryptionPath);
     // Credentials are the final file; a partial template copy cannot be booted.
     const envPath = join(output, '.env');
-    await writeFile(envPath, dotenv(environment), { flag: 'wx', mode: 0o600 });
-    written.push(envPath);
+    await writeOwned(envPath, dotenv(environment), 0o600, written, write);
     return { setupUrl: `https://${options.domain}/setup`, bootstrapToken };
   } catch (error) {
     await Promise.all(written.map((path) => rm(path, { force: true })));

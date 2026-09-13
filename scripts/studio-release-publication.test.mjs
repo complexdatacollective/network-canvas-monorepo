@@ -9,30 +9,16 @@ import {
 } from '../apps/studio/deployment/installer/release.mjs';
 import { publishStudioDistribution } from './studio-release-publication.mjs';
 import { installerFixture } from './test-support/studio-installer.mjs';
-import { releasedDistribution } from './test-support/studio-release.mjs';
+import {
+  releasedDistribution,
+  studioSbom,
+} from './test-support/studio-release.mjs';
 
 function fixture(t) {
   const release = releasedDistribution();
   const sboms = new Map();
   for (const [name, evidence] of Object.entries(release.value.evidence.sboms)) {
-    const bytes = Buffer.from(
-      JSON.stringify({
-        bomFormat: 'CycloneDX',
-        specVersion: '1.6',
-        metadata: {
-          component: {
-            'type': 'container',
-            'bom-ref': evidence.subject,
-            'hashes': [
-              {
-                alg: 'SHA-256',
-                content: evidence.subject.split('@sha256:')[1],
-              },
-            ],
-          },
-        },
-      }),
-    );
+    const bytes = studioSbom(release.value.images[name]);
     evidence.sha256 = sha256(bytes);
     sboms.set(`${name}.cdx.json`, bytes);
   }
@@ -225,6 +211,22 @@ test('a failed readback cannot expose a corrupt draft', async (t) => {
   };
   await assert.rejects(f.run(), /readback verification/);
   assert.ok(!f.calls.includes('publish'));
+});
+
+test('qualification cannot mutate the authenticated publication identity or bytes', async (t) => {
+  const f = fixture(t);
+  f.adapter.qualify = async (manifest, artifacts) => {
+    manifest.current.digest = 'f'.repeat(64);
+    artifacts.get('release.json').fill(0);
+    artifacts.clear();
+  };
+  const result = await f.run();
+  assert.equal(result.manifestSha256, f.release.current.digest);
+  assert.deepEqual(
+    f.retained.get('release.json'),
+    f.artifacts.get('release.json'),
+  );
+  assert.equal(f.retained.size, 10);
 });
 
 for (const operation of ['verify', 'qualify']) {
