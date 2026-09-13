@@ -3,6 +3,7 @@ import { execFile, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { once } from 'node:events';
 import { chmod, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { isAbsolute, join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
@@ -20,6 +21,24 @@ import {
 
 const execute = promisify(execFile);
 const DEADLINE = 30_000;
+
+// Match Playwright's default headless executable. chromium.executablePath()
+// selects full Chrome for Testing, whose browser-owned time/component services
+// emit network requests even with Playwright's default background flags.
+// Resolve through our installed Playwright dependency and its pinned registry;
+// never guess a cache layout or silently fall back to a different browser.
+const playwrightRequire = createRequire(import.meta.resolve('playwright'));
+const {
+  registry: { registry: browserRegistry },
+} = playwrightRequire('playwright-core/lib/coreBundle');
+export function kernelHeadlessExecutablePath() {
+  const executable = browserRegistry.findExecutable('chromium-headless-shell');
+  assert(
+    executable,
+    'Installed Playwright does not expose Chromium Headless Shell.',
+  );
+  return executable.executablePathOrDie('javascript');
+}
 
 function environmentAssignment(name, value) {
   assert(value && !value.includes('\0'), `${name} is required.`);
@@ -282,7 +301,7 @@ export async function launchKernelObservedChromium({
         namespacePid,
         browserUid,
         browserGid,
-        executablePath: chromium.executablePath(),
+        executablePath: kernelHeadlessExecutablePath(),
       }),
       { mode: 0o700 },
     );
