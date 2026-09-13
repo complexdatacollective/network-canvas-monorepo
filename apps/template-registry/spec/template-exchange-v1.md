@@ -99,11 +99,13 @@ or object member value adds one), NUL characters, and unpaired Unicode surrogate
 the decoded value reserialized by the algorithm above with the original text
 is the final canonicality check.
 
-Unless a byte limit is stated, every character limit in this specification is
-measured in ECMAScript UTF-16 code units, the same measure used by the
-authoritative validators' JavaScript `String.length`. A supplementary Unicode
-scalar value therefore counts as two characters for these limits. UTF-8 byte
-limits and hash inputs continue to use encoded bytes.
+Character limits on `template.name`, `template.summary`, and metadata strings
+count Unicode scalar values (code points), matching JSON Schema `maxLength` and
+Registry API clients. A supplementary scalar value counts as one character.
+This accepts every previously valid display string and does not normalize or
+rewrite text. Other artifact character limits count ECMAScript UTF-16 code units;
+a supplementary scalar value counts as two units there. UTF-8 byte limits, hash
+inputs, and the UTF-16 ordering specified below remain unchanged.
 
 ## Hashes and artifact identity
 
