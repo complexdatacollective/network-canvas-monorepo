@@ -27,7 +27,9 @@ import {
   reachableDb,
   seedTestEncryptionKeyVerifications,
 } from '../../../__tests__/support/postgres.ts';
+import { runMonitoringRollupOnce } from '../../../monitoring/recompute.ts';
 import { SCHEMA_FINGERPRINT } from '../../fingerprint.generated.ts';
+import { createMaintenancePool } from '../../pool.ts';
 import { checkSchema, SCHEMA, SIDECARS } from '../../schema.ts';
 import { migrateDatabase } from '../migrate.ts';
 
@@ -201,6 +203,80 @@ async function expectSecurityContract(pool: pg.Pool) {
 }
 
 describe.skipIf(!database)('explicit Studio migrations', () => {
+  it('queues every existing wave for initial timing recomputation on upgrade', async () => {
+    await withDatabase(async ({ pool, db: scratchDb }) => {
+      const timingIndex = shipped.findIndex(
+        (migration) => migration.manifest.id === '0016_timing_ingestion',
+      );
+      const predecessor = shipped.slice(0, timingIndex);
+      const prior = predecessor.at(-1);
+      if (timingIndex < 1 || !prior)
+        throw new Error('Timing predecessor missing');
+      await migrateTestDatabase(pool, predecessor, prior.manifest.fingerprint);
+      const studyId = randomUUID();
+      const waves = [randomUUID(), randomUUID(), randomUUID()].sort();
+      await pool.query(
+        "INSERT INTO teams (id,name,slug) VALUES ('timing-upgrade-team','Timing upgrade','timing-upgrade-team')",
+      );
+      await pool.query(
+        "INSERT INTO studies (id,team_id,name) VALUES ($1,'timing-upgrade-team','Existing study')",
+        [studyId],
+      );
+      for (const [index, waveId] of waves.entries()) {
+        await pool.query(
+          "INSERT INTO study_waves (id,study_id,team_id,wave_number) VALUES ($1,$2,'timing-upgrade-team',$3)",
+          [waveId, studyId, index + 1],
+        );
+      }
+      // Cover an old fresh projection, a stage-only projection, and no projection.
+      await pool.query(
+        "INSERT INTO study_wave_rollups (wave_id,study_id,team_id,invited_count) VALUES ($1,$2,'timing-upgrade-team',7)",
+        [waves[0], studyId],
+      );
+      await pool.query(
+        "INSERT INTO study_stage_rollups (wave_id,study_id,team_id,stage_id,entered_count) VALUES ($1,$2,'timing-upgrade-team','old-stage',3)",
+        [waves[1], studyId],
+      );
+      await migrateTestDatabase(pool, shipped, SCHEMA_FINGERPRINT);
+      expect(
+        (
+          await pool.query(
+            'SELECT wave_id,dirty_generation::text AS generation,stale_at IS NOT NULL AS queued FROM study_wave_rollups ORDER BY wave_id',
+          )
+        ).rows,
+      ).toEqual(
+        waves.map((waveId) => ({
+          wave_id: waveId,
+          generation: '1',
+          queued: true,
+        })),
+      );
+      const maintenance = createMaintenancePool(scratchDb);
+      try {
+        for (let index = 0; index < waves.length; index += 1) {
+          await expect(runMonitoringRollupOnce(maintenance)).resolves.toEqual({
+            claimed: 1,
+          });
+        }
+        await expect(runMonitoringRollupOnce(maintenance)).resolves.toEqual({
+          claimed: 0,
+        });
+      } finally {
+        await maintenance.end();
+      }
+      expect(
+        (
+          await pool.query(
+            'SELECT invited_count, stale_at FROM study_wave_rollups ORDER BY wave_id',
+          )
+        ).rows,
+      ).toEqual(waves.map(() => ({ invited_count: 0, stale_at: null })));
+      expect(
+        (await pool.query('SELECT * FROM study_stage_rollups')).rows,
+      ).toEqual([]);
+    });
+  });
+
   let predecessor: Migration;
   let upgrade: Migration;
   beforeAll(async () => {
