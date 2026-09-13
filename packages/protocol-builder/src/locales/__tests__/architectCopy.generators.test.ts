@@ -144,6 +144,16 @@ const SENTENCES_THAT_NAME_A_CONTROL = [
     sentence: 'protocolBuilder.cardDisplay.clearConfirm',
     names: ['protocolBuilder.cardDisplay.title'],
   },
+  {
+    // Architect's notice quotes two of the accuracy scale's own settings by
+    // name, so it is only advice while the scale still offers them under
+    // those names.
+    sentence: 'protocolBuilder.searchOptions.toleranceNotice',
+    names: [
+      'protocolBuilder.searchOptions.toleranceExact',
+      'protocolBuilder.searchOptions.toleranceClose',
+    ],
+  },
 ] as const;
 
 // Lower-cased on both sides: a label is capitalised as a heading and these

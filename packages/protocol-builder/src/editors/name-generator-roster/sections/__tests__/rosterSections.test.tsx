@@ -862,7 +862,7 @@ describe('how a participant searches a roster', () => {
     await waitFor(() =>
       expect(screen.getByRole('slider')).toHaveAttribute(
         'aria-valuetext',
-        'Allow small differences',
+        'Medium accuracy',
       ),
     );
     expect(screen.queryByText('Saved setting (0.4)')).toBeNull();

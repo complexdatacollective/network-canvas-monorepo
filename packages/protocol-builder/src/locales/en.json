@@ -5492,8 +5492,8 @@
     "description": "Heading of the section letting a participant find someone in a roster by typing. A roster is a list of people imported from a data file."
   },
   "protocolBuilder.searchOptions.toleranceClose": {
-    "defaultMessage": "Close matches only",
-    "description": "The second of four search tolerances, between \"Exact\" and \"Allow small differences\"."
+    "defaultMessage": "High accuracy",
+    "description": "The second of four search tolerances, between \"Exact\" and \"Medium accuracy\". Accuracy here is how closely the participant’s typing has to match."
   },
   "protocolBuilder.searchOptions.toleranceExact": {
     "defaultMessage": "Exact",
@@ -5520,11 +5520,11 @@
     "description": "Label of the extra position the tolerance scale offers when the stage was saved with a tolerance that is not one of the four named ones — an older protocol, or one authored elsewhere. value is the number the stage holds, which is what the researcher has to be able to see and keep. Kept short: it is read as one tick label beside the four named ones."
   },
   "protocolBuilder.searchOptions.toleranceSmallDifferences": {
-    "defaultMessage": "Allow small differences",
-    "description": "The third of four search tolerances, between \"Close matches only\" and \"Allow typos and misspellings\"."
+    "defaultMessage": "Medium accuracy",
+    "description": "The third of four search tolerances, between \"High accuracy\" and \"Low accuracy\"."
   },
   "protocolBuilder.searchOptions.toleranceTypos": {
-    "defaultMessage": "Allow typos and misspellings",
+    "defaultMessage": "Low accuracy",
     "description": "The loosest of four search tolerances: a word the participant spelled wrongly still finds the person."
   },
   "protocolBuilder.searchOptions.waitingDescription": {

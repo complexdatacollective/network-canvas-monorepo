@@ -121,19 +121,19 @@ const messages = defineMessages({
   },
   toleranceClose: {
     id: 'protocolBuilder.searchOptions.toleranceClose',
-    defaultMessage: 'Close matches only',
+    defaultMessage: 'High accuracy',
     description:
-      'The second of four search tolerances, between "Exact" and "Allow small differences".',
+      'The second of four search tolerances, between "Exact" and "Medium accuracy". Accuracy here is how closely the participant’s typing has to match.',
   },
   toleranceSmallDifferences: {
     id: 'protocolBuilder.searchOptions.toleranceSmallDifferences',
-    defaultMessage: 'Allow small differences',
+    defaultMessage: 'Medium accuracy',
     description:
-      'The third of four search tolerances, between "Close matches only" and "Allow typos and misspellings".',
+      'The third of four search tolerances, between "High accuracy" and "Low accuracy".',
   },
   toleranceTypos: {
     id: 'protocolBuilder.searchOptions.toleranceTypos',
-    defaultMessage: 'Allow typos and misspellings',
+    defaultMessage: 'Low accuracy',
     description:
       'The loosest of four search tolerances: a word the participant spelled wrongly still finds the person.',
   },

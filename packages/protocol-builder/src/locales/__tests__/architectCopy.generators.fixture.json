@@ -549,6 +549,16 @@
     "es": "Búsqueda en la lista",
     "from": "74a07e626 architect.sections.searchOptionsForExternalData.rosterSearch"
   },
+  "protocolBuilder.searchOptions.toleranceClose": {
+    "en": "High accuracy",
+    "es": "Precisión alta",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.highAccuracy"
+  },
+  "protocolBuilder.searchOptions.toleranceExact": {
+    "en": "Exact",
+    "es": "Exacta",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.exact"
+  },
   "protocolBuilder.searchOptions.toleranceHint": {
     "en": "Search accuracy determines how closely the text the participant types must be to an attribute for it to be considered a match.",
     "es": "La precisión de búsqueda determina cuánto debe coincidir el texto introducido por el participante con un atributo para considerarlo una coincidencia.",
@@ -563,6 +573,16 @@
     "en": "If the roster contains many similar nodes, selecting \"Exact\" or \"High accuracy\" will help narrow down searches. In contrast, a low accuracy search will allow for typos and spelling mistakes.",
     "es": "Si la lista contiene muchos nodos similares, seleccionar «Exacta» o «Precisión alta» ayudará a limitar las búsquedas. Una búsqueda de baja precisión permitirá errores tipográficos y ortográficos.",
     "from": "74a07e626 architect.sections.searchOptionsForExternalData.ifTheRosterContainsManySimilar"
+  },
+  "protocolBuilder.searchOptions.toleranceSmallDifferences": {
+    "en": "Medium accuracy",
+    "es": "Precisión media",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.mediumAccuracy"
+  },
+  "protocolBuilder.searchOptions.toleranceTypos": {
+    "en": "Low accuracy",
+    "es": "Precisión baja",
+    "from": "74a07e626 architect.sections.searchOptionsForExternalData.lowAccuracy"
   },
   "protocolBuilder.searchOptions.waitingDescription": {
     "en": "Select a roster data source before configuring search.",
