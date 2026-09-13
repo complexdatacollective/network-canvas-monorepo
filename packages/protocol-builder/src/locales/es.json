@@ -823,8 +823,6 @@
   "protocolBuilder.networkCanvas.tapDescription": "Elige si pulsar un nodo alterna un atributo o crea un vínculo.",
   "protocolBuilder.networkCanvas.tapHighlightDescription": "Al pulsar un nodo, se alterna un atributo booleano entre verdadero y falso.",
   "protocolBuilder.networkCanvas.tapHighlightLabel": "Alternar atributo",
-  "protocolBuilder.networkCanvas.tapNothingDescription": "Tocar un nodo no hace nada en esta pregunta. El participante solo mueve los nodos.",
-  "protocolBuilder.networkCanvas.tapNothingLabel": "Nada",
   "protocolBuilder.networkCanvas.tapTitle": "Interacción con nodos",
   "protocolBuilder.networkCanvas.tickListEmptyState": "Todavía no hay nada que elegir. Crea antes en el libro de códigos lo que ofrece esta lista.",
   "protocolBuilder.networkFilter.clearConfirm": "Borrar filtro",

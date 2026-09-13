@@ -16,10 +16,11 @@ import { addPrompt } from './prompts.js';
 //   locked to the layout type. The picker is a native `<select>` over the
 //   attributes that exist, so it can only ever CHOOSE; creating is the
 //   button's job, not the picker's.
-// - "Node interaction" holds one choice, "Interaction type", between "Nothing",
-//   "Edge creation" and "Attribute toggling" — mutually exclusive, because
-//   the stage schema refuses a prompt that both draws edges and toggles an
-//   attribute. Choosing "Edge creation" reveals the edge-type
+// - "Node interaction" is toggleable, and switched off is how a prompt says
+//   tapping does nothing. Switched on it holds one choice, "Interaction type",
+//   between "Edge creation" and "Attribute toggling" — mutually exclusive,
+//   because the stage schema refuses a prompt that both draws edges and
+//   toggles an attribute. Choosing "Edge creation" reveals the edge-type
 //   radiogroup "Created edge type" (`edges.create`); choosing "Attribute
 //   toggling" reveals the picker "Boolean attribute" (`highlight.variable`)
 //   with its own "Create a new true-or-false attribute" button, and writes
@@ -100,6 +101,11 @@ export async function addSociogramPrompt(
     const interaction = spec.interaction;
     if (interaction) {
       const tapping = editor.section('Node interaction');
+      // Switched off is "tapping does nothing", so the choice is only on
+      // screen once the section is on.
+      await tapping
+        .getByRole('switch', { name: 'Node interaction', exact: true })
+        .click();
       const behaviour = editor
         .field('tap-behaviour')
         .getByRole('listbox', { name: 'Interaction type', exact: true });

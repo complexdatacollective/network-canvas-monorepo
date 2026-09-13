@@ -3273,7 +3273,7 @@
   },
   "protocolBuilder.networkCanvas.tapBehaviourLabel": {
     "defaultMessage": "Interaction type",
-    "description": "Label of the control choosing between the three things tapping a node can do."
+    "description": "Label of the control choosing between the two things tapping a node can do."
   },
   "protocolBuilder.networkCanvas.tapCreateEdgeDescription": {
     "defaultMessage": "Clicking or tapping a node allows the participant to create an edge.",
@@ -3294,14 +3294,6 @@
   "protocolBuilder.networkCanvas.tapHighlightLabel": {
     "defaultMessage": "Attribute toggling",
     "description": "Name of the choice where tapping a node turns a true-or-false attribute on and off. Offered as one of three cards; the sentence under it is tapHighlightDescription."
-  },
-  "protocolBuilder.networkCanvas.tapNothingDescription": {
-    "defaultMessage": "Tapping a node does nothing on this prompt. The participant only moves nodes around.",
-    "description": "Says what the participant can do when tapping does nothing."
-  },
-  "protocolBuilder.networkCanvas.tapNothingLabel": {
-    "defaultMessage": "Nothing",
-    "description": "Name of the choice where tapping a node does nothing. Offered as one of three cards; the sentence under it is tapNothingDescription."
   },
   "protocolBuilder.networkCanvas.tapTitle": {
     "defaultMessage": "Node interaction",

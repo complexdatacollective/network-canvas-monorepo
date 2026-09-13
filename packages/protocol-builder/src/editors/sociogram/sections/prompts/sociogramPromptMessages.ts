@@ -150,19 +150,7 @@ export const sociogramPromptMessages = defineMessages({
     id: 'protocolBuilder.networkCanvas.tapBehaviourLabel',
     defaultMessage: 'Interaction type',
     description:
-      'Label of the control choosing between the three things tapping a node can do.',
-  },
-  tapNothingLabel: {
-    id: 'protocolBuilder.networkCanvas.tapNothingLabel',
-    defaultMessage: 'Nothing',
-    description:
-      'Name of the choice where tapping a node does nothing. Offered as one of three cards; the sentence under it is tapNothingDescription.',
-  },
-  tapNothingDescription: {
-    id: 'protocolBuilder.networkCanvas.tapNothingDescription',
-    defaultMessage:
-      'Tapping a node does nothing on this prompt. The participant only moves nodes around.',
-    description: 'Says what the participant can do when tapping does nothing.',
+      'Label of the control choosing between the two things tapping a node can do.',
   },
   tapCreateEdgeLabel: {
     id: 'protocolBuilder.networkCanvas.tapCreateEdgeLabel',
