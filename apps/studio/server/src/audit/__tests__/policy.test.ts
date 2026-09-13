@@ -452,6 +452,16 @@ describe('audit mutation policy', () => {
       ],
       ['transaction alias', 'const run = db.transaction', 'transaction'],
       [
+        'options transaction call',
+        'options.transaction(async () => undefined)',
+        'transaction',
+      ],
+      [
+        'options transaction alias',
+        'const run = options.transaction',
+        'transaction',
+      ],
+      [
         'computed transaction',
         "db['transaction'](async () => undefined)",
         'transaction',
@@ -472,6 +482,9 @@ describe('audit mutation policy', () => {
     expect(tenantBoundaryAccesses('tenant.query(`SELECT 1`)')).toEqual([]);
     expect(
       tenantBoundaryAccesses('client.query(`UPDATE leases SET owner = $1`)'),
+    ).toEqual([]);
+    expect(
+      tenantBoundaryAccesses('const expected = options.expectedTransaction'),
     ).toEqual([]);
   });
 

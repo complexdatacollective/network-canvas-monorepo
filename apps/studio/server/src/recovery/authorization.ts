@@ -143,17 +143,24 @@ async function asMaintenance<T>(
   }
 }
 
-async function reconcileInventories(
+async function assertEvidenceFreshness(
   client: pg.PoolClient,
   evidence: StudioRecoveryAuthorizationReconciliation,
-  mode: 'revoke-stale' | 'require-exact',
-) {
+): Promise<void> {
   const freshness = await client.query<{ current: boolean }>(
     `SELECT statement_timestamp() >= $1::timestamptz - interval '5 minutes'
        AND statement_timestamp() <= $2::timestamptz AS current`,
     [evidence.issuedAt, evidence.expiresAt],
   );
   if (freshness.rows[0]?.current !== true) throw new Error(MISMATCH);
+}
+
+async function reconcileInventories(
+  client: pg.PoolClient,
+  evidence: StudioRecoveryAuthorizationReconciliation,
+  mode: 'revoke-stale' | 'require-exact',
+) {
+  await assertEvidenceFreshness(client, evidence);
   const instance = await client.query<{
     name: string;
     initial_owner_user_id: string | null;
@@ -509,11 +516,13 @@ export async function reconcileStudioRecoveryAuthorization(options: {
   try {
     client = await options.pool.connect();
     backup = await options.backupPool.connect();
+    await assertOperator(client, policy);
     await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    await backup.query('BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY');
     await client.query(`SET LOCAL lock_timeout = '10s';
       SET LOCAL statement_timeout = '5min';
       SET LOCAL idle_in_transaction_session_timeout = '5min'`);
+    await lockRecoveryAuthorizationState(client);
+    await backup.query('BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY');
     await backup.query(`SET LOCAL statement_timeout = '5min';
       SET LOCAL idle_in_transaction_session_timeout = '5min'`);
     await assertOperator(client, policy);
@@ -526,9 +535,8 @@ export async function reconcileStudioRecoveryAuthorization(options: {
     });
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      transaction: { isolation: 'serializable', readOnly: false },
+      expectedTransaction: { isolation: 'serializable', readOnly: false },
     });
-    await lockRecoveryAuthorizationState(client);
     await reconcileInventories(client, evidence, 'revoke-stale');
     await invalidateRestoredAdmission(client);
     await holdRestoredDeliveries(client);
@@ -540,7 +548,7 @@ export async function reconcileStudioRecoveryAuthorization(options: {
     await reconcileInventories(client, evidence, 'revoke-stale');
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      transaction: { isolation: 'serializable', readOnly: false },
+      expectedTransaction: { isolation: 'serializable', readOnly: false },
     });
     const destination = (
       await client.query<{ database: string; fingerprint: string }>(
@@ -551,6 +559,7 @@ export async function reconcileStudioRecoveryAuthorization(options: {
     if (!destination) throw new Error(FAILURE);
     await backup.query('ROLLBACK');
     backupCompleted = true;
+    await assertEvidenceFreshness(client, evidence);
     await client.query('COMMIT');
     committed = true;
     return {
@@ -615,11 +624,13 @@ export async function authorizeCurrentStudioRecovery(options: {
   try {
     client = await options.pool.connect();
     backup = await options.backupPool.connect();
+    await assertOperator(client, policy);
     await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
-    await backup.query('BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY');
     await client.query(`SET LOCAL lock_timeout = '10s';
       SET LOCAL statement_timeout = '5min';
       SET LOCAL idle_in_transaction_session_timeout = '5min'`);
+    await lockRecoveryAuthorizationState(client);
+    await backup.query('BEGIN ISOLATION LEVEL READ COMMITTED READ ONLY');
     await backup.query(`SET LOCAL statement_timeout = '5min';
       SET LOCAL idle_in_transaction_session_timeout = '5min'`);
     await assertOperator(client, policy);
@@ -632,9 +643,8 @@ export async function authorizeCurrentStudioRecovery(options: {
     });
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      transaction: { isolation: 'serializable', readOnly: false },
+      expectedTransaction: { isolation: 'serializable', readOnly: false },
     });
-    await lockRecoveryAuthorizationState(client);
     await reconcileInventories(client, evidence, 'require-exact');
     await assertRestoredAdmissionInvalidated(client);
     const enabledBefore = (
@@ -663,7 +673,7 @@ export async function authorizeCurrentStudioRecovery(options: {
     await assertRestoredAdmissionInvalidated(client);
     await assertStudioRecoveryQuarantine(client, backup, {
       ...policy,
-      transaction: { isolation: 'serializable', readOnly: false },
+      expectedTransaction: { isolation: 'serializable', readOnly: false },
     });
     const destination = (
       await client.query<{ database: string; fingerprint: string }>(
@@ -674,6 +684,7 @@ export async function authorizeCurrentStudioRecovery(options: {
     if (!destination) throw new Error(FAILURE);
     await backup.query('ROLLBACK');
     backupCompleted = true;
+    await assertEvidenceFreshness(client, evidence);
     await client.query('COMMIT');
     committed = true;
     return {

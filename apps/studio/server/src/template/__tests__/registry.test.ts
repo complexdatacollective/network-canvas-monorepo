@@ -413,11 +413,13 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
       artifact_url: `${ORIGIN}/api/v1/artifacts/${root}`,
       report_url: `${ORIGIN}/api/v1/entries/${entryId}/reports`,
     };
+    let entryResponse: unknown = entry;
     const registry = new TemplateRegistryClient({
       origin: ORIGIN,
       fetch: async (input) => {
         const path = requestUrl(input).pathname;
-        if (path === `/api/v1/entries/${entryId}`) return Response.json(entry);
+        if (path === `/api/v1/entries/${entryId}`)
+          return Response.json(entryResponse);
         if (path !== `/api/v1/artifacts/${root}`)
           throw new Error('unexpected Registry request');
         return new Response(built.bytes, {
@@ -440,15 +442,41 @@ describe.skipIf(!db)('Studio Registry publication command', () => {
         return { hash, size: bytes.byteLength, mediaType };
       },
     };
-    const result = await importRegistryTemplate(
+    const executeImport = () =>
+      importRegistryTemplate(
+        {
+          tenantDb: createTenantDb(app, teamId),
+          principal: principal(userId),
+          requestId: randomUUID(),
+        },
+        { origin: ORIGIN, assetStore: importAssetStore, client: registry },
+        entryId,
+      );
+    for (const changed of [
+      { template: { ...entry.template, name: 'Unverified name' } },
       {
-        tenantDb: createTenantDb(app, teamId),
-        principal: principal(userId),
-        requestId: randomUUID(),
+        metadata: {
+          schema_version: 1,
+          authors: [{ name: 'Unverified author' }],
+        },
       },
-      { origin: ORIGIN, assetStore: importAssetStore, client: registry },
-      entryId,
-    );
+      { license: 'CC0-1.0' },
+    ]) {
+      entryResponse = { ...entry, ...changed };
+      await expect(executeImport()).rejects.toMatchObject({
+        code: 'REGISTRY_UNAVAILABLE',
+      });
+      expect(stored.size).toBe(0);
+      expect(
+        (
+          await pool.query('SELECT id FROM templates WHERE team_id = $1', [
+            teamId,
+          ])
+        ).rowCount,
+      ).toBe(0);
+    }
+    entryResponse = entry;
+    const result = await executeImport();
     expect(result.replayed).toBe(false);
     expect(stored.size).toBe(1);
     const version = await pool.query<{

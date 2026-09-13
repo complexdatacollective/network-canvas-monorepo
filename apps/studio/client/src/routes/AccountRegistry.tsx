@@ -4,16 +4,14 @@ import { useState } from 'react';
 import { defineMessages } from '@codaco/app-i18n/messages';
 import { useAppIntl } from '@codaco/app-i18n/react';
 import { Alert } from '@codaco/fresco-ui/Alert';
-import Field from '@codaco/fresco-ui/form/Field/Field';
-import InputField from '@codaco/fresco-ui/form/fields/InputField';
-import Form from '@codaco/fresco-ui/form/Form';
-import SubmitButton from '@codaco/fresco-ui/form/SubmitButton';
 import Surface from '@codaco/fresco-ui/layout/Surface';
 import { routeFocusTargetProps } from '@codaco/fresco-ui/navigation/RouteFocus';
+import Spinner from '@codaco/fresco-ui/Spinner';
 import Heading from '@codaco/fresco-ui/typography/Heading';
 import Paragraph from '@codaco/fresco-ui/typography/Paragraph';
 
 import { orpc, rpcClient } from '../lib/api.ts';
+import RegistryCredentialForm from './RegistryCredentialForm.tsx';
 
 const messages = defineMessages({
   heading: {
@@ -81,6 +79,7 @@ export default function AccountRegistry() {
         </Paragraph>
       </div>
       <Surface spacing="lg">
+        {status.isPending && <Spinner size="sm" />}
         {status.isError && (
           <Alert variant="destructive">
             {intl.formatMessage(messages.failed)}
@@ -103,15 +102,21 @@ export default function AccountRegistry() {
           </div>
         )}
         {status.data?.origin && (
-          <Form
-            onSubmit={async ({ credential }) => {
-              if (typeof credential !== 'string') return { success: false };
+          <RegistryCredentialForm
+            label={intl.formatMessage(messages.credential)}
+            submitLabel={intl.formatMessage(messages.link)}
+            onSubmit={async (credential) => {
               setLinkedNotice(false);
               try {
                 await rpcClient.account.linkRegistry({ credential });
-                await queryClient.invalidateQueries({
-                  queryKey: orpc.account.registry.key(),
-                });
+                try {
+                  await queryClient.invalidateQueries({
+                    queryKey: orpc.account.registry.key(),
+                  });
+                } catch {
+                  // The link already succeeded. The account query renders its
+                  // own bounded read error if the refresh cannot complete.
+                }
                 setLinkedNotice(true);
                 return { success: true };
               } catch {
@@ -121,17 +126,7 @@ export default function AccountRegistry() {
                 };
               }
             }}
-          >
-            <Field
-              name="credential"
-              label={intl.formatMessage(messages.credential)}
-              component={InputField}
-              type="password"
-              autoComplete="off"
-              required
-            />
-            <SubmitButton>{intl.formatMessage(messages.link)}</SubmitButton>
-          </Form>
+          />
         )}
       </Surface>
     </div>

@@ -31,6 +31,50 @@ const serviceOrigin = networkUrl(['http:', 'https:']).refine((value) => {
     url.pathname === '/'
   );
 });
+const privateNetworkOptIn = z.boolean();
+const storageProvider = z.enum(['s3', 'r2']).default('s3');
+const isR2Endpoint = (endpoint: string, region: string) => {
+  const url = new URL(endpoint);
+  return (
+    url.protocol === 'https:' &&
+    url.port === '' &&
+    /^[a-f0-9]{32}(?:\.(?:eu|us|fedramp))?\.r2\.cloudflarestorage\.com$/.test(
+      url.hostname,
+    ) &&
+    region === 'auto'
+  );
+};
+const objectStorageSchema = z
+  .strictObject({
+    provider: storageProvider,
+    endpoint: serviceOrigin,
+    insecurePrivateNetwork: privateNetworkOptIn,
+    region: nonblank,
+    bucket: nonblank,
+    accessKeyId: nonblank,
+    secretAccessKey: nonblank,
+  })
+  .superRefine((value, context) => {
+    const { endpoint, insecurePrivateNetwork } = value;
+    const url = new URL(endpoint);
+    if (
+      url.protocol !== 'https:' &&
+      !localHost(url.hostname) &&
+      !insecurePrivateNetwork
+    )
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Object storage requires HTTPS or explicit private networking.',
+        path: ['endpoint'],
+      });
+    if (value.provider === 'r2' && !isR2Endpoint(endpoint, value.region))
+      context.addIssue({
+        code: 'custom',
+        message: 'R2 storage requires its verified HTTPS account endpoint.',
+        path: ['endpoint'],
+      });
+  });
 const originUrl = serviceOrigin.refine((value) => {
   const url = new URL(value);
   return url.protocol === 'https:' || localHost(url.hostname);
@@ -66,13 +110,7 @@ const recoverySchema = z.strictObject({
   backupDatabaseUrl: databaseUrl,
   reconciliationPath: z.string().min(1),
   reconciliationSha256: z.string().regex(/^[0-9a-f]{64}$/),
-  s3: z.strictObject({
-    endpoint: serviceOrigin,
-    region: nonblank,
-    bucket: nonblank,
-    accessKeyId: nonblank,
-    secretAccessKey: nonblank,
-  }),
+  s3: objectStorageSchema,
   ...enrollmentSchema.shape,
 });
 const readDatabaseAdmission = (raw: RawEnv) => {
@@ -112,23 +150,7 @@ const schema = z.strictObject({
     }),
   ]),
   magicLinksPerDay: z.number().int().min(1).max(10_000),
-  s3: z
-    .strictObject({
-      endpoint: serviceOrigin,
-      insecurePrivateNetwork: z.boolean(),
-      region: nonblank,
-      bucket: nonblank,
-      accessKeyId: nonblank,
-      secretAccessKey: nonblank,
-    })
-    .refine(({ endpoint, insecurePrivateNetwork }) => {
-      const url = new URL(endpoint);
-      return (
-        url.protocol === 'https:' ||
-        localHost(url.hostname) ||
-        insecurePrivateNetwork
-      );
-    }),
+  s3: objectStorageSchema,
   limits: RegistryLimitsSchema,
 });
 export type RegistryEnv = z.infer<typeof schema>;
@@ -161,6 +183,7 @@ export function readRegistryEnv(raw: RawEnv = process.env): RegistryEnv {
         : { kind: 'smtp', url: smtp, from: raw.REGISTRY_MAIL_FROM },
       magicLinksPerDay: integer(raw.REGISTRY_MAGIC_LINKS_PER_DAY, 100),
       s3: {
+        provider: raw.REGISTRY_S3_PROVIDER,
         endpoint: raw.REGISTRY_S3_ENDPOINT,
         insecurePrivateNetwork:
           z
@@ -249,7 +272,13 @@ export function readRegistryRecoveryEnv(raw: RawEnv = process.env) {
       reconciliationSha256: raw.REGISTRY_RECOVERY_RECONCILIATION_SHA256,
       ...readDatabaseAdmission(raw),
       s3: {
+        provider: raw.REGISTRY_RECOVERY_S3_PROVIDER ?? raw.REGISTRY_S3_PROVIDER,
         endpoint: raw.REGISTRY_S3_ENDPOINT,
+        insecurePrivateNetwork:
+          z
+            .enum(['true', 'false'])
+            .parse(raw.REGISTRY_S3_INSECURE_PRIVATE_NETWORK ?? 'false') ===
+          'true',
         region: raw.REGISTRY_S3_REGION,
         bucket: raw.REGISTRY_S3_BUCKET,
         accessKeyId: raw.REGISTRY_S3_ACCESS_KEY_ID,

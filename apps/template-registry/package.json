@@ -19,6 +19,7 @@
     "sync-fingerprint": "node scripts/sync-fingerprint.ts",
     "generate-migration": "node scripts/generate-migration.ts",
     "generate:openapi": "node scripts/generate-openapi.ts",
+    "test:openapi-client": "node scripts/verify-openapi-client.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.account.json",
     "test": "vitest run && vitest run --config vitest.account.config.ts",
     "test:watch": "vitest",

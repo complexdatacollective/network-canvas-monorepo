@@ -176,10 +176,11 @@ catalog:
   vitest: ^4.1.11
   wrangler: ^4.95.0
   ws: ^8.21.2
-  # `@orpc/zod`'s converter declares a `zod >=4.5.0` peer, so the catalog has
-  # to resolve at least that: below it the OpenAPI conversion Studio publishes
-  # runs on a combination the adapter does not support.
-  zod: ^4.5.4
+  # `@orpc/zod`'s converter declares a `zod >=4.5.0` peer. Keep the direct
+  # workspace dependency exact as well: Zod exposes its minor version in type
+  # identity, so independently resolved compatible minors cannot cross shared
+  # package and oRPC boundaries.
+  zod: 4.5.4
   zustand: ^5.0.14
 overrides:
   # Keep transitive resolutions (vitest, @vitejs/plugin-react, …) on the pinned
