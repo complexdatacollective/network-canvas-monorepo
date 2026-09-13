@@ -404,7 +404,7 @@ test('shared Docker context filtering selects both backend images without changi
 });
 
 for (const path of [
-  'scripts/studio/studio-install.mjs',
+  'scripts/studio/studio-installer-bundle.mjs',
   'apps/template-registry/deployment/compose.yml',
 ])
   test(`distribution-only ${path} changes require a new artifact without fabricated package versions`, async (t) => {

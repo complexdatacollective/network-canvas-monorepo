@@ -127,7 +127,10 @@ export function fixture(t) {
   write('apps/template-registry/Dockerfile', 'FROM node:24-slim\n');
   write('.dockerignore', '.git\n**/node_modules\n');
   write('apps/studio/docker-compose.yml', 'services: {}\n');
-  write('scripts/studio/studio-install.mjs', 'export const version = 1;\n');
+  write(
+    'scripts/studio/studio-installer-bundle.mjs',
+    'export const version = 1;\n',
+  );
   write(
     '.changeset/studio.md',
     `---\n${STUDIO_RELEASE_PACKAGES.map((name) => `"${name}": minor`).join('\n')}\n---\nInitial Studio release.\n`,

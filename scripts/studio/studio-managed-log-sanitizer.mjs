@@ -99,7 +99,7 @@ function hashSchema(schema) {
 // A schema change is a reviewed collector/destination contract change. Update
 // this literal only with the matching catalog, parser and adversarial tests.
 export const MANAGED_OPERATIONAL_LOG_SCHEMA_IDENTITY =
-  'sha256:4c78c789611c9eb760b26fbf57a0b5711d8f4750454062299d126cdc27fe6432';
+  'sha256:f420ca3357a4d0235df59b88c02c08b4f70a5eb9362ba3589ad3ae74d3a1e0cc';
 
 if (
   hashSchema(MANAGED_OPERATIONAL_LOG_SCHEMA) !==
