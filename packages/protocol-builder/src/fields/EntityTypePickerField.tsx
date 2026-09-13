@@ -697,17 +697,27 @@ function EntityTypeCodebookControls({
    *
    * Read map by map rather than by a computed key: the codebook's two maps
    * hold different definition types, and one indexed by a union is a union of
-   * maps nothing can be read out of without narrowing it again.
+   * maps nothing can be read out of without narrowing it again. Each map is
+   * carried with its kind for the same reason the name is judged across both:
+   * a record key belongs to ONE map, and `VariableNameSchema`'s alphabet is
+   * the protocol author's, so a codebook may legally key a node and an edge
+   * the same. Excluded by id alone, editing that node would take the edge's
+   * name out of the collision list too, and the rename would be refused by
+   * the schema instead of by the field.
    */
   const existingEntityNames = useMemo(() => {
     const edited = editing?.typeId;
     return [
-      ...Object.entries(codebook.node ?? {}),
-      ...Object.entries(codebook.edge ?? {}),
-    ].flatMap(([typeId, definition]) =>
-      typeId === edited ? [] : [definition.name],
+      ...Object.entries(codebook.node ?? {}).map(
+        ([typeId, definition]) => ['node', typeId, definition.name] as const,
+      ),
+      ...Object.entries(codebook.edge ?? {}).map(
+        ([typeId, definition]) => ['edge', typeId, definition.name] as const,
+      ),
+    ].flatMap(([kind, typeId, name]) =>
+      kind === entityType && typeId === edited ? [] : [name],
     );
-  }, [codebook, editing?.typeId]);
+  }, [codebook, editing?.typeId, entityType]);
 
   const createLabel = intl.formatMessage(CREATE_LABELS[entityType]);
   const editLabel = intl.formatMessage(EDIT_LABELS[entityType]);

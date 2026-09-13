@@ -39,6 +39,32 @@ const KNOWS_ENTRY = {
  */
 const picker = (label: string): HTMLElement => attributeField(label);
 
+/**
+ * One value of a list the codebook editor is authoring, label and stored value.
+ *
+ * The editor numbers its rows, so each is named by the position it was added
+ * in — which is also what proves the second landed beside the first rather
+ * than over it.
+ */
+const addOption = async (
+  harness: ReturnType<typeof renderStageEditor>,
+  position: number,
+  label: string,
+  value: string,
+) => {
+  await harness.user.click(
+    screen.getByRole('button', { name: 'Create new option' }),
+  );
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} label` }),
+    label,
+  );
+  await harness.user.type(
+    screen.getByRole('textbox', { name: `Option ${position} value` }),
+    value,
+  );
+};
+
 /** The node form is a capability, so a stage that has none opens with it off. */
 const switchOnNodeForm = async (
   harness: ReturnType<typeof renderStageEditor>,
@@ -384,6 +410,41 @@ describe('what a network composer lets the participant build', () => {
   });
 
   /**
+   * Repointed, the control follows the new attribute rather than staying where
+   * the last one left it.
+   *
+   * Two text attributes the codebook asks for with DIFFERENT controls, because
+   * a fixture where every text attribute is a single-line box cannot tell a
+   * control that followed the rebinding from one that was simply never moved
+   * — and the row is reading its own held control first from the moment an
+   * invention it completes has to keep one.
+   */
+  it('follows a rebinding to the control the codebook asks for', async () => {
+    const harness = renderStageEditor(composerHolding({}));
+    await switchOnNodeForm(harness);
+    addPersonVariable(harness, 'notes', {
+      name: 'notes',
+      type: 'text',
+      component: 'TextArea',
+    });
+
+    const dialog = await addRow(harness, 'Create new node attribute');
+    await chooseAttributeById(
+      harness.user,
+      picker('Attribute'),
+      'composerName',
+    );
+    const control = await dialog.findByRole('combobox', {
+      name: 'Input control',
+    });
+    await waitFor(() => expect(control).toHaveValue('Text'));
+
+    await chooseAttributeById(harness.user, picker('Attribute'), 'notes');
+
+    await waitFor(() => expect(control).toHaveValue('TextArea'));
+  });
+
+  /**
    * The grouping is written straight onto the node as the participant lassoes
    * and taps, and a form field collects through the codebook's rules. Two
    * writers of opposite classes on one attribute is what the schema's own
@@ -717,6 +778,78 @@ describe('what a network composer lets the participant build', () => {
         (variable) => variable.name === 'favouriteFood',
       ),
     ).toBe(false);
+  });
+
+  /**
+   * The control the researcher chose survives the create it caused.
+   *
+   * A kind of answer that comes from a list is authored in the codebook
+   * editor, which writes the attribute WITHOUT a control — in this family the
+   * control belongs to the stage, so one attribute can be asked for on a
+   * scale here and with radio buttons elsewhere. The row is then rebound from
+   * the name it was inventing to the attribute that now exists, and a rule
+   * that reads the codebook for the pairing finds nothing and answers with
+   * the first control the kind allows: `RadioGroup` over the `LikertScale`
+   * that DECIDED the kind. Asked with a control that is not first in its kind
+   * for exactly that reason.
+   */
+  it('keeps the control that decided the kind when the create lands', async () => {
+    const harness = renderStageEditor(
+      composerHolding({ nodeForm: { fields: [] } }),
+    );
+    await switchOnNodeForm(harness);
+
+    const dialog = await addRow(harness, 'Create new node attribute');
+    await inventAttribute(harness.user, picker('Attribute'), 'closeness');
+    const control = await dialog.findByRole('combobox', {
+      name: 'Input control',
+    });
+    await harness.user.selectOptions(control, 'LikertScale');
+
+    await harness.user.click(
+      dialog.getByRole('button', {
+        name: 'Create this attribute and its values',
+      }),
+    );
+    expect(
+      await screen.findByRole('textbox', { name: 'Attribute name' }),
+    ).toHaveValue('closeness');
+    await addOption(harness, 1, 'Not at all close', 'far');
+    await addOption(harness, 2, 'Very close', 'near');
+    await harness.user.click(
+      screen.getByRole('button', { name: 'Create attribute' }),
+    );
+
+    // The create landed, which is the moment the row stops inventing and the
+    // rule that pairs a control with an attribute is asked again.
+    const created = await waitFor(() => {
+      const variables = harness.hostCodebook().node?.person?.variables ?? {};
+      const entry = Object.entries(variables).find(
+        ([, variable]) => variable.name === 'closeness',
+      );
+      if (entry === undefined) {
+        throw new Error('the codebook has no “closeness” attribute');
+      }
+      return entry;
+    });
+    // Written without one, which is what makes the row's own the only answer
+    // there is.
+    expect(created[1]).not.toHaveProperty('component');
+    expect(control).toHaveValue('LikertScale');
+
+    await harness.user.click(dialog.getByRole('button', { name: 'Add' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+    );
+
+    const saved = await harness.submit();
+    expect(nodeFormFieldsOf(saved?.stageDocument ?? {})).toEqual([
+      {
+        id: expect.any(String) as unknown as string,
+        variable: created[0],
+        component: 'LikertScale',
+      },
+    ]);
   });
 
   /**

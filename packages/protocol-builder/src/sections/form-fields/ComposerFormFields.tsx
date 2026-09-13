@@ -772,9 +772,28 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
    * would rewrite a field nobody touched.
    */
   const seenVariable = useRef(chosen);
+  /**
+   * The control the row was holding when it stopped inventing.
+   *
+   * Kept across renders rather than read off the row, because the create
+   * lands in two steps: the picker is rebound the moment the write is
+   * accepted, and the codebook section carrying the new attribute reaches
+   * this editor a render later. In between there is no attribute to pair a
+   * control with, so the rule below clears the row's — and by the time the
+   * attribute arrives the row has nothing left to say about it. This is what
+   * it said.
+   */
+  const controlWhileInventing = useRef<string | undefined>(undefined);
   useEffect(() => {
     const previous = seenVariable.current;
     seenVariable.current = chosen;
+    // Remembered on the step OUT of inventing and forgotten on every other
+    // move of the pick: a control chosen for one attribute is not an answer
+    // about the next one.
+    if (previous !== chosen) {
+      controlWhileInventing.current =
+        previous === NEW_VARIABLE ? control : undefined;
+    }
     /*
       A pick that has not moved is decided again while it has named no control
       at all. An attribute invented from the picker's create row is bound to
@@ -802,14 +821,30 @@ function ComposerFormFieldEditor({ item }: RowEditorProps) {
     // row held for whatever it named before is not an answer about it.
     const attribute = chosen === undefined ? undefined : variables[chosen];
     const controls = controlsForType(attribute?.type ?? '');
-    // The codebook's own control where the pairing allows it, because that is
-    // what the researcher already decided this attribute looks like; otherwise
-    // the first control that can render it, so a field is never left holding a
-    // pairing the schema refuses.
+    const legal = (candidate: unknown) =>
+      controls.find(({ value }) => value === candidate)?.value;
+    /*
+      The control the row was inventing with, first.
+
+      An invention that needs the codebook editor — a list of answers, a scale
+      — is created in there WITHOUT a control, because in this family the
+      control belongs to the stage and not to the attribute. So the codebook
+      has nothing to say about which control collects the attribute that has
+      just been made, and read in the order below the rule would answer with
+      the FIRST control the kind allows and quietly replace the `LikertScale`
+      the researcher chose — the very choice that decided the kind. It is kept
+      wherever the created kind can still render it.
+
+      Otherwise the codebook's own control where the pairing allows it,
+      because that is what the researcher already decided this attribute looks
+      like; and failing both, the first control that can render it, so a field
+      is never left holding a pairing the schema refuses.
+    */
     const preferred =
-      attribute !== undefined && 'component' in attribute
-        ? controls.find(({ value }) => value === attribute.component)?.value
-        : undefined;
+      legal(controlWhileInventing.current) ??
+      (attribute !== undefined && 'component' in attribute
+        ? legal(attribute.component)
+        : undefined);
     setRowValue(COMPONENT_FIELD, preferred ?? controls[0]?.value);
   }, [chosen, control, setRowValue, variables]);
 
